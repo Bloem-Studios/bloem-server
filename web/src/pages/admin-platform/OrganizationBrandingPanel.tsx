@@ -157,7 +157,7 @@ export function OrganizationBrandingPanel({ organizationID }: { organizationID: 
                     <span className="text-muted-foreground text-xs">
                       {ref ? "Uploaded" : "Not set"}
                     </span>
-                    <span className="ml-auto flex items-center gap-2">
+                    <span className="ms-auto flex items-center gap-2">
                       <label htmlFor={inputID} className="sr-only">
                         Upload {asset.label}
                       </label>

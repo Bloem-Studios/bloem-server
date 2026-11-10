@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { ArrowUpCircle, HardDrive } from "lucide-react";
@@ -102,10 +103,11 @@ function ArtifactSelect({
   onChange: (value: string) => void;
   label: string;
 }) {
+  const bt = useBloemT();
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger aria-label={label} className="sm:flex-1">
-        <SelectValue placeholder="Choose a version" />
+        <SelectValue placeholder={bt("bloem.admin.storage.sourceRow.chooseAVersion")} />
       </SelectTrigger>
       <SelectContent>
         {artifacts.map((artifact) => (
@@ -128,6 +130,7 @@ function UpgradeForm({
   artifacts: StorageArtifact[];
   onDone: () => void;
 }) {
+  const bt = useBloemT();
   const upgrade = useUpgradeStorageSource();
   // Only catalog releases of the source's own plugin: a static (uploaded) release of the same
   // plugin is listed too, but the server refuses to upgrade to it.
@@ -143,7 +146,9 @@ function UpgradeForm({
   if (releases.length === 0) {
     return (
       <p className="text-muted-foreground mt-2 text-[13px]">
-        No other versions of {pluginLabel(source.plugin_id)} are available.
+        {bt("bloem.admin.storage.sourceRow.noOtherVersionsOfAre", {
+          plugin: pluginLabel(source.plugin_id),
+        })}
       </p>
     );
   }
@@ -153,16 +158,19 @@ function UpgradeForm({
         artifacts={releases}
         value={artifactKey}
         onChange={setArtifactKey}
-        label="Version to upgrade to"
+        label={bt("bloem.admin.storage.sourceRow.versionToUpgradeTo")}
       />
       <Button type="submit" size="sm" disabled={!artifactKey || upgrade.isPending}>
-        {upgrade.isPending ? "Upgrading..." : "Upgrade"}
+        {upgrade.isPending
+          ? bt("bloem.admin.storage.sourceRow.upgrading")
+          : bt("bloem.admin.storage.sourceRow.upgrade")}
       </Button>
     </form>
   );
 }
 
 function ConnectionForm({ source }: { source: StorageSource }) {
+  const bt = useBloemT();
   const configure = useConfigureStorageSource();
   const [url, setURL] = useState("");
   const [apiKey, setAPIKey] = useState("");
@@ -174,18 +182,18 @@ function ConnectionForm({ source }: { source: StorageSource }) {
   return (
     <form onSubmit={submit} className="mt-3 space-y-3">
       <label className="block text-sm">
-        Bookwarehouse server URL
+        {bt("bloem.admin.storage.sourceRow.bookwarehouseServerUrl")}
         <Input
           type="url"
           required
-          placeholder="https://books.example"
+          placeholder={bt("bloem.admin.storage.sourceRow.httpsBooksExample")}
           value={url}
           onChange={(e) => setURL(e.target.value)}
           autoComplete="off"
         />
       </label>
       <label className="block text-sm">
-        API key
+        {bt("bloem.admin.storage.sourceRow.apiKey")}
         <Input
           type="password"
           required
@@ -195,7 +203,9 @@ function ConnectionForm({ source }: { source: StorageSource }) {
         />
       </label>
       <Button type="submit" disabled={configure.isPending || !url.trim() || !apiKey}>
-        {configure.isPending ? "Connecting..." : "Save connection"}
+        {configure.isPending
+          ? bt("bloem.admin.storage.sourceRow.connecting")
+          : bt("bloem.admin.storage.sourceRow.saveConnection")}
       </Button>
     </form>
   );
@@ -203,6 +213,7 @@ function ConnectionForm({ source }: { source: StorageSource }) {
 
 /** Replaces only the keys of a source; the rest of its configuration is untouched. */
 function RotateKeysForm({ source, onDone }: { source: StorageSource; onDone: () => void }) {
+  const bt = useBloemT();
   const rotate = useRotateStorageCredentials();
   const [accessKey, setAccessKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
@@ -227,7 +238,7 @@ function RotateKeysForm({ source, onDone }: { source: StorageSource; onDone: () 
   return (
     <form onSubmit={submit} className="mt-3 space-y-3">
       <label className="block text-sm">
-        Access key
+        {bt("bloem.admin.storage.sourceRow.accessKey")}
         <Input
           type="password"
           value={accessKey}
@@ -236,7 +247,7 @@ function RotateKeysForm({ source, onDone }: { source: StorageSource; onDone: () 
         />
       </label>
       <label className="block text-sm">
-        Secret key
+        {bt("bloem.admin.storage.sourceRow.secretKey")}
         <Input
           type="password"
           value={secretKey}
@@ -245,7 +256,7 @@ function RotateKeysForm({ source, onDone }: { source: StorageSource; onDone: () 
         />
       </label>
       <label className="block text-sm">
-        Session token (optional)
+        {bt("bloem.admin.storage.sourceRow.sessionTokenOptional")}
         <Input
           type="password"
           value={sessionToken}
@@ -254,7 +265,9 @@ function RotateKeysForm({ source, onDone }: { source: StorageSource; onDone: () 
         />
       </label>
       <Button type="submit" disabled={rotate.isPending || !accessKey || !secretKey}>
-        {rotate.isPending ? "Saving..." : "Save new keys"}
+        {rotate.isPending
+          ? bt("bloem.admin.storage.sourceRow.saving")
+          : bt("bloem.admin.storage.sourceRow.saveNewKeys")}
       </Button>
     </form>
   );
@@ -276,6 +289,7 @@ function S3EditForm({
   onSaved: () => void;
   onInUse: () => void;
 }) {
+  const bt = useBloemT();
   const replace = useReplaceStorageConfiguration();
   const [errors, setErrors] = useState<string[]>([]);
   const section = artifact.config_schema[0];
@@ -296,8 +310,7 @@ function S3EditForm({
   if (!schema) {
     return (
       <p className="text-muted-foreground mt-2 text-[13px]">
-        This version of the S3 plugin doesn't describe its settings, so the source can't be edited
-        here.
+        {bt("bloem.admin.storage.sourceRow.thisVersionOfTheS3")}
       </p>
     );
   }
@@ -336,8 +349,7 @@ function S3EditForm({
   return (
     <div className="mt-3 space-y-3">
       <p className="text-muted-foreground text-[13px]">
-        Enter the access key and secret key again to save. Bloem keeps them encrypted and can&apos;t
-        show them.
+        {bt("bloem.admin.storage.sourceRow.enterTheAccessKeyAnd")}
       </p>
       <PluginConfigForm
         bare
@@ -348,7 +360,7 @@ function S3EditForm({
         onSave={handleSave}
       />
       {errors.length > 0 ? (
-        <ul role="alert" className="text-destructive list-disc space-y-1 pl-5 text-sm">
+        <ul role="alert" className="text-destructive list-disc space-y-1 ps-5 text-sm">
           {errors.map((message) => (
             <li key={message}>{message}</li>
           ))}
@@ -367,10 +379,11 @@ function DeleteConfirmation({
   name: string;
   onDone: () => void;
 }) {
+  const bt = useBloemT();
   const remove = useDeleteRemovedStorageSource();
   return (
     <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[13px]">
-      <p>Delete {name} from this list? Nothing in your storage is deleted.</p>
+      <p>{bt("bloem.admin.storage.sourceRow.deleteFromThisListNothing", { name })}</p>
       <div className="flex gap-2">
         <Button
           variant="destructive"
@@ -378,10 +391,12 @@ function DeleteConfirmation({
           disabled={remove.isPending}
           onClick={() => remove.mutate({ source }, { onSuccess: onDone })}
         >
-          {remove.isPending ? "Deleting..." : "Delete source"}
+          {remove.isPending
+            ? bt("bloem.admin.storage.sourceRow.deleting")
+            : bt("bloem.admin.storage.sourceRow.deleteSource")}
         </Button>
         <Button variant="ghost" size="sm" disabled={remove.isPending} onClick={onDone}>
-          Keep
+          {bt("bloem.admin.storage.sourceRow.keep")}
         </Button>
       </div>
     </div>
@@ -397,13 +412,11 @@ function RemoveConfirmation({
   name: string;
   onDone: () => void;
 }) {
+  const bt = useBloemT();
   const remove = useRemoveStorageSource();
   return (
     <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[13px]">
-      <p>
-        Remove {name}? This can&apos;t be undone: to use this storage again, add it as a new source.
-        Nothing in your storage is deleted.
-      </p>
+      <p>{bt("bloem.admin.storage.sourceRow.removeThisCanAposT", { name })}</p>
       <div className="flex gap-2">
         <Button
           variant="destructive"
@@ -411,10 +424,12 @@ function RemoveConfirmation({
           disabled={remove.isPending}
           onClick={() => remove.mutate({ source }, { onSuccess: onDone })}
         >
-          {remove.isPending ? "Removing..." : "Remove source"}
+          {remove.isPending
+            ? bt("bloem.admin.storage.sourceRow.removing")
+            : bt("bloem.admin.storage.sourceRow.removeSource")}
         </Button>
         <Button variant="ghost" size="sm" disabled={remove.isPending} onClick={onDone}>
-          Keep
+          {bt("bloem.admin.storage.sourceRow.keep")}
         </Button>
       </div>
     </div>
@@ -447,7 +462,7 @@ function SummaryLine({ source }: { source: StorageSource }) {
   ].filter(Boolean);
   if (parts.length === 0) return null;
   return (
-    <p className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 pl-[26px] text-[12.5px]">
+    <p className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 ps-[26px] text-[12.5px]">
       {parts.map((part) => (
         <span key={part}>{part}</span>
       ))}
@@ -471,7 +486,7 @@ function UsageLine({ source, status }: { source: StorageSource; status: SourceSt
   } else {
     text = "Not used by any library.";
   }
-  return <p className="text-muted-foreground mt-1 pl-[26px] text-[12.5px]">{text}</p>;
+  return <p className="text-muted-foreground mt-1 ps-[26px] text-[12.5px]">{text}</p>;
 }
 
 type Panel = "edit" | "rotate" | "upgrade" | null;
@@ -495,6 +510,7 @@ export function StorageSourceRow({
   artifacts?: StorageArtifact[];
   inUse?: boolean;
 }) {
+  const bt = useBloemT();
   const test = useTestStorageSource();
   const { scope } = useStorageScope();
   const [panel, setPanel] = useState<Panel>(null);
@@ -529,7 +545,11 @@ export function StorageSourceRow({
         <HardDrive className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate">
           <span className="font-medium">{name}</span>
-          {kind !== name ? <span className="text-muted-foreground"> · {kind}</span> : null}
+          {kind !== name ? (
+            <span className="text-muted-foreground">
+              {bt("bloem.admin.storage.sourceRow.kind", { kind })}
+            </span>
+          ) : null}
         </span>
         <Badge variant="outline" className={STATUS_STYLE[status]}>
           {STATUS_LABEL[status]}
@@ -539,7 +559,7 @@ export function StorageSourceRow({
       <SummaryLine source={source} />
       <UsageLine source={source} status={status} />
 
-      <div className="mt-1.5 flex flex-wrap gap-1 pl-[26px]">
+      <div className="mt-1.5 flex flex-wrap gap-1 ps-[26px]">
         {source.configured ? (
           <>
             <Button
@@ -552,51 +572,59 @@ export function StorageSourceRow({
                 test.mutate({ source }, { onSuccess: setTestResult });
               }}
             >
-              {test.isPending ? "Testing..." : "Test"}
+              {test.isPending
+                ? bt("bloem.admin.storage.sourceRow.testing")
+                : bt("bloem.admin.storage.sourceRow.test")}
             </Button>
             {sourceDisabled ? (
               <span id={testHintId} className="sr-only">
-                A disabled source can't be tested.
+                {bt("bloem.admin.storage.sourceRow.aDisabledSourceCanT")}
               </span>
             ) : null}
           </>
         ) : null}
         {isS3 && canManage && !locked && !loopbackLocked ? (
           <Button variant="ghost" size="sm" onClick={() => toggle("edit")}>
-            {panel === "edit" ? "Cancel" : "Edit"}
+            {panel === "edit"
+              ? bt("bloem.admin.storage.sourceRow.cancel")
+              : bt("bloem.admin.storage.sourceRow.edit")}
           </Button>
         ) : null}
         {isS3 && canManage ? (
           <Button variant="ghost" size="sm" onClick={() => toggle("rotate")}>
-            {panel === "rotate" ? "Cancel" : "Replace keys"}
+            {panel === "rotate"
+              ? bt("bloem.admin.storage.sourceRow.cancel")
+              : bt("bloem.admin.storage.sourceRow.replaceKeys")}
           </Button>
         ) : null}
         {source.state === "attached" && canUpgrade ? (
           <Button variant="ghost" size="sm" onClick={() => toggle("upgrade")}>
             <ArrowUpCircle className="h-3.5 w-3.5" />
-            {panel === "upgrade" ? "Cancel" : "Upgrade"}
+            {panel === "upgrade"
+              ? bt("bloem.admin.storage.sourceRow.cancel")
+              : bt("bloem.admin.storage.sourceRow.upgrade")}
           </Button>
         ) : null}
         {status === "removed" && !platformBlocked && !usedByLibrary ? (
           <Button variant="ghost" size="sm" onClick={() => setRemoving(true)} disabled={removing}>
-            Delete
+            {bt("bloem.admin.storage.sourceRow.delete")}
           </Button>
         ) : null}
         {manageable && !platformBlocked && !usedByLibrary ? (
           <Button variant="ghost" size="sm" onClick={() => setRemoving(true)} disabled={removing}>
-            Remove
+            {bt("bloem.admin.storage.sourceRow.remove")}
           </Button>
         ) : null}
       </div>
 
       {isS3 && canManage && loopbackLocked ? (
-        <p className="text-muted-foreground mt-1 pl-[26px] text-[13px]">{LOOPBACK_LOCKED_NOTICE}</p>
+        <p className="text-muted-foreground mt-1 ps-[26px] text-[13px]">{LOOPBACK_LOCKED_NOTICE}</p>
       ) : null}
 
       {testResult ? (
         <p
           role="status"
-          className={`mt-1 pl-[26px] text-[13px] ${testResult.ok ? "text-muted-foreground" : "text-destructive"}`}
+          className={`mt-1 ps-[26px] text-[13px] ${testResult.ok ? "text-muted-foreground" : "text-destructive"}`}
         >
           {testResult.message}
         </p>
@@ -620,8 +648,9 @@ export function StorageSourceRow({
           />
         ) : (
           <p className="text-muted-foreground mt-2 text-[13px]">
-            The plugin catalog has no version of {pluginLabel(source.plugin_id)}, so the source
-            can&apos;t be edited here.
+            {bt("bloem.admin.storage.sourceRow.thePluginCatalogHasNo", {
+              plugin: pluginLabel(source.plugin_id),
+            })}
           </p>
         )
       ) : null}

@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,18 +29,19 @@ export default function PeopleTable({
   onInspect(person: OrganizationPerson): void;
   onChangeGroup(person: OrganizationPerson, profileId: string, groupId: number): void;
 }) {
+  const bt = useBloemT();
   return (
     <>
       <div className="surface-panel hidden overflow-x-auto rounded-2xl md:block">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Person</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Profiles and access groups</TableHead>
-              <TableHead>Last activity</TableHead>
-              <TableHead className="text-right">
-                <span className="sr-only">Details</span>
+              <TableHead>{bt("bloem.admin.people.table.person")}</TableHead>
+              <TableHead>{bt("bloem.admin.people.table.status")}</TableHead>
+              <TableHead>{bt("bloem.admin.people.table.profilesAndAccessGroups")}</TableHead>
+              <TableHead>{bt("bloem.admin.people.table.lastActivity")}</TableHead>
+              <TableHead className="text-end">
+                <span className="sr-only">{bt("bloem.admin.people.table.details")}</span>
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -67,14 +69,16 @@ export default function PeopleTable({
                 <TableCell className="text-muted-foreground text-sm">
                   {new Date(person.last_activity).toLocaleDateString()}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-end">
                   <Button
                     variant="ghost"
                     size="sm"
-                    aria-label={`Details for ${person.display_name || person.email}`}
+                    aria-label={bt("bloem.admin.people.table.detailsFor", {
+                      person: person.display_name || person.email,
+                    })}
                     onClick={() => onInspect(person)}
                   >
-                    Details
+                    {bt("bloem.admin.people.table.details")}
                   </Button>
                 </TableCell>
               </TableRow>
@@ -82,7 +86,7 @@ export default function PeopleTable({
           </TableBody>
         </Table>
       </div>
-      <ul className="space-y-3 md:hidden" aria-label="People">
+      <ul className="space-y-3 md:hidden" aria-label={bt("bloem.admin.people.table.people")}>
         {people.map((person) => (
           <li key={person.account_id} className="surface-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
@@ -107,10 +111,12 @@ export default function PeopleTable({
               className="mt-3"
               variant="outline"
               size="sm"
-              aria-label={`Details for ${person.display_name || person.email}`}
+              aria-label={bt("bloem.admin.people.table.detailsFor", {
+                value: person.display_name || person.email,
+              })}
               onClick={() => onInspect(person)}
             >
-              Details
+              {bt("bloem.admin.people.table.details")}
             </Button>
           </li>
         ))}
@@ -132,14 +138,17 @@ function ProfileGroups({
   groupDrafts: Record<string, number>;
   onChangeGroup(person: OrganizationPerson, profileId: string, groupId: number): void;
 }) {
+  const bt = useBloemT();
   return (
     <div className="space-y-2">
       {person.profiles.map((profile) => (
         <label key={profile.id} className="flex items-center gap-2 text-xs">
           <span className="min-w-20 truncate">{profile.name}</span>
-          <span className="sr-only">Group for {profile.name} profile</span>
+          <span className="sr-only">
+            {bt("bloem.admin.people.table.groupForProfile", { name: profile.name })}
+          </span>
           <select
-            aria-label={`Group for ${profile.name} profile`}
+            aria-label={bt("bloem.admin.people.table.groupForProfile", { name: profile.name })}
             className="border-input bg-background h-8 min-w-28 rounded-md border px-2"
             value={groupDrafts[profile.id] ?? profile.group_id}
             disabled={changingProfileId === profile.id || groups.length === 0}

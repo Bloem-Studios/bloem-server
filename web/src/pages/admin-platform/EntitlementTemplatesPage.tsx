@@ -113,7 +113,7 @@ export default function EntitlementTemplatesPage() {
           type="button"
           variant="ghost"
           size="sm"
-          className="-ml-2 w-fit"
+          className="-ms-2 w-fit"
           onClick={() => {
             setSelectedKey(null);
             setCreating(false);

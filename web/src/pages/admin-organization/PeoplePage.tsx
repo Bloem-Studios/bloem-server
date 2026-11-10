@@ -262,14 +262,14 @@ export default function PeoplePage() {
         }}
       >
         <div className="relative">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+          <Search className="text-muted-foreground absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2" />
           <Input
             type="search"
             aria-label="Search people"
             placeholder="Name, email or profile"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            className="pl-9"
+            className="ps-9"
           />
         </div>
         <select
@@ -341,7 +341,7 @@ export default function PeoplePage() {
           {profileConflict.message} You chose {profileConflict.intendedGroup}; it is now{" "}
           {profileConflict.currentGroup}.
           <Button
-            className="ml-3"
+            className="ms-3"
             size="sm"
             variant="outline"
             disabled={changingProfileId === profileConflict.profileId}
@@ -420,7 +420,7 @@ export default function PeoplePage() {
             setSearchParams(peopleFiltersToSearch({ ...filters, cursor: previousCursor }));
           }}
         >
-          <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+          <ChevronLeft className="me-2 h-4 w-4" /> Previous
         </Button>
         <span className="text-muted-foreground text-sm">
           About {resultCount.toLocaleString()} {resultCount === 1 ? "person" : "people"}
@@ -435,7 +435,7 @@ export default function PeoplePage() {
             setSearchParams(peopleFiltersToSearch({ ...filters, cursor: nextCursor }));
           }}
         >
-          Next <ChevronRight className="ml-2 h-4 w-4" />
+          Next <ChevronRight className="ms-2 h-4 w-4" />
         </Button>
       </nav>
 

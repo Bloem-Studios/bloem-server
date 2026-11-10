@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { v2 } from "@/api/v2/request";
-import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
+import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useBuildInfo as useSiloBuildInfo, type BuildInfo } from "@/hooks/queries/admin/system";
 
 /**
@@ -10,7 +10,8 @@ import { useBuildInfo as useSiloBuildInfo, type BuildInfo } from "@/hooks/querie
  * the public system info route reports to anyone.
  */
 export function useBuildInfo() {
-  const platformScope = useOptionalAdminContext()?.active?.scope === "platform";
+  // The sidebar reads the same context (AdminSidebar.tsx).
+  const platformScope = useAdminContext().active?.scope === "platform";
   const platform = useSiloBuildInfo(platformScope);
   const organization = useQuery({
     queryKey: ["bloem", "system-info", "build"],

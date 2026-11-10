@@ -1,3 +1,4 @@
+import { useBloemT, bloemT } from "@/bloem/i18n";
 import { useMemo, useState } from "react";
 import { captureAdminRequestContext } from "@/api/adminV2Client";
 import type { FormEvent } from "react";
@@ -69,6 +70,7 @@ function ClaimLinkBox({
   onCopy: (text: string) => void;
   onDone: () => void;
 }) {
+  const bt = useBloemT();
   return (
     <div className="min-w-0 space-y-4">
       <div className="bg-muted min-w-0 overflow-hidden rounded-md p-2.5">
@@ -77,9 +79,9 @@ function ClaimLinkBox({
       <p className="text-muted-foreground text-xs">{finePrint}</p>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={() => onCopy(claimUrl)}>
-          <Copy className="mr-1.5 h-4 w-4" /> Copy link
+          <Copy className="me-1.5 h-4 w-4" /> {bt("bloem.admin.orgInvitations.copyLink")}
         </Button>
-        <Button onClick={onDone}>Done</Button>
+        <Button onClick={onDone}>{bt("bloem.admin.orgInvitations.done")}</Button>
       </div>
     </div>
   );
@@ -106,6 +108,7 @@ export default function OrganizationInvitationsTab() {
 }
 
 function InvitationContent({ active }: { active: AdminContextSummary | null }) {
+  const bt = useBloemT();
   const organization = active?.scope === "organization";
   const {
     data: invitations = [],
@@ -129,23 +132,26 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
 
   function handleCopy(text: string) {
     void navigator.clipboard.writeText(text).then(
-      () => toast.success("Copied to clipboard"),
-      () => toast.error("Could not copy the link. Select and copy it manually."),
+      () => toast.success(bloemT("bloem.admin.orgInvitations.copiedToClipboard")),
+      () => toast.error(bloemT("bloem.admin.orgInvitations.couldNotCopyTheLink")),
     );
   }
 
   async function handleResend(id: number) {
     const data = await resend.send(id);
-    if (data?.email_sent) toast.success("Invitation resent — the old link no longer works");
+    if (data?.email_sent)
+      toast.success(bloemT("bloem.admin.orgInvitations.invitationResentTheOldLink"));
     if (data?.claim_url) setResendResult(data);
   }
 
-  if (isLoading) return <div>Loading invitations...</div>;
+  if (isLoading) return <div>{bt("bloem.admin.orgInvitations.loadingInvitations")}</div>;
   if (isError)
     return (
       <div role="alert">
         <p>{error.message}</p>
-        <Button onClick={() => void refetch()}>Reload invitations</Button>
+        <Button onClick={() => void refetch()}>
+          {bt("bloem.admin.orgInvitations.reloadInvitations")}
+        </Button>
       </div>
     );
 
@@ -154,9 +160,11 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
       {organization && (
         <div className="space-y-2">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
-            Invitations
+            {bt("bloem.admin.orgInvitations.invitations")}
           </h1>
-          <p className="page-subtitle">Invitations shown here belong only to {active.name}.</p>
+          <p className="page-subtitle">
+            {bt("bloem.admin.orgInvitations.invitationsShownHereBelongOnly", { name: active.name })}
+          </p>
         </div>
       )}
       <ConfirmDialog
@@ -164,8 +172,8 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
         onOpenChange={(open) => {
           if (!open) setConfirmResend(null);
         }}
-        title="Regenerate invitation link"
-        description="The previous link will stop working. No email is sent: copy and deliver the new one-time link yourself."
+        title={bt("bloem.admin.orgInvitations.regenerateInvitationLink")}
+        description={bt("bloem.admin.orgInvitations.thePreviousLinkWillStop")}
         confirmLabel="Regenerate link"
         isPending={resend.isPending}
         onConfirm={() => {
@@ -178,8 +186,10 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
         onOpenChange={(open) => {
           if (!open) setConfirmRevoke(null);
         }}
-        title="Revoke invitation"
-        description={`Revoke the invitation for ${confirmRevoke?.email}? Their link will stop working immediately.`}
+        title={bt("bloem.admin.orgInvitations.revokeInvitation")}
+        description={bt("bloem.admin.orgInvitations.revokeTheInvitationForTheir", {
+          email: confirmRevoke?.email,
+        })}
         confirmLabel="Revoke"
         variant="destructive"
         onConfirm={() => {
@@ -196,11 +206,13 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Fresh invitation link</DialogTitle>
+            <DialogTitle>{bt("bloem.admin.orgInvitations.freshInvitationLink")}</DialogTitle>
             <DialogDescription>
               {resendResult?.email_sent
-                ? `Emailed to ${resendResult.invitation.email}. You can also copy the link and send it to them directly.`
-                : "No email was sent. Deliver this one-time link yourself."}
+                ? bt("bloem.admin.orgInvitations.emailedToYouCanAlso", {
+                    email: resendResult.invitation.email,
+                  })
+                : bt("bloem.admin.orgInvitations.noEmailWasSentDeliver")}
             </DialogDescription>
           </DialogHeader>
           {resendResult?.claim_url && (
@@ -217,22 +229,22 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
       <div className="flex items-start justify-between gap-4">
         <p className="text-muted-foreground max-w-xl text-sm">
           {organization
-            ? "Create a personal invitation link and deliver it yourself. This workflow does not send email. Their access is set here; they choose a password when claiming the link."
-            : "Email someone a personal link. Their access is set here, so all they choose is a password — their email address becomes their username."}
+            ? bt("bloem.admin.orgInvitations.createAPersonalInvitationLink")
+            : bt("bloem.admin.orgInvitations.emailSomeoneAPersonalLink")}
         </p>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
-              <MailPlus className="mr-1 h-4 w-4" /> Invite someone
+              <MailPlus className="me-1 h-4 w-4" /> {bt("bloem.admin.orgInvitations.inviteSomeone")}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>Invite someone</DialogTitle>
+              <DialogTitle>{bt("bloem.admin.orgInvitations.inviteSomeone")}</DialogTitle>
               <DialogDescription>
                 {organization
-                  ? "Create a one-time link and deliver it yourself. No email is sent; they choose a password when claiming it."
-                  : "They get an email with a link. Their username is their email address, so all they pick is a password."}
+                  ? bt("bloem.admin.orgInvitations.createAOneTimeLink")
+                  : bt("bloem.admin.orgInvitations.theyGetAnEmailWith")}
               </DialogDescription>
             </DialogHeader>
             {createOpen && (
@@ -248,16 +260,16 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
 
       {invitations.length === 0 ? (
         <p className="text-muted-foreground py-8 text-center text-sm">
-          No invitations yet. Invite someone to get started.
+          {bt("bloem.admin.orgInvitations.noInvitationsYetInviteSomeone")}
         </p>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Recipient</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Sent</TableHead>
+              <TableHead>{bt("bloem.admin.orgInvitations.recipient")}</TableHead>
+              <TableHead>{bt("bloem.admin.orgInvitations.role")}</TableHead>
+              <TableHead>{bt("bloem.admin.orgInvitations.status")}</TableHead>
+              <TableHead>{bt("bloem.admin.orgInvitations.sent")}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -292,6 +304,7 @@ function InvitationRow({
   resending: boolean;
   allowActions: boolean;
 }) {
+  const bt = useBloemT();
   const badge = STATUS_BADGES[invitation.status];
   const showResend =
     allowActions && (invitation.status === "pending" || invitation.status === "expired");
@@ -303,7 +316,9 @@ function InvitationRow({
         <div className="font-medium">{invitation.email}</div>
         {invitation.invited_by_name && (
           <div className="text-muted-foreground text-xs">
-            Invited by {invitation.invited_by_name}
+            {bt("bloem.admin.orgInvitations.invitedBy", {
+              invitedByName: invitation.invited_by_name,
+            })}
           </div>
         )}
       </TableCell>
@@ -311,8 +326,8 @@ function InvitationRow({
       <TableCell>
         <Badge variant={badge.variant}>{badge.label}</Badge>
         {invitation.status === "pending" && (
-          <span className="text-muted-foreground ml-2 text-xs">
-            expires {formatDate(invitation.expires_at)}
+          <span className="text-muted-foreground ms-2 text-xs">
+            {bt("bloem.admin.orgInvitations.expires", { date: formatDate(invitation.expires_at) })}
           </span>
         )}
       </TableCell>
@@ -327,13 +342,18 @@ function InvitationRow({
               size="sm"
               onClick={onResend}
               disabled={resending}
-              title="Resend with a fresh link"
+              title={bt("bloem.admin.orgInvitations.resendWithAFreshLink")}
             >
               <RotateCw className="h-4 w-4" />
             </Button>
           )}
           {showRevoke && (
-            <Button variant="ghost" size="sm" onClick={onRevoke} title="Revoke this link">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRevoke}
+              title={bt("bloem.admin.orgInvitations.revokeThisLink")}
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
@@ -352,6 +372,7 @@ function CreateInvitationForm({
   onClose: () => void;
   onCopy: (text: string) => void;
 }) {
+  const bt = useBloemT();
   const organization = context?.scope === "organization";
   const create = useCreateInvitation(context);
   const { data: accessGroups = [] } = useAccessGroups(context);
@@ -394,7 +415,10 @@ function CreateInvitationForm({
       note: note.trim() || undefined,
     });
     if (!data) return;
-    if (data.email_sent) toast.success(`Invitation sent to ${data.invitation.email}`);
+    if (data.email_sent)
+      toast.success(
+        bloemT("bloem.admin.orgInvitations.invitationSentTo", { email: data.invitation.email }),
+      );
     if (data.claim_url) {
       setResult({ claimUrl: data.claim_url, emailSent: data.email_sent });
     } else {
@@ -407,8 +431,8 @@ function CreateInvitationForm({
       <div className="min-w-0 space-y-4">
         <p className="text-sm">
           {result.emailSent
-            ? "Invitation emailed. You can also copy the link and send it to them directly:"
-            : "The invitation was created, but no email was sent. Deliver this one-time link yourself:"}
+            ? bt("bloem.admin.orgInvitations.invitationEmailedYouCanAlso")
+            : bt("bloem.admin.orgInvitations.theInvitationWasCreatedBut")}
         </p>
         <ClaimLinkBox
           claimUrl={result.claimUrl}
@@ -423,24 +447,24 @@ function CreateInvitationForm({
   return (
     <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="invitation-email">Email address</Label>
+        <Label htmlFor="invitation-email">{bt("bloem.admin.orgInvitations.emailAddress")}</Label>
         <Input
           id="invitation-email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="them@example.com"
+          placeholder={bt("bloem.admin.orgInvitations.themExampleCom")}
           autoFocus
           required
         />
         <p className="text-muted-foreground text-xs">
-          This becomes both the destination and their sign-in username.
+          {bt("bloem.admin.orgInvitations.thisBecomesBothTheDestination")}
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Access group</Label>
+          <Label>{bt("bloem.admin.orgInvitations.accessGroup")}</Label>
           <Select
             value={role === "admin" || accessGroupID === null ? "default" : String(accessGroupID)}
             onValueChange={(v) => setAccessGroupID(v === "default" ? null : Number(v))}
@@ -451,7 +475,9 @@ function CreateInvitationForm({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="default">
-                {defaultGroup ? `${defaultGroup.name} (default)` : "Server default"}
+                {defaultGroup
+                  ? bt("bloem.admin.orgInvitations.default", { name: defaultGroup.name })
+                  : bt("bloem.admin.orgInvitations.serverDefault")}
               </SelectItem>
               {accessGroups
                 .filter((g) => !g.is_default)
@@ -464,17 +490,19 @@ function CreateInvitationForm({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Role</Label>
+          <Label>{bt("bloem.admin.orgInvitations.role")}</Label>
           {organization ? (
-            <p className="border-border bg-muted/30 rounded-md border px-3 py-2 text-sm">User</p>
+            <p className="border-border bg-muted/30 rounded-md border px-3 py-2 text-sm">
+              {bt("bloem.admin.orgInvitations.user")}
+            </p>
           ) : (
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">{bt("bloem.admin.orgInvitations.user")}</SelectItem>
+                <SelectItem value="admin">{bt("bloem.admin.orgInvitations.admin")}</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -492,24 +520,30 @@ function CreateInvitationForm({
       </LibraryAccessScope>
 
       <div className="space-y-2">
-        <Label htmlFor="invitation-note">Personal note (optional)</Label>
+        <Label htmlFor="invitation-note">
+          {bt("bloem.admin.orgInvitations.personalNoteOptional")}
+        </Label>
         <textarea
           id="invitation-note"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Hey — set yourself up whenever."
+          placeholder={bt("bloem.admin.orgInvitations.heySetYourselfUpWhenever")}
           rows={2}
           className="border-border bg-background text-foreground focus:border-ring focus:ring-ring/50 w-full resize-y rounded-md border px-3 py-2.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus:ring-[3px]"
         />
-        <p className="text-muted-foreground text-xs">Appears in the email. Plain text.</p>
+        <p className="text-muted-foreground text-xs">
+          {bt("bloem.admin.orgInvitations.appearsInTheEmailPlain")}
+        </p>
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <Label htmlFor="invitation-create-profile">Create their first profile</Label>
+            <Label htmlFor="invitation-create-profile">
+              {bt("bloem.admin.orgInvitations.createTheirFirstProfile")}
+            </Label>
             <p className="text-muted-foreground text-xs">
-              Named from the part before the @. They can rename it later.
+              {bt("bloem.admin.orgInvitations.namedFromThePartBefore")}
             </p>
           </div>
           <Switch
@@ -520,9 +554,11 @@ function CreateInvitationForm({
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <Label htmlFor="invitation-show-tour">Show the feature tour on first sign-in</Label>
+            <Label htmlFor="invitation-show-tour">
+              {bt("bloem.admin.orgInvitations.showTheFeatureTourOn")}
+            </Label>
             <p className="text-muted-foreground text-xs">
-              Walks through what this server can do, skipping anything turned off.
+              {bt("bloem.admin.orgInvitations.walksThroughWhatThisServer")}
             </p>
           </div>
           <Switch id="invitation-show-tour" checked={showTour} onCheckedChange={setShowTour} />
@@ -530,19 +566,21 @@ function CreateInvitationForm({
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <p className="text-muted-foreground text-xs">Link expires in 7 days · single use</p>
+        <p className="text-muted-foreground text-xs">
+          {bt("bloem.admin.orgInvitations.linkExpiresIn7Days")}
+        </p>
         <div className="flex gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
+            {bt("bloem.admin.orgInvitations.cancel")}
           </Button>
           <Button type="submit" disabled={create.isPending}>
             {create.isPending
               ? organization
-                ? "Creating…"
-                : "Sending..."
+                ? bt("bloem.admin.orgInvitations.creating")
+                : bt("bloem.admin.orgInvitations.sending")
               : organization
-                ? "Create invite link"
-                : "Send invite"}
+                ? bt("bloem.admin.orgInvitations.createInviteLink")
+                : bt("bloem.admin.orgInvitations.sendInvite")}
           </Button>
         </div>
       </div>

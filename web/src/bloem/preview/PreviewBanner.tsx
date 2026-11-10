@@ -114,7 +114,7 @@ export default function PreviewBanner() {
       className="bg-primary/10 sticky top-0 z-50 flex flex-wrap items-center gap-3 border-b px-4 py-2 text-sm"
     >
       <span>{deadline}</span>
-      <Button size="sm" className="ml-auto" onClick={() => requestSubscription()}>
+      <Button size="sm" className="ms-auto" onClick={() => requestSubscription()}>
         {presentation?.cta_label || `Subscribe to ${serverName}`}
       </Button>
       {subscribe ? (

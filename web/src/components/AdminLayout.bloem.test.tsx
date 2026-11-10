@@ -30,7 +30,10 @@ vi.mock("@/bloem/BloemAdminShell", async () => {
   return { AdminScopedOutlet: () => <Outlet /> };
 });
 vi.mock("@/hooks/useDocumentTitle", () => ({ useDocumentTitle: vi.fn() }));
-vi.mock("@/lib/documentTitle", () => ({ resolveAdminDocumentTitle: () => "Admin" }));
+vi.mock("@/lib/documentTitle", () => ({
+  resolveAdminDocumentTitle: () => "Admin",
+  resolveAdminHeaderTitle: () => "Admin",
+}));
 vi.mock("@/hooks/queries/admin/settings", () => ({
   useAdminServerStatus: () => mocks.useAdminServerStatus(),
 }));

@@ -95,7 +95,7 @@ export default function PolicyDecisionsPage() {
                 type="button"
                 aria-pressed={decision.id === selectedID}
                 onClick={() => setSelectedID(decision.id)}
-                className="surface-panel focus-visible:ring-ring hover:bg-muted/40 aria-pressed:border-primary flex w-full items-center gap-3 rounded-xl border border-transparent p-4 text-left transition-colors outline-none focus-visible:ring-2"
+                className="surface-panel focus-visible:ring-ring hover:bg-muted/40 aria-pressed:border-primary flex w-full items-center gap-3 rounded-xl border border-transparent p-4 text-start transition-colors outline-none focus-visible:ring-2"
               >
                 {decision.allowed ? (
                   <ShieldCheck className="size-5 shrink-0 text-emerald-600" aria-hidden />

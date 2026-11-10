@@ -163,7 +163,7 @@ export default function SeasonalLayer() {
       {enabled &&
         (pack.effect_id === "snow" ? <SnowCanvas pack={pack} /> : <SeasonalArtwork pack={pack} />)}
       <button
-        className="bg-background/90 text-muted-foreground fixed right-4 bottom-4 z-20 rounded-md border px-3 py-1.5 text-xs"
+        className="bg-background/90 text-muted-foreground fixed end-4 bottom-4 z-20 rounded-md border px-3 py-1.5 text-xs"
         onClick={() => {
           setEnabled(!enabled);
           try {
@@ -199,7 +199,7 @@ export function SeasonalArtwork({ pack }: { pack: SeasonalPack }) {
           src={banner}
           alt=""
           referrerPolicy="no-referrer"
-          className="absolute top-24 right-0 max-h-[28vh] w-[min(32vw,24rem)] object-contain"
+          className="absolute end-0 top-24 max-h-[28vh] w-[min(32vw,24rem)] object-contain"
         />
       )}
       {sprites.map((url, index) => (

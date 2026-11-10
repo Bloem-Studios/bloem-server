@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useState } from "react";
 import { AdminV2ClientError } from "@/api/adminV2Client";
 import type { AdminContextKey } from "@/api/bloemTypes";
@@ -18,6 +19,7 @@ export function LibraryEntitlementActions({
   contextKey: AdminContextKey;
   disabled: boolean;
 }) {
+  const bt = useBloemT();
   const change = useChangeOrganizationEntitlement(contextKey);
   const [confirmation, setConfirmation] = useState<{
     action: OrganizationEntitlementAction;
@@ -28,9 +30,9 @@ export function LibraryEntitlementActions({
   if (library.access_kind !== "entitled" || !grant || grant.status === "revoked") return null;
 
   const labels = {
-    active: "Restore",
-    suspended: "Pause",
-    withdraw: "Give back",
+    active: bt("bloem.admin.organizations.libraryEntitlements.restore"),
+    suspended: bt("bloem.admin.organizations.libraryEntitlements.pause"),
+    withdraw: bt("bloem.admin.organizations.libraryEntitlements.giveBack"),
   };
   const action = confirmation?.action ?? "suspended";
   const busy = disabled || change.isPending;
@@ -63,7 +65,13 @@ export function LibraryEntitlementActions({
   }
 
   return (
-    <div className="mt-4 space-y-3" role="group" aria-label={`Manage ${library.name}`}>
+    <div
+      className="mt-4 space-y-3"
+      role="group"
+      aria-label={bt("bloem.admin.organizations.libraryEntitlements.manage", {
+        name: library.name,
+      })}
+    >
       <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
@@ -85,13 +93,16 @@ export function LibraryEntitlementActions({
       <ConfirmDialog
         open={confirmation !== null}
         onOpenChange={(open) => !open && setConfirmation(null)}
-        title={`${action === "withdraw" ? "Give back" : labels[action]} ${library.name}?`}
+        title={bt("bloem.admin.organizations.libraryEntitlements.confirmTitle", {
+          action: labels[action],
+          name: library.name,
+        })}
         description={
           action === "withdraw"
-            ? "Members lose this library for good. Only a platform administrator can share it again. No files are deleted."
+            ? bt("bloem.admin.organizations.libraryEntitlements.membersLoseThisLibraryFor")
             : action === "suspended"
-              ? "Members can’t use this library until you restore it. No files are deleted."
-              : "Members can use this library again, within their own plan and profile limits."
+              ? bt("bloem.admin.organizations.libraryEntitlements.membersCanTUseThis")
+              : bt("bloem.admin.organizations.libraryEntitlements.membersCanUseThisLibrary")
         }
         confirmLabel={labels[action]}
         variant={action === "active" ? "default" : "destructive"}

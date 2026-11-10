@@ -26,6 +26,7 @@ export default function MediaItemMenu(props: ComponentProps<typeof Original>) {
         <button
           type="button"
           aria-label="More actions"
+          // eslint-disable-next-line silo/no-physical-direction -- a corner of the poster artwork, which doesn't mirror (as Silo's card overlays)
           className="absolute top-2 right-2 rounded-full bg-black/50 p-2 text-white"
           onClick={(event) => event.stopPropagation()}
         >

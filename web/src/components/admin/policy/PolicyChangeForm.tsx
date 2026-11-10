@@ -1,5 +1,6 @@
 // Bloem: the "what should change" step shared by the organization People
 // drawer and the platform bulk account page.
+import { useBloemT } from "@/bloem/i18n";
 import type { ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -58,12 +59,17 @@ export function PolicyChangeForm({
   error?: string;
   radioName: string;
 }) {
+  const bt = useBloemT();
   const update = (patch: Partial<PolicyChangeDraft>) => onChange({ ...draft, ...patch });
   const activeCohorts = cohorts.filter((cohort) => !cohort.archived);
   const cohortLabel = draft.operation === "derive" ? "Start from cohort" : "Cohort";
   return (
     <div className="space-y-5">
-      <fieldset className="grid gap-2" role="radiogroup" aria-label="What should change">
+      <fieldset
+        className="grid gap-2"
+        role="radiogroup"
+        aria-label={bt("bloem.admin.policy.changeForm.whatShouldChange")}
+      >
         {OPERATIONS.map((option) => (
           <label
             key={option.value}
@@ -95,17 +101,19 @@ export function PolicyChangeForm({
               value={draft.cohortID}
               onChange={(event) => update({ cohortID: event.target.value })}
             >
-              <option value="">Choose a cohort</option>
+              <option value="">{bt("bloem.admin.policy.changeForm.chooseACohort")}</option>
               {activeCohorts.map((cohort) => (
                 <option key={cohort.cohort_id} value={cohort.cohort_id}>
-                  {cohort.name} ({cohort.member_count.toLocaleString()}{" "}
-                  {cohort.member_count === 1 ? "account" : "accounts"})
+                  {bt("bloem.admin.policy.changeForm.cohortOption", {
+                    name: cohort.name,
+                    count: cohort.member_count,
+                  })}
                 </option>
               ))}
             </select>
           ) : (
             <p className="text-muted-foreground text-sm">
-              This organization has no cohorts yet. Put the accounts on a plan first.
+              {bt("bloem.admin.policy.changeForm.thisOrganizationHasNoCohorts")}
             </p>
           )}
         </Field>
@@ -144,11 +152,12 @@ function PlanFields({
   radioName: string;
   onChange(patch: Partial<PolicyChangeDraft>): void;
 }) {
+  const bt = useBloemT();
   if (!plans) {
     return (
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
         <Field
-          label="Plan key"
+          label={bt("bloem.admin.policy.changeForm.planKey")}
           htmlFor={`${radioName}-plan-key`}
           hint="The short name a platform admin gave the plan, like standard."
         >
@@ -158,7 +167,10 @@ function PlanFields({
             onChange={(event) => onChange({ planKey: event.target.value })}
           />
         </Field>
-        <Field label="Revision" htmlFor={`${radioName}-plan-revision`}>
+        <Field
+          label={bt("bloem.admin.policy.changeForm.revision")}
+          htmlFor={`${radioName}-plan-revision`}
+        >
           <Input
             id={`${radioName}-plan-revision`}
             type="number"
@@ -173,7 +185,7 @@ function PlanFields({
   const plan = plans.find((item) => item.key === draft.planKey);
   return (
     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
-      <Field label="Plan" htmlFor={`${radioName}-plan`}>
+      <Field label={bt("bloem.admin.policy.changeForm.plan")} htmlFor={`${radioName}-plan`}>
         <select
           id={`${radioName}-plan`}
           className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -186,7 +198,7 @@ function PlanFields({
             });
           }}
         >
-          <option value="">Choose a plan</option>
+          <option value="">{bt("bloem.admin.policy.changeForm.chooseAPlan")}</option>
           {plans.map((item) => (
             <option key={item.key} value={item.key}>
               {item.name}
@@ -194,7 +206,10 @@ function PlanFields({
           ))}
         </select>
       </Field>
-      <Field label="Revision" htmlFor={`${radioName}-plan-revision`}>
+      <Field
+        label={bt("bloem.admin.policy.changeForm.revision")}
+        htmlFor={`${radioName}-plan-revision`}
+      >
         <select
           id={`${radioName}-plan-revision`}
           className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -206,12 +221,14 @@ function PlanFields({
             Array.from({ length: plan.revision }, (_, index) => plan.revision - index).map(
               (revision) => (
                 <option key={revision} value={String(revision)}>
-                  {revision === plan.revision ? `${revision} (newest)` : String(revision)}
+                  {revision === plan.revision
+                    ? bt("bloem.admin.policy.changeForm.newest", { revision })
+                    : String(revision)}
                 </option>
               ),
             )
           ) : (
-            <option value="">Choose a plan first</option>
+            <option value="">{bt("bloem.admin.policy.changeForm.chooseAPlanFirst")}</option>
           )}
         </select>
       </Field>
@@ -230,15 +247,19 @@ function DerivedSettings({
   radioName: string;
   onChange(patch: Partial<PolicyChangeDraft>): void;
 }) {
+  const bt = useBloemT();
   const patch = draft.patch;
   const setPatch = <Key extends keyof PatchDraft>(key: Key, value: PatchDraft[Key]) =>
     onChange({ patch: normalizePatchDraft({ ...patch, [key]: value }) });
   const playbackOff = patch.playback === "false";
   const changes = describePatchDraft(patch, libraries);
   return (
-    <section className="border-border space-y-5 border-t pt-5" aria-label="Settings to change">
+    <section
+      className="border-border space-y-5 border-t pt-5"
+      aria-label={bt("bloem.admin.policy.changeForm.settingsToChange")}
+    >
       <Field
-        label="Name for the new cohort"
+        label={bt("bloem.admin.policy.changeForm.nameForTheNewCohort")}
         htmlFor={`${radioName}-derived-name`}
         hint="Pick something you'll recognize later, like Standard with 4 screens."
       >
@@ -250,13 +271,12 @@ function DerivedSettings({
       </Field>
 
       <p className="text-muted-foreground text-sm">
-        Anything left on “Keep as is”, or empty, comes from the cohort you start from. For limits, 0
-        means no limit.
+        {bt("bloem.admin.policy.changeForm.anythingLeftOnKeepAs")}
       </p>
 
       <SetPicker
         id={`${radioName}-libraries`}
-        label="Libraries"
+        label={bt("bloem.admin.policy.changeForm.libraries")}
         mode={patch.librariesMode}
         modes={[
           [KEEP, "Keep as is"],
@@ -275,7 +295,7 @@ function DerivedSettings({
 
       <SetPicker
         id={`${radioName}-permissions`}
-        label="Extra permissions"
+        label={bt("bloem.admin.policy.changeForm.extraPermissions")}
         mode={patch.permissionsMode}
         modes={[
           [KEEP, "Keep as is"],
@@ -294,38 +314,41 @@ function DerivedSettings({
       <div className="grid gap-4 sm:grid-cols-2">
         <TriStateField
           id={`${radioName}-playback`}
-          label="Plays video"
+          label={bt("bloem.admin.policy.changeForm.playsVideo")}
           value={patch.playback}
           onChange={(value) => setPatch("playback", value)}
         />
         <TriStateField
           id={`${radioName}-transcode`}
-          label="Video conversion"
+          label={bt("bloem.admin.policy.changeForm.videoConversion")}
           value={patch.transcode}
           disabled={playbackOff}
           onChange={(value) => setPatch("transcode", value)}
         />
         <TriStateField
           id={`${radioName}-downloads`}
-          label="Download original files"
+          label={bt("bloem.admin.policy.changeForm.downloadOriginalFiles")}
           value={patch.downloads}
           disabled={playbackOff}
           onChange={(value) => setPatch("downloads", value)}
         />
         <TriStateField
           id={`${radioName}-converted-downloads`}
-          label="Download converted copies"
+          label={bt("bloem.admin.policy.changeForm.downloadConvertedCopies")}
           value={patch.transcodedDownloads}
           disabled={playbackOff || patch.downloads === "false"}
           onChange={(value) => setPatch("transcodedDownloads", value)}
         />
         <TriStateField
           id={`${radioName}-requests`}
-          label="Media requests"
+          label={bt("bloem.admin.policy.changeForm.mediaRequests")}
           value={patch.requests}
           onChange={(value) => setPatch("requests", value)}
         />
-        <Field label="Best picture quality" htmlFor={`${radioName}-quality`}>
+        <Field
+          label={bt("bloem.admin.policy.changeForm.bestPictureQuality")}
+          htmlFor={`${radioName}-quality`}
+        >
           <select
             id={`${radioName}-quality`}
             className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -333,7 +356,7 @@ function DerivedSettings({
             value={patch.maxPlaybackQuality}
             onChange={(event) => setPatch("maxPlaybackQuality", event.target.value)}
           >
-            <option value={KEEP}>Keep as is</option>
+            <option value={KEEP}>{bt("bloem.admin.policy.changeForm.keepAsIs")}</option>
             {PLAYBACK_QUALITIES.map(([value, label]) => (
               <option key={value || "any"} value={value}>
                 {label}
@@ -343,20 +366,20 @@ function DerivedSettings({
         </Field>
         <NumberField
           id={`${radioName}-streams`}
-          label="Screens at once"
+          label={bt("bloem.admin.policy.changeForm.screensAtOnce")}
           value={patch.maxStreams}
           disabled={playbackOff}
           onChange={(value) => setPatch("maxStreams", value)}
         />
         <NumberField
           id={`${radioName}-profiles`}
-          label="Profiles"
+          label={bt("bloem.admin.policy.changeForm.profiles")}
           value={patch.maxProfiles}
           onChange={(value) => setPatch("maxProfiles", value)}
         />
         <NumberField
           id={`${radioName}-transcodes`}
-          label="Conversions at once"
+          label={bt("bloem.admin.policy.changeForm.conversionsAtOnce")}
           value={patch.maxTranscodes}
           disabled={playbackOff || patch.transcode === "false"}
           onChange={(value) => setPatch("maxTranscodes", value)}
@@ -365,9 +388,9 @@ function DerivedSettings({
 
       <section
         className="border-border bg-muted/30 rounded-lg border p-3"
-        aria-label="Your changes"
+        aria-label={bt("bloem.admin.policy.changeForm.yourChanges")}
       >
-        <h3 className="text-sm font-medium">Your changes</h3>
+        <h3 className="text-sm font-medium">{bt("bloem.admin.policy.changeForm.yourChanges")}</h3>
         {changes.length ? (
           <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
             {changes.map((change) => (
@@ -375,7 +398,9 @@ function DerivedSettings({
             ))}
           </ul>
         ) : (
-          <p className="text-muted-foreground mt-2 text-sm">Nothing changed yet.</p>
+          <p className="text-muted-foreground mt-2 text-sm">
+            {bt("bloem.admin.policy.changeForm.nothingChangedYet")}
+          </p>
         )}
       </section>
     </section>
@@ -403,6 +428,7 @@ function SetPicker<Value extends string | number>({
   onSelectedChange(values: Value[]): void;
   emptyText: string;
 }) {
+  const bt = useBloemT();
   const picking = mode === "add" || mode === "remove" || mode === "replace";
   return (
     <div className="space-y-2">
@@ -423,7 +449,7 @@ function SetPicker<Value extends string | number>({
       {picking ? (
         options.length ? (
           <fieldset
-            aria-label={`${label} to pick`}
+            aria-label={bt("bloem.admin.policy.changeForm.toPick", { label })}
             className="border-border grid max-h-56 gap-1 overflow-y-auto rounded-lg border p-2 sm:grid-cols-2"
           >
             {options.map(([value, text]) => (
@@ -467,6 +493,7 @@ function TriStateField({
   disabled?: boolean;
   onChange(value: TriState): void;
 }) {
+  const bt = useBloemT();
   return (
     <Field label={label} htmlFor={id}>
       <select
@@ -476,9 +503,9 @@ function TriStateField({
         value={value}
         onChange={(event) => onChange(event.target.value as TriState)}
       >
-        <option value={KEEP}>Keep as is</option>
-        <option value="true">Allow</option>
-        <option value="false">Don’t allow</option>
+        <option value={KEEP}>{bt("bloem.admin.policy.changeForm.keepAsIs")}</option>
+        <option value="true">{bt("bloem.admin.policy.changeForm.allow")}</option>
+        <option value="false">{bt("bloem.admin.policy.changeForm.donTAllow")}</option>
       </select>
     </Field>
   );
@@ -497,6 +524,7 @@ function NumberField({
   disabled?: boolean;
   onChange(value: string): void;
 }) {
+  const bt = useBloemT();
   return (
     <Field label={label} htmlFor={id}>
       <Input
@@ -504,7 +532,7 @@ function NumberField({
         type="number"
         min={0}
         inputMode="numeric"
-        placeholder="Keep as is"
+        placeholder={bt("bloem.admin.policy.changeForm.keepAsIs")}
         disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value)}

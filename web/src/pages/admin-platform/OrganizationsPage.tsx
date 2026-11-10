@@ -199,21 +199,21 @@ export default function OrganizationsPage() {
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="me-2 h-4 w-4" />
           Create organization
         </Button>
       </div>
 
       <div className="surface-panel grid gap-3 rounded-2xl p-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
         <div className="relative">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+          <Search className="text-muted-foreground absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2" />
           <Input
             type="search"
             aria-label="Search organizations"
             placeholder="Search name or slug"
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            className="pl-9"
+            className="ps-9"
           />
         </div>
         <select
@@ -300,7 +300,7 @@ export default function OrganizationsPage() {
           disabled={cursorHistory.length === 1 || organizations.isFetching}
           onClick={() => setCursorHistory((current) => current.slice(0, -1))}
         >
-          <ChevronLeft className="mr-1 h-4 w-4" />
+          <ChevronLeft className="me-1 h-4 w-4" />
           Previous page
         </Button>
         <span className="text-muted-foreground text-sm">Page {cursorHistory.length}</span>
@@ -314,7 +314,7 @@ export default function OrganizationsPage() {
           }
         >
           Next page
-          <ChevronRight className="ml-1 h-4 w-4" />
+          <ChevronRight className="ms-1 h-4 w-4" />
         </Button>
       </div>
 

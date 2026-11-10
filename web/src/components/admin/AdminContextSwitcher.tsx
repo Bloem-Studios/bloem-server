@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { Building2, ShieldCheck } from "lucide-react";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 
@@ -10,6 +11,7 @@ export default function AdminContextSwitcher({
 }: {
   onSwitchSuccess?: () => void;
 }) {
+  const bt = useBloemT();
   const { active, available, switching, switchContext, failure } = useAdminContext();
 
   return (
@@ -24,12 +26,18 @@ export default function AdminContextSwitcher({
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sidebar-foreground truncate text-sm font-semibold">
-            {active?.name ?? (switching ? "Loading context…" : "Choose context")}
+            {active?.name ??
+              (switching
+                ? bt("bloem.adminNav.contextSwitcher.loadingContext")
+                : bt("bloem.adminNav.contextSwitcher.chooseContext"))}
           </div>
           {active ? (
             <>
               <div className="text-muted-foreground mt-0.5 text-[11px] capitalize">
-                {active.scope} · {active.status}
+                {bt("bloem.adminNav.contextSwitcher.scopeStatus", {
+                  scope: active.scope,
+                  status: active.status,
+                })}
               </div>
               <div className="text-muted-foreground text-[11px]">
                 {authorityLabel(active.authority)}
@@ -39,9 +47,11 @@ export default function AdminContextSwitcher({
         </div>
       </div>
       <label className="text-muted-foreground mt-3 block text-[10px] font-semibold tracking-[0.14em] uppercase">
-        <span className="sr-only">Administrative context</span>
+        <span className="sr-only">
+          {bt("bloem.adminNav.contextSwitcher.administrativeContext")}
+        </span>
         <select
-          aria-label="Administrative context"
+          aria-label={bt("bloem.adminNav.contextSwitcher.administrativeContext")}
           value={active?.key ?? ""}
           disabled={switching || available.length === 0}
           onChange={(event) =>
@@ -52,7 +62,9 @@ export default function AdminContextSwitcher({
           }
           className="border-sidebar-border bg-sidebar text-sidebar-foreground focus:ring-ring/50 mt-1 h-10 w-full rounded-lg border px-2 text-xs font-medium normal-case focus:ring-2 focus:outline-none"
         >
-          {!active ? <option value="">Select context</option> : null}
+          {!active ? (
+            <option value="">{bt("bloem.adminNav.contextSwitcher.selectContext")}</option>
+          ) : null}
           {available.map((context) => (
             <option key={context.key} value={context.key}>
               {context.name}
@@ -61,7 +73,12 @@ export default function AdminContextSwitcher({
         </select>
       </label>
       <div className="sr-only" role="status" aria-live="polite">
-        {failure?.message ?? (active ? `Administrative context changed to ${active.name}` : "")}
+        {failure?.message ??
+          (active
+            ? bt("bloem.adminNav.contextSwitcher.administrativeContextChangedTo", {
+                name: active.name,
+              })
+            : "")}
       </div>
     </div>
   );

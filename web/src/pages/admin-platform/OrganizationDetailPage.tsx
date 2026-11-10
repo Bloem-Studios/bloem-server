@@ -210,7 +210,7 @@ function MembershipRow({
           {membership.status}
         </Badge>
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="text-end">
         {error ? (
           <p className="text-destructive mb-2 text-xs" role="alert">
             {error}
@@ -277,7 +277,7 @@ export default function OrganizationDetailPage() {
       <div>
         <Button variant="ghost" size="sm" asChild>
           <Link to="/admin/platform/organizations">
-            <ArrowLeft className="mr-1 h-4 w-4" />
+            <ArrowLeft className="me-1 h-4 w-4" />
             Organizations
           </Link>
         </Button>
@@ -318,7 +318,7 @@ export default function OrganizationDetailPage() {
                 Members
               </CardTitle>
               <Button size="sm" onClick={() => setAddMemberOpen(true)}>
-                <Plus className="mr-1 h-4 w-4" />
+                <Plus className="me-1 h-4 w-4" />
                 Add member
               </Button>
             </div>

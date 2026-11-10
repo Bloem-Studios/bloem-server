@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
@@ -42,6 +43,7 @@ function byStatus(a: StorageSource, b: StorageSource): number {
  * folders. A source is used by choosing it when creating a library.
  */
 export function StorageSourcesPanel() {
+  const bt = useBloemT();
   const sources = useStorageSources(true);
   const artifacts = useStorageArtifacts(true);
   const [adding, setAdding] = useState(false);
@@ -56,22 +58,21 @@ export function StorageSourcesPanel() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 id="storage-sources-heading" className="text-[15px] font-semibold">
-            Storage sources
+            {bt("bloem.admin.storage.panel.storageSources")}
           </h2>
           <p className="text-muted-foreground text-[13px]">
-            Where a library can read its books, movies or audiobooks from instead of folders. Choose
-            a source when you create the library.
+            {bt("bloem.admin.storage.panel.whereALibraryCanRead")}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
           <Plus className="h-3.5 w-3.5" />
-          Add source
+          {bt("bloem.admin.storage.panel.addSource")}
         </Button>
       </div>
 
       {sources.isError || artifacts.isError ? (
         <p role="alert" className="text-destructive mt-3 text-sm">
-          Failed to load storage sources.
+          {bt("bloem.admin.storage.panel.failedToLoadStorageSources")}
         </p>
       ) : null}
       <AddStorageSourceDialog
@@ -86,7 +87,9 @@ export function StorageSourcesPanel() {
 
       {sources.isSuccess && all.length > 0 ? (
         <p className="text-muted-foreground mt-3 text-[13px]">
-          {live === 1 ? "1 source is live." : `${live} sources are live.`}
+          {live === 1
+            ? bt("bloem.admin.storage.panel.t1SourceIsLive")
+            : bt("bloem.admin.storage.panel.sourcesAreLive", { live })}
         </p>
       ) : null}
 
@@ -102,13 +105,15 @@ export function StorageSourcesPanel() {
           ))}
         </ul>
       ) : sources.isSuccess && removed.length === 0 ? (
-        <p className="text-muted-foreground mt-3 text-[13px]">No storage sources yet.</p>
+        <p className="text-muted-foreground mt-3 text-[13px]">
+          {bt("bloem.admin.storage.panel.noStorageSourcesYet")}
+        </p>
       ) : null}
 
       {removed.length > 0 ? (
         <details className="mt-3 border-t pt-2">
           <summary className="text-muted-foreground cursor-pointer text-[13px]">
-            Removed sources ({removed.length})
+            {bt("bloem.admin.storage.panel.removedSources", { removed: removed.length })}
           </summary>
           <ul className="divide-y">
             {removed.map((source) => (

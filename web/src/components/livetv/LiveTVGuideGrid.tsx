@@ -53,6 +53,7 @@ export function LiveTVGuideGrid({
       <div className="max-h-[calc(100dvh-10rem)] overflow-auto">
         <div className="sticky top-0 z-20 flex border-b bg-[color-mix(in_srgb,var(--background)_92%,transparent)] backdrop-blur-sm">
           <div
+            // eslint-disable-next-line silo/no-physical-direction -- the guide is a time axis, which runs left to right in every language (as Silo's media timeline)
             className="border-border text-muted-foreground sticky left-0 z-30 flex shrink-0 items-end border-r px-3 py-2.5 text-[10px] font-semibold tracking-[0.18em] uppercase"
             style={{ width: CHANNEL_COL_WIDTH }}
           >
@@ -62,6 +63,7 @@ export function LiveTVGuideGrid({
             {ticks.map((tick) => (
               <div
                 key={tick}
+                // eslint-disable-next-line silo/no-physical-direction -- the guide is a time axis, which runs left to right in every language (as Silo's media timeline)
                 className="border-border text-muted-foreground absolute top-0 bottom-0 border-l px-2.5 py-2.5 text-xs"
                 style={{ left: (tick - window.startMs) * window.pxPerMs }}
               >
@@ -86,6 +88,7 @@ export function LiveTVGuideGrid({
               <button
                 type="button"
                 onClick={() => onSelectChannel(channel.id)}
+                // eslint-disable-next-line silo/no-physical-direction -- the guide is a time axis, which runs left to right in every language (as Silo's media timeline)
                 className="border-border hover:bg-muted/60 sticky left-0 z-10 flex shrink-0 flex-col justify-center gap-1 border-r bg-[color-mix(in_srgb,var(--background)_96%,transparent)] px-3.5 text-left"
                 style={{ width: CHANNEL_COL_WIDTH, height: ROW_HEIGHT }}
               >

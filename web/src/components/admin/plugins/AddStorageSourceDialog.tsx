@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -57,9 +58,15 @@ function PluginRow({
 }
 
 function BookwarehouseRow({ artifact, onDone }: { artifact: StorageArtifact; onDone: () => void }) {
+  const bt = useBloemT();
   const install = useInstallStorageSource();
   return (
-    <PluginRow title="Bookwarehouse" description={`EPUB and PDF books · ${artifact.version}`}>
+    <PluginRow
+      title={bt("bloem.admin.storage.addDialog.bookwarehouse")}
+      description={bt("bloem.admin.storage.addDialog.epubAndPdfBooks", {
+        version: artifact.version,
+      })}
+    >
       <Button
         disabled={install.isPending}
         onClick={() =>
@@ -74,7 +81,9 @@ function BookwarehouseRow({ artifact, onDone }: { artifact: StorageArtifact; onD
           )
         }
       >
-        {install.isPending ? "Installing..." : "Install Bookwarehouse"}
+        {install.isPending
+          ? bt("bloem.admin.storage.addDialog.installing")
+          : bt("bloem.admin.storage.addDialog.installBookwarehouse")}
       </Button>
     </PluginRow>
   );
@@ -94,6 +103,7 @@ function BookwarehouseAudioForm({
   onBack: () => void;
   onDone: () => void;
 }) {
+  const bt = useBloemT();
   const install = useInstallStorageSource();
   const [url, setURL] = useState("");
   const [apiKey, setAPIKey] = useState("");
@@ -123,18 +133,18 @@ function BookwarehouseAudioForm({
   return (
     <form onSubmit={submit} className="space-y-3">
       <label className="block text-sm">
-        Bookwarehouse server URL
+        {bt("bloem.admin.storage.addDialog.bookwarehouseServerUrl")}
         <Input
           type="url"
           required
-          placeholder="https://books.example"
+          placeholder={bt("bloem.admin.storage.addDialog.httpsBooksExample")}
           value={url}
           onChange={(e) => setURL(e.target.value)}
           autoComplete="off"
         />
       </label>
       <label className="block text-sm">
-        API key
+        {bt("bloem.admin.storage.addDialog.apiKey")}
         <Input
           type="password"
           required
@@ -145,10 +155,12 @@ function BookwarehouseAudioForm({
       </label>
       <div className="flex justify-between gap-2">
         <Button type="button" variant="ghost" onClick={onBack} disabled={install.isPending}>
-          Back
+          {bt("bloem.admin.storage.addDialog.back")}
         </Button>
         <Button type="submit" disabled={!ready}>
-          {install.isPending ? "Installing..." : "Install audiobooks"}
+          {install.isPending
+            ? bt("bloem.admin.storage.addDialog.installing")
+            : bt("bloem.admin.storage.addDialog.installAudiobooks")}
         </Button>
       </div>
     </form>
@@ -172,13 +184,16 @@ function DialogBody({
   onClose: () => void;
   onBusyChange: (busy: boolean) => void;
 }) {
+  const bt = useBloemT();
   const [choice, setChoice] = useState<"s3" | "bookwarehouse-audio" | null>(null);
 
   if (!artifacts) {
     if (error) {
       return (
         <div role="alert" className="space-y-3 text-sm">
-          <p className="text-destructive">The list of storage types couldn&apos;t be loaded.</p>
+          <p className="text-destructive">
+            {bt("bloem.admin.storage.addDialog.theListOfStorageTypes")}
+          </p>
           {onRetry ? (
             <Button
               type="button"
@@ -187,13 +202,19 @@ function DialogBody({
               disabled={isRetrying}
               onClick={onRetry}
             >
-              {isRetrying ? "Retrying…" : "Retry"}
+              {isRetrying
+                ? bt("bloem.admin.storage.addDialog.retrying")
+                : bt("bloem.admin.storage.addDialog.retry")}
             </Button>
           ) : null}
         </div>
       );
     }
-    return <p className="text-muted-foreground text-sm">Loading storage types...</p>;
+    return (
+      <p className="text-muted-foreground text-sm">
+        {bt("bloem.admin.storage.addDialog.loadingStorageTypes")}
+      </p>
+    );
   }
 
   // Offered in every administrative scope: an organization administrator adds
@@ -226,7 +247,7 @@ function DialogBody({
   if (!s3 && !bookwarehouse) {
     return (
       <p className="text-muted-foreground text-sm">
-        No storage types are available. The platform administrator has to approve one first.
+        {bt("bloem.admin.storage.addDialog.noStorageTypesAreAvailable")}
       </p>
     );
   }
@@ -234,22 +255,26 @@ function DialogBody({
     <div className="space-y-3">
       {s3 ? (
         <PluginRow
-          title="S3-compatible storage"
-          description={`Backblaze B2, Wasabi, Cloudflare R2, Amazon S3 and more · ${s3.version}`}
+          title={bt("bloem.admin.storage.addDialog.s3CompatibleStorage")}
+          description={bt("bloem.admin.storage.addDialog.backblazeB2WasabiCloudflareR2", {
+            version: s3.version,
+          })}
         >
           <Button variant="outline" onClick={() => setChoice("s3")}>
-            Set up S3
+            {bt("bloem.admin.storage.addDialog.setUpS3")}
           </Button>
         </PluginRow>
       ) : null}
       {bookwarehouse ? <BookwarehouseRow artifact={bookwarehouse} onDone={onClose} /> : null}
       {bookwarehouse ? (
         <PluginRow
-          title="Bookwarehouse audiobooks"
-          description={`Audiobook tracks · ${bookwarehouse.version}`}
+          title={bt("bloem.admin.storage.addDialog.bookwarehouseAudiobooks")}
+          description={bt("bloem.admin.storage.addDialog.audiobookTracks", {
+            version: bookwarehouse.version,
+          })}
         >
           <Button variant="outline" onClick={() => setChoice("bookwarehouse-audio")}>
-            Set up audiobooks
+            {bt("bloem.admin.storage.addDialog.setUpAudiobooks")}
           </Button>
         </PluginRow>
       ) : null}
@@ -279,6 +304,7 @@ export function AddStorageSourceDialog({
   /** True while the catalog is being refetched after Retry. */
   isRetrying?: boolean;
 }) {
+  const bt = useBloemT();
   const [locked, setLocked] = useState(false);
   return (
     // Sources are being added one after another: closing now would leave a half-finished batch
@@ -286,9 +312,9 @@ export function AddStorageSourceDialog({
     <Dialog open={open} onOpenChange={(next) => (locked && !next ? undefined : onOpenChange(next))}>
       <DialogContent showCloseButton={!locked}>
         <DialogHeader>
-          <DialogTitle>Add storage source</DialogTitle>
+          <DialogTitle>{bt("bloem.admin.storage.addDialog.addStorageSource")}</DialogTitle>
           <DialogDescription>
-            Choose where a library can read its books, movies or audiobooks from.
+            {bt("bloem.admin.storage.addDialog.chooseWhereALibraryCan")}
           </DialogDescription>
         </DialogHeader>
         <DialogBody

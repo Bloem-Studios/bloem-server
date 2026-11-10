@@ -91,7 +91,7 @@ export default function PreviewBookDetail({
             <h2 className="mb-4 text-xl font-semibold">{item.ebook.series.name}</h2>
             {item.ebook.series.entries.map((entry) => (
               <Link
-                className="mr-4 underline"
+                className="me-4 underline"
                 key={entry.content_id}
                 to={`/item/${encodeURIComponent(entry.content_id)}`}
               >

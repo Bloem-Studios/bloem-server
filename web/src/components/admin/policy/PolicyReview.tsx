@@ -1,4 +1,5 @@
 // Bloem: review, confirm and progress views shared by the bulk policy flows.
+import { useBloemT } from "@/bloem/i18n";
 import { AlertTriangle, CheckCircle2, Clock3 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -19,8 +20,12 @@ import {
 
 /** Numbered steps for a multi-step flow. */
 export function StepList({ steps, current }: { steps: string[]; current: number }) {
+  const bt = useBloemT();
   return (
-    <ol aria-label="Steps" className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+    <ol
+      aria-label={bt("bloem.admin.policy.review.steps")}
+      className="flex flex-wrap gap-x-5 gap-y-2 text-sm"
+    >
       {steps.map((label, index) => {
         const number = index + 1;
         const state = number < current ? "done" : number === current ? "current" : "next";
@@ -41,7 +46,14 @@ export function StepList({ steps, current }: { steps: string[]; current: number 
                   : "bg-muted inline-grid size-6 place-items-center rounded-full text-xs tabular-nums"
               }
             >
-              {state === "done" ? <CheckCircle2 className="size-3.5" aria-label="Done" /> : number}
+              {state === "done" ? (
+                <CheckCircle2
+                  className="size-3.5"
+                  aria-label={bt("bloem.admin.policy.review.done")}
+                />
+              ) : (
+                number
+              )}
             </span>
             <span className={state === "current" ? "font-medium" : undefined}>{label}</span>
           </li>
@@ -85,6 +97,7 @@ export function PolicyTarget({
   target: PolicyPreview["target"];
   libraries?: NamedLibrary[];
 }) {
+  const bt = useBloemT();
   const headline = target.template_key
     ? `Plan ${target.template_key}${target.template_revision ? `, revision ${target.template_revision}` : ""}`
     : target.name
@@ -100,15 +113,19 @@ export function PolicyTarget({
     ["Settings fingerprint", target.policy_digest],
   ];
   return (
-    <section className="space-y-3" aria-label="What they'll get">
+    <section className="space-y-3" aria-label={bt("bloem.admin.policy.review.whatTheyLlGet")}>
       <div>
-        <h3 className="text-sm font-medium">What they’ll get</h3>
+        <h3 className="text-sm font-medium">{bt("bloem.admin.policy.review.whatTheyLlGet2")}</h3>
         <p className="text-muted-foreground text-sm">{headline}</p>
       </div>
-      <PolicySummary policy={target.policy} libraries={libraries} label="New settings" />
+      <PolicySummary
+        policy={target.policy}
+        libraries={libraries}
+        label={bt("bloem.admin.policy.review.newSettings")}
+      />
       <details className="text-sm">
         <summary className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
-          Details
+          {bt("bloem.admin.policy.review.details")}
         </summary>
         <dl className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {details.map(([name, value]) => (
@@ -125,59 +142,83 @@ export function PolicyTarget({
 
 /** The preview counts, the settings that change and where accounts are now. */
 export function PreviewImpact({ preview }: { preview: PolicyPreview }) {
+  const bt = useBloemT();
   return (
     <div className="space-y-5">
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Count label="Selected" value={preview.matched} strong />
-        <Count label="Already set up this way" value={preview.already_compliant} />
-        <Count label="Can’t be changed" value={preview.ineligible_or_stale} />
-        <Count label="Left out" value={preview.excluded} />
+        <Count label={bt("bloem.admin.policy.review.selected")} value={preview.matched} strong />
+        <Count
+          label={bt("bloem.admin.policy.review.alreadySetUpThisWay")}
+          value={preview.already_compliant}
+        />
+        <Count
+          label={bt("bloem.admin.policy.review.canTBeChanged")}
+          value={preview.ineligible_or_stale}
+        />
+        <Count label={bt("bloem.admin.policy.review.leftOut")} value={preview.excluded} />
       </dl>
 
-      <section aria-label="Settings that change">
-        <h3 className="text-sm font-medium">Settings that change</h3>
+      <section aria-label={bt("bloem.admin.policy.review.settingsThatChange")}>
+        <h3 className="text-sm font-medium">
+          {bt("bloem.admin.policy.review.settingsThatChange")}
+        </h3>
         {preview.diff.length ? (
           <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
             {preview.diff.map((diff) => (
               <li key={diff.field}>
-                {capitalize(policyFieldLabel(diff.field))} for{" "}
-                {diff.changed_accounts.toLocaleString()}{" "}
-                {diff.changed_accounts === 1 ? "account" : "accounts"}
+                {bt("bloem.admin.policy.review.fieldForAccounts", {
+                  field: capitalize(policyFieldLabel(diff.field)),
+                  count: diff.changed_accounts,
+                })}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-muted-foreground mt-2 text-sm">No settings change.</p>
+          <p className="text-muted-foreground mt-2 text-sm">
+            {bt("bloem.admin.policy.review.noSettingsChange")}
+          </p>
         )}
       </section>
 
-      <section aria-label="Profiles">
-        <h3 className="text-sm font-medium">Profiles</h3>
+      <section aria-label={bt("bloem.admin.policy.review.profiles")}>
+        <h3 className="text-sm font-medium">{bt("bloem.admin.policy.review.profiles")}</h3>
         <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
           <li>
-            {preview.inherited_profiles_will_move.toLocaleString()} that follow their account change
-            with it
+            {bt("bloem.admin.policy.review.thatFollowTheirAccountChange", {
+              inheritedProfilesWillMove: preview.inherited_profiles_will_move.toLocaleString(),
+            })}
           </li>
           <li>
             {preview.custom_profiles_will_move
-              ? `${preview.custom_profiles_will_move.toLocaleString()} with their own settings change too`
-              : `${preview.custom_profiles_will_remain.toLocaleString()} with their own settings stay as they are`}
+              ? bt("bloem.admin.policy.review.withTheirOwnSettingsChange", {
+                  customProfilesWillMove: preview.custom_profiles_will_move.toLocaleString(),
+                })
+              : bt("bloem.admin.policy.review.withTheirOwnSettingsStay", {
+                  customProfilesWillRemain: preview.custom_profiles_will_remain.toLocaleString(),
+                })}
           </li>
         </ul>
       </section>
 
       {preview.current_cohorts.length ? (
-        <section aria-label="Where they are now">
-          <h3 className="text-sm font-medium">Where they are now</h3>
+        <section aria-label={bt("bloem.admin.policy.review.whereTheyAreNow")}>
+          <h3 className="text-sm font-medium">{bt("bloem.admin.policy.review.whereTheyAreNow")}</h3>
           <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
             {preview.current_cohorts.map((item, index) => (
               <li key={`${item.cohort_id ?? item.group_id ?? "none"}:${index}`}>
-                {item.count.toLocaleString()} {item.count === 1 ? "account" : "accounts"}:{" "}
-                {item.source_template_key
-                  ? `plan ${item.source_template_key}${item.source_template_revision ? `, revision ${item.source_template_revision}` : ""}`
-                  : item.group_name
-                    ? item.group_name
-                    : policyStateLabel(item.state).toLowerCase()}
+                {bt("bloem.admin.policy.review.cohortLine", {
+                  count: item.count,
+                  where: item.source_template_key
+                    ? item.source_template_revision
+                      ? bt("bloem.admin.policy.review.planRevision", {
+                          plan: item.source_template_key,
+                          revision: item.source_template_revision,
+                        })
+                      : bt("bloem.admin.policy.review.plan", { plan: item.source_template_key })
+                    : item.group_name
+                      ? item.group_name
+                      : policyStateLabel(item.state).toLowerCase(),
+                })}
               </li>
             ))}
           </ul>
@@ -195,6 +236,7 @@ export function CustomProfilesOption({
   checked: boolean;
   onCheckedChange(value: boolean): void;
 }) {
+  const bt = useBloemT();
   return (
     <label className="border-border flex items-start gap-3 rounded-lg border p-3 text-sm">
       <input
@@ -204,9 +246,11 @@ export function CustomProfilesOption({
         onChange={(event) => onCheckedChange(event.target.checked)}
       />
       <span>
-        <span className="font-medium">Also change profiles with their own settings</span>
+        <span className="font-medium">
+          {bt("bloem.admin.policy.review.alsoChangeProfilesWithTheir")}
+        </span>
         <span className="text-muted-foreground mt-0.5 block">
-          Off by default. Profiles that follow their account always change with it.
+          {bt("bloem.admin.policy.review.offByDefaultProfilesThat")}
         </span>
       </span>
     </label>
@@ -225,6 +269,7 @@ export function ConfirmChange({
   checked: boolean;
   onCheckedChange(value: boolean): void;
 }) {
+  const bt = useBloemT();
   return (
     <label className="border-border bg-muted/30 flex items-start gap-3 rounded-lg border p-4 text-sm">
       <input
@@ -235,11 +280,10 @@ export function ConfirmChange({
       />
       <span>
         <span className="font-medium">
-          I’ve checked this change for {accounts.toLocaleString()}{" "}
-          {accounts === 1 ? "account" : "accounts"}
+          {bt("bloem.admin.policy.review.checkedForAccounts", { count: accounts })}
         </span>
         <span className="text-muted-foreground mt-0.5 block">
-          Confirm by {expiresAt}. Accounts that change before then are skipped, not overwritten.
+          {bt("bloem.admin.policy.review.confirmByAccountsThatChange", { expiresAt })}
         </span>
       </span>
     </label>
@@ -262,6 +306,7 @@ export function PolicyJobView({
   onCancel(): void;
   onStartOver(): void;
 }) {
+  const bt = useBloemT();
   const pending = job.status === "queued" || job.status === "running";
   const percent = job.progress_total ? (job.progress_current / job.progress_total) * 100 : 0;
   const Icon = pending ? Clock3 : job.status === "completed" ? CheckCircle2 : AlertTriangle;
@@ -273,24 +318,31 @@ export function PolicyJobView({
         <div>
           <h2 className="text-lg font-medium">{jobHeading(job)}</h2>
           <p className="text-muted-foreground text-sm tabular-nums">
-            {job.progress_current.toLocaleString()} of {job.progress_total.toLocaleString()}{" "}
-            accounts done
+            {bt("bloem.admin.policy.review.ofAccountsDone", {
+              progressCurrent: job.progress_current.toLocaleString(),
+              progressTotal: job.progress_total.toLocaleString(),
+            })}
           </p>
         </div>
       </div>
-      <Progress value={percent} aria-label="Progress" />
+      <Progress value={percent} aria-label={bt("bloem.admin.policy.review.progress")} />
       <dl className="grid grid-cols-3 gap-3">
-        <Count label="Changed" value={job.succeeded} />
-        <Count label="Skipped" value={job.skipped.length} />
-        <Count label="Failed" value={job.failed.length} />
+        <Count label={bt("bloem.admin.policy.review.changed")} value={job.succeeded} />
+        <Count label={bt("bloem.admin.policy.review.skipped")} value={job.skipped.length} />
+        <Count label={bt("bloem.admin.policy.review.failed")} value={job.failed.length} />
       </dl>
       {problems.length ? (
-        <section aria-label="Accounts not changed">
-          <h3 className="text-sm font-medium">Accounts not changed</h3>
+        <section aria-label={bt("bloem.admin.policy.review.accountsNotChanged")}>
+          <h3 className="text-sm font-medium">
+            {bt("bloem.admin.policy.review.accountsNotChanged")}
+          </h3>
           <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
             {problems.map((result, index) => (
               <li key={`${result.account_id}:${result.reason}:${index}`}>
-                {accountName(result.account_id)}: {resultReasonLabel(result.reason)}
+                {bt("bloem.admin.policy.review.accountResultReason", {
+                  account: accountName(result.account_id),
+                  resultReason: resultReasonLabel(result.reason),
+                })}
               </li>
             ))}
           </ul>
@@ -304,12 +356,12 @@ export function PolicyJobView({
       <div className="flex flex-wrap gap-2">
         {pending ? (
           <Button type="button" variant="outline" disabled={cancelling} onClick={onCancel}>
-            Stop
+            {bt("bloem.admin.policy.review.stop")}
           </Button>
         ) : null}
         {!pending || problems.length ? (
           <Button type="button" variant="outline" onClick={onStartOver}>
-            Review these accounts again
+            {bt("bloem.admin.policy.review.reviewTheseAccountsAgain")}
           </Button>
         ) : null}
       </div>

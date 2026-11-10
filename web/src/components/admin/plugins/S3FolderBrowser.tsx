@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronRight, Folder } from "lucide-react";
 
@@ -45,6 +46,7 @@ export function S3FolderBrowser({
   onUse: (prefix: string) => void;
   onClose: () => void;
 }) {
+  const bt = useBloemT();
   const { mutateAsync, reset } = useListS3Folders();
   // Held as of opening: the form closes this browser whenever the connection changes.
   const [held] = useState(connection);
@@ -97,8 +99,14 @@ export function S3FolderBrowser({
   const crumbs = trail(prefix);
 
   return (
-    <section aria-label="Folder browser" className="space-y-2 rounded-md border p-3 text-sm">
-      <nav aria-label="Folder path" className="flex flex-wrap items-center gap-0.5">
+    <section
+      aria-label={bt("bloem.admin.storage.s3Browser.folderBrowser")}
+      className="space-y-2 rounded-md border p-3 text-sm"
+    >
+      <nav
+        aria-label={bt("bloem.admin.storage.s3Browser.folderPath")}
+        className="flex flex-wrap items-center gap-0.5"
+      >
         {[{ name: bucket, prefix: "" }, ...crumbs].map((crumb, index, all) => {
           const current = index === all.length - 1;
           return (
@@ -136,18 +144,22 @@ export function S3FolderBrowser({
             disabled={loading}
             onClick={() => go(failure.prefix, failure.cursor)}
           >
-            Try again
+            {bt("bloem.admin.storage.s3Browser.tryAgain")}
           </Button>
         </div>
       ) : null}
 
       {view === null && !failure ? (
-        <p className="text-muted-foreground">Loading folders...</p>
+        <p className="text-muted-foreground">
+          {bt("bloem.admin.storage.s3Browser.loadingFolders")}
+        </p>
       ) : null}
 
       {view ? (
         view.folders.length === 0 ? (
-          <p className="text-muted-foreground">No subfolders here.</p>
+          <p className="text-muted-foreground">
+            {bt("bloem.admin.storage.s3Browser.noSubfoldersHere")}
+          </p>
         ) : (
           <ul className="max-h-48 space-y-0.5 overflow-y-auto">
             {view.folders.map((folder) => (
@@ -177,21 +189,21 @@ export function S3FolderBrowser({
           disabled={loading}
           onClick={() => go(view.prefix, view.nextCursor)}
         >
-          Load more
+          {bt("bloem.admin.storage.s3Browser.loadMore")}
         </Button>
       ) : null}
 
       <div className="flex flex-wrap gap-2 pt-1">
         {prefix !== "" ? (
           <Button type="button" size="sm" onClick={() => onUse(prefix)}>
-            Use this folder
+            {bt("bloem.admin.storage.s3Browser.useThisFolder")}
           </Button>
         ) : null}
         <Button type="button" variant="outline" size="sm" onClick={() => onUse("")}>
-          Use bucket root
+          {bt("bloem.admin.storage.s3Browser.useBucketRoot")}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-          Cancel
+          {bt("bloem.admin.storage.s3Browser.cancel")}
         </Button>
       </div>
     </section>

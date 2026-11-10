@@ -1,9 +1,11 @@
+import { useBloemT } from "@/bloem/i18n";
 import { AlertTriangle, CheckCircle2, Clock3 } from "lucide-react";
 
 import { jobHeading, resultReasonLabel } from "@/components/admin/policy/policyVocabulary";
 import type { PeopleBulkJob } from "@/hooks/queries/admin/organizationPeople";
 
 export default function BulkJobResult({ job }: { job: PeopleBulkJob }) {
+  const bt = useBloemT();
   const pending = job.status === "queued" || job.status === "running";
   return (
     <section className="surface-panel rounded-2xl p-5" aria-live="polite">
@@ -18,20 +20,40 @@ export default function BulkJobResult({ job }: { job: PeopleBulkJob }) {
         <div className="min-w-0 flex-1">
           <h2 className="font-medium">{jobHeading(job)}</h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            {job.progress_current.toLocaleString()} of {job.progress_total.toLocaleString()} done
+            {bt("bloem.admin.people.bulkResult.ofDone", {
+              progressCurrent: job.progress_current.toLocaleString(),
+              progressTotal: job.progress_total.toLocaleString(),
+            })}
           </p>
           <div className="mt-3 flex flex-wrap gap-3 text-sm">
-            <span>{job.succeeded.toLocaleString()} changed</span>
-            <span>{job.skipped.length.toLocaleString()} skipped</span>
-            <span>{job.failed.length.toLocaleString()} failed</span>
+            <span>
+              {bt("bloem.admin.people.bulkResult.changed", {
+                succeeded: job.succeeded.toLocaleString(),
+              })}
+            </span>
+            <span>
+              {bt("bloem.admin.people.bulkResult.skipped", {
+                skipped: job.skipped.length.toLocaleString(),
+              })}
+            </span>
+            <span>
+              {bt("bloem.admin.people.bulkResult.failed", {
+                failed: job.failed.length.toLocaleString(),
+              })}
+            </span>
           </div>
           {job.skipped.length > 0 ? (
             <div className="mt-4">
-              <h3 className="text-sm font-medium">Skipped</h3>
+              <h3 className="text-sm font-medium">
+                {bt("bloem.admin.people.bulkResult.skipped2")}
+              </h3>
               <ul className="text-muted-foreground mt-1 space-y-1 text-sm">
                 {job.skipped.map((record) => (
                   <li key={`skipped-${record.account_id}`}>
-                    Account {record.account_id}: {resultReasonLabel(record.reason)}
+                    {bt("bloem.admin.people.bulkResult.account", {
+                      accountId: record.account_id,
+                      resultReason: resultReasonLabel(record.reason),
+                    })}
                   </li>
                 ))}
               </ul>
@@ -39,11 +61,14 @@ export default function BulkJobResult({ job }: { job: PeopleBulkJob }) {
           ) : null}
           {job.failed.length > 0 ? (
             <div className="mt-4">
-              <h3 className="text-sm font-medium">Failed</h3>
+              <h3 className="text-sm font-medium">{bt("bloem.admin.people.bulkResult.failed2")}</h3>
               <ul className="text-destructive mt-1 space-y-1 text-sm">
                 {job.failed.map((record) => (
                   <li key={`failed-${record.account_id}`}>
-                    Account {record.account_id}: {resultReasonLabel(record.reason)}
+                    {bt("bloem.admin.people.bulkResult.account", {
+                      accountId: record.account_id,
+                      resultReason: resultReasonLabel(record.reason),
+                    })}
                   </li>
                 ))}
               </ul>

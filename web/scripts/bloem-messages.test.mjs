@@ -4,26 +4,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { generate } from "./bloem-messages.mjs";
+import { generate, readCatalog } from "./bloem-messages.mjs";
 
 const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const CATALOG = path.join(WEB, "src/bloem/i18n/catalog");
 const OUT = path.join(WEB, "src/bloem/locales");
-
-async function catalog() {
-  const texts = {};
-  for (const name of await readdir(CATALOG)) {
-    if (name.endsWith(".arb"))
-      texts[name.slice(0, -4)] = await readFile(path.join(CATALOG, name), "utf8");
-  }
-  return texts;
-}
 
 const arb = (entries) => JSON.stringify({ "@@locale": "en", ...entries });
 
 describe("bloem-messages", () => {
   it("has generated the committed message files from the catalog", async () => {
-    const files = await generate(await catalog());
+    const files = await generate(await readCatalog());
     for (const [name, contents] of Object.entries(files)) {
       expect(
         await readFile(path.join(OUT, name), "utf8"),
@@ -42,7 +32,7 @@ describe("bloem-messages", () => {
     ],
     [
       "a quoting apostrophe",
-      { en: arb({ "bloem.a.b": "{name}'s", "@bloem.a.b": { description: "x" } }) },
+      { en: arb({ "bloem.a.b": "Say '{name}'", "@bloem.a.b": { description: "x" } }) },
       /apostrophe/,
     ],
     [

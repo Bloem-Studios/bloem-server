@@ -35,6 +35,66 @@
       "value": "⟦Þûƀļîšĥéđ åññöûñçéɱéñţš~~~~~~~~~~~⟧"
     }
   ],
+  "bloem.adminNav.contextSwitcher.administrativeContext": [
+    {
+      "type": 0,
+      "value": "⟦Åđɱîñîšţŕåţîṽé çöñţéẋţ~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.administrativeContextChangedTo": [
+    {
+      "type": 0,
+      "value": "⟦Åđɱîñîšţŕåţîṽé çöñţéẋţ çĥåñĝéđ ţö "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.chooseContext": [
+    {
+      "type": 0,
+      "value": "⟦Çĥööšé çöñţéẋţ~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.loadingContext": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ çöñţéẋţ…~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeStatus": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "scope"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "status"
+    },
+    {
+      "type": 0,
+      "value": "~⟧"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.selectContext": [
+    {
+      "type": 0,
+      "value": "⟦Šéļéçţ çöñţéẋţ~~~~~~~⟧"
+    }
+  ],
   "bloem.adminNav.liveTv.description": [
     {
       "type": 0,
@@ -301,6 +361,142 @@
     {
       "type": 0,
       "value": "⟦Ŵåŕñîñĝ~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingProfileCredentialStatus": [
+    {
+      "type": 0,
+      "value": "⟦Çĥéçķîñĝ þŕöƒîļé çŕéđéñţîåļ šţåţûš…~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingSupport": [
+    {
+      "type": 0,
+      "value": "⟦Çĥéçķîñĝ šûþþöŕţ…~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.chooseAProfile": [
+    {
+      "type": 0,
+      "value": "⟦Çĥööšé å þŕöƒîļé~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.couldNotLoadHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "⟦Çöûļđ ñöţ ļöåđ ĥöûšéĥöļđ þŕöƒîļéš.~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.giveAHouseholdProfileIts": [
+    {
+      "type": 0,
+      "value": "⟦Ĝîṽé å ĥöûšéĥöļđ þŕöƒîļé îţš öŵñ éɱåîļ åñđ þåššŵöŕđ, šö îţ çåñ šîĝñ îñ ţö ţĥé Ɓļöéɱ åþþš ŵîţĥöûţ ţĥé åççöûñţ þåššŵöŕđ. Ţĥé ŵéƀšîţé šţîļļ ûšéš ţĥé åççöûñţ šîĝñ-îñ. Ţö çĥåñĝé ţĥîš, ýöû ñééđ ýöûŕ åççöûñţ þåššŵöŕđ; åççöûñţš ţĥåţ öñļý šîĝñ îñ ţĥŕöûĝĥ šîñĝļé šîĝñ-öñ çåñ’ţ ûšé îţ. Å þŕöƒîļé þåššŵöŕđ šţöþš ŵöŕķîñĝ ŵĥîļé þåššŵöŕđ šîĝñ-îñ îš ţûŕñéđ öƒƒ ƒöŕ ţĥîš šéŕṽéŕ öŕ ƒöŕ ýöûŕ åççöûñţ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.iUnderstandThisSignsThe": [
+    {
+      "type": 0,
+      "value": "⟦Î ûñđéŕšţåñđ ţĥîš šîĝñš ţĥé þŕöƒîļé öûţ öƒ éṽéŕý åþþ îţ šîĝñéđ îñ ţö ŵîţĥ îţš öŵñ šîĝñ-îñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.loadingHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ ĥöûšéĥöļđ þŕöƒîļéš…~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.manageSignInFor": [
+    {
+      "type": 0,
+      "value": "⟦Ṁåñåĝé šîĝñ-îñ ƒöŕ "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.newPasswordForTheProfile": [
+    {
+      "type": 0,
+      "value": "⟦Ñéŵ þåššŵöŕđ ƒöŕ ţĥé þŕöƒîļé~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.profile": [
+    {
+      "type": 0,
+      "value": "⟦Þŕöƒîļé~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.profileEmail": [
+    {
+      "type": 0,
+      "value": "⟦Þŕöƒîļé éɱåîļ~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.saveSignIn": [
+    {
+      "type": 0,
+      "value": "⟦Šåṽé šîĝñ-îñ~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.saving": [
+    {
+      "type": 0,
+      "value": "⟦Šåṽîñĝ…~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.separateSignInForA": [
+    {
+      "type": 0,
+      "value": "⟦Šéþåŕåţé šîĝñ-îñ ƒöŕ å þŕöƒîļé~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileHasNoSign": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš þŕöƒîļé ĥåš ñö šîĝñ-îñ öƒ îţš öŵñ.~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileSignsInAs": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš þŕöƒîļé šîĝñš îñ åš "
+    },
+    {
+      "type": 1,
+      "value": "loginEmail"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.thisServerDoesnTSupport": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš šéŕṽéŕ đöéšñ’ţ šûþþöŕţ šéþåŕåţé þŕöƒîļé šîĝñ-îñš.~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.tryAgain": [
+    {
+      "type": 0,
+      "value": "⟦Ţŕý åĝåîñ~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnOffItsSignIn": [
+    {
+      "type": 0,
+      "value": "⟦Ţûŕñ öƒƒ îţš šîĝñ-îñ~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.yourAccountPassword": [
+    {
+      "type": 0,
+      "value": "⟦Ýöûŕ åççöûñţ þåššŵöŕđ~~~~~~~~~~⟧"
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,6 +22,7 @@ interface CredentialStatus {
 }
 
 export function DirectProfileCredentials() {
+  const bt = useBloemT();
   const { user, profile } = useAuth();
   const capability = useBloemCapabilities();
   const authority = captureProfileRequestContext();
@@ -29,22 +31,18 @@ export function DirectProfileCredentials() {
   return (
     <section className="mt-8 space-y-4 border-t pt-6" aria-labelledby="direct-profile-heading">
       <h2 id="direct-profile-heading" className="text-xl font-medium">
-        Separate sign-in for a profile
+        {bt("bloem.profiles.directCredentials.separateSignInForA")}
       </h2>
       <p className="text-muted-foreground text-sm">
-        Give a household profile its own email and password, so it can sign in to the Bloem apps
-        without the account password. The website still uses the account sign-in. To change this,
-        you need your account password; accounts that only sign in through single sign-on can’t use
-        it. A profile password stops working while password sign-in is turned off for this server or
-        for your account.
+        {bt("bloem.profiles.directCredentials.giveAHouseholdProfileIts")}
       </p>
       {capability.isPending ? (
-        <p role="status">Checking support…</p>
+        <p role="status">{bt("bloem.profiles.directCredentials.checkingSupport")}</p>
       ) : capability.isError ? (
         <div role="alert">
           <p>{capability.error.message}</p>
           <Button variant="outline" onClick={() => void capability.refetch()}>
-            Try again
+            {bt("bloem.profiles.directCredentials.tryAgain")}
           </Button>
         </div>
       ) : capability.data?.feature_tokens?.includes("profile_credential_management_v1") ? (
@@ -58,36 +56,38 @@ export function DirectProfileCredentials() {
         />
       ) : (
         <p className="text-muted-foreground text-sm">
-          This server doesn’t support separate profile sign-ins.
+          {bt("bloem.profiles.directCredentials.thisServerDoesnTSupport")}
         </p>
       )}
     </section>
   );
 }
 function HouseholdCredentials() {
+  const bt = useBloemT();
   const profiles = useProfiles();
   const [selected, setSelected] = useState("");
   const target = profiles.data.find((profile) => profile.id === selected);
-  if (profiles.isLoading) return <p role="status">Loading household profiles…</p>;
+  if (profiles.isLoading)
+    return <p role="status">{bt("bloem.profiles.directCredentials.loadingHouseholdProfiles")}</p>;
   if (profiles.isError)
     return (
       <div role="alert">
-        <p>Could not load household profiles.</p>
+        <p>{bt("bloem.profiles.directCredentials.couldNotLoadHouseholdProfiles")}</p>
         <Button variant="outline" onClick={() => void profiles.refetch()}>
-          Try again
+          {bt("bloem.profiles.directCredentials.tryAgain")}
         </Button>
       </div>
     );
   return (
     <div className="space-y-4">
-      <Label htmlFor="credential-profile">Profile</Label>
+      <Label htmlFor="credential-profile">{bt("bloem.profiles.directCredentials.profile")}</Label>
       <select
         id="credential-profile"
         className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
         value={selected}
         onChange={(event) => setSelected(event.target.value)}
       >
-        <option value="">Choose a profile</option>
+        <option value="">{bt("bloem.profiles.directCredentials.chooseAProfile")}</option>
         {profiles.data.map((profile) => (
           <option key={profile.id} value={profile.id}>
             {profile.name}
@@ -99,6 +99,7 @@ function HouseholdCredentials() {
   );
 }
 function CredentialForm({ id, name }: { id: string; name: string }) {
+  const bt = useBloemT();
   const authority = captureProfileRequestContext();
   const client = useQueryClient();
   const key = [
@@ -198,13 +199,16 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
       }
     }
   }
-  if (status.isPending) return <p role="status">Checking profile credential status…</p>;
+  if (status.isPending)
+    return (
+      <p role="status">{bt("bloem.profiles.directCredentials.checkingProfileCredentialStatus")}</p>
+    );
   if (status.isError)
     return (
       <div role="alert">
         <p>{status.error.message}</p>
         <Button variant="outline" onClick={() => void status.refetch()}>
-          Try again
+          {bt("bloem.profiles.directCredentials.tryAgain")}
         </Button>
       </div>
     );
@@ -213,17 +217,21 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
       key={status.data.credential_revision}
       onSubmit={(event) => void submit(event)}
       className="space-y-4"
-      aria-label={`Manage sign-in for ${name}`}
+      aria-label={bt("bloem.profiles.directCredentials.manageSignInFor", { name })}
     >
       <p className="text-sm">
         {status.data.configured
-          ? `This profile signs in as ${status.data.login_email}`
-          : "This profile has no sign-in of its own."}
+          ? bt("bloem.profiles.directCredentials.thisProfileSignsInAs", {
+              loginEmail: status.data.login_email,
+            })
+          : bt("bloem.profiles.directCredentials.thisProfileHasNoSign")}
       </p>
       <fieldset disabled={pending || status.isFetching} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="profile-login-email">Profile email</Label>
+            <Label htmlFor="profile-login-email">
+              {bt("bloem.profiles.directCredentials.profileEmail")}
+            </Label>
             <Input
               id="profile-login-email"
               name="login_email"
@@ -233,7 +241,9 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="profile-login-password">New password for the profile</Label>
+            <Label htmlFor="profile-login-password">
+              {bt("bloem.profiles.directCredentials.newPasswordForTheProfile")}
+            </Label>
             <Input
               id="profile-login-password"
               name="password"
@@ -243,7 +253,9 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="credential-account-password">Your account password</Label>
+          <Label htmlFor="credential-account-password">
+            {bt("bloem.profiles.directCredentials.yourAccountPassword")}
+          </Label>
           <Input
             id="credential-account-password"
             name="current_password"
@@ -260,15 +272,17 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
             required
             className="accent-primary mt-1 size-4"
           />
-          I understand this signs the profile out of every app it signed in to with its own sign-in.
+          {bt("bloem.profiles.directCredentials.iUnderstandThisSignsThe")}
         </label>
         <div className="flex flex-wrap gap-3">
           <Button type="submit" value="save">
-            {pending ? "Saving…" : "Save sign-in"}
+            {pending
+              ? bt("bloem.profiles.directCredentials.saving")
+              : bt("bloem.profiles.directCredentials.saveSignIn")}
           </Button>
           {status.data.configured && (
             <Button type="submit" value="disable" formNoValidate variant="destructive">
-              Turn off its sign-in
+              {bt("bloem.profiles.directCredentials.turnOffItsSignIn")}
             </Button>
           )}
         </div>

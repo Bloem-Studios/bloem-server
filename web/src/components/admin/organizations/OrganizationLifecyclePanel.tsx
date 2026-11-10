@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useState } from "react";
 import { AdminV2ClientError } from "@/api/adminV2Client";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -29,6 +30,7 @@ export function OrganizationLifecyclePanel({
   activeMemberships,
   onRevisionChanged,
 }: OrganizationLifecyclePanelProps) {
+  const bt = useBloemT();
   const [name, setName] = useState(organization.name);
   const [slug, setSlug] = useState(organization.slug);
   const [confirmStatus, setConfirmStatus] = useState<"active" | "suspended" | null>(null);
@@ -89,7 +91,7 @@ export function OrganizationLifecyclePanel({
     <Card>
       <CardHeader className="border-b">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle>Name and status</CardTitle>
+          <CardTitle>{bt("bloem.admin.organizations.lifecycle.nameAndStatus")}</CardTitle>
           <Badge
             variant={organization.status === "active" ? "default" : "secondary"}
             className="capitalize"
@@ -106,14 +108,18 @@ export function OrganizationLifecyclePanel({
         ) : null}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="organization-name">Name</Label>
+            <Label htmlFor="organization-name">
+              {bt("bloem.admin.organizations.lifecycle.name")}
+            </Label>
             <Input id="organization-name" value={name} onChange={(e) => setName(e.target.value)} />
             {fieldErrors.name ? (
               <p className="text-destructive text-sm">{fieldErrors.name}</p>
             ) : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="organization-slug">Short name</Label>
+            <Label htmlFor="organization-slug">
+              {bt("bloem.admin.organizations.lifecycle.shortName")}
+            </Label>
             <Input
               id="organization-slug"
               className="font-mono"
@@ -121,7 +127,7 @@ export function OrganizationLifecyclePanel({
               onChange={(e) => setSlug(e.target.value)}
             />
             <p className="text-muted-foreground text-xs">
-              Used in links. Changing it breaks links people have saved.
+              {bt("bloem.admin.organizations.lifecycle.usedInLinksChangingIt")}
             </p>
             {fieldErrors.slug ? (
               <p className="text-destructive text-sm">{fieldErrors.slug}</p>
@@ -138,19 +144,21 @@ export function OrganizationLifecyclePanel({
               (name === organization.name && slug === organization.slug)
             }
           >
-            {update.isPending ? "Saving…" : "Save details"}
+            {update.isPending
+              ? bt("bloem.admin.organizations.lifecycle.saving")
+              : bt("bloem.admin.organizations.lifecycle.saveDetails")}
           </Button>
           {organization.status === "suspended" ? (
             <Button variant="outline" onClick={() => setConfirmStatus("active")}>
-              Reactivate organization
+              {bt("bloem.admin.organizations.lifecycle.reactivateOrganization")}
             </Button>
           ) : (
             <Button variant="destructive" onClick={() => setConfirmStatus("suspended")}>
-              Suspend organization
+              {bt("bloem.admin.organizations.lifecycle.suspendOrganization")}
             </Button>
           )}
           <Button variant="outline" onClick={() => setTransferOpen(true)}>
-            Transfer ownership
+            {bt("bloem.admin.organizations.lifecycle.transferOwnership")}
           </Button>
         </div>
       </CardContent>
@@ -160,13 +168,17 @@ export function OrganizationLifecyclePanel({
         onOpenChange={(open) => !open && setConfirmStatus(null)}
         title={
           confirmStatus === "suspended"
-            ? `Suspend ${organization.name}`
-            : `Reactivate ${organization.name}`
+            ? bt("bloem.admin.organizations.lifecycle.suspend", { name: organization.name })
+            : bt("bloem.admin.organizations.lifecycle.reactivate", { name: organization.name })
         }
         description={
           confirmStatus === "suspended"
-            ? `${activeMemberships} active ${activeMemberships === 1 ? "member loses" : "members lose"} access until you reactivate it. Nothing is deleted.`
-            : `Members of ${organization.name} can use it again.`
+            ? bt("bloem.admin.organizations.lifecycle.suspendDescription", {
+                count: activeMemberships,
+              })
+            : bt("bloem.admin.organizations.lifecycle.membersOfCanUseIt", {
+                name: organization.name,
+              })
         }
         confirmLabel={confirmStatus === "suspended" ? "Suspend" : "Reactivate"}
         variant={confirmStatus === "suspended" ? "destructive" : "default"}

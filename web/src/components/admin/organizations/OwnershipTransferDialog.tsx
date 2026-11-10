@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useState } from "react";
 import { AccountPicker } from "@/components/admin/policy/AccountPicker";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ export function OwnershipTransferDialog({
   ownerError,
   onTransfer,
 }: OwnershipTransferDialogProps) {
+  const bt = useBloemT();
   const [ownerAccountId, setOwnerAccountId] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [password, setPassword] = useState("");
@@ -58,23 +60,26 @@ export function OwnershipTransferDialog({
     <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Transfer ownership</DialogTitle>
+          <DialogTitle>
+            {bt("bloem.admin.organizations.ownershipTransfer.transferOwnership")}
+          </DialogTitle>
           <DialogDescription>
-            The owner can’t be removed from {organization.name}. The new owner must already be an
-            active member.
+            {bt("bloem.admin.organizations.ownershipTransfer.theOwnerCanTBe", {
+              name: organization.name,
+            })}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
             <AccountPicker
               id="new-owner-search"
-              label="Find the new owner"
+              label={bt("bloem.admin.organizations.ownershipTransfer.findTheNewOwner")}
               multiple={false}
               selected={/^[1-9]\d*$/.test(ownerAccountId) ? [Number(ownerAccountId)] : []}
               onChange={(ids) => setOwnerAccountId(ids[0] ? String(ids[0]) : "")}
             />
             <Label htmlFor="new-owner-account" className="text-muted-foreground text-xs">
-              New owner
+              {bt("bloem.admin.organizations.ownershipTransfer.newOwner")}
             </Label>
             <Input
               className="sm:max-w-40"
@@ -82,12 +87,16 @@ export function OwnershipTransferDialog({
               inputMode="numeric"
               value={ownerAccountId}
               onChange={(event) => setOwnerAccountId(event.target.value)}
-              placeholder="Account number"
+              placeholder={bt("bloem.admin.organizations.ownershipTransfer.accountNumber")}
             />
             {ownerError ? <p className="text-destructive text-sm">{ownerError}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ownership-confirmation">Type {organization.name} to confirm</Label>
+            <Label htmlFor="ownership-confirmation">
+              {bt("bloem.admin.organizations.ownershipTransfer.typeToConfirm", {
+                name: organization.name,
+              })}
+            </Label>
             <Input
               id="ownership-confirmation"
               value={confirmation}
@@ -96,7 +105,9 @@ export function OwnershipTransferDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ownership-password">Your password</Label>
+            <Label htmlFor="ownership-password">
+              {bt("bloem.admin.organizations.ownershipTransfer.yourPassword")}
+            </Label>
             <Input
               id="ownership-password"
               type="password"
@@ -113,14 +124,16 @@ export function OwnershipTransferDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => changeOpen(false)} disabled={pending}>
-            Cancel
+            {bt("bloem.admin.organizations.ownershipTransfer.cancel")}
           </Button>
           <Button
             variant="destructive"
             disabled={!canSubmit}
             onClick={() => onTransfer({ ownerAccountId: parsedOwner, password })}
           >
-            {pending ? "Transferring…" : "Transfer ownership"}
+            {pending
+              ? bt("bloem.admin.organizations.ownershipTransfer.transferring")
+              : bt("bloem.admin.organizations.ownershipTransfer.transferOwnership")}
           </Button>
         </DialogFooter>
       </DialogContent>

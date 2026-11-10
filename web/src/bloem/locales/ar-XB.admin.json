@@ -11,6 +11,416 @@
       "value": "‏‮Watch Live TV‬"
     }
   ],
+  "bloem.admin.announcements.accountRole": [
+    {
+      "type": 0,
+      "value": "‏‮Account role‬"
+    }
+  ],
+  "bloem.admin.announcements.accountsAllTheirProfiles": [
+    {
+      "type": 0,
+      "value": "‏‮Accounts (all their profiles)‬"
+    }
+  ],
+  "bloem.admin.announcements.actionLabel": [
+    {
+      "type": 0,
+      "value": "‏‮Action label‬"
+    }
+  ],
+  "bloem.admin.announcements.actionLink": [
+    {
+      "type": 0,
+      "value": "‏‮Action link‬"
+    }
+  ],
+  "bloem.admin.announcements.actionLink2": [
+    {
+      "type": 0,
+      "value": "‏‮Action link: ‬"
+    },
+    {
+      "type": 1,
+      "value": "url"
+    }
+  ],
+  "bloem.admin.announcements.administrators": [
+    {
+      "type": 0,
+      "value": "‏‮Administrators‬"
+    }
+  ],
+  "bloem.admin.announcements.allViewers": [
+    {
+      "type": 0,
+      "value": "‏‮All viewers‬"
+    }
+  ],
+  "bloem.admin.announcements.allowViewersToDismiss": [
+    {
+      "type": 0,
+      "value": "‏‮Allow viewers to dismiss‬"
+    }
+  ],
+  "bloem.admin.announcements.announcements": [
+    {
+      "type": 0,
+      "value": "‏‮Announcements‬"
+    }
+  ],
+  "bloem.admin.announcements.appOrWebLink": [
+    {
+      "type": 0,
+      "value": "‏‮App or web link‬"
+    }
+  ],
+  "bloem.admin.announcements.artwork": [
+    {
+      "type": 0,
+      "value": "‏‮Artwork: ‬"
+    },
+    {
+      "type": 1,
+      "value": "imageUrl"
+    }
+  ],
+  "bloem.admin.announcements.audience": [
+    {
+      "type": 0,
+      "value": "‏‮Audience‬"
+    }
+  ],
+  "bloem.admin.announcements.cancel": [
+    {
+      "type": 0,
+      "value": "‏‮Cancel‬"
+    }
+  ],
+  "bloem.admin.announcements.chooseALibrary": [
+    {
+      "type": 0,
+      "value": "‏‮Choose a library‬"
+    }
+  ],
+  "bloem.admin.announcements.chooseAnOrganization": [
+    {
+      "type": 0,
+      "value": "‏‮Choose an organization‬"
+    }
+  ],
+  "bloem.admin.announcements.critical": [
+    {
+      "type": 0,
+      "value": "‏‮Critical‬"
+    }
+  ],
+  "bloem.admin.announcements.expires": [
+    {
+      "type": 0,
+      "value": "‏‮Expires: ‬"
+    },
+    {
+      "type": 1,
+      "value": "expiry"
+    }
+  ],
+  "bloem.admin.announcements.expiresAtYourLocalTime": [
+    {
+      "type": 0,
+      "value": "‏‮Expires at (your local time)‬"
+    }
+  ],
+  "bloem.admin.announcements.imageUrl": [
+    {
+      "type": 0,
+      "value": "‏‮Image URL‬"
+    }
+  ],
+  "bloem.admin.announcements.information": [
+    {
+      "type": 0,
+      "value": "‏‮Information‬"
+    }
+  ],
+  "bloem.admin.announcements.keepEditing": [
+    {
+      "type": 0,
+      "value": "‏‮Keep editing‬"
+    }
+  ],
+  "bloem.admin.announcements.library": [
+    {
+      "type": 0,
+      "value": "‏‮Library‬"
+    }
+  ],
+  "bloem.admin.announcements.libraryId": [
+    {
+      "type": 0,
+      "value": "‏‮Library ID‬"
+    }
+  ],
+  "bloem.admin.announcements.link": [
+    {
+      "type": 0,
+      "value": "‏‮Link: ‬"
+    },
+    {
+      "type": 1,
+      "value": "deeplink"
+    }
+  ],
+  "bloem.admin.announcements.linksArtworkAndExpiry": [
+    {
+      "type": 0,
+      "value": "‏‮Links, artwork and expiry‬"
+    }
+  ],
+  "bloem.admin.announcements.loadingAnnouncements": [
+    {
+      "type": 0,
+      "value": "‏‮Loading announcements…‬"
+    }
+  ],
+  "bloem.admin.announcements.message": [
+    {
+      "type": 0,
+      "value": "‏‮Message‬"
+    }
+  ],
+  "bloem.admin.announcements.newAnnouncement": [
+    {
+      "type": 0,
+      "value": "‏‮New announcement‬"
+    }
+  ],
+  "bloem.admin.announcements.noAnnouncementsHaveBeenPublished": [
+    {
+      "type": 0,
+      "value": "‏‮No announcements have been published.‬"
+    }
+  ],
+  "bloem.admin.announcements.noExpiry": [
+    {
+      "type": 0,
+      "value": "‏‮No expiry‬"
+    }
+  ],
+  "bloem.admin.announcements.orAccountNumbersSeparatedBy": [
+    {
+      "type": 0,
+      "value": "‏‮Or account numbers, separated by commas‬"
+    }
+  ],
+  "bloem.admin.announcements.organization": [
+    {
+      "type": 0,
+      "value": "‏‮Organization‬"
+    }
+  ],
+  "bloem.admin.announcements.organizationId": [
+    {
+      "type": 0,
+      "value": "‏‮Organization ID‬"
+    }
+  ],
+  "bloem.admin.announcements.previewAnnouncement": [
+    {
+      "type": 0,
+      "value": "‏‮Preview announcement‬"
+    }
+  ],
+  "bloem.admin.announcements.profileIdsSeparatedByCommas": [
+    {
+      "type": 0,
+      "value": "‏‮Profile IDs, separated by commas (optional)‬"
+    }
+  ],
+  "bloem.admin.announcements.publishAnnouncement": [
+    {
+      "type": 0,
+      "value": "‏‮Publish announcement‬"
+    }
+  ],
+  "bloem.admin.announcements.publishMessagesToYourViewers": [
+    {
+      "type": 0,
+      "value": "‏‮Publish messages to your viewers’ inboxes. Supporting clients can also show them as banners.‬"
+    }
+  ],
+  "bloem.admin.announcements.publishedAnnouncements": [
+    {
+      "type": 0,
+      "value": "‏‮Published announcements‬"
+    }
+  ],
+  "bloem.admin.announcements.publishing": [
+    {
+      "type": 0,
+      "value": "‏‮Publishing…‬"
+    }
+  ],
+  "bloem.admin.announcements.publishingSendsTo": [
+    {
+      "type": 0,
+      "value": "‏‮Publishing sends this message immediately to ‬"
+    },
+    {
+      "type": 1,
+      "value": "audience"
+    },
+    {
+      "type": 0,
+      "value": "‮. Published messages can be withdrawn.‬"
+    }
+  ],
+  "bloem.admin.announcements.recipients": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "severity"
+    },
+    {
+      "type": 0,
+      "value": "‮ · ‬"
+    },
+    {
+      "type": 1,
+      "value": "recipientCount"
+    },
+    {
+      "type": 0,
+      "value": "‮ recipients · ‬"
+    },
+    {
+      "type": 1,
+      "value": "created"
+    }
+  ],
+  "bloem.admin.announcements.refresh": [
+    {
+      "type": 0,
+      "value": "‏‮Refresh‬"
+    }
+  ],
+  "bloem.admin.announcements.removeFromDeliveryItsPublication": [
+    {
+      "type": 0,
+      "value": "‏‮Remove “‬"
+    },
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": "‮” from delivery. Its publication record will remain here.‬"
+    }
+  ],
+  "bloem.admin.announcements.selectThePlatformContextTo": [
+    {
+      "type": 0,
+      "value": "‏‮Select the platform context to publish announcements.‬"
+    }
+  ],
+  "bloem.admin.announcements.severity": [
+    {
+      "type": 0,
+      "value": "‏‮Severity‬"
+    }
+  ],
+  "bloem.admin.announcements.specificUsersOrProfiles": [
+    {
+      "type": 0,
+      "value": "‏‮Specific users or profiles‬"
+    }
+  ],
+  "bloem.admin.announcements.theSelectedAudience": [
+    {
+      "type": 0,
+      "value": "‏‮the selected audience‬"
+    }
+  ],
+  "bloem.admin.announcements.title": [
+    {
+      "type": 0,
+      "value": "‏‮Title‬"
+    }
+  ],
+  "bloem.admin.announcements.users": [
+    {
+      "type": 0,
+      "value": "‏‮Users‬"
+    }
+  ],
+  "bloem.admin.announcements.viewersCanDismissThisMessage": [
+    {
+      "type": 0,
+      "value": "‏‮Viewers can dismiss this message.‬"
+    }
+  ],
+  "bloem.admin.announcements.viewersCannotDismissCriticalAnnouncements": [
+    {
+      "type": 0,
+      "value": "‏‮Viewers cannot dismiss critical announcements.‬"
+    }
+  ],
+  "bloem.admin.announcements.viewersCannotDismissThisMessage": [
+    {
+      "type": 0,
+      "value": "‏‮Viewers cannot dismiss this message.‬"
+    }
+  ],
+  "bloem.admin.announcements.viewersWithLibraryAccess": [
+    {
+      "type": 0,
+      "value": "‏‮Viewers with library access‬"
+    }
+  ],
+  "bloem.admin.announcements.warning": [
+    {
+      "type": 0,
+      "value": "‏‮Warning‬"
+    }
+  ],
+  "bloem.admin.announcements.withdraw": [
+    {
+      "type": 0,
+      "value": "‏‮Withdraw ‬"
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.admin.announcements.withdraw2": [
+    {
+      "type": 0,
+      "value": "‏‮Withdraw‬"
+    }
+  ],
+  "bloem.admin.announcements.withdrawAnnouncement": [
+    {
+      "type": 0,
+      "value": "‏‮Withdraw announcement?‬"
+    }
+  ],
+  "bloem.admin.announcements.withdrawAnnouncement2": [
+    {
+      "type": 0,
+      "value": "‏‮Withdraw announcement‬"
+    }
+  ],
+  "bloem.admin.announcements.withdrawing": [
+    {
+      "type": 0,
+      "value": "‏‮Withdrawing…‬"
+    }
+  ],
   "bloem.admin.libraries.form.checkingLocations": [
     {
       "type": 0,
@@ -83,16 +493,2799 @@
       "value": "‏‮— a library keeps its storage source‬"
     }
   ],
+  "bloem.admin.orgInvitations.accessGroup": [
+    {
+      "type": 0,
+      "value": "‏‮Access group‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.admin": [
+    {
+      "type": 0,
+      "value": "‏‮Admin‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.appearsInTheEmailPlain": [
+    {
+      "type": 0,
+      "value": "‏‮Appears in the email. Plain text.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.cancel": [
+    {
+      "type": 0,
+      "value": "‏‮Cancel‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.copiedToClipboard": [
+    {
+      "type": 0,
+      "value": "‏‮Copied to clipboard‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.copyLink": [
+    {
+      "type": 0,
+      "value": "‏‮Copy link‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.couldNotCopyTheLink": [
+    {
+      "type": 0,
+      "value": "‏‮Could not copy the link. Select and copy it manually.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.createAOneTimeLink": [
+    {
+      "type": 0,
+      "value": "‏‮Create a one-time link and deliver it yourself. No email is sent; they choose a password when claiming it.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.createAPersonalInvitationLink": [
+    {
+      "type": 0,
+      "value": "‏‮Create a personal invitation link and deliver it yourself. This workflow does not send email. Their access is set here; they choose a password when claiming the link.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.createInviteLink": [
+    {
+      "type": 0,
+      "value": "‏‮Create invite link‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.createTheirFirstProfile": [
+    {
+      "type": 0,
+      "value": "‏‮Create their first profile‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.creating": [
+    {
+      "type": 0,
+      "value": "‏‮Creating…‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.default": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‮ (default)‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.done": [
+    {
+      "type": 0,
+      "value": "‏‮Done‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.emailAddress": [
+    {
+      "type": 0,
+      "value": "‏‮Email address‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.emailSomeoneAPersonalLink": [
+    {
+      "type": 0,
+      "value": "‏‮Email someone a personal link. Their access is set here, so all they choose is a password — their email address becomes their username.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.emailedToYouCanAlso": [
+    {
+      "type": 0,
+      "value": "‏‮Emailed to ‬"
+    },
+    {
+      "type": 1,
+      "value": "email"
+    },
+    {
+      "type": 0,
+      "value": "‮. You can also copy the link and send it to them directly.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.expires": [
+    {
+      "type": 0,
+      "value": "‏‮expires ‬"
+    },
+    {
+      "type": 1,
+      "value": "date"
+    }
+  ],
+  "bloem.admin.orgInvitations.freshInvitationLink": [
+    {
+      "type": 0,
+      "value": "‏‮Fresh invitation link‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.heySetYourselfUpWhenever": [
+    {
+      "type": 0,
+      "value": "‏‮Hey — set yourself up whenever.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.invitationEmailedYouCanAlso": [
+    {
+      "type": 0,
+      "value": "‏‮Invitation emailed. You can also copy the link and send it to them directly:‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.invitationResentTheOldLink": [
+    {
+      "type": 0,
+      "value": "‏‮Invitation resent — the old link no longer works‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.invitationSentTo": [
+    {
+      "type": 0,
+      "value": "‏‮Invitation sent to ‬"
+    },
+    {
+      "type": 1,
+      "value": "email"
+    }
+  ],
+  "bloem.admin.orgInvitations.invitations": [
+    {
+      "type": 0,
+      "value": "‏‮Invitations‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.invitationsShownHereBelongOnly": [
+    {
+      "type": 0,
+      "value": "‏‮Invitations shown here belong only to ‬"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‮.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.inviteSomeone": [
+    {
+      "type": 0,
+      "value": "‏‮Invite someone‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.invitedBy": [
+    {
+      "type": 0,
+      "value": "‏‮Invited by ‬"
+    },
+    {
+      "type": 1,
+      "value": "invitedByName"
+    }
+  ],
+  "bloem.admin.orgInvitations.linkExpiresIn7Days": [
+    {
+      "type": 0,
+      "value": "‏‮Link expires in 7 days · single use‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.loadingInvitations": [
+    {
+      "type": 0,
+      "value": "‏‮Loading invitations...‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.namedFromThePartBefore": [
+    {
+      "type": 0,
+      "value": "‏‮Named from the part before the @. They can rename it later.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.noEmailWasSentDeliver": [
+    {
+      "type": 0,
+      "value": "‏‮No email was sent. Deliver this one-time link yourself.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.noInvitationsYetInviteSomeone": [
+    {
+      "type": 0,
+      "value": "‏‮No invitations yet. Invite someone to get started.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.personalNoteOptional": [
+    {
+      "type": 0,
+      "value": "‏‮Personal note (optional)‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.recipient": [
+    {
+      "type": 0,
+      "value": "‏‮Recipient‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.regenerateInvitationLink": [
+    {
+      "type": 0,
+      "value": "‏‮Regenerate invitation link‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.reloadInvitations": [
+    {
+      "type": 0,
+      "value": "‏‮Reload invitations‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.resendWithAFreshLink": [
+    {
+      "type": 0,
+      "value": "‏‮Resend with a fresh link‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.revokeInvitation": [
+    {
+      "type": 0,
+      "value": "‏‮Revoke invitation‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.revokeTheInvitationForTheir": [
+    {
+      "type": 0,
+      "value": "‏‮Revoke the invitation for ‬"
+    },
+    {
+      "type": 1,
+      "value": "email"
+    },
+    {
+      "type": 0,
+      "value": "‮? Their link will stop working immediately.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.revokeThisLink": [
+    {
+      "type": 0,
+      "value": "‏‮Revoke this link‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.role": [
+    {
+      "type": 0,
+      "value": "‏‮Role‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.sendInvite": [
+    {
+      "type": 0,
+      "value": "‏‮Send invite‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.sending": [
+    {
+      "type": 0,
+      "value": "‏‮Sending...‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.sent": [
+    {
+      "type": 0,
+      "value": "‏‮Sent‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.serverDefault": [
+    {
+      "type": 0,
+      "value": "‏‮Server default‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.showTheFeatureTourOn": [
+    {
+      "type": 0,
+      "value": "‏‮Show the feature tour on first sign-in‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.status": [
+    {
+      "type": 0,
+      "value": "‏‮Status‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.theInvitationWasCreatedBut": [
+    {
+      "type": 0,
+      "value": "‏‮The invitation was created, but no email was sent. Deliver this one-time link yourself:‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.thePreviousLinkWillStop": [
+    {
+      "type": 0,
+      "value": "‏‮The previous link will stop working. No email is sent: copy and deliver the new one-time link yourself.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.themExampleCom": [
+    {
+      "type": 0,
+      "value": "‏‮them@example.com‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.theyGetAnEmailWith": [
+    {
+      "type": 0,
+      "value": "‏‮They get an email with a link. Their username is their email address, so all they pick is a password.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.thisBecomesBothTheDestination": [
+    {
+      "type": 0,
+      "value": "‏‮This becomes both the destination and their sign-in username.‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.user": [
+    {
+      "type": 0,
+      "value": "‏‮User‬"
+    }
+  ],
+  "bloem.admin.orgInvitations.walksThroughWhatThisServer": [
+    {
+      "type": 0,
+      "value": "‏‮Walks through what this server can do, skipping anything turned off.‬"
+    }
+  ],
+  "bloem.admin.organizations.libraryEntitlements.confirmTitle": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "action"
+    },
+    {
+      "type": 0,
+      "value": "‮ ‬"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‮?‬"
+    }
+  ],
+  "bloem.admin.organizations.libraryEntitlements.giveBack": [
+    {
+      "type": 0,
+      "value": "‏‮Give back‬"
+    }
+  ],
+  "bloem.admin.organizations.libraryEntitlements.manage": [
+    {
+      "type": 0,
+      "value": "‏‮Manage ‬"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "bloem.admin.organizations.libraryEntitlements.membersCanTUseThis": [
+    {
+      "type": 0,
+      "value": "‏‮Members can’t use this library until you restore it. No files are deleted.‬"
+    }
+  ],
+  "bloem.admin.organizations.libraryEntitlements.membersCanUseThisLibrary": [
+    {
+      "type": 0,
+      "value": "‏‮Members can use this library again, within their own plan and profile limits.‬"
+    }
+  ],
+  "bloem.admin.organizations.libraryEntitlements.membersLoseThisLibraryFor": [
+    {
+      "type": 0,
+      "value": "‏‮Members lose this library for good. Only a platform administrator can share it again. No files are deleted.‬"
+    }
+  ],
+  "bloem.admin.organizations.libraryEntitlements.pause": [
+    {
+      "type": 0,
+      "value": "‏‮Pause‬"
+    }
+  ],
+  "bloem.admin.organizations.libraryEntitlements.restore": [
+    {
+      "type": 0,
+      "value": "‏‮Restore‬"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.membersOfCanUseIt": [
+    {
+      "type": 0,
+      "value": "‏‮Members of ‬"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‮ can use it again.‬"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.name": [
+    {
+      "type": 0,
+      "value": "‏‮Name‬"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.nameAndStatus": [
+    {
+      "type": 0,
+      "value": "‏‮Name and status‬"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.reactivate": [
+    {
+      "type": 0,
+      "value": "‏‮Reactivate ‬"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.reactivateOrganization": [
+    {
+      "type": 0,
+      "value": "‏‮Reactivate organization‬"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.saveDetails": [
+    {
+      "type": 0,
+      "value": "‏‮Save details‬"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.saving": [
+    {
+      "type": 0,
+      "value": "‏‮Saving…‬"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.shortName": [
+    {
+      "type": 0,
+      "value": "‏‮Short name‬"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.suspend": [
+    {
+      "type": 0,
+      "value": "‏‮Suspend ‬"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.suspendDescription": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ active member loses‬"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ active members lose‬"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‮ access until you reactivate it. Nothing is deleted.‬"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.suspendOrganization": [
+    {
+      "type": 0,
+      "value": "‏‮Suspend organization‬"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.transferOwnership": [
+    {
+      "type": 0,
+      "value": "‏‮Transfer ownership‬"
+    }
+  ],
+  "bloem.admin.organizations.lifecycle.usedInLinksChangingIt": [
+    {
+      "type": 0,
+      "value": "‏‮Used in links. Changing it breaks links people have saved.‬"
+    }
+  ],
+  "bloem.admin.organizations.ownershipTransfer.accountNumber": [
+    {
+      "type": 0,
+      "value": "‏‮Account number‬"
+    }
+  ],
+  "bloem.admin.organizations.ownershipTransfer.cancel": [
+    {
+      "type": 0,
+      "value": "‏‮Cancel‬"
+    }
+  ],
+  "bloem.admin.organizations.ownershipTransfer.findTheNewOwner": [
+    {
+      "type": 0,
+      "value": "‏‮Find the new owner‬"
+    }
+  ],
+  "bloem.admin.organizations.ownershipTransfer.newOwner": [
+    {
+      "type": 0,
+      "value": "‏‮New owner‬"
+    }
+  ],
+  "bloem.admin.organizations.ownershipTransfer.theOwnerCanTBe": [
+    {
+      "type": 0,
+      "value": "‏‮The owner can’t be removed from ‬"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‮. The new owner must already be an active member.‬"
+    }
+  ],
+  "bloem.admin.organizations.ownershipTransfer.transferOwnership": [
+    {
+      "type": 0,
+      "value": "‏‮Transfer ownership‬"
+    }
+  ],
+  "bloem.admin.organizations.ownershipTransfer.transferring": [
+    {
+      "type": 0,
+      "value": "‏‮Transferring…‬"
+    }
+  ],
+  "bloem.admin.organizations.ownershipTransfer.typeToConfirm": [
+    {
+      "type": 0,
+      "value": "‏‮Type ‬"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‮ to confirm‬"
+    }
+  ],
+  "bloem.admin.organizations.ownershipTransfer.yourPassword": [
+    {
+      "type": 0,
+      "value": "‏‮Your password‬"
+    }
+  ],
+  "bloem.admin.people.bulkBar.bulkPeopleActions": [
+    {
+      "type": 0,
+      "value": "‏‮Bulk people actions‬"
+    }
+  ],
+  "bloem.admin.people.bulkBar.changePlanOrSettings": [
+    {
+      "type": 0,
+      "value": "‏‮Change plan or settings‬"
+    }
+  ],
+  "bloem.admin.people.bulkBar.moveTheirProfilesToAn": [
+    {
+      "type": 0,
+      "value": "‏‮Move their profiles to an access group‬"
+    }
+  ],
+  "bloem.admin.people.bulkBar.moveToAccessGroup": [
+    {
+      "type": 0,
+      "value": "‏‮Move to access group‬"
+    }
+  ],
+  "bloem.admin.people.bulkBar.reactivate": [
+    {
+      "type": 0,
+      "value": "‏‮Reactivate‬"
+    }
+  ],
+  "bloem.admin.people.bulkBar.selectedCount": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ person‬"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ people‬"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‮ selected‬"
+    }
+  ],
+  "bloem.admin.people.bulkBar.suspend": [
+    {
+      "type": 0,
+      "value": "‏‮Suspend‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.applyToAccounts": [
+    {
+      "type": 0,
+      "value": "‏‮Apply to ‬"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ account‬"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ accounts‬"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.back": [
+    {
+      "type": 0,
+      "value": "‏‮Back‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.cancel": [
+    {
+      "type": 0,
+      "value": "‏‮Cancel‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.changePlanOrSettings": [
+    {
+      "type": 0,
+      "value": "‏‮Change plan or settings‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.checkTheAccounts": [
+    {
+      "type": 0,
+      "value": "‏‮Check the accounts‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.checking": [
+    {
+      "type": 0,
+      "value": "‏‮Checking…‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.confirm": [
+    {
+      "type": 0,
+      "value": "‏‮Confirm‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.forAccountsIn": [
+    {
+      "type": 0,
+      "value": "‏‮For ‬"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ account‬"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ accounts‬"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‮ in ‬"
+    },
+    {
+      "type": 1,
+      "value": "organizationName"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.leftOutByYourFilters": [
+    {
+      "type": 0,
+      "value": "‏‮Left out by your filters‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.next": [
+    {
+      "type": 0,
+      "value": "‏‮Next‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.preview": [
+    {
+      "type": 0,
+      "value": "‏‮Preview‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.reviewTheAccountsAgain": [
+    {
+      "type": 0,
+      "value": "‏‮Review the accounts again‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.reviewTheChange": [
+    {
+      "type": 0,
+      "value": "‏‮Review the change‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.selected": [
+    {
+      "type": 0,
+      "value": "‏‮Selected‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.thisListIsFixedNow": [
+    {
+      "type": 0,
+      "value": "‏‮This list is fixed now, so people who join or match your filters later are not included. Finish by ‬"
+    },
+    {
+      "type": 1,
+      "value": "dateTime"
+    },
+    {
+      "type": 0,
+      "value": "‮.‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.updatePreview": [
+    {
+      "type": 0,
+      "value": "‏‮Update preview‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.whatShouldChange": [
+    {
+      "type": 0,
+      "value": "‏‮What should change?‬"
+    }
+  ],
+  "bloem.admin.people.bulkPolicy.youChangedAnOptionSo": [
+    {
+      "type": 0,
+      "value": "‏‮You changed an option, so this preview is out of date. Update it to continue.‬"
+    }
+  ],
+  "bloem.admin.people.bulkResult.account": [
+    {
+      "type": 0,
+      "value": "‏‮Account ‬"
+    },
+    {
+      "type": 1,
+      "value": "accountId"
+    },
+    {
+      "type": 0,
+      "value": "‮: ‬"
+    },
+    {
+      "type": 1,
+      "value": "resultReason"
+    }
+  ],
+  "bloem.admin.people.bulkResult.changed": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "succeeded"
+    },
+    {
+      "type": 0,
+      "value": "‮ changed‬"
+    }
+  ],
+  "bloem.admin.people.bulkResult.failed": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "failed"
+    },
+    {
+      "type": 0,
+      "value": "‮ failed‬"
+    }
+  ],
+  "bloem.admin.people.bulkResult.failed2": [
+    {
+      "type": 0,
+      "value": "‏‮Failed‬"
+    }
+  ],
+  "bloem.admin.people.bulkResult.ofDone": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "progressCurrent"
+    },
+    {
+      "type": 0,
+      "value": "‮ of ‬"
+    },
+    {
+      "type": 1,
+      "value": "progressTotal"
+    },
+    {
+      "type": 0,
+      "value": "‮ done‬"
+    }
+  ],
+  "bloem.admin.people.bulkResult.skipped": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "skipped"
+    },
+    {
+      "type": 0,
+      "value": "‮ skipped‬"
+    }
+  ],
+  "bloem.admin.people.bulkResult.skipped2": [
+    {
+      "type": 0,
+      "value": "‏‮Skipped‬"
+    }
+  ],
+  "bloem.admin.people.detail.account": [
+    {
+      "type": 0,
+      "value": "‏‮Account‬"
+    }
+  ],
+  "bloem.admin.people.detail.lastActive": [
+    {
+      "type": 0,
+      "value": "‏‮Last active‬"
+    }
+  ],
+  "bloem.admin.people.detail.profilesAndAccessGroups": [
+    {
+      "type": 0,
+      "value": "‏‮Profiles and access groups‬"
+    }
+  ],
+  "bloem.admin.people.detail.revision": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "accountId"
+    },
+    {
+      "type": 0,
+      "value": "‮ · revision ‬"
+    },
+    {
+      "type": 1,
+      "value": "securityRevision"
+    }
+  ],
+  "bloem.admin.people.table.details": [
+    {
+      "type": 0,
+      "value": "‏‮Details‬"
+    }
+  ],
+  "bloem.admin.people.table.detailsFor": [
+    {
+      "type": 0,
+      "value": "‏‮Details for ‬"
+    },
+    {
+      "type": 1,
+      "value": "person"
+    }
+  ],
+  "bloem.admin.people.table.groupForProfile": [
+    {
+      "type": 0,
+      "value": "‏‮Group for ‬"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‮ profile‬"
+    }
+  ],
+  "bloem.admin.people.table.lastActivity": [
+    {
+      "type": 0,
+      "value": "‏‮Last activity‬"
+    }
+  ],
+  "bloem.admin.people.table.people": [
+    {
+      "type": 0,
+      "value": "‏‮People‬"
+    }
+  ],
+  "bloem.admin.people.table.person": [
+    {
+      "type": 0,
+      "value": "‏‮Person‬"
+    }
+  ],
+  "bloem.admin.people.table.profilesAndAccessGroups": [
+    {
+      "type": 0,
+      "value": "‏‮Profiles and access groups‬"
+    }
+  ],
+  "bloem.admin.people.table.status": [
+    {
+      "type": 0,
+      "value": "‏‮Status‬"
+    }
+  ],
   "bloem.admin.plugins.storageTab": [
     {
       "type": 0,
       "value": "‏‮Storage‬"
     }
   ],
+  "bloem.admin.policy.accountPicker.account": [
+    {
+      "type": 0,
+      "value": "‏‮Account ‬"
+    },
+    {
+      "type": 1,
+      "value": "accountID"
+    }
+  ],
+  "bloem.admin.policy.accountPicker.accountLower": [
+    {
+      "type": 0,
+      "value": "‏‮account ‬"
+    },
+    {
+      "type": 1,
+      "value": "accountID"
+    }
+  ],
+  "bloem.admin.policy.accountPicker.accountSearchIsUnavailableEnter": [
+    {
+      "type": 0,
+      "value": "‏‮Account search is unavailable. Enter account numbers instead.‬"
+    }
+  ],
+  "bloem.admin.policy.accountPicker.chosenAccounts": [
+    {
+      "type": 0,
+      "value": "‏‮Chosen accounts‬"
+    }
+  ],
+  "bloem.admin.policy.accountPicker.nameOrEmail": [
+    {
+      "type": 0,
+      "value": "‏‮Name or email‬"
+    }
+  ],
+  "bloem.admin.policy.accountPicker.noAccountsMatch": [
+    {
+      "type": 0,
+      "value": "‏‮No accounts match.‬"
+    }
+  ],
+  "bloem.admin.policy.accountPicker.remove": [
+    {
+      "type": 0,
+      "value": "‏‮Remove ‬"
+    },
+    {
+      "type": 1,
+      "value": "account"
+    }
+  ],
+  "bloem.admin.policy.changeForm.allow": [
+    {
+      "type": 0,
+      "value": "‏‮Allow‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.anythingLeftOnKeepAs": [
+    {
+      "type": 0,
+      "value": "‏‮Anything left on “Keep as is”, or empty, comes from the cohort you start from. For limits, 0 means no limit.‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.bestPictureQuality": [
+    {
+      "type": 0,
+      "value": "‏‮Best picture quality‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.chooseACohort": [
+    {
+      "type": 0,
+      "value": "‏‮Choose a cohort‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.chooseAPlan": [
+    {
+      "type": 0,
+      "value": "‏‮Choose a plan‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.chooseAPlanFirst": [
+    {
+      "type": 0,
+      "value": "‏‮Choose a plan first‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.cohortOption": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‮ (‬"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ account‬"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ accounts‬"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‮)‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.conversionsAtOnce": [
+    {
+      "type": 0,
+      "value": "‏‮Conversions at once‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.donTAllow": [
+    {
+      "type": 0,
+      "value": "‏‮Don’t allow‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.downloadConvertedCopies": [
+    {
+      "type": 0,
+      "value": "‏‮Download converted copies‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.downloadOriginalFiles": [
+    {
+      "type": 0,
+      "value": "‏‮Download original files‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.extraPermissions": [
+    {
+      "type": 0,
+      "value": "‏‮Extra permissions‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.keepAsIs": [
+    {
+      "type": 0,
+      "value": "‏‮Keep as is‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.libraries": [
+    {
+      "type": 0,
+      "value": "‏‮Libraries‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.mediaRequests": [
+    {
+      "type": 0,
+      "value": "‏‮Media requests‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.nameForTheNewCohort": [
+    {
+      "type": 0,
+      "value": "‏‮Name for the new cohort‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.newest": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "revision"
+    },
+    {
+      "type": 0,
+      "value": "‮ (newest)‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.nothingChangedYet": [
+    {
+      "type": 0,
+      "value": "‏‮Nothing changed yet.‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.plan": [
+    {
+      "type": 0,
+      "value": "‏‮Plan‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.planKey": [
+    {
+      "type": 0,
+      "value": "‏‮Plan key‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.playsVideo": [
+    {
+      "type": 0,
+      "value": "‏‮Plays video‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.profiles": [
+    {
+      "type": 0,
+      "value": "‏‮Profiles‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.revision": [
+    {
+      "type": 0,
+      "value": "‏‮Revision‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.screensAtOnce": [
+    {
+      "type": 0,
+      "value": "‏‮Screens at once‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.settingsToChange": [
+    {
+      "type": 0,
+      "value": "‏‮Settings to change‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.thisOrganizationHasNoCohorts": [
+    {
+      "type": 0,
+      "value": "‏‮This organization has no cohorts yet. Put the accounts on a plan first.‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.toPick": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "label"
+    },
+    {
+      "type": 0,
+      "value": "‮ to pick‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.videoConversion": [
+    {
+      "type": 0,
+      "value": "‏‮Video conversion‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.whatShouldChange": [
+    {
+      "type": 0,
+      "value": "‏‮What should change‬"
+    }
+  ],
+  "bloem.admin.policy.changeForm.yourChanges": [
+    {
+      "type": 0,
+      "value": "‏‮Your changes‬"
+    }
+  ],
+  "bloem.admin.policy.review.accountResultReason": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "account"
+    },
+    {
+      "type": 0,
+      "value": "‮: ‬"
+    },
+    {
+      "type": 1,
+      "value": "resultReason"
+    }
+  ],
+  "bloem.admin.policy.review.accountsNotChanged": [
+    {
+      "type": 0,
+      "value": "‏‮Accounts not changed‬"
+    }
+  ],
+  "bloem.admin.policy.review.alreadySetUpThisWay": [
+    {
+      "type": 0,
+      "value": "‏‮Already set up this way‬"
+    }
+  ],
+  "bloem.admin.policy.review.alsoChangeProfilesWithTheir": [
+    {
+      "type": 0,
+      "value": "‏‮Also change profiles with their own settings‬"
+    }
+  ],
+  "bloem.admin.policy.review.canTBeChanged": [
+    {
+      "type": 0,
+      "value": "‏‮Can’t be changed‬"
+    }
+  ],
+  "bloem.admin.policy.review.changed": [
+    {
+      "type": 0,
+      "value": "‏‮Changed‬"
+    }
+  ],
+  "bloem.admin.policy.review.checkedForAccounts": [
+    {
+      "type": 0,
+      "value": "‏‮I’ve checked this change for ‬"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ account‬"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ accounts‬"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.policy.review.cohortLine": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ account‬"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ accounts‬"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‮: ‬"
+    },
+    {
+      "type": 1,
+      "value": "where"
+    }
+  ],
+  "bloem.admin.policy.review.confirmByAccountsThatChange": [
+    {
+      "type": 0,
+      "value": "‏‮Confirm by ‬"
+    },
+    {
+      "type": 1,
+      "value": "expiresAt"
+    },
+    {
+      "type": 0,
+      "value": "‮. Accounts that change before then are skipped, not overwritten.‬"
+    }
+  ],
+  "bloem.admin.policy.review.details": [
+    {
+      "type": 0,
+      "value": "‏‮Details‬"
+    }
+  ],
+  "bloem.admin.policy.review.done": [
+    {
+      "type": 0,
+      "value": "‏‮Done‬"
+    }
+  ],
+  "bloem.admin.policy.review.failed": [
+    {
+      "type": 0,
+      "value": "‏‮Failed‬"
+    }
+  ],
+  "bloem.admin.policy.review.fieldForAccounts": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "field"
+    },
+    {
+      "type": 0,
+      "value": "‮ for ‬"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ account‬"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ accounts‬"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.policy.review.leftOut": [
+    {
+      "type": 0,
+      "value": "‏‮Left out‬"
+    }
+  ],
+  "bloem.admin.policy.review.newSettings": [
+    {
+      "type": 0,
+      "value": "‏‮New settings‬"
+    }
+  ],
+  "bloem.admin.policy.review.noSettingsChange": [
+    {
+      "type": 0,
+      "value": "‏‮No settings change.‬"
+    }
+  ],
+  "bloem.admin.policy.review.ofAccountsDone": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "progressCurrent"
+    },
+    {
+      "type": 0,
+      "value": "‮ of ‬"
+    },
+    {
+      "type": 1,
+      "value": "progressTotal"
+    },
+    {
+      "type": 0,
+      "value": "‮ accounts done‬"
+    }
+  ],
+  "bloem.admin.policy.review.offByDefaultProfilesThat": [
+    {
+      "type": 0,
+      "value": "‏‮Off by default. Profiles that follow their account always change with it.‬"
+    }
+  ],
+  "bloem.admin.policy.review.plan": [
+    {
+      "type": 0,
+      "value": "‏‮plan ‬"
+    },
+    {
+      "type": 1,
+      "value": "plan"
+    }
+  ],
+  "bloem.admin.policy.review.planRevision": [
+    {
+      "type": 0,
+      "value": "‏‮plan ‬"
+    },
+    {
+      "type": 1,
+      "value": "plan"
+    },
+    {
+      "type": 0,
+      "value": "‮, revision ‬"
+    },
+    {
+      "type": 1,
+      "value": "revision"
+    }
+  ],
+  "bloem.admin.policy.review.profiles": [
+    {
+      "type": 0,
+      "value": "‏‮Profiles‬"
+    }
+  ],
+  "bloem.admin.policy.review.progress": [
+    {
+      "type": 0,
+      "value": "‏‮Progress‬"
+    }
+  ],
+  "bloem.admin.policy.review.reviewTheseAccountsAgain": [
+    {
+      "type": 0,
+      "value": "‏‮Review these accounts again‬"
+    }
+  ],
+  "bloem.admin.policy.review.selected": [
+    {
+      "type": 0,
+      "value": "‏‮Selected‬"
+    }
+  ],
+  "bloem.admin.policy.review.settingsThatChange": [
+    {
+      "type": 0,
+      "value": "‏‮Settings that change‬"
+    }
+  ],
+  "bloem.admin.policy.review.skipped": [
+    {
+      "type": 0,
+      "value": "‏‮Skipped‬"
+    }
+  ],
+  "bloem.admin.policy.review.steps": [
+    {
+      "type": 0,
+      "value": "‏‮Steps‬"
+    }
+  ],
+  "bloem.admin.policy.review.stop": [
+    {
+      "type": 0,
+      "value": "‏‮Stop‬"
+    }
+  ],
+  "bloem.admin.policy.review.thatFollowTheirAccountChange": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "inheritedProfilesWillMove"
+    },
+    {
+      "type": 0,
+      "value": "‮ that follow their account change with it‬"
+    }
+  ],
+  "bloem.admin.policy.review.whatTheyLlGet": [
+    {
+      "type": 0,
+      "value": "‏‮What they'll get‬"
+    }
+  ],
+  "bloem.admin.policy.review.whatTheyLlGet2": [
+    {
+      "type": 0,
+      "value": "‏‮What they’ll get‬"
+    }
+  ],
+  "bloem.admin.policy.review.whereTheyAreNow": [
+    {
+      "type": 0,
+      "value": "‏‮Where they are now‬"
+    }
+  ],
+  "bloem.admin.policy.review.withTheirOwnSettingsChange": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "customProfilesWillMove"
+    },
+    {
+      "type": 0,
+      "value": "‮ with their own settings change too‬"
+    }
+  ],
+  "bloem.admin.policy.review.withTheirOwnSettingsStay": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "customProfilesWillRemain"
+    },
+    {
+      "type": 0,
+      "value": "‮ with their own settings stay as they are‬"
+    }
+  ],
+  "bloem.admin.policy.valueChange.policyValuePolicyValue2": [
+    {
+      "type": 0,
+      "value": "‏‮: ‬"
+    },
+    {
+      "type": 1,
+      "value": "policyValue"
+    },
+    {
+      "type": 0,
+      "value": "‮ → ‬"
+    },
+    {
+      "type": 1,
+      "value": "policyValue2"
+    }
+  ],
   "bloem.admin.search.matching.frequency": [
     {
       "type": 0,
       "value": "‏‮Drop the most common words until something matches‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.addStorageSource": [
+    {
+      "type": 0,
+      "value": "‏‮Add storage source‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.apiKey": [
+    {
+      "type": 0,
+      "value": "‏‮API key‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.audiobookTracks": [
+    {
+      "type": 0,
+      "value": "‏‮Audiobook tracks · ‬"
+    },
+    {
+      "type": 1,
+      "value": "version"
+    }
+  ],
+  "bloem.admin.storage.addDialog.back": [
+    {
+      "type": 0,
+      "value": "‏‮Back‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.backblazeB2WasabiCloudflareR2": [
+    {
+      "type": 0,
+      "value": "‏‮Backblaze B2, Wasabi, Cloudflare R2, Amazon S3 and more · ‬"
+    },
+    {
+      "type": 1,
+      "value": "version"
+    }
+  ],
+  "bloem.admin.storage.addDialog.bookwarehouse": [
+    {
+      "type": 0,
+      "value": "‏‮Bookwarehouse‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.bookwarehouseAudiobooks": [
+    {
+      "type": 0,
+      "value": "‏‮Bookwarehouse audiobooks‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.bookwarehouseServerUrl": [
+    {
+      "type": 0,
+      "value": "‏‮Bookwarehouse server URL‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.chooseWhereALibraryCan": [
+    {
+      "type": 0,
+      "value": "‏‮Choose where a library can read its books, movies or audiobooks from.‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.epubAndPdfBooks": [
+    {
+      "type": 0,
+      "value": "‏‮EPUB and PDF books · ‬"
+    },
+    {
+      "type": 1,
+      "value": "version"
+    }
+  ],
+  "bloem.admin.storage.addDialog.httpsBooksExample": [
+    {
+      "type": 0,
+      "value": "‏‮https://books.example‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.installAudiobooks": [
+    {
+      "type": 0,
+      "value": "‏‮Install audiobooks‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.installBookwarehouse": [
+    {
+      "type": 0,
+      "value": "‏‮Install Bookwarehouse‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.installing": [
+    {
+      "type": 0,
+      "value": "‏‮Installing...‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.loadingStorageTypes": [
+    {
+      "type": 0,
+      "value": "‏‮Loading storage types...‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.noStorageTypesAreAvailable": [
+    {
+      "type": 0,
+      "value": "‏‮No storage types are available. The platform administrator has to approve one first.‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.retry": [
+    {
+      "type": 0,
+      "value": "‏‮Retry‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.retrying": [
+    {
+      "type": 0,
+      "value": "‏‮Retrying…‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.s3CompatibleStorage": [
+    {
+      "type": 0,
+      "value": "‏‮S3-compatible storage‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.setUpAudiobooks": [
+    {
+      "type": 0,
+      "value": "‏‮Set up audiobooks‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.setUpS3": [
+    {
+      "type": 0,
+      "value": "‏‮Set up S3‬"
+    }
+  ],
+  "bloem.admin.storage.addDialog.theListOfStorageTypes": [
+    {
+      "type": 0,
+      "value": "‏‮The list of storage types couldn&apos;t be loaded.‬"
+    }
+  ],
+  "bloem.admin.storage.panel.addSource": [
+    {
+      "type": 0,
+      "value": "‏‮Add source‬"
+    }
+  ],
+  "bloem.admin.storage.panel.failedToLoadStorageSources": [
+    {
+      "type": 0,
+      "value": "‏‮Failed to load storage sources.‬"
+    }
+  ],
+  "bloem.admin.storage.panel.noStorageSourcesYet": [
+    {
+      "type": 0,
+      "value": "‏‮No storage sources yet.‬"
+    }
+  ],
+  "bloem.admin.storage.panel.removedSources": [
+    {
+      "type": 0,
+      "value": "‏‮Removed sources (‬"
+    },
+    {
+      "type": 1,
+      "value": "removed"
+    },
+    {
+      "type": 0,
+      "value": "‮)‬"
+    }
+  ],
+  "bloem.admin.storage.panel.sourcesAreLive": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "live"
+    },
+    {
+      "type": 0,
+      "value": "‮ sources are live.‬"
+    }
+  ],
+  "bloem.admin.storage.panel.storageSources": [
+    {
+      "type": 0,
+      "value": "‏‮Storage sources‬"
+    }
+  ],
+  "bloem.admin.storage.panel.t1SourceIsLive": [
+    {
+      "type": 0,
+      "value": "‏‮1 source is live.‬"
+    }
+  ],
+  "bloem.admin.storage.panel.whereALibraryCanRead": [
+    {
+      "type": 0,
+      "value": "‏‮Where a library can read its books, movies or audiobooks from instead of folders. Choose a source when you create the library.‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.addAnother": [
+    {
+      "type": 0,
+      "value": "‏‮Add another‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.added2": [
+    {
+      "type": 0,
+      "value": "‏‮added‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.addedSources": [
+    {
+      "type": 0,
+      "value": "‏‮Added ‬"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ source‬"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ sources‬"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‮: ‬"
+    },
+    {
+      "type": 1,
+      "value": "names"
+    }
+  ],
+  "bloem.admin.storage.s3Add.adding": [
+    {
+      "type": 0,
+      "value": "‏‮adding...‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.advancedOptions": [
+    {
+      "type": 0,
+      "value": "‏‮Advanced options‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.allBuckets": [
+    {
+      "type": 0,
+      "value": "‏‮All buckets‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.allBuckets2": [
+    {
+      "type": 0,
+      "value": "‏‮all buckets‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.allBucketsTheseKeysCan": [
+    {
+      "type": 0,
+      "value": "‏‮All buckets these keys can see (recommended)‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.back": [
+    {
+      "type": 0,
+      "value": "‏‮Back‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.bloemMakesSureItPlays": [
+    {
+      "type": 0,
+      "value": "‏‮Bloem makes sure it plays the same file it scanned. The first choice works with every bucket, and still reads exact versions when the bucket keeps them. Choose the second only if versioning is turned on for every bucket here: it refuses any file without a version, so a bucket without versioning shows nothing.‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.browseFolders": [
+    {
+      "type": 0,
+      "value": "‏‮Browse folders‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.bucketRoot": [
+    {
+      "type": 0,
+      "value": "‏‮bucket root‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.buckets": [
+    {
+      "type": 0,
+      "value": "‏‮Buckets‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.bucketsFound": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ bucket‬"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ buckets‬"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "‮ found‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.chooseBuckets": [
+    {
+      "type": 0,
+      "value": "‏‮Choose buckets‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.connect": [
+    {
+      "type": 0,
+      "value": "‏‮Connect‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.connecting": [
+    {
+      "type": 0,
+      "value": "‏‮Connecting...‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.createALibraryFromThese": [
+    {
+      "type": 0,
+      "value": "‏‮Create a library from these‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.createALibraryFromThis": [
+    {
+      "type": 0,
+      "value": "‏‮Create a library from this‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.eachSelectedBucketIsAdded": [
+    {
+      "type": 0,
+      "value": "‏‮Each selected bucket is added from its root.‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.failed": [
+    {
+      "type": 0,
+      "value": "‏‮failed — ‬"
+    },
+    {
+      "type": 1,
+      "value": "message"
+    }
+  ],
+  "bloem.admin.storage.s3Add.findBucketsInstead": [
+    {
+      "type": 0,
+      "value": "‏‮Find buckets instead‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.folder": [
+    {
+      "type": 0,
+      "value": "‏‮Folder: ‬"
+    },
+    {
+      "type": 1,
+      "value": "folder"
+    }
+  ],
+  "bloem.admin.storage.s3Add.howBloemChecksFiles": [
+    {
+      "type": 0,
+      "value": "‏‮How Bloem checks files‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.noBucketsWereFoundFor": [
+    {
+      "type": 0,
+      "value": "‏‮No buckets were found for these keys. If your provider gave you a specific bucket name, type it instead.‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.oneSourceFound": [
+    {
+      "type": 0,
+      "value": "‏‮One source. Each bucket appears as a folder, and you choose folders when you create a library. Found: ‬"
+    },
+    {
+      "type": 1,
+      "value": "buckets"
+    },
+    {
+      "type": 0,
+      "value": "‮.‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.oneSourceFoundMore": [
+    {
+      "type": 0,
+      "value": "‏‮One source. Each bucket appears as a folder, and you choose folders when you create a library. Found: ‬"
+    },
+    {
+      "type": 1,
+      "value": "buckets"
+    },
+    {
+      "type": 0,
+      "value": "‮ and ‬"
+    },
+    {
+      "type": 1,
+      "value": "more"
+    },
+    {
+      "type": 0,
+      "value": "‮ more.‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.outcomeLine": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "bucket"
+    },
+    {
+      "type": 0,
+      "value": "‮: ‬"
+    },
+    {
+      "type": 1,
+      "value": "outcome"
+    }
+  ],
+  "bloem.admin.storage.s3Add.pasteWhatYourProviderSent": [
+    {
+      "type": 0,
+      "value": "‏‮Paste what your provider sent you. The address and keys are read here in your browser; nothing is sent until you connect.‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.pasteYourConnectionDetails": [
+    {
+      "type": 0,
+      "value": "‏‮Paste your connection details‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.retryAnyway": [
+    {
+      "type": 0,
+      "value": "‏‮Retry ‬"
+    },
+    {
+      "type": 1,
+      "value": "bucket"
+    },
+    {
+      "type": 0,
+      "value": "‮ anyway‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.selectAll": [
+    {
+      "type": 0,
+      "value": "‏‮Select all‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.selectNone": [
+    {
+      "type": 0,
+      "value": "‏‮Select none‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.sourceExists": [
+    {
+      "type": 0,
+      "value": "‏‮A source for this bucket and folder already exists. You can still add another.‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.sourceExistsFor": [
+    {
+      "type": 0,
+      "value": "‏‮A source for this bucket and folder already exists for ‬"
+    },
+    {
+      "type": 1,
+      "value": "targets"
+    },
+    {
+      "type": 0,
+      "value": "‮. You can still add another.‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.sourcesAddedToast": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏‮Storage source added‬"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "‏‮Added ‬"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "‮ storage sources‬"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.storage.s3Add.thisS3ReleaseDoesNot": [
+    {
+      "type": 0,
+      "value": "‏‮This S3 release does not describe its configuration, so it cannot be added here.‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.tryAgain": [
+    {
+      "type": 0,
+      "value": "‏‮Try again‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.typeABucketNameInstead": [
+    {
+      "type": 0,
+      "value": "‏‮Type a bucket name instead‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.waiting": [
+    {
+      "type": 0,
+      "value": "‏‮waiting‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.whatShouldBloemSee": [
+    {
+      "type": 0,
+      "value": "‏‮What should Bloem see?‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.whereAreYourFilesStored": [
+    {
+      "type": 0,
+      "value": "‏‮Where are your files stored?‬"
+    }
+  ],
+  "bloem.admin.storage.s3Add.whereDoIFindThese": [
+    {
+      "type": 0,
+      "value": "‏‮Where do I find these?‬"
+    }
+  ],
+  "bloem.admin.storage.s3Browser.cancel": [
+    {
+      "type": 0,
+      "value": "‏‮Cancel‬"
+    }
+  ],
+  "bloem.admin.storage.s3Browser.folderBrowser": [
+    {
+      "type": 0,
+      "value": "‏‮Folder browser‬"
+    }
+  ],
+  "bloem.admin.storage.s3Browser.folderPath": [
+    {
+      "type": 0,
+      "value": "‏‮Folder path‬"
+    }
+  ],
+  "bloem.admin.storage.s3Browser.loadMore": [
+    {
+      "type": 0,
+      "value": "‏‮Load more‬"
+    }
+  ],
+  "bloem.admin.storage.s3Browser.loadingFolders": [
+    {
+      "type": 0,
+      "value": "‏‮Loading folders...‬"
+    }
+  ],
+  "bloem.admin.storage.s3Browser.noSubfoldersHere": [
+    {
+      "type": 0,
+      "value": "‏‮No subfolders here.‬"
+    }
+  ],
+  "bloem.admin.storage.s3Browser.tryAgain": [
+    {
+      "type": 0,
+      "value": "‏‮Try again‬"
+    }
+  ],
+  "bloem.admin.storage.s3Browser.useBucketRoot": [
+    {
+      "type": 0,
+      "value": "‏‮Use bucket root‬"
+    }
+  ],
+  "bloem.admin.storage.s3Browser.useThisFolder": [
+    {
+      "type": 0,
+      "value": "‏‮Use this folder‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.aDisabledSourceCanT": [
+    {
+      "type": 0,
+      "value": "‏‮A disabled source can't be tested.‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.accessKey": [
+    {
+      "type": 0,
+      "value": "‏‮Access key‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.apiKey": [
+    {
+      "type": 0,
+      "value": "‏‮API key‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.bookwarehouseServerUrl": [
+    {
+      "type": 0,
+      "value": "‏‮Bookwarehouse server URL‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.cancel": [
+    {
+      "type": 0,
+      "value": "‏‮Cancel‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.chooseAVersion": [
+    {
+      "type": 0,
+      "value": "‏‮Choose a version‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.connecting": [
+    {
+      "type": 0,
+      "value": "‏‮Connecting...‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.delete": [
+    {
+      "type": 0,
+      "value": "‏‮Delete‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.deleteFromThisListNothing": [
+    {
+      "type": 0,
+      "value": "‏‮Delete ‬"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‮ from this list? Nothing in your storage is deleted.‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.deleteSource": [
+    {
+      "type": 0,
+      "value": "‏‮Delete source‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.deleting": [
+    {
+      "type": 0,
+      "value": "‏‮Deleting...‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.edit": [
+    {
+      "type": 0,
+      "value": "‏‮Edit‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.enterTheAccessKeyAnd": [
+    {
+      "type": 0,
+      "value": "‏‮Enter the access key and secret key again to save. Bloem keeps them encrypted and can&apos;t show them.‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.httpsBooksExample": [
+    {
+      "type": 0,
+      "value": "‏‮https://books.example‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.keep": [
+    {
+      "type": 0,
+      "value": "‏‮Keep‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.kind": [
+    {
+      "type": 0,
+      "value": "‏‮ · ‬"
+    },
+    {
+      "type": 1,
+      "value": "kind"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.noOtherVersionsOfAre": [
+    {
+      "type": 0,
+      "value": "‏‮No other versions of ‬"
+    },
+    {
+      "type": 1,
+      "value": "plugin"
+    },
+    {
+      "type": 0,
+      "value": "‮ are available.‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.remove": [
+    {
+      "type": 0,
+      "value": "‏‮Remove‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.removeSource": [
+    {
+      "type": 0,
+      "value": "‏‮Remove source‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.removeThisCanAposT": [
+    {
+      "type": 0,
+      "value": "‏‮Remove ‬"
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": "‮? This can&apos;t be undone: to use this storage again, add it as a new source. Nothing in your storage is deleted.‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.removing": [
+    {
+      "type": 0,
+      "value": "‏‮Removing...‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.replaceKeys": [
+    {
+      "type": 0,
+      "value": "‏‮Replace keys‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.saveConnection": [
+    {
+      "type": 0,
+      "value": "‏‮Save connection‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.saveNewKeys": [
+    {
+      "type": 0,
+      "value": "‏‮Save new keys‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.saving": [
+    {
+      "type": 0,
+      "value": "‏‮Saving...‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.secretKey": [
+    {
+      "type": 0,
+      "value": "‏‮Secret key‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.sessionTokenOptional": [
+    {
+      "type": 0,
+      "value": "‏‮Session token (optional)‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.test": [
+    {
+      "type": 0,
+      "value": "‏‮Test‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.testing": [
+    {
+      "type": 0,
+      "value": "‏‮Testing...‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.thePluginCatalogHasNo": [
+    {
+      "type": 0,
+      "value": "‏‮The plugin catalog has no version of ‬"
+    },
+    {
+      "type": 1,
+      "value": "plugin"
+    },
+    {
+      "type": 0,
+      "value": "‮, so the source can&apos;t be edited here.‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.thisVersionOfTheS3": [
+    {
+      "type": 0,
+      "value": "‏‮This version of the S3 plugin doesn't describe its settings, so the source can't be edited here.‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.upgrade": [
+    {
+      "type": 0,
+      "value": "‏‮Upgrade‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.upgrading": [
+    {
+      "type": 0,
+      "value": "‏‮Upgrading...‬"
+    }
+  ],
+  "bloem.admin.storage.sourceRow.versionToUpgradeTo": [
+    {
+      "type": 0,
+      "value": "‏‮Version to upgrade to‬"
     }
   ],
   "bloem.admin.users.access.liveTv.description": [

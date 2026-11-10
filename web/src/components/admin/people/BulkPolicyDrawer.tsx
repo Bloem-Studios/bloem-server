@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ export default function BulkPolicyDrawer({
   onOpenChange(open: boolean): void;
   onRetrySelection(): void;
 }) {
+  const bt = useBloemT();
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<PolicyChangeDraft>(() =>
     emptyPolicyChangeDraft("assign", initialCohortID ?? cohorts[0]?.cohort_id ?? ""),
@@ -196,11 +198,13 @@ export default function BulkPolicyDrawer({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full gap-0 overflow-hidden sm:max-w-2xl">
-        <SheetHeader className="border-border space-y-3 border-b px-5 py-4 pr-12">
-          <SheetTitle>Change plan or settings</SheetTitle>
+        <SheetHeader className="border-border space-y-3 border-b px-5 py-4 pe-12">
+          <SheetTitle>{bt("bloem.admin.people.bulkPolicy.changePlanOrSettings")}</SheetTitle>
           <SheetDescription>
-            For {selection.matched.toLocaleString()}{" "}
-            {selection.matched === 1 ? "account" : "accounts"} in {organizationName}
+            {bt("bloem.admin.people.bulkPolicy.forAccountsIn", {
+              count: selection.matched,
+              organizationName,
+            })}
           </SheetDescription>
           {!visibleJob ? <StepList steps={STEPS} current={step} /> : null}
         </SheetHeader>
@@ -216,19 +220,31 @@ export default function BulkPolicyDrawer({
             />
           ) : step === 1 ? (
             <section className="space-y-4">
-              <h2 className="text-lg font-medium">Check the accounts</h2>
+              <h2 className="text-lg font-medium">
+                {bt("bloem.admin.people.bulkPolicy.checkTheAccounts")}
+              </h2>
               <dl className="grid grid-cols-2 gap-3">
-                <Count label="Selected" value={selection.matched} strong />
-                <Count label="Left out by your filters" value={selection.excluded} />
+                <Count
+                  label={bt("bloem.admin.people.bulkPolicy.selected")}
+                  value={selection.matched}
+                  strong
+                />
+                <Count
+                  label={bt("bloem.admin.people.bulkPolicy.leftOutByYourFilters")}
+                  value={selection.excluded}
+                />
               </dl>
               <p className="text-muted-foreground text-sm">
-                This list is fixed now, so people who join or match your filters later are not
-                included. Finish by {formatDateTime(selection.expires_at)}.
+                {bt("bloem.admin.people.bulkPolicy.thisListIsFixedNow", {
+                  dateTime: formatDateTime(selection.expires_at),
+                })}
               </p>
             </section>
           ) : step === 2 ? (
             <section className="space-y-4">
-              <h2 className="text-lg font-medium">What should change?</h2>
+              <h2 className="text-lg font-medium">
+                {bt("bloem.admin.people.bulkPolicy.whatShouldChange")}
+              </h2>
               <PolicyChangeForm
                 draft={draft}
                 onChange={(next) => {
@@ -250,7 +266,9 @@ export default function BulkPolicyDrawer({
             </section>
           ) : step === 3 ? (
             <section className="space-y-5">
-              <h2 className="text-lg font-medium">Review the change</h2>
+              <h2 className="text-lg font-medium">
+                {bt("bloem.admin.people.bulkPolicy.reviewTheChange")}
+              </h2>
               {preview ? (
                 <>
                   <PreviewImpact preview={preview} />
@@ -261,13 +279,13 @@ export default function BulkPolicyDrawer({
                   className="border-border bg-muted/40 rounded-lg border p-3 text-sm"
                   role="status"
                 >
-                  You changed an option, so this preview is out of date. Update it to continue.
+                  {bt("bloem.admin.people.bulkPolicy.youChangedAnOptionSo")}
                 </p>
               ) : null}
             </section>
           ) : preview ? (
             <section className="space-y-5">
-              <h2 className="text-lg font-medium">Confirm</h2>
+              <h2 className="text-lg font-medium">{bt("bloem.admin.people.bulkPolicy.confirm")}</h2>
               <PolicyTarget target={preview.target} libraries={libraries} />
               <ConfirmChange
                 accounts={selection.matched}
@@ -286,7 +304,7 @@ export default function BulkPolicyDrawer({
               <p className="text-destructive text-sm">{policyErrorMessage(stepError)}</p>
               {needsFreshSelection(stepError) ? (
                 <Button className="mt-3" size="sm" variant="outline" onClick={onRetrySelection}>
-                  Review the accounts again
+                  {bt("bloem.admin.people.bulkPolicy.reviewTheAccountsAgain")}
                 </Button>
               ) : null}
             </div>
@@ -301,16 +319,16 @@ export default function BulkPolicyDrawer({
                 variant="outline"
                 onClick={() => setStep((current) => Math.max(1, current - 1))}
               >
-                Back
+                {bt("bloem.admin.people.bulkPolicy.back")}
               </Button>
             ) : (
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {bt("bloem.admin.people.bulkPolicy.cancel")}
               </Button>
             )}
             {step === 1 ? (
               <Button type="button" onClick={() => setStep(2)}>
-                Next
+                {bt("bloem.admin.people.bulkPolicy.next")}
               </Button>
             ) : step === 2 || (step === 3 && !preview) ? (
               <Button
@@ -318,11 +336,15 @@ export default function BulkPolicyDrawer({
                 disabled={createPreview.isPending}
                 onClick={() => void previewImpact()}
               >
-                {createPreview.isPending ? "Checking…" : step === 2 ? "Preview" : "Update preview"}
+                {createPreview.isPending
+                  ? bt("bloem.admin.people.bulkPolicy.checking")
+                  : step === 2
+                    ? bt("bloem.admin.people.bulkPolicy.preview")
+                    : bt("bloem.admin.people.bulkPolicy.updatePreview")}
               </Button>
             ) : step === 3 ? (
               <Button type="button" onClick={() => setStep(4)}>
-                Next
+                {bt("bloem.admin.people.bulkPolicy.next")}
               </Button>
             ) : (
               <Button
@@ -330,8 +352,7 @@ export default function BulkPolicyDrawer({
                 disabled={!confirmed || createJob.isPending}
                 onClick={() => void submit()}
               >
-                Apply to {selection.matched.toLocaleString()}{" "}
-                {selection.matched === 1 ? "account" : "accounts"}
+                {bt("bloem.admin.people.bulkPolicy.applyToAccounts", { count: selection.matched })}
               </Button>
             )}
           </SheetFooter>

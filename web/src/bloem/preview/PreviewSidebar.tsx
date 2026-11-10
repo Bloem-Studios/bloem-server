@@ -13,7 +13,7 @@ export default function PreviewSidebar({
   const row = "hover:bg-sidebar-accent flex items-center gap-3 rounded-xl px-3 py-3 text-sm";
   return (
     <aside
-      className={`bg-sidebar text-sidebar-foreground fixed top-[var(--bloem-preview-banner-height,49px)] bottom-0 left-0 z-40 flex flex-col overflow-y-auto border-r p-3 ${collapsed ? "w-16" : "w-64"}`}
+      className={`bg-sidebar text-sidebar-foreground fixed start-0 top-[var(--bloem-preview-banner-height,49px)] bottom-0 z-40 flex flex-col overflow-y-auto border-e p-3 ${collapsed ? "w-16" : "w-64"}`}
     >
       <SiloBrand />
       <nav aria-label="Preview navigation" className="mt-6 flex-1 space-y-1">

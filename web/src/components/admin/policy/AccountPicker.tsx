@@ -1,4 +1,5 @@
 // Bloem: find server accounts by name or email instead of typing account numbers.
+import { useBloemT } from "@/bloem/i18n";
 import { Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -22,6 +23,7 @@ export function AccountPicker({
   onChange(ids: number[]): void;
   multiple?: boolean;
 }) {
+  const bt = useBloemT();
   const users = useAdminUsers();
   const [query, setQuery] = useState("");
   const byID = useMemo(
@@ -52,13 +54,13 @@ export function AccountPicker({
       <Label htmlFor={id}>{label}</Label>
       <div className="relative">
         <Search
-          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+          className="text-muted-foreground pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2"
           aria-hidden
         />
         <Input
           id={id}
-          className="pl-9"
-          placeholder="Name or email"
+          className="ps-9"
+          placeholder={bt("bloem.admin.policy.accountPicker.nameOrEmail")}
           autoComplete="off"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -72,7 +74,7 @@ export function AccountPicker({
       </div>
       {users.isError ? (
         <p className="text-muted-foreground text-sm">
-          Account search is unavailable. Enter account numbers instead.
+          {bt("bloem.admin.policy.accountPicker.accountSearchIsUnavailableEnter")}
         </p>
       ) : query.trim() ? (
         matches.length ? (
@@ -81,7 +83,7 @@ export function AccountPicker({
               <li key={user.id} role="option" aria-selected={false}>
                 <button
                   type="button"
-                  className="hover:bg-muted/50 flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors"
+                  className="hover:bg-muted/50 flex w-full items-center justify-between gap-3 px-3 py-2 text-start text-sm transition-colors"
                   onClick={() => pick(user)}
                 >
                   <span className="min-w-0">
@@ -98,23 +100,34 @@ export function AccountPicker({
             ))}
           </ul>
         ) : (
-          <p className="text-muted-foreground text-sm">No accounts match.</p>
+          <p className="text-muted-foreground text-sm">
+            {bt("bloem.admin.policy.accountPicker.noAccountsMatch")}
+          </p>
         )
       ) : null}
       {multiple && selected.length ? (
-        <ul className="flex flex-wrap gap-2" aria-label="Chosen accounts">
+        <ul
+          className="flex flex-wrap gap-2"
+          aria-label={bt("bloem.admin.policy.accountPicker.chosenAccounts")}
+        >
           {selected.map((accountID) => {
             const user = byID.get(accountID);
             return (
               <li
                 key={accountID}
-                className="border-border bg-muted/40 flex items-center gap-1 rounded-md border py-1 pr-1 pl-2 text-sm"
+                className="border-border bg-muted/40 flex items-center gap-1 rounded-md border py-1 ps-2 pe-1 text-sm"
               >
-                {user ? user.username : `Account ${accountID}`}
+                {user
+                  ? user.username
+                  : bt("bloem.admin.policy.accountPicker.account", { accountID })}
                 <button
                   type="button"
                   className="text-muted-foreground hover:text-foreground hover:bg-muted rounded p-0.5 transition-colors"
-                  aria-label={`Remove ${user ? user.username : `account ${accountID}`}`}
+                  aria-label={bt("bloem.admin.policy.accountPicker.remove", {
+                    account: user
+                      ? user.username
+                      : bt("bloem.admin.policy.accountPicker.accountLower", { accountID }),
+                  })}
                   onClick={() => onChange(selected.filter((value) => value !== accountID))}
                 >
                   <X className="size-3.5" aria-hidden />

@@ -54,7 +54,7 @@ export function OrganizationDomainsPanel({ organizationID }: { organizationID: s
                 <span className="text-muted-foreground text-xs">
                   {domain.source === "garden" ? "from the storefront" : "added here"}
                 </span>
-                <span className="ml-auto flex gap-2">
+                <span className="ms-auto flex gap-2">
                   {!domain.primary ? (
                     <Button
                       size="sm"

@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useEffect, useMemo, useRef, useState, type FocusEvent } from "react";
 import { ArrowLeft, CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
 import { Link } from "react-router";
@@ -119,10 +120,6 @@ function ordered(form: PluginAdminForm, first: string[]): PluginAdminForm {
   };
 }
 
-function plural(count: number, one: string, many: string): string {
-  return count === 1 ? one : many;
-}
-
 function hostName(endpoint: string): string {
   try {
     return new URL(endpoint).hostname;
@@ -153,6 +150,7 @@ export function S3AddForm({
   /** True while a batch of sources is being added, so the dialog is not dismissed part-way. */
   onBusyChange?: (busy: boolean) => void;
 }) {
+  const bt = useBloemT();
   const section = artifact.config_schema[0];
   // Memoized: a new schema would reset the form.
   const form = useMemo(() => {
@@ -176,7 +174,7 @@ export function S3AddForm({
   if (!form) {
     return (
       <p className="text-muted-foreground text-sm">
-        This S3 release does not describe its configuration, so it cannot be added here.
+        {bt("bloem.admin.storage.s3Add.thisS3ReleaseDoesNot")}
       </p>
     );
   }
@@ -214,6 +212,7 @@ function S3AddFormBody({
   onDone: () => void;
   onBusyChange?: (busy: boolean) => void;
 }) {
+  const bt = useBloemT();
   const discover = useDiscoverStorageSource();
   const listBuckets = useListS3Buckets();
   const { reset: resetDiscover } = discover;
@@ -682,9 +681,7 @@ function S3AddFormBody({
       setSaving(false);
       if (targets.every((b) => progress[b]?.state === "added")) {
         const names = targets.map((b) => progress[b]?.name ?? b);
-        toast.success(
-          names.length === 1 ? "Storage source added" : `Added ${names.length} storage sources`,
-        );
+        toast.success(bt("bloem.admin.storage.s3Add.sourcesAddedToast", { count: names.length }));
         resetForm();
         setAdded(names);
       } else {
@@ -732,17 +729,22 @@ function S3AddFormBody({
         <p className="flex items-start gap-2 text-sm font-medium">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
           <span>
-            Added {added.length} {plural(added.length, "source", "sources")}: {added.join(", ")}
+            {bt("bloem.admin.storage.s3Add.addedSources", {
+              count: added.length,
+              names: added.join(", "),
+            })}
           </span>
         </p>
         <div className="flex flex-wrap gap-2">
           <Button asChild>
             <Link to="/admin/libraries" onClick={onDone}>
-              {added.length === 1 ? "Create a library from this" : "Create a library from these"}
+              {added.length === 1
+                ? bt("bloem.admin.storage.s3Add.createALibraryFromThis")
+                : bt("bloem.admin.storage.s3Add.createALibraryFromThese")}
             </Link>
           </Button>
           <Button type="button" variant="outline" onClick={() => setAdded(null)}>
-            Add another
+            {bt("bloem.admin.storage.s3Add.addAnother")}
           </Button>
         </div>
       </div>
@@ -797,10 +799,12 @@ function S3AddFormBody({
     ) : (
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" variant="outline" size="sm" onClick={() => setBrowsing(true)}>
-          Browse folders
+          {bt("bloem.admin.storage.s3Add.browseFolders")}
         </Button>
         <span className="text-muted-foreground text-xs">
-          Folder: {text("prefix") || "bucket root"}
+          {bt("bloem.admin.storage.s3Add.folder", {
+            folder: text("prefix") || bt("bloem.admin.storage.s3Add.bucketRoot"),
+          })}
         </span>
       </div>
     );
@@ -809,15 +813,16 @@ function S3AddFormBody({
     <div className="space-y-3">
       <Button type="button" variant="ghost" size="sm" onClick={onBack} disabled={busy}>
         <ArrowLeft className="h-3.5 w-3.5" />
-        Back
+        {bt("bloem.admin.storage.s3Add.back")}
       </Button>
 
       <fieldset disabled={busy} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="s3-add-paste">Paste your connection details</Label>
+          <Label htmlFor="s3-add-paste">
+            {bt("bloem.admin.storage.s3Add.pasteYourConnectionDetails")}
+          </Label>
           <p className="text-muted-foreground text-xs">
-            Paste what your provider sent you. The address and keys are read here in your browser;
-            nothing is sent until you connect.
+            {bt("bloem.admin.storage.s3Add.pasteWhatYourProviderSent")}
           </p>
           <textarea
             id="s3-add-paste"
@@ -844,7 +849,9 @@ function S3AddFormBody({
         </div>
 
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Where are your files stored?</legend>
+          <legend className="text-sm font-medium">
+            {bt("bloem.admin.storage.s3Add.whereAreYourFilesStored")}
+          </legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {S3_PROVIDERS.map((option) => (
               <label
@@ -900,7 +907,7 @@ function S3AddFormBody({
             </div>
             <details className="text-xs">
               <summary className="text-muted-foreground cursor-pointer">
-                Where do I find these?
+                {bt("bloem.admin.storage.s3Add.whereDoIFindThese")}
               </summary>
               <p className="text-muted-foreground mt-1">{chosen.keysHint}</p>
             </details>
@@ -921,7 +928,7 @@ function S3AddFormBody({
             ) : (
               <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             )}
-            Advanced options
+            {bt("bloem.admin.storage.s3Add.advancedOptions")}
           </Button>
           {advanced ? (
             <div id="s3-add-advanced" className="space-y-3 rounded-md border p-3">
@@ -935,7 +942,9 @@ function S3AddFormBody({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="s3-add-revision_mode">How Bloem checks files</Label>
+                <Label htmlFor="s3-add-revision_mode">
+                  {bt("bloem.admin.storage.s3Add.howBloemChecksFiles")}
+                </Label>
                 <select
                   id="s3-add-revision_mode"
                   className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -950,19 +959,16 @@ function S3AddFormBody({
                   ))}
                 </select>
                 <p id="s3-add-revision_mode-hint" className="text-muted-foreground text-xs">
-                  Bloem makes sure it plays the same file it scanned. The first choice works with
-                  every bucket, and still reads exact versions when the bucket keeps them. Choose
-                  the second only if versioning is turned on for every bucket here: it refuses any
-                  file without a version, so a bucket without versioning shows nothing.
+                  {bt("bloem.admin.storage.s3Add.bloemMakesSureItPlays")}
                 </p>
               </div>
               {mode === "typed" ? (
                 <Button type="button" variant="link" size="sm" onClick={() => setMode("connect")}>
-                  Find buckets instead
+                  {bt("bloem.admin.storage.s3Add.findBucketsInstead")}
                 </Button>
               ) : (
                 <Button type="button" variant="link" size="sm" onClick={typeInstead}>
-                  Type a bucket name instead
+                  {bt("bloem.admin.storage.s3Add.typeABucketNameInstead")}
                 </Button>
               )}
             </div>
@@ -971,13 +977,15 @@ function S3AddFormBody({
 
         {mode === "connect" && chosen ? (
           <Button type="button" disabled={!connectReady} onClick={() => void connect()}>
-            {connecting ? "Connecting..." : "Connect"}
+            {connecting
+              ? bt("bloem.admin.storage.s3Add.connecting")
+              : bt("bloem.admin.storage.s3Add.connect")}
           </Button>
         ) : null}
 
         <p role="status" className="text-muted-foreground text-xs">
           {mode === "connected"
-            ? `${buckets.length} ${plural(buckets.length, "bucket", "buckets")} found`
+            ? bt("bloem.admin.storage.s3Add.bucketsFound", { count: buckets.length })
             : ""}
         </p>
 
@@ -986,7 +994,7 @@ function S3AddFormBody({
             {offerAll ? (
               <fieldset className="space-y-2">
                 <legend ref={legendRef} tabIndex={-1} className="text-sm font-medium outline-none">
-                  What should Bloem see?
+                  {bt("bloem.admin.storage.s3Add.whatShouldBloemSee")}
                 </legend>
                 <div className="space-y-1">
                   <label className="flex items-center gap-2 text-sm">
@@ -997,15 +1005,17 @@ function S3AddFormBody({
                       aria-describedby="s3-add-scope-all"
                       onChange={() => chooseScope("all")}
                     />
-                    All buckets these keys can see (recommended)
+                    {bt("bloem.admin.storage.s3Add.allBucketsTheseKeysCan")}
                   </label>
-                  <p id="s3-add-scope-all" className="text-muted-foreground pl-6 text-xs">
-                    One source. Each bucket appears as a folder, and you choose folders when you
-                    create a library. Found: {buckets.slice(0, NAMED_BUCKETS).join(", ")}
+                  <p id="s3-add-scope-all" className="text-muted-foreground ps-6 text-xs">
                     {buckets.length > NAMED_BUCKETS
-                      ? ` and ${buckets.length - NAMED_BUCKETS} more`
-                      : ""}
-                    .
+                      ? bt("bloem.admin.storage.s3Add.oneSourceFoundMore", {
+                          buckets: buckets.slice(0, NAMED_BUCKETS).join(", "),
+                          more: buckets.length - NAMED_BUCKETS,
+                        })
+                      : bt("bloem.admin.storage.s3Add.oneSourceFound", {
+                          buckets: buckets.slice(0, NAMED_BUCKETS).join(", "),
+                        })}
                   </p>
                 </div>
                 <label className="flex items-center gap-2 text-sm">
@@ -1015,7 +1025,7 @@ function S3AddFormBody({
                     checked={scope === "some"}
                     onChange={() => chooseScope("some")}
                   />
-                  Choose buckets
+                  {bt("bloem.admin.storage.s3Add.chooseBuckets")}
                 </label>
               </fieldset>
             ) : null}
@@ -1029,7 +1039,7 @@ function S3AddFormBody({
                 tabIndex={-1}
                 className="text-sm font-medium outline-none"
               >
-                Buckets
+                {bt("bloem.admin.storage.s3Add.buckets")}
               </legend>
               {buckets.length > 1 ? (
                 <div className="flex justify-end">
@@ -1045,18 +1055,19 @@ function S3AddFormBody({
                       )
                     }
                   >
-                    {allSelected ? "Select none" : "Select all"}
+                    {allSelected
+                      ? bt("bloem.admin.storage.s3Add.selectNone")
+                      : bt("bloem.admin.storage.s3Add.selectAll")}
                   </Button>
                 </div>
               ) : null}
               {buckets.length === 0 ? (
                 <div className="space-y-2">
                   <p className="text-muted-foreground text-sm">
-                    No buckets were found for these keys. If your provider gave you a specific
-                    bucket name, type it instead.
+                    {bt("bloem.admin.storage.s3Add.noBucketsWereFoundFor")}
                   </p>
                   <Button type="button" variant="outline" size="sm" onClick={typeInstead}>
-                    Type a bucket name instead
+                    {bt("bloem.admin.storage.s3Add.typeABucketNameInstead")}
                   </Button>
                 </div>
               ) : (
@@ -1083,7 +1094,7 @@ function S3AddFormBody({
 
             {selected.length >= 2 && !allBuckets ? (
               <p className="text-muted-foreground text-sm">
-                Each selected bucket is added from its root.
+                {bt("bloem.admin.storage.s3Add.eachSelectedBucketIsAdded")}
               </p>
             ) : null}
 
@@ -1103,8 +1114,9 @@ function S3AddFormBody({
       <div ref={feedbackRef} tabIndex={-1} className="space-y-3 outline-none">
         {duplicates.length > 0 ? (
           <p className="text-sm text-amber-600 dark:text-amber-400">
-            A source for this bucket and folder already exists
-            {targets.length > 1 ? ` for ${duplicates.join(", ")}` : ""}. You can still add another.
+            {targets.length > 1
+              ? bt("bloem.admin.storage.s3Add.sourceExistsFor", { targets: duplicates.join(", ") })
+              : bt("bloem.admin.storage.s3Add.sourceExists")}
           </p>
         ) : null}
 
@@ -1112,7 +1124,7 @@ function S3AddFormBody({
           <ul
             id={PROBLEMS_ID}
             role="alert"
-            className="text-destructive list-disc space-y-1 pl-5 text-sm"
+            className="text-destructive list-disc space-y-1 ps-5 text-sm"
           >
             {problems.map((message) => (
               <li key={message}>{message}</li>
@@ -1131,10 +1143,10 @@ function S3AddFormBody({
                 disabled={busy}
                 onClick={() => void connect()}
               >
-                Try again
+                {bt("bloem.admin.storage.s3Add.tryAgain")}
               </Button>
               <Button type="button" variant="ghost" size="sm" onClick={typeInstead}>
-                Type a bucket name instead
+                {bt("bloem.admin.storage.s3Add.typeABucketNameInstead")}
               </Button>
             </div>
           </div>
@@ -1150,16 +1162,19 @@ function S3AddFormBody({
                     outcome.state === "failed" ? "text-destructive" : "text-muted-foreground"
                   }
                 >
-                  {bucket || "All buckets"}:{" "}
-                  {outcome.state === "added"
-                    ? "added"
-                    : outcome.state === "failed"
-                      ? outcome.unknown
-                        ? OUTCOME_UNKNOWN_MESSAGE
-                        : `failed — ${outcome.message}`
-                      : outcome.state === "adding"
-                        ? "adding..."
-                        : "waiting"}
+                  {bt("bloem.admin.storage.s3Add.outcomeLine", {
+                    bucket: bucket || bt("bloem.admin.storage.s3Add.allBuckets"),
+                    outcome:
+                      outcome.state === "added"
+                        ? bt("bloem.admin.storage.s3Add.added2")
+                        : outcome.state === "failed"
+                          ? outcome.unknown
+                            ? OUTCOME_UNKNOWN_MESSAGE
+                            : bt("bloem.admin.storage.s3Add.failed", { message: outcome.message })
+                          : outcome.state === "adding"
+                            ? bt("bloem.admin.storage.s3Add.adding")
+                            : bt("bloem.admin.storage.s3Add.waiting"),
+                  })}
                   {outcome.state === "failed" && outcome.unknown && !busy ? (
                     <Button
                       type="button"
@@ -1169,7 +1184,9 @@ function S3AddFormBody({
                         setResults({ ...results, [bucket]: { ...outcome, unknown: false } })
                       }
                     >
-                      Retry {bucket || "all buckets"} anyway
+                      {bt("bloem.admin.storage.s3Add.retryAnyway", {
+                        bucket: bucket || bt("bloem.admin.storage.s3Add.allBuckets2"),
+                      })}
                     </Button>
                   ) : null}
                 </li>

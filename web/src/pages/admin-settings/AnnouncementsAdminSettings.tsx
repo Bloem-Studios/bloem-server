@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Megaphone } from "lucide-react";
@@ -97,10 +98,11 @@ function status(item: Announcement) {
 }
 
 export default function AnnouncementsAdminSettings() {
+  const bt = useBloemT();
   // Optional: the settings layout can render outside AdminContextProvider.
   const active = useOptionalAdminContext()?.active ?? null;
   if (active?.scope !== "platform")
-    return <p role="alert">Select the platform context to publish announcements.</p>;
+    return <p role="alert">{bt("bloem.admin.announcements.selectThePlatformContextTo")}</p>;
   return (
     <AnnouncementsComposer
       key={`${active.key}:${captureAdminRequestContext(active.key)?.generation ?? "unbound"}`}
@@ -110,6 +112,7 @@ export default function AnnouncementsAdminSettings() {
 }
 
 function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
+  const bt = useBloemT();
   const cache = useQueryClient();
   const authority = captureAdminRequestContext(context.key);
   const queryKey = adminV2QueryKey(context.key, "announcements", authority?.generation);
@@ -270,9 +273,9 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
   }
   return (
     <div className="space-y-8">
-      <SettingsPageHeader title="Announcements" />
+      <SettingsPageHeader title={bt("bloem.admin.announcements.announcements")} />
       <p className="text-muted-foreground text-sm">
-        Publish messages to your viewers’ inboxes. Supporting clients can also show them as banners.
+        {bt("bloem.admin.announcements.publishMessagesToYourViewers")}
       </p>
       {receipt && (
         <p role="status" className="text-sm">
@@ -280,9 +283,9 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
         </p>
       )}
       <form onSubmit={prepare} className="space-y-4">
-        <h2 className="text-lg font-semibold">New announcement</h2>
+        <h2 className="text-lg font-semibold">{bt("bloem.admin.announcements.newAnnouncement")}</h2>
         <label className="block space-y-2 text-sm">
-          Title
+          {bt("bloem.admin.announcements.title")}
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -291,7 +294,7 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
           />
         </label>
         <label className="block space-y-2 text-sm">
-          Message
+          {bt("bloem.admin.announcements.message")}
           <textarea
             className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
             value={message}
@@ -303,22 +306,22 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-2 text-sm">
-            Severity
+            {bt("bloem.admin.announcements.severity")}
             <select
-              aria-label="Severity"
+              aria-label={bt("bloem.admin.announcements.severity")}
               className={selectClass}
               value={severity}
               onChange={(e) => setSeverity(e.target.value as Severity)}
             >
-              <option value="info">Information</option>
-              <option value="warning">Warning</option>
-              <option value="critical">Critical</option>
+              <option value="info">{bt("bloem.admin.announcements.information")}</option>
+              <option value="warning">{bt("bloem.admin.announcements.warning")}</option>
+              <option value="critical">{bt("bloem.admin.announcements.critical")}</option>
             </select>
           </label>
           <label className="block space-y-2 text-sm">
-            Audience
+            {bt("bloem.admin.announcements.audience")}
             <select
-              aria-label="Audience"
+              aria-label={bt("bloem.admin.announcements.audience")}
               className={selectClass}
               value={audience}
               onChange={(e) => {
@@ -327,20 +330,24 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
                 setProfiles("");
               }}
             >
-              <option value="all">All viewers</option>
-              <option value="role">Account role</option>
-              <option value="organization">Organization</option>
-              <option value="library">Viewers with library access</option>
-              <option value="explicit">Specific users or profiles</option>
+              <option value="all">{bt("bloem.admin.announcements.allViewers")}</option>
+              <option value="role">{bt("bloem.admin.announcements.accountRole")}</option>
+              <option value="organization">{bt("bloem.admin.announcements.organization")}</option>
+              <option value="library">
+                {bt("bloem.admin.announcements.viewersWithLibraryAccess")}
+              </option>
+              <option value="explicit">
+                {bt("bloem.admin.announcements.specificUsersOrProfiles")}
+              </option>
             </select>
           </label>
         </div>
         {audience === "role" && (
           <label className="block space-y-2 text-sm">
-            Account role
+            {bt("bloem.admin.announcements.accountRole")}
             <select className={selectClass} value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="user">Users</option>
-              <option value="admin">Administrators</option>
+              <option value="user">{bt("bloem.admin.announcements.users")}</option>
+              <option value="admin">{bt("bloem.admin.announcements.administrators")}</option>
             </select>
           </label>
         )}
@@ -354,16 +361,16 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
           <>
             <AccountPicker
               id="announcement-accounts"
-              label="Accounts (all their profiles)"
+              label={bt("bloem.admin.announcements.accountsAllTheirProfiles")}
               selected={accountNumbers(target)}
               onChange={(ids) => setTarget(ids.join(", "))}
             />
             <label className="block space-y-2 text-sm">
-              Or account numbers, separated by commas
+              {bt("bloem.admin.announcements.orAccountNumbersSeparatedBy")}
               <Input value={target} onChange={(e) => setTarget(e.target.value)} />
             </label>
             <label className="block space-y-2 text-sm">
-              Profile IDs, separated by commas (optional)
+              {bt("bloem.admin.announcements.profileIdsSeparatedByCommas")}
               <Input value={profiles} onChange={(e) => setProfiles(e.target.value)} />
             </label>
           </>
@@ -375,28 +382,28 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
             disabled={severity === "critical"}
             onChange={(e) => setDismissible(e.target.checked)}
           />
-          Allow viewers to dismiss
+          {bt("bloem.admin.announcements.allowViewersToDismiss")}
         </label>
         {severity === "critical" && (
           <p className="text-muted-foreground text-sm">
-            Viewers cannot dismiss critical announcements.
+            {bt("bloem.admin.announcements.viewersCannotDismissCriticalAnnouncements")}
           </p>
         )}
         <details className="rounded-lg border p-4">
           <summary className="cursor-pointer text-sm font-medium">
-            Links, artwork and expiry
+            {bt("bloem.admin.announcements.linksArtworkAndExpiry")}
           </summary>
           <div className="mt-4 space-y-4">
             <label className="block space-y-2 text-sm">
-              App or web link
+              {bt("bloem.admin.announcements.appOrWebLink")}
               <Input value={link} onChange={(e) => setLink(e.target.value)} maxLength={2048} />
             </label>
             <label className="block space-y-2 text-sm">
-              Image URL
+              {bt("bloem.admin.announcements.imageUrl")}
               <Input value={image} onChange={(e) => setImage(e.target.value)} maxLength={2048} />
             </label>
             <label className="block space-y-2 text-sm">
-              Action label
+              {bt("bloem.admin.announcements.actionLabel")}
               <Input
                 value={ctaLabel}
                 onChange={(e) => setCtaLabel(e.target.value)}
@@ -404,11 +411,11 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
               />
             </label>
             <label className="block space-y-2 text-sm">
-              Action link
+              {bt("bloem.admin.announcements.actionLink")}
               <Input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} maxLength={2048} />
             </label>
             <label className="block space-y-2 text-sm">
-              Expires at (your local time)
+              {bt("bloem.admin.announcements.expiresAtYourLocalTime")}
               <Input
                 type="datetime-local"
                 value={expiry}
@@ -422,27 +429,36 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
             {validation}
           </p>
         )}
-        <Button type="submit">Preview announcement</Button>
+        <Button type="submit">{bt("bloem.admin.announcements.previewAnnouncement")}</Button>
       </form>
-      <section className="space-y-4" aria-label="Published announcements">
+      <section
+        className="space-y-4"
+        aria-label={bt("bloem.admin.announcements.publishedAnnouncements")}
+      >
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Published announcements</h2>
+          <h2 className="text-lg font-semibold">
+            {bt("bloem.admin.announcements.publishedAnnouncements")}
+          </h2>
           <Button
             variant="outline"
             onClick={() => void listing.refetch()}
             disabled={listing.isFetching}
           >
-            Refresh
+            {bt("bloem.admin.announcements.refresh")}
           </Button>
         </div>
-        {listing.isLoading && <p role="status">Loading announcements…</p>}
+        {listing.isLoading && (
+          <p role="status">{bt("bloem.admin.announcements.loadingAnnouncements")}</p>
+        )}
         {listing.error && (
           <p role="alert" className="text-destructive">
             {errorText(listing.error)}
           </p>
         )}
         {listing.data?.announcements.length === 0 && (
-          <p className="text-muted-foreground text-sm">No announcements have been published.</p>
+          <p className="text-muted-foreground text-sm">
+            {bt("bloem.admin.announcements.noAnnouncementsHaveBeenPublished")}
+          </p>
         )}
         {listing.data?.announcements.map((item) => (
           <article key={item.id} className="space-y-3 rounded-xl border p-4">
@@ -452,19 +468,22 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
             </div>
             <p className="text-sm whitespace-pre-wrap">{item.body.body}</p>
             <p className="text-muted-foreground text-sm">
-              {item.body.severity} · {item.recipient_count} recipients ·{" "}
-              {new Date(item.created_at).toLocaleString()}
+              {bt("bloem.admin.announcements.recipients", {
+                severity: item.body.severity,
+                recipientCount: item.recipient_count,
+                created: new Date(item.created_at).toLocaleString(),
+              })}
             </p>
             {!item.withdrawn_at && status(item) !== "Expired" && (
               <Button
                 variant="outline"
-                aria-label={`Withdraw ${item.body.title}`}
+                aria-label={bt("bloem.admin.announcements.withdraw", { title: item.body.title })}
                 onClick={() => {
                   withdraw.reset();
                   setWithdrawing(item);
                 }}
               >
-                Withdraw
+                {bt("bloem.admin.announcements.withdraw2")}
               </Button>
             )}
           </article>
@@ -478,11 +497,13 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Preview announcement</DialogTitle>
+            <DialogTitle>{bt("bloem.admin.announcements.previewAnnouncement")}</DialogTitle>
             <DialogDescription>
-              Publishing sends this message immediately to{" "}
-              {preview ? audienceSummary(preview.targeting) : "the selected audience"}. Published
-              messages can be withdrawn.
+              {bt("bloem.admin.announcements.publishingSendsTo", {
+                audience: preview
+                  ? audienceSummary(preview.targeting)
+                  : bt("bloem.admin.announcements.theSelectedAudience"),
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 rounded-lg border p-4">
@@ -498,18 +519,27 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
             <div className="text-muted-foreground space-y-2 text-sm break-words">
               <p>
                 {preview.body.dismissible
-                  ? "Viewers can dismiss this message."
-                  : "Viewers cannot dismiss this message."}
+                  ? bt("bloem.admin.announcements.viewersCanDismissThisMessage")
+                  : bt("bloem.admin.announcements.viewersCannotDismissThisMessage")}
               </p>
               <p>
-                Expires:{" "}
-                {preview.body.expires_at
-                  ? new Date(preview.body.expires_at).toLocaleString()
-                  : "No expiry"}
+                {bt("bloem.admin.announcements.expires", {
+                  expiry: preview.body.expires_at
+                    ? new Date(preview.body.expires_at).toLocaleString()
+                    : bt("bloem.admin.announcements.noExpiry"),
+                })}
               </p>
-              {preview.body.deeplink && <p>Link: {preview.body.deeplink}</p>}
-              {preview.body.image_url && <p>Artwork: {preview.body.image_url}</p>}
-              {preview.body.cta && <p>Action link: {preview.body.cta.url}</p>}
+              {preview.body.deeplink && (
+                <p>{bt("bloem.admin.announcements.link", { deeplink: preview.body.deeplink })}</p>
+              )}
+              {preview.body.image_url && (
+                <p>
+                  {bt("bloem.admin.announcements.artwork", { imageUrl: preview.body.image_url })}
+                </p>
+              )}
+              {preview.body.cta && (
+                <p>{bt("bloem.admin.announcements.actionLink2", { url: preview.body.cta.url })}</p>
+              )}
             </div>
           )}
           {publish.error && (
@@ -519,7 +549,7 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
           )}
           <DialogFooter>
             <Button variant="outline" disabled={publish.isPending} onClick={() => setPreview(null)}>
-              Keep editing
+              {bt("bloem.admin.announcements.keepEditing")}
             </Button>
             <Button
               disabled={publish.isPending}
@@ -527,7 +557,9 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
                 if (preview && !publish.isPending) publish.mutate(preview);
               }}
             >
-              {publish.isPending ? "Publishing…" : "Publish announcement"}
+              {publish.isPending
+                ? bt("bloem.admin.announcements.publishing")
+                : bt("bloem.admin.announcements.publishAnnouncement")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -540,10 +572,11 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Withdraw announcement?</DialogTitle>
+            <DialogTitle>{bt("bloem.admin.announcements.withdrawAnnouncement")}</DialogTitle>
             <DialogDescription>
-              Remove “{withdrawing?.body.title}” from delivery. Its publication record will remain
-              here.
+              {bt("bloem.admin.announcements.removeFromDeliveryItsPublication", {
+                title: withdrawing?.body.title,
+              })}
             </DialogDescription>
           </DialogHeader>
           {withdraw.error && (
@@ -557,7 +590,7 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
               disabled={withdraw.isPending}
               onClick={() => setWithdrawing(null)}
             >
-              Cancel
+              {bt("bloem.admin.announcements.cancel")}
             </Button>
             <Button
               disabled={withdraw.isPending}
@@ -565,7 +598,9 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
                 if (withdrawing && !withdraw.isPending) withdraw.mutate(withdrawing.id);
               }}
             >
-              {withdraw.isPending ? "Withdrawing…" : "Withdraw announcement"}
+              {withdraw.isPending
+                ? bt("bloem.admin.announcements.withdrawing")
+                : bt("bloem.admin.announcements.withdrawAnnouncement2")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -591,21 +626,22 @@ function OrganizationTarget({
   value: string;
   onChange(value: string): void;
 }) {
+  const bt = useBloemT();
   const organizations = usePlatformOrganizations({ limit: 100 });
   const options = context.scope === "platform" ? (organizations.data?.organizations ?? []) : [];
   if (!options.length) {
     return (
       <label className="block space-y-2 text-sm">
-        Organization ID
+        {bt("bloem.admin.announcements.organizationId")}
         <Input value={value} onChange={(e) => onChange(e.target.value)} />
       </label>
     );
   }
   return (
     <label className="block space-y-2 text-sm">
-      Organization
+      {bt("bloem.admin.announcements.organization")}
       <select className={selectClass} value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">Choose an organization</option>
+        <option value="">{bt("bloem.admin.announcements.chooseAnOrganization")}</option>
         {options.map((organization) => (
           <option key={organization.id} value={organization.id}>
             {organization.name}
@@ -625,6 +661,7 @@ function LibraryTarget({
   value: string;
   onChange(value: string): void;
 }) {
+  const bt = useBloemT();
   const platform = useAdminLibraries({ enabled: context.scope === "platform" });
   const organization = useOrganizationLibraries(context.key, context.scope === "organization");
   const options =
@@ -634,16 +671,16 @@ function LibraryTarget({
   if (!options.length) {
     return (
       <label className="block space-y-2 text-sm">
-        Library ID
+        {bt("bloem.admin.announcements.libraryId")}
         <Input value={value} onChange={(e) => onChange(e.target.value)} />
       </label>
     );
   }
   return (
     <label className="block space-y-2 text-sm">
-      Library
+      {bt("bloem.admin.announcements.library")}
       <select className={selectClass} value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">Choose a library</option>
+        <option value="">{bt("bloem.admin.announcements.chooseALibrary")}</option>
         {options.map((library) => (
           <option key={library.id} value={String(library.id)}>
             {library.name}
