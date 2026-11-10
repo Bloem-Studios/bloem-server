@@ -175,6 +175,8 @@ describe("Bloem brand adapter through Vite", () => {
     root = await mkdtemp(path.join(tmpdir(), "bloem-brand-"));
     await mkdir(path.join(root, "public"), { recursive: true });
     await mkdir(path.join(root, "src/components"), { recursive: true });
+    await mkdir(path.join(root, "src/locales"), { recursive: true });
+    await mkdir(path.join(root, "src/bloem/locales"), { recursive: true });
     sources = Object.fromEntries(
       await Promise.all(
         PUBLIC_FILES.map(async (file) => [
@@ -190,6 +192,17 @@ describe("Bloem brand adapter through Vite", () => {
       writeFile(
         path.join(root, "src/custom-brand.ts"),
         'export const custom = "/silo-icon-1024.png";',
+      ),
+      writeFile(
+        path.join(root, "src/locales/en.json"),
+        JSON.stringify({
+          "web.a": [{ type: 0, value: "Silo couldn't reach the server" }],
+          "web.b": [{ type: 0, value: "Made by Silo" }],
+        }),
+      ),
+      writeFile(
+        path.join(root, "src/bloem/locales/en.json"),
+        JSON.stringify({ "bloem.a": [{ type: 0, value: "Silo plugins" }] }),
       ),
       writeFile(
         path.join(root, "index.html"),
@@ -237,6 +250,15 @@ describe("Bloem brand adapter through Vite", () => {
     expect(code).toContain("Welcome to Bloem");
     const custom = await (await fetch(url + "src/custom-brand.ts")).text();
     expect(custom).toContain("/silo-icon-1024.png");
+  });
+
+  it("brands Silo's message catalogs and leaves Bloem's own catalog as written", async () => {
+    const url = await startDev();
+    const silo = await (await fetch(url + "src/locales/en.json?import")).text();
+    expect(silo).toContain("Bloem couldn't reach the server");
+    expect(silo).toContain("Made by Silo");
+    const bloem = await (await fetch(url + "src/bloem/locales/en.json?import")).text();
+    expect(bloem).toContain("Silo plugins");
   });
 
   it.each(["/", "/media/"])(

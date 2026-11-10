@@ -11,6 +11,9 @@ import { brandTestRegexes } from "./product-brand-regex";
 import { applyBrand, PRODUCT_NAME } from "./src/lib/product-brand";
 
 const BRANDABLE = /\.(ts|tsx|html)$/;
+// Silo's generated message catalogs, where its interface text lives (src/i18n).
+// Bloem's own catalog (src/bloem/locales) is Bloem's wording and stays as written.
+const SILO_CATALOG = /\/src\/locales\/[^/]+\.json$/;
 const PUBLIC_ASSETS = ["site.webmanifest", "sw.js"] as const;
 
 function brandPublicAsset(fileName: (typeof PUBLIC_ASSETS)[number], source: string): string {
@@ -37,7 +40,11 @@ export function bloemBrand(): Plugin {
     },
     transform(code, id) {
       const sourceId = id.replace(/\?.*$/, "").replaceAll("\\", "/");
-      if (!BRANDABLE.test(sourceId) || sourceId.includes("node_modules")) return null;
+      if (
+        !(BRANDABLE.test(sourceId) || SILO_CATALOG.test(sourceId)) ||
+        sourceId.includes("node_modules")
+      )
+        return null;
       // Brand definitions and adapter tests need their original upstream literals.
       if (
         sourceId.includes("product-brand") ||
