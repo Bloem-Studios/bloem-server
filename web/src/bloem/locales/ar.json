@@ -1,0 +1,2920 @@
+{
+  "bloem.adminNav.announcements.description": [
+    {
+      "type": 0,
+      "value": "نشر الرسائل للمشاهدين."
+    }
+  ],
+  "bloem.adminNav.announcements.label": [
+    {
+      "type": 0,
+      "value": "الإعلانات"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.description": [
+    {
+      "type": 0,
+      "value": "نشر الرسائل للمشاهدين وسحب الإعلانات السابقة."
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.label": [
+    {
+      "type": 0,
+      "value": "الإعلانات"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.newAnnouncement": [
+    {
+      "type": 0,
+      "value": "إعلان جديد"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.published": [
+    {
+      "type": 0,
+      "value": "الإعلانات المنشورة"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.administrativeContext": [
+    {
+      "type": 0,
+      "value": "السياق الإداري"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.administrativeContextChangedTo": [
+    {
+      "type": 0,
+      "value": "تغيّر السياق الإداري إلى "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.chooseContext": [
+    {
+      "type": 0,
+      "value": "اختر السياق"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.loadingContext": [
+    {
+      "type": 0,
+      "value": "جارٍ تحميل السياق…"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.organizationAdministrator": [
+    {
+      "type": 0,
+      "value": "مسؤول المؤسسة"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.platformAdministrator": [
+    {
+      "type": 0,
+      "value": "مسؤول المنصة"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeName": [
+    {
+      "type": 5,
+      "value": "scope",
+      "options": {
+        "platform": {
+          "value": [
+            {
+              "type": 0,
+              "value": "المنصة"
+            }
+          ]
+        },
+        "organization": {
+          "value": [
+            {
+              "type": 0,
+              "value": "المؤسسة"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "scope"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeStatus": [
+    {
+      "type": 1,
+      "value": "scope"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "status"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.selectContext": [
+    {
+      "type": 0,
+      "value": "اختر السياق"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.statusName": [
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "active": {
+          "value": [
+            {
+              "type": 0,
+              "value": "نشط"
+            }
+          ]
+        },
+        "suspended": {
+          "value": [
+            {
+              "type": 0,
+              "value": "معلّق"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "status"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.adminNav.liveTv.description": [
+    {
+      "type": 0,
+      "value": "الموالفات والقنوات ودليل البرامج والتسجيلات والتحويل."
+    }
+  ],
+  "bloem.adminNav.liveTv.label": [
+    {
+      "type": 0,
+      "value": "التلفزيون المباشر"
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.description": [
+    {
+      "type": 0,
+      "value": "سبب السماح لشخص ما بشيء أو رفضه."
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.label": [
+    {
+      "type": 0,
+      "value": "عمليات التحقق من الوصول"
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.description": [
+    {
+      "type": 0,
+      "value": "مجموعات تحدد ما يمكن لملفاتها الشخصية فعله."
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.label": [
+    {
+      "type": 0,
+      "value": "مجموعات الوصول"
+    }
+  ],
+  "bloem.adminNav.organizationActivity.description": [
+    {
+      "type": 0,
+      "value": "من غيّر ماذا في هذه المؤسسة، ومتى."
+    }
+  ],
+  "bloem.adminNav.organizationActivity.label": [
+    {
+      "type": 0,
+      "value": "النشاط"
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.description": [
+    {
+      "type": 0,
+      "value": "مجموعات من الحسابات تتشارك الإعدادات نفسها."
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.label": [
+    {
+      "type": 0,
+      "value": "الشرائح"
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.description": [
+    {
+      "type": 0,
+      "value": "دعوة المسؤولين والأعضاء إلى هذه المؤسسة."
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.label": [
+    {
+      "type": 0,
+      "value": "الدعوات"
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.description": [
+    {
+      "type": 0,
+      "value": "المكتبات التي تملكها هذه المؤسسة أو مُنحت لها."
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.label": [
+    {
+      "type": 0,
+      "value": "المكتبات"
+    }
+  ],
+  "bloem.adminNav.organizationOverview.description": [
+    {
+      "type": 0,
+      "value": "الأعضاء والمكتبات والتغييرات الأخيرة في لمحة."
+    }
+  ],
+  "bloem.adminNav.organizationOverview.label": [
+    {
+      "type": 0,
+      "value": "نظرة عامة"
+    }
+  ],
+  "bloem.adminNav.organizationPeople.description": [
+    {
+      "type": 0,
+      "value": "كل من في هذه المؤسسة، وملفاتهم الشخصية وخططهم."
+    }
+  ],
+  "bloem.adminNav.organizationPeople.label": [
+    {
+      "type": 0,
+      "value": "الأشخاص"
+    }
+  ],
+  "bloem.adminNav.organizationStorage.description": [
+    {
+      "type": 0,
+      "value": "حاويات S3 التي تقرأ منها هذه المؤسسة كتبها الإلكترونية."
+    }
+  ],
+  "bloem.adminNav.organizationStorage.label": [
+    {
+      "type": 0,
+      "value": "مصادر التخزين"
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.description": [
+    {
+      "type": 0,
+      "value": "نقل حسابات مباشرة كثيرة إلى خطة أو تغيير إعداداتها دفعة واحدة."
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.label": [
+    {
+      "type": 0,
+      "value": "تغيير حسابات كثيرة"
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.description": [
+    {
+      "type": 0,
+      "value": "وضع حساب لا ينتمي إلى أي مؤسسة على خطة."
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.label": [
+    {
+      "type": 0,
+      "value": "الحسابات المباشرة"
+    }
+  ],
+  "bloem.adminNav.platformEngagement.description": [
+    {
+      "type": 0,
+      "value": "العروض الترويجية والصور الفنية والمظاهر الموسمية للشاشة الرئيسية."
+    }
+  ],
+  "bloem.adminNav.platformEngagement.label": [
+    {
+      "type": 0,
+      "value": "الحملات والحزم الموسمية"
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.description": [
+    {
+      "type": 0,
+      "value": "كل مؤسسة على هذا الخادم، وأعضاؤها."
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.label": [
+    {
+      "type": 0,
+      "value": "المؤسسات"
+    }
+  ],
+  "bloem.adminNav.platformPlans.description": [
+    {
+      "type": 0,
+      "value": "ما يحصل عليه الحساب: المكتبات والشاشات والجودة والتنزيلات."
+    }
+  ],
+  "bloem.adminNav.platformPlans.label": [
+    {
+      "type": 0,
+      "value": "الخطط"
+    }
+  ],
+  "bloem.adminNav.profilePasswords.description": [
+    {
+      "type": 0,
+      "value": "هل يمكن لملفات الأسرة الشخصية تسجيل الدخول ببريدها الإلكتروني وكلمة مرورها الخاصين."
+    }
+  ],
+  "bloem.adminNav.profilePasswords.label": [
+    {
+      "type": 0,
+      "value": "كلمات مرور الملفات الشخصية"
+    }
+  ],
+  "bloem.adminNav.section.organization": [
+    {
+      "type": 0,
+      "value": "المؤسسة"
+    }
+  ],
+  "bloem.adminNav.section.platform": [
+    {
+      "type": 0,
+      "value": "المنصة"
+    }
+  ],
+  "bloem.adminShell.chooseContext.body": [
+    {
+      "type": 0,
+      "value": "اختر «المنصة» أو مؤسسة من عنصر التحكم في السياق في شريط التنقل."
+    }
+  ],
+  "bloem.adminShell.chooseContext.title": [
+    {
+      "type": 0,
+      "value": "اختر السياق الإداري"
+    }
+  ],
+  "bloem.adminShell.loadingContext": [
+    {
+      "type": 0,
+      "value": "جارٍ تحميل السياق الإداري…"
+    }
+  ],
+  "bloem.adminTitle.organization": [
+    {
+      "type": 0,
+      "value": "المؤسسة"
+    }
+  ],
+  "bloem.adminTitle.organizations": [
+    {
+      "type": 0,
+      "value": "المؤسسات"
+    }
+  ],
+  "bloem.audiobooks.partTitle": [
+    {
+      "type": 0,
+      "value": "الجزء "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.approximateResume": [
+    {
+      "type": 0,
+      "value": "حُفظ موضعك أثناء الاستماع إلى نسخة أخرى، لذا تُستأنف هذه النسخة من نقطة قريبة منه."
+    }
+  ],
+  "bloem.audiobooks.picker.copyFallback": [
+    {
+      "type": 0,
+      "value": "نسخة"
+    }
+  ],
+  "bloem.audiobooks.picker.heading": [
+    {
+      "type": 0,
+      "value": "التسجيل"
+    }
+  ],
+  "bloem.audiobooks.picker.incomplete": [
+    {
+      "type": 0,
+      "value": "غير مكتمل: بعض الأجزاء مفقودة"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopy": [
+    {
+      "type": 0,
+      "value": "نسخة محلية"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopyNumbered": [
+    {
+      "type": 0,
+      "value": "النسخة المحلية "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.noPlayableCopy": [
+    {
+      "type": 0,
+      "value": "لا يمكن تشغيل أي نسخة من هذا الكتاب هنا حاليًا."
+    }
+  ],
+  "bloem.audiobooks.picker.partsAndLength": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " جزء"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "جزء واحد"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "جزآن"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " أجزاء"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " جزءًا"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " جزء"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "length"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopy": [
+    {
+      "type": 0,
+      "value": "نسخة بعيدة (تجريبي)"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopyNumbered": [
+    {
+      "type": 0,
+      "value": "النسخة البعيدة (تجريبي) "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.unavailable": [
+    {
+      "type": 0,
+      "value": "غير متاحة على هذا الخادم"
+    }
+  ],
+  "bloem.capabilities.checkFailed": [
+    {
+      "type": 0,
+      "value": "تعذّر التحقق من ميزات Bloem التي يدعمها هذا الخادم."
+    }
+  ],
+  "bloem.engagement.card.dismiss": [
+    {
+      "type": 0,
+      "value": "إغلاق"
+    }
+  ],
+  "bloem.engagement.card.dismissFailed": [
+    {
+      "type": 0,
+      "value": "تعذّر إغلاق هذه الرسالة."
+    }
+  ],
+  "bloem.engagement.card.dismissing": [
+    {
+      "type": 0,
+      "value": "جارٍ الإغلاق…"
+    }
+  ],
+  "bloem.engagement.card.learnMore": [
+    {
+      "type": 0,
+      "value": "معرفة المزيد"
+    }
+  ],
+  "bloem.engagement.fromYourServer": [
+    {
+      "type": 0,
+      "value": "من خادمك"
+    }
+  ],
+  "bloem.engagement.home.storageUnavailable": [
+    {
+      "type": 0,
+      "value": "تخزين المتصفح غير متاح. يُطبَّق اختيارك في علامة التبويب هذه فقط."
+    }
+  ],
+  "bloem.engagement.home.toggle": [
+    {
+      "type": 0,
+      "value": "عروض الشاشة الرئيسية: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "مفعّلة"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "معطّلة"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.engagement.home.toggleHelp": [
+    {
+      "type": 0,
+      "value": "رسائل اختيارية من خادمك، تُحفظ لهذا الملف الشخصي في هذا المتصفح."
+    }
+  ],
+  "bloem.engagement.playback.close": [
+    {
+      "type": 0,
+      "value": "إغلاق الطبقة"
+    }
+  ],
+  "bloem.engagement.playback.muted": [
+    {
+      "type": 0,
+      "value": "مكتوم"
+    }
+  ],
+  "bloem.engagement.playback.saveFailed": [
+    {
+      "type": 0,
+      "value": "تعذّر الحفظ. حاول مرة أخرى."
+    }
+  ],
+  "bloem.engagement.playback.saved": [
+    {
+      "type": 0,
+      "value": "تم الحفظ في صندوق الوارد"
+    }
+  ],
+  "bloem.engagement.playback.saving": [
+    {
+      "type": 0,
+      "value": "جارٍ الحفظ…"
+    }
+  ],
+  "bloem.engagement.playback.sendToPhone": [
+    {
+      "type": 0,
+      "value": "الإرسال إلى هاتفي"
+    }
+  ],
+  "bloem.engagement.prePlayback.back": [
+    {
+      "type": 0,
+      "value": "رجوع"
+    }
+  ],
+  "bloem.engagement.prePlayback.continue": [
+    {
+      "type": 0,
+      "value": "المتابعة إلى المحتوى"
+    }
+  ],
+  "bloem.engagement.prePlayback.help": [
+    {
+      "type": 0,
+      "value": "يمكنك المتابعة فورًا، حتى أثناء تحميل الرسائل."
+    }
+  ],
+  "bloem.engagement.prePlayback.label": [
+    {
+      "type": 0,
+      "value": "قبل التشغيل"
+    }
+  ],
+  "bloem.engagement.prePlayback.title": [
+    {
+      "type": 0,
+      "value": "قبل أن تشاهد"
+    }
+  ],
+  "bloem.engagement.rail.label": [
+    {
+      "type": 0,
+      "value": "رسائل من خادمك"
+    }
+  ],
+  "bloem.engagement.rail.title": [
+    {
+      "type": 0,
+      "value": "من خادمك"
+    }
+  ],
+  "bloem.engagement.seasonal.toggle": [
+    {
+      "type": 0,
+      "value": "التأثيرات الموسمية: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "مفعّلة"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "معطّلة"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.libraryAccess.allowAll": [
+    {
+      "type": 0,
+      "value": "السماح بكل المكتبات المتاحة"
+    }
+  ],
+  "bloem.libraryAccess.allowAllIn": [
+    {
+      "type": 0,
+      "value": "السماح بكل مكتبات "
+    },
+    {
+      "type": 1,
+      "value": "scope"
+    }
+  ],
+  "bloem.libraryAccess.allowLibrary": [
+    {
+      "type": 0,
+      "value": "السماح بـ "
+    },
+    {
+      "type": 1,
+      "value": "library"
+    }
+  ],
+  "bloem.liveTv.accessGate.askAdministrator": [
+    {
+      "type": 0,
+      "value": "اطلب من مسؤول الخادم الوصول إلى التلفزيون المباشر."
+    }
+  ],
+  "bloem.liveTv.accessGate.backToHome": [
+    {
+      "type": 0,
+      "value": "العودة إلى الرئيسية"
+    }
+  ],
+  "bloem.liveTv.accessGate.checkFailed": [
+    {
+      "type": 0,
+      "value": "تعذّر التحقق من الوصول إلى التلفزيون المباشر"
+    }
+  ],
+  "bloem.liveTv.accessGate.checking": [
+    {
+      "type": 0,
+      "value": "جارٍ التحقق من الوصول إلى التلفزيون المباشر…"
+    }
+  ],
+  "bloem.liveTv.accessGate.notEnabled": [
+    {
+      "type": 0,
+      "value": "التلفزيون المباشر غير مفعّل لهذا الملف الشخصي"
+    }
+  ],
+  "bloem.liveTv.accessGate.unsupported": [
+    {
+      "type": 0,
+      "value": "التلفزيون المباشر غير متاح على هذا الخادم"
+    }
+  ],
+  "bloem.liveTv.guide.channelColumn": [
+    {
+      "type": 0,
+      "value": "القناة"
+    }
+  ],
+  "bloem.liveTv.guide.programTooltip": [
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.guide.recordProgramLabel": [
+    {
+      "type": 0,
+      "value": "تسجيل "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.guide.recordSeriesLabel": [
+    {
+      "type": 0,
+      "value": "تسجيل المسلسل: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.guide.series": [
+    {
+      "type": 0,
+      "value": "المسلسل"
+    }
+  ],
+  "bloem.liveTv.guide.watchChannel": [
+    {
+      "type": 0,
+      "value": "مشاهدة "
+    },
+    {
+      "type": 1,
+      "value": "channel"
+    }
+  ],
+  "bloem.liveTv.manualRecording.changeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "تعذّر على Bloem تأكيد آخر تغيير أجريته على التسجيلات. أعد تحميل تسجيلاتك أولًا."
+    }
+  ],
+  "bloem.liveTv.manualRecording.channel": [
+    {
+      "type": 0,
+      "value": "قناة التسجيل"
+    }
+  ],
+  "bloem.liveTv.manualRecording.checking": [
+    {
+      "type": 0,
+      "value": "جارٍ التحقق من التسجيلات…"
+    }
+  ],
+  "bloem.liveTv.manualRecording.chooseChannel": [
+    {
+      "type": 0,
+      "value": "اختر قناة"
+    }
+  ],
+  "bloem.liveTv.manualRecording.couldNotConfirm": [
+    {
+      "type": 0,
+      "value": "تعذّر تأكيد التسجيل."
+    }
+  ],
+  "bloem.liveTv.manualRecording.endsAt": [
+    {
+      "type": 0,
+      "value": "ينتهي في"
+    }
+  ],
+  "bloem.liveTv.manualRecording.failed": [
+    {
+      "type": 1,
+      "value": "reason"
+    },
+    {
+      "type": 0,
+      "value": " راجع حالة التسجيل قبل المحاولة مرة أخرى."
+    }
+  ],
+  "bloem.liveTv.manualRecording.intro": [
+    {
+      "type": 0,
+      "value": "استخدم هذا عندما يكون برنامج ما غير موجود في الدليل. تستخدم الأوقات المنطقة الزمنية لمتصفحك ("
+    },
+    {
+      "type": 1,
+      "value": "timeZone"
+    },
+    {
+      "type": 0,
+      "value": ")."
+    }
+  ],
+  "bloem.liveTv.manualRecording.invalidTimes": [
+    {
+      "type": 0,
+      "value": "اختر وقت انتهاء بعد وقت البدء وفي المستقبل."
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloadFailed": [
+    {
+      "type": 0,
+      "value": "تعذّرت إعادة تحميل التسجيلات. تبقى إجراءات التسجيل محظورة؛ حاول مرة أخرى."
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloaded": [
+    {
+      "type": 0,
+      "value": "أُعيد تحميل التسجيلات. راجع القائمة وأدخل عنوانًا لجدولة تسجيل جديد."
+    }
+  ],
+  "bloem.liveTv.manualRecording.scheduled": [
+    {
+      "type": 0,
+      "value": "تمت جدولة التسجيل."
+    }
+  ],
+  "bloem.liveTv.manualRecording.startsAt": [
+    {
+      "type": 0,
+      "value": "يبدأ في"
+    }
+  ],
+  "bloem.liveTv.manualRecording.submit": [
+    {
+      "type": 0,
+      "value": "جدولة التسجيل"
+    }
+  ],
+  "bloem.liveTv.manualRecording.summary": [
+    {
+      "type": 0,
+      "value": "الجدولة حسب القناة والوقت"
+    }
+  ],
+  "bloem.liveTv.manualRecording.title": [
+    {
+      "type": 0,
+      "value": "عنوان التسجيل"
+    }
+  ],
+  "bloem.liveTv.noGuideData": [
+    {
+      "type": 0,
+      "value": "لا توجد بيانات في الدليل"
+    }
+  ],
+  "bloem.liveTv.page.cancelRecording": [
+    {
+      "type": 0,
+      "value": "إلغاء"
+    }
+  ],
+  "bloem.liveTv.page.channelCount": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " قناة"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "قناة واحدة"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "قناتان"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " قنوات"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " قناةً"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " قناة"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.liveTv.page.filterChannels": [
+    {
+      "type": 0,
+      "value": "تصفية القنوات…"
+    }
+  ],
+  "bloem.liveTv.page.filterCount": [
+    {
+      "type": 1,
+      "value": "shown"
+    },
+    {
+      "type": 0,
+      "value": " من "
+    },
+    {
+      "type": 1,
+      "value": "total"
+    }
+  ],
+  "bloem.liveTv.page.hd": [
+    {
+      "type": 0,
+      "value": "HD"
+    }
+  ],
+  "bloem.liveTv.page.historyEmpty": [
+    {
+      "type": 0,
+      "value": "ستظهر هنا التسجيلات المكتملة والفاشلة."
+    }
+  ],
+  "bloem.liveTv.page.historyTitle": [
+    {
+      "type": 0,
+      "value": "السجل"
+    }
+  ],
+  "bloem.liveTv.page.intro": [
+    {
+      "type": 0,
+      "value": "شاهد ما يُعرض الآن، وتصفّح البرامج القادمة، وأدِر تسجيلاتك."
+    }
+  ],
+  "bloem.liveTv.page.loadingChannels": [
+    {
+      "type": 0,
+      "value": "جارٍ تحميل القنوات…"
+    }
+  ],
+  "bloem.liveTv.page.loadingGuide": [
+    {
+      "type": 0,
+      "value": "جارٍ تحميل الدليل…"
+    }
+  ],
+  "bloem.liveTv.page.loadingRecordings": [
+    {
+      "type": 0,
+      "value": "جارٍ تحميل التسجيلات…"
+    }
+  ],
+  "bloem.liveTv.page.noChannels": [
+    {
+      "type": 0,
+      "value": "لا توجد قنوات بعد. يمكن للمسؤول إضافة موالف أو مزود Xtream من «الإدارة» ثم «التلفزيون المباشر»."
+    }
+  ],
+  "bloem.liveTv.page.noFilterMatches": [
+    {
+      "type": 0,
+      "value": "لا توجد قنوات تطابق عامل التصفية هذا."
+    }
+  ],
+  "bloem.liveTv.page.notInLibrary": [
+    {
+      "type": 0,
+      "value": "هذا التسجيل ليس في مكتبة بعد، لذا لا يمكن تشغيله هنا. يجب على المسؤول إضافة مجلد التسجيلات إلى مكتبة وفحصها."
+    }
+  ],
+  "bloem.liveTv.page.nowAndNext": [
+    {
+      "type": 1,
+      "value": "now"
+    },
+    {
+      "type": 0,
+      "value": " ← "
+    },
+    {
+      "type": 1,
+      "value": "next"
+    }
+  ],
+  "bloem.liveTv.page.openRecording": [
+    {
+      "type": 0,
+      "value": "فتح التسجيل"
+    }
+  ],
+  "bloem.liveTv.page.recordNext": [
+    {
+      "type": 0,
+      "value": "تسجيل التالي"
+    }
+  ],
+  "bloem.liveTv.page.recordNow": [
+    {
+      "type": 0,
+      "value": "التسجيل الآن"
+    }
+  ],
+  "bloem.liveTv.page.recordingChangeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "تعذّر على Bloem تأكيد آخر تغيير أجريته على التسجيلات. أعد تحميل تسجيلاتك قبل جدولة تسجيل آخر أو إلغائه."
+    }
+  ],
+  "bloem.liveTv.page.recordingDetails": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.page.recordingStatus": [
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "scheduled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "مجدول"
+            }
+          ]
+        },
+        "recording": {
+          "value": [
+            {
+              "type": 0,
+              "value": "قيد التسجيل"
+            }
+          ]
+        },
+        "completed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "مكتمل"
+            }
+          ]
+        },
+        "failed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "فاشل"
+            }
+          ]
+        },
+        "cancelled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ملغى"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "status"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.liveTv.page.reloadChannels": [
+    {
+      "type": 0,
+      "value": "إعادة تحميل القنوات"
+    }
+  ],
+  "bloem.liveTv.page.scheduledEmpty": [
+    {
+      "type": 0,
+      "value": "لا شيء مجدول بعد. اختر برنامجًا من الدليل أو من قائمة القنوات."
+    }
+  ],
+  "bloem.liveTv.page.scheduledTitle": [
+    {
+      "type": 0,
+      "value": "المجدولة والجارية"
+    }
+  ],
+  "bloem.liveTv.page.tabChannels": [
+    {
+      "type": 0,
+      "value": "القنوات"
+    }
+  ],
+  "bloem.liveTv.page.tabGuide": [
+    {
+      "type": 0,
+      "value": "الدليل"
+    }
+  ],
+  "bloem.liveTv.page.tabRecordings": [
+    {
+      "type": 0,
+      "value": "تسجيلاتي"
+    }
+  ],
+  "bloem.liveTv.page.tabRules": [
+    {
+      "type": 0,
+      "value": "قواعد التسجيل"
+    }
+  ],
+  "bloem.liveTv.page.untitled": [
+    {
+      "type": 0,
+      "value": "بلا عنوان"
+    }
+  ],
+  "bloem.liveTv.page.watch": [
+    {
+      "type": 0,
+      "value": "مشاهدة"
+    }
+  ],
+  "bloem.liveTv.player.browserCannotPlay": [
+    {
+      "type": 0,
+      "value": "لا يستطيع هذا المتصفح تشغيل هذه القناة. جرّب متصفحًا آخر أو تطبيق Bloem."
+    }
+  ],
+  "bloem.liveTv.player.browserCouldNotPlay": [
+    {
+      "type": 0,
+      "value": "تعذّر على هذا المتصفح تشغيل القناة. جرّب قناة أخرى أو أعد تحميل الصفحة."
+    }
+  ],
+  "bloem.liveTv.player.couldNotStart": [
+    {
+      "type": 0,
+      "value": "تعذّر بدء هذه القناة. حاول مرة أخرى، أو جرّب قناة أخرى."
+    }
+  ],
+  "bloem.liveTv.player.didNotStart": [
+    {
+      "type": 0,
+      "value": "لم تبدأ القناة. ربما لا تزال قيد الموالفة، لذا حاول مرة أخرى."
+    }
+  ],
+  "bloem.liveTv.player.hlsPlaybackError": [
+    {
+      "type": 0,
+      "value": "خطأ في تشغيل HLS"
+    }
+  ],
+  "bloem.liveTv.player.label": [
+    {
+      "type": 0,
+      "value": "التلفزيون المباشر"
+    }
+  ],
+  "bloem.liveTv.player.labelWithTitle": [
+    {
+      "type": 0,
+      "value": "مباشر: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.player.playbackError": [
+    {
+      "type": 0,
+      "value": "خطأ في التشغيل"
+    }
+  ],
+  "bloem.liveTv.player.stopped": [
+    {
+      "type": 0,
+      "value": "توقفت القناة أو تعذّر تحميلها. حاول مرة أخرى لموالفتها من جديد."
+    }
+  ],
+  "bloem.liveTv.player.unsupportedAddress": [
+    {
+      "type": 0,
+      "value": "عنوان البث لهذه القناة غير مدعوم. جرّب قناة أخرى."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.blocked": [
+    {
+      "type": 0,
+      "value": "إجراءات التسجيل محظورة. أعد تحميل التسجيلات قبل أي إجراء آخر."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelFailed": [
+    {
+      "type": 0,
+      "value": "تعذّر إلغاء التسجيل"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelled": [
+    {
+      "type": 0,
+      "value": "تم إلغاء التسجيل"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReloadFirst": [
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " أعد تحميل التسجيلات قبل أي إجراء آخر."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReviewRefreshed": [
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " راجع التسجيلات المحدّثة قبل أي إجراء آخر."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reload": [
+    {
+      "type": 0,
+      "value": "إعادة تحميل التسجيلات"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloadFailed": [
+    {
+      "type": 0,
+      "value": "تعذّرت إعادة تحميل التسجيلات. تبقى إجراءات التسجيل محظورة؛ جرّب «إعادة تحميل التسجيلات» مرة أخرى."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloaded": [
+    {
+      "type": 0,
+      "value": "أُعيد تحميل التسجيلات. راجع القائمة قبل أي إجراء تسجيل آخر."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduleFailed": [
+    {
+      "type": 0,
+      "value": "تعذّرت جدولة التسجيل"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduled": [
+    {
+      "type": 0,
+      "value": "تمت جدولة التسجيل"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.waitForReadback": [
+    {
+      "type": 0,
+      "value": "انتظر حتى تكتمل قراءة التسجيلات قبل إعادة التحميل."
+    }
+  ],
+  "bloem.liveTv.reloadRecordings": [
+    {
+      "type": 0,
+      "value": "إعادة تحميل التسجيلات"
+    }
+  ],
+  "bloem.liveTv.reloadingRecordings": [
+    {
+      "type": 0,
+      "value": "جارٍ إعادة تحميل التسجيلات…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allChannels": [
+    {
+      "type": 0,
+      "value": "كل القنوات"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allProgramsOnChannel": [
+    {
+      "type": 0,
+      "value": "كل البرامج على القناة"
+    }
+  ],
+  "bloem.liveTv.seriesRules.channel": [
+    {
+      "type": 0,
+      "value": "القناة"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmDescription": [
+    {
+      "type": 0,
+      "value": "يؤدي هذا إلى إزالة القاعدة المتكررة. لا تُحذف التسجيلات المجدولة بالفعل ولا الملفات المسجّلة. أدِرها بشكل منفصل من «تسجيلاتي»."
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmRemove": [
+    {
+      "type": 0,
+      "value": "إزالة القاعدة"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmTitle": [
+    {
+      "type": 0,
+      "value": "إزالة قاعدة التسجيل: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFailed": [
+    {
+      "type": 0,
+      "value": "تعذّر إنشاء قاعدة التسجيل."
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFormLabel": [
+    {
+      "type": 0,
+      "value": "إنشاء قاعدة تسجيل"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createLegend": [
+    {
+      "type": 0,
+      "value": "إنشاء قاعدة تسجيل"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createRule": [
+    {
+      "type": 0,
+      "value": "إنشاء القاعدة"
+    }
+  ],
+  "bloem.liveTv.seriesRules.created": [
+    {
+      "type": 0,
+      "value": "تم إنشاء قاعدة التسجيل. سيجدول الخادم برامج الدليل المطابقة."
+    }
+  ],
+  "bloem.liveTv.seriesRules.creating": [
+    {
+      "type": 0,
+      "value": "جارٍ الإنشاء…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.disabled": [
+    {
+      "type": 0,
+      "value": "معطّلة"
+    }
+  ],
+  "bloem.liveTv.seriesRules.empty": [
+    {
+      "type": 0,
+      "value": "لا توجد قواعد لتسجيل المسلسلات بعد."
+    }
+  ],
+  "bloem.liveTv.seriesRules.enabled": [
+    {
+      "type": 0,
+      "value": "مفعّلة"
+    }
+  ],
+  "bloem.liveTv.seriesRules.heading": [
+    {
+      "type": 0,
+      "value": "قواعد تسجيل المسلسلات"
+    }
+  ],
+  "bloem.liveTv.seriesRules.intro": [
+    {
+      "type": 0,
+      "value": "سجّل مسلسلًا محددًا من الدليل، أو طابق العناوين التي تحتوي على نص البحث (دون مراعاة حالة الأحرف). اقصر القاعدة على قناة واحدة أو طابق عبر كل القنوات."
+    }
+  ],
+  "bloem.liveTv.seriesRules.listLabel": [
+    {
+      "type": 0,
+      "value": "قواعد التسجيل"
+    }
+  ],
+  "bloem.liveTv.seriesRules.loading": [
+    {
+      "type": 0,
+      "value": "جارٍ تحميل قواعد التسجيل…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.matchSeries": [
+    {
+      "type": 0,
+      "value": "مطابقة مسلسل من الدليل"
+    }
+  ],
+  "bloem.liveTv.seriesRules.newOnly": [
+    {
+      "type": 0,
+      "value": "البرامج المميزة بأنها جديدة في الدليل فقط"
+    }
+  ],
+  "bloem.liveTv.seriesRules.reload": [
+    {
+      "type": 0,
+      "value": "إعادة تحميل قواعد التسجيل"
+    }
+  ],
+  "bloem.liveTv.seriesRules.remove": [
+    {
+      "type": 0,
+      "value": "إزالة"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeFailed": [
+    {
+      "type": 0,
+      "value": "تعذّرت إزالة قاعدة التسجيل."
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeRuleLabel": [
+    {
+      "type": 0,
+      "value": "إزالة القاعدة: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removed": [
+    {
+      "type": 0,
+      "value": "تمت إزالة القاعدة. لم تتغير التسجيلات المجدولة بالفعل ولا الملفات المسجّلة."
+    }
+  ],
+  "bloem.liveTv.seriesRules.selectProfile": [
+    {
+      "type": 0,
+      "value": "اختر ملفًا شخصيًا لإدارة قواعد التسجيل."
+    }
+  ],
+  "bloem.liveTv.seriesRules.seriesLabel": [
+    {
+      "type": 0,
+      "value": "المسلسل "
+    },
+    {
+      "type": 1,
+      "value": "seriesId"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryNewOnly": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · البرامج الجديدة فقط"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryRepeats": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · يشمل الإعادات"
+    }
+  ],
+  "bloem.liveTv.seriesRules.titleContains": [
+    {
+      "type": 0,
+      "value": "العنوان يحتوي على"
+    }
+  ],
+  "bloem.liveTv.seriesRules.unavailableChannel": [
+    {
+      "type": 0,
+      "value": "قناة غير متاحة"
+    }
+  ],
+  "bloem.liveTv.seriesRules.useTitleMatching": [
+    {
+      "type": 0,
+      "value": "استخدام مطابقة العنوان بدلًا من ذلك"
+    }
+  ],
+  "bloem.liveTv.timeRange": [
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.title": [
+    {
+      "type": 0,
+      "value": "التلفزيون المباشر"
+    }
+  ],
+  "bloem.liveTv.tryAgain": [
+    {
+      "type": 0,
+      "value": "إعادة المحاولة"
+    }
+  ],
+  "bloem.liveTv.watch.backToLiveTv": [
+    {
+      "type": 0,
+      "value": "العودة إلى التلفزيون المباشر"
+    }
+  ],
+  "bloem.liveTv.watch.connecting": [
+    {
+      "type": 0,
+      "value": "جارٍ الاتصال بقناتك…"
+    }
+  ],
+  "bloem.liveTv.watch.selectProfileAndChannel": [
+    {
+      "type": 0,
+      "value": "اختر ملفًا شخصيًا وقناة لمشاهدة التلفزيون المباشر."
+    }
+  ],
+  "bloem.nav.liveTv": [
+    {
+      "type": 0,
+      "value": "التلفزيون المباشر"
+    }
+  ],
+  "bloem.notifications.announcement.defaultTitle": [
+    {
+      "type": 0,
+      "value": "إعلان من الخادم"
+    }
+  ],
+  "bloem.notifications.announcement.severity.critical": [
+    {
+      "type": 0,
+      "value": "حرج"
+    }
+  ],
+  "bloem.notifications.announcement.severity.info": [
+    {
+      "type": 0,
+      "value": "معلومات"
+    }
+  ],
+  "bloem.notifications.announcement.severity.warning": [
+    {
+      "type": 0,
+      "value": "تحذير"
+    }
+  ],
+  "bloem.preview.banner.endsOn": [
+    {
+      "type": 0,
+      "value": "تنتهي معاينتك في "
+    },
+    {
+      "type": 1,
+      "value": "date"
+    }
+  ],
+  "bloem.preview.banner.exitPreview": [
+    {
+      "type": 0,
+      "value": "الخروج من المعاينة"
+    }
+  ],
+  "bloem.preview.banner.freePlayLeft": [
+    {
+      "type": 0,
+      "value": "التشغيل المجاني: بقي "
+    },
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " دقيقة"
+    }
+  ],
+  "bloem.preview.banner.minutesRemaining": [
+    {
+      "type": 0,
+      "value": "المتبقي: "
+    },
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " دقيقة"
+    }
+  ],
+  "bloem.preview.banner.signOut": [
+    {
+      "type": 0,
+      "value": "تسجيل الخروج"
+    }
+  ],
+  "bloem.preview.banner.subscribe": [
+    {
+      "type": 0,
+      "value": "اشترك"
+    }
+  ],
+  "bloem.preview.banner.yourPreview": [
+    {
+      "type": 0,
+      "value": "معاينة مكتبتك"
+    }
+  ],
+  "bloem.preview.book.alsoByThisAuthor": [
+    {
+      "type": 0,
+      "value": "المزيد من هذا المؤلف"
+    }
+  ],
+  "bloem.preview.book.audiobook": [
+    {
+      "type": 0,
+      "value": "كتاب صوتي"
+    }
+  ],
+  "bloem.preview.book.byAuthors": [
+    {
+      "type": 0,
+      "value": "تأليف "
+    },
+    {
+      "type": 1,
+      "value": "authors"
+    }
+  ],
+  "bloem.preview.book.chapterNumber": [
+    {
+      "type": 0,
+      "value": "الفصل "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.book.chapters": [
+    {
+      "type": 0,
+      "value": "الفصول"
+    }
+  ],
+  "bloem.preview.book.ebook": [
+    {
+      "type": 0,
+      "value": "كتاب إلكتروني"
+    }
+  ],
+  "bloem.preview.book.manga": [
+    {
+      "type": 0,
+      "value": "مانغا"
+    }
+  ],
+  "bloem.preview.book.youMightAlsoLike": [
+    {
+      "type": 0,
+      "value": "قد يعجبك أيضًا"
+    }
+  ],
+  "bloem.preview.browseOnly": [
+    {
+      "type": 0,
+      "value": "معاينة للتصفح فقط"
+    }
+  ],
+  "bloem.preview.collections.loading": [
+    {
+      "type": 0,
+      "value": "جارٍ تحميل المجموعات…"
+    }
+  ],
+  "bloem.preview.collections.title": [
+    {
+      "type": 0,
+      "value": "المجموعات"
+    }
+  ],
+  "bloem.preview.collections.titleCount": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " عنوان"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "عنوان واحد"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "عنوانان"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " عناوين"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " عنوانًا"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " عنوان"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.preview.collections.unavailable": [
+    {
+      "type": 0,
+      "value": "المجموعات غير متاحة. حاول مرة أخرى."
+    }
+  ],
+  "bloem.preview.cta.message": [
+    {
+      "type": 0,
+      "value": "تصفّح المكتبة هنا. اشترك لتشاهد وتقرأ وتستمع."
+    }
+  ],
+  "bloem.preview.cta.subscribeToBrand": [
+    {
+      "type": 0,
+      "value": "الاشتراك في "
+    },
+    {
+      "type": 1,
+      "value": "brand"
+    }
+  ],
+  "bloem.preview.cta.subscribeToListen": [
+    {
+      "type": 0,
+      "value": "اشترك للاستماع"
+    }
+  ],
+  "bloem.preview.cta.subscribeToRead": [
+    {
+      "type": 0,
+      "value": "اشترك للقراءة"
+    }
+  ],
+  "bloem.preview.cta.subscribeToWatch": [
+    {
+      "type": 0,
+      "value": "اشترك للمشاهدة"
+    }
+  ],
+  "bloem.preview.details": [
+    {
+      "type": 0,
+      "value": "التفاصيل"
+    }
+  ],
+  "bloem.preview.dialog.freePlayEnded": [
+    {
+      "type": 0,
+      "value": "انتهى تشغيلك المجاني"
+    }
+  ],
+  "bloem.preview.dialog.keepBrowsing": [
+    {
+      "type": 0,
+      "value": "متابعة التصفح"
+    }
+  ],
+  "bloem.preview.dialog.playFree": [
+    {
+      "type": 0,
+      "value": "التشغيل مجانًا"
+    }
+  ],
+  "bloem.preview.dialog.playFreeFor": [
+    {
+      "type": 6,
+      "value": "minutes",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 0,
+              "value": "التشغيل مجانًا لمدة "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " دقيقة"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "التشغيل مجانًا لمدة دقيقة واحدة"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "التشغيل مجانًا لمدة دقيقتين"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 0,
+              "value": "التشغيل مجانًا لمدة "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " دقائق"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 0,
+              "value": "التشغيل مجانًا لمدة "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " دقيقة"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "التشغيل مجانًا لمدة "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " دقيقة"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.preview.dialog.sessionEnded": [
+    {
+      "type": 0,
+      "value": "انتهت جلسة المعاينة"
+    }
+  ],
+  "bloem.preview.dialog.startTrial": [
+    {
+      "type": 0,
+      "value": "ابدأ فترتك التجريبية"
+    }
+  ],
+  "bloem.preview.dialog.startTrialToEnjoy": [
+    {
+      "type": 0,
+      "value": "ابدأ فترتك التجريبية للاستمتاع بالمكتبة كاملة."
+    }
+  ],
+  "bloem.preview.errors.couldNotStart": [
+    {
+      "type": 0,
+      "value": "تعذّر بدء المعاينة. استخدم رابط تشغيل جديدًا."
+    }
+  ],
+  "bloem.preview.errors.exitTimedOut": [
+    {
+      "type": 0,
+      "value": "انتهت مهلة الخروج من المعاينة"
+    }
+  ],
+  "bloem.preview.errors.requestTimedOut": [
+    {
+      "type": 0,
+      "value": "انتهت مهلة طلب المعاينة"
+    }
+  ],
+  "bloem.preview.errors.useStorefrontLink": [
+    {
+      "type": 0,
+      "value": "استخدم رابط تشغيل المعاينة من المتجر."
+    }
+  ],
+  "bloem.preview.hero.featuredTitles": [
+    {
+      "type": 0,
+      "value": "عناوين مميزة"
+    }
+  ],
+  "bloem.preview.hero.pauseSlideshow": [
+    {
+      "type": 0,
+      "value": "إيقاف العرض مؤقتًا"
+    }
+  ],
+  "bloem.preview.hero.resumeSlideshow": [
+    {
+      "type": 0,
+      "value": "استئناف العرض"
+    }
+  ],
+  "bloem.preview.hero.showSlide": [
+    {
+      "type": 0,
+      "value": "عرض "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.preview.landing.body": [
+    {
+      "type": 0,
+      "value": "استخدم رابط معاينة جديدًا لاستكشاف المكتبة، أو ابدأ فترتك التجريبية."
+    }
+  ],
+  "bloem.preview.landing.browse": [
+    {
+      "type": 0,
+      "value": "تصفح المكتبة"
+    }
+  ],
+  "bloem.preview.landing.title": [
+    {
+      "type": 0,
+      "value": "ابدأ التصفح من "
+    },
+    {
+      "type": 1,
+      "value": "brand"
+    }
+  ],
+  "bloem.preview.metadata.audio": [
+    {
+      "type": 0,
+      "value": "الصوت"
+    }
+  ],
+  "bloem.preview.metadata.audioNumber": [
+    {
+      "type": 0,
+      "value": "الصوت "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.metadata.subtitleNumber": [
+    {
+      "type": 0,
+      "value": "الترجمة "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.metadata.subtitles": [
+    {
+      "type": 0,
+      "value": "الترجمة"
+    }
+  ],
+  "bloem.preview.metadata.version": [
+    {
+      "type": 0,
+      "value": "النسخة"
+    }
+  ],
+  "bloem.preview.metadata.versionNumber": [
+    {
+      "type": 0,
+      "value": "النسخة "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.moreActions": [
+    {
+      "type": 0,
+      "value": "المزيد من الإجراءات"
+    }
+  ],
+  "bloem.preview.route.loading": [
+    {
+      "type": 0,
+      "value": "جارٍ التحميل…"
+    }
+  ],
+  "bloem.preview.route.loadingApplication": [
+    {
+      "type": 0,
+      "value": "جارٍ تحميل التطبيق"
+    }
+  ],
+  "bloem.preview.sidebar.calendar": [
+    {
+      "type": 0,
+      "value": "التقويم"
+    }
+  ],
+  "bloem.preview.sidebar.collections": [
+    {
+      "type": 0,
+      "value": "المجموعات"
+    }
+  ],
+  "bloem.preview.sidebar.home": [
+    {
+      "type": 0,
+      "value": "الرئيسية"
+    }
+  ],
+  "bloem.preview.sidebar.libraries": [
+    {
+      "type": 0,
+      "value": "المكتبات"
+    }
+  ],
+  "bloem.preview.sidebar.navigation": [
+    {
+      "type": 0,
+      "value": "التنقل في المعاينة"
+    }
+  ],
+  "bloem.preview.sidebar.preview": [
+    {
+      "type": 0,
+      "value": "معاينة"
+    }
+  ],
+  "bloem.preview.sidebar.search": [
+    {
+      "type": 0,
+      "value": "البحث"
+    }
+  ],
+  "bloem.preview.start.opening": [
+    {
+      "type": 0,
+      "value": "جارٍ فتح معاينة مكتبتك…"
+    }
+  ],
+  "bloem.profiles.directCredentials.changeNotConfirmed": [
+    {
+      "type": 0,
+      "value": "تعذّر تأكيد التغيير."
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingProfileCredentialStatus": [
+    {
+      "type": 0,
+      "value": "جارٍ التحقق من حالة بيانات اعتماد الملف الشخصي…"
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingSupport": [
+    {
+      "type": 0,
+      "value": "جارٍ التحقق من الدعم…"
+    }
+  ],
+  "bloem.profiles.directCredentials.chooseAProfile": [
+    {
+      "type": 0,
+      "value": "اختر ملفًا شخصيًا"
+    }
+  ],
+  "bloem.profiles.directCredentials.confirmRequired": [
+    {
+      "type": 0,
+      "value": "أدخل كلمة مرور حسابك وحدّد المربع للتأكيد."
+    }
+  ],
+  "bloem.profiles.directCredentials.couldNotLoadHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "تعذّر تحميل الملفات الشخصية للأسرة."
+    }
+  ],
+  "bloem.profiles.directCredentials.emailAndPasswordRequired": [
+    {
+      "type": 0,
+      "value": "أدخل بريدًا إلكترونيًا وكلمة مرور جديدة للملف الشخصي."
+    }
+  ],
+  "bloem.profiles.directCredentials.giveAHouseholdProfileIts": [
+    {
+      "type": 0,
+      "value": "امنح ملفًا شخصيًا في الأسرة بريدًا إلكترونيًا وكلمة مرور خاصين به، ليتمكن من تسجيل الدخول إلى تطبيقات Bloem دون كلمة مرور الحساب. يظل موقع الويب يستخدم تسجيل الدخول إلى الحساب. لتغيير ذلك، تحتاج إلى كلمة مرور حسابك؛ ولا يمكن للحسابات التي تسجّل الدخول عبر تسجيل الدخول الموحّد فقط استخدامه. تتوقف كلمة مرور الملف الشخصي عن العمل ما دام تسجيل الدخول بكلمة المرور معطّلًا لهذا الخادم أو لحسابك."
+    }
+  ],
+  "bloem.profiles.directCredentials.iUnderstandThisSignsThe": [
+    {
+      "type": 0,
+      "value": "أفهم أن هذا يسجّل خروج الملف الشخصي من كل تطبيق سجّل الدخول إليه ببيانات تسجيل الدخول الخاصة به."
+    }
+  ],
+  "bloem.profiles.directCredentials.loadingHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "جارٍ تحميل الملفات الشخصية للأسرة…"
+    }
+  ],
+  "bloem.profiles.directCredentials.manageSignInFor": [
+    {
+      "type": 0,
+      "value": "إدارة تسجيل الدخول لـ "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "bloem.profiles.directCredentials.newPasswordForTheProfile": [
+    {
+      "type": 0,
+      "value": "كلمة مرور جديدة للملف الشخصي"
+    }
+  ],
+  "bloem.profiles.directCredentials.profile": [
+    {
+      "type": 0,
+      "value": "الملف الشخصي"
+    }
+  ],
+  "bloem.profiles.directCredentials.profileEmail": [
+    {
+      "type": 0,
+      "value": "البريد الإلكتروني للملف الشخصي"
+    }
+  ],
+  "bloem.profiles.directCredentials.saveSignIn": [
+    {
+      "type": 0,
+      "value": "حفظ تسجيل الدخول"
+    }
+  ],
+  "bloem.profiles.directCredentials.saving": [
+    {
+      "type": 0,
+      "value": "جارٍ الحفظ…"
+    }
+  ],
+  "bloem.profiles.directCredentials.separateSignInForA": [
+    {
+      "type": 0,
+      "value": "تسجيل دخول منفصل لملف شخصي"
+    }
+  ],
+  "bloem.profiles.directCredentials.signInSaved": [
+    {
+      "type": 0,
+      "value": "تم حفظ تسجيل الدخول. سُجّل خروج الملف الشخصي من تطبيقاته ويجب أن يسجّل الدخول مرة أخرى."
+    }
+  ],
+  "bloem.profiles.directCredentials.signInTurnedOff": [
+    {
+      "type": 0,
+      "value": "تم تعطيل تسجيل الدخول الخاص بالملف الشخصي، وسُجّل خروجه من تطبيقاته."
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileHasNoSign": [
+    {
+      "type": 0,
+      "value": "ليس لهذا الملف الشخصي تسجيل دخول خاص به."
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileSignsInAs": [
+    {
+      "type": 0,
+      "value": "يسجّل هذا الملف الشخصي الدخول باسم "
+    },
+    {
+      "type": 1,
+      "value": "loginEmail"
+    }
+  ],
+  "bloem.profiles.directCredentials.tryAgain": [
+    {
+      "type": 0,
+      "value": "إعادة المحاولة"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnOffItsSignIn": [
+    {
+      "type": 0,
+      "value": "تعطيل تسجيل الدخول الخاص به"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnedOff": [
+    {
+      "type": 0,
+      "value": "كلمات مرور الملفات الشخصية معطّلة على هذا الخادم. يمكن لمسؤول الخادم تفعيلها من الإعدادات، ضمن «تسجيل الدخول والأمان»."
+    }
+  ],
+  "bloem.profiles.directCredentials.yourAccountPassword": [
+    {
+      "type": 0,
+      "value": "كلمة مرور حسابك"
+    }
+  ],
+  "bloem.requests.audiobook.identifierHint": [
+    {
+      "type": 0,
+      "value": "يساعد ISBN أو ASIN على مطابقة الكتاب الصوتي عند وصوله. بدون معرّف، يمكن للمسؤول وضع علامة على طلبك بأنه مكتمل."
+    }
+  ],
+  "bloem.requests.audiobook.intro": [
+    {
+      "type": 0,
+      "value": "اطلب عنوانًا لمؤسستك. تنتظر الطلبات الموافق عليها حتى يُضاف الكتاب الصوتي."
+    }
+  ],
+  "bloem.requests.audiobook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "ليست لديك طلبات كتب صوتية."
+    }
+  ],
+  "bloem.requests.audiobook.mineHeading": [
+    {
+      "type": 0,
+      "value": "طلباتك للكتب الصوتية"
+    }
+  ],
+  "bloem.requests.audiobook.open": [
+    {
+      "type": 0,
+      "value": "فتح الكتاب الصوتي"
+    }
+  ],
+  "bloem.requests.audiobook.requested": [
+    {
+      "type": 0,
+      "value": "تم طلب الكتاب الصوتي"
+    }
+  ],
+  "bloem.requests.audiobook.submit": [
+    {
+      "type": 0,
+      "value": "طلب كتاب صوتي"
+    }
+  ],
+  "bloem.requests.audiobook.title": [
+    {
+      "type": 0,
+      "value": "طلبات الكتب الصوتية"
+    }
+  ],
+  "bloem.requests.audiobook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "طلبات الكتب الصوتية غير متاحة لهذا الملف الشخصي."
+    }
+  ],
+  "bloem.requests.cancel": [
+    {
+      "type": 0,
+      "value": "إلغاء الطلب"
+    }
+  ],
+  "bloem.requests.ebook.availabilityCheckFailed": [
+    {
+      "type": 0,
+      "value": "تعذّر التحقق من توفر طلبات الكتب الإلكترونية."
+    }
+  ],
+  "bloem.requests.ebook.cancellationNote": [
+    {
+      "type": 0,
+      "value": "يقتصر الإلغاء على Bloem؛ وقد يكون مزود الإكمال يعالج الكتاب الإلكتروني بالفعل."
+    }
+  ],
+  "bloem.requests.ebook.checkingAvailability": [
+    {
+      "type": 0,
+      "value": "جارٍ التحقق من توفر طلبات الكتب الإلكترونية…"
+    }
+  ],
+  "bloem.requests.ebook.fulfilmentUnconfigured": [
+    {
+      "type": 0,
+      "value": "لم يُعدّ إكمال طلبات الكتب الإلكترونية. ستنتظر الطلبات الموافق عليها حتى يتم الإعداد."
+    }
+  ],
+  "bloem.requests.ebook.identifierHint": [
+    {
+      "type": 0,
+      "value": "أدخل رقم ISBN للإصدار الذي تريده. يكتمل الطلب عندما يتوفر الكتاب الإلكتروني في مكتبتك."
+    }
+  ],
+  "bloem.requests.ebook.intro": [
+    {
+      "type": 0,
+      "value": "اطلب عنوانًا لمؤسستك. تنتظر الطلبات الموافق عليها حتى يُضاف الكتاب الإلكتروني."
+    }
+  ],
+  "bloem.requests.ebook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "ليست لديك طلبات كتب إلكترونية."
+    }
+  ],
+  "bloem.requests.ebook.mineHeading": [
+    {
+      "type": 0,
+      "value": "طلباتك للكتب الإلكترونية"
+    }
+  ],
+  "bloem.requests.ebook.open": [
+    {
+      "type": 0,
+      "value": "فتح الكتاب الإلكتروني"
+    }
+  ],
+  "bloem.requests.ebook.requested": [
+    {
+      "type": 0,
+      "value": "تم طلب الكتاب الإلكتروني"
+    }
+  ],
+  "bloem.requests.ebook.submit": [
+    {
+      "type": 0,
+      "value": "طلب كتاب إلكتروني"
+    }
+  ],
+  "bloem.requests.ebook.title": [
+    {
+      "type": 0,
+      "value": "طلبات الكتب الإلكترونية"
+    }
+  ],
+  "bloem.requests.ebook.turnedOff": [
+    {
+      "type": 0,
+      "value": "طلبات الكتب الإلكترونية معطّلة حاليًا."
+    }
+  ],
+  "bloem.requests.ebook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "طلبات الكتب الإلكترونية غير متاحة لهذا الملف الشخصي."
+    }
+  ],
+  "bloem.requests.ebook.unavailableOnServer": [
+    {
+      "type": 0,
+      "value": "طلبات الكتب الإلكترونية غير متاحة على هذا الخادم."
+    }
+  ],
+  "bloem.requests.field.asinOptional": [
+    {
+      "type": 0,
+      "value": "ASIN (اختياري)"
+    }
+  ],
+  "bloem.requests.field.author": [
+    {
+      "type": 0,
+      "value": "المؤلف"
+    }
+  ],
+  "bloem.requests.field.authorOptional": [
+    {
+      "type": 0,
+      "value": "المؤلف (اختياري)"
+    }
+  ],
+  "bloem.requests.field.isbn": [
+    {
+      "type": 0,
+      "value": "ISBN"
+    }
+  ],
+  "bloem.requests.field.isbnOptional": [
+    {
+      "type": 0,
+      "value": "ISBN (اختياري)"
+    }
+  ],
+  "bloem.requests.field.noteOptional": [
+    {
+      "type": 0,
+      "value": "ملاحظة (اختيارية)"
+    }
+  ],
+  "bloem.requests.field.title": [
+    {
+      "type": 0,
+      "value": "العنوان"
+    }
+  ],
+  "bloem.requests.isbnValue": [
+    {
+      "type": 0,
+      "value": "ISBN "
+    },
+    {
+      "type": 1,
+      "value": "isbn"
+    }
+  ],
+  "bloem.requests.loading": [
+    {
+      "type": 0,
+      "value": "جارٍ تحميل الطلبات…"
+    }
+  ],
+  "bloem.requests.mediaTabs.audiobooks": [
+    {
+      "type": 0,
+      "value": "الكتب الصوتية"
+    }
+  ],
+  "bloem.requests.mediaTabs.ebooks": [
+    {
+      "type": 0,
+      "value": "الكتب الإلكترونية"
+    }
+  ],
+  "bloem.requests.mediaTabs.label": [
+    {
+      "type": 0,
+      "value": "نوع الوسائط المطلوبة"
+    }
+  ],
+  "bloem.requests.mediaTabs.video": [
+    {
+      "type": 0,
+      "value": "الأفلام والمسلسلات"
+    }
+  ],
+  "bloem.requests.nextPage": [
+    {
+      "type": 0,
+      "value": "التالي"
+    }
+  ],
+  "bloem.requests.policy.limited": [
+    {
+      "type": 0,
+      "value": "المتبقي "
+    },
+    {
+      "type": 1,
+      "value": "remaining"
+    },
+    {
+      "type": 0,
+      "value": " من "
+    },
+    {
+      "type": 6,
+      "value": "limit",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " طلب"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "طلب واحد"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "طلبين"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " طلبات"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " طلبًا"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " طلب"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " خلال "
+    },
+    {
+      "type": 6,
+      "value": "days",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " يوم"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "يوم واحد"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "يومين"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " أيام"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " يومًا"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " يوم"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": ". "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "تتم الموافقة على الطلبات تلقائيًا."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "سيراجع أحد المسؤولين طلبك."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.requests.policy.unlimited": [
+    {
+      "type": 0,
+      "value": "لا حد للطلبات. "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "تتم الموافقة على الطلبات تلقائيًا."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "سيراجع أحد المسؤولين طلبك."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.requests.previousPage": [
+    {
+      "type": 0,
+      "value": "السابق"
+    }
+  ],
+  "bloem.requests.submitting": [
+    {
+      "type": 0,
+      "value": "جارٍ الطلب…"
+    }
+  ]
+}

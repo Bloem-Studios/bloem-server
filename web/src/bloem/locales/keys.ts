@@ -2313,4 +2313,4 @@ export type BloemMessageKey =
   | "bloem.requests.submitting";
 
 /** Languages with a Bloem catalog; the pseudo-locales are generated from English. */
-export const BLOEM_LOCALES = ["en"] as const;
+export const BLOEM_LOCALES = ["en", "ar", "de", "es", "fr", "ja", "pt-BR", "zh-Hans"] as const;
