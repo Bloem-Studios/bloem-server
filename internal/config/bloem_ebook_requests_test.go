@@ -5,7 +5,7 @@ import "testing"
 func TestBloemOptInSettingsDefaultOffAndValidate(t *testing.T) {
 	for _, key := range []string{
 		"bloem.requests.ebooks_enabled",
-		"bloem.auth.profile_passwords_enabled",
+		"bloem.auth.profile_sign_in_enabled",
 	} {
 		t.Run(key, func(t *testing.T) {
 			if got := EffectiveAdminSettings(nil)[key]; got != "false" {

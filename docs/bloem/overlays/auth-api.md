@@ -238,7 +238,7 @@ returns `409 credential_revision_conflict` and preserves newer credentials and d
 sessions. Successful rotation or disable revokes direct sessions for that profile.
 
 Profile passwords are offered only while the server setting
-`bloem.auth.profile_passwords_enabled` is on; it is off by default. While it is off,
+`bloem.auth.profile_sign_in_enabled` is on; it is off by default. While it is off,
 the capability probe advertises neither `profile_credential_management_v1` nor
 direct-profile login, a correct profile password is refused with
 `403 profile_passwords_disabled` after the password comparison (so a refusal does not

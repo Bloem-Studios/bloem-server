@@ -7,7 +7,7 @@ upstream feature history remain separate from Bloem's application commits.
 
 A household could give each profile its own email and password whenever the
 server offered profile passwords. Whether profiles may do that is now a server
-setting, **Profile passwords** (`bloem.auth.profile_passwords_enabled`), and it is
+setting, **Profile passwords** (`bloem.auth.profile_sign_in_enabled`), and it is
 off by default, so a server that has not turned it on offers no profile sign-in.
 While it is off, a correct profile password is refused with
 `403 profile_passwords_disabled` (a wrong one still reads as a wrong password),

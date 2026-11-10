@@ -198,7 +198,7 @@ var bloemRestoredSettings = strings.Fields(`livetv.`)
 // accounts may request ebooks (as Silo's request switches), and whether
 // profiles may sign in with their own password (as auth.local_password_login).
 var bloemStricterSettings = []string{
-	"lan.advertisement_enabled", "bloem.requests.ebooks_enabled", "bloem.auth.profile_passwords_enabled",
+	"lan.advertisement_enabled", "bloem.requests.ebooks_enabled", "bloem.auth.profile_sign_in_enabled",
 }
 
 // pageLiveTV is Bloem's Live TV settings page.
@@ -209,7 +209,7 @@ var bloemSettingsPages = []SettingsPage{{pageLiveTV, "Live TV"}}
 var bloemSettingRules = map[string]settingRule{
 	"lan.advertisement_enabled":            {page: "general", class: SettingPortable},
 	"bloem.requests.ebooks_enabled":        {page: pageRequests, class: SettingPortable},
-	"bloem.auth.profile_passwords_enabled": {page: pageSignIn, class: SettingPortable},
+	"bloem.auth.profile_sign_in_enabled": {page: pageSignIn, class: SettingPortable},
 	"livetv.":                              {page: pageLiveTV, class: SettingPortable},
 	"livetv.dvr_path":                      {page: pageLiveTV, class: SettingServerSpecific},
 	"livetv.hw_accel":                      {page: pageLiveTV, class: SettingServerSpecific},

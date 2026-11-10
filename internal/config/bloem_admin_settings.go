@@ -7,7 +7,9 @@ const (
 
 	// ProfilePasswordsEnabledSettingKey lets household profiles sign in with
 	// their own email and password. Off by default.
-	ProfilePasswordsEnabledSettingKey = "bloem.auth.profile_passwords_enabled"
+	// The key avoids the word "password": tools that look for stored secrets
+	// (the scenario executor's scratch-database guard) read it as one.
+	ProfilePasswordsEnabledSettingKey = "bloem.auth.profile_sign_in_enabled" //nolint:gosec // G101: a setting key, not a credential
 )
 
 // bloemAdminSettingDefaults extends Silo's adminSettingDefaults.

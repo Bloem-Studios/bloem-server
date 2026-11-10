@@ -11,7 +11,7 @@ import { useSettingsForm } from "@/hooks/useSettingsForm";
 import { FieldGroup } from "./FieldGroup";
 import { SettingField } from "./SettingField";
 
-export const PROFILE_PASSWORDS_KEY = "bloem.auth.profile_passwords_enabled";
+export const PROFILE_PASSWORDS_KEY = "bloem.auth.profile_sign_in_enabled";
 const KEYS = [PROFILE_PASSWORDS_KEY];
 
 /**
