@@ -44860,40 +44860,6 @@
             },
             "description": "not_found: profile does not belong to this account or does not exist."
           },
-          "429": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeRateLimitError"
-                }
-              }
-            },
-            "description": "The configured rate limit was exceeded.",
-            "headers": {
-              "Retry-After": {
-                "description": "Seconds to wait before retrying.",
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Reset": {
-                "description": "Reset time as Unix seconds.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
           "500": {
             "content": {
               "application/json": {

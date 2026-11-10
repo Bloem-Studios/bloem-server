@@ -120,7 +120,9 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" && deps.UserStoreProvider != nil {
 		credentialHandler = handlers.NewBloemProfileCredentialsHandler(deps.UserStoreProvider, auth.NewUserRepository(deps.DB), access.NewProfileTokenService(deps.Config.Auth.JWTSecret, 0), auth.NewProfileCredentialService(deps.DB))
 		if deps.RateLimitMW != nil {
-			credentialLimit = deps.RateLimitMW.AuthEndpointHandler("profile_credentials")
+			// The budget must be one ratelimit.DefaultConfig names: an unknown
+			// name has no endpoint limit at all (bloem_rate_limit_budget_test.go).
+			credentialLimit = deps.RateLimitMW.AuthEndpointHandler("password_change")
 		}
 		system.SetProfileCredentialManagementAvailable(true)
 	}
@@ -202,12 +204,16 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 		if authMW != nil && surfaces.ProfileCredentials != nil {
 			r.Group(func(r chi.Router) {
 				r.Use(authMW.RequireAuth)
-				if surfaces.ProfileCredentialLimit != nil {
-					r.Use(surfaces.ProfileCredentialLimit)
-				}
 				r.Get("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleGet)
-				r.Put("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleChange)
-				r.Delete("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleChange)
+				// Only the writes check the account password, so only they
+				// spend the password-change budget.
+				r.Group(func(r chi.Router) {
+					if surfaces.ProfileCredentialLimit != nil {
+						r.Use(surfaces.ProfileCredentialLimit)
+					}
+					r.Put("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleChange)
+					r.Delete("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleChange)
+				})
 			})
 		}
 		if authMW == nil {

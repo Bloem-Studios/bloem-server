@@ -65,15 +65,20 @@ func (r *SessionRepository) CreateProfileSessionIfCurrent(
 
 	var accountID int
 	var accountIncarnationID string
-	var enabled bool
+	var enabled, localPasswordLogin bool
 	err = tx.QueryRow(ctx, `
-		SELECT id, account_incarnation_id::text, enabled FROM users WHERE id = $1
-		FOR SHARE`, subject.AccountID).Scan(&accountID, &accountIncarnationID, &enabled)
+		SELECT id, account_incarnation_id::text, enabled, local_password_login_enabled FROM users WHERE id = $1
+		FOR SHARE`, subject.AccountID).Scan(&accountID, &accountIncarnationID, &enabled, &localPasswordLogin)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrSessionRevoked
 		}
 		return fmt.Errorf("lock account for direct profile session: %w", err)
+	}
+	// Linking an OIDC or LDAP identity turns this off by updating the account
+	// row, which the row lock above orders against this login.
+	if !localPasswordLogin {
+		return ErrInvalidCredentials
 	}
 
 	var (
@@ -124,6 +129,18 @@ func (r *SessionRepository) CreateProfileSessionIfCurrent(
 		organizationID != subject.OrganizationID ||
 		organizationStat != statusActive || membershipStat != statusActive {
 		return ErrSessionRevoked
+	}
+
+	// Recheck the password policy authoritatively, as the account login does:
+	// the settings lock orders this against a write turning password sign-in
+	// off, and a provider re-check refusing the person needs the account row
+	// this transaction holds. The advisory lock is taken after the row locks,
+	// the same row-then-settings order as the account login.
+	if err := lockServerSettings(ctx, tx); err != nil {
+		return err
+	}
+	if err := directProfilePasswordPolicy(ctx, tx, accountID); err != nil {
+		return err
 	}
 
 	if err := r.createWithQuerier(ctx, tx, session); err != nil {

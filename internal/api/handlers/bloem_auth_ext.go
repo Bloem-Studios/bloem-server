@@ -80,12 +80,20 @@ func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request)
 		IPAddress: clientip.FromContext(r.Context()),
 	})
 	if err != nil {
-		if errors.Is(err, auth.ErrInvalidCredentials) {
+		// ErrSessionRevoked means the subject changed between the password
+		// check and the session insert (a credential reset, a suspension): the
+		// credentials no longer hold, which is not a server fault.
+		if errors.Is(err, auth.ErrInvalidCredentials) || errors.Is(err, auth.ErrSessionRevoked) {
 			writeError(w, http.StatusUnauthorized, "invalid_credentials", "Invalid email or password")
 			return
 		}
 		if errors.Is(err, passwordhash.ErrBusy) {
 			writeAPIError(w, busyError(err))
+			return
+		}
+		// The password-policy refusals use the account login's codes.
+		if errors.Is(err, auth.ErrLocalLoginDisabled) || errors.Is(err, auth.ErrNotPermitted) {
+			writeAPIError(w, externalSignInError(err))
 			return
 		}
 		if apiErr := organizationDomainAPIError(err); apiErr != nil {

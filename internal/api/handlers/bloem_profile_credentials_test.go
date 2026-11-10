@@ -69,6 +69,7 @@ func TestBloemProfileCredentialsAuthorityAndReauthentication(t *testing.T) {
 		{name: "wrong account password", profile: "parent", target: "owned", badPassword: true, status: 403},
 		{name: "invalid email", profile: "parent", target: "owned", body: `{"expected_revision":2,"current_password":"current","login_email":"not-an-email","password":"profile-password"}`, status: 422},
 		{name: "short password", profile: "parent", target: "owned", body: `{"expected_revision":2,"current_password":"current","login_email":"reader@example.test","password":"x"}`, status: 422},
+		{name: "invalid email with wrong account password", profile: "parent", target: "owned", badPassword: true, body: `{"expected_revision":2,"current_password":"wrong","login_email":"not-an-email","password":"profile-password"}`, status: 422},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -108,6 +109,9 @@ func TestBloemProfileCredentialsAuthorityAndReauthentication(t *testing.T) {
 			}
 			if test.name == "foreign profile" && reauth.calls > 0 {
 				t.Fatal("foreign profile reached password verification")
+			}
+			if test.status == http.StatusUnprocessableEntity && reauth.calls > 0 {
+				t.Fatal("an invalid new credential reached password verification")
 			}
 		})
 	}

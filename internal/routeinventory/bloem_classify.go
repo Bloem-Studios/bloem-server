@@ -87,7 +87,7 @@ var bloemTraitOnlyRules = []authRule{
 	{marker: "bloemLiveTVStreamTokens", trait: traitStreamToken},
 	{marker: "RejectDirectProfileSession", trait: traitAccountSession},
 	{marker: "rateLimit.Handler", trait: traitRateLimited},
-	// router_bloem.go supplies AuthEndpointHandler("profile_credentials").
+	// router_bloem.go supplies AuthEndpointHandler("password_change").
 	{marker: "surfaces.ProfileCredentialLimit", trait: traitRateLimited},
 }
 

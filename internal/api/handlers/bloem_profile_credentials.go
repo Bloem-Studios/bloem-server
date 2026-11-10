@@ -88,8 +88,23 @@ func (h *BloemProfileCredentialsHandler) HandleChange(w http.ResponseWriter, r *
 		writeAdminValidation(w, map[string]string{"expected_revision": "must be a positive credential revision from the reviewed status"})
 		return
 	}
-	// Ownership is checked before password work, and rechecked by the service's
-	// transaction. Changing or clearing a credential revokes its direct sessions.
+	// The new credential is validated first, so a typo is reported as a field
+	// error without spending a password check. Ownership is checked before
+	// password work, and rechecked by the service's transaction. Changing or
+	// clearing a credential revokes its direct sessions.
+	var loginEmail string
+	if r.Method != http.MethodDelete {
+		email, parseErr := mail.ParseAddress(strings.TrimSpace(input.LoginEmail))
+		if parseErr != nil || email.Address != strings.TrimSpace(input.LoginEmail) {
+			writeAdminValidation(w, map[string]string{"login_email": "must be an email address"})
+			return
+		}
+		if err := auth.ValidateNewPassword(input.Password); err != nil {
+			writeAdminValidation(w, map[string]string{"password": err.Error()})
+			return
+		}
+		loginEmail = email.Address
+	}
 	id := chi.URLParam(r, "id")
 	if _, err := h.credentials.Status(r.Context(), account, id); err != nil {
 		writeProfileCredentialError(w, err)
@@ -107,16 +122,7 @@ func (h *BloemProfileCredentialsHandler) HandleChange(w http.ResponseWriter, r *
 	if r.Method == http.MethodDelete {
 		err = h.credentials.ClearAtRevision(r.Context(), account, id, input.ExpectedRevision)
 	} else {
-		email, parseErr := mail.ParseAddress(strings.TrimSpace(input.LoginEmail))
-		if parseErr != nil || email.Address != strings.TrimSpace(input.LoginEmail) {
-			writeAdminValidation(w, map[string]string{"login_email": "must be an email address"})
-			return
-		}
-		if err := auth.ValidateNewPassword(input.Password); err != nil {
-			writeAdminValidation(w, map[string]string{"password": err.Error()})
-			return
-		}
-		err = h.credentials.SetAtRevision(r.Context(), account, id, email.Address, input.Password, input.ExpectedRevision)
+		err = h.credentials.SetAtRevision(r.Context(), account, id, loginEmail, input.Password, input.ExpectedRevision)
 	}
 	if err != nil {
 		writeProfileCredentialError(w, err)

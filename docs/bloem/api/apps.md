@@ -115,7 +115,6 @@ Requires a non-impersonated account login access token and household management 
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: authentication is missing or invalid, or the login session is no longer valid. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | account_session_required: use a non-impersonated account login session; forbidden: select and verify the household primary profile, or this session type cannot use the route. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: profile does not belong to this account or does not exist. |
-| 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: household management permissions could not be checked. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: profile credential management is unavailable; service_unavailable: the session could not be checked, retry after Retry-After. |
 

@@ -141,10 +141,16 @@ as described above.
 **Bloem adds:**
 
 Direct-profile login (`POST /api/v1/auth/profile-login`) spends no per-name budget.
-Its `profile_login` budget, like `profile_credentials` on the credential-management
-routes, has no endpoint limit configured. Only the general per-address, account
-and global request budgets apply, without the connection-address cap on forwarded
+It spends the `login` budget, so account and profile sign-ins from one client
+address share one allowance, including the connection-address cap on forwarded
 clients described under [sign-in rate limits](../../auth-api.md#sign-in-rate-limits).
+Setting or clearing a profile credential (`PUT` and `DELETE`
+`/api/bloem/v1/profile-credentials/{id}`) checks the account password and spends
+the `password_change` budget; reading the status spends none. A budget must be one
+`ratelimit.DefaultConfig` defines, because an unknown name gets no endpoint limit
+and cannot be configured: until 2026-11-10 these routes used the undefined names
+`profile_login` and `profile_credentials`. `TestAuthEndpointBudgetsAreDefined`
+(`internal/api/bloem_rate_limit_budget_test.go`) now refuses an undefined name.
 
 ---
 
@@ -230,6 +236,19 @@ household/PIN authority. Writes additionally require the enabled local account p
 and a positive `expected_revision`, compared under the profile row lock. A stale write
 returns `409 credential_revision_conflict` and preserves newer credentials and direct
 sessions. Successful rotation or disable revokes direct sessions for that profile.
+
+A profile password follows the server's password sign-in policy, like the account
+password. Direct-profile login checks it after the password, so a refusal does not
+reveal which emails are registered: `403 local_login_disabled` while password sign-in
+is off for the server, `403 not_permitted` while an enabled network provider refuses
+the account's person, and `401 invalid_credentials` while the account's own password
+sign-in is off (linking an OIDC or LDAP identity turns it off). A break-glass account
+gets no exemption, because a direct-profile session has the user role and cannot
+recover the server. The session insert repeats these checks under the account row
+lock and the settings lock (`CreateProfileSessionIfCurrent`). Refresh ends a
+direct-profile session when the account's password sign-in is off or a network
+provider refuses the person. Turning the server switch off does not end existing
+direct-profile sessions, just as it leaves account sessions running.
 
 This is separate from account-password changes and admin-context authority. Direct
 sessions, API keys and SSO-only reauthentication cannot manage profile credentials.
