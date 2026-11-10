@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBloemT } from "@/bloem/i18n";
 import { Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,15 @@ import {
   useSetPrimaryOrganizationDomain,
 } from "@/hooks/queries/admin/organizationDomains";
 
+/** An example domain in the empty field: data, the same in every language. */
+const EXAMPLE_HOST = "watch.example.com";
+
 /**
  * An organization's domains (Bloem). Visitors on these domains see the
  * organization's branding, and its emails link to the primary one.
  */
 export function OrganizationDomainsPanel({ organizationID }: { organizationID: string }) {
+  const bt = useBloemT();
   const domains = useOrganizationDomains(organizationID);
   const add = useAddOrganizationDomain(organizationID);
   const setPrimary = useSetPrimaryOrganizationDomain(organizationID);
@@ -31,39 +36,46 @@ export function OrganizationDomainsPanel({ organizationID }: { organizationID: s
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Globe className="h-4 w-4" />
-          Domains
+          {bt("bloem.admin.platformOrganizations.domains.title")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-muted-foreground text-sm">
-          Visitors on these domains see this organization&apos;s branding, and its emails link to
-          the primary domain. Each domain also needs DNS, a certificate and a route at the proxy.
+          {bt("bloem.admin.platformOrganizations.domains.intro")}
         </p>
         {domains.isLoading ? (
           <p className="text-sm" role="status">
-            Loading domains…
+            {bt("bloem.admin.platformOrganizations.domains.loading")}
           </p>
         ) : (domains.data ?? []).length === 0 ? (
-          <p className="text-muted-foreground text-sm">No domains yet.</p>
+          <p className="text-muted-foreground text-sm">
+            {bt("bloem.admin.platformOrganizations.domains.empty")}
+          </p>
         ) : (
           <ul className="divide-border divide-y rounded-lg border">
             {(domains.data ?? []).map((domain) => (
               <li key={domain.host} className="flex flex-wrap items-center gap-2 p-3 text-sm">
                 <span className="font-medium break-all">{domain.host}</span>
-                {domain.primary ? <Badge>Primary</Badge> : null}
+                {domain.primary ? (
+                  <Badge>{bt("bloem.admin.platformOrganizations.domains.primary")}</Badge>
+                ) : null}
                 <span className="text-muted-foreground text-xs">
-                  {domain.source === "garden" ? "from the storefront" : "added here"}
+                  {domain.source === "garden"
+                    ? bt("bloem.admin.platformOrganizations.domains.fromStorefront")
+                    : bt("bloem.admin.platformOrganizations.domains.addedHere")}
                 </span>
                 <span className="ms-auto flex gap-2">
                   {!domain.primary ? (
                     <Button
                       size="sm"
                       variant="outline"
-                      aria-label={`Make ${domain.host} primary`}
+                      aria-label={bt("bloem.admin.platformOrganizations.domains.makePrimaryLabel", {
+                        host: domain.host,
+                      })}
                       disabled={setPrimary.isPending}
                       onClick={() => setPrimary.mutate(domain.host)}
                     >
-                      Make primary
+                      {bt("bloem.admin.platformOrganizations.domains.makePrimary")}
                     </Button>
                   ) : null}
                   {confirming === domain.host ? (
@@ -71,26 +83,31 @@ export function OrganizationDomainsPanel({ organizationID }: { organizationID: s
                       <Button
                         size="sm"
                         variant="destructive"
-                        aria-label={`Confirm removing ${domain.host}`}
+                        aria-label={bt(
+                          "bloem.admin.platformOrganizations.domains.confirmRemoveLabel",
+                          { host: domain.host },
+                        )}
                         disabled={remove.isPending}
                         onClick={() =>
                           remove.mutate(domain.host, { onSettled: () => setConfirming(null) })
                         }
                       >
-                        Remove
+                        {bt("bloem.admin.platformOrganizations.domains.remove")}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
-                        Cancel
+                        {bt("bloem.admin.platformOrganizations.domains.cancel")}
                       </Button>
                     </>
                   ) : (
                     <Button
                       size="sm"
                       variant="ghost"
-                      aria-label={`Remove ${domain.host}`}
+                      aria-label={bt("bloem.admin.platformOrganizations.domains.removeLabel", {
+                        host: domain.host,
+                      })}
                       onClick={() => setConfirming(domain.host)}
                     >
-                      Remove
+                      {bt("bloem.admin.platformOrganizations.domains.remove")}
                     </Button>
                   )}
                 </span>
@@ -116,10 +133,12 @@ export function OrganizationDomainsPanel({ organizationID }: { organizationID: s
           }}
         >
           <div className="grid gap-1">
-            <Label htmlFor="organization-domain-host">Domain</Label>
+            <Label htmlFor="organization-domain-host">
+              {bt("bloem.admin.platformOrganizations.domains.domain")}
+            </Label>
             <Input
               id="organization-domain-host"
-              placeholder="watch.example.com"
+              placeholder={EXAMPLE_HOST}
               value={host}
               onChange={(event) => setHost(event.target.value)}
             />
@@ -130,10 +149,10 @@ export function OrganizationDomainsPanel({ organizationID }: { organizationID: s
               checked={primary}
               onChange={(event) => setPrimaryChoice(event.target.checked)}
             />
-            Make it the primary domain
+            {bt("bloem.admin.platformOrganizations.domains.makeItPrimary")}
           </label>
           <Button type="submit" disabled={add.isPending || !host.trim()}>
-            Add domain
+            {bt("bloem.admin.platformOrganizations.domains.add")}
           </Button>
         </form>
         {error ? (

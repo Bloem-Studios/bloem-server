@@ -1,4 +1,5 @@
 import type { AdminContextSummary } from "@/api/bloemTypes";
+import { useBloemT } from "@/bloem/i18n";
 import { StorageSourcesPanel } from "@/components/admin/plugins/StorageSourcesPanel";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useStorageSources } from "@/hooks/queries/admin/storageSources";
@@ -16,15 +17,17 @@ function isUnavailable(error: unknown): boolean {
  * the sources panel is shown; the rest of the Plugins page is platform-only.
  */
 export default function StorageSourcesPage() {
+  const bt = useBloemT();
   const { active } = useAdminContext();
-  useDocumentTitle("Storage sources");
+  useDocumentTitle(bt("bloem.admin.organization.storage.title"));
   if (active?.scope !== "organization") {
-    return <p role="alert">Select an organization to manage its storage sources.</p>;
+    return <p role="alert">{bt("bloem.admin.organization.storage.selectOrganization")}</p>;
   }
   return <OrganizationStorageSources key={active.key} active={active} />;
 }
 
 function OrganizationStorageSources({ active }: { active: AdminContextSummary }) {
+  const bt = useBloemT();
   // Shares its cache entry with the panel, so this adds no request.
   const sources = useStorageSources(true);
   return (
@@ -32,19 +35,19 @@ function OrganizationStorageSources({ active }: { active: AdminContextSummary })
       <div className="page-header">
         <div className="space-y-2">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
-            Storage sources
+            {bt("bloem.admin.organization.storage.title")}
           </h1>
           <p className="page-subtitle">
-            Where {active.name ?? "this organization"} reads its ebooks from, such as S3-compatible
-            buckets.
+            {bt("bloem.admin.organization.storage.subtitle", {
+              organization: active.name ?? bt("bloem.admin.organization.thisOrganization"),
+            })}
           </p>
         </div>
       </div>
 
       {isUnavailable(sources.error) ? (
         <p role="status" className="text-muted-foreground py-8 text-center text-sm">
-          Storage sources aren&apos;t enabled for this organization. Ask your platform
-          administrator.
+          {bt("bloem.admin.organization.storage.notEnabled")}
         </p>
       ) : (
         <StorageSourcesPanel />

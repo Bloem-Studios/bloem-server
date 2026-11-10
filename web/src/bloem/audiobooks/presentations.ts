@@ -6,6 +6,7 @@
 // and progress reporting see exactly one of them. It is the web source of
 // truth for the mixed-locations Task 11 client contract.
 import type { FileVersion, ItemDetail, PlaybackVariant, VersionChapter } from "@/api/types";
+import { bloemT } from "@/bloem/i18n";
 import type { AudiobookFile } from "@/lib/audiobooks/types";
 
 /** Public capability token: native presentations can be played on this server. */
@@ -188,7 +189,10 @@ export function presentationForFiles(
  * Track-local chapters ready for display: a chapter starting at or past the
  * track's integer duration is dropped, ends are clamped to the next chapter's
  * start and to the track duration (a native chapter may end up to a second
- * past Silo's truncated duration), and a track without chapters gets one.
+ * past Silo's truncated duration), and a track without chapters gets one:
+ * "Part N" in the current language, or the book's title, or an empty title
+ * that Silo's chapter lists show as their own translated "Chapter 1". A
+ * component that shows these memoizes on the interface language too.
  */
 function displayChapters(
   track: FileVersion,
@@ -204,7 +208,10 @@ function displayChapters(
     return [
       {
         index: 0,
-        title: presentation.tracks.length > 1 ? `Part ${trackIndex + 1}` : bookTitle || "Chapter 1",
+        title:
+          presentation.tracks.length > 1
+            ? bloemT("bloem.audiobooks.partTitle", { number: trackIndex + 1 })
+            : bookTitle,
         start_seconds: 0,
         end_seconds: duration,
         source: "",

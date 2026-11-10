@@ -1,6 +1,6 @@
 // Bloem: the "what should change" step shared by the organization People
 // drawer and the platform bulk account page.
-import { useBloemT } from "@/bloem/i18n";
+import { useBloemT, type BloemMessageKey } from "@/bloem/i18n";
 import type { ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -18,26 +18,30 @@ import {
 } from "./policyDraft";
 import { PLAYBACK_QUALITIES, POLICY_PERMISSIONS, type NamedLibrary } from "./policyVocabulary";
 
-const OPERATIONS: Array<{ value: Exclude<PolicyOperation, "">; label: string; hint: string }> = [
+const OPERATIONS: Array<{
+  value: Exclude<PolicyOperation, "">;
+  label: BloemMessageKey;
+  hint: BloemMessageKey;
+}> = [
   {
     value: "assign",
-    label: "Move to a cohort",
-    hint: "Give them the exact settings of a cohort this organization already uses.",
+    label: "bloem.admin.policy.changeForm.operationAssign",
+    hint: "bloem.admin.policy.changeForm.operationAssignHint",
   },
   {
     value: "template",
-    label: "Put on a plan",
-    hint: "Give them the settings of a plan revision.",
+    label: "bloem.admin.policy.changeForm.operationTemplate",
+    hint: "bloem.admin.policy.changeForm.operationTemplateHint",
   },
   {
     value: "derive",
-    label: "Change some settings",
-    hint: "Start from a cohort and change only what you pick. This saves a new cohort; the one you start from stays as it is.",
+    label: "bloem.admin.policy.changeForm.operationDerive",
+    hint: "bloem.admin.policy.changeForm.operationDeriveHint",
   },
   {
     value: "restore",
-    label: "Reset to the organization default",
-    hint: "Give them the organization's default settings.",
+    label: "bloem.admin.policy.changeForm.operationRestore",
+    hint: "bloem.admin.policy.changeForm.operationRestoreHint",
   },
 ];
 
@@ -62,7 +66,10 @@ export function PolicyChangeForm({
   const bt = useBloemT();
   const update = (patch: Partial<PolicyChangeDraft>) => onChange({ ...draft, ...patch });
   const activeCohorts = cohorts.filter((cohort) => !cohort.archived);
-  const cohortLabel = draft.operation === "derive" ? "Start from cohort" : "Cohort";
+  const cohortLabel =
+    draft.operation === "derive"
+      ? bt("bloem.admin.policy.changeForm.startFromCohort")
+      : bt("bloem.admin.policy.changeForm.cohort");
   return (
     <div className="space-y-5">
       <fieldset
@@ -78,14 +85,14 @@ export function PolicyChangeForm({
             <input
               type="radio"
               name={radioName}
-              aria-label={option.label}
+              aria-label={bt(option.label)}
               className="mt-1"
               checked={draft.operation === option.value}
               onChange={() => update({ operation: option.value })}
             />
             <span>
-              <span className="block text-sm font-medium">{option.label}</span>
-              <span className="text-muted-foreground mt-0.5 block text-sm">{option.hint}</span>
+              <span className="block text-sm font-medium">{bt(option.label)}</span>
+              <span className="text-muted-foreground mt-0.5 block text-sm">{bt(option.hint)}</span>
             </span>
           </label>
         ))}
@@ -159,7 +166,7 @@ function PlanFields({
         <Field
           label={bt("bloem.admin.policy.changeForm.planKey")}
           htmlFor={`${radioName}-plan-key`}
-          hint="The short name a platform admin gave the plan, like standard."
+          hint={bt("bloem.admin.policy.changeForm.planKeyHint")}
         >
           <Input
             id={`${radioName}-plan-key`}
@@ -261,7 +268,7 @@ function DerivedSettings({
       <Field
         label={bt("bloem.admin.policy.changeForm.nameForTheNewCohort")}
         htmlFor={`${radioName}-derived-name`}
-        hint="Pick something you'll recognize later, like Standard with 4 screens."
+        hint={bt("bloem.admin.policy.changeForm.derivedNameHint")}
       >
         <Input
           id={`${radioName}-derived-name`}
@@ -279,18 +286,18 @@ function DerivedSettings({
         label={bt("bloem.admin.policy.changeForm.libraries")}
         mode={patch.librariesMode}
         modes={[
-          [KEEP, "Keep as is"],
-          ["add", "Add libraries"],
-          ["remove", "Remove libraries"],
-          ["replace", "Only these libraries"],
-          ["all", "All libraries"],
-          ["none", "No libraries"],
+          [KEEP, bt("bloem.admin.policy.changeForm.keepAsIs")],
+          ["add", bt("bloem.admin.policy.changeForm.addLibraries")],
+          ["remove", bt("bloem.admin.policy.changeForm.removeLibraries")],
+          ["replace", bt("bloem.admin.policy.changeForm.onlyTheseLibraries")],
+          ["all", bt("bloem.admin.policy.changeForm.allLibraries")],
+          ["none", bt("bloem.admin.policy.changeForm.noLibraries")],
         ]}
         onModeChange={(mode) => setPatch("librariesMode", mode as PatchDraft["librariesMode"])}
         options={libraries.map((library) => [library.id, library.name] as const)}
         selected={patch.libraryIDs}
         onSelectedChange={(values) => setPatch("libraryIDs", values as number[])}
-        emptyText="No libraries to choose from."
+        emptyText={bt("bloem.admin.policy.changeForm.noLibrariesToChoose")}
       />
 
       <SetPicker
@@ -298,17 +305,17 @@ function DerivedSettings({
         label={bt("bloem.admin.policy.changeForm.extraPermissions")}
         mode={patch.permissionsMode}
         modes={[
-          [KEEP, "Keep as is"],
-          ["add", "Add permissions"],
-          ["remove", "Remove permissions"],
-          ["replace", "Only these permissions"],
-          ["unrestricted", "All permissions"],
+          [KEEP, bt("bloem.admin.policy.changeForm.keepAsIs")],
+          ["add", bt("bloem.admin.policy.changeForm.addPermissions")],
+          ["remove", bt("bloem.admin.policy.changeForm.removePermissions")],
+          ["replace", bt("bloem.admin.policy.changeForm.onlyThesePermissions")],
+          ["unrestricted", bt("bloem.admin.policy.changeForm.allPermissions")],
         ]}
         onModeChange={(mode) => setPatch("permissionsMode", mode as PatchDraft["permissionsMode"])}
         options={POLICY_PERMISSIONS}
         selected={patch.permissions}
         onSelectedChange={(values) => setPatch("permissions", values as string[])}
-        emptyText="No permissions to choose from."
+        emptyText={bt("bloem.admin.policy.changeForm.noPermissionsToChoose")}
       />
 
       <div className="grid gap-4 sm:grid-cols-2">

@@ -54,10 +54,10 @@ export function LibraryEntitlementActions({
     } catch (cause) {
       setError(
         cause instanceof AdminV2ClientError && cause.status === 409
-          ? "Someone else changed this library just now. Check its status and try again."
+          ? bt("bloem.admin.organizations.libraryEntitlements.changedElsewhere")
           : cause instanceof Error
             ? cause.message
-            : "The change couldn’t be confirmed. Reload the page and try again.",
+            : bt("bloem.admin.organizations.libraryEntitlements.notConfirmed"),
       );
     } finally {
       setConfirmation(null);

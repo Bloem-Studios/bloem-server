@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useBloemT } from "@/bloem/i18n";
 import { useBranding } from "@/hooks/useBranding";
 import { usePreviewMode } from "./usePreviewMode";
 import { guestSession } from "./session";
@@ -25,6 +26,7 @@ export default function SubscribeCtaDialog({
   ended?: boolean;
   freePlayEnded?: boolean;
 }) {
+  const bt = useBloemT();
   const { presentation, guest, freePlay } = usePreviewMode();
   const { serverName } = useBranding();
   const href = subscriptionHref(
@@ -41,21 +43,23 @@ export default function SubscribeCtaDialog({
   const minutes = Math.round((presentation?.free_play_seconds ?? 0) / 60);
   const freeLabel =
     presentation?.free_play_label ||
-    (minutes > 0 ? `Play free for ${minutes} minutes` : "Play free");
+    (minutes > 0
+      ? bt("bloem.preview.dialog.playFreeFor", { minutes })
+      : bt("bloem.preview.dialog.playFree"));
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
             {ended
-              ? "Your preview session has ended"
+              ? bt("bloem.preview.dialog.sessionEnded")
               : freePlayEnded
-                ? "Your free play has ended"
-                : `Subscribe to ${serverName}`}
+                ? bt("bloem.preview.dialog.freePlayEnded")
+                : bt("bloem.preview.cta.subscribeToBrand", { brand: serverName })}
           </DialogTitle>
           <DialogDescription>
             {ended || freePlayEnded
-              ? "Start your trial to enjoy the full library."
+              ? bt("bloem.preview.dialog.startTrialToEnjoy")
               : ctaMessage(presentation)}
           </DialogDescription>
         </DialogHeader>
@@ -67,15 +71,16 @@ export default function SubscribeCtaDialog({
           )}
           {ended && launch && (
             <Button variant="outline" asChild>
-              <a href={launch}>Keep browsing</a>
+              <a href={launch}>{bt("bloem.preview.dialog.keepBrowsing")}</a>
             </Button>
           )}
           {href && (
             <Button asChild>
               <a href={href} onClick={() => previewEvent("cta_clicked")}>
                 {ended
-                  ? "Start your trial"
-                  : presentation?.cta_label || `Subscribe to ${serverName}`}
+                  ? bt("bloem.preview.dialog.startTrial")
+                  : presentation?.cta_label ||
+                    bt("bloem.preview.cta.subscribeToBrand", { brand: serverName })}
               </a>
             </Button>
           )}

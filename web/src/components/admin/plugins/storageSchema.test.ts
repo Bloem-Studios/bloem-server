@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  PREFIX_HINT,
+  prefixHint,
   newProviderSourceId,
   pruneConfigSchema,
   s3BucketOptional,
@@ -168,8 +168,8 @@ describe("withS3FieldCopy", () => {
     const fields = withS3FieldCopy(s3Schema({ maxLength: 63 }) as never).admin_form!.fields;
     const byKey = Object.fromEntries(fields.map((f) => [f.key, f]));
     expect(byKey.prefix!.label).toBe("Folder (optional)");
-    expect(byKey.prefix!.description).toBe(PREFIX_HINT);
-    expect(PREFIX_HINT).toBe(
+    expect(byKey.prefix!.description).toBe(prefixHint());
+    expect(prefixHint()).toBe(
       "Leave empty to use the whole bucket (recommended). You choose folders for each library later.",
     );
     expect(byKey.session_token!.label).toBe("Session token (optional)");

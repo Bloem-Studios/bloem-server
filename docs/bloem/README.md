@@ -224,6 +224,7 @@ same path. Read the upstream document together with its overlay.
 ### Embedded web
 
 - [What the web app covers](../architecture/bloem-web-feature-coverage.md) — Bloem features in Silo's web app: implemented screens, authority boundaries, verification and limits.
+- [How Bloem's web text is translated](web-messages.md) — Bloem's message catalog beside Silo's: where the text lives, keys and the lazy admin part, adding a message, translations, the generator, the coverage test and the pseudo-locales.
 
 ## API references and specs
 

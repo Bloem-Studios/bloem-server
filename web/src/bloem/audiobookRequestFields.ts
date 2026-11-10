@@ -1,10 +1,14 @@
+import { bloemT } from "@/bloem/i18n";
+
 // Structured controls from bloem.requests.audiobooks v0.1.0 connection schema.
 // Keep this owned projection aligned with the plugin manifest; never send diagnostic keys.
+// Labels and help come from Bloem's catalog, formatted when they are shown.
+export type AudiobookConfigGroup = "downloadClients" | "sources" | "matching" | "ai";
 export interface AudiobookConfigField {
   key: string;
-  label: string;
-  description: string;
-  group: string;
+  label: () => string;
+  description?: () => string;
+  group: AudiobookConfigGroup;
   type: string;
   default: string | number | boolean | string[];
   minimum?: number;
@@ -17,26 +21,29 @@ export interface AudiobookConfigField {
 export const audiobookConfigFields: AudiobookConfigField[] = [
   {
     key: "audiobookbay_enabled",
-    label: "Search AudiobookBay",
-    description: "Torrent releases; needs qBittorrent.",
-    group: "Sources",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.audiobookbayEnabled.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.audiobookbayEnabled.description"),
+    group: "sources",
     default: true,
     type: "boolean",
   },
   {
     key: "audiobookbay_base_url",
-    label: "AudiobookBay URL",
-    description: "HTTPS origin of the AudiobookBay mirror.",
-    group: "Sources",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.audiobookbayBaseUrl.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.audiobookbayBaseUrl.description"),
+    group: "sources",
     default: "https://audiobookbay.lu",
     maxLength: 4096,
     type: "string",
   },
   {
     key: "audiobookbay_search_pages",
-    label: "AudiobookBay result pages",
-    description: "Result pages read per search (1-5).",
-    group: "Sources",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.audiobookbaySearchPages.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.audiobookbaySearchPages.description"),
+    group: "sources",
     default: 2,
     maximum: 5,
     minimum: 1,
@@ -44,9 +51,10 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "audiobookbay_resolve_limit",
-    label: "AudiobookBay detail pages",
-    description: "Best hits opened per search to find the magnet (1-8).",
-    group: "Sources",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.audiobookbayResolveLimit.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.audiobookbayResolveLimit.description"),
+    group: "sources",
     default: 5,
     maximum: 8,
     minimum: 1,
@@ -54,9 +62,10 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "audiobookbay_trackers",
-    label: "Fallback trackers",
-    description: "Announce URLs added when a release lists none (udp, http or https).",
-    group: "Sources",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.audiobookbayTrackers.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.audiobookbayTrackers.description"),
+    group: "sources",
     default: [
       "udp://tracker.openbittorrent.com:80",
       "udp://opentor.org:2710",
@@ -72,97 +81,100 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "abook_enabled",
-    label: "Search abook.link",
-    description: "Usenet releases; needs NZBGet and abook.link credentials.",
-    group: "Sources",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.abookEnabled.label"),
+    description: () => bloemT("bloem.admin.bookRequests.audiobookConfig.abookEnabled.description"),
+    group: "sources",
     default: false,
     type: "boolean",
   },
   {
     key: "abook_base_url",
-    label: "abook.link URL",
-    description: "HTTPS forum URL including its path prefix.",
-    group: "Sources",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.abookBaseUrl.label"),
+    description: () => bloemT("bloem.admin.bookRequests.audiobookConfig.abookBaseUrl.description"),
+    group: "sources",
     default: "https://abook.link/book",
     maxLength: 4096,
     type: "string",
   },
   {
     key: "abook_auto_thank",
-    label: "Thank posts to reveal content",
-    description:
-      "Posts one forum thank on the chosen topic when its content is hidden. This acts on the abook.link account.",
-    group: "Sources",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.abookAutoThank.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.abookAutoThank.description"),
+    group: "sources",
     default: true,
     type: "boolean",
   },
   {
     key: "nzbking_enabled",
-    label: "Search NZBKing",
-    description: "Usenet index; needs NZBGet.",
-    group: "Sources",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.nzbkingEnabled.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.nzbkingEnabled.description"),
+    group: "sources",
     default: true,
     type: "boolean",
   },
   {
     key: "nzbking_base_url",
-    label: "NZBKing URL",
-    description: "HTTPS origin of NZBKing.",
-    group: "Sources",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.nzbkingBaseUrl.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.nzbkingBaseUrl.description"),
+    group: "sources",
     default: "https://nzbking.com",
     maxLength: 4096,
     type: "string",
   },
   {
     key: "nzbking_standalone",
-    label: "Search NZBKing by title",
-    description: "Also search NZBKing directly, not only with abook.link search strings.",
-    group: "Sources",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.nzbkingStandalone.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.nzbkingStandalone.description"),
+    group: "sources",
     default: true,
     type: "boolean",
   },
   {
     key: "qbittorrent_url",
-    label: "qBittorrent URL",
-    description: "Web UI origin and optional path prefix. Empty disables qBittorrent.",
-    group: "Download clients",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.qbittorrentUrl.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.qbittorrentUrl.description"),
+    group: "downloadClients",
     default: "",
     maxLength: 4096,
     type: "string",
   },
   {
     key: "qbittorrent_username",
-    label: "qBittorrent username",
-    description: "",
-    group: "Download clients",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.qbittorrentUsername.label"),
+    group: "downloadClients",
     default: "",
     maxLength: 256,
     type: "string",
   },
   {
     key: "qbittorrent_category",
-    label: "qBittorrent category",
-    description: "",
-    group: "Download clients",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.qbittorrentCategory.label"),
+    group: "downloadClients",
     default: "bloem-audiobooks",
     maxLength: 64,
     type: "string",
   },
   {
     key: "qbittorrent_save_root",
-    label: "qBittorrent save root",
-    description:
-      "Absolute folder on the qBittorrent host; one folder per request is created below it.",
-    group: "Download clients",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.qbittorrentSaveRoot.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.qbittorrentSaveRoot.description"),
+    group: "downloadClients",
     default: "",
     maxLength: 1024,
     type: "string",
   },
   {
     key: "qbittorrent_stall_hours",
-    label: "Stall after hours",
-    description: "Hours without activity before a torrent is reported as stalled.",
-    group: "Download clients",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.qbittorrentStallHours.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.qbittorrentStallHours.description"),
+    group: "downloadClients",
     default: 24,
     maximum: 720,
     minimum: 1,
@@ -170,60 +182,64 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "nzbget_url",
-    label: "NZBGet URL",
-    description: "Origin and optional path prefix. Empty disables NZBGet.",
-    group: "Download clients",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.nzbgetUrl.label"),
+    description: () => bloemT("bloem.admin.bookRequests.audiobookConfig.nzbgetUrl.description"),
+    group: "downloadClients",
     default: "",
     maxLength: 4096,
     type: "string",
   },
   {
     key: "nzbget_username",
-    label: "NZBGet username",
-    description: "",
-    group: "Download clients",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.nzbgetUsername.label"),
+    group: "downloadClients",
     default: "",
     maxLength: 256,
     type: "string",
   },
   {
     key: "nzbget_category",
-    label: "NZBGet category",
-    description: "Its DestDir is the NZBGet download root.",
-    group: "Download clients",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.nzbgetCategory.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.nzbgetCategory.description"),
+    group: "downloadClients",
     default: "bloem-audiobooks",
     maxLength: 64,
     type: "string",
   },
   {
     key: "allow_http_download_clients",
-    label: "Allow HTTP download clients",
-    description: "Permit plain HTTP to qBittorrent and NZBGet on a trusted network.",
-    group: "Download clients",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.allowHttpDownloadClients.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.allowHttpDownloadClients.description"),
+    group: "downloadClients",
     default: false,
     type: "boolean",
   },
   {
     key: "allow_private_source_hosts",
-    label: "Allow private source hosts",
-    description: "Let source URLs resolve to private addresses (self-hosted mirrors, tests).",
-    group: "Download clients",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.allowPrivateSourceHosts.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.allowPrivateSourceHosts.description"),
+    group: "downloadClients",
     default: false,
     type: "boolean",
   },
   {
     key: "allow_loopback_targets",
-    label: "Allow loopback services",
-    description: "Let download clients and the AI endpoint resolve to loopback.",
-    group: "Download clients",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.allowLoopbackTargets.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.allowLoopbackTargets.description"),
+    group: "downloadClients",
     default: false,
     type: "boolean",
   },
   {
     key: "min_title_coverage",
-    label: "Minimum title match",
-    description: "Share of title words a release must contain (0.3-1).",
-    group: "Matching and verification",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.minTitleCoverage.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.minTitleCoverage.description"),
+    group: "matching",
     default: 0.6,
     maximum: 1,
     minimum: 0.3,
@@ -231,9 +247,10 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "min_author_coverage",
-    label: "Minimum author match",
-    description: "Share of author words a release must contain (0-1).",
-    group: "Matching and verification",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.minAuthorCoverage.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.minAuthorCoverage.description"),
+    group: "matching",
     default: 0.5,
     maximum: 1,
     minimum: 0,
@@ -241,9 +258,9 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "max_candidates",
-    label: "Candidates considered",
-    description: "Best releases that enter selection (3-10).",
-    group: "Matching and verification",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.maxCandidates.label"),
+    description: () => bloemT("bloem.admin.bookRequests.audiobookConfig.maxCandidates.description"),
+    group: "matching",
     default: 10,
     maximum: 10,
     minimum: 3,
@@ -251,9 +268,8 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "verify_min_total_mb",
-    label: "Minimum audio size (MB)",
-    description: "",
-    group: "Matching and verification",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.verifyMinTotalMb.label"),
+    group: "matching",
     default: 20,
     maximum: 10000,
     minimum: 0,
@@ -261,9 +277,10 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "verify_min_duration_minutes",
-    label: "Minimum duration (minutes)",
-    description: "Applies when durations are known.",
-    group: "Matching and verification",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.verifyMinDurationMinutes.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.verifyMinDurationMinutes.description"),
+    group: "matching",
     default: 30,
     maximum: 6000,
     minimum: 0,
@@ -271,63 +288,68 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "verify_local_client_prefix",
-    label: "Client download path prefix",
-    description: "Download client path that maps to the local prefix below. Set both or neither.",
-    group: "Matching and verification",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.verifyLocalClientPrefix.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.verifyLocalClientPrefix.description"),
+    group: "matching",
     default: "",
     maxLength: 1024,
     type: "string",
   },
   {
     key: "verify_local_prefix",
-    label: "Local download path prefix",
-    description:
-      "Where this server reads completed downloads. Usenet downloads need this mapping to complete without an admin.",
-    group: "Matching and verification",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.verifyLocalPrefix.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.verifyLocalPrefix.description"),
+    group: "matching",
     default: "",
     maxLength: 1024,
     type: "string",
   },
   {
     key: "ai_enabled",
-    label: "Use AI",
-    description: "Kill switch. When off, no AI request is made.",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiEnabled.label"),
+    description: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiEnabled.description"),
+    group: "ai",
     default: false,
     type: "boolean",
   },
   {
     key: "ai_base_url",
-    label: "AI endpoint",
-    description:
-      "OpenAI-compatible base URL, for example https://generativelanguage.googleapis.com/v1beta/openai.",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiBaseUrl.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.aiBaseUrl.description", {
+        example: "https://generativelanguage.googleapis.com/v1beta/openai",
+      }),
+    group: "ai",
     default: "",
     maxLength: 4096,
     type: "string",
   },
   {
     key: "ai_chat_model",
-    label: "AI model",
-    description: "For example gemini-flash-latest.",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiChatModel.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.aiChatModel.description", {
+        example: "gemini-flash-latest",
+      }),
+    group: "ai",
     default: "",
     maxLength: 128,
     type: "string",
   },
   {
     key: "ai_allow_http",
-    label: "Allow HTTP AI endpoint",
-    description: "For a local Ollama.",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiAllowHttp.label"),
+    description: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiAllowHttp.description"),
+    group: "ai",
     default: false,
     type: "boolean",
   },
   {
     key: "ai_response_format",
-    label: "AI output mode",
-    description: "",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiResponseFormat.label"),
+    group: "ai",
     default: "json_object",
     enum: ["json_object", "json_schema"],
     maxLength: 32,
@@ -335,9 +357,10 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "ai_reasoning_effort",
-    label: "AI reasoning effort",
-    description: "Sent only when set; low or none suits Gemini 2.5-class models.",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiReasoningEffort.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.aiReasoningEffort.description"),
+    group: "ai",
     default: "",
     enum: ["", "none", "low", "medium"],
     maxLength: 32,
@@ -345,9 +368,10 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "ai_parameter_profile",
-    label: "AI parameter profile",
-    description: "Use reasoning for OpenAI reasoning models.",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiParameterProfile.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.aiParameterProfile.description"),
+    group: "ai",
     default: "standard",
     enum: ["standard", "reasoning"],
     maxLength: 32,
@@ -355,9 +379,10 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "ai_min_confidence",
-    label: "AI confidence threshold",
-    description: "Below it, a release is held for admin review.",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiMinConfidence.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.aiMinConfidence.description"),
+    group: "ai",
     default: 0.75,
     maximum: 0.99,
     minimum: 0.5,
@@ -365,9 +390,8 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "ai_max_calls_per_request",
-    label: "AI calls per request",
-    description: "",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiMaxCallsPerRequest.label"),
+    group: "ai",
     default: 6,
     maximum: 20,
     minimum: 1,
@@ -375,9 +399,8 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "ai_timeout_seconds",
-    label: "AI timeout (seconds)",
-    description: "",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiTimeoutSeconds.label"),
+    group: "ai",
     default: 20,
     maximum: 60,
     minimum: 5,
@@ -385,9 +408,8 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "ai_max_tokens",
-    label: "AI max tokens",
-    description: "",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiMaxTokens.label"),
+    group: "ai",
     default: 1024,
     maximum: 4096,
     minimum: 256,
@@ -395,17 +417,17 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "ai_query_expansion",
-    label: "AI alternative searches",
-    description: "Ask for other search terms when nothing usable is found.",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiQueryExpansion.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.aiQueryExpansion.description"),
+    group: "ai",
     default: true,
     type: "boolean",
   },
   {
     key: "ai_max_queries",
-    label: "AI alternative searches limit",
-    description: "",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiMaxQueries.label"),
+    group: "ai",
     default: 3,
     maximum: 5,
     minimum: 1,
@@ -413,9 +435,10 @@ export const audiobookConfigFields: AudiobookConfigField[] = [
   },
   {
     key: "ai_verify_downloads",
-    label: "AI download check",
-    description: "Compare the downloaded files with the request before reporting success.",
-    group: "AI",
+    label: () => bloemT("bloem.admin.bookRequests.audiobookConfig.aiVerifyDownloads.label"),
+    description: () =>
+      bloemT("bloem.admin.bookRequests.audiobookConfig.aiVerifyDownloads.description"),
+    group: "ai",
     default: true,
     type: "boolean",
   },

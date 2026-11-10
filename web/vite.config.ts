@@ -30,6 +30,8 @@ const THREADS_TESTS = [
   "bloem-brand-plugin.test.ts",
   // Bloem: redefines window.location, which VM contexts do not allow.
   "src/api/bloemClient.test.ts",
+  // Bloem: runs ESLint, whose module loading fails inside a VM context.
+  "scripts/bloem-i18n-coverage.test.mjs",
 ];
 
 // React and the router change far less often than the app, so they get a chunk

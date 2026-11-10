@@ -43,8 +43,6 @@ import {
 import { useOrganizationLibraries } from "@/hooks/queries/admin/organizationLibraries";
 import type { PeopleBulkJob, PeopleSelection } from "@/hooks/queries/admin/organizationPeople";
 
-const STEPS = ["Accounts", "Change", "Review", "Confirm"];
-
 export default function BulkPolicyDrawer({
   open,
   contextKey,
@@ -206,7 +204,17 @@ export default function BulkPolicyDrawer({
               organizationName,
             })}
           </SheetDescription>
-          {!visibleJob ? <StepList steps={STEPS} current={step} /> : null}
+          {!visibleJob ? (
+            <StepList
+              steps={[
+                bt("bloem.admin.people.bulkPolicy.stepAccounts"),
+                bt("bloem.admin.people.bulkPolicy.stepChange"),
+                bt("bloem.admin.people.bulkPolicy.stepReview"),
+                bt("bloem.admin.people.bulkPolicy.stepConfirm"),
+              ]}
+              current={step}
+            />
+          ) : null}
         </SheetHeader>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">

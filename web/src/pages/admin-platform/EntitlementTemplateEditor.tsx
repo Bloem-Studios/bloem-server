@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBloemT } from "@/bloem/i18n";
 import type {
   EntitlementTemplate,
   EntitlementTemplateInput,
@@ -133,6 +134,7 @@ function EntitlementTemplateEditorForm({
   saving = false,
   error,
 }: EntitlementTemplateEditorProps) {
+  const bt = useBloemT();
   const browseOnly = template?.key === "browse-only";
   const [key, setKey] = useState(template?.key ?? "");
   const [keyEdited, setKeyEdited] = useState(Boolean(template));
@@ -187,20 +189,22 @@ function EntitlementTemplateEditorForm({
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="template-name">Name</Label>
+            <Label htmlFor="template-name">{bt("bloem.admin.plans.editor.name")}</Label>
             <Input
               id="template-name"
-              placeholder="Standard Plus"
+              placeholder={bt("bloem.admin.plans.editor.namePlaceholder")}
               value={name}
               onChange={(event) => {
                 setName(event.target.value);
                 if (!keyEdited) setKey(slugify(event.target.value));
               }}
             />
-            <p className="text-muted-foreground text-xs">What admins and the storefront show.</p>
+            <p className="text-muted-foreground text-xs">
+              {bt("bloem.admin.plans.editor.nameHelp")}
+            </p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="template-key">Key</Label>
+            <Label htmlFor="template-key">{bt("bloem.admin.plans.editor.key")}</Label>
             <Input
               id="template-key"
               className="font-mono"
@@ -210,18 +214,18 @@ function EntitlementTemplateEditorForm({
                 setKeyEdited(true);
               }}
               disabled={Boolean(template)}
-              placeholder="standard-plus"
+              placeholder={bt("bloem.admin.plans.editor.keyPlaceholder")}
             />
             <p className="text-muted-foreground text-xs">
               {template
-                ? "A plan's key can't be changed."
-                : "A short ID for links and the storefront. Lowercase, and it can't be changed later."}
+                ? bt("bloem.admin.plans.editor.keyLocked")
+                : bt("bloem.admin.plans.editor.keyHelp")}
             </p>
           </div>
           <PolicyCheckbox
             id="template-enabled"
-            label="Offer this plan"
-            description="Only offered plans can be given to organizations, accounts and storefront products. Accounts already on it are not affected."
+            label={bt("bloem.admin.plans.editor.offer")}
+            description={bt("bloem.admin.plans.editor.offerDescription")}
             checked={enabled}
             onChange={setEnabled}
           />
@@ -233,8 +237,7 @@ function EntitlementTemplateEditorForm({
         ) : null}
         {browseOnly ? (
           <p className="border-warning/40 bg-warning/10 rounded-lg border p-3 text-sm">
-            Browse-only lets people look around without playing anything, so playback and downloads
-            stay off and can’t be switched on.
+            {bt("bloem.admin.plans.editor.browseOnlyNotice")}
           </p>
         ) : null}
       </section>
@@ -242,13 +245,17 @@ function EntitlementTemplateEditorForm({
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-sm font-medium">Libraries</h2>
+            <h2 className="text-sm font-medium">{bt("bloem.admin.plans.editor.libraries")}</h2>
             <p className="text-muted-foreground text-sm">
-              A plan can only show libraries the organization or account already has.
+              {bt("bloem.admin.plans.editor.librariesHelp")}
             </p>
           </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Library access">
+        <div
+          className="grid gap-2 sm:grid-cols-2"
+          role="radiogroup"
+          aria-label={bt("bloem.admin.plans.editor.libraryAccess")}
+        >
           <label className="border-border has-[:checked]:border-primary has-[:checked]:bg-primary/5 flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors">
             <input
               type="radio"
@@ -258,8 +265,12 @@ function EntitlementTemplateEditorForm({
               onChange={() => updatePolicy({ library_ids: null })}
             />
             <span>
-              <span className="block font-medium">All libraries</span>
-              <span className="text-muted-foreground block">Including ones added later</span>
+              <span className="block font-medium">
+                {bt("bloem.admin.plans.editor.allLibraries")}
+              </span>
+              <span className="text-muted-foreground block">
+                {bt("bloem.admin.plans.editor.allLibrariesHelp")}
+              </span>
             </span>
           </label>
           <label className="border-border has-[:checked]:border-primary has-[:checked]:bg-primary/5 flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors">
@@ -271,13 +282,19 @@ function EntitlementTemplateEditorForm({
               onChange={() => updatePolicy({ library_ids: libraries.map((library) => library.id) })}
             />
             <span>
-              <span className="block font-medium">Only the ones I pick</span>
-              <span className="text-muted-foreground block">New libraries stay hidden</span>
+              <span className="block font-medium">
+                {bt("bloem.admin.plans.editor.pickedLibraries")}
+              </span>
+              <span className="text-muted-foreground block">
+                {bt("bloem.admin.plans.editor.pickedLibrariesHelp")}
+              </span>
             </span>
           </label>
         </div>
         {policy.library_ids === null ? null : libraries.length === 0 ? (
-          <p className="text-muted-foreground text-sm">There are no libraries to pick from yet.</p>
+          <p className="text-muted-foreground text-sm">
+            {bt("bloem.admin.plans.editor.noLibraries")}
+          </p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">
             {libraries.map((library) => (
@@ -298,11 +315,11 @@ function EntitlementTemplateEditorForm({
       </section>
 
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
-        <h2 className="text-sm font-medium">Playback</h2>
+        <h2 className="text-sm font-medium">{bt("bloem.admin.plans.editor.playback")}</h2>
         <PolicyCheckbox
           id="playback-allowed"
-          label="Plays video"
-          description="Turn off for a browse-only plan: people can look around but not play."
+          label={bt("bloem.admin.plans.editor.playsVideo")}
+          description={bt("bloem.admin.plans.editor.playsVideoDescription")}
           checked={policy.playback_allowed}
           onChange={(playback_allowed) =>
             updatePolicy(
@@ -321,7 +338,9 @@ function EntitlementTemplateEditorForm({
           disabled={browseOnly}
         />
         <div className="space-y-1.5">
-          <Label htmlFor="max-playback-quality">Best picture quality</Label>
+          <Label htmlFor="max-playback-quality">
+            {bt("bloem.admin.plans.editor.bestPictureQuality")}
+          </Label>
           <select
             id="max-playback-quality"
             className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm sm:w-72"
@@ -338,23 +357,23 @@ function EntitlementTemplateEditorForm({
         <div className="grid gap-4 sm:grid-cols-3">
           <NumberField
             id="max-streams"
-            label="Screens at once"
-            hint="0 means no limit"
+            label={bt("bloem.admin.plans.editor.screensAtOnce")}
+            hint={bt("bloem.admin.plans.editor.zeroMeansNoLimit")}
             value={policy.max_streams}
             onChange={(max_streams) => updatePolicy({ max_streams })}
             disabled={!policy.playback_allowed}
           />
           <NumberField
             id="max-profiles"
-            label="Profiles"
-            hint="0 means no limit"
+            label={bt("bloem.admin.plans.editor.profiles")}
+            hint={bt("bloem.admin.plans.editor.zeroMeansNoLimit")}
             value={policy.max_profiles}
             onChange={(max_profiles) => updatePolicy({ max_profiles })}
           />
           <NumberField
             id="max-transcodes"
-            label="Conversions at once"
-            hint="Videos converted for a device at the same time. 0 means no limit."
+            label={bt("bloem.admin.plans.editor.conversionsAtOnce")}
+            hint={bt("bloem.admin.plans.editor.conversionsAtOnceHelp")}
             value={policy.max_transcodes}
             onChange={(max_transcodes) => updatePolicy({ max_transcodes })}
             disabled={!policy.playback_allowed}
@@ -362,8 +381,8 @@ function EntitlementTemplateEditorForm({
         </div>
         <PolicyCheckbox
           id="transcode-allowed"
-          label="Video conversion"
-          description="Convert a video when the device can't play the file as it is. Off means only files the device can play directly will play."
+          label={bt("bloem.admin.plans.editor.videoConversion")}
+          description={bt("bloem.admin.plans.editor.videoConversionDescription")}
           checked={policy.transcode_allowed}
           onChange={(transcode_allowed) => updatePolicy({ transcode_allowed })}
           disabled={browseOnly || !policy.playback_allowed}
@@ -371,11 +390,13 @@ function EntitlementTemplateEditorForm({
       </section>
 
       <section className="surface-panel space-y-3 rounded-2xl border-0 p-5">
-        <h2 className="text-sm font-medium">Downloads and requests</h2>
+        <h2 className="text-sm font-medium">
+          {bt("bloem.admin.plans.editor.downloadsAndRequests")}
+        </h2>
         <PolicyCheckbox
           id="download-allowed"
-          label="Download original files"
-          description="Save the file as it is, for watching offline."
+          label={bt("bloem.admin.plans.editor.downloadOriginals")}
+          description={bt("bloem.admin.plans.editor.downloadOriginalsDescription")}
           checked={policy.download_allowed}
           onChange={(download_allowed) =>
             updatePolicy({
@@ -387,16 +408,16 @@ function EntitlementTemplateEditorForm({
         />
         <PolicyCheckbox
           id="download-transcode-allowed"
-          label="Download converted copies"
-          description="Save a smaller copy made for the device, where the app supports it."
+          label={bt("bloem.admin.plans.editor.downloadConverted")}
+          description={bt("bloem.admin.plans.editor.downloadConvertedDescription")}
           checked={policy.download_transcode_allowed}
           onChange={(download_transcode_allowed) => updatePolicy({ download_transcode_allowed })}
           disabled={browseOnly || !policy.playback_allowed || !policy.download_allowed}
         />
         <PolicyCheckbox
           id="requests-allowed"
-          label="Media requests"
-          description="Ask for movies and shows the server doesn't have yet."
+          label={bt("bloem.admin.plans.editor.mediaRequests")}
+          description={bt("bloem.admin.plans.editor.mediaRequestsDescription")}
           checked={policy.requests_allowed}
           onChange={(requests_allowed) => updatePolicy({ requests_allowed })}
         />
@@ -404,15 +425,15 @@ function EntitlementTemplateEditorForm({
 
       <section className="surface-panel space-y-3 rounded-2xl border-0 p-5">
         <div>
-          <h2 className="text-sm font-medium">Extra permissions</h2>
+          <h2 className="text-sm font-medium">{bt("bloem.admin.plans.editor.extraPermissions")}</h2>
           <p className="text-muted-foreground text-sm">
-            Which extra permissions people on this plan can have, such as editing metadata.
+            {bt("bloem.admin.plans.editor.extraPermissionsHelp")}
           </p>
         </div>
         <PolicyCheckbox
           id="all-permissions"
-          label="Allow every permission"
-          description="Includes permissions added in future updates. Turn off to pick them one by one."
+          label={bt("bloem.admin.plans.editor.allowEveryPermission")}
+          description={bt("bloem.admin.plans.editor.allowEveryPermissionDescription")}
           checked={policy.allowed_permissions === null}
           onChange={(allowAll) =>
             updatePolicy({
@@ -450,7 +471,11 @@ function EntitlementTemplateEditorForm({
 
       <div className="flex justify-end">
         <Button type="submit" disabled={!key.trim() || !name.trim() || saving}>
-          {saving ? "Saving…" : template ? "Save as new revision" : "Create plan"}
+          {saving
+            ? bt("bloem.admin.plans.editor.saving")
+            : template
+              ? bt("bloem.admin.plans.editor.saveRevision")
+              : bt("bloem.admin.plans.editor.create")}
         </Button>
       </div>
     </form>

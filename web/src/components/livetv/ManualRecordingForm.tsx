@@ -5,6 +5,7 @@ import {
   type ProfileRequestContextSnapshot,
 } from "@/api/client";
 import type { LiveTVChannel } from "@/api/bloemTypes";
+import { useBloemT } from "@/bloem/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,7 @@ function RecordingForm({
   channels: LiveTVChannel[];
   authority: ProfileRequestContextSnapshot;
 }) {
+  const bt = useBloemT();
   const schedule = useScheduleLiveTVRecording(authority);
   const [channel, setChannel] = useState("");
   const [title, setTitle] = useState("");
@@ -56,7 +58,7 @@ function RecordingForm({
       end <= begin ||
       end.getTime() <= Date.now()
     ) {
-      setError("Choose an end time after the start time and in the future.");
+      setError(bt("bloem.liveTv.manualRecording.invalidTimes"));
       return;
     }
     if (!title.trim() || !channels.some((item) => item.id === channel)) return;
@@ -70,12 +72,17 @@ function RecordingForm({
         stop: end.toISOString(),
       });
       if (!isCapturedProfileAuthorityActive(authority)) return;
-      setNotice("Recording scheduled.");
+      setNotice(bt("bloem.liveTv.manualRecording.scheduled"));
       setTitle("");
     } catch (cause) {
       if (isCapturedProfileAuthorityActive(authority))
         setError(
-          `${cause instanceof Error ? cause.message : "Could not confirm the recording."} Review recording status before trying again.`,
+          bt("bloem.liveTv.manualRecording.failed", {
+            reason:
+              cause instanceof Error
+                ? cause.message
+                : bt("bloem.liveTv.manualRecording.couldNotConfirm"),
+          }),
         );
     }
   }
@@ -86,27 +93,30 @@ function RecordingForm({
       await schedule.reloadRecordings();
       if (isCapturedProfileAuthorityActive(authority)) {
         setTitle("");
-        setNotice(
-          "Recordings reloaded. Review the list and enter a title to schedule a new recording.",
-        );
+        setNotice(bt("bloem.liveTv.manualRecording.reloaded"));
       }
     } catch {
       if (isCapturedProfileAuthorityActive(authority))
-        setError("Could not reload recordings. Recording actions remain blocked; try again.");
+        setError(bt("bloem.liveTv.manualRecording.reloadFailed"));
     }
   }
 
   return (
     <details className="border-border rounded-xl border p-4">
-      <summary className="cursor-pointer font-medium">Schedule by channel and time</summary>
+      <summary className="cursor-pointer font-medium">
+        {bt("bloem.liveTv.manualRecording.summary")}
+      </summary>
       <form className="mt-4 space-y-4" onSubmit={(event) => void submit(event)}>
         <p className="text-muted-foreground text-sm">
-          Use this when a program is missing from the guide. Times use your browser’s timezone (
-          {Intl.DateTimeFormat().resolvedOptions().timeZone}).
+          {bt("bloem.liveTv.manualRecording.intro", {
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          })}
         </p>
         <fieldset disabled={schedule.isBlocked} className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="manual-recording-title">Recording title</Label>
+            <Label htmlFor="manual-recording-title">
+              {bt("bloem.liveTv.manualRecording.title")}
+            </Label>
             <Input
               id="manual-recording-title"
               required
@@ -115,7 +125,9 @@ function RecordingForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="manual-recording-channel">Recording channel</Label>
+            <Label htmlFor="manual-recording-channel">
+              {bt("bloem.liveTv.manualRecording.channel")}
+            </Label>
             <select
               id="manual-recording-channel"
               required
@@ -123,7 +135,7 @@ function RecordingForm({
               onChange={(event) => setChannel(event.target.value)}
               className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
             >
-              <option value="">Choose a channel</option>
+              <option value="">{bt("bloem.liveTv.manualRecording.chooseChannel")}</option>
               {channels.map((item) => (
                 <option key={item.id} value={item.id}>
                   {channelLabel(item)}
@@ -132,7 +144,9 @@ function RecordingForm({
             </select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="manual-recording-start">Starts at</Label>
+            <Label htmlFor="manual-recording-start">
+              {bt("bloem.liveTv.manualRecording.startsAt")}
+            </Label>
             <Input
               id="manual-recording-start"
               type="datetime-local"
@@ -142,7 +156,9 @@ function RecordingForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="manual-recording-stop">Ends at</Label>
+            <Label htmlFor="manual-recording-stop">
+              {bt("bloem.liveTv.manualRecording.endsAt")}
+            </Label>
             <Input
               id="manual-recording-stop"
               type="datetime-local"
@@ -160,14 +176,16 @@ function RecordingForm({
         {notice && <p role="status">{notice}</p>}
         {schedule.needsReload && (
           <div role="alert" className="space-y-2">
-            <p>Bloem couldn’t confirm your last recording change. Reload your recordings first.</p>
+            <p>{bt("bloem.liveTv.manualRecording.changeUnconfirmed")}</p>
             <Button
               type="button"
               variant="outline"
               disabled={schedule.isPending}
               onClick={() => void reload()}
             >
-              {schedule.isPending ? "Reloading recordings…" : "Reload recordings"}
+              {schedule.isPending
+                ? bt("bloem.liveTv.reloadingRecordings")
+                : bt("bloem.liveTv.reloadRecordings")}
             </Button>
           </div>
         )}
@@ -175,7 +193,9 @@ function RecordingForm({
           type="submit"
           disabled={schedule.isBlocked || !channel || !title.trim() || !start || !stop}
         >
-          {schedule.isPending ? "Checking recordings…" : "Schedule recording"}
+          {schedule.isPending
+            ? bt("bloem.liveTv.manualRecording.checking")
+            : bt("bloem.liveTv.manualRecording.submit")}
         </Button>
       </form>
     </details>

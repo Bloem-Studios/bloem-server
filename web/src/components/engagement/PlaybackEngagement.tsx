@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { nativeApi } from "@/api/bloemClient";
@@ -17,6 +18,9 @@ export type PlaybackCard = {
   cta?: { label: string; url: string };
 };
 const seen = new Set<string>();
+/** Glyph on the close button, which carries a translated label. */
+const CLOSE_GLYPH = "✕";
+type SaveState = "" | "saving" | "saved" | "failed";
 export function PlaybackEngagement({
   contentId,
   position,
@@ -58,12 +62,13 @@ export function PlaybackSession({
   blocked: boolean;
   chapters: number[];
 }) {
+  const bt = useBloemT();
   const gate = useRef(new ChapterGate());
   const [card, setCard] = useState<PlaybackCard | null>(null);
   const [began, setBegan] = useState(0),
     [clock, setClock] = useState(() => performance.now()),
     [wallClock, setWallClock] = useState(Date.now),
-    [message, setMessage] = useState("");
+    [saveState, setSaveState] = useState<SaveState>("");
   const host = useRef<HTMLDivElement>(null),
     previousFocus = useRef<HTMLElement | null>(null);
   const data = useQuery({
@@ -166,34 +171,42 @@ export function PlaybackSession({
     >
       <PlaybackCreative card={card} />
       <div className="playback-campaign-copy">
-        <small>{card.kicker || "From your server"}</small>
+        <small>{card.kicker || bt("bloem.engagement.fromYourServer")}</small>
         <h3>{card.headline}</h3>
         {card.subtitle && <p>{card.subtitle}</p>}
         <div className="playback-campaign-actions">
           {card.cta && (
             <button
-              disabled={message === "Saved to your inbox"}
+              disabled={saveState === "saved"}
               onClick={async () => {
-                setMessage("Saving…");
+                setSaveState("saving");
                 try {
                   await nativeApi(
                     `/promotions/${encodeURIComponent(card.id)}/save?content_id=${encodeURIComponent(contentId)}`,
                     { method: "POST" },
                   );
-                  setMessage("Saved to your inbox");
+                  setSaveState("saved");
                 } catch {
-                  setMessage("Could not save. Try again.");
+                  setSaveState("failed");
                 }
               }}
             >
-              Send to my phone
+              {bt("bloem.engagement.playback.sendToPhone")}
             </button>
           )}
-          <button aria-label="Close overlay" onClick={close}>
-            ✕
+          <button aria-label={bt("bloem.engagement.playback.close")} onClick={close}>
+            {CLOSE_GLYPH}
           </button>
         </div>
-        <span role="status">{message}</span>
+        <span role="status">
+          {saveState === "saving"
+            ? bt("bloem.engagement.playback.saving")
+            : saveState === "saved"
+              ? bt("bloem.engagement.playback.saved")
+              : saveState === "failed"
+                ? bt("bloem.engagement.playback.saveFailed")
+                : ""}
+        </span>
       </div>
       <div
         className="playback-campaign-timer"
@@ -203,6 +216,7 @@ export function PlaybackSession({
   );
 }
 export function PlaybackCreative({ card }: { card: PlaybackCard }) {
+  const bt = useBloemT();
   const [failed, setFailed] = useState(false);
   return (
     <div className={card.playback_style === "pip" ? "playback-creative pip" : "playback-creative"}>
@@ -223,7 +237,7 @@ export function PlaybackCreative({ card }: { card: PlaybackCard }) {
       ) : (
         <img src={card.image_url} alt="" />
       )}
-      {card.playback_style === "pip" && <span>MUTED</span>}
+      {card.playback_style === "pip" && <span>{bt("bloem.engagement.playback.muted")}</span>}
     </div>
   );
 }

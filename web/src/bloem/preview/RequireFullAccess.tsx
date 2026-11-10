@@ -1,5 +1,6 @@
 import { lazy, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
+import { useBloemT } from "@/bloem/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { previewDiscoveryPending } from "./session";
 import { usePreviewMode } from "./usePreviewMode";
@@ -21,6 +22,15 @@ export function RequireFullAccess({ children }: { children: ReactNode }) {
     );
   return children;
 }
+function LoadingApplication() {
+  const bt = useBloemT();
+  return (
+    <div className="p-8" role="status" aria-live="polite">
+      <span className="sr-only">{bt("bloem.preview.route.loadingApplication")}</span>
+      {bt("bloem.preview.route.loading")}
+    </div>
+  );
+}
 export function PreviewRouteBoundary({ children }: { children: ReactNode }) {
   const mode = usePreviewMode();
   const { user } = useAuth();
@@ -29,12 +39,7 @@ export function PreviewRouteBoundary({ children }: { children: ReactNode }) {
   // A signed-out visitor on a page behind sign-in waits for the preview status,
   // so a preview host shows its landing instead of first sending them to sign in.
   if (!user && !mode.host && previewDiscoveryPending() && !PUBLIC_PAGE.test(location.pathname))
-    return (
-      <div className="p-8" role="status" aria-live="polite">
-        <span className="sr-only">Loading application</span>
-        Loading...
-      </div>
-    );
+    return <LoadingApplication />;
   if (
     mode.host &&
     (/^\/(?:login|signup|invite|reset-password|forgot-password|choose-password|setup)(?:\/|$)/i.test(

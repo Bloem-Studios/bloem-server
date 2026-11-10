@@ -1,15 +1,26 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { audiobookAcquisitionsApi, type AcquisitionFilter } from "@/api/bloemAudiobookAcquisitions";
+import { useBloemT, type BloemMessageKey } from "@/bloem/i18n";
 import { Button } from "@/components/ui/button";
 import { AudiobookRequestIntegrationPanel } from "./AudiobookRequestIntegrationPanel";
 import { AudiobookAcquisitionDetails } from "./AudiobookAcquisitionDetails";
 import { useAudiobookAdminScope } from "./useAudiobookAdminScope";
+// A divider glyph between facts, the same in every language.
+const DIVIDER = " · ";
+const states: [AcquisitionFilter, BloemMessageKey][] = [
+  ["all", "bloem.admin.bookRequests.acquisitions.state.all"],
+  ["active", "bloem.admin.bookRequests.acquisitions.state.active"],
+  ["review", "bloem.admin.bookRequests.acquisitions.state.review"],
+  ["failed", "bloem.admin.bookRequests.acquisitions.state.failed"],
+  ["stuck", "bloem.admin.bookRequests.acquisitions.state.stuck"],
+];
 export function AudiobookAcquisitionPanel() {
   const scope = useAudiobookAdminScope();
   return scope.allowed ? <ScopedAcquisitionPanel key={scope.key} /> : null;
 }
 function ScopedAcquisitionPanel() {
+  const bt = useBloemT();
   const scope = useAudiobookAdminScope();
   const [filter, setFilter] = useState<AcquisitionFilter>("all");
   const [cursors, setCursors] = useState([""]);
@@ -24,16 +35,21 @@ function ScopedAcquisitionPanel() {
   return (
     <div className="space-y-6">
       <AudiobookRequestIntegrationPanel />
-      <section className="space-y-4" aria-label="Audiobook acquisition review">
+      <section
+        className="space-y-4"
+        aria-label={bt("bloem.admin.bookRequests.acquisitions.sectionLabel")}
+      >
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold">Acquisition review</h2>
+            <h2 className="text-xl font-semibold">
+              {bt("bloem.admin.bookRequests.acquisitions.title")}
+            </h2>
             <p className="text-muted-foreground text-sm">
-              Inspect provider progress and review held releases or downloaded audio.
+              {bt("bloem.admin.bookRequests.acquisitions.intro")}
             </p>
           </div>
           <label className="grid gap-2 text-sm font-medium">
-            Acquisition state
+            {bt("bloem.admin.bookRequests.acquisitions.stateLabel")}
             <select
               value={filter}
               className="border-input h-9 rounded-md border bg-transparent px-3"
@@ -43,27 +59,27 @@ function ScopedAcquisitionPanel() {
                 setSelected("");
               }}
             >
-              {["all", "active", "review", "failed", "stuck"].map((state) => (
+              {states.map(([state, label]) => (
                 <option key={state} value={state}>
-                  {state === "all"
-                    ? "All acquisitions"
-                    : state.charAt(0).toUpperCase() + state.slice(1)}
+                  {bt(label)}
                 </option>
               ))}
             </select>
           </label>
         </header>
-        {list.isPending && <p role="status">Loading acquisitions…</p>}
+        {list.isPending && (
+          <p role="status">{bt("bloem.admin.bookRequests.acquisitions.loading")}</p>
+        )}
         {list.isError && (
           <div className="space-y-2">
-            <p role="alert">Unable to load acquisitions.</p>
+            <p role="alert">{bt("bloem.admin.bookRequests.acquisitions.loadFailed")}</p>
             <Button variant="outline" onClick={() => void list.refetch()}>
-              Reload acquisitions
+              {bt("bloem.admin.bookRequests.acquisitions.reload")}
             </Button>
           </div>
         )}
         {list.data?.acquisitions.length === 0 && (
-          <p role="status">No acquisitions match this state.</p>
+          <p role="status">{bt("bloem.admin.bookRequests.acquisitions.empty")}</p>
         )}
         <ul className="divide-y rounded-xl border">
           {list.data?.acquisitions.map((row) => (
@@ -72,22 +88,38 @@ function ScopedAcquisitionPanel() {
                 <div className="min-w-0">
                   <p className="font-medium break-words">{row.request.title}</p>
                   <p className="text-muted-foreground text-sm">
-                    {row.request.author} ·{" "}
-                    {row.provider_status.replaceAll("_", " ") || "Not started"}
-                    {row.review_kind ? ` · ${row.review_kind} review` : ""}
-                    {row.stuck
-                      ? ` · ${row.stuck_reason?.replaceAll("_", " ") || "Needs attention"}`
-                      : ""}
+                    {[
+                      row.request.author,
+                      row.provider_status.replaceAll("_", " ") ||
+                        bt("bloem.admin.bookRequests.notStarted"),
+                      ...(row.review_kind
+                        ? [
+                            bt("bloem.admin.bookRequests.acquisitions.reviewKind", {
+                              kind: row.review_kind,
+                            }),
+                          ]
+                        : []),
+                      ...(row.stuck
+                        ? [
+                            row.stuck_reason?.replaceAll("_", " ") ||
+                              bt("bloem.admin.bookRequests.acquisitions.needsAttention"),
+                          ]
+                        : []),
+                    ].join(DIVIDER)}
                   </p>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  aria-label={`Review acquisition ${row.request.title}`}
+                  aria-label={bt("bloem.admin.bookRequests.acquisitions.reviewLabel", {
+                    title: row.request.title,
+                  })}
                   aria-expanded={selected === row.request.id}
                   onClick={() => setSelected(selected === row.request.id ? "" : row.request.id)}
                 >
-                  {selected === row.request.id ? "Close review" : "Review acquisition"}
+                  {selected === row.request.id
+                    ? bt("bloem.admin.bookRequests.acquisitions.closeReview")
+                    : bt("bloem.admin.bookRequests.acquisitions.review")}
                 </Button>
               </div>
               {selected === row.request.id && (
@@ -108,7 +140,7 @@ function ScopedAcquisitionPanel() {
               setSelected("");
             }}
           >
-            Previous acquisitions
+            {bt("bloem.admin.bookRequests.acquisitions.previous")}
           </Button>
           <Button
             variant="outline"
@@ -118,7 +150,7 @@ function ScopedAcquisitionPanel() {
               setSelected("");
             }}
           >
-            Next acquisitions
+            {bt("bloem.admin.bookRequests.acquisitions.next")}
           </Button>
         </div>
       </section>

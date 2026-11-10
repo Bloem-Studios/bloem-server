@@ -1,4 +1,5 @@
 import { useSearchParams } from "react-router";
+import { useBloemT } from "@/bloem/i18n";
 import { Button } from "@/components/ui/button";
 
 // One web route owns the request stores. The native Silo page remains a child of this
@@ -10,20 +11,28 @@ export function RequestMediaTabs({
   audiobooks?: boolean;
   ebooks?: boolean;
 }) {
+  const bt = useBloemT();
   const [params, setParams] = useSearchParams();
   const parameter = params.get("kind");
   const kind = parameter === "audiobook" || parameter === "ebook" ? parameter : "video";
   return (
-    <nav aria-label="Request media type" className="flex flex-wrap gap-2 px-4 pt-4 sm:px-6">
+    <nav
+      aria-label={bt("bloem.requests.mediaTabs.label")}
+      className="flex flex-wrap gap-2 px-4 pt-4 sm:px-6"
+    >
       {[
-        { kind: "video", label: "Movies & series", visible: true },
-        { kind: "audiobook", label: "Audiobooks", visible: audiobooks },
-        { kind: "ebook", label: "Ebooks", visible: ebooks },
+        { kind: "video", label: bt("bloem.requests.mediaTabs.video"), visible: true },
+        {
+          kind: "audiobook",
+          label: bt("bloem.requests.mediaTabs.audiobooks"),
+          visible: audiobooks,
+        },
+        { kind: "ebook", label: bt("bloem.requests.mediaTabs.ebooks"), visible: ebooks },
       ]
         .filter((item) => item.visible)
         .map((item) => (
           <Button
-            key={item.label}
+            key={item.kind}
             size="sm"
             variant={kind === item.kind ? "default" : "outline"}
             aria-current={kind === item.kind ? "page" : undefined}

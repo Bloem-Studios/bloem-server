@@ -1,4 +1,4 @@
-import { useBloemT } from "@/bloem/i18n";
+import { bloemT, useBloemT, type BloemMessageKey } from "@/bloem/i18n";
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { ArrowUpCircle, HardDrive } from "lucide-react";
@@ -41,11 +41,6 @@ const S3_PLUGIN = "bloem.storage.s3";
 const BOOKWAREHOUSE_PLUGIN = "bloem.storage.bookwarehouse";
 /** The server refuses a whole-configuration replacement on a source a library uses. */
 const IN_USE_ERROR_CODE = "configuration_namespace_unverified";
-const IN_USE_NOTICE = "A library uses this source, so only its keys can be changed.";
-// The connection summary omits the plain-http endpoint of such a source, so a whole-configuration
-// replace built from it would silently re-point the source; only its keys can be changed.
-const LOOPBACK_LOCKED_NOTICE =
-  "This source uses a local address without https, so only its keys can be changed here.";
 
 // Server-managed or developer-only fields an administrator is never asked for when editing.
 const HIDDEN_EDIT_FIELDS = [
@@ -67,22 +62,18 @@ function errorCode(error: unknown): string | undefined {
   return undefined;
 }
 
-function artifactLabel(artifact: StorageArtifact): string {
-  return `Version ${artifact.version} (${artifact.os}/${artifact.arch})`;
-}
-
 /** What kind of storage a source is, in words rather than its plugin ID. */
 function pluginLabel(pluginId: string): string {
-  if (pluginId === S3_PLUGIN) return "S3 storage";
+  if (pluginId === S3_PLUGIN) return bloemT("bloem.admin.storage.sourceRow.s3Storage");
   if (pluginId === BOOKWAREHOUSE_PLUGIN) return "Bookwarehouse";
   return pluginId;
 }
 
-const STATUS_LABEL: Record<SourceStatus, string> = {
-  live: "Live",
-  setup: "Needs setup",
-  off: "Off",
-  removed: "Removed",
+const STATUS_LABEL: Record<SourceStatus, BloemMessageKey> = {
+  live: "bloem.admin.storage.sourceRow.statusLive",
+  setup: "bloem.admin.storage.sourceRow.statusSetup",
+  off: "bloem.admin.storage.sourceRow.statusOff",
+  removed: "bloem.admin.storage.sourceRow.statusRemoved",
 };
 
 const STATUS_STYLE: Record<SourceStatus, string> = {
@@ -112,7 +103,11 @@ function ArtifactSelect({
       <SelectContent>
         {artifacts.map((artifact) => (
           <SelectItem key={artifact.artifact_key} value={artifact.artifact_key}>
-            {artifactLabel(artifact)}
+            {bt("bloem.admin.storage.sourceRow.versionOption", {
+              version: artifact.version,
+              os: artifact.os,
+              arch: artifact.arch,
+            })}
           </SelectItem>
         ))}
       </SelectContent>
@@ -318,12 +313,15 @@ function S3EditForm({
 
   function handleSave(key: string, entry: Record<string, unknown>) {
     const problems = validateS3Connection(entry, { bucketOptional });
-    const messages = Object.entries(problems).map(
-      ([field, message]) => `${labels.get(field) ?? field}: ${message}`,
+    const messages = Object.entries(problems).map(([field, message]) =>
+      bt("bloem.admin.storage.sourceRow.fieldProblem", {
+        field: labels.get(field) ?? field,
+        problem: message,
+      }),
     );
     const filled = (k: string) => typeof entry[k] === "string" && entry[k] !== "";
     if (!filled("access_key") || !filled("secret_key"))
-      messages.push("Enter the keys again to save.");
+      messages.push(bt("bloem.admin.storage.sourceRow.enterKeysAgain"));
     setErrors(messages);
     if (messages.length > 0) return;
     replace.mutate(
@@ -438,26 +436,39 @@ function RemoveConfirmation({
 
 function displayName(source: StorageSource): string {
   if (source.plugin_id === BOOKWAREHOUSE_PLUGIN) {
-    return source.root_entry_id === "audio-root" ? "Bookwarehouse audiobooks" : "Bookwarehouse";
+    return source.root_entry_id === "audio-root"
+      ? bloemT("bloem.admin.storage.sourceRow.bookwarehouseAudiobooks")
+      : "Bookwarehouse";
   }
   return source.connection_summary?.source_name || source.provider_source_id;
 }
 
 function SummaryLine({ source }: { source: StorageSource }) {
+  const bt = useBloemT();
   const summary = source.connection_summary ?? {};
   // A configured source with no bucket covers every bucket its keys can see.
   const allBuckets = !summary.bucket && Object.keys(summary).length > 0;
   const parts = [
-    allBuckets ? "All buckets" : "",
-    summary.bucket ? `Bucket ${summary.bucket}` : "",
-    summary.prefix ? `Folder ${summary.prefix}` : "",
-    summary.region ? `Region ${summary.region}` : "",
-    summary.endpoint ? `Address ${summary.endpoint}` : "",
-    summary.base_url_host ? `Server ${summary.base_url_host}` : "",
+    allBuckets ? bt("bloem.admin.storage.sourceRow.summaryAllBuckets") : "",
+    summary.bucket
+      ? bt("bloem.admin.storage.sourceRow.summaryBucket", { bucket: summary.bucket })
+      : "",
+    summary.prefix
+      ? bt("bloem.admin.storage.sourceRow.summaryFolder", { folder: summary.prefix })
+      : "",
+    summary.region
+      ? bt("bloem.admin.storage.sourceRow.summaryRegion", { region: summary.region })
+      : "",
+    summary.endpoint
+      ? bt("bloem.admin.storage.sourceRow.summaryAddress", { address: summary.endpoint })
+      : "",
+    summary.base_url_host
+      ? bt("bloem.admin.storage.sourceRow.summaryServer", { server: summary.base_url_host })
+      : "",
     summary.revision_mode === "checked-etag"
-      ? "Checks each file"
+      ? bt("bloem.admin.storage.sourceRow.summaryChecksEachFile")
       : summary.revision_mode
-        ? "Exact versions only"
+        ? bt("bloem.admin.storage.sourceRow.summaryExactVersions")
         : "",
   ].filter(Boolean);
   if (parts.length === 0) return null;
@@ -472,19 +483,19 @@ function SummaryLine({ source }: { source: StorageSource }) {
 
 /** Which libraries read from the source, or what its status means when none do. */
 function UsageLine({ source, status }: { source: StorageSource; status: SourceStatus }) {
+  const bt = useBloemT();
   const names = (source.libraries ?? []).map((library) => library.name);
   let text: string;
   if (names.length > 0) {
-    text = `Used by ${names.join(", ")}. A source a library uses can't be removed.`;
+    text = bt("bloem.admin.storage.sourceRow.usedBy", { libraries: names.join(", ") });
   } else if (source.in_use) {
-    text = "Used by a library in another organization.";
+    text = bt("bloem.admin.storage.sourceRow.usedElsewhere");
   } else if (status === "removed") {
-    text =
-      "Its plugin was removed, so it can't be turned back on. Add a new source to use this storage again.";
+    text = bt("bloem.admin.storage.sourceRow.pluginRemoved");
   } else if (status === "setup") {
-    text = "Not connected yet. Enter its connection details below.";
+    text = bt("bloem.admin.storage.sourceRow.notConnected");
   } else {
-    text = "Not used by any library.";
+    text = bt("bloem.admin.storage.sourceRow.notUsed");
   }
   return <p className="text-muted-foreground mt-1 ps-[26px] text-[12.5px]">{text}</p>;
 }
@@ -532,6 +543,8 @@ export function StorageSourceRow({
   const canManage = manageable && !sourceDisabled && !platformBlocked;
   // S3 releases are approved and upgraded by the platform; an organization never upgrades them.
   const canUpgrade = !platformBlocked && !(isS3 && scope === "organization");
+  // The connection summary omits the plain-http endpoint of such a source, so a whole-configuration
+  // replace built from it would silently re-point the source; only its keys can be changed.
   const loopbackLocked = source.connection_summary?.allow_loopback_http === "true";
   const testHintId = `test-hint-${source.source_key}`;
 
@@ -552,7 +565,7 @@ export function StorageSourceRow({
           ) : null}
         </span>
         <Badge variant="outline" className={STATUS_STYLE[status]}>
-          {STATUS_LABEL[status]}
+          {bt(STATUS_LABEL[status])}
         </Badge>
       </div>
 
@@ -618,7 +631,9 @@ export function StorageSourceRow({
       </div>
 
       {isS3 && canManage && loopbackLocked ? (
-        <p className="text-muted-foreground mt-1 ps-[26px] text-[13px]">{LOOPBACK_LOCKED_NOTICE}</p>
+        <p className="text-muted-foreground mt-1 ps-[26px] text-[13px]">
+          {bt("bloem.admin.storage.sourceRow.loopbackKeysOnly")}
+        </p>
       ) : null}
 
       {testResult ? (
@@ -658,7 +673,9 @@ export function StorageSourceRow({
       {isS3 && panel === "rotate" ? (
         <>
           {locked ? (
-            <p className="text-muted-foreground mt-2 text-[13px]">{IN_USE_NOTICE}</p>
+            <p className="text-muted-foreground mt-2 text-[13px]">
+              {bt("bloem.admin.storage.sourceRow.inUseKeysOnly")}
+            </p>
           ) : null}
           <RotateKeysForm
             source={source}

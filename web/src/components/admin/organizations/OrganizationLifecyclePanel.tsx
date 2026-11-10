@@ -1,4 +1,4 @@
-import { useBloemT } from "@/bloem/i18n";
+import { bloemT, useBloemT } from "@/bloem/i18n";
 import { useState } from "react";
 import { AdminV2ClientError } from "@/api/adminV2Client";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -22,7 +22,9 @@ interface OrganizationLifecyclePanelProps {
 }
 
 function messageFrom(error: unknown): string {
-  return error instanceof Error ? error.message : "The organization could not be updated.";
+  return error instanceof Error
+    ? error.message
+    : bloemT("bloem.admin.organizations.lifecycle.couldNotUpdate");
 }
 
 export function OrganizationLifecyclePanel({
@@ -43,7 +45,7 @@ export function OrganizationLifecyclePanel({
 
   async function handleError(error: unknown) {
     if (error instanceof AdminV2ClientError && error.code === "authorization_state_changed") {
-      const message = "Authorization state changed. Current organization data was reloaded.";
+      const message = bt("bloem.admin.organizations.lifecycle.authorizationChanged");
       setNotice(message);
       await onRevisionChanged(message);
       return;
@@ -63,7 +65,7 @@ export function OrganizationLifecyclePanel({
         name: name.trim(),
         slug: slug.trim(),
       });
-      setNotice("Organization details updated.");
+      setNotice(bt("bloem.admin.organizations.lifecycle.detailsUpdated"));
     } catch (error) {
       await handleError(error);
     }
@@ -78,7 +80,9 @@ export function OrganizationLifecyclePanel({
         status: confirmStatus,
       });
       setNotice(
-        confirmStatus === "suspended" ? "Organization suspended." : "Organization reactivated.",
+        confirmStatus === "suspended"
+          ? bt("bloem.admin.organizations.lifecycle.suspended")
+          : bt("bloem.admin.organizations.lifecycle.reactivated"),
       );
       setConfirmStatus(null);
     } catch (error) {
@@ -96,7 +100,7 @@ export function OrganizationLifecyclePanel({
             variant={organization.status === "active" ? "default" : "secondary"}
             className="capitalize"
           >
-            {organization.status}
+            {bt("bloem.admin.organizations.lifecycle.status", { status: organization.status })}
           </Badge>
         </div>
       </CardHeader>
@@ -180,7 +184,11 @@ export function OrganizationLifecyclePanel({
                 name: organization.name,
               })
         }
-        confirmLabel={confirmStatus === "suspended" ? "Suspend" : "Reactivate"}
+        confirmLabel={
+          confirmStatus === "suspended"
+            ? bt("bloem.admin.organizations.lifecycle.confirmSuspend")
+            : bt("bloem.admin.organizations.lifecycle.confirmReactivate")
+        }
         variant={confirmStatus === "suspended" ? "destructive" : "default"}
         isPending={setStatus.isPending}
         onConfirm={() => void changeStatus()}
@@ -209,7 +217,7 @@ export function OrganizationLifecyclePanel({
             })
             .then(() => {
               setTransferOpen(false);
-              setNotice("Ownership transferred.");
+              setNotice(bt("bloem.admin.organizations.lifecycle.ownershipTransferred"));
             })
             .catch((error: unknown) => void handleError(error));
         }}

@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { bloemT } from "@/bloem/i18n";
+
 export interface BloemCapabilities {
   feature_tokens: string[];
   features: {
@@ -18,7 +20,7 @@ export function useBloemCapabilities(enabled = true) {
         signal,
         headers: { Accept: "application/json" },
       });
-      if (!response.ok) throw new Error("Could not check this server’s supported Bloem features.");
+      if (!response.ok) throw new Error(bloemT("bloem.capabilities.checkFailed"));
       return response.json();
     },
     staleTime: 60_000,

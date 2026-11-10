@@ -1,4 +1,4 @@
-import { useBloemT } from "@/bloem/i18n";
+import { bloemT, useBloemT } from "@/bloem/i18n";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Megaphone } from "lucide-react";
@@ -57,7 +57,7 @@ interface Announcement extends AnnouncementInput {
 }
 const selectClass = "border-input bg-background h-10 w-full rounded-md border px-3 text-sm";
 function errorText(error: unknown) {
-  return error instanceof Error ? error.message : "The announcement could not be saved. Try again.";
+  return error instanceof Error ? error.message : bloemT("bloem.admin.announcements.couldNotSave");
 }
 function allowedLink(value: string, image = false) {
   if (!value.trim()) return true;
@@ -75,26 +75,41 @@ function allowedLink(value: string, image = false) {
 function audienceSummary(target: Targeting) {
   switch (target.audience) {
     case "all":
-      return "All viewers";
+      return bloemT("bloem.admin.announcements.audienceAll");
     case "role":
-      return target.role === "admin" ? "Administrators" : "Users";
+      return target.role === "admin"
+        ? bloemT("bloem.admin.announcements.audienceAdministrators")
+        : bloemT("bloem.admin.announcements.audienceUsers");
     case "organization":
-      return `Organization ${target.organization_id}`;
+      return bloemT("bloem.admin.announcements.audienceOrganization", {
+        organization: target.organization_id ?? "",
+      });
     case "library":
-      return `Viewers with access to library ${target.library_id}`;
+      return bloemT("bloem.admin.announcements.audienceLibrary", {
+        library: target.library_id ?? "",
+      });
     case "explicit":
       return [
-        target.user_ids?.length ? `Users: ${target.user_ids.join(", ")} (all their profiles)` : "",
-        target.profile_ids?.length ? `Profiles: ${target.profile_ids.join(", ")}` : "",
+        target.user_ids?.length
+          ? bloemT("bloem.admin.announcements.audienceAccounts", {
+              accounts: target.user_ids.join(", "),
+            })
+          : "",
+        target.profile_ids?.length
+          ? bloemT("bloem.admin.announcements.audienceProfiles", {
+              profiles: target.profile_ids.join(", "),
+            })
+          : "",
       ]
         .filter(Boolean)
         .join("; ");
   }
 }
-function status(item: Announcement) {
-  if (item.withdrawn_at) return "Withdrawn";
-  if (item.body.expires_at && Date.parse(item.body.expires_at) <= Date.now()) return "Expired";
-  return "Published";
+type Status = "withdrawn" | "expired" | "published";
+function status(item: Announcement): Status {
+  if (item.withdrawn_at) return "withdrawn";
+  if (item.body.expires_at && Date.parse(item.body.expires_at) <= Date.now()) return "expired";
+  return "published";
 }
 
 export default function AnnouncementsAdminSettings() {
@@ -166,8 +181,8 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
     onSuccess: (result) => {
       setReceipt(
         typeof result.recipient_count === "number"
-          ? `Published to ${result.recipient_count} recipients.`
-          : "Announcement published.",
+          ? bt("bloem.admin.announcements.publishedTo", { count: result.recipient_count })
+          : bt("bloem.admin.announcements.publishedReceipt"),
       );
       setSeverity("info");
       setAudience("all");
@@ -191,7 +206,7 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
       adminV2Api(endpoint + "/" + encodeURIComponent(id), { method: "DELETE" }, "none", authority),
     onSuccess: () => {
       setWithdrawing(null);
-      setReceipt("Announcement withdrawn.");
+      setReceipt(bt("bloem.admin.announcements.withdrawnReceipt"));
       void cache.invalidateQueries({ queryKey });
     },
   });
@@ -200,26 +215,26 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
     setValidation("");
     publish.reset();
     if (!title.trim() || !message.trim()) {
-      setValidation("Add a title and a message.");
+      setValidation(bt("bloem.admin.announcements.needTitleAndMessage"));
       return;
     }
     if (!allowedLink(link) || !allowedLink(ctaUrl) || !allowedLink(image, true)) {
-      setValidation("Use HTTPS links or Bloem app links. Images need an HTTPS address.");
+      setValidation(bt("bloem.admin.announcements.needHttpsLinks"));
       return;
     }
     if (Boolean(ctaLabel.trim()) !== Boolean(ctaUrl.trim())) {
-      setValidation("Add both an action label and its link.");
+      setValidation(bt("bloem.admin.announcements.needActionLabelAndLink"));
       return;
     }
     if (expiry && (!Number.isFinite(Date.parse(expiry)) || Date.parse(expiry) <= Date.now())) {
-      setValidation("Choose an expiry time in the future.");
+      setValidation(bt("bloem.admin.announcements.needFutureExpiry"));
       return;
     }
     const targeting: Targeting = { audience };
     if (audience === "role") targeting.role = role;
     if (audience === "organization") {
       if (!target.trim()) {
-        setValidation("Choose the organization.");
+        setValidation(bt("bloem.admin.announcements.needOrganization"));
         return;
       }
       targeting.organization_id = target.trim();
@@ -230,7 +245,7 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
         Number(target) <= 0 ||
         !Number.isSafeInteger(Number(target))
       ) {
-        setValidation("Choose the library.");
+        setValidation(bt("bloem.admin.announcements.needLibrary"));
         return;
       }
       targeting.library_id = Number(target);
@@ -250,7 +265,7 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
         ) ||
         (!userValues.length && !profileValues.length)
       ) {
-        setValidation("Choose at least one account or profile. Account numbers are whole numbers.");
+        setValidation(bt("bloem.admin.announcements.needAccountsOrProfiles"));
         return;
       }
       targeting.user_ids = [...new Set(userValues.map(Number))];
@@ -464,17 +479,21 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
           <article key={item.id} className="space-y-3 rounded-xl border p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <h3 className="font-semibold">{item.body.title}</h3>
-              <span className="text-muted-foreground text-sm">{status(item)}</span>
+              <span className="text-muted-foreground text-sm">
+                {bt("bloem.admin.announcements.status", { status: status(item) })}
+              </span>
             </div>
             <p className="text-sm whitespace-pre-wrap">{item.body.body}</p>
             <p className="text-muted-foreground text-sm">
               {bt("bloem.admin.announcements.recipients", {
-                severity: item.body.severity,
+                severity: bt("bloem.admin.announcements.severityName", {
+                  severity: item.body.severity,
+                }),
                 recipientCount: item.recipient_count,
                 created: new Date(item.created_at).toLocaleString(),
               })}
             </p>
-            {!item.withdrawn_at && status(item) !== "Expired" && (
+            {!item.withdrawn_at && status(item) !== "expired" && (
               <Button
                 variant="outline"
                 aria-label={bt("bloem.admin.announcements.withdraw", { title: item.body.title })}
@@ -508,7 +527,13 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
           </DialogHeader>
           <div className="space-y-3 rounded-lg border p-4">
             <Megaphone className="h-5 w-5" aria-hidden="true" />
-            <p className="text-muted-foreground text-xs uppercase">{preview?.body.severity}</p>
+            <p className="text-muted-foreground text-xs uppercase">
+              {preview
+                ? bt("bloem.admin.announcements.severityName", {
+                    severity: preview.body.severity,
+                  })
+                : null}
+            </p>
             <h3 className="font-semibold">{preview?.body.title}</h3>
             <p className="text-sm whitespace-pre-wrap">{preview?.body.body}</p>
             {preview?.body.cta && (

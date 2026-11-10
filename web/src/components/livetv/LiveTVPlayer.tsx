@@ -3,6 +3,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import { getAccessToken, getProfileToken } from "@/api/client";
 import { getProfileId } from "@/api/bloemClient";
+import { bloemT, useBloemT } from "@/bloem/i18n";
 import { cn } from "@/lib/utils";
 
 type LiveTVPlayerProps = {
@@ -59,6 +60,7 @@ export function LiveTVPlayer({
   onErrorChange,
   onStartingChange,
 }: LiveTVPlayerProps) {
+  const bt = useBloemT();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mpegtsRef = useRef<ReturnType<typeof mpegts.createPlayer> | null>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -89,13 +91,13 @@ export function LiveTVPlayer({
     try {
       parsed = new URL(resolveStreamUrl(streamUrl));
     } catch {
-      setError("This channel couldn’t be started. Try again, or try another channel.");
+      setError(bloemT("bloem.liveTv.player.couldNotStart"));
       setStarting(false);
       return;
     }
     const url = parsed.href;
     if (parsed.origin !== window.location.origin || parsed.username || parsed.password) {
-      setError("This channel’s stream address isn’t supported. Try another channel.");
+      setError(bloemT("bloem.liveTv.player.unsupportedAddress"));
       setStarting(false);
       return;
     }
@@ -107,7 +109,7 @@ export function LiveTVPlayer({
       const playUrl = url;
       if (!Hls.isSupported()) {
         if (!video.canPlayType("application/vnd.apple.mpegurl") || !parsed.searchParams.get("st")) {
-          setError("This browser can’t play this channel. Try another browser or the Bloem app.");
+          setError(bloemT("bloem.liveTv.player.browserCannotPlay"));
           setStarting(false);
           return;
         }
@@ -119,7 +121,7 @@ export function LiveTVPlayer({
           });
         };
         const failed = () => {
-          setError("The channel stopped or couldn’t load. Try again to tune it in again.");
+          setError(bloemT("bloem.liveTv.player.stopped"));
           setStarting(false);
           onPlayingChange?.(false);
         };
@@ -239,13 +241,13 @@ export function LiveTVPlayer({
           hls.recoverMediaError();
           return;
         }
-        const detail = data.details || "HLS playback error";
+        const detail = data.details;
         const friendly =
           detail === "manifestLoadError"
-            ? "The channel didn’t start. It may still be tuning in, so try again."
+            ? bloemT("bloem.liveTv.player.didNotStart")
             : detail === "bufferAppendError"
-              ? "This browser couldn’t play the channel. Try another channel or reload the page."
-              : detail;
+              ? bloemT("bloem.liveTv.player.browserCouldNotPlay")
+              : detail || bloemT("bloem.liveTv.player.hlsPlaybackError");
         setError(friendly);
         setStarting(false);
       });
@@ -256,7 +258,7 @@ export function LiveTVPlayer({
     }
 
     if (!mpegts.isSupported() || !mpegts.getFeatureList().mseLivePlayback) {
-      setError("This browser can’t play this channel. Try another browser or the Bloem app.");
+      setError(bloemT("bloem.liveTv.player.browserCannotPlay"));
       setStarting(false);
       return;
     }
@@ -279,8 +281,8 @@ export function LiveTVPlayer({
     player.on(mpegts.Events.ERROR, (_type: string, _detail: string, info: unknown) => {
       const message =
         typeof info === "object" && info && "msg" in info
-          ? String((info as { msg?: string }).msg ?? "Playback error")
-          : "Playback error";
+          ? String((info as { msg?: string }).msg ?? bloemT("bloem.liveTv.player.playbackError"))
+          : bloemT("bloem.liveTv.player.playbackError");
       setError(message);
       setStarting(false);
     });
@@ -322,7 +324,11 @@ export function LiveTVPlayer({
         controls={!hideNativeControls}
         playsInline
         autoPlay
-        aria-label={title ? `Live: ${title}` : "Live TV"}
+        aria-label={
+          title
+            ? bt("bloem.liveTv.player.labelWithTitle", { title })
+            : bt("bloem.liveTv.player.label")
+        }
       />
       {starting && !hideNativeControls ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40">

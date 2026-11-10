@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
+import { bloemT, type BloemMessageKey } from "@/bloem/i18n";
 
 // Bloem: an organization's domains and branding, on the platform routes under
 // /api/bloem/v1/admin/platform/tenants/{id}.
@@ -25,11 +26,21 @@ export type OrganizationBrandingUpdate = Partial<
   Pick<OrganizationBranding, "server_name" | "login_subtitle" | "accent_color" | "default_theme">
 >;
 
+/** An uploadable branding asset; its label is a getter, so it follows the interface language. */
+function brandingAsset<Kind extends string>(kind: Kind, label: BloemMessageKey) {
+  return {
+    kind,
+    get label() {
+      return bloemT(label);
+    },
+  };
+}
+
 export const ORGANIZATION_BRANDING_ASSETS = [
-  { kind: "wordmark", label: "Wordmark" },
-  { kind: "mark", label: "Mark" },
-  { kind: "favicon", label: "Favicon" },
-  { kind: "login_bg", label: "Sign-in background" },
+  brandingAsset("wordmark", "bloem.admin.organizations.brandingAssets.wordmark"),
+  brandingAsset("mark", "bloem.admin.organizations.brandingAssets.mark"),
+  brandingAsset("favicon", "bloem.admin.organizations.brandingAssets.favicon"),
+  brandingAsset("login_bg", "bloem.admin.organizations.brandingAssets.signInBackground"),
 ] as const;
 
 const platformKey = adminV2QueryKey("platform");

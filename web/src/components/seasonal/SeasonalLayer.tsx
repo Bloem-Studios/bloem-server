@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router";
@@ -19,6 +20,7 @@ import { activeSeason, type SeasonalPack } from "./schedule";
 
 const preference = "bloem-seasonal-effects";
 export default function SeasonalLayer() {
+  const bt = useBloemT();
   const { pathname } = useLocation();
   const { user, profile } = useAuth();
   const identity = captureSessionIdentity();
@@ -174,7 +176,7 @@ export default function SeasonalLayer() {
         }}
         aria-pressed={enabled}
       >
-        Seasonal effects: {enabled ? "On" : "Off"}
+        {bt("bloem.engagement.seasonal.toggle", { state: enabled ? "on" : "off" })}
       </button>
     </>
   );

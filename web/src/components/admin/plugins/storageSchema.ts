@@ -1,4 +1,5 @@
 import type { PluginConfigSchema } from "@/api/types";
+import { bloemT } from "@/bloem/i18n";
 import { randomUUID } from "@/lib/uuid";
 
 /**
@@ -36,8 +37,9 @@ export function pruneConfigSchema(
 }
 
 /** The hint shown under every S3 folder (prefix) field. */
-export const PREFIX_HINT =
-  "Leave empty to use the whole bucket (recommended). You choose folders for each library later.";
+export function prefixHint(): string {
+  return bloemT("bloem.admin.storage.s3Fields.prefixHint");
+}
 
 /**
  * True when the S3 release accepts a source with no bucket, which then covers
@@ -67,43 +69,46 @@ export function withS3FieldCopy(schema: PluginConfigSchema): PluginConfigSchema 
       fields: schema.admin_form.fields.map((field) => {
         switch (field.key) {
           case "prefix":
-            return { ...field, label: "Folder (optional)", description: PREFIX_HINT };
+            return {
+              ...field,
+              label: bloemT("bloem.admin.storage.s3Fields.prefixLabel"),
+              description: prefixHint(),
+            };
           case "source_name":
             return {
               ...field,
-              label: "Name (optional)",
-              description: "How this source is shown in Bloem. Leave empty to use the bucket name.",
+              label: bloemT("bloem.admin.storage.s3Fields.nameLabel"),
+              description: bloemT("bloem.admin.storage.s3Fields.nameHint"),
             };
           case "endpoint":
             return {
               ...field,
-              label: "Address",
-              description: "The https:// address your storage provider gave you.",
+              label: bloemT("bloem.admin.storage.s3Fields.addressLabel"),
+              description: bloemT("bloem.admin.storage.s3Fields.addressHint"),
             };
           case "revision_mode":
             return {
               ...field,
-              label: "How Bloem checks files",
-              description:
-                "Check each file before and after reading works with every bucket. Read exact file versions only needs versioning turned on for the bucket; files without a version are refused.",
+              label: bloemT("bloem.admin.storage.s3Fields.revisionModeLabel"),
+              description: bloemT("bloem.admin.storage.s3Fields.revisionModeHint"),
               options: field.options?.map((option) => ({
                 ...option,
                 label:
                   option.value === "checked-etag"
-                    ? "Check each file before and after reading (any bucket)"
+                    ? bloemT("bloem.admin.storage.s3Fields.revisionChecked")
                     : option.value === "versioned"
-                      ? "Read exact file versions only (needs versioning)"
+                      ? bloemT("bloem.admin.storage.s3Fields.revisionVersioned")
                       : option.label,
               })),
             };
           case "session_token":
-            return { ...field, label: "Session token (optional)" };
+            return { ...field, label: bloemT("bloem.admin.storage.s3Fields.sessionTokenLabel") };
           case "bucket":
             return optional
               ? {
                   ...field,
-                  label: "Bucket (optional)",
-                  description: "Leave empty to cover every bucket these keys can see.",
+                  label: bloemT("bloem.admin.storage.s3Fields.bucketLabel"),
+                  description: bloemT("bloem.admin.storage.s3Fields.bucketHint"),
                 }
               : field;
           default:
@@ -127,33 +132,35 @@ export function validateS3Connection(
   const text = (k: string) => (typeof value[k] === "string" ? (value[k] as string) : "");
   const bucket = text("bucket");
   if (!bucket) {
-    if (!options.bucketOptional) errors.bucket = "Enter the bucket name.";
+    if (!options.bucketOptional) errors.bucket = bloemT("bloem.admin.storage.s3Fields.enterBucket");
   } else if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(bucket))
-    errors.bucket = "Bucket names use 3–63 lowercase letters, digits, dots and hyphens.";
-  else if (bucket.includes("..")) errors.bucket = "Bucket names must not contain consecutive dots.";
+    errors.bucket = bloemT("bloem.admin.storage.s3Fields.bucketCharacters");
+  else if (bucket.includes(".."))
+    errors.bucket = bloemT("bloem.admin.storage.s3Fields.bucketConsecutiveDots");
   else if (/^\d+\.\d+\.\d+\.\d+$/.test(bucket))
-    errors.bucket = "Bucket names must not look like an IP address.";
+    errors.bucket = bloemT("bloem.admin.storage.s3Fields.bucketLooksLikeIp");
   const prefix = text("prefix");
   if (prefix !== "" && !bucket && options.bucketOptional)
-    errors.prefix = "A folder needs a bucket. Leave it empty to use every bucket.";
-  else if (prefix.startsWith("/")) errors.prefix = "The folder must not start with a slash.";
+    errors.prefix = bloemT("bloem.admin.storage.s3Fields.folderNeedsBucket");
+  else if (prefix.startsWith("/"))
+    errors.prefix = bloemT("bloem.admin.storage.s3Fields.folderLeadingSlash");
   else if (prefix !== "" && !prefix.endsWith("/"))
-    errors.prefix = "The folder must end with a slash, for example movies/.";
+    errors.prefix = bloemT("bloem.admin.storage.s3Fields.folderTrailingSlash");
   const endpoint = text("endpoint");
   if (endpoint) {
     try {
       const u = new URL(endpoint);
-      if (u.protocol !== "https:") errors.endpoint = "The address must start with https://.";
+      if (u.protocol !== "https:")
+        errors.endpoint = bloemT("bloem.admin.storage.s3Fields.addressHttps");
       // Checked on the raw text: an empty "?" or "#" leaves u.search / u.hash empty.
       else if (endpoint.includes("?") || endpoint.includes("#"))
-        errors.endpoint = "The address must not contain ? or #.";
+        errors.endpoint = bloemT("bloem.admin.storage.s3Fields.addressQueryOrFragment");
       else if (u.username || u.password)
-        errors.endpoint = "The address must not contain a user name or password.";
+        errors.endpoint = bloemT("bloem.admin.storage.s3Fields.addressCredentials");
       else if (u.pathname !== "/" && u.pathname !== "")
-        errors.endpoint =
-          "Use only the address itself, without a bucket or folder after it, such as https://s3.example.com.";
+        errors.endpoint = bloemT("bloem.admin.storage.s3Fields.addressPath");
     } catch {
-      errors.endpoint = "Enter a full URL such as https://s3.example.com.";
+      errors.endpoint = bloemT("bloem.admin.storage.s3Fields.addressInvalid");
     }
   }
   return errors;
@@ -166,7 +173,9 @@ export function withoutEmpty(value: Record<string, unknown>): Record<string, unk
 
 /**
  * The typed name, or the bucket (with the prefix, when set) so a source is
- * never shown by its id. A source with no bucket takes `fallback`.
+ * never shown by its id. A source with no bucket takes `fallback`. The result
+ * is saved as the source's name, so the default fallback is data and stays in
+ * English.
  */
 export function sourceName(value: Record<string, unknown>, fallback = "All buckets"): string {
   const text = (k: string) => (typeof value[k] === "string" ? (value[k] as string) : "");

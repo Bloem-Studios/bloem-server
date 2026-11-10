@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { API_READ_TIMEOUT_MS, startRequestDeadline } from "@/api/requestDeadline";
 import { getAccessToken } from "@/api/client";
+import { useBloemT } from "@/bloem/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { useBranding } from "@/hooks/useBranding";
 import { endGuestSession, guestSession, markFreePlayEnded } from "./session";
@@ -9,6 +10,7 @@ import { safePreviewHref } from "./routes";
 import { previewEvent } from "./api";
 import { Button } from "@/components/ui/button";
 export default function PreviewBanner() {
+  const bt = useBloemT();
   const { active, guest, ended, presentation, freePlay, requestSubscription } = usePreviewMode();
   const { logout, refreshAccount } = useAuth();
   const hadFreePlay = useRef(false);
@@ -72,13 +74,13 @@ export default function PreviewBanner() {
     : null;
   const deadline = guest
     ? freeLeft !== null
-      ? `Free play: ${freeLeft} min left`
+      ? bt("bloem.preview.banner.freePlayLeft", { minutes: freeLeft })
       : remaining === null
-        ? "Browse-only preview"
-        : `${remaining} min remaining`
+        ? bt("bloem.preview.browseOnly")
+        : bt("bloem.preview.banner.minutesRemaining", { minutes: remaining })
     : end === null
-      ? "Your library preview"
-      : `Your preview ends on ${new Date(end).toLocaleDateString()}`;
+      ? bt("bloem.preview.banner.yourPreview")
+      : bt("bloem.preview.banner.endsOn", { date: new Date(end).toLocaleDateString() });
   // Ending a guest visit frees its place; the guest then lands on the store,
   // or on the operator's subscription when they chose to subscribe.
   async function exit(destination: string | undefined) {
@@ -87,7 +89,7 @@ export default function PreviewBanner() {
     setExiting(true);
     const deadline = startRequestDeadline(
       API_READ_TIMEOUT_MS,
-      () => new Error("Preview exit timed out"),
+      () => new Error(bt("bloem.preview.errors.exitTimedOut")),
     );
     try {
       if (token)
@@ -115,11 +117,11 @@ export default function PreviewBanner() {
     >
       <span>{deadline}</span>
       <Button size="sm" className="ms-auto" onClick={() => requestSubscription()}>
-        {presentation?.cta_label || `Subscribe to ${serverName}`}
+        {presentation?.cta_label || bt("bloem.preview.cta.subscribeToBrand", { brand: serverName })}
       </Button>
       {subscribe ? (
         <Button size="sm" variant="outline" disabled={exiting} onClick={() => void exit(subscribe)}>
-          {presentation?.subscribe_label || "Subscribe"}
+          {presentation?.subscribe_label || bt("bloem.preview.banner.subscribe")}
         </Button>
       ) : (
         <Button
@@ -128,7 +130,7 @@ export default function PreviewBanner() {
           disabled={exiting}
           onClick={guest ? () => void exit(presentation?.storefront_url) : logout}
         >
-          {guest ? "Exit preview" : "Sign out"}
+          {guest ? bt("bloem.preview.banner.exitPreview") : bt("bloem.preview.banner.signOut")}
         </Button>
       )}
     </div>

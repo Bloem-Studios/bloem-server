@@ -1,4 +1,5 @@
 import type { LiveTVChannel, LiveTVProgram } from "@/api/bloemTypes";
+import { useBloemT } from "@/bloem/i18n";
 import { Button } from "@/components/ui/button";
 import {
   buildGuideWindow,
@@ -39,6 +40,7 @@ export function LiveTVGuideGrid({
   recordDisabled,
   startingChannelId = null,
 }: LiveTVGuideGridProps) {
+  const bt = useBloemT();
   const programById = new Map(programs.map((program) => [program.id, program]));
   const window = buildGuideWindow(now);
   const ticks = guideTimeTicks(window);
@@ -57,7 +59,7 @@ export function LiveTVGuideGrid({
             className="border-border text-muted-foreground sticky left-0 z-30 flex shrink-0 items-end border-r px-3 py-2.5 text-[10px] font-semibold tracking-[0.18em] uppercase"
             style={{ width: CHANNEL_COL_WIDTH }}
           >
-            Channel
+            {bt("bloem.liveTv.guide.channelColumn")}
           </div>
           <div className="relative" style={{ width: gridWidth, minWidth: gridWidth }}>
             {ticks.map((tick) => (
@@ -99,7 +101,7 @@ export function LiveTVGuideGrid({
                   <span className="truncate">{channel.callsign || channel.name}</span>
                 </span>
                 <span className="text-muted-foreground truncate text-xs">
-                  {laid.find((p) => p.isNow)?.title ?? "No guide data"}
+                  {laid.find((p) => p.isNow)?.title ?? bt("bloem.liveTv.noGuideData")}
                 </span>
               </button>
               <div
@@ -121,13 +123,20 @@ export function LiveTVGuideGrid({
                         : "bg-muted/50 hover:bg-muted",
                     )}
                     style={{ left: program.leftPx, width: program.widthPx }}
-                    title={`${program.title} · ${formatGuideTime(program.start)} – ${formatGuideTime(program.stop)}`}
+                    title={bt("bloem.liveTv.guide.programTooltip", {
+                      title: program.title,
+                      start: formatGuideTime(program.start),
+                      stop: formatGuideTime(program.stop),
+                    })}
                   >
                     <div className="flex h-full items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{program.title}</p>
                         <p className="text-muted-foreground truncate text-[11px]">
-                          {formatGuideTime(program.start)} – {formatGuideTime(program.stop)}
+                          {bt("bloem.liveTv.timeRange", {
+                            start: formatGuideTime(program.start),
+                            stop: formatGuideTime(program.stop),
+                          })}
                         </p>
                       </div>
                       <div className="flex shrink-0 gap-1">
@@ -138,7 +147,9 @@ export function LiveTVGuideGrid({
                             variant="secondary"
                             className="h-8 px-2.5"
                             disabled={startingChannelId === channel.id}
-                            aria-label={`Watch ${channel.callsign || channel.name}`}
+                            aria-label={bt("bloem.liveTv.guide.watchChannel", {
+                              channel: channel.callsign || channel.name,
+                            })}
                             onClick={(e) => {
                               e.stopPropagation();
                               onSelectChannel(channel.id);
@@ -153,13 +164,15 @@ export function LiveTVGuideGrid({
                             size="sm"
                             variant="outline"
                             className="h-8 px-2"
-                            aria-label={`Record series: ${program.title}`}
+                            aria-label={bt("bloem.liveTv.guide.recordSeriesLabel", {
+                              title: program.title,
+                            })}
                             onClick={() => {
                               const source = programById.get(program.id);
                               if (source) onRecordSeries(source);
                             }}
                           >
-                            Series
+                            {bt("bloem.liveTv.guide.series")}
                           </Button>
                         )}
                         {program.canRecord ? (
@@ -173,7 +186,9 @@ export function LiveTVGuideGrid({
                               e.stopPropagation();
                               onRecord(program.id);
                             }}
-                            aria-label={`Record ${program.title}`}
+                            aria-label={bt("bloem.liveTv.guide.recordProgramLabel", {
+                              title: program.title,
+                            })}
                           >
                             <Circle />
                           </Button>

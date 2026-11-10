@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 import { AdminV2ClientError } from "@/api/adminV2Client";
 
 import {
-  AMAZON_REGION_MESSAGE,
-  OUTCOME_UNKNOWN_MESSAGE,
+  amazonRegionMessage,
+  outcomeUnknownMessage,
   addErrorMessage,
   inferAmazonRegion,
   isOutcomeUnknown,
   withHttpsScheme,
   withTrailingSlash,
-  BROWSE_UNSUPPORTED_MESSAGE,
+  browseUnsupportedMessage,
   browseErrorMessage,
   defaultRegionFor,
   DEFAULT_REVISION_MODE,
@@ -63,7 +63,7 @@ describe("Amazon detection and defaults", () => {
   });
 
   it("names the Amazon region message the form shows", () => {
-    expect(AMAZON_REGION_MESSAGE).toBe("Amazon S3 needs a region");
+    expect(amazonRegionMessage()).toBe("Amazon S3 needs a region");
   });
 });
 
@@ -101,10 +101,10 @@ describe("browseErrorMessage", () => {
   it("falls back to typing on 404 and 405 from an older server", () => {
     for (const status of [404, 405]) {
       const e = err(status, "not_found");
-      expect(browseErrorMessage(e)).toBe(BROWSE_UNSUPPORTED_MESSAGE);
+      expect(browseErrorMessage(e)).toBe(browseUnsupportedMessage());
       expect(isBrowseUnsupported(e)).toBe(true);
     }
-    expect(browseErrorMessage(err(404, "unknown"))).toBe(BROWSE_UNSUPPORTED_MESSAGE);
+    expect(browseErrorMessage(err(404, "unknown"))).toBe(browseUnsupportedMessage());
     expect(isBrowseUnsupported(err(422, "s3_access_denied"))).toBe(false);
     expect(isBrowseUnsupported(new TypeError("Failed to fetch"))).toBe(false);
   });
@@ -186,8 +186,8 @@ describe("addErrorMessage", () => {
   });
 
   it("treats an unconfirmed write and a missing answer as outcome unknown", () => {
-    expect(addErrorMessage(err(500, "mutation_outcome_unknown"))).toBe(OUTCOME_UNKNOWN_MESSAGE);
-    expect(addErrorMessage(new TypeError("Failed to fetch"))).toBe(OUTCOME_UNKNOWN_MESSAGE);
+    expect(addErrorMessage(err(500, "mutation_outcome_unknown"))).toBe(outcomeUnknownMessage());
+    expect(addErrorMessage(new TypeError("Failed to fetch"))).toBe(outcomeUnknownMessage());
     expect(isOutcomeUnknown(err(500, "mutation_outcome_unknown"))).toBe(true);
     expect(isOutcomeUnknown(new TypeError("Failed to fetch"))).toBe(true);
     expect(isOutcomeUnknown(err(422, "s3_access_denied"))).toBe(false);

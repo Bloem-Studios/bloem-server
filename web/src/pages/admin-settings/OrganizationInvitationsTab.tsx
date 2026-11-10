@@ -1,4 +1,4 @@
-import { useBloemT, bloemT } from "@/bloem/i18n";
+import { useBloemT, bloemT, type BloemMessageKey } from "@/bloem/i18n";
 import { useMemo, useState } from "react";
 import { captureAdminRequestContext } from "@/api/adminV2Client";
 import type { FormEvent } from "react";
@@ -87,11 +87,14 @@ function ClaimLinkBox({
   );
 }
 
-const STATUS_BADGES: Record<InvitationStatus, { label: string; variant: "default" | "outline" }> = {
-  pending: { label: "Pending", variant: "default" },
-  accepted: { label: "Accepted", variant: "outline" },
-  expired: { label: "Expired", variant: "outline" },
-  revoked: { label: "Revoked", variant: "outline" },
+const STATUS_BADGES: Record<
+  InvitationStatus,
+  { label: BloemMessageKey; variant: "default" | "outline" }
+> = {
+  pending: { label: "bloem.admin.orgInvitations.statusPending", variant: "default" },
+  accepted: { label: "bloem.admin.orgInvitations.statusAccepted", variant: "outline" },
+  expired: { label: "bloem.admin.orgInvitations.statusExpired", variant: "outline" },
+  revoked: { label: "bloem.admin.orgInvitations.statusRevoked", variant: "outline" },
 };
 
 export default function OrganizationInvitationsTab() {
@@ -174,7 +177,7 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
         }}
         title={bt("bloem.admin.orgInvitations.regenerateInvitationLink")}
         description={bt("bloem.admin.orgInvitations.thePreviousLinkWillStop")}
-        confirmLabel="Regenerate link"
+        confirmLabel={bt("bloem.admin.orgInvitations.regenerateLink")}
         isPending={resend.isPending}
         onConfirm={() => {
           if (confirmResend) void handleResend(confirmResend.id);
@@ -190,7 +193,7 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
         description={bt("bloem.admin.orgInvitations.revokeTheInvitationForTheir", {
           email: confirmRevoke?.email,
         })}
-        confirmLabel="Revoke"
+        confirmLabel={bt("bloem.admin.orgInvitations.revoke")}
         variant="destructive"
         onConfirm={() => {
           if (confirmRevoke) revoke.mutate(confirmRevoke.id);
@@ -218,7 +221,7 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
           {resendResult?.claim_url && (
             <ClaimLinkBox
               claimUrl={resendResult.claim_url}
-              finePrint="The link works once; any previous link for this invitation has stopped working."
+              finePrint={bt("bloem.admin.orgInvitations.resentLinkFinePrint")}
               onCopy={handleCopy}
               onDone={() => setResendResult(null)}
             />
@@ -322,9 +325,11 @@ function InvitationRow({
           </div>
         )}
       </TableCell>
-      <TableCell className="text-muted-foreground capitalize">{invitation.role}</TableCell>
+      <TableCell className="text-muted-foreground capitalize">
+        {bt("bloem.admin.orgInvitations.roleName", { role: invitation.role })}
+      </TableCell>
       <TableCell>
-        <Badge variant={badge.variant}>{badge.label}</Badge>
+        <Badge variant={badge.variant}>{bt(badge.label)}</Badge>
         {invitation.status === "pending" && (
           <span className="text-muted-foreground ms-2 text-xs">
             {bt("bloem.admin.orgInvitations.expires", { date: formatDate(invitation.expires_at) })}
@@ -436,7 +441,7 @@ function CreateInvitationForm({
         </p>
         <ClaimLinkBox
           claimUrl={result.claimUrl}
-          finePrint="The link works once and expires in 7 days. Resending later mints a fresh link and kills this one."
+          finePrint={bt("bloem.admin.orgInvitations.newLinkFinePrint")}
           onCopy={onCopy}
           onDone={onClose}
         />
@@ -514,8 +519,8 @@ function CreateInvitationForm({
           libraries={libraries}
           value={libraryIDs}
           onChange={setLibraryIDs}
-          allLabel="Inherit from access group"
-          emptyHint="The account created at accept follows the selected group's library scope."
+          allLabel={bt("bloem.admin.orgInvitations.inheritFromAccessGroup")}
+          emptyHint={bt("bloem.admin.orgInvitations.followsGroupLibraryScope")}
         />
       </LibraryAccessScope>
 

@@ -2,10 +2,6 @@ import { useBloemT } from "@/bloem/i18n";
 import { Building2, ShieldCheck } from "lucide-react";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 
-function authorityLabel(authority: "platform_admin" | "organization_admin") {
-  return authority === "platform_admin" ? "Platform administrator" : "Organization administrator";
-}
-
 export default function AdminContextSwitcher({
   onSwitchSuccess,
 }: {
@@ -35,12 +31,16 @@ export default function AdminContextSwitcher({
             <>
               <div className="text-muted-foreground mt-0.5 text-[11px] capitalize">
                 {bt("bloem.adminNav.contextSwitcher.scopeStatus", {
-                  scope: active.scope,
-                  status: active.status,
+                  scope: bt("bloem.adminNav.contextSwitcher.scopeName", { scope: active.scope }),
+                  status: bt("bloem.adminNav.contextSwitcher.statusName", {
+                    status: active.status,
+                  }),
                 })}
               </div>
               <div className="text-muted-foreground text-[11px]">
-                {authorityLabel(active.authority)}
+                {active.authority === "platform_admin"
+                  ? bt("bloem.adminNav.contextSwitcher.platformAdministrator")
+                  : bt("bloem.adminNav.contextSwitcher.organizationAdministrator")}
               </div>
             </>
           ) : null}

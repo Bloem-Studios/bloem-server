@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminV2Api, adminV2QueryKey, captureAdminRequestContext } from "@/api/adminV2Client";
@@ -18,10 +19,11 @@ import type {
 import { randomUUID } from "@/lib/uuid";
 
 export default function EngagementPage() {
+  const bt = useBloemT();
   const { active } = useAdminContext();
-  useDocumentTitle("Campaigns & Seasonal Packs");
+  useDocumentTitle(bt("bloem.admin.engagement.title"));
   if (active?.scope !== "platform")
-    return <p role="alert">Select the platform context to manage campaigns and seasonal packs.</p>;
+    return <p role="alert">{bt("bloem.admin.engagement.selectPlatformContext")}</p>;
   return (
     <EngagementRegistry
       key={`${active.key}:${captureAdminRequestContext(active.key)?.generation ?? "unbound"}`}
@@ -30,6 +32,7 @@ export default function EngagementPage() {
   );
 }
 function EngagementRegistry({ context }: { context: AdminContextSummary }) {
+  const bt = useBloemT();
   const capabilities = useBloemCapabilities();
   const supported = Boolean(
     capabilities.data?.feature_tokens?.includes("platform_engagement_authoring_v1"),
@@ -90,9 +93,7 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
       setEditing(null);
     } catch (cause) {
       setError(
-        cause instanceof Error
-          ? cause.message
-          : "Bloem couldn’t confirm it was published. Check the list before trying again.",
+        cause instanceof Error ? cause.message : bt("bloem.admin.engagement.publishUnconfirmed"),
       );
       throw cause;
     }
@@ -109,7 +110,7 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
       path: "/platform/ambience/assets",
       init: { method: "POST", body },
     })) as { url?: string };
-    if (!result.url) throw new Error("Server did not return an artwork URL.");
+    if (!result.url) throw new Error(bt("bloem.admin.engagement.noArtworkUrl"));
     return result.url;
   }
   async function remove() {
@@ -121,32 +122,31 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
         init: { method: "DELETE" },
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "It couldn’t be deleted. Try again.");
+      setError(cause instanceof Error ? cause.message : bt("bloem.admin.engagement.deleteFailed"));
     } finally {
       setDeleting(null);
     }
   }
-  if (capabilities.isPending) return <p role="status">Checking authoring support…</p>;
+  if (capabilities.isPending)
+    return <p role="status">{bt("bloem.admin.engagement.checkingSupport")}</p>;
   if (capabilities.isError)
     return (
       <div role="alert">
         <p>{capabilities.error.message}</p>
-        <Button onClick={() => void capabilities.refetch()}>Try again</Button>
+        <Button onClick={() => void capabilities.refetch()}>
+          {bt("bloem.admin.engagement.tryAgain")}
+        </Button>
       </div>
     );
-  if (!supported) return <p>This server does not support platform-context engagement authoring.</p>;
+  if (!supported) return <p>{bt("bloem.admin.engagement.unsupported")}</p>;
   const query = tab === "promotions" ? campaigns : seasons;
   return (
     <section className="admin-page space-y-6">
       <header className="space-y-2">
         <h1 className="page-title" tabIndex={-1}>
-          Campaigns &amp; Seasonal Packs
+          {bt("bloem.admin.engagement.title")}
         </h1>
-        <p className="page-subtitle">
-          Campaigns are cards on the home screen, title pages and around playback. Seasonal packs
-          add a look for a time of year, like snow. Viewers can always keep watching, and motion
-          follows their settings.
-        </p>
+        <p className="page-subtitle">{bt("bloem.admin.engagement.subtitle")}</p>
       </header>
       {error && (
         <p role="alert" className="text-destructive">
@@ -156,8 +156,7 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
       {editing ? (
         <div className="border-border rounded-xl border p-5">
           <p className="text-muted-foreground mb-5 text-sm">
-            Check who sees it and when before you publish. If someone else edits the same entry at
-            the same time, the last one saved wins.
+            {bt("bloem.admin.engagement.editorNote")}
           </p>
           {editing.kind === "promotions" ? (
             <CampaignEditor
@@ -191,15 +190,19 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
           }}
         >
           <TabsList>
-            <TabsTrigger value="promotions">Campaigns</TabsTrigger>
-            <TabsTrigger value="ambience">Seasonal packs</TabsTrigger>
+            <TabsTrigger value="promotions">
+              {bt("bloem.admin.engagement.tabCampaigns")}
+            </TabsTrigger>
+            <TabsTrigger value="ambience">
+              {bt("bloem.admin.engagement.tabSeasonalPacks")}
+            </TabsTrigger>
           </TabsList>
-          {query.isPending && <p role="status">Loading…</p>}
+          {query.isPending && <p role="status">{bt("bloem.admin.engagement.loading")}</p>}
           {query.isError && (
             <div role="alert" className="my-4 space-y-2">
               <p>{query.error.message}</p>
               <Button variant="outline" onClick={() => void query.refetch()}>
-                Try again
+                {bt("bloem.admin.engagement.tryAgain")}
               </Button>
             </div>
           )}
@@ -208,10 +211,10 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
               disabled={!campaigns.isSuccess || write.isPending}
               onClick={() => setEditing({ kind: "promotions" })}
             >
-              Create campaign
+              {bt("bloem.admin.engagement.createCampaign")}
             </Button>
             {campaigns.isSuccess && !campaigns.data.promotions.length && (
-              <p className="text-muted-foreground">No campaigns yet.</p>
+              <p className="text-muted-foreground">{bt("bloem.admin.engagement.noCampaigns")}</p>
             )}
             <ul className="divide-border divide-y">
               {campaigns.data?.promotions.map((item) => (
@@ -219,7 +222,11 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
                   <div>
                     <h2 className="font-medium">{item.headline}</h2>
                     <p className="text-muted-foreground text-sm">
-                      {item.surfaces.join(", ")} · {item.starts_at} to {item.ends_at}
+                      {bt("bloem.admin.engagement.campaignSummary", {
+                        surfaces: item.surfaces.join(", "),
+                        startsAt: item.starts_at,
+                        endsAt: item.ends_at,
+                      })}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -228,7 +235,7 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
                       disabled={write.isPending}
                       onClick={() => setEditing({ kind: "promotions", value: item })}
                     >
-                      Edit
+                      {bt("bloem.admin.engagement.edit")}
                     </Button>
                     <Button
                       variant="destructive"
@@ -237,7 +244,7 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
                         setDeleting({ kind: "promotions", id: item.id, name: item.headline })
                       }
                     >
-                      Delete
+                      {bt("bloem.admin.engagement.delete")}
                     </Button>
                   </div>
                 </li>
@@ -249,10 +256,12 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
               disabled={!seasons.isSuccess || write.isPending}
               onClick={() => setEditing({ kind: "ambience" })}
             >
-              Create seasonal pack
+              {bt("bloem.admin.engagement.createSeasonalPack")}
             </Button>
             {seasons.isSuccess && !seasons.data.packs.length && (
-              <p className="text-muted-foreground">No seasonal packs yet.</p>
+              <p className="text-muted-foreground">
+                {bt("bloem.admin.engagement.noSeasonalPacks")}
+              </p>
             )}
             <ul className="divide-border divide-y">
               {seasons.data?.packs.map((item) => (
@@ -260,9 +269,11 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
                   <div>
                     <h2 className="font-medium">{item.effect_id}</h2>
                     <p className="text-muted-foreground text-sm">
-                      {item.surfaces.join(", ")} ·{" "}
-                      {item.window.repeat_yearly ? "Repeats yearly" : "One-time"} ·{" "}
-                      {item.window.timezone || "UTC"}
+                      {bt("bloem.admin.engagement.seasonSummary", {
+                        surfaces: item.surfaces.join(", "),
+                        repeat: item.window.repeat_yearly ? "yearly" : "once",
+                        timezone: item.window.timezone || "UTC",
+                      })}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -271,7 +282,7 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
                       disabled={write.isPending}
                       onClick={() => setEditing({ kind: "ambience", value: item })}
                     >
-                      Edit
+                      {bt("bloem.admin.engagement.edit")}
                     </Button>
                     <Button
                       variant="destructive"
@@ -280,7 +291,7 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
                         setDeleting({ kind: "ambience", id: item.id, name: item.effect_id })
                       }
                     >
-                      Delete
+                      {bt("bloem.admin.engagement.delete")}
                     </Button>
                   </div>
                 </li>
@@ -292,9 +303,13 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
       <ConfirmDialog
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(null)}
-        title={`Delete ${deleting?.name ?? "entry"}?`}
-        description="Nobody sees it from now on. Uploaded images and messages already in people’s inboxes stay."
-        confirmLabel="Delete"
+        title={
+          deleting
+            ? bt("bloem.admin.engagement.deleteNamed", { name: deleting.name })
+            : bt("bloem.admin.engagement.deleteEntry")
+        }
+        description={bt("bloem.admin.engagement.deleteDescription")}
+        confirmLabel={bt("bloem.admin.engagement.delete")}
         variant="destructive"
         isPending={write.isPending}
         onConfirm={() => void remove()}

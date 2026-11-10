@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
+import { useBloemT } from "@/bloem/i18n";
 import Requests from "@/pages/Requests";
 import { useAuth } from "@/hooks/useAuth";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -20,6 +21,7 @@ import { randomUUID } from "@/lib/uuid";
 import { RequestMediaTabs } from "./RequestMediaTabs";
 
 export default function BloemRequests() {
+  const bt = useBloemT();
   const [params] = useSearchParams();
   const { user, profile } = useAuth();
   const identity = captureSessionIdentity();
@@ -40,13 +42,13 @@ export default function BloemRequests() {
       )}
       {ebook && !ebookSupported ? (
         <section className="mx-auto max-w-4xl space-y-4 px-4 py-6 sm:px-6">
-          <h1 className="text-3xl font-semibold">Ebook requests</h1>
+          <h1 className="text-3xl font-semibold">{bt("bloem.requests.ebook.title")}</h1>
           <p role={capabilities.isError ? "alert" : "status"}>
             {capabilities.isPending
-              ? "Checking ebook request availability…"
+              ? bt("bloem.requests.ebook.checkingAvailability")
               : capabilities.isError
-                ? "Unable to check ebook request availability."
-                : "Ebook requests are unavailable on this server."}
+                ? bt("bloem.requests.ebook.availabilityCheckFailed")
+                : bt("bloem.requests.ebook.unavailableOnServer")}
           </p>
         </section>
       ) : (ebook && ebookSupported) || (audio && audioSupported) ? (
@@ -71,11 +73,11 @@ export default function BloemRequests() {
 
 const emptyInput: BookRequestInput = { title: "", author: "", isbn: "", asin: "", note: "" };
 function BookRequests({ ebook }: { ebook: boolean }) {
-  const label = ebook ? "Ebook" : "Audiobook";
-  const noun = label.toLowerCase();
+  const bt = useBloemT();
   const api = ebook ? ebookRequestsApi : bookRequestsApi;
   const cache = ebook ? "bloem-ebook-requests" : "bloem-book-requests";
-  useDocumentTitle(`${label} requests`);
+  const title = bt(ebook ? "bloem.requests.ebook.title" : "bloem.requests.audiobook.title");
+  useDocumentTitle(title);
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const context = captureProfileRequestContext();
@@ -115,7 +117,9 @@ function BookRequests({ ebook }: { ebook: boolean }) {
     onSuccess: () => {
       setInput(emptyInput);
       key.current = null;
-      toast.success(`${label} requested`);
+      toast.success(
+        bt(ebook ? "bloem.requests.ebook.requested" : "bloem.requests.audiobook.requested"),
+      );
       void qc.invalidateQueries({ queryKey: [cache] });
     },
     onError: (err) => toast.error(err.message),
@@ -136,17 +140,21 @@ function BookRequests({ ebook }: { ebook: boolean }) {
   return (
     <section className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold">{label} requests</h1>
+        <h1 className="text-3xl font-semibold">{title}</h1>
         <p className="text-muted-foreground text-sm">
-          Request a title for your organization. Approved requests wait until the {noun} is added.
+          {bt(ebook ? "bloem.requests.ebook.intro" : "bloem.requests.audiobook.intro")}
         </p>
       </header>
       {capability.isError && <p role="alert">{capability.error.message}</p>}
       {policy && !filingEnabled && (
         <p role="status">
           {ebook && policy.available && !policy.enabled
-            ? "Ebook requests are currently turned off."
-            : `${label} requests are unavailable for this profile.`}
+            ? bt("bloem.requests.ebook.turnedOff")
+            : bt(
+                ebook
+                  ? "bloem.requests.ebook.unavailableForProfile"
+                  : "bloem.requests.audiobook.unavailableForProfile",
+              )}
         </p>
       )}
       {filingEnabled && policy && (
@@ -159,24 +167,41 @@ function BookRequests({ ebook }: { ebook: boolean }) {
         >
           <p className="text-muted-foreground text-sm sm:col-span-2">
             {policy.unlimited
-              ? "No request limit"
-              : `${policy.remaining} of ${policy.limit} requests left in ${policy.window_days} days`}
-            .{" "}
-            {policy.auto_approve
-              ? "Requests are approved automatically."
-              : "An admin will review your request."}
+              ? bt("bloem.requests.policy.unlimited", {
+                  approval: policy.auto_approve ? "automatic" : "review",
+                })
+              : bt("bloem.requests.policy.limited", {
+                  remaining: policy.remaining,
+                  limit: policy.limit,
+                  days: policy.window_days,
+                  approval: policy.auto_approve ? "automatic" : "review",
+                })}
           </p>
           {[
-            { key: "title", label: "Title", required: true, max: 500 },
+            { key: "title", label: bt("bloem.requests.field.title"), required: true, max: 500 },
             {
               key: "author",
-              label: ebook ? "Author (optional)" : "Author",
+              label: bt(
+                ebook ? "bloem.requests.field.authorOptional" : "bloem.requests.field.author",
+              ),
               required: !ebook && !input.isbn && !input.asin,
               max: 500,
             },
-            { key: "isbn", label: ebook ? "ISBN" : "ISBN (optional)", required: ebook, max: 32 },
+            {
+              key: "isbn",
+              label: bt(ebook ? "bloem.requests.field.isbn" : "bloem.requests.field.isbnOptional"),
+              required: ebook,
+              max: 32,
+            },
             ...(!ebook
-              ? [{ key: "asin", label: "ASIN (optional)", required: false, max: 10 }]
+              ? [
+                  {
+                    key: "asin",
+                    label: bt("bloem.requests.field.asinOptional"),
+                    required: false,
+                    max: 10,
+                  },
+                ]
               : []),
           ].map((field) => (
             <label key={field.key} className="space-y-2 text-sm font-medium">
@@ -191,7 +216,7 @@ function BookRequests({ ebook }: { ebook: boolean }) {
             </label>
           ))}
           <label className="space-y-2 text-sm font-medium sm:col-span-2">
-            Note (optional)
+            {bt("bloem.requests.field.noteOptional")}
             <textarea
               className="border-input focus-visible:border-ring focus-visible:ring-ring/50 min-h-24 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
               value={input.note}
@@ -201,31 +226,38 @@ function BookRequests({ ebook }: { ebook: boolean }) {
             />
           </label>
           <p className="text-muted-foreground text-xs sm:col-span-2">
-            {ebook
-              ? "Provide the ISBN of the edition you want. Fulfilment is complete when the ebook is available in your library."
-              : "ISBN or ASIN helps match the audiobook when it arrives. Without an identifier, an admin can mark your request fulfilled."}
+            {bt(
+              ebook
+                ? "bloem.requests.ebook.identifierHint"
+                : "bloem.requests.audiobook.identifierHint",
+            )}
           </p>
           {ebook && policy.fulfilment_backend === "unconfigured" && (
             <p role="status" className="text-muted-foreground text-sm sm:col-span-2">
-              Ebook fulfillment is not configured. Approved requests will wait for setup.
+              {bt("bloem.requests.ebook.fulfilmentUnconfigured")}
             </p>
           )}
           <Button type="submit" disabled={!canRequest || create.isPending}>
-            {create.isPending ? "Requesting…" : `Request ${noun}`}
+            {create.isPending
+              ? bt("bloem.requests.submitting")
+              : bt(ebook ? "bloem.requests.ebook.submit" : "bloem.requests.audiobook.submit")}
           </Button>
         </form>
       )}
-      <h2 className="text-xl font-semibold">Your {noun} requests</h2>
+      <h2 className="text-xl font-semibold">
+        {bt(ebook ? "bloem.requests.ebook.mineHeading" : "bloem.requests.audiobook.mineHeading")}
+      </h2>
       {ebook && (
         <p className="text-muted-foreground text-sm">
-          Cancellation is local to Bloem; the fulfilment provider may already be processing the
-          ebook.
+          {bt("bloem.requests.ebook.cancellationNote")}
         </p>
       )}
-      {mine.isLoading && <p role="status">Loading requests…</p>}
+      {mine.isLoading && <p role="status">{bt("bloem.requests.loading")}</p>}
       {mine.isError && <p role="alert">{mine.error.message}</p>}
       {mine.data?.requests.length === 0 && (
-        <p className="text-muted-foreground">You have no {noun} requests.</p>
+        <p className="text-muted-foreground">
+          {bt(ebook ? "bloem.requests.ebook.mineEmpty" : "bloem.requests.audiobook.mineEmpty")}
+        </p>
       )}
       <ul className="divide-y rounded-xl border">
         {mine.data?.requests.map((row) => (
@@ -234,7 +266,9 @@ function BookRequests({ ebook }: { ebook: boolean }) {
               <p className="font-medium">{row.title}</p>
               <p className="text-muted-foreground text-sm">{row.author}</p>
               {ebook && row.isbn && (
-                <p className="text-muted-foreground text-xs">ISBN {row.isbn}</p>
+                <p className="text-muted-foreground text-xs">
+                  {bt("bloem.requests.isbnValue", { isbn: row.isbn })}
+                </p>
               )}
               <p className="text-sm">{bookRequestState(row)}</p>
               {row.outcome_reason && (
@@ -245,7 +279,9 @@ function BookRequests({ ebook }: { ebook: boolean }) {
             row.library_content_id &&
             (!ebook || row.fulfilment === "library") ? (
               <Button asChild size="sm" variant="outline">
-                <Link to={`/item/${encodeURIComponent(row.library_content_id)}`}>Open {noun}</Link>
+                <Link to={`/item/${encodeURIComponent(row.library_content_id)}`}>
+                  {bt(ebook ? "bloem.requests.ebook.open" : "bloem.requests.audiobook.open")}
+                </Link>
               </Button>
             ) : (
               row.outcome === "active" &&
@@ -256,7 +292,7 @@ function BookRequests({ ebook }: { ebook: boolean }) {
                   disabled={cancel.isPending}
                   onClick={() => cancel.mutate(row)}
                 >
-                  Cancel request
+                  {bt("bloem.requests.cancel")}
                 </Button>
               )
             )}
@@ -269,14 +305,14 @@ function BookRequests({ ebook }: { ebook: boolean }) {
           disabled={offset === 0 || mine.isFetching}
           onClick={() => setOffset(Math.max(0, offset - 100))}
         >
-          Previous
+          {bt("bloem.requests.previousPage")}
         </Button>
         <Button
           variant="outline"
           disabled={mine.data?.requests.length !== 100 || mine.isFetching}
           onClick={() => setOffset(offset + 100)}
         >
-          Next
+          {bt("bloem.requests.nextPage")}
         </Button>
       </div>
     </section>

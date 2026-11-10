@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent } from "react";
 import { captureProfileRequestContext } from "@/api/client";
 import type { LiveTVChannel, LiveTVProgram, LiveTVSeriesRule } from "@/api/bloemTypes";
+import { useBloemT, type BloemTranslate } from "@/bloem/i18n";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,10 +23,11 @@ type SeriesRuleProps = {
 };
 
 export function LiveTVSeriesRules({ channels, programs = [], selectedProgram }: SeriesRuleProps) {
+  const bt = useBloemT();
   const { profile } = useAuth();
   const authority = captureProfileRequestContext();
   if (!authority || authority.profileId !== profile?.id) {
-    return <p role="alert">Select a profile to manage recording rules.</p>;
+    return <p role="alert">{bt("bloem.liveTv.seriesRules.selectProfile")}</p>;
   }
   // Drafts and confirmations must not survive a profile, login, server or PIN change.
   return (
@@ -44,13 +46,17 @@ export function LiveTVSeriesRules({ channels, programs = [], selectedProgram }: 
   );
 }
 
-function ruleLabel(rule: LiveTVSeriesRule) {
+function ruleLabel(rule: LiveTVSeriesRule, bt: BloemTranslate) {
   return (
-    rule.title_match || (rule.series_id ? `Series ${rule.series_id}` : "All programs on channel")
+    rule.title_match ||
+    (rule.series_id
+      ? bt("bloem.liveTv.seriesRules.seriesLabel", { seriesId: rule.series_id })
+      : bt("bloem.liveTv.seriesRules.allProgramsOnChannel"))
   );
 }
 
 function SeriesRulesContent({ channels, programs = [], selectedProgram }: SeriesRuleProps) {
+  const bt = useBloemT();
   const fieldId = useId();
   const rules = useLiveTVSeriesRules();
   const create = useCreateLiveTVSeriesRule();
@@ -84,9 +90,11 @@ function SeriesRulesContent({ channels, programs = [], selectedProgram }: Series
         new_only: newOnly,
       });
       setTitle("");
-      setNotice("Recording rule created. Matching guide programs will be scheduled by the server.");
+      setNotice(bt("bloem.liveTv.seriesRules.created"));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create the recording rule.");
+      setError(
+        cause instanceof Error ? cause.message : bt("bloem.liveTv.seriesRules.createFailed"),
+      );
     }
   }
 
@@ -96,9 +104,11 @@ function SeriesRulesContent({ channels, programs = [], selectedProgram }: Series
     setNotice(null);
     try {
       await remove.mutateAsync(confirmRule.id);
-      setNotice("Rule removed. Already scheduled recordings and recorded files are unchanged.");
+      setNotice(bt("bloem.liveTv.seriesRules.removed"));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not remove the recording rule.");
+      setError(
+        cause instanceof Error ? cause.message : bt("bloem.liveTv.seriesRules.removeFailed"),
+      );
     } finally {
       setConfirmRule(null);
     }
@@ -108,11 +118,10 @@ function SeriesRulesContent({ channels, programs = [], selectedProgram }: Series
     <section className="space-y-6" aria-labelledby={`${fieldId}-heading`}>
       <div className="space-y-2">
         <h2 id={`${fieldId}-heading`} className="text-xl font-semibold">
-          Series recording rules
+          {bt("bloem.liveTv.seriesRules.heading")}
         </h2>
         <p className="text-muted-foreground max-w-2xl text-sm">
-          Record an exact guide series, or match titles containing your search text (ignoring letter
-          case). Narrow the rule to one channel or match across all channels.
+          {bt("bloem.liveTv.seriesRules.intro")}
         </p>
       </div>
       {error && (
@@ -129,23 +138,30 @@ function SeriesRulesContent({ channels, programs = [], selectedProgram }: Series
         <div role="alert" className="space-y-3">
           <p className="text-destructive text-sm">{rules.error.message}</p>
           <Button variant="outline" onClick={() => void rules.refetch()}>
-            Reload recording rules
+            {bt("bloem.liveTv.seriesRules.reload")}
           </Button>
         </div>
       )}
-      <form onSubmit={(event) => void submit(event)} aria-label="Create recording rule">
+      <form
+        onSubmit={(event) => void submit(event)}
+        aria-label={bt("bloem.liveTv.seriesRules.createFormLabel")}
+      >
         <fieldset disabled={busy} className="border-border space-y-4 rounded-xl border p-4">
-          <legend className="px-2 font-medium">Create a recording rule</legend>
+          <legend className="px-2 font-medium">
+            {bt("bloem.liveTv.seriesRules.createLegend")}
+          </legend>
           {series.size > 0 && (
             <div className="space-y-2">
-              <Label htmlFor={`${fieldId}-series`}>Match guide series</Label>
+              <Label htmlFor={`${fieldId}-series`}>
+                {bt("bloem.liveTv.seriesRules.matchSeries")}
+              </Label>
               <select
                 id={`${fieldId}-series`}
                 value={seriesId}
                 onChange={(event) => setSeriesId(event.target.value)}
                 className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
               >
-                <option value="">Use title matching instead</option>
+                <option value="">{bt("bloem.liveTv.seriesRules.useTitleMatching")}</option>
                 {Array.from(series, ([id, name]) => (
                   <option key={id} value={id}>
                     {name}
@@ -156,7 +172,9 @@ function SeriesRulesContent({ channels, programs = [], selectedProgram }: Series
           )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor={`${fieldId}-title`}>Title contains</Label>
+              <Label htmlFor={`${fieldId}-title`}>
+                {bt("bloem.liveTv.seriesRules.titleContains")}
+              </Label>
               <Input
                 id={`${fieldId}-title`}
                 value={title}
@@ -166,17 +184,17 @@ function SeriesRulesContent({ channels, programs = [], selectedProgram }: Series
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`${fieldId}-channel`}>Channel</Label>
+              <Label htmlFor={`${fieldId}-channel`}>{bt("bloem.liveTv.seriesRules.channel")}</Label>
               <select
                 id={`${fieldId}-channel`}
                 value={channelId}
                 onChange={(event) => setChannelId(event.target.value)}
                 className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
               >
-                <option value="">All channels</option>
+                <option value="">{bt("bloem.liveTv.seriesRules.allChannels")}</option>
                 {!validChannel && (
                   <option value={channelId} disabled>
-                    Unavailable channel
+                    {bt("bloem.liveTv.seriesRules.unavailableChannel")}
                   </option>
                 )}
                 {channels.map((channel) => (
@@ -189,51 +207,62 @@ function SeriesRulesContent({ channels, programs = [], selectedProgram }: Series
           </div>
           <div className="flex items-center gap-3">
             <Switch id={`${fieldId}-new`} checked={newOnly} onCheckedChange={setNewOnly} />
-            <Label htmlFor={`${fieldId}-new`}>Only programs marked new in the guide</Label>
+            <Label htmlFor={`${fieldId}-new`}>{bt("bloem.liveTv.seriesRules.newOnly")}</Label>
           </div>
           <Button
             type="submit"
             disabled={unavailable || (!seriesId && !title.trim()) || !validChannel}
           >
-            {create.isPending ? "Creating…" : "Create rule"}
+            {create.isPending
+              ? bt("bloem.liveTv.seriesRules.creating")
+              : bt("bloem.liveTv.seriesRules.createRule")}
           </Button>
         </fieldset>
       </form>
       {rules.isPending && (
         <p role="status" className="text-muted-foreground text-sm">
-          Loading recording rules…
+          {bt("bloem.liveTv.seriesRules.loading")}
         </p>
       )}
       {rules.isSuccess && rules.data.length === 0 && (
-        <p className="text-muted-foreground text-sm">No series recording rules yet.</p>
+        <p className="text-muted-foreground text-sm">{bt("bloem.liveTv.seriesRules.empty")}</p>
       )}
       {!rules.isError && rules.data && rules.data.length > 0 && (
-        <ul className="divide-border divide-y border-y" aria-label="Recording rules">
+        <ul
+          className="divide-border divide-y border-y"
+          aria-label={bt("bloem.liveTv.seriesRules.listLabel")}
+        >
           {rules.data.map((rule) => {
             const channel = channels.find((item) => item.id === rule.channel_id);
+            const channelText = rule.channel_id
+              ? channel
+                ? channelLabel(channel)
+                : bt("bloem.liveTv.seriesRules.unavailableChannel")
+              : bt("bloem.liveTv.seriesRules.allChannels");
             return (
               <li key={rule.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
                 <div className="min-w-0 space-y-1">
-                  <p className="font-medium break-words">{ruleLabel(rule)}</p>
+                  <p className="font-medium break-words">{ruleLabel(rule, bt)}</p>
                   <p className="text-muted-foreground text-sm">
-                    {rule.channel_id
-                      ? channel
-                        ? channelLabel(channel)
-                        : "Unavailable channel"
-                      : "All channels"}
-                    {rule.new_only ? " · New programs only" : " · Includes repeats"}
+                    {rule.new_only
+                      ? bt("bloem.liveTv.seriesRules.summaryNewOnly", { channel: channelText })
+                      : bt("bloem.liveTv.seriesRules.summaryRepeats", { channel: channelText })}
                   </p>
                   <Badge variant={rule.enabled ? "secondary" : "outline"}>
-                    {rule.enabled ? "Enabled" : "Disabled"}
+                    {rule.enabled
+                      ? bt("bloem.liveTv.seriesRules.enabled")
+                      : bt("bloem.liveTv.seriesRules.disabled")}
                   </Badge>
                 </div>
                 <Button
                   variant="outline"
                   disabled={unavailable}
-                  aria-label={`Remove rule: ${ruleLabel(rule)}`}
+                  aria-label={bt("bloem.liveTv.seriesRules.removeRuleLabel", {
+                    rule: ruleLabel(rule, bt),
+                  })}
                   onClick={() => setConfirmRule(rule)}
                 >
-                  Remove
+                  {bt("bloem.liveTv.seriesRules.remove")}
                 </Button>
               </li>
             );
@@ -243,9 +272,11 @@ function SeriesRulesContent({ channels, programs = [], selectedProgram }: Series
       <ConfirmDialog
         open={confirmRule !== null}
         onOpenChange={(open) => !open && setConfirmRule(null)}
-        title={`Remove recording rule: ${confirmRule ? ruleLabel(confirmRule) : ""}`}
-        description="This removes the recurring rule. Already scheduled recordings and recorded files are not deleted. Manage those separately under My recordings."
-        confirmLabel="Remove rule"
+        title={bt("bloem.liveTv.seriesRules.confirmTitle", {
+          rule: confirmRule ? ruleLabel(confirmRule, bt) : "",
+        })}
+        description={bt("bloem.liveTv.seriesRules.confirmDescription")}
+        confirmLabel={bt("bloem.liveTv.seriesRules.confirmRemove")}
         variant="destructive"
         isPending={unavailable}
         onConfirm={() => void deleteRule()}

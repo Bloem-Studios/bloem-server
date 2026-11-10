@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { ArrowLeft, Radio } from "lucide-react";
 import { captureProfileRequestContext } from "@/api/client";
 import type { LiveTVSessionStartResponse } from "@/api/bloemTypes";
+import { useBloemT } from "@/bloem/i18n";
 import { LiveTVAccessGate } from "@/components/livetv/LiveTVAccessGate";
 import { LiveTVPlayer } from "@/components/livetv/LiveTVPlayer";
 import { Button } from "@/components/ui/button";
@@ -56,11 +57,13 @@ function LiveTVWatchAttempt({
   capabilities: string | null;
   onRetry: () => void;
 }) {
+  const bt = useBloemT();
   const [authority] = useState(captureProfileRequestContext);
   const [session, setSession] = useState<LiveTVSessionStartResponse | null>(null);
-  const [error, setError] = useState<string | null>(
-    !authority || !channelId ? "Select a profile and channel to watch Live TV." : null,
-  );
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const error =
+    playbackError ??
+    (!authority || !channelId ? bt("bloem.liveTv.watch.selectProfileAndChannel") : null);
   const stopPlayback = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!capabilities || !authority || !channelId) return;
@@ -71,7 +74,7 @@ function LiveTVWatchAttempt({
       setSession,
       (failure) => {
         setSession(null);
-        setError(failure.message);
+        setPlaybackError(failure.message);
       },
     );
     stopPlayback.current = stop;
@@ -81,32 +84,37 @@ function LiveTVWatchAttempt({
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-4 border-b border-white/10 px-5 py-4">
-        <Button asChild variant="ghost" size="icon" aria-label="Back to Live TV">
+        <Button
+          asChild
+          variant="ghost"
+          size="icon"
+          aria-label={bt("bloem.liveTv.watch.backToLiveTv")}
+        >
           <Link to="/livetv">
             <ArrowLeft aria-hidden />
           </Link>
         </Button>
         <Radio className="h-5 w-5 text-orange-400" aria-hidden />
-        <h1 className="text-lg font-medium">Live TV</h1>
+        <h1 className="text-lg font-medium">{bt("bloem.liveTv.title")}</h1>
       </header>
       <main className="relative flex min-h-0 flex-1 items-center justify-center">
         {session ? (
           <LiveTVPlayer
             streamUrl={session.hls_url || session.stream_url!}
             transport={session.transport}
-            title="Live TV"
+            title={bt("bloem.liveTv.title")}
             className="h-full w-full"
             onErrorChange={(message) => {
               if (!message) return;
               stopPlayback.current?.();
               setSession(null);
-              setError(message);
+              setPlaybackError(message);
             }}
           />
         ) : (
           <div className="flex max-w-lg flex-col items-center gap-5 px-6 text-center" role="status">
-            <p className="text-white/75">{error ?? "Connecting to your channel…"}</p>
-            {error && <Button onClick={onRetry}>Try again</Button>}
+            <p className="text-white/75">{error ?? bt("bloem.liveTv.watch.connecting")}</p>
+            {error && <Button onClick={onRetry}>{bt("bloem.liveTv.tryAgain")}</Button>}
           </div>
         )}
       </main>

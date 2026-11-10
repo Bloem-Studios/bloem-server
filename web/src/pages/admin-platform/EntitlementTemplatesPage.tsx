@@ -2,6 +2,7 @@ import { Archive, ArrowLeft, Copy, History, Plus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import type { EntitlementTemplate } from "@/api/bloemTypes";
+import { useBloemT, type BloemTranslate } from "@/bloem/i18n";
 import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
 import {
   useArchiveEntitlementTemplate,
@@ -38,30 +39,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EntitlementTemplateEditor } from "./EntitlementTemplateEditor";
-import {
-  formatDateTime,
-  limitLabel,
-  qualityLabel,
-} from "@/components/admin/policy/policyVocabulary";
+import { formatDateTime, qualityLabel } from "@/components/admin/policy/policyVocabulary";
 
-function policySummary(template: EntitlementTemplate) {
+function policySummary(bt: BloemTranslate, template: EntitlementTemplate) {
   const policy = template.policy;
-  const parts = policy.playback_allowed
-    ? [
-        policy.max_streams === 0 ? "Unlimited screens" : limitLabel(policy.max_streams, "screen"),
-        qualityLabel(policy.max_playback_quality),
-        policy.download_allowed || policy.download_transcode_allowed ? "Downloads" : "No downloads",
-      ]
-    : ["Browse only, no playback"];
-  parts.push(
-    policy.max_profiles === 0 ? "Unlimited profiles" : limitLabel(policy.max_profiles, "profile"),
-  );
-  parts.push(policy.requests_allowed ? "Requests" : "No requests");
-  return parts.join(" · ");
+  const profiles = bt("bloem.admin.plans.summary.profiles", { count: policy.max_profiles });
+  const requests = policy.requests_allowed
+    ? bt("bloem.admin.plans.summary.requests")
+    : bt("bloem.admin.plans.summary.noRequests");
+  if (!policy.playback_allowed) {
+    return bt("bloem.admin.plans.summary.browseOnly", { profiles, requests });
+  }
+  return bt("bloem.admin.plans.summary.withPlayback", {
+    screens: bt("bloem.admin.plans.summary.screens", { count: policy.max_streams }),
+    quality: qualityLabel(policy.max_playback_quality),
+    downloads:
+      policy.download_allowed || policy.download_transcode_allowed
+        ? bt("bloem.admin.plans.summary.downloads")
+        : bt("bloem.admin.plans.summary.noDownloads"),
+    profiles,
+    requests,
+  });
 }
 
-function formatTimestamp(value?: string) {
-  return value ? formatDateTime(value) : "Date not recorded";
+function formatTimestamp(bt: BloemTranslate, value?: string) {
+  return value ? formatDateTime(value) : bt("bloem.admin.plans.detail.dateNotRecorded");
 }
 
 /** A key suggestion for a copy, like "standard-copy". */
@@ -74,7 +76,8 @@ function suggestKey(name: string) {
 }
 
 export default function EntitlementTemplatesPage() {
-  useDocumentTitle("Plans");
+  const bt = useBloemT();
+  useDocumentTitle(bt("bloem.admin.plans.list.title"));
   const templates = useEntitlementTemplates();
   const libraries = useAdminLibraries();
   const create = useCreateEntitlementTemplate();
@@ -121,17 +124,20 @@ export default function EntitlementTemplatesPage() {
             revise.reset();
           }}
         >
-          <ArrowLeft className="size-4" /> All plans
+          <ArrowLeft className="size-4" /> {bt("bloem.admin.plans.detail.allPlans")}
         </Button>
         <div className="page-header">
           <div>
             <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">
-              {selected?.name ?? "New plan"}
+              {selected?.name ?? bt("bloem.admin.plans.detail.newPlan")}
             </h1>
             <p className="page-subtitle text-sm sm:text-base">
               {selected
-                ? `Revision ${selected.revision}. Saving creates revision ${selected.revision + 1}; accounts stay on the revision they have until you move them.`
-                : "Starts with all libraries, 3 screens, 5 profiles and downloads allowed. Change anything before you save."}
+                ? bt("bloem.admin.plans.detail.revisionIntro", {
+                    revision: selected.revision,
+                    nextRevision: selected.revision + 1,
+                  })
+                : bt("bloem.admin.plans.detail.newPlanIntro")}
             </p>
           </div>
         </div>
@@ -146,7 +152,7 @@ export default function EntitlementTemplatesPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <History className="size-4" /> Revisions
+                <History className="size-4" /> {bt("bloem.admin.plans.detail.revisions")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -161,20 +167,26 @@ export default function EntitlementTemplatesPage() {
                     >
                       <div className="space-y-1">
                         <p className="font-medium">
-                          Revision {revision.revision}
-                          {revision.revision === selected.revision ? " (current)" : ""}
+                          {bt(
+                            revision.revision === selected.revision
+                              ? "bloem.admin.plans.detail.revisionCurrent"
+                              : "bloem.admin.plans.detail.revision",
+                            { revision: revision.revision },
+                          )}
                         </p>
                         <p className="text-muted-foreground">
-                          {formatTimestamp(revision.created_at)}
+                          {formatTimestamp(bt, revision.created_at)}
                         </p>
-                        <p>{policySummary(revision)}</p>
+                        <p>{policySummary(bt, revision)}</p>
                       </div>
                       {revision.revision !== selected.revision ? (
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
-                          aria-label={`Go back to revision ${revision.revision}`}
+                          aria-label={bt("bloem.admin.plans.detail.goBackLabel", {
+                            revision: revision.revision,
+                          })}
                           disabled={rollback.isPending}
                           onClick={() =>
                             void rollback
@@ -188,7 +200,7 @@ export default function EntitlementTemplatesPage() {
                               .catch(() => undefined)
                           }
                         >
-                          Go back to this
+                          {bt("bloem.admin.plans.detail.goBack")}
                         </Button>
                       ) : null}
                     </li>
@@ -197,7 +209,7 @@ export default function EntitlementTemplatesPage() {
               )}
               {history.isError ? (
                 <p className="text-destructive text-sm" role="alert">
-                  Revisions couldn’t be loaded.
+                  {bt("bloem.admin.plans.detail.revisionsLoadFailed")}
                 </p>
               ) : null}
               {rollback.error ? (
@@ -216,11 +228,11 @@ export default function EntitlementTemplatesPage() {
     <section className="page-shell space-y-6 py-4 sm:py-6">
       <div className="page-header gap-5">
         <div>
-          <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Plans</h1>
+          <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">
+            {bt("bloem.admin.plans.list.title")}
+          </h1>
           <p className="page-subtitle max-w-3xl text-sm sm:text-base">
-            A plan sets what an account gets: libraries, screens, picture quality, downloads and
-            requests. Editing a plan never changes accounts already on it; you move them to the new
-            revision when you are ready.
+            {bt("bloem.admin.plans.list.intro")}
           </p>
         </div>
         <Button
@@ -230,17 +242,17 @@ export default function EntitlementTemplatesPage() {
             setCreating(true);
           }}
         >
-          <Plus className="size-4" /> New plan
+          <Plus className="size-4" /> {bt("bloem.admin.plans.list.newPlan")}
         </Button>
       </div>
       {templates.isLoading ? (
         <Skeleton className="h-48 w-full" />
       ) : templates.isError ? (
         <p className="text-destructive" role="alert">
-          Plans couldn’t be loaded. Reload the page to try again.
+          {bt("bloem.admin.plans.list.loadFailed")}
         </p>
       ) : templates.data?.length === 0 ? (
-        <p className="text-muted-foreground">No plans yet. Create one to get started.</p>
+        <p className="text-muted-foreground">{bt("bloem.admin.plans.list.empty")}</p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {templates.data?.map((template) => (
@@ -253,34 +265,42 @@ export default function EntitlementTemplatesPage() {
                       template.archived ? "outline" : template.enabled ? "secondary" : "outline"
                     }
                   >
-                    {template.archived ? "Archived" : template.enabled ? "Offered" : "Not offered"}
+                    {template.archived
+                      ? bt("bloem.admin.plans.list.archived")
+                      : template.enabled
+                        ? bt("bloem.admin.plans.list.offered")
+                        : bt("bloem.admin.plans.list.notOffered")}
                   </Badge>
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  Revision {template.revision} · <span className="font-mono">{template.key}</span>
+                  {bt("bloem.admin.plans.list.cardRevision", {
+                    revision: template.revision,
+                    planKey: template.key,
+                    mono: (chunks) => <span className="font-mono">{chunks}</span>,
+                  })}
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm">{policySummary(template)}</p>
+                <p className="text-sm">{policySummary(bt, template)}</p>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    aria-label={`Edit ${template.name}`}
+                    aria-label={bt("bloem.admin.plans.list.editLabel", { name: template.name })}
                     onClick={() => {
                       revise.reset();
                       rollback.reset();
                       setSelectedKey(template.key);
                     }}
                   >
-                    Edit
+                    {bt("bloem.admin.plans.list.edit")}
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    aria-label={`Copy ${template.name}`}
+                    aria-label={bt("bloem.admin.plans.list.copyLabel", { name: template.name })}
                     onClick={() => {
                       clone.reset();
                       setCloneCandidate(template);
@@ -289,20 +309,20 @@ export default function EntitlementTemplatesPage() {
                     }}
                     disabled={clone.isPending}
                   >
-                    <Copy className="size-3.5" /> Copy
+                    <Copy className="size-3.5" /> {bt("bloem.admin.plans.list.copy")}
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    aria-label={`Archive ${template.name}`}
+                    aria-label={bt("bloem.admin.plans.list.archiveLabel", { name: template.name })}
                     onClick={() => {
                       archive.reset();
                       setArchiveCandidate(template);
                     }}
                     disabled={template.archived}
                   >
-                    <Archive className="size-3.5" /> Archive
+                    <Archive className="size-3.5" /> {bt("bloem.admin.plans.list.archive")}
                   </Button>
                 </div>
               </CardContent>
@@ -311,10 +331,13 @@ export default function EntitlementTemplatesPage() {
         </div>
       )}
       <p className="text-muted-foreground text-sm">
-        Only offered plans can be given to organizations, accounts and storefront products.{" "}
-        <Link className="underline" to="/admin/platform/organizations">
-          Go to organizations
-        </Link>
+        {bt("bloem.admin.plans.list.offeredOnly", {
+          link: (chunks) => (
+            <Link className="underline" to="/admin/platform/organizations">
+              {chunks}
+            </Link>
+          ),
+        })}
       </p>
       <Dialog
         open={Boolean(cloneCandidate)}
@@ -327,14 +350,18 @@ export default function EntitlementTemplatesPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Copy {cloneCandidate?.name}</DialogTitle>
+            <DialogTitle>
+              {bt("bloem.admin.plans.copyDialog.title", { name: cloneCandidate?.name ?? "" })}
+            </DialogTitle>
             <DialogDescription>
-              Makes a new plan with the same settings as revision {cloneCandidate?.revision}.
+              {bt("bloem.admin.plans.copyDialog.description", {
+                revision: cloneCandidate?.revision ?? "",
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="clone-key">Key</Label>
+              <Label htmlFor="clone-key">{bt("bloem.admin.plans.copyDialog.key")}</Label>
               <Input
                 id="clone-key"
                 className="font-mono"
@@ -342,12 +369,11 @@ export default function EntitlementTemplatesPage() {
                 onChange={(event) => setCloneKey(event.target.value)}
               />
               <p className="text-muted-foreground text-xs">
-                A short ID for the storefront and the API, like premium-plus. It can’t be changed
-                later.
+                {bt("bloem.admin.plans.copyDialog.keyHelp")}
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="clone-name">Name</Label>
+              <Label htmlFor="clone-name">{bt("bloem.admin.plans.copyDialog.name")}</Label>
               <Input
                 id="clone-name"
                 value={cloneName}
@@ -356,13 +382,13 @@ export default function EntitlementTemplatesPage() {
             </div>
             {clone.error ? (
               <p className="text-destructive text-sm" role="alert">
-                {clone.error.message || "The copy couldn’t be made. Try a different key."}
+                {clone.error.message || bt("bloem.admin.plans.copyDialog.failed")}
               </p>
             ) : null}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setCloneCandidate(null)}>
-              Cancel
+              {bt("bloem.admin.plans.copyDialog.cancel")}
             </Button>
             <Button
               type="button"
@@ -383,7 +409,7 @@ export default function EntitlementTemplatesPage() {
                   .catch(() => undefined);
               }}
             >
-              Make copy
+              {bt("bloem.admin.plans.copyDialog.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -394,14 +420,15 @@ export default function EntitlementTemplatesPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive {archiveCandidate?.name}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {bt("bloem.admin.plans.archiveDialog.title", { name: archiveCandidate?.name ?? "" })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Accounts already on this plan keep their settings, and its history stays readable.
-              Nobody new can be put on it.
+              {bt("bloem.admin.plans.archiveDialog.description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{bt("bloem.admin.plans.archiveDialog.cancel")}</AlertDialogCancel>
             {archive.error ? (
               <p className="text-destructive text-sm" role="alert">
                 {archive.error.message}
@@ -421,7 +448,7 @@ export default function EntitlementTemplatesPage() {
               }}
               disabled={archive.isPending}
             >
-              Archive plan
+              {bt("bloem.admin.plans.archiveDialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

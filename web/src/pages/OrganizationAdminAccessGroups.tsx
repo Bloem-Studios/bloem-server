@@ -2,6 +2,7 @@ import { ArrowLeft, Plus, Trash2, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { AccessGroup, AccessGroupInput } from "@/api/types";
+import { bloemT, useBloemT } from "@/bloem/i18n";
 import { LibraryAccessScope } from "@/bloem/libraryAccessScope";
 import { LibraryAccessSelector } from "@/components/LibraryAccessSelector";
 import {
@@ -49,27 +50,36 @@ import {
 const ASSIGNABLE_PERMISSIONS: Array<{ value: string; label: string; description: string }> = [
   {
     value: PERMISSION_WATCH_LIVE_TV,
-    label: "Watch Live TV",
-    description: "Watch live channels. This doesn’t depend on which libraries they can see.",
+    get label() {
+      return bloemT("bloem.admin.orgAccessGroups.permissions.liveTvLabel");
+    },
+    get description() {
+      return bloemT("bloem.admin.orgAccessGroups.permissions.liveTvDescription");
+    },
   },
   {
     value: PERMISSION_METADATA_CURATION,
-    label: "Edit metadata",
-    description: "Edit metadata for items in the member's libraries.",
+    get label() {
+      return bloemT("bloem.admin.orgAccessGroups.permissions.metadataLabel");
+    },
+    get description() {
+      return bloemT("bloem.admin.orgAccessGroups.permissions.metadataDescription");
+    },
   },
   {
     value: PERMISSION_MARKER_EDIT,
-    label: "Edit intro and credits markers",
-    description: "Add and adjust where intros and credits start and end.",
+    get label() {
+      return bloemT("bloem.admin.orgAccessGroups.permissions.markersLabel");
+    },
+    get description() {
+      return bloemT("bloem.admin.orgAccessGroups.permissions.markersDescription");
+    },
   },
 ];
 
-function limitLabel(value: number) {
-  return value > 0 ? String(value) : "Unlimited";
-}
-
 export default function OrganizationAdminAccessGroups() {
-  useDocumentTitle("Access Groups");
+  const bt = useBloemT();
+  useDocumentTitle(bt("bloem.admin.orgAccessGroups.title"));
   const { active } = useAdminContext();
   const groups = useAccessGroups(active);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -102,13 +112,14 @@ export default function OrganizationAdminAccessGroups() {
           onClick={() => setSelectedId(null)}
         >
           <ArrowLeft className="size-4" />
-          All groups
+          {bt("bloem.admin.orgAccessGroups.allGroups")}
         </Button>
         <AccessGroupEditor
           key={selected.id}
           group={selected}
           defaultGroupName={
-            groups.data?.find((group) => group.is_default)?.name ?? "the default group"
+            groups.data?.find((group) => group.is_default)?.name ??
+            bt("bloem.admin.orgAccessGroups.theDefaultGroup")
           }
           onDeleted={() => setSelectedId(null)}
         />
@@ -120,17 +131,19 @@ export default function OrganizationAdminAccessGroups() {
     <div className="page-shell space-y-6 py-4 sm:py-6">
       <div className="page-header gap-5">
         <div className="space-y-3">
-          <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Access Groups</h1>
+          <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">
+            {bt("bloem.admin.orgAccessGroups.title")}
+          </h1>
           <p className="page-subtitle text-sm sm:text-base">
-            {active?.scope === "organization" && <>{active.name}: </>}The shared policy layer for a
-            set of users. A group supplies the value for every field its members leave on Inherit; a
-            per-user override replaces the group value in either direction.
+            {active?.scope === "organization"
+              ? bt("bloem.admin.orgAccessGroups.introForOrganization", { name: active.name })
+              : bt("bloem.admin.orgAccessGroups.intro")}
           </p>
         </div>
         {!creating && (
           <Button type="button" onClick={() => setCreating(true)}>
             <Plus className="size-4" />
-            New group
+            {bt("bloem.admin.orgAccessGroups.newGroup")}
           </Button>
         )}
       </div>
@@ -143,13 +156,13 @@ export default function OrganizationAdminAccessGroups() {
             onKeyDown={(event) => {
               if (event.key === "Enter") void create();
             }}
-            placeholder="Group name (e.g. Kids, Guests)"
-            aria-label="New group name"
+            placeholder={bt("bloem.admin.orgAccessGroups.newGroupPlaceholder")}
+            aria-label={bt("bloem.admin.orgAccessGroups.newGroupName")}
             className="max-w-xs"
             autoFocus
           />
           <Button type="button" onClick={create} disabled={createGroup.isPending}>
-            Create
+            {bt("bloem.admin.orgAccessGroups.create")}
           </Button>
           <Button
             type="button"
@@ -159,22 +172,23 @@ export default function OrganizationAdminAccessGroups() {
               setNewName("");
             }}
           >
-            Cancel
+            {bt("bloem.admin.orgAccessGroups.cancel")}
           </Button>
         </div>
       )}
 
       {groups.isLoading && (
-        <p className="text-muted-foreground text-sm">Loading access groups...</p>
+        <p className="text-muted-foreground text-sm">{bt("bloem.admin.orgAccessGroups.loading")}</p>
       )}
 
       {!groups.isLoading && groups.data?.length === 0 && !creating && (
         <div className="surface-panel-subtle rounded-2xl p-8 text-center">
           <UsersRound className="text-muted-foreground mx-auto size-8" />
-          <h2 className="mt-3 text-lg font-semibold">No access groups yet</h2>
+          <h2 className="mt-3 text-lg font-semibold">
+            {bt("bloem.admin.orgAccessGroups.emptyTitle")}
+          </h2>
           <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-            Create a group to set libraries, downloads, screens and permissions for many people at
-            once, then assign users to it from their profile.
+            {bt("bloem.admin.orgAccessGroups.emptyDescription")}
           </p>
         </div>
       )}
@@ -191,13 +205,20 @@ export default function OrganizationAdminAccessGroups() {
 }
 
 function AccessGroupCard({ group, onClick }: { group: AccessGroup; onClick: () => void }) {
+  const bt = useBloemT();
   const facts = [
     group.library_ids === null
-      ? "All libraries"
-      : `${group.library_ids.length} librar${group.library_ids.length === 1 ? "y" : "ies"}`,
-    group.download_allowed ? "Downloads on" : "No downloads",
-    `${limitLabel(group.max_streams)} stream${group.max_streams === 1 ? "" : "s"}`,
-    group.requests_allowed ? "Requests on" : "No requests",
+      ? bt("bloem.admin.orgAccessGroups.card.allLibraries")
+      : bt("bloem.admin.orgAccessGroups.card.libraryCount", { count: group.library_ids.length }),
+    group.download_allowed
+      ? bt("bloem.admin.orgAccessGroups.card.downloadsOn")
+      : bt("bloem.admin.orgAccessGroups.card.noDownloads"),
+    group.max_streams > 0
+      ? bt("bloem.admin.orgAccessGroups.card.streamCount", { count: group.max_streams })
+      : bt("bloem.admin.orgAccessGroups.card.unlimitedStreams"),
+    group.requests_allowed
+      ? bt("bloem.admin.orgAccessGroups.card.requestsOn")
+      : bt("bloem.admin.orgAccessGroups.card.noRequests"),
   ];
   return (
     <button
@@ -211,7 +232,7 @@ function AccessGroupCard({ group, onClick }: { group: AccessGroup; onClick: () =
             <h2 className="truncate text-base font-semibold tracking-tight">{group.name}</h2>
             {group.is_default && (
               <span className="border-border text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase">
-                Default
+                {bt("bloem.admin.orgAccessGroups.card.defaultBadge")}
               </span>
             )}
           </div>
@@ -220,7 +241,7 @@ function AccessGroupCard({ group, onClick }: { group: AccessGroup; onClick: () =
           )}
         </div>
         <span className="bg-secondary text-secondary-foreground shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium">
-          {group.member_count} {group.member_count === 1 ? "member" : "members"}
+          {bt("bloem.admin.orgAccessGroups.card.memberCount", { count: group.member_count })}
         </span>
       </div>
       <div className="flex flex-wrap gap-1.5">
@@ -244,6 +265,7 @@ interface AccessGroupEditorProps {
 }
 
 function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEditorProps) {
+  const bt = useBloemT();
   const { active } = useAdminContext();
   const organization = active?.scope === "organization";
   const legacyLibraries = useAdminLibraries({ enabled: !organization });
@@ -323,25 +345,27 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
       <div className="surface-panel space-y-4 rounded-2xl border-0 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="group-name">Name</Label>
+            <Label htmlFor="group-name">{bt("bloem.admin.orgAccessGroups.editor.name")}</Label>
             <Input id="group-name" value={name} onChange={(event) => setName(event.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="group-description">Description</Label>
+            <Label htmlFor="group-description">
+              {bt("bloem.admin.orgAccessGroups.editor.description")}
+            </Label>
             <Input
               id="group-description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Optional"
+              placeholder={bt("bloem.admin.orgAccessGroups.editor.optional")}
             />
           </div>
         </div>
         <ToggleRow
-          label="Default for new users"
+          label={bt("bloem.admin.orgAccessGroups.editor.defaultForNewUsers")}
           description={
             group.is_default
-              ? "Newly created accounts are placed in this group automatically. To change this, make another group the default."
-              : "Newly created accounts are placed in this group automatically. Existing users are never moved."
+              ? bt("bloem.admin.orgAccessGroups.editor.defaultForNewUsersIsDefault")
+              : bt("bloem.admin.orgAccessGroups.editor.defaultForNewUsersDescription")
           }
           checked={isDefault}
           onCheckedChange={setIsDefault}
@@ -350,7 +374,9 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
       </div>
 
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
-        <h2 className="text-sm font-semibold">Libraries &amp; playback</h2>
+        <h2 className="text-sm font-semibold">
+          {bt("bloem.admin.orgAccessGroups.editor.librariesAndPlayback")}
+        </h2>
         <LibraryAccessScope name={organization ? active?.name : undefined}>
           <LibraryAccessSelector
             libraries={libraries}
@@ -359,7 +385,9 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
           />
         </LibraryAccessScope>
         <div className="space-y-2">
-          <Label htmlFor="group-quality">Best picture quality</Label>
+          <Label htmlFor="group-quality">
+            {bt("bloem.admin.orgAccessGroups.editor.bestPictureQuality")}
+          </Label>
           <Select
             value={qualityPreset}
             onValueChange={(value) => setQualityPreset(value as PlaybackQualityPreset)}
@@ -370,7 +398,10 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
             <SelectContent>
               {PLAYBACK_QUALITY_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
-                  {option.label} — {option.description}
+                  {bt("bloem.admin.orgAccessGroups.editor.qualityOption", {
+                    label: option.label,
+                    description: option.description,
+                  })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -379,55 +410,59 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
       </section>
 
       <section className="surface-panel space-y-3 rounded-2xl border-0 p-5">
-        <h2 className="text-sm font-semibold">Downloads &amp; requests</h2>
+        <h2 className="text-sm font-semibold">
+          {bt("bloem.admin.orgAccessGroups.editor.downloadsAndRequests")}
+        </h2>
         <ToggleRow
-          label="Download original files"
-          description="Save the file as it is, for watching offline."
+          label={bt("bloem.admin.orgAccessGroups.editor.downloadOriginals")}
+          description={bt("bloem.admin.orgAccessGroups.editor.downloadOriginalsDescription")}
           checked={downloadAllowed}
           onCheckedChange={setDownloadAllowed}
         />
         <ToggleRow
-          label="Download converted copies"
-          description="Save a smaller copy made for the device, where the app supports it."
+          label={bt("bloem.admin.orgAccessGroups.editor.downloadConverted")}
+          description={bt("bloem.admin.orgAccessGroups.editor.downloadConvertedDescription")}
           checked={transcodeAllowed}
           onCheckedChange={setTranscodeAllowed}
           disabled={!downloadAllowed}
         />
         <ToggleRow
-          label="Media requests"
-          description="Ask for movies and shows the server doesn’t have yet."
+          label={bt("bloem.admin.orgAccessGroups.editor.mediaRequests")}
+          description={bt("bloem.admin.orgAccessGroups.editor.mediaRequestsDescription")}
           checked={requestsAllowed}
           onCheckedChange={setRequestsAllowed}
         />
       </section>
 
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
-        <h2 className="text-sm font-semibold">Concurrent streams</h2>
+        <h2 className="text-sm font-semibold">
+          {bt("bloem.admin.orgAccessGroups.editor.concurrentStreams")}
+        </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <LimitField
             id="group-streams"
-            label="Screens at once"
-            hint="0 = unlimited"
+            label={bt("bloem.admin.orgAccessGroups.editor.screensAtOnce")}
+            hint={bt("bloem.admin.orgAccessGroups.editor.zeroIsUnlimited")}
             value={maxStreams}
             onChange={setMaxStreams}
           />
           <LimitField
             id="group-transcodes"
-            label="Conversions at once"
-            hint="0 = unlimited"
+            label={bt("bloem.admin.orgAccessGroups.editor.conversionsAtOnce")}
+            hint={bt("bloem.admin.orgAccessGroups.editor.zeroIsUnlimited")}
             value={maxTranscodes}
             onChange={setMaxTranscodes}
           />
         </div>
         <ToggleRow
-          label="Video conversion"
-          description="Convert a video when the device can’t play the file as it is."
+          label={bt("bloem.admin.orgAccessGroups.editor.videoConversion")}
+          description={bt("bloem.admin.orgAccessGroups.editor.videoConversionDescription")}
           checked={videoTranscodeAllowed}
           onCheckedChange={setVideoTranscodeAllowed}
         />
         <ToggleRow
-          label="Audio conversion"
-          description="Convert only the sound when the device can’t play it."
+          label={bt("bloem.admin.orgAccessGroups.editor.audioConversion")}
+          description={bt("bloem.admin.orgAccessGroups.editor.audioConversionDescription")}
           checked={audioTranscodeAllowed}
           onCheckedChange={setAudioTranscodeAllowed}
         />
@@ -436,19 +471,23 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
       <section className="surface-panel space-y-3 rounded-2xl border-0 p-5">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold">Permissions</h2>
+            <h2 className="text-sm font-semibold">
+              {bt("bloem.admin.orgAccessGroups.editor.permissions")}
+            </h2>
             <p className="text-muted-foreground mt-0.5 text-xs">
-              A member also needs the permission granted on their own account.
+              {bt("bloem.admin.orgAccessGroups.editor.permissionsHelp")}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs">Allow all</span>
+            <span className="text-muted-foreground text-xs">
+              {bt("bloem.admin.orgAccessGroups.editor.allowAll")}
+            </span>
             <Switch
               checked={allPermissions}
               onCheckedChange={(checked) =>
                 setPermissions(checked ? null : ASSIGNABLE_PERMISSIONS.map((entry) => entry.value))
               }
-              aria-label="Allow every permission"
+              aria-label={bt("bloem.admin.orgAccessGroups.editor.allowEveryPermission")}
             />
           </div>
         </div>
@@ -477,45 +516,55 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
             disabled={group.is_default}
           >
             <Trash2 className="size-4" />
-            Delete group
+            {bt("bloem.admin.orgAccessGroups.editor.deleteGroup")}
           </Button>
           {group.is_default && (
             <p className="text-muted-foreground text-xs">
-              The default group can’t be deleted. Make another group the default first.
+              {bt("bloem.admin.orgAccessGroups.editor.defaultCannotBeDeleted")}
             </p>
           )}
         </div>
         <Button type="button" onClick={save} disabled={updateGroup.isPending}>
-          {updateGroup.isPending ? "Saving…" : "Save changes"}
+          {updateGroup.isPending
+            ? bt("bloem.admin.orgAccessGroups.editor.saving")
+            : bt("bloem.admin.orgAccessGroups.editor.saveChanges")}
         </Button>
       </div>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete “{group.name}”?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {bt("bloem.admin.orgAccessGroups.delete.title", { name: group.name })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {organization
                 ? group.member_count > 0
-                  ? `${group.member_count} profiles in ${active?.name ?? "this organization"} will be reassigned to ${
-                      defaultGroupName
-                    }, this organization's default group. Their own restrictions are unchanged.`
-                  : `This group has no profiles in ${active?.name ?? "this organization"}. This can't be undone.`
+                  ? bt("bloem.admin.orgAccessGroups.delete.reassignProfiles", {
+                      count: group.member_count,
+                      organization:
+                        active?.name ?? bt("bloem.admin.orgAccessGroups.delete.thisOrganization"),
+                      defaultGroup: defaultGroupName,
+                    })
+                  : bt("bloem.admin.orgAccessGroups.delete.noProfiles", {
+                      organization:
+                        active?.name ?? bt("bloem.admin.orgAccessGroups.delete.thisOrganization"),
+                    })
                 : group.member_count > 0
-                  ? `${group.member_count} ${
-                      group.member_count === 1 ? "member" : "members"
-                    } will move to no group and fall back to the built-in defaults. Their own restrictions are unchanged.`
-                  : "This group has no members. This can't be undone."}
+                  ? bt("bloem.admin.orgAccessGroups.delete.membersMoveToNoGroup", {
+                      count: group.member_count,
+                    })
+                  : bt("bloem.admin.orgAccessGroups.delete.noMembers")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{bt("bloem.admin.orgAccessGroups.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={remove}
               disabled={deleteGroup.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {bt("bloem.admin.orgAccessGroups.delete.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
