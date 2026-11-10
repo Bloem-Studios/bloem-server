@@ -25,7 +25,7 @@ func (e *Engine) EmbedSearchQuery(ctx context.Context, query string) ([]float32,
 	if err := e.ensureEmbeddingLockConfig(ctx); err != nil {
 		return nil, err
 	}
-	vectors, err := e.embClient.Embed(ctx, []string{query})
+	vectors, err := embedSearchText(ctx, e.embClient, query)
 	if err != nil {
 		return nil, err
 	}
@@ -36,6 +36,18 @@ func (e *Engine) EmbedSearchQuery(ctx context.Context, query string) ([]float32,
 		return nil, err
 	}
 	return ensureCanonicalDimensions(vectors[0])
+}
+
+// embedSearchText embeds a search query in the query form when the client has
+// one (embeddings.Client.EmbedQueries), so a model that takes task labels
+// compares it with catalog text as a search.
+func embedSearchText(ctx context.Context, client embedder, query string) ([][]float32, error) {
+	if queries, ok := client.(interface {
+		EmbedQueries(ctx context.Context, queries []string) ([][]float32, error)
+	}); ok {
+		return queries.EmbedQueries(ctx, []string{query})
+	}
+	return client.Embed(ctx, []string{query})
 }
 
 func (e *Engine) validateQueryEmbeddingLock(ctx context.Context, vector []float32) error {

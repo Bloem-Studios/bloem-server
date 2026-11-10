@@ -3,6 +3,20 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 10, 2026 — gemini-embedding-2 gets task labels
+
+Production's embeddings moved from `gemini-embedding-001` to `gemini-embedding-2` on
+November 9. That model takes the task as text in its input instead of a `task_type`
+field, so Bloem now sends catalog text as `title: none | text: …` and search queries as
+`task: search result | query: …`; other models get the text unchanged, and the stored
+canonical text stays unlabelled. On a 6,432-item sample of the catalog, 200 searches
+that describe a title without naming it found it first 87% of the time with labels,
+against 68.5% without. Books gained most. Labelled and unlabelled vectors don't mix,
+so items embedded before the change are embedded again. Two new temporary seams
+(`internal/recommendations/embeddings/client.go` and
+`internal/recommendations/search_query_vector.go`), to drop when Silo carries the
+labels; the ledger goes from 328 to 330.
+
 ## November 6, 2026 — restores never give more access than the backup
 
 A restore compared an account's access with the backup's field by field, but not

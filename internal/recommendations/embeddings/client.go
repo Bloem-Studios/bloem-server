@@ -200,7 +200,33 @@ func isConnectError(err error) bool {
 // Retries transport errors, 5xx responses and short rate limits with backoff;
 // an unreachable host, a rejected request and a long or persistent rate limit
 // fail without retrying.
+// The texts are catalog text; EmbedQueries embeds search queries.
 func (c *Client) Embed(ctx context.Context, texts []string) ([][]float32, error) {
+	return c.embed(ctx, c.withTaskLabel("title: none | text: ", texts))
+}
+
+// EmbedQueries embeds search queries, which a model that takes task labels
+// compares with catalog text as a search. Otherwise it is Embed.
+func (c *Client) EmbedQueries(ctx context.Context, queries []string) ([][]float32, error) {
+	return c.embed(ctx, c.withTaskLabel("task: search result | query: ", queries))
+}
+
+// withTaskLabel prefixes each text with label for gemini-embedding-2, which takes
+// the task as text in its input instead of a task_type field. The stored
+// canonical text stays unlabeled. Other models get the texts unchanged.
+func (c *Client) withTaskLabel(label string, texts []string) []string {
+	model := c.cfg.Model
+	if model != "gemini-embedding-2" && !strings.HasPrefix(model, "gemini-embedding-2-") {
+		return texts
+	}
+	labeled := make([]string, len(texts))
+	for i, text := range texts {
+		labeled[i] = label + text
+	}
+	return labeled
+}
+
+func (c *Client) embed(ctx context.Context, texts []string) ([][]float32, error) {
 	if c.isGemini() {
 		return c.embedGemini(ctx, texts)
 	}

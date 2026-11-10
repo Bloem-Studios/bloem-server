@@ -221,6 +221,8 @@ internal/proxy/mediagrant_test.go
 internal/proxy/router_socket_test.go
 internal/proxy/segment_completion_test.go
 internal/proxy/server.go
+internal/recommendations/embeddings/client.go  # label catalog text and search queries for gemini-embedding-2 (EmbedQueries); temporary, gemini-embedding-2 task labels (search MRR 0.774 -> 0.923 on a 6,432-item sample, 2026-11-09), drop when Silo's version merges
+internal/recommendations/search_query_vector.go  # embed search queries with EmbedQueries when the client has it; temporary, gemini-embedding-2 task labels (search MRR 0.774 -> 0.923 on a 6,432-item sample, 2026-11-09), drop when Silo's version merges
 internal/requests/capability.go
 internal/requests/editor_concurrency.go
 internal/requests/follows.go # Tenant/profile hooks for new upstream request following; implementations stay Bloem-owned.
