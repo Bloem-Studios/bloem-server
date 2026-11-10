@@ -129,6 +129,8 @@ public enum SettingKey: String, CaseIterable, Sendable {
     case searchMediaScope = "search.media_scope"
     /// Match device caption settings
     case subtitleMatchesDevice = "subtitle.matches_device"
+    /// App language
+    case uiAppLanguage = "ui.app_language"
     /// Poster badges
     case uiCardOverlays = "ui.card_overlays"
     /// Card overlays enabled
@@ -180,7 +182,7 @@ public enum SettingKey: String, CaseIterable, Sendable {
 }
 
 public extension SettingKey {
-    static let revision = 27
+    static let revision = 28
 
     /// Keys the server stores. The rest never leave the device.
     static let remote: [SettingKey] = [
@@ -228,6 +230,7 @@ public extension SettingKey {
         .playerVideoSkipForwardSeconds,
         .requestsWatchlistAutoRequest,
         .searchMediaScope,
+        .uiAppLanguage,
         .uiCardOverlays,
         .uiCardOverlaysEnabled,
         .uiCardPresentation,
@@ -278,6 +281,19 @@ public extension SettingKey {
 
 public enum SettingPresentationMetadata {
     public static let optionSets: [String: SettingOptionSet] = [
+        "app_languages": SettingOptionSet(
+            type: "language_tag",
+            options: [
+                SettingSuggestedOption(value: "en", introducedIn: 28),
+                SettingSuggestedOption(value: "es", introducedIn: 28),
+                SettingSuggestedOption(value: "de", introducedIn: 28),
+                SettingSuggestedOption(value: "fr", introducedIn: 28),
+                SettingSuggestedOption(value: "pt-BR", introducedIn: 28),
+                SettingSuggestedOption(value: "ja", introducedIn: 28),
+                SettingSuggestedOption(value: "zh-Hans", introducedIn: 28),
+                SettingSuggestedOption(value: "ar", introducedIn: 28),
+            ]
+        ),
         "catalog_metadata_languages": SettingOptionSet(
             type: "language_tag",
             options: [
@@ -445,6 +461,10 @@ public enum SettingPresentationMetadata {
         .playbackSubtitleLanguage: SettingPresentation(
             suggestedOptions: "playback_subtitle_languages",
             unsetLabel: "None"
+        ),
+        .uiAppLanguage: SettingPresentation(
+            suggestedOptions: "app_languages",
+            unsetLabel: "Match device"
         ),
     ]
 

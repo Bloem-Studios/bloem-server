@@ -24,7 +24,7 @@ data class SettingPresentation(
 )
 
 object SettingKeys {
-    const val REVISION = 27
+    const val REVISION = 28
 
     /** Blur unwatched episode images */
     const val CATALOG_HIDE_UNWATCHED_EPISODE_IMAGES = "catalog.hide_unwatched_episode_images"
@@ -130,6 +130,8 @@ object SettingKeys {
     const val SEARCH_MEDIA_SCOPE = "search.media_scope"
     /** Match device caption settings */
     const val SUBTITLE_MATCHES_DEVICE = "subtitle.matches_device"
+    /** App language */
+    const val UI_APP_LANGUAGE = "ui.app_language"
     /** Poster badges */
     const val UI_CARD_OVERLAYS = "ui.card_overlays"
     /** Card overlays enabled */
@@ -225,6 +227,7 @@ object SettingKeys {
         PLAYER_VIDEO_SKIP_FORWARD_SECONDS,
         REQUESTS_WATCHLIST_AUTO_REQUEST,
         SEARCH_MEDIA_SCOPE,
+        UI_APP_LANGUAGE,
         UI_CARD_OVERLAYS,
         UI_CARD_OVERLAYS_ENABLED,
         UI_CARD_PRESENTATION,
@@ -318,6 +321,19 @@ object SettingKeys {
 
 object SettingPresentationMetadata {
     val OPTION_SETS: Map<String, SettingOptionSet> = mapOf(
+        "app_languages" to SettingOptionSet(
+            type = "language_tag",
+            options = listOf(
+                SettingSuggestedOption("en", 28),
+                SettingSuggestedOption("es", 28),
+                SettingSuggestedOption("de", 28),
+                SettingSuggestedOption("fr", 28),
+                SettingSuggestedOption("pt-BR", 28),
+                SettingSuggestedOption("ja", 28),
+                SettingSuggestedOption("zh-Hans", 28),
+                SettingSuggestedOption("ar", 28),
+            ),
+        ),
         "catalog_metadata_languages" to SettingOptionSet(
             type = "language_tag",
             options = listOf(
@@ -485,6 +501,10 @@ object SettingPresentationMetadata {
         SettingKeys.PLAYBACK_SUBTITLE_LANGUAGE to SettingPresentation(
             suggestedOptions = "playback_subtitle_languages",
             unsetLabel = "None",
+        ),
+        SettingKeys.UI_APP_LANGUAGE to SettingPresentation(
+            suggestedOptions = "app_languages",
+            unsetLabel = "Match device",
         ),
     )
 
