@@ -207,11 +207,11 @@ const pageLiveTV = "livetv"
 var bloemSettingsPages = []SettingsPage{{pageLiveTV, "Live TV"}}
 
 var bloemSettingRules = map[string]settingRule{
-	"lan.advertisement_enabled":            {page: "general", class: SettingPortable},
-	"bloem.requests.ebooks_enabled":        {page: pageRequests, class: SettingPortable},
+	"lan.advertisement_enabled":          {page: "general", class: SettingPortable},
+	"bloem.requests.ebooks_enabled":      {page: pageRequests, class: SettingPortable},
 	"bloem.auth.profile_sign_in_enabled": {page: pageSignIn, class: SettingPortable},
-	"livetv.":                              {page: pageLiveTV, class: SettingPortable},
-	"livetv.dvr_path":                      {page: pageLiveTV, class: SettingServerSpecific},
-	"livetv.hw_accel":                      {page: pageLiveTV, class: SettingServerSpecific},
-	"livetv.hw_decode":                     {page: pageLiveTV, class: SettingServerSpecific},
+	"livetv.":                            {page: pageLiveTV, class: SettingPortable},
+	"livetv.dvr_path":                    {page: pageLiveTV, class: SettingServerSpecific},
+	"livetv.hw_accel":                    {page: pageLiveTV, class: SettingServerSpecific},
+	"livetv.hw_decode":                   {page: pageLiveTV, class: SettingServerSpecific},
 }
