@@ -14,10 +14,15 @@ func TestIsTestDatabaseName(t *testing.T) {
 		"a6_test":                     true,
 		"bloem_contract_scenarios_ci": true,
 		"TEST_upper":                  true,
-		"bloem":                       false,
-		"postgres":                    false,
-		"production":                  false,
-		"silo_cinema":                 false,
+		// Silo's dbpins runner copies the test database per package.
+		"dbpins_1a2b3c4d_userstore_pgstore_0a1b2c": true,
+		"DBPINS_1a2b3c4d_internal_catalog_0a1b2c":  true,
+		"dbpins":            false,
+		"silo_dbpins_media": false,
+		"bloem":             false,
+		"postgres":          false,
+		"production":        false,
+		"silo_cinema":       false,
 	} {
 		if got := IsTestDatabaseName(name); got != want {
 			t.Errorf("IsTestDatabaseName(%q) = %t, want %t", name, got, want)

@@ -37,10 +37,12 @@ var DatabaseSettings = [][2]string{
 var ErrNotATestDatabase = errors.New("bloemtestdb: refusing a database whose name neither contains \"test\" nor ends in \"_ci\"")
 
 // IsTestDatabaseName reports whether name marks a disposable test database:
-// it contains "test" or ends in "_ci".
+// it contains "test", ends in "_ci", or starts with "dbpins_", the per-package
+// copies Silo's scripts/ci/dbpins makes of a test database. Keep
+// bloem_fixture_compat_armed in sql/fixture_compat.sql in step.
 func IsTestDatabaseName(name string) bool {
 	lower := strings.ToLower(name)
-	return strings.Contains(lower, "test") || strings.HasSuffix(lower, "_ci")
+	return strings.Contains(lower, "test") || strings.HasSuffix(lower, "_ci") || strings.HasPrefix(lower, "dbpins_")
 }
 
 // Options control Prepare.

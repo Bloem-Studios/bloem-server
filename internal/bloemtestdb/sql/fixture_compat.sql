@@ -24,7 +24,8 @@
 -- Whether the triggers below act. A database copied from a test database
 -- (CREATE DATABASE ... TEMPLATE) or restored from its dump has the triggers
 -- but not the ALTER DATABASE setting; its name still marks it as a test
--- database (bloemtestdb.IsTestDatabaseName).
+-- database (bloemtestdb.IsTestDatabaseName), and so does the dbpins_ prefix of
+-- the per-package copies Silo's scripts/ci/dbpins makes.
 CREATE OR REPLACE FUNCTION public.bloem_fixture_compat_armed()
 RETURNS boolean
 LANGUAGE sql
@@ -33,6 +34,7 @@ AS $$
     SELECT coalesce(
         nullif(current_setting('bloem.fixture_compat', true), '') = 'on',
         lower(current_database()) LIKE '%test%' OR lower(current_database()) LIKE '%\_ci'
+            OR lower(current_database()) LIKE 'dbpins\_%'
     )
 $$;
 
