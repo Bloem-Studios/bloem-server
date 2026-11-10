@@ -9,6 +9,7 @@ import {
 } from "@/api/client";
 import { getProfileId, nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import type { LiveTVTuner, LiveTVTunersResponse } from "@/api/bloemTypes";
+import { useBloemT } from "@/bloem/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { liveTVKeys } from "@/hooks/queries/bloemKeys";
 import { useLiveTVAccess } from "@/hooks/queries/useLiveTVAccess";
@@ -45,6 +46,7 @@ function finish(scope: string, attempt: number, phase: Phase) {
 }
 
 export function XtreamProviderForm() {
+  const bt = useBloemT();
   const { user } = useAuth();
   const capability = useLiveTVAccess();
   const identity = captureSessionIdentity();
@@ -57,16 +59,13 @@ export function XtreamProviderForm() {
     pinGeneration,
   ]);
   if (user?.role !== "admin") return null;
-  if (!profileId) return <p>Switch to your main profile to add an Xtream provider.</p>;
-  if (capability.isLoading) return <p role="status">Checking Xtream support…</p>;
+  if (!profileId) return <p>{bt("bloem.admin.liveTv.xtreamProvider.switchProfile")}</p>;
+  if (capability.isLoading)
+    return <p role="status">{bt("bloem.admin.liveTv.xtreamProvider.checkingSupport")}</p>;
   if (capability.isError)
-    return (
-      <p role="alert">
-        Couldn’t check whether this server supports Xtream. Reload the page to try again.
-      </p>
-    );
+    return <p role="alert">{bt("bloem.admin.liveTv.xtreamProvider.supportCheckFailed")}</p>;
   if (!capability.data?.xtream_supported)
-    return <p>This server doesn’t support Xtream providers.</p>;
+    return <p>{bt("bloem.admin.liveTv.xtreamProvider.unsupported")}</p>;
   return (
     <ProviderForm
       key={scope}
@@ -89,6 +88,7 @@ function ProviderForm({
   profileId: string;
   pinGeneration: number;
 }) {
+  const bt = useBloemT();
   const client = useQueryClient();
   const phase = useSyncExternalStore(
     subscribe,
@@ -190,7 +190,7 @@ function ProviderForm({
       await readback(controller, tuner.id);
       if (finish(scope, attempt, "ready") && current() && alive.current) {
         setLoaded(true);
-        setNotice("Provider added. Add its Xtream guide in the Guide tab.");
+        setNotice(bt("bloem.admin.liveTv.xtreamProvider.added"));
         void client.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
       }
     } catch {
@@ -210,31 +210,28 @@ function ProviderForm({
   return (
     <section className="max-w-xl space-y-4 border-t pt-6" aria-labelledby="xtream-provider-title">
       <h3 id="xtream-provider-title" className="text-base font-medium">
-        Add an Xtream provider
+        {bt("bloem.admin.liveTv.xtreamProvider.heading")}
       </h3>
       <p className="text-muted-foreground text-sm">
-        Brings in the live channels from an Xtream account; its movies and series are not imported.
-        Bloem stores the sign-in encrypted. Use an https address if your provider has one, so the
-        password isn’t sent in the clear.
+        {bt("bloem.admin.liveTv.xtreamProvider.intro")}
       </p>
       <details className="text-sm">
         <summary className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
-          Provider requirements
+          {bt("bloem.admin.liveTv.xtreamProvider.requirements")}
         </summary>
         <p className="text-muted-foreground mt-2">
-          The provider must send live channels as MPEG-TS streams directly, without redirects.
+          {bt("bloem.admin.liveTv.xtreamProvider.requirementsDetail")}
         </p>
       </details>
-      {(phase === "initial" || phase === "reloading") && <p role="status">Loading providers…</p>}
-      {phase === "pending" && <p role="status">Adding…</p>}
+      {(phase === "initial" || phase === "reloading") && (
+        <p role="status">{bt("bloem.admin.liveTv.xtreamProvider.loading")}</p>
+      )}
+      {phase === "pending" && <p role="status">{bt("bloem.admin.liveTv.xtreamProvider.adding")}</p>}
       {phase === "reload-required" && (
         <div role="alert" className="space-y-3">
-          <p>
-            Bloem couldn’t tell whether the provider was added. The form was cleared; reload to
-            check before you try again.
-          </p>
+          <p>{bt("bloem.admin.liveTv.xtreamProvider.outcomeUnknown")}</p>
           <Button variant="outline" onClick={() => void reload()}>
-            Reload
+            {bt("bloem.admin.liveTv.xtreamProvider.reload")}
           </Button>
         </div>
       )}
@@ -242,23 +239,32 @@ function ProviderForm({
       {phase === "ready" && loaded && (
         <form className="space-y-4" autoComplete="off" onSubmit={(event) => void submit(event)}>
           <div className="space-y-1.5">
-            <Label htmlFor="xtream-name">Name (optional)</Label>
-            <Input id="xtream-name" name="name" maxLength={128} placeholder="My TV provider" />
+            <Label htmlFor="xtream-name">{bt("bloem.admin.liveTv.xtreamProvider.name")}</Label>
+            <Input
+              id="xtream-name"
+              name="name"
+              maxLength={128}
+              placeholder={bt("bloem.admin.liveTv.xtreamProvider.namePlaceholder")}
+            />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="xtream-url">Server address</Label>
+            <Label htmlFor="xtream-url">
+              {bt("bloem.admin.liveTv.xtreamProvider.serverAddress")}
+            </Label>
             <Input
               id="xtream-url"
               name="url"
               type="url"
               required
               maxLength={2048}
-              placeholder="https://provider.example:443"
+              placeholder={bt("bloem.admin.liveTv.xtreamProvider.serverAddressPlaceholder")}
               autoComplete="off"
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="xtream-username">Username</Label>
+            <Label htmlFor="xtream-username">
+              {bt("bloem.admin.liveTv.xtreamProvider.username")}
+            </Label>
             <Input
               id="xtream-username"
               name="username"
@@ -269,7 +275,9 @@ function ProviderForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="xtream-password">Password</Label>
+            <Label htmlFor="xtream-password">
+              {bt("bloem.admin.liveTv.xtreamProvider.password")}
+            </Label>
             <Input
               id="xtream-password"
               name="password"
@@ -280,7 +288,9 @@ function ProviderForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="xtream-connections">Streams at once</Label>
+            <Label htmlFor="xtream-connections">
+              {bt("bloem.admin.liveTv.xtreamProvider.streamsAtOnce")}
+            </Label>
             <Input
               id="xtream-connections"
               name="max_connections"
@@ -291,11 +301,10 @@ function ProviderForm({
               defaultValue={1}
             />
             <p className="text-muted-foreground text-xs">
-              How many channels your provider lets you stream at the same time. Watching and
-              recording share it. Bloem never goes over your provider’s own limit.
+              {bt("bloem.admin.liveTv.xtreamProvider.streamsAtOnceHelp")}
             </p>
           </div>
-          <Button type="submit">Add Xtream provider</Button>
+          <Button type="submit">{bt("bloem.admin.liveTv.xtreamProvider.submit")}</Button>
         </form>
       )}
     </section>

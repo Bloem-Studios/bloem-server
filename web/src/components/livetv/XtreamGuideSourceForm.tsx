@@ -6,6 +6,7 @@ import {
   StaleApiRequestContextError,
 } from "@/api/client";
 import { getProfileId } from "@/api/bloemClient";
+import { useBloemT } from "@/bloem/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useCreateLiveTVGuideSource,
@@ -34,12 +35,13 @@ function setPhase(key: string, phase: Phase) {
 }
 
 export function XtreamGuideSourceForm() {
+  const bt = useBloemT();
   const { user } = useAuth();
   const identity = captureSessionIdentity();
   const profileId = getProfileId();
   const pinGeneration = getProfileTokenGeneration();
   if (user?.role !== "admin") return null;
-  if (!profileId) return <p>Switch to your main profile to add an Xtream guide.</p>;
+  if (!profileId) return <p>{bt("bloem.admin.liveTv.xtreamGuide.switchProfile")}</p>;
   const scope = JSON.stringify([
     identity.serverOrigin,
     identity.authContextVersion,
@@ -68,6 +70,7 @@ function GuideForm({
   profileId: string;
   pinGeneration: number;
 }) {
+  const bt = useBloemT();
   const tuners = useLiveTVTuners();
   const sources = useLiveTVGuideSources();
   const create = useCreateLiveTVGuideSource();
@@ -149,30 +152,27 @@ function GuideForm({
   return (
     <section className="max-w-xl space-y-4" aria-labelledby="xtream-guide-title">
       <h3 id="xtream-guide-title" className="sr-only">
-        Xtream provider guide
+        {bt("bloem.admin.liveTv.xtreamGuide.heading")}
       </h3>
-      <p className="text-muted-foreground text-sm">
-        Uses the provider’s saved sign-in to bring in the next two days of listings. After adding
-        it, choose Sync now on the source.
-      </p>
+      <p className="text-muted-foreground text-sm">{bt("bloem.admin.liveTv.xtreamGuide.intro")}</p>
       {phase === "reload-required" && (
         <div role="alert" className="space-y-3">
-          <p>
-            Bloem couldn’t tell whether the guide was added. Reload to check before you try again.
-          </p>
+          <p>{bt("bloem.admin.liveTv.xtreamGuide.outcomeUnknown")}</p>
           <Button variant="outline" onClick={() => void reload()}>
-            Reload
+            {bt("bloem.admin.liveTv.xtreamGuide.reload")}
           </Button>
         </div>
       )}
-      {phase === "reloading" && <p role="status">Reloading…</p>}
+      {phase === "reloading" && (
+        <p role="status">{bt("bloem.admin.liveTv.xtreamGuide.reloading")}</p>
+      )}
       {tuners.isError || sources.isError ? (
-        <p role="alert">
-          Your Xtream providers couldn’t be loaded. Reload the page before adding a guide.
-        </p>
+        <p role="alert">{bt("bloem.admin.liveTv.xtreamGuide.loadFailed")}</p>
       ) : (
         <form onSubmit={(event) => void submit(event)} className="space-y-3">
-          <Label htmlFor="xtream-guide-provider">Xtream provider</Label>
+          <Label htmlFor="xtream-guide-provider">
+            {bt("bloem.admin.liveTv.xtreamGuide.provider")}
+          </Label>
           <select
             id="xtream-guide-provider"
             className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -183,24 +183,32 @@ function GuideForm({
             }
             required
           >
-            <option value="">Choose a provider</option>
+            <option value="">{bt("bloem.admin.liveTv.xtreamGuide.chooseProvider")}</option>
             {available.map((tuner) => (
               <option key={tuner.id} value={tuner.id}>
-                {tuner.model || "Xtream"} · {tuner.base_url}
+                {tuner.model
+                  ? bt("bloem.admin.liveTv.xtreamGuide.providerOption", {
+                      name: tuner.model,
+                      address: tuner.base_url,
+                    })
+                  : bt("bloem.admin.liveTv.xtreamGuide.providerOptionUnnamed", {
+                      address: tuner.base_url,
+                    })}
               </option>
             ))}
           </select>
           {available.length === 0 && !tuners.isLoading && (
             <p className="text-muted-foreground text-xs">
-              Every Xtream provider already has a guide, or none is added yet. Add providers on the
-              Tuners tab.
+              {bt("bloem.admin.liveTv.xtreamGuide.noneAvailable")}
             </p>
           )}
           <Button
             type="submit"
             disabled={phase !== "ready" || create.isPending || !selected || limitReached}
           >
-            {phase === "pending" || create.isPending ? "Adding guide…" : "Add Xtream guide"}
+            {phase === "pending" || create.isPending
+              ? bt("bloem.admin.liveTv.xtreamGuide.adding")
+              : bt("bloem.admin.liveTv.xtreamGuide.submit")}
           </Button>
         </form>
       )}

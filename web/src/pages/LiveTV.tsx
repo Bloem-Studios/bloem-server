@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { Circle, Play, Radio, X } from "lucide-react";
 import type { LiveTVChannel, LiveTVProgram, LiveTVRecording } from "@/api/bloemTypes";
+import { useBloemT } from "@/bloem/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import { LiveTVGuideGrid } from "@/components/livetv/LiveTVGuideGrid";
 import { LiveTVSeriesRules } from "@/components/livetv/LiveTVSeriesRules";
 import { ManualRecordingForm } from "@/components/livetv/ManualRecordingForm";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { numberText } from "@/i18n";
 import {
   useCancelLiveTVRecording,
   useLiveTVChannels,
@@ -45,7 +47,8 @@ export default function LiveTV() {
 }
 
 function LiveTVContent() {
-  useDocumentTitle("Live TV");
+  const bt = useBloemT();
+  useDocumentTitle(bt("bloem.liveTv.title"));
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = normalizeTab(searchParams.get("tab"));
@@ -143,36 +146,34 @@ function LiveTVContent() {
       <header className="space-y-1">
         <div className="flex flex-wrap items-center gap-3">
           <Radio className="text-primary h-7 w-7" aria-hidden />
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Live TV</h1>
-          <Badge variant="secondary">{channels.length} channels</Badge>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            {bt("bloem.liveTv.title")}
+          </h1>
+          <Badge variant="secondary">
+            {bt("bloem.liveTv.page.channelCount", { count: channels.length })}
+          </Badge>
         </div>
         <p className="text-muted-foreground max-w-2xl text-sm leading-6">
-          See what’s on now, browse upcoming programmes, and manage your recordings.
+          {bt("bloem.liveTv.page.intro")}
         </p>
       </header>
 
       {channelsQuery.isLoading && (
-        <p className="text-muted-foreground text-sm">Loading channels…</p>
+        <p className="text-muted-foreground text-sm">{bt("bloem.liveTv.page.loadingChannels")}</p>
       )}
       {channelsQuery.isError ? (
         <div role="alert" className="space-y-2">
           <p className="text-destructive text-sm">{channelsQuery.error.message}</p>
           <Button variant="outline" onClick={() => void channelsQuery.refetch()}>
-            Reload channels
+            {bt("bloem.liveTv.page.reloadChannels")}
           </Button>
         </div>
       ) : !channelsQuery.isLoading && channels.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No channels yet. An administrator can add a tuner or Xtream provider under Admin, then
-          Live TV.
-        </p>
+        <p className="text-muted-foreground text-sm">{bt("bloem.liveTv.page.noChannels")}</p>
       ) : null}
       {scheduleRecording.needsReload && (
         <div role="alert" className="space-y-2">
-          <p>
-            Bloem couldn’t confirm your last recording change. Reload your recordings before you
-            schedule or cancel another.
-          </p>
+          <p>{bt("bloem.liveTv.page.recordingChangeUnconfirmed")}</p>
           <Button
             variant="outline"
             disabled={scheduleRecording.isPending}
@@ -183,7 +184,9 @@ function LiveTVContent() {
               )
             }
           >
-            {scheduleRecording.isPending ? "Reloading recordings…" : "Reload recordings"}
+            {scheduleRecording.isPending
+              ? bt("bloem.liveTv.reloadingRecordings")
+              : bt("bloem.liveTv.reloadRecordings")}
           </Button>
         </div>
       )}
@@ -192,22 +195,22 @@ function LiveTVContent() {
           variant="line"
           className="border-border w-full justify-start overflow-x-auto border-b"
         >
-          <TabsTrigger value="guide">Guide</TabsTrigger>
-          <TabsTrigger value="channels">Channels</TabsTrigger>
+          <TabsTrigger value="guide">{bt("bloem.liveTv.page.tabGuide")}</TabsTrigger>
+          <TabsTrigger value="channels">{bt("bloem.liveTv.page.tabChannels")}</TabsTrigger>
           <TabsTrigger value="recordings">
-            My recordings
+            {bt("bloem.liveTv.page.tabRecordings")}
             {scheduled.length > 0 ? (
               <Badge variant="secondary" className="ms-1.5">
-                {scheduled.length}
+                {numberText(scheduled.length)}
               </Badge>
             ) : null}
           </TabsTrigger>
-          <TabsTrigger value="series-rules">Recording rules</TabsTrigger>
+          <TabsTrigger value="series-rules">{bt("bloem.liveTv.page.tabRules")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="guide" className="space-y-4">
           {guide.isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading guide…</p>
+            <p className="text-muted-foreground text-sm">{bt("bloem.liveTv.page.loadingGuide")}</p>
           ) : (
             <LiveTVGuideGrid
               channels={channels}
@@ -232,11 +235,14 @@ function LiveTVContent() {
             <Input
               value={channelFilter}
               onChange={(e) => setChannelFilter(e.target.value)}
-              placeholder="Filter channels…"
+              placeholder={bt("bloem.liveTv.page.filterChannels")}
               className="max-w-sm"
             />
             <p className="text-muted-foreground text-xs">
-              {filteredChannels.length} of {channels.length}
+              {bt("bloem.liveTv.page.filterCount", {
+                shown: filteredChannels.length,
+                total: channels.length,
+              })}
             </p>
           </div>
           <ul className="divide-border divide-y border-y">
@@ -255,7 +261,9 @@ function LiveTVContent() {
               />
             ))}
             {filteredChannels.length === 0 ? (
-              <li className="text-muted-foreground py-6 text-sm">No channels match that filter.</li>
+              <li className="text-muted-foreground py-6 text-sm">
+                {bt("bloem.liveTv.page.noFilterMatches")}
+              </li>
             ) : null}
           </ul>
         </TabsContent>
@@ -270,21 +278,21 @@ function LiveTVContent() {
                 disabled={scheduleRecording.isPending}
                 onClick={() => void scheduleRecording.reloadRecordings().catch(() => {})}
               >
-                Reload recordings
+                {bt("bloem.liveTv.reloadRecordings")}
               </Button>
             </div>
           )}
           <RecordingsSection
-            title="Scheduled & in progress"
-            empty="Nothing scheduled yet. Pick a programme from the guide or channel list."
+            title={bt("bloem.liveTv.page.scheduledTitle")}
+            empty={bt("bloem.liveTv.page.scheduledEmpty")}
             recordings={scheduled}
             loading={recordings.isLoading}
             channels={channels}
             cancelRecording={cancelRecording}
           />
           <RecordingsSection
-            title="History"
-            empty="Completed and failed recordings will show up here."
+            title={bt("bloem.liveTv.page.historyTitle")}
+            empty={bt("bloem.liveTv.page.historyEmpty")}
             recordings={history}
             loading={false}
             channels={channels}
@@ -330,8 +338,10 @@ function ChannelListRow({
   onRecordNow: (programId: string) => void;
   onRecordNext: (programId: string) => void;
 }) {
+  const bt = useBloemT();
   const slot = pickNowNext(programs, channel.id, now);
   const progress = slot.now ? progressFraction(slot.now.start, slot.now.stop, now) : 0;
+  const nowTitle = slot.now?.title ?? bt("bloem.liveTv.noGuideData");
 
   return (
     <li>
@@ -360,11 +370,12 @@ function ChannelListRow({
                   {channelDisplayNumber(channel)}
                 </span>
                 <span className="truncate">{channel.callsign || channel.name}</span>
-                {channel.hd ? <Badge variant="outline">HD</Badge> : null}
+                {channel.hd ? <Badge variant="outline">{bt("bloem.liveTv.page.hd")}</Badge> : null}
               </p>
               <p className="text-muted-foreground truncate text-xs">
-                {slot.now?.title ?? "No guide data"}
-                {slot.next ? ` → ${slot.next.title}` : ""}
+                {slot.next
+                  ? bt("bloem.liveTv.page.nowAndNext", { now: nowTitle, next: slot.next.title })
+                  : nowTitle}
               </p>
               {slot.now ? (
                 <div className="bg-muted mt-1.5 h-1 w-full max-w-xs overflow-hidden rounded-full">
@@ -377,7 +388,7 @@ function ChannelListRow({
         <div className="flex flex-wrap gap-2 sm:shrink-0">
           <Button type="button" size="sm" onClick={onWatch}>
             <Play />
-            Watch
+            {bt("bloem.liveTv.page.watch")}
           </Button>
           <Button
             type="button"
@@ -387,7 +398,7 @@ function ChannelListRow({
             onClick={() => slot.now && onRecordNow(slot.now.id)}
           >
             <Circle />
-            Record now
+            {bt("bloem.liveTv.page.recordNow")}
           </Button>
           <Button
             type="button"
@@ -397,7 +408,7 @@ function ChannelListRow({
             onClick={() => slot.next && onRecordNext(slot.next.id)}
           >
             <Circle />
-            Record next
+            {bt("bloem.liveTv.page.recordNext")}
           </Button>
         </div>
       </div>
@@ -420,6 +431,7 @@ function RecordingsSection({
   channels: LiveTVChannel[];
   cancelRecording: ReturnType<typeof useCancelLiveTVRecording>;
 }) {
+  const bt = useBloemT();
   const channelById = useMemo(() => {
     const map = new Map<string, LiveTVChannel>();
     for (const ch of channels) map.set(ch.id, ch);
@@ -430,7 +442,7 @@ function RecordingsSection({
     <div className="space-y-3">
       <h2 className="text-lg font-medium">{title}</h2>
       {loading ? (
-        <p className="text-muted-foreground text-sm">Loading recordings…</p>
+        <p className="text-muted-foreground text-sm">{bt("bloem.liveTv.page.loadingRecordings")}</p>
       ) : recordings.length === 0 ? (
         <p className="text-muted-foreground text-sm">{empty}</p>
       ) : (
@@ -441,13 +453,19 @@ function RecordingsSection({
               <li key={rec.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{rec.title || "Untitled"}</span>
-                    <Badge variant="secondary">{rec.status}</Badge>
+                    <span className="font-medium">
+                      {rec.title || bt("bloem.liveTv.page.untitled")}
+                    </span>
+                    <Badge variant="secondary">
+                      {bt("bloem.liveTv.page.recordingStatus", { status: rec.status })}
+                    </Badge>
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    {channel ? channelLabel(channel) : rec.channel_id}
-                    {" · "}
-                    {formatGuideTime(rec.start)} – {formatGuideTime(rec.stop)}
+                    {bt("bloem.liveTv.page.recordingDetails", {
+                      channel: channel ? channelLabel(channel) : rec.channel_id,
+                      start: formatGuideTime(rec.start),
+                      stop: formatGuideTime(rec.stop),
+                    })}
                   </p>
                   {rec.last_error ? (
                     <p className="text-destructive mt-1 text-xs">{rec.last_error}</p>
@@ -455,13 +473,12 @@ function RecordingsSection({
                   {rec.library_item_id ? (
                     <Button variant="link" size="sm" asChild className="mt-1 h-auto px-0">
                       <Link to={`/item/${encodeURIComponent(rec.library_item_id)}`}>
-                        Open recording
+                        {bt("bloem.liveTv.page.openRecording")}
                       </Link>
                     </Button>
                   ) : rec.status === "completed" ? (
                     <p className="text-muted-foreground mt-1 text-xs">
-                      This recording isn’t in a library yet, so it can’t be played here. An
-                      administrator needs to add the recordings folder to a library and scan it.
+                      {bt("bloem.liveTv.page.notInLibrary")}
                     </p>
                   ) : null}
                 </div>
@@ -473,7 +490,7 @@ function RecordingsSection({
                     onClick={() => cancelRecording.mutate(rec.id)}
                   >
                     <X />
-                    Cancel
+                    {bt("bloem.liveTv.page.cancelRecording")}
                   </Button>
                 ) : null}
               </li>

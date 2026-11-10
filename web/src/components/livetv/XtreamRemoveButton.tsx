@@ -6,6 +6,7 @@ import {
   isSessionIdentityCurrent,
 } from "@/api/client";
 import { getProfileId } from "@/api/bloemClient";
+import { useBloemT } from "@/bloem/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export function XtreamRemoveButton({
   pending: boolean;
   onRemove: (id: string) => void;
 }) {
+  const bt = useBloemT();
   const { user } = useAuth();
   const [intent, setIntent] = useState<Intent | null>(null);
   function current(value: Intent) {
@@ -53,16 +55,16 @@ export function XtreamRemoveButton({
         }
       >
         <Trash2 />
-        Remove
+        {bt("bloem.admin.liveTv.xtreamRemove.remove")}
       </Button>
       <ConfirmDialog
         open={Boolean(intent && current(intent))}
         onOpenChange={(open) => {
           if (!open) setIntent(null);
         }}
-        title="Remove Xtream provider?"
-        description="Stop its streams and recordings first. Removal erases the saved provider credentials, channels, guide configuration and associated DVR entries. Recorded files are not deleted. This cannot be undone."
-        confirmLabel="Remove provider"
+        title={bt("bloem.admin.liveTv.xtreamRemove.confirmTitle")}
+        description={bt("bloem.admin.liveTv.xtreamRemove.confirmDescription")}
+        confirmLabel={bt("bloem.admin.liveTv.xtreamRemove.confirmRemove")}
         variant="destructive"
         isPending={pending}
         onConfirm={() => {
