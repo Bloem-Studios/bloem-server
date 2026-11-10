@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBloemT, type BloemTranslate } from "@/bloem/i18n";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,11 +25,12 @@ import { PolicyValueChange } from "@/components/admin/policy/PolicyValueChange";
 import { formatDateTime, libraryListLabel } from "@/components/admin/policy/policyVocabulary";
 import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
 
-function formatTimestamp(value: string | null) {
-  return value ? formatDateTime(value) : "Not yet";
+function formatTimestamp(bt: BloemTranslate, value: string | null) {
+  return value ? formatDateTime(value) : bt("bloem.admin.plans.account.notYet");
 }
 
 export function AccountEntitlementPanel({ userID }: { userID: string }) {
+  const bt = useBloemT();
   const templates = useEntitlementTemplates(false);
   const detail = useAccountEntitlement(userID);
   const dryRun = useAccountEntitlementDryRun(userID);
@@ -69,48 +71,56 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Plan</CardTitle>
+        <CardTitle>{bt("bloem.admin.plans.account.title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-muted-foreground text-sm">
-          Choosing a plan changes this account’s settings. Profiles with their own settings stay as
-          they are. You see the changes before they apply.
-        </p>
+        <p className="text-muted-foreground text-sm">{bt("bloem.admin.plans.account.intro")}</p>
         {detail.isLoading ? (
           <p role="status" className="text-sm">
-            Loading…
+            {bt("bloem.admin.plans.account.loading")}
           </p>
         ) : detail.isError ? (
           <p role="alert" className="text-destructive text-sm">
-            This account couldn’t be loaded. Check the account number.
+            {bt("bloem.admin.plans.account.loadFailed")}
           </p>
         ) : detail.data ? (
           <div className="border-border space-y-2 rounded-lg border p-3 text-sm">
             <p className="font-medium">
               {detail.data.template_key && detail.data.template_revision
-                ? `Plan ${detail.data.template_key}, revision ${detail.data.template_revision}`
-                : "No plan yet"}
+                ? bt("bloem.admin.plans.account.current", {
+                    plan: detail.data.template_key,
+                    revision: detail.data.template_revision,
+                  })
+                : bt("bloem.admin.plans.account.noPlan")}
             </p>
             {detail.data.managed_default_group ? (
               <div className="space-y-2">
                 <EntitlementPolicyDetails policy={detail.data.managed_default_group.policy} />
               </div>
             ) : (
-              <p className="text-muted-foreground">No settings yet</p>
+              <p className="text-muted-foreground">{bt("bloem.admin.plans.account.noSettings")}</p>
             )}
-            <p>Libraries: {libraryListLabel(detail.data.library_ids, libraries.data ?? [])}</p>
+            <p>
+              {bt("bloem.admin.plans.account.libraries", {
+                libraries: libraryListLabel(detail.data.library_ids, libraries.data ?? []),
+              })}
+            </p>
             <p className="text-muted-foreground">
-              Last applied: {formatTimestamp(detail.data.last_reconciled_at)}
+              {bt("bloem.admin.plans.account.lastApplied", {
+                time: formatTimestamp(bt, detail.data.last_reconciled_at),
+              })}
             </p>
           </div>
         ) : null}
         {templates.isError ? (
           <p role="alert" className="text-destructive text-sm">
-            Plans couldn’t be loaded.
+            {bt("bloem.admin.plans.account.plansLoadFailed")}
           </p>
         ) : (
           <div className="space-y-1.5">
-            <Label htmlFor={`account-template-${userID}`}>Plan</Label>
+            <Label htmlFor={`account-template-${userID}`}>
+              {bt("bloem.admin.plans.account.plan")}
+            </Label>
             <select
               id={`account-template-${userID}`}
               className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -122,15 +132,18 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
                 apply.reset();
               }}
             >
-              <option value="">Choose a plan</option>
+              <option value="">{bt("bloem.admin.plans.account.choosePlan")}</option>
               {currentTemplateUnavailable ? (
                 <option value={detail.data?.template_key ?? ""} disabled>
-                  Current plan is no longer offered
+                  {bt("bloem.admin.plans.account.currentUnavailable")}
                 </option>
               ) : null}
               {(templates.data ?? []).map((template) => (
                 <option key={template.key} value={template.key}>
-                  {template.name} (revision {template.revision})
+                  {bt("bloem.admin.plans.account.option", {
+                    name: template.name,
+                    revision: template.revision,
+                  })}
                 </option>
               ))}
             </select>
@@ -141,19 +154,21 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
           disabled={!selected || dryRun.isPending}
           onClick={() => void previewChanges().catch(() => undefined)}
         >
-          {dryRun.isPending ? "Checking…" : "Preview changes"}
+          {dryRun.isPending
+            ? bt("bloem.admin.plans.account.checking")
+            : bt("bloem.admin.plans.account.preview")}
         </Button>
         {dryRun.error ? (
           <p role="alert" className="text-destructive text-sm">
-            The preview couldn’t be made. Try again.
+            {bt("bloem.admin.plans.account.previewFailed")}
           </p>
         ) : null}
         {preview ? (
           <div className="border-border space-y-3 rounded-lg border p-3">
             <p className="text-sm font-medium">
               {preview.changed
-                ? "These settings change"
-                : "Nothing changes: it already uses this plan"}
+                ? bt("bloem.admin.plans.account.changes")
+                : bt("bloem.admin.plans.account.noChanges")}
             </p>
             {preview.changes.map((change) => (
               <PolicyValueChange key={change.field} change={change} />
@@ -165,7 +180,7 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
             ))}
             {preview.changed ? (
               <Button type="button" onClick={() => setConfirming(true)}>
-                Apply
+                {bt("bloem.admin.plans.account.apply")}
               </Button>
             ) : null}
           </div>
@@ -174,15 +189,16 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                Put this account on {selected?.name ?? "this plan"}?
+                {selected
+                  ? bt("bloem.admin.plans.account.confirmTitle", { name: selected.name })
+                  : bt("bloem.admin.plans.account.confirmTitleNoName")}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                The account gets the changes you reviewed. Profiles with their own settings stay as
-                they are.
+                {bt("bloem.admin.plans.account.confirmDescription")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{bt("bloem.admin.plans.account.cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 disabled={apply.isPending}
                 onClick={(event) => {
@@ -190,12 +206,12 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
                   void applyChanges().catch(() => undefined);
                 }}
               >
-                Apply
+                {bt("bloem.admin.plans.account.confirm")}
               </AlertDialogAction>
             </AlertDialogFooter>
             {apply.error ? (
               <p role="alert" className="text-destructive text-sm">
-                {apply.error.message || "The plan couldn’t be applied. Preview again and retry."}
+                {apply.error.message || bt("bloem.admin.plans.account.applyFailed")}
               </p>
             ) : null}
           </AlertDialogContent>
