@@ -55,8 +55,11 @@ test-db-prepare:
 # loopback server the harness started and names in SILO_TEST_REDIS_DISPOSABLE_ADDR.
 # Packages run one at a time: the tagged tests clone that database as a
 # template, which PostgreSQL refuses while another package is connected to it.
+# -shared keeps dbpins from handing each package its own dbpins_* copy: that
+# name fails the bloem_storage_test_ prefix check, and the tests copy the
+# database themselves anyway.
 test-bloem-library-locations: embed-stub
-	GOFLAGS="$(strip $(GOFLAGS) -tags=integration -p=1)" go run ./scripts/ci/dbpins -list scripts/ci/bloem-library-locations.txt
+	GOFLAGS="$(strip $(GOFLAGS) -tags=integration -p=1)" go run ./scripts/ci/dbpins -shared -list scripts/ci/bloem-library-locations.txt
 
 # Silo <-> Bloem backend switching, end to end: the upstream Silo image and a
 # Bloem image take turns on one database (scripts/bloem/silo-switch-check.sh).
