@@ -1,8 +1,11 @@
 /**
  * The S3 providers the Add form names, and how each one's address is built.
  * A newcomer picks their provider and gives only what it asks for (a region,
- * an account ID); the endpoint and signing region follow from that.
+ * an account ID); the endpoint and signing region follow from that. The text
+ * is read through getters, so it follows the interface language.
  */
+import { bloemT } from "@/bloem/i18n";
+
 import { inferAmazonRegion } from "./s3Browse";
 
 export type S3ProviderId =
@@ -36,12 +39,16 @@ export const S3_PROVIDERS: S3Provider[] = [
   {
     id: "backblaze",
     name: "Backblaze B2",
+    // Backblaze's own field names, the same in every language.
     accessKeyLabel: "keyID",
     secretKeyLabel: "applicationKey",
-    keysHint:
-      "In Backblaze, open Application Keys and add a key that can read your buckets. Copy the keyID and the applicationKey; Backblaze shows the applicationKey only once.",
+    get keysHint() {
+      return bloemT("bloem.admin.storage.s3Providers.backblazeKeysHint");
+    },
     location: {
-      label: "Region",
+      get label() {
+        return bloemT("bloem.admin.storage.s3Providers.region");
+      },
       placeholder: "us-west-004",
       suggestions: [
         "us-west-000",
@@ -52,19 +59,30 @@ export const S3_PROVIDERS: S3Provider[] = [
         "eu-central-003",
         "ca-east-006",
       ],
-      hint: "It is part of your bucket's Endpoint: s3.us-west-004.backblazeb2.com means us-west-004.",
-      invalid: "Enter it as your bucket's Endpoint shows it, such as us-west-004.",
+      get hint() {
+        return bloemT("bloem.admin.storage.s3Providers.backblazeRegionHint");
+      },
+      get invalid() {
+        return bloemT("bloem.admin.storage.s3Providers.backblazeRegionInvalid");
+      },
     },
   },
   {
     id: "wasabi",
     name: "Wasabi",
-    accessKeyLabel: "Access key",
-    secretKeyLabel: "Secret key",
-    keysHint:
-      "In the Wasabi console, open Access Keys and create a key. Copy both keys; the secret key is shown only once.",
+    get accessKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.accessKey");
+    },
+    get secretKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.secretKey");
+    },
+    get keysHint() {
+      return bloemT("bloem.admin.storage.s3Providers.wasabiKeysHint");
+    },
     location: {
-      label: "Region",
+      get label() {
+        return bloemT("bloem.admin.storage.s3Providers.region");
+      },
       placeholder: "us-east-1",
       suggestions: [
         "us-east-1",
@@ -84,34 +102,58 @@ export const S3_PROVIDERS: S3Provider[] = [
         "ap-southeast-1",
         "ap-southeast-2",
       ],
-      hint: "Shown next to each bucket in the Wasabi console.",
-      invalid: "Enter a Wasabi region such as us-east-1.",
+      get hint() {
+        return bloemT("bloem.admin.storage.s3Providers.wasabiRegionHint");
+      },
+      get invalid() {
+        return bloemT("bloem.admin.storage.s3Providers.wasabiRegionInvalid");
+      },
     },
   },
   {
     id: "r2",
     name: "Cloudflare R2",
-    accessKeyLabel: "Access Key ID",
-    secretKeyLabel: "Secret Access Key",
-    keysHint:
-      "In Cloudflare, open R2, then Manage API tokens, and create a token that can read objects. Copy the Access Key ID and the Secret Access Key.",
+    get accessKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.r2AccessKey");
+    },
+    get secretKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.r2SecretKey");
+    },
+    get keysHint() {
+      return bloemT("bloem.admin.storage.s3Providers.r2KeysHint");
+    },
     location: {
-      label: "Account ID",
-      placeholder: "32 letters and digits",
+      get label() {
+        return bloemT("bloem.admin.storage.s3Providers.r2AccountId");
+      },
+      get placeholder() {
+        return bloemT("bloem.admin.storage.s3Providers.r2AccountIdPlaceholder");
+      },
       suggestions: [],
-      hint: "Shown on the R2 overview page. You can also paste the S3 API address from a bucket's settings.",
-      invalid: "Enter the 32-character account ID, or paste the S3 API address.",
+      get hint() {
+        return bloemT("bloem.admin.storage.s3Providers.r2AccountIdHint");
+      },
+      get invalid() {
+        return bloemT("bloem.admin.storage.s3Providers.r2AccountIdInvalid");
+      },
     },
   },
   {
     id: "amazon",
     name: "Amazon S3",
-    accessKeyLabel: "Access key ID",
-    secretKeyLabel: "Secret access key",
-    keysHint:
-      "In AWS, create an access key for an IAM user that can list and read your buckets. Copy the access key ID and the secret access key.",
+    get accessKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.amazonAccessKey");
+    },
+    get secretKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.amazonSecretKey");
+    },
+    get keysHint() {
+      return bloemT("bloem.admin.storage.s3Providers.amazonKeysHint");
+    },
     location: {
-      label: "Region",
+      get label() {
+        return bloemT("bloem.admin.storage.s3Providers.region");
+      },
       placeholder: "us-east-1",
       suggestions: [
         "us-east-1",
@@ -130,19 +172,30 @@ export const S3_PROVIDERS: S3Provider[] = [
         "ap-south-1",
         "sa-east-1",
       ],
-      hint: "The region your buckets are in, shown in the S3 console. Buckets in other regions can't be read.",
-      invalid: "Enter an AWS region such as us-east-1.",
+      get hint() {
+        return bloemT("bloem.admin.storage.s3Providers.amazonRegionHint");
+      },
+      get invalid() {
+        return bloemT("bloem.admin.storage.s3Providers.amazonRegionInvalid");
+      },
     },
   },
   {
     id: "digitalocean",
     name: "DigitalOcean Spaces",
-    accessKeyLabel: "Access key",
-    secretKeyLabel: "Secret key",
-    keysHint:
-      "In DigitalOcean, open Spaces Object Storage, then Access Keys, and create a key. Copy both keys; the secret is shown only once.",
+    get accessKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.accessKey");
+    },
+    get secretKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.secretKey");
+    },
+    get keysHint() {
+      return bloemT("bloem.admin.storage.s3Providers.digitaloceanKeysHint");
+    },
     location: {
-      label: "Datacenter",
+      get label() {
+        return bloemT("bloem.admin.storage.s3Providers.datacenter");
+      },
       placeholder: "nyc3",
       suggestions: [
         "nyc3",
@@ -157,32 +210,54 @@ export const S3_PROVIDERS: S3Provider[] = [
         "blr1",
         "atl1",
       ],
-      hint: "The start of your Space's address: nyc3.digitaloceanspaces.com means nyc3.",
-      invalid: "Enter a datacenter such as nyc3.",
+      get hint() {
+        return bloemT("bloem.admin.storage.s3Providers.digitaloceanDatacenterHint");
+      },
+      get invalid() {
+        return bloemT("bloem.admin.storage.s3Providers.digitaloceanDatacenterInvalid");
+      },
     },
   },
   {
     id: "hetzner",
     name: "Hetzner Object Storage",
-    accessKeyLabel: "Access key",
-    secretKeyLabel: "Secret key",
-    keysHint:
-      "In the Hetzner Cloud Console, open Object Storage, then Security credentials, and generate credentials. Copy both keys; the secret is shown only once.",
+    get accessKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.accessKey");
+    },
+    get secretKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.secretKey");
+    },
+    get keysHint() {
+      return bloemT("bloem.admin.storage.s3Providers.hetznerKeysHint");
+    },
     location: {
-      label: "Location",
+      get label() {
+        return bloemT("bloem.admin.storage.s3Providers.location");
+      },
       placeholder: "fsn1",
       suggestions: ["fsn1", "nbg1", "hel1"],
-      hint: "Falkenstein is fsn1, Nuremberg is nbg1 and Helsinki is hel1.",
-      invalid: "Enter fsn1, nbg1 or hel1.",
+      get hint() {
+        return bloemT("bloem.admin.storage.s3Providers.hetznerLocationHint");
+      },
+      get invalid() {
+        return bloemT("bloem.admin.storage.s3Providers.hetznerLocationInvalid");
+      },
     },
   },
   {
     id: "other",
-    name: "Other or self-hosted",
-    accessKeyLabel: "Access key",
-    secretKeyLabel: "Secret key",
-    keysHint:
-      "Use the address and keys your storage provider or server administrator gave you, such as for MinIO or Garage.",
+    get name() {
+      return bloemT("bloem.admin.storage.s3Providers.otherName");
+    },
+    get accessKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.accessKey");
+    },
+    get secretKeyLabel() {
+      return bloemT("bloem.admin.storage.s3Providers.secretKey");
+    },
+    get keysHint() {
+      return bloemT("bloem.admin.storage.s3Providers.otherKeysHint");
+    },
   },
 ];
 

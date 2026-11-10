@@ -29,10 +29,10 @@ export default function PersonDetailSheet({
             <div className="space-y-5 px-4 pb-6">
               <div className="flex gap-2">
                 <Badge variant="outline" className="capitalize">
-                  {person.membership_status}
+                  {bt("bloem.admin.people.membershipStatus", { status: person.membership_status })}
                 </Badge>
                 <Badge variant="secondary" className="capitalize">
-                  {person.legacy_role}
+                  {bt("bloem.admin.people.accountRole", { role: person.legacy_role })}
                 </Badge>
               </div>
               <div>

@@ -54,7 +54,9 @@ export default function PeopleTable({
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className="capitalize">
-                    {person.membership_status}
+                    {bt("bloem.admin.people.membershipStatus", {
+                      status: person.membership_status,
+                    })}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -95,7 +97,7 @@ export default function PeopleTable({
                 <div className="text-muted-foreground text-xs">{person.email}</div>
               </div>
               <Badge variant="outline" className="capitalize">
-                {person.membership_status}
+                {bt("bloem.admin.people.membershipStatus", { status: person.membership_status })}
               </Badge>
             </div>
             <div className="mt-4">
@@ -112,7 +114,7 @@ export default function PeopleTable({
               variant="outline"
               size="sm"
               aria-label={bt("bloem.admin.people.table.detailsFor", {
-                value: person.display_name || person.email,
+                person: person.display_name || person.email,
               })}
               onClick={() => onInspect(person)}
             >

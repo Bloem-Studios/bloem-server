@@ -99,18 +99,42 @@ export function PolicyTarget({
 }) {
   const bt = useBloemT();
   const headline = target.template_key
-    ? `Plan ${target.template_key}${target.template_revision ? `, revision ${target.template_revision}` : ""}`
+    ? target.template_revision
+      ? bt("bloem.admin.policy.review.targetPlanRevision", {
+          plan: target.template_key,
+          revision: target.template_revision,
+        })
+      : bt("bloem.admin.policy.review.targetPlan", { plan: target.template_key })
     : target.name
-      ? `Cohort ${target.name}${target.cohort_revision ? `, revision ${target.cohort_revision}` : ""}`
+      ? target.cohort_revision
+        ? bt("bloem.admin.policy.review.targetCohortRevision", {
+            cohort: target.name,
+            revision: target.cohort_revision,
+          })
+        : bt("bloem.admin.policy.review.targetCohort", { cohort: target.name })
       : changeKindLabel(target.kind);
   const details: Array<[string, string]> = [
-    ["Change", changeKindLabel(target.kind)],
-    ...(target.cohort_id ? [["Cohort ID", target.cohort_id] as [string, string]] : []),
-    ...(target.parent_cohort_id
-      ? [["Started from cohort", target.parent_cohort_id] as [string, string]]
+    [bt("bloem.admin.policy.review.detailChange"), changeKindLabel(target.kind)],
+    ...(target.cohort_id
+      ? [[bt("bloem.admin.policy.review.detailCohortId"), target.cohort_id] as [string, string]]
       : []),
-    ...(target.group_id ? [["Access group", String(target.group_id)] as [string, string]] : []),
-    ["Settings fingerprint", target.policy_digest],
+    ...(target.parent_cohort_id
+      ? [
+          [bt("bloem.admin.policy.review.detailStartedFromCohort"), target.parent_cohort_id] as [
+            string,
+            string,
+          ],
+        ]
+      : []),
+    ...(target.group_id
+      ? [
+          [bt("bloem.admin.policy.review.detailAccessGroup"), String(target.group_id)] as [
+            string,
+            string,
+          ],
+        ]
+      : []),
+    [bt("bloem.admin.policy.review.detailSettingsFingerprint"), target.policy_digest],
   ];
   return (
     <section className="space-y-3" aria-label={bt("bloem.admin.policy.review.whatTheyLlGet")}>
@@ -295,7 +319,7 @@ export function PolicyJobView({
   job,
   error,
   cancelling,
-  accountName = (id) => `Account ${id}`,
+  accountName,
   onCancel,
   onStartOver,
 }: {
@@ -307,6 +331,8 @@ export function PolicyJobView({
   onStartOver(): void;
 }) {
   const bt = useBloemT();
+  const nameOf =
+    accountName ?? ((id: number) => bt("bloem.admin.policy.review.accountNumber", { id }));
   const pending = job.status === "queued" || job.status === "running";
   const percent = job.progress_total ? (job.progress_current / job.progress_total) * 100 : 0;
   const Icon = pending ? Clock3 : job.status === "completed" ? CheckCircle2 : AlertTriangle;
@@ -340,7 +366,7 @@ export function PolicyJobView({
             {problems.map((result, index) => (
               <li key={`${result.account_id}:${result.reason}:${index}`}>
                 {bt("bloem.admin.policy.review.accountResultReason", {
-                  account: accountName(result.account_id),
+                  account: nameOf(result.account_id),
                   resultReason: resultReasonLabel(result.reason),
                 })}
               </li>

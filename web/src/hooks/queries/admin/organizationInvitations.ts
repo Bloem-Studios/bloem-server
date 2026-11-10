@@ -14,6 +14,7 @@ import {
   type AdminRequestContext,
 } from "@/api/adminV2Client";
 import type { AdminContextSummary } from "@/api/bloemTypes";
+import { bloemT, type BloemMessageKey } from "@/bloem/i18n";
 
 const ADMIN_STALE_TIME = 30_000;
 
@@ -21,9 +22,7 @@ const ADMIN_STALE_TIME = 30_000;
 // invitations screen, so these hooks serve organizations only and send nothing
 // otherwise.
 function outsideOrganization(): Promise<never> {
-  return Promise.reject(
-    new Error("Invitations outside an organization are managed under Users, Invitations."),
-  );
+  return Promise.reject(new Error(bloemT("bloem.admin.orgInvitations.hooks.outsideOrganization")));
 }
 
 function invitationsKey(context?: AdminContextSummary | null) {
@@ -65,7 +64,7 @@ function useInvitationHandoff<T>(
   context: AdminContextSummary | null | undefined,
   authority: AdminRequestContext | null,
   request: (variables: T) => Promise<SendInvitationResponse>,
-  failureMessage: string,
+  failureMessage: BloemMessageKey,
 ) {
   const client = useQueryClient();
   const busy = useRef(false);
@@ -97,7 +96,7 @@ function useInvitationHandoff<T>(
       if (mounted.current && isInvitationAuthorityActive(context, authority)) return response;
     } catch (error) {
       if (mounted.current && isInvitationAuthorityActive(context, authority)) {
-        toast.error(error instanceof Error ? error.message : failureMessage);
+        toast.error(error instanceof Error ? error.message : bloemT(failureMessage));
       }
     } finally {
       busy.current = false;
@@ -141,7 +140,7 @@ export function useCreateInvitation(context?: AdminContextSummary | null) {
       }
       return outsideOrganization();
     },
-    "Could not confirm invitation creation",
+    "bloem.admin.orgInvitations.hooks.createNotConfirmed",
   );
 }
 
@@ -166,7 +165,7 @@ export function useResendInvitation(context?: AdminContextSummary | null) {
       }
       return outsideOrganization();
     },
-    "Failed to resend invitation",
+    "bloem.admin.orgInvitations.hooks.resendFailed",
   );
 }
 
@@ -189,12 +188,16 @@ export function useRevokeInvitation(context?: AdminContextSummary | null) {
           )
         : outsideOrganization(),
     onSuccess: () => {
-      toast.success("Invitation revoked");
+      toast.success(bloemT("bloem.admin.orgInvitations.hooks.revoked"));
       queryClient.invalidateQueries({ queryKey: invitationsKey(context) });
     },
     onError: (err) => {
       void queryClient.invalidateQueries({ queryKey: invitationsKey(context) });
-      toast.error(err instanceof Error ? err.message : "Failed to revoke invitation");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : bloemT("bloem.admin.orgInvitations.hooks.revokeFailed"),
+      );
     },
   });
 }

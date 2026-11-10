@@ -7,6 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { bloemT, type BloemMessageKey } from "@/bloem/i18n";
 import {
   captureSessionIdentity,
   captureProfileRequestContext,
@@ -60,6 +61,11 @@ const useMutation: typeof useBaseMutation = (options, client) => {
 
 const LIVETV_STALE_TIME = 30_000;
 
+/** The server's message for a failed request, else `fallback` from the catalog. */
+function errorText(error: unknown, fallback: BloemMessageKey): string {
+  return error instanceof Error ? error.message : bloemT(fallback);
+}
+
 /** Well inside the server's stale-session TTL so a paused player keeps its tuner. */
 
 export function useLiveTVTuners() {
@@ -79,7 +85,7 @@ export function useDiscoverLiveTVTuners() {
         body: JSON.stringify(body),
       }),
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Tuner discovery failed");
+      toast.error(errorText(err, "bloem.admin.liveTv.toasts.discoveryFailed"));
     },
   });
 }
@@ -93,12 +99,12 @@ export function useAddLiveTVTuner() {
         body: JSON.stringify(body),
       }),
     onSuccess: () => {
-      toast.success("Tuner added");
+      toast.success(bloemT("bloem.admin.liveTv.toasts.tunerAdded"));
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVTuners() });
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to add tuner");
+      toast.error(errorText(err, "bloem.admin.liveTv.toasts.addTunerFailed"));
     },
   });
 }
@@ -111,12 +117,12 @@ export function useScanLiveTVTuner() {
         method: "POST",
       }),
     onSuccess: () => {
-      toast.success("Channel lineup rescanned");
+      toast.success(bloemT("bloem.admin.liveTv.toasts.lineupRescanned"));
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVTuners() });
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to scan tuner");
+      toast.error(errorText(err, "bloem.admin.liveTv.toasts.scanTunerFailed"));
     },
   });
 }
@@ -127,14 +133,14 @@ export function useDeleteLiveTVTuner() {
     mutationFn: (tunerId: string) =>
       nativeApi(`/livetv/tuners/${encodeURIComponent(tunerId)}`, { method: "DELETE" }),
     onSuccess: () => {
-      toast.success("Tuner removed");
+      toast.success(bloemT("bloem.admin.liveTv.toasts.tunerRemoved"));
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVTuners() });
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
       void queryClient.invalidateQueries({ queryKey: ["livetv"] });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to delete tuner");
+      toast.error(errorText(err, "bloem.admin.liveTv.toasts.deleteTunerFailed"));
     },
   });
 }
@@ -169,11 +175,11 @@ export function usePatchLiveTVChannel() {
         body: JSON.stringify(body),
       }),
     onSuccess: () => {
-      toast.success("Channel updated");
+      toast.success(bloemT("bloem.admin.liveTv.toasts.channelUpdated"));
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to update channel");
+      toast.error(errorText(err, "bloem.admin.liveTv.toasts.updateChannelFailed"));
     },
   });
 }
@@ -198,11 +204,11 @@ export function useCreateLiveTVGuideSource() {
         body: JSON.stringify(body),
       }),
     onSuccess: () => {
-      toast.success("Guide source added");
+      toast.success(bloemT("bloem.admin.liveTv.toasts.guideSourceAdded"));
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to add guide source");
+      toast.error(errorText(err, "bloem.admin.liveTv.toasts.addGuideSourceFailed"));
     },
   });
 }
@@ -216,11 +222,11 @@ export function useUpdateLiveTVGuideSource() {
         body: JSON.stringify(body),
       }),
     onSuccess: () => {
-      toast.success("Guide source updated");
+      toast.success(bloemT("bloem.admin.liveTv.toasts.guideSourceUpdated"));
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to update guide source");
+      toast.error(errorText(err, "bloem.admin.liveTv.toasts.updateGuideSourceFailed"));
     },
   });
 }
@@ -231,11 +237,11 @@ export function useDeleteLiveTVGuideSource() {
     mutationFn: (id: string) =>
       nativeApi(`/livetv/guide-sources/${encodeURIComponent(id)}`, { method: "DELETE" }),
     onSuccess: () => {
-      toast.success("Guide source removed");
+      toast.success(bloemT("bloem.admin.liveTv.toasts.guideSourceRemoved"));
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to delete guide source");
+      toast.error(errorText(err, "bloem.admin.liveTv.toasts.deleteGuideSourceFailed"));
     },
   });
 }
@@ -248,14 +254,14 @@ export function useSyncLiveTVGuideSource() {
         method: "POST",
       }),
     onSuccess: () => {
-      toast.success("Guide sync finished");
+      toast.success(bloemT("bloem.admin.liveTv.toasts.guideSyncFinished"));
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVChannels() });
       void queryClient.invalidateQueries({ queryKey: ["livetv", "guide"] });
     },
     onError: (err) => {
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
-      toast.error(err instanceof Error ? err.message : "Failed to sync guide source");
+      toast.error(errorText(err, "bloem.admin.liveTv.toasts.syncGuideSourceFailed"));
     },
   });
 }
@@ -273,7 +279,7 @@ export function useLookupSchedulesDirectLineups() {
         body: JSON.stringify(body),
       }).then((data) => data.lineups ?? []),
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to look up lineups");
+      toast.error(errorText(err, "bloem.admin.liveTv.toasts.lineupLookupFailed"));
     },
   });
 }
@@ -286,7 +292,7 @@ export function useLookupXMLSyncLineups() {
         body: JSON.stringify(body),
       }).then((data) => data.lineups ?? []),
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to look up XML sync lineups");
+      toast.error(errorText(err, "bloem.admin.liveTv.toasts.xmlSyncLookupFailed"));
     },
   });
 }
@@ -455,8 +461,8 @@ async function reconcileRecordings(client: QueryClient, scope: RecordingScope) {
 
 function useRecordingWrite<T>(
   request: (variables: T) => { path: string; options: RequestInit },
-  successMessage: string,
-  failureMessage: string,
+  successMessage: BloemMessageKey,
+  failureMessage: BloemMessageKey,
   authority?: ProfileRequestContextSnapshot,
 ) {
   const client = useQueryClient();
@@ -465,7 +471,7 @@ function useRecordingWrite<T>(
   const state = recordingWriteState(client, key);
   const phase = useSyncExternalStore(state.subscribe, state.getSnapshot);
   const reloadAction = {
-    label: "Reload recordings",
+    label: bloemT("bloem.liveTv.recordingWrites.reload"),
     onClick: () => {
       void reloadRecordings().catch(() => {});
     },
@@ -474,19 +480,18 @@ function useRecordingWrite<T>(
   async function reloadRecordings() {
     if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
     if (["pending", "reloading"].includes(state.getSnapshot()))
-      throw new Error("Wait for recording readback before reloading.");
+      throw new Error(bloemT("bloem.liveTv.recordingWrites.waitForReadback"));
     state.set("reloading");
     let reconciled = false;
     try {
       await reconcileRecordings(client, scope);
       reconciled = true;
-      toast.success("Recordings reloaded. Review the list before another recording action.");
+      toast.success(bloemT("bloem.liveTv.recordingWrites.reloaded"));
     } catch (error) {
       if (recordingScopeActive(scope))
-        toast.error(
-          "Could not reload recordings. Recording actions remain blocked; try Reload recordings again.",
-          { action: reloadAction },
-        );
+        toast.error(bloemT("bloem.liveTv.recordingWrites.reloadFailed"), {
+          action: reloadAction,
+        });
       throw error;
     } finally {
       state.set(reconciled ? "idle" : "reload-required");
@@ -501,7 +506,7 @@ function useRecordingWrite<T>(
     mutationFn: async (variables: T) => {
       if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
       if (state.getSnapshot() !== "idle") {
-        const message = "Recording actions are blocked. Reload recordings before another action.";
+        const message = bloemT("bloem.liveTv.recordingWrites.blocked");
         if (state.getSnapshot() === "reload-required")
           toast.error(message, { action: reloadAction });
         throw new Error(message);
@@ -518,16 +523,17 @@ function useRecordingWrite<T>(
           reconciled = true;
         }
         if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
-        toast.success(successMessage);
+        toast.success(bloemT(successMessage));
         return data;
       } catch (error) {
         if (recordingScopeActive(scope))
           toast.error(
-            `${error instanceof Error ? error.message : failureMessage} ${
+            bloemT(
               reconciled
-                ? "Review the refreshed recordings before another action."
-                : "Reload recordings before another action."
-            }`,
+                ? "bloem.liveTv.recordingWrites.failedReviewRefreshed"
+                : "bloem.liveTv.recordingWrites.failedReloadFirst",
+              { error: error instanceof Error ? error.message : bloemT(failureMessage) },
+            ),
             reconciled ? undefined : { action: reloadAction },
           );
         throw error;
@@ -562,8 +568,8 @@ export function useScheduleLiveTVRecording(authority?: ProfileRequestContextSnap
       path: "/livetv/recordings",
       options: { method: "POST", body: JSON.stringify(body) },
     }),
-    "Recording scheduled",
-    "Failed to schedule recording",
+    "bloem.liveTv.recordingWrites.scheduled",
+    "bloem.liveTv.recordingWrites.scheduleFailed",
     authority,
   );
 }
@@ -574,7 +580,7 @@ export function useCancelLiveTVRecording() {
       path: `/livetv/recordings/${encodeURIComponent(recordingId)}`,
       options: { method: "DELETE" },
     }),
-    "Recording cancelled",
-    "Failed to cancel recording",
+    "bloem.liveTv.recordingWrites.cancelled",
+    "bloem.liveTv.recordingWrites.cancelFailed",
   );
 }

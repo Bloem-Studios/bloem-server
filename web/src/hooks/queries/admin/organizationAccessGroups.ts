@@ -10,6 +10,7 @@ import {
 } from "@/api/v2/accessGroups";
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
 import type { AccessGroup, AccessGroupInput } from "@/api/types";
+import { bloemT } from "@/bloem/i18n";
 import type { AdminContextSummary } from "@/api/bloemTypes";
 import { adminKeys } from "../keys";
 
@@ -47,11 +48,13 @@ export function useCreateAccessGroup(context?: AdminContextSummary | null) {
       return createAccessGroup(body);
     },
     onSuccess: () => {
-      toast.success("Access group created");
+      toast.success(bloemT("bloem.admin.accessGroups.toasts.created"));
       queryClient.invalidateQueries({ queryKey: groupKey(context) });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to create access group");
+      toast.error(
+        err instanceof Error ? err.message : bloemT("bloem.admin.accessGroups.toasts.createFailed"),
+      );
     },
   });
 }
@@ -71,7 +74,7 @@ export function useUpdateAccessGroup(context?: AdminContextSummary | null) {
         .then((saved) => saved.group);
     },
     onSuccess: (_data, variables) => {
-      toast.success("Access group updated");
+      toast.success(bloemT("bloem.admin.accessGroups.toasts.updated"));
       queryClient.invalidateQueries({ queryKey: groupKey(context) });
       if (context?.scope !== "organization") {
         queryClient.invalidateQueries({ queryKey: adminKeys.accessGroup(variables.id) });
@@ -81,7 +84,9 @@ export function useUpdateAccessGroup(context?: AdminContextSummary | null) {
       queryClient.invalidateQueries({ queryKey: adminKeys.users() });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to update access group");
+      toast.error(
+        err instanceof Error ? err.message : bloemT("bloem.admin.accessGroups.toasts.updateFailed"),
+      );
     },
   });
 }
@@ -102,7 +107,7 @@ export function useDeleteAccessGroup(context?: AdminContextSummary | null) {
           })
         : getAccessGroup(id).then(deleteAccessGroup),
     onSuccess: (_data, id) => {
-      toast.success("Access group deleted");
+      toast.success(bloemT("bloem.admin.accessGroups.toasts.deleted"));
       queryClient.invalidateQueries({ queryKey: groupKey(context) });
       if (context?.scope !== "organization") {
         queryClient.invalidateQueries({ queryKey: adminKeys.accessGroup(id) });
@@ -110,7 +115,9 @@ export function useDeleteAccessGroup(context?: AdminContextSummary | null) {
       }
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to delete access group");
+      toast.error(
+        err instanceof Error ? err.message : bloemT("bloem.admin.accessGroups.toasts.deleteFailed"),
+      );
     },
   });
 }

@@ -1,4 +1,4 @@
-import { useBloemT } from "@/bloem/i18n";
+import { useBloemT, type BloemMessageKey } from "@/bloem/i18n";
 import { useEffect, useMemo, useRef, useState, type FocusEvent } from "react";
 import { ArrowLeft, CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
 import { Link } from "react-router";
@@ -20,9 +20,9 @@ import {
 import { adminFormForConfigSchema, formValuesFromConfig } from "./configSchemaAdminForm";
 import { S3FolderBrowser } from "./S3FolderBrowser";
 import {
-  AMAZON_REGION_MESSAGE,
+  amazonRegionMessage,
   DEFAULT_REGION,
-  OUTCOME_UNKNOWN_MESSAGE,
+  outcomeUnknownMessage,
   addErrorMessage,
   browseErrorMessage,
   defaultRegionFor,
@@ -102,9 +102,9 @@ interface Problem {
   text: string;
 }
 
-const REVISION_OPTIONS: { value: RevisionMode; label: string }[] = [
-  { value: "checked-etag", label: "Check each file before and after reading (any bucket)" },
-  { value: "strict", label: "Read exact file versions only (needs versioning)" },
+const REVISION_OPTIONS: { value: RevisionMode; label: BloemMessageKey }[] = [
+  { value: "checked-etag", label: "bloem.admin.storage.s3Fields.revisionChecked" },
+  { value: "strict", label: "bloem.admin.storage.s3Fields.revisionVersioned" },
 ];
 
 function ordered(form: PluginAdminForm, first: string[]): PluginAdminForm {
@@ -365,7 +365,8 @@ function S3AddFormBody({
     ...(single ? [] : ["source_name"]),
     ...(located ? ["region"] : []),
   ];
-  // What a source without a bucket is called unless a name is typed.
+  // What a source without a bucket is called unless a name is typed. It is saved
+  // as the source's name, so it is data and stays in English.
   const allBucketsName =
     chosen && chosen.id !== "other" ? chosen.name : hostName(text("endpoint")) || "All buckets";
 
@@ -442,7 +443,7 @@ function S3AddFormBody({
   function applyPaste(pasted: string) {
     const found = parseS3Details(pasted);
     const next: Values = { ...values };
-    const filled: string[] = [];
+    const filled: BloemMessageKey[] = [];
     let derivedRegion: string | undefined;
     if (found.endpoint) {
       // A known provider's address picks the provider and what it is built from.
@@ -458,32 +459,33 @@ function S3AddFormBody({
         next.endpoint = found.endpoint;
       }
       touched.current.delete("region");
-      filled.push("address");
+      filled.push("bloem.admin.storage.s3Add.pastedAddress");
     }
     if (found.accessKey) {
       next.access_key = found.accessKey;
-      filled.push("access key");
+      filled.push("bloem.admin.storage.s3Add.pastedAccessKey");
     }
     if (found.secretKey) {
       next.secret_key = found.secretKey;
-      filled.push("secret key");
+      filled.push("bloem.admin.storage.s3Add.pastedSecretKey");
     }
     if (found.region && derivedRegion === undefined) {
       next.region = found.region;
       touched.current.add("region");
-      filled.push("region");
+      filled.push("bloem.admin.storage.s3Add.pastedRegion");
     }
     if (filled.length === 0) {
-      setPasteNote("We couldn't find an address or keys in that text. Type them in below.");
+      setPasteNote(bt("bloem.admin.storage.s3Add.pasteFoundNothing"));
       return;
     }
     update(next, derivedRegion);
     // Cleared so the keys are not left on screen twice.
     setPasteText("");
+    const fields = filled.map((id) => bt(id)).join(", ");
     setPasteNote(
       provider || found.endpoint
-        ? `Filled in: ${filled.join(", ")}. Check them below, then connect.`
-        : `Filled in: ${filled.join(", ")}. Choose where your files are stored, then connect.`,
+        ? bt("bloem.admin.storage.s3Add.pasteFilledCheck", { fields })
+        : bt("bloem.admin.storage.s3Add.pasteFilledChoose", { fields }),
     );
   }
 
@@ -494,24 +496,43 @@ function S3AddFormBody({
       if (!providerConnection(located.id, location))
         found.push({
           field: "location",
-          text: `${located.location.label}: ${located.location.invalid}`,
+          text: bt("bloem.admin.storage.s3Add.fieldProblem", {
+            field: located.location.label,
+            problem: located.location.invalid,
+          }),
         });
     } else if (!endpoint)
-      found.push({ field: "endpoint", text: `${label("endpoint")}: Enter the address.` });
+      found.push({
+        field: "endpoint",
+        text: bt("bloem.admin.storage.s3Add.enterAddress", { field: label("endpoint") }),
+      });
     else {
       const bad = validateS3Connection({ endpoint }).endpoint;
-      if (bad) found.push({ field: "endpoint", text: `${label("endpoint")}: ${bad}` });
+      if (bad)
+        found.push({
+          field: "endpoint",
+          text: bt("bloem.admin.storage.s3Add.fieldProblem", {
+            field: label("endpoint"),
+            problem: bad,
+          }),
+        });
     }
     if (!text("access_key"))
-      found.push({ field: "access_key", text: `${label("access_key")}: Enter the access key.` });
+      found.push({
+        field: "access_key",
+        text: bt("bloem.admin.storage.s3Add.enterAccessKey", { field: label("access_key") }),
+      });
     if (!text("secret_key"))
-      found.push({ field: "secret_key", text: `${label("secret_key")}: Enter the secret key.` });
+      found.push({
+        field: "secret_key",
+        text: bt("bloem.admin.storage.s3Add.enterSecretKey", { field: label("secret_key") }),
+      });
     if (!located && !text("region"))
       found.push({
         field: "region",
         text: isAmazonEndpoint(endpoint)
-          ? AMAZON_REGION_MESSAGE
-          : `${label("region")}: Enter the region.`,
+          ? amazonRegionMessage()
+          : bt("bloem.admin.storage.s3Add.enterRegion", { field: label("region") }),
       });
     return found;
   }
@@ -617,18 +638,34 @@ function S3AddFormBody({
     const found = connectionProblems();
     const only = targets.length <= 1;
     if (mode !== "typed" && targets.length === 0)
-      found.push({ field: "bucket", text: `${label("bucket")}: Select at least one bucket.` });
+      found.push({
+        field: "bucket",
+        text: bt("bloem.admin.storage.s3Add.selectBucket", { field: label("bucket") }),
+      });
     const badPrefix = validateS3Connection(
       { bucket: only ? (targets[0] ?? "") : "", prefix: only && !allBuckets ? text("prefix") : "" },
       { bucketOptional },
     ).prefix;
-    if (badPrefix) found.push({ field: "prefix", text: `${label("prefix")}: ${badPrefix}` });
+    if (badPrefix)
+      found.push({
+        field: "prefix",
+        text: bt("bloem.admin.storage.s3Add.fieldProblem", {
+          field: label("prefix"),
+          problem: badPrefix,
+        }),
+      });
     for (const bucket of targets) {
       const bad = validateS3Connection({ bucket }, { bucketOptional }).bucket;
       if (bad)
         found.push({
           field: "bucket",
-          text: targets.length > 1 ? `Bucket ${bucket}: ${bad}` : `${label("bucket")}: ${bad}`,
+          text:
+            targets.length > 1
+              ? bt("bloem.admin.storage.s3Add.bucketProblem", { bucket, problem: bad })
+              : bt("bloem.admin.storage.s3Add.fieldProblem", {
+                  field: label("bucket"),
+                  problem: bad,
+                }),
         });
     }
     return found;
@@ -688,8 +725,11 @@ function S3AddFormBody({
         const failedCount = targets.filter((b) => progress[b]?.state === "failed").length;
         toast.error(
           targets.length === 1
-            ? "Couldn't add the storage source"
-            : `${failedCount} of ${targets.length} storage sources couldn't be added`,
+            ? bt("bloem.admin.storage.s3Add.addFailedToast")
+            : bt("bloem.admin.storage.s3Add.someFailedToast", {
+                failed: failedCount,
+                count: targets.length,
+              }),
         );
         setAttention((n) => n + 1);
       }
@@ -765,12 +805,12 @@ function S3AddFormBody({
       ),
   );
   const saveLabel = saving
-    ? "Adding..."
+    ? bt("bloem.admin.storage.s3Add.saveAdding")
     : failed.length > 0 && failed.length === pending.length
-      ? `Retry failed (${failed.length})`
+      ? bt("bloem.admin.storage.s3Add.saveRetryFailed", { count: failed.length })
       : pending.length > 1
-        ? `Add ${pending.length} sources`
-        : "Add source";
+        ? bt("bloem.admin.storage.s3Add.saveAddSources", { count: pending.length })
+        : bt("bloem.admin.storage.s3Add.saveAddSource");
   const connectReady =
     (located ? location.trim() !== "" : text("endpoint") !== "") &&
     text("access_key") !== "" &&
@@ -954,7 +994,7 @@ function S3AddFormBody({
                 >
                   {REVISION_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {bt(option.label)}
                     </option>
                   ))}
                 </select>
@@ -1169,7 +1209,7 @@ function S3AddFormBody({
                         ? bt("bloem.admin.storage.s3Add.added2")
                         : outcome.state === "failed"
                           ? outcome.unknown
-                            ? OUTCOME_UNKNOWN_MESSAGE
+                            ? outcomeUnknownMessage()
                             : bt("bloem.admin.storage.s3Add.failed", { message: outcome.message })
                           : outcome.state === "adding"
                             ? bt("bloem.admin.storage.s3Add.adding")

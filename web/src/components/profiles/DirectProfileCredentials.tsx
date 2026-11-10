@@ -153,11 +153,11 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
     // remounts the form, discarding both its confirmation and password drafts.
     const expectedRevision = Number(body.get("confirm"));
     if (!current || !body.has("confirm") || expectedRevision !== status.data.credential_revision) {
-      setError("Enter your account password and tick the box to confirm.");
+      setError(bt("bloem.profiles.directCredentials.confirmRequired"));
       return;
     }
     if (!disabling && (!email || !password)) {
-      setError("Enter an email and a new password for the profile.");
+      setError(bt("bloem.profiles.directCredentials.emailAndPasswordRequired"));
       return;
     }
     busy.current = true;
@@ -181,12 +181,16 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
       if (isCapturedProfileAuthorityActive(authority))
         setNotice(
           disabling
-            ? "The profile’s own sign-in is off, and it has been signed out of its apps."
-            : "Sign-in saved. The profile was signed out of its apps and must sign in again.",
+            ? bt("bloem.profiles.directCredentials.signInTurnedOff")
+            : bt("bloem.profiles.directCredentials.signInSaved"),
         );
     } catch (cause) {
       if (isCapturedProfileAuthorityActive(authority))
-        setError(cause instanceof Error ? cause.message : "Could not confirm the change.");
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : bt("bloem.profiles.directCredentials.changeNotConfirmed"),
+        );
     } finally {
       // Secrets live only in this form/request, never a query or mutation cache.
       form.reset();

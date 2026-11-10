@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
+import { bloemT } from "@/bloem/i18n";
 import { sourceActionErrorMessage } from "@/components/admin/plugins/s3Browse";
 import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
 import type { PluginConfigSchema } from "@/api/types";
@@ -128,7 +129,7 @@ export function useInstallStorageSource() {
         },
       ),
     onSuccess: () => {
-      toast.success("Storage source added");
+      toast.success(bloemT("bloem.admin.storage.toasts.added"));
       void queryClient.invalidateQueries({ queryKey: adminV2QueryKey(key, "native-storage") });
     },
     onError: (error) => toast.error(sourceActionErrorMessage(error)),
@@ -168,7 +169,7 @@ export function useUpgradeStorageSource() {
         },
       ),
     onSuccess: () => {
-      toast.success("Storage source upgraded");
+      toast.success(bloemT("bloem.admin.storage.toasts.upgraded"));
       void queryClient.invalidateQueries({ queryKey: adminV2QueryKey(key, "native-storage") });
     },
     onError: (error) => toast.error(sourceActionErrorMessage(error)),
@@ -212,7 +213,7 @@ function sourcePath(source: StorageSource): string {
 
 function installationPath(source: StorageSource): string {
   if (source.installation_id === null) {
-    throw new Error("This storage source has no plugin installation to change.");
+    throw new Error(bloemT("bloem.admin.storage.toasts.noInstallation"));
   }
   return `native-storage/installations/${source.installation_id}`;
 }
@@ -261,7 +262,7 @@ export function useDiscoverStorageSource() {
         },
       ),
     onSuccess: (_data, variables) => {
-      if (!variables.silent) toast.success("Storage source added");
+      if (!variables.silent) toast.success(bloemT("bloem.admin.storage.toasts.added"));
       void queryClient.invalidateQueries({
         queryKey: adminV2QueryKey(key, "native-storage", "sources"),
       });
@@ -378,7 +379,7 @@ export function useReplaceStorageConfiguration() {
         body: JSON.stringify({ expected_revision: source.configuration_revision, config }),
       }),
     onSuccess: () => {
-      toast.success("Storage source updated");
+      toast.success(bloemT("bloem.admin.storage.toasts.updated"));
       void queryClient.invalidateQueries({
         queryKey: adminV2QueryKey(key, "native-storage", "sources"),
       });
@@ -414,7 +415,7 @@ export function useRotateStorageCredentials() {
         ),
       }),
     onSuccess: () => {
-      toast.success("Keys replaced");
+      toast.success(bloemT("bloem.admin.storage.toasts.keysReplaced"));
       void queryClient.invalidateQueries({
         queryKey: adminV2QueryKey(key, "native-storage", "sources"),
       });
@@ -434,7 +435,7 @@ export function useDisableStorageSource() {
         body: installationChangeBody(source),
       }),
     onSuccess: () => {
-      toast.success("Storage source disabled");
+      toast.success(bloemT("bloem.admin.storage.toasts.disabled"));
       void queryClient.invalidateQueries({
         queryKey: adminV2QueryKey(key, "native-storage", "sources"),
       });
@@ -454,7 +455,7 @@ export function useRemoveStorageSource() {
         body: installationChangeBody(source),
       }),
     onSuccess: () => {
-      toast.success("Storage source removed");
+      toast.success(bloemT("bloem.admin.storage.toasts.removed"));
       void queryClient.invalidateQueries({
         queryKey: adminV2QueryKey(key, "native-storage", "sources"),
       });
@@ -479,7 +480,7 @@ export function useTestStorageSource() {
     mutationFn: async ({ source }: { source: StorageSource }): Promise<StorageConnectionTest> => {
       try {
         await adminV2Api<unknown>(`/${scope}/${sourcePath(source)}/browse?limit=1`);
-        return { ok: true, message: "Connection works" };
+        return { ok: true, message: bloemT("bloem.admin.storage.sourceRow.connectionWorks") };
       } catch (error) {
         return {
           ok: false,
@@ -508,17 +509,22 @@ export function locationRootName(
   root: { name: string; logical_path: string },
   source: StorageSource | undefined,
 ): string {
-  if (source && isAllBucketsSource(source) && root.logical_path === "") return "All buckets";
-  return root.name || "Root";
+  if (source && isAllBucketsSource(source) && root.logical_path === "")
+    return bloemT("bloem.admin.storage.labels.allBuckets");
+  return root.name || bloemT("bloem.admin.storage.labels.root");
 }
 
 export function storageSourceLabel(source: StorageSource): string {
   if (source.plugin_id === "bloem.storage.bookwarehouse") {
-    return source.root_entry_id === "audio-root" ? "Bookwarehouse audiobooks" : "Bookwarehouse";
+    return source.root_entry_id === "audio-root"
+      ? bloemT("bloem.admin.storage.labels.bookwarehouseAudiobooks")
+      : "Bookwarehouse";
   }
   if (source.plugin_id === "bloem.storage.s3") {
     const name = source.connection_summary?.source_name || source.provider_source_id;
-    return isAllBucketsSource(source) ? `${name} · all buckets` : name;
+    return isAllBucketsSource(source)
+      ? bloemT("bloem.admin.storage.labels.allBucketsSource", { name })
+      : name;
   }
   return `${source.provider_source_id} (${source.plugin_id})`;
 }
@@ -545,7 +551,7 @@ export function useConfigureStorageSource() {
         }),
       }),
     onSuccess: () => {
-      toast.success("Bookwarehouse connected");
+      toast.success(bloemT("bloem.admin.storage.toasts.bookwarehouseConnected"));
       void queryClient.invalidateQueries({ queryKey: adminV2QueryKey(key, "native-storage") });
     },
     onError: (error) => toast.error(sourceActionErrorMessage(error)),
@@ -563,7 +569,7 @@ export function useDeleteRemovedStorageSource() {
         body: JSON.stringify({ expected_revision: source.configuration_revision }),
       }),
     onSuccess: () => {
-      toast.success("Storage source deleted");
+      toast.success(bloemT("bloem.admin.storage.toasts.deleted"));
       void queryClient.invalidateQueries({
         queryKey: adminV2QueryKey(key, "native-storage", "sources"),
       });

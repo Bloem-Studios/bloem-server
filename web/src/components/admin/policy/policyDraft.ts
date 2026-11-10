@@ -1,5 +1,6 @@
 // Bloem: the draft behind the bulk policy change form, and how it becomes an
 // API command. Kept apart from the form so the rules are easy to test.
+import { bloemT, type BloemMessageKey } from "@/bloem/i18n";
 import type {
   EntitlementCohort,
   PolicyCommand,
@@ -17,6 +18,11 @@ export type TriState = "unchanged" | "true" | "false";
 type SetMode = "unchanged" | "add" | "remove" | "replace";
 
 export const KEEP = "unchanged";
+
+// The names of the limit settings, shared with policyVocabulary's summaries.
+const SCREENS = "bloem.admin.policy.vocabulary.setting.screensAtOnce";
+const PROFILES = "bloem.admin.policy.vocabulary.setting.profiles";
+const CONVERSIONS = "bloem.admin.policy.vocabulary.setting.conversionsAtOnce";
 
 export interface PatchDraft {
   librariesMode: SetMode | "all" | "none";
@@ -95,7 +101,7 @@ export function buildPolicyCommand(
   );
   switch (draft.operation) {
     case "assign":
-      if (!activeCohort) return new Error("Choose a cohort.");
+      if (!activeCohort) return new Error(bloemT("bloem.admin.policy.draft.chooseCohort"));
       return {
         kind: "assign_entitlement_cohort",
         cohort_id: draft.cohortID,
@@ -103,9 +109,9 @@ export function buildPolicyCommand(
       };
     case "template": {
       const revision = Number(draft.planRevision);
-      if (!draft.planKey.trim()) return new Error("Choose a plan.");
+      if (!draft.planKey.trim()) return new Error(bloemT("bloem.admin.policy.draft.choosePlan"));
       if (!Number.isInteger(revision) || revision <= 0)
-        return new Error("Choose which revision of the plan to use.");
+        return new Error(bloemT("bloem.admin.policy.draft.choosePlanRevision"));
       return {
         kind: "apply_entitlement_template",
         template_key: draft.planKey.trim(),
@@ -119,11 +125,13 @@ export function buildPolicyCommand(
         include_custom_profiles: includeCustomProfiles,
       };
     case "derive": {
-      if (!activeCohort) return new Error("Choose the cohort to start from.");
-      if (!draft.derivedName.trim()) return new Error("Name the new cohort.");
+      if (!activeCohort) return new Error(bloemT("bloem.admin.policy.draft.chooseStartCohort"));
+      if (!draft.derivedName.trim())
+        return new Error(bloemT("bloem.admin.policy.draft.nameNewCohort"));
       const patch = buildPatch(draft.patch);
       if (patch instanceof Error) return patch;
-      if (Object.keys(patch).length === 0) return new Error("Change at least one setting.");
+      if (Object.keys(patch).length === 0)
+        return new Error(bloemT("bloem.admin.policy.draft.changeOneSetting"));
       return {
         kind: "derive_entitlement_cohort",
         cohort_id: draft.cohortID,
@@ -133,7 +141,7 @@ export function buildPolicyCommand(
       };
     }
     default:
-      return new Error("Choose what should change.");
+      return new Error(bloemT("bloem.admin.policy.draft.chooseOperation"));
   }
 }
 
@@ -143,7 +151,7 @@ export function buildPatch(input: PatchDraft): PolicyPatch | Error {
   if (draft.librariesMode === "all" || draft.librariesMode === "none") {
     patch.libraries = { mode: draft.librariesMode };
   } else if (draft.librariesMode !== KEEP) {
-    if (!draft.libraryIDs.length) return new Error("Pick at least one library.");
+    if (!draft.libraryIDs.length) return new Error(bloemT("bloem.admin.policy.draft.pickLibrary"));
     patch.libraries = {
       mode: draft.librariesMode,
       values: [...new Set(draft.libraryIDs)].sort((a, b) => a - b),
@@ -152,7 +160,8 @@ export function buildPatch(input: PatchDraft): PolicyPatch | Error {
   if (draft.permissionsMode === "unrestricted") {
     patch.permissions = { mode: "unrestricted" };
   } else if (draft.permissionsMode !== KEEP) {
-    if (!draft.permissions.length) return new Error("Pick at least one permission.");
+    if (!draft.permissions.length)
+      return new Error(bloemT("bloem.admin.policy.draft.pickPermission"));
     patch.permissions = {
       mode: draft.permissionsMode,
       values: [...new Set(draft.permissions)].sort(),
@@ -167,16 +176,18 @@ export function buildPatch(input: PatchDraft): PolicyPatch | Error {
   ];
   for (const [value, key] of booleans)
     if (value !== KEEP) (patch[key] as boolean | undefined) = value === "true";
-  const numbers: Array<[string, "max_streams" | "max_profiles" | "max_transcodes", string]> = [
-    [draft.maxStreams, "max_streams", "Screens at once"],
-    [draft.maxProfiles, "max_profiles", "Profiles"],
-    [draft.maxTranscodes, "max_transcodes", "Conversions at once"],
+  const numbers: Array<
+    [string, "max_streams" | "max_profiles" | "max_transcodes", BloemMessageKey]
+  > = [
+    [draft.maxStreams, "max_streams", SCREENS],
+    [draft.maxProfiles, "max_profiles", PROFILES],
+    [draft.maxTranscodes, "max_transcodes", CONVERSIONS],
   ];
   for (const [value, key, label] of numbers) {
     if (!value.trim()) continue;
     const parsed = Number(value);
     if (!Number.isInteger(parsed) || parsed < 0)
-      return new Error(`${label} must be a whole number, 0 or more.`);
+      return new Error(bloemT("bloem.admin.policy.draft.wholeNumber", { setting: bloemT(label) }));
     patch[key] = parsed;
   }
   if (draft.maxPlaybackQuality !== KEEP) patch.max_playback_quality = draft.maxPlaybackQuality;
@@ -201,38 +212,77 @@ export function normalizePatchDraft(draft: PatchDraft): PatchDraft {
   return next;
 }
 
+const LIBRARY_CHANGES: Record<Exclude<SetMode, "unchanged">, BloemMessageKey> = {
+  add: "bloem.admin.policy.draft.librariesAdd",
+  remove: "bloem.admin.policy.draft.librariesRemove",
+  replace: "bloem.admin.policy.draft.librariesOnly",
+};
+const PERMISSION_CHANGES: Record<Exclude<SetMode, "unchanged">, BloemMessageKey> = {
+  add: "bloem.admin.policy.draft.permissionsAdd",
+  remove: "bloem.admin.policy.draft.permissionsRemove",
+  replace: "bloem.admin.policy.draft.permissionsOnly",
+};
+
 /** One line per changed setting, in the admin's words. */
 export function describePatchDraft(draft: PatchDraft, libraries: NamedLibrary[] = []): string[] {
   const lines: string[] = [];
-  const setVerb: Record<string, string> = { add: "Add", remove: "Remove", replace: "Only" };
-  if (draft.librariesMode === "all") lines.push("Libraries: all libraries");
-  else if (draft.librariesMode === "none") lines.push("Libraries: none");
+  const pickSome = () => bloemT("bloem.admin.policy.draft.pickSome");
+  if (draft.librariesMode === "all") lines.push(bloemT("bloem.admin.policy.draft.librariesAll"));
+  else if (draft.librariesMode === "none")
+    lines.push(bloemT("bloem.admin.policy.draft.librariesNone"));
   else if (draft.librariesMode !== KEEP)
     lines.push(
-      `Libraries: ${setVerb[draft.librariesMode]} ${draft.libraryIDs.length ? libraryListLabel(draft.libraryIDs, libraries) : "(pick some)"}`,
+      bloemT(LIBRARY_CHANGES[draft.librariesMode], {
+        libraries: draft.libraryIDs.length
+          ? libraryListLabel(draft.libraryIDs, libraries)
+          : pickSome(),
+      }),
     );
-  if (draft.permissionsMode === "unrestricted") lines.push("Extra permissions: all");
+  if (draft.permissionsMode === "unrestricted")
+    lines.push(bloemT("bloem.admin.policy.draft.permissionsAll"));
   else if (draft.permissionsMode !== KEEP)
     lines.push(
-      `Extra permissions: ${setVerb[draft.permissionsMode]} ${draft.permissions.length ? permissionListLabel(draft.permissions) : "(pick some)"}`,
+      bloemT(PERMISSION_CHANGES[draft.permissionsMode], {
+        permissions: draft.permissions.length ? permissionListLabel(draft.permissions) : pickSome(),
+      }),
     );
-  const booleans: Array<[string, TriState]> = [
-    ["Plays video", draft.playback],
-    ["Video conversion", draft.transcode],
-    ["Download original files", draft.downloads],
-    ["Download converted copies", draft.transcodedDownloads],
-    ["Media requests", draft.requests],
+  const booleans: Array<[BloemMessageKey, TriState]> = [
+    ["bloem.admin.policy.vocabulary.setting.playsVideo", draft.playback],
+    ["bloem.admin.policy.vocabulary.setting.videoConversion", draft.transcode],
+    ["bloem.admin.policy.vocabulary.setting.downloadOriginals", draft.downloads],
+    ["bloem.admin.policy.vocabulary.setting.downloadConverted", draft.transcodedDownloads],
+    ["bloem.admin.policy.vocabulary.setting.mediaRequests", draft.requests],
   ];
   for (const [label, value] of booleans)
-    if (value !== KEEP) lines.push(`${label}: ${value === "true" ? "allowed" : "not allowed"}`);
-  const numbers: Array<[string, string]> = [
-    ["Screens at once", draft.maxStreams],
-    ["Profiles", draft.maxProfiles],
-    ["Conversions at once", draft.maxTranscodes],
+    if (value !== KEEP)
+      lines.push(
+        bloemT(
+          value === "true"
+            ? "bloem.admin.policy.draft.settingAllowed"
+            : "bloem.admin.policy.draft.settingNotAllowed",
+          { setting: bloemT(label) },
+        ),
+      );
+  const numbers: Array<[BloemMessageKey, string]> = [
+    [SCREENS, draft.maxStreams],
+    [PROFILES, draft.maxProfiles],
+    [CONVERSIONS, draft.maxTranscodes],
   ];
   for (const [label, value] of numbers)
-    if (value.trim()) lines.push(`${label}: ${value.trim() === "0" ? "no limit" : value.trim()}`);
+    if (value.trim())
+      lines.push(
+        value.trim() === "0"
+          ? bloemT("bloem.admin.policy.draft.settingNoLimit", { setting: bloemT(label) })
+          : bloemT("bloem.admin.policy.draft.settingValue", {
+              setting: bloemT(label),
+              value: value.trim(),
+            }),
+      );
   if (draft.maxPlaybackQuality !== KEEP)
-    lines.push(`Best picture quality: ${qualityLabel(draft.maxPlaybackQuality).toLowerCase()}`);
+    lines.push(
+      bloemT("bloem.admin.policy.draft.bestQuality", {
+        quality: qualityLabel(draft.maxPlaybackQuality).toLowerCase(),
+      }),
+    );
   return lines;
 }
