@@ -41,6 +41,7 @@ more detailed pages of its area, and ends with a "For developers" section.
 - [How Live TV works](../architecture/bloem-live-tv.md) — sources, tuning in, recordings.
 - [How storage sources work](../architecture/bloem-storage-sources.md) — libraries read from S3 and Bookwarehouse.
 - [How requests work](../architecture/bloem-requests.md) — movie and series, audiobook and ebook requests.
+- [How search finds titles by words and by meaning](../architecture/bloem-search-and-embeddings.md) — the two halves of a search, dropping the most common words first, task labels for `gemini-embedding-2`, changing the embedding model.
 - [How messages and promotions work](../architecture/bloem-messages-and-promotions.md) — announcements, campaign and playback cards, seasonal packs.
 - [How apps connect](../architecture/bloem-apps.md) — the three entrances, signing in, remote control.
 - [Switching between Silo and Bloem](../architecture/bloem-silo-switching-explained.md) — one database, two servers taking turns, both install layouts.
@@ -54,7 +55,8 @@ The pictures are drawn by `scripts/bloem/draw-pictures.py`.
 Dated records of what production ran, how it was deployed and what was checked.
 A receipt is not native-client or playback acceptance.
 
-- [November 5 deployment: AI subtitle cue hold](../operations/2026-11-05-ai-subtitle-cue-hold-deployment.md) — current: `a1315bd8b` (AI cues stay on screen 0.6 s after speech; no migration, seams stay at 320, 46 s restart behind a transcode, both transcode nodes moved, deployed by hand without waiting for Bloem CI)
+- [November 9 and 10 deployment: gemini-embedding-2, task labels and search matching](../operations/2026-11-10-search-and-embeddings-deployment.md) — current: `7acd2c7e0` (embeddings moved to `gemini-embedding-2` with a settings change and a full re-embed; `9df39cadb` labels its input by task; `7acd2c7e0` lets search drop the most common words first, now production's setting, with a 3,000 ms query timeout; no migrations, seams 328 to 333, 43 s and 14 s restarts, deployed by hand without waiting for Bloem CI, which then passed both)
+- [November 5 deployment: AI subtitle cue hold](../operations/2026-11-05-ai-subtitle-cue-hold-deployment.md) — `a1315bd8b` (AI cues stay on screen 0.6 s after speech; no migration, seams stay at 320, 46 s restart behind a transcode, both transcode nodes moved, deployed by hand without waiting for Bloem CI)
 - [November 5 deployment: Silo through `d941225b4`](../operations/2026-11-05-silo-sync-d941225b4-deployment.md) — `a9f230203` (one Silo commit with no migrations, one test conflict resolved to Silo's side: season and episode pages keep the library they were opened from; no Bloem fix, seams stay at 320, 13 s restart behind a transcode, both transcode nodes moved, deployed by the merge bot after Bloem CI passed it at the first attempt)
 - [November 5 deployment: Silo through `2d5f22e7d`](../operations/2026-11-05-silo-sync-2d5f22e7d-deployment.md) — `38156af18` (25 Silo commits with three migrations, six conflicts resolved to Silo's side: bound TV sign-ins, web-only hero rows, Dolby Vision 7 as 8.1 over HLS, faster subtitle burn-in, audio-only downloads, Matroska subtitle regions; a Bloem fix brings the regions to the native-storage probe; seams 321 to 320, 46 s restart behind a transcode, both transcode nodes moved, deployed by the merge bot after Bloem CI passed it at the first attempt)
 - [November 5 deployment: Silo through `ba1280870`](../operations/2026-11-05-silo-sync-ba1280870-deployment.md) — `a96d2efe2` (one Silo commit with no migrations or conflicts: administrators manage another account's profiles and reset profile PINs; a Bloem fix keeps those profile writes in the account's own organization; seams stay at 316, 44 s restart behind a transcode, both transcode nodes moved, deployed by the merge bot after Bloem CI passed it at the first attempt)
@@ -135,6 +137,7 @@ same path. Read the upstream document together with its overlay.
 - [docs/architecture/invitations-onboarding.md](overlays/architecture/invitations-onboarding.md) — overlay on [docs/architecture/invitations-onboarding.md](../architecture/invitations-onboarding.md)
 - [docs/architecture/observability.md](overlays/architecture/observability.md) — overlay on [docs/architecture/observability.md](../architecture/observability.md)
 - [docs/architecture/playback-protocol-v3.md](overlays/architecture/playback-protocol-v3.md) — overlay on [docs/architecture/playback-protocol-v3.md](../architecture/playback-protocol-v3.md)
+- [docs/architecture/recommendations.md](overlays/architecture/recommendations.md) — overlay on [docs/architecture/recommendations.md](../architecture/recommendations.md)
 - [docs/architecture/scenario-acceptance.md](overlays/architecture/scenario-acceptance.md) — overlay on [docs/architecture/scenario-acceptance.md](../architecture/scenario-acceptance.md)
 - [docs/architecture/secret-encryption.md](overlays/architecture/secret-encryption.md) — overlay on [docs/architecture/secret-encryption.md](../architecture/secret-encryption.md)
 - [docs/architecture/settings-contract.md](overlays/architecture/settings-contract.md) — overlay on [docs/architecture/settings-contract.md](../architecture/settings-contract.md)
@@ -186,6 +189,11 @@ same path. Read the upstream document together with its overlay.
 - [How audiobook requests work](../architecture/bloem-audiobook-requests.md) — request authority, independent quotas, identifier matching and notification scope.
 - [How ebook requests work](../architecture/bloem-ebook-request-foundation.md) — default-off web/admin requests, Bookwarehouse fulfillment, durable recovery and linked-library completion.
 - [How browse-only access and the preview work](../architecture/bloem-browse-only-content-policy.md) — protected preview principals, signed guest sessions, catalogue hygiene and native content-delivery boundaries.
+
+### Search and recommendations
+
+- [How search finds titles by words and by meaning](../architecture/bloem-search-and-embeddings.md) — start here: the words and meaning halves of a search, matching strategies, task labels, changing the embedding model, with two pictures.
+- [Recommendations overlay](overlays/architecture/recommendations.md) — what Bloem adds to Silo's recommendations page: task labels for `gemini-embedding-2`.
 
 ### Announcements, promotions and seasonal presentation
 

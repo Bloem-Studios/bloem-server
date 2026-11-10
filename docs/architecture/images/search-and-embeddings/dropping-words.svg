@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What happens when no title has every word</title>
+<desc id="d">This example is made up. The search 'man finds a message in a bottle on the beach' matches no title with all ten words. Dropping trailing words keeps 'man finds a', which thousands of titles contain. Dropping the most common words first keeps 'message bottle beach', the words that pick out the story. Two-word searches still need both words. On 200 searches that describe a title without naming it, the right title was in the top 50 for 16.5% of searches when trailing words were dropped and 36.5% when the most common words were dropped first.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="469" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What happens when no title has every word</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">This example is made up: one search, matched two ways.</text>
+<rect x="40" y="124" width="540" height="226" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="62" y="162" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Drop trailing words</text>
+<rect x="62" y="186" width="48" height="28" rx="14.0" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.2"/>
+<text x="86.0" y="205.4" font-size="15" font-weight="600" fill="#B45309" text-anchor="middle">man</text>
+<rect x="120" y="186" width="66" height="28" rx="14.0" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.2"/>
+<text x="153.0" y="205.4" font-size="15" font-weight="600" fill="#B45309" text-anchor="middle">finds</text>
+<rect x="196" y="186" width="31" height="28" rx="14.0" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.2"/>
+<text x="211.5" y="205.4" font-size="15" font-weight="600" fill="#B45309" text-anchor="middle">a</text>
+<rect x="237" y="186" width="83" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="278.5" y="205.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">message</text>
+<path d="M245,200 L312,200" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="330" y="186" width="39" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="349.5" y="205.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">in</text>
+<path d="M338,200 L361,200" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="379" y="186" width="31" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="394.5" y="205.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">a</text>
+<path d="M387,200 L402,200" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="420" y="186" width="74" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="457.0" y="205.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">bottle</text>
+<path d="M428,200 L486,200" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="504" y="186" width="39" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="523.5" y="205.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">on</text>
+<path d="M512,200 L535,200" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="62" y="226" width="48" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="86.0" y="245.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">the</text>
+<path d="M70,240 L102,240" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="120" y="226" width="66" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="153.0" y="245.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">beach</text>
+<path d="M128,240 L178,240" stroke="#9CA3AF" stroke-width="1.6"/>
+<text x="62" y="290" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">Keeps “man finds a”. Thousands of titles have those words, so the</text>
+<text x="62" y="311" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">story it describes is lost among them.</text>
+<rect x="620" y="124" width="540" height="226" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.5"/>
+<text x="642" y="162" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Drop the most common words first</text>
+<rect x="642" y="186" width="48" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="666.0" y="205.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">man</text>
+<path d="M650,200 L682,200" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="700" y="186" width="66" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="733.0" y="205.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">finds</text>
+<path d="M708,200 L758,200" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="776" y="186" width="31" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="791.5" y="205.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">a</text>
+<path d="M784,200 L799,200" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="817" y="186" width="83" height="28" rx="14.0" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.2"/>
+<text x="858.5" y="205.4" font-size="15" font-weight="600" fill="#0F766E" text-anchor="middle">message</text>
+<rect x="910" y="186" width="39" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="929.5" y="205.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">in</text>
+<path d="M918,200 L941,200" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="959" y="186" width="31" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="974.5" y="205.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">a</text>
+<path d="M967,200 L982,200" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="1000" y="186" width="74" height="28" rx="14.0" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.2"/>
+<text x="1037.0" y="205.4" font-size="15" font-weight="600" fill="#0F766E" text-anchor="middle">bottle</text>
+<rect x="1084" y="186" width="39" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="1103.5" y="205.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">on</text>
+<path d="M1092,200 L1115,200" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="642" y="226" width="48" height="28" rx="14.0" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="666.0" y="245.4" font-size="15" font-weight="600" fill="#9CA3AF" text-anchor="middle">the</text>
+<path d="M650,240 L682,240" stroke="#9CA3AF" stroke-width="1.6"/>
+<rect x="700" y="226" width="66" height="28" rx="14.0" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.2"/>
+<text x="733.0" y="245.4" font-size="15" font-weight="600" fill="#0F766E" text-anchor="middle">beach</text>
+<text x="642" y="290" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">Keeps “message bottle beach”, the rarer words that pick out the</text>
+<text x="642" y="311" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">story.</text>
+<text x="40" y="416" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Two-word searches still need both words, so a typing mistake such as “spnge bob” never shrinks to one loose word. Measured on 200 searches that describe a</text>
+<text x="40" y="436" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">title: in the top 50 16.5% of the time when trailing words are dropped, 36.5% when common words go first.</text>
+</svg>

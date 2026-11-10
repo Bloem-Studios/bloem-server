@@ -1,7 +1,8 @@
 # Installing and running Bloem with Docker
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which contains Silo through `63ef34b23`. This is Bloem's own
+> `main` at `b6039036d`, which contains Silo through `63ef34b23`; the Meilisearch steps were
+> updated on 2026-11-10 against `7acd2c7e0`. This is Bloem's own
 > installation guide. It began as Silo's Docker guide, which Silo has since removed;
 > Bloem runs Silo's code on Silo's multi-container Compose file, and serving an
 > organization on its own domain is a Bloem addition. The technical rules are in the
@@ -343,7 +344,10 @@ PostgreSQL search needs no extra service. To offer Meilisearch as well:
 
 3. Under **Configure → Server → Search**, choose Meilisearch, set the URL to
    `http://meilisearch:7700`, enter the same key as the API key, test the connection
-   and save.
+   and save. Set **When a search has several words**, which appears once Meilisearch
+   is chosen, to **Drop the most common words until something matches**, so a search
+   that describes a story finds it ([How search finds titles by words and by
+   meaning](../../../../architecture/bloem-search-and-embeddings.md)).
 4. Restart Bloem. It builds the search index in the background and retries failures
    every minute. The Search status panel shows whether Meilisearch, keyword-only
    Meilisearch or PostgreSQL is answering while the build runs; the manual rebuild
