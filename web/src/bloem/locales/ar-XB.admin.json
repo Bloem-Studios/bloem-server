@@ -2520,7 +2520,7 @@
   "bloem.admin.storage.addDialog.theListOfStorageTypes": [
     {
       "type": 0,
-      "value": "‏‮The list of storage types couldn&apos;t be loaded.‬"
+      "value": "‏‮The list of storage types couldn't be loaded.‬"
     }
   ],
   "bloem.admin.storage.panel.addSource": [
@@ -3161,7 +3161,7 @@
   "bloem.admin.storage.sourceRow.enterTheAccessKeyAnd": [
     {
       "type": 0,
-      "value": "‏‮Enter the access key and secret key again to save. Bloem keeps them encrypted and can&apos;t show them.‬"
+      "value": "‏‮Enter the access key and secret key again to save. Bloem keeps them encrypted and can't show them.‬"
     }
   ],
   "bloem.admin.storage.sourceRow.httpsBooksExample": [
@@ -3223,7 +3223,7 @@
     },
     {
       "type": 0,
-      "value": "‮? This can&apos;t be undone: to use this storage again, add it as a new source. Nothing in your storage is deleted.‬"
+      "value": "‮? This can't be undone: to use this storage again, add it as a new source. Nothing in your storage is deleted.‬"
     }
   ],
   "bloem.admin.storage.sourceRow.removing": [
@@ -3291,7 +3291,7 @@
     },
     {
       "type": 0,
-      "value": "‮, so the source can&apos;t be edited here.‬"
+      "value": "‮, so the source can't be edited here.‬"
     }
   ],
   "bloem.admin.storage.sourceRow.thisVersionOfTheS3": [

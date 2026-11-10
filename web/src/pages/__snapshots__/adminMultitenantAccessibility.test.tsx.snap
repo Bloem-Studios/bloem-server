@@ -59,7 +59,7 @@ exports[`multitenant administration responsive release snapshots > captures Acce
         class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
       >
         <button
-          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-left transition-colors outline-none focus-visible:ring-2"
+          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-start transition-colors outline-none focus-visible:ring-2"
           type="button"
         >
           <div
@@ -115,7 +115,7 @@ exports[`multitenant administration responsive release snapshots > captures Acce
           </div>
         </button>
         <button
-          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-left transition-colors outline-none focus-visible:ring-2"
+          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-start transition-colors outline-none focus-visible:ring-2"
           type="button"
         >
           <div
@@ -230,7 +230,7 @@ exports[`multitenant administration responsive release snapshots > captures Acce
         class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
       >
         <button
-          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-left transition-colors outline-none focus-visible:ring-2"
+          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-start transition-colors outline-none focus-visible:ring-2"
           type="button"
         >
           <div
@@ -286,7 +286,7 @@ exports[`multitenant administration responsive release snapshots > captures Acce
           </div>
         </button>
         <button
-          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-left transition-colors outline-none focus-visible:ring-2"
+          class="surface-panel hover:border-ring/40 focus-visible:ring-ring/60 flex flex-col gap-3 rounded-2xl border border-transparent p-5 text-start transition-colors outline-none focus-visible:ring-2"
           type="button"
         >
           <div
@@ -926,35 +926,35 @@ exports[`multitenant administration responsive release snapshots > captures Peop
               data-slot="table-row"
             >
               <th
-                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-head"
                 scope="col"
               >
                 Person
               </th>
               <th
-                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-head"
                 scope="col"
               >
                 Status
               </th>
               <th
-                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-head"
                 scope="col"
               >
                 Profiles and access groups
               </th>
               <th
-                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-head"
                 scope="col"
               >
                 Last activity
               </th>
               <th
-                class="text-foreground h-10 px-2 py-3 align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
+                class="text-foreground h-10 px-2 py-3 align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px] text-end"
                 data-slot="table-head"
                 scope="col"
               >
@@ -975,7 +975,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
               data-slot="table-row"
             >
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-cell"
               >
                 <div
@@ -990,7 +990,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 </div>
               </td>
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-cell"
               >
                 <span
@@ -1002,7 +1002,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 </span>
               </td>
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-cell"
               >
                 <div
@@ -1035,13 +1035,13 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 </div>
               </td>
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-muted-foreground text-sm"
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px] text-muted-foreground text-sm"
                 data-slot="table-cell"
               >
                 8/13/2026
               </td>
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px] text-end"
                 data-slot="table-cell"
               >
                 <button
@@ -1137,7 +1137,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
       class="border-primary/20 bg-primary/5 sticky bottom-4 z-20 flex flex-wrap items-center gap-2 rounded-2xl border p-3 shadow-lg backdrop-blur"
     >
       <strong
-        class="mr-auto text-sm"
+        class="me-auto text-sm"
       >
         1,234 people selected
       </strong>
@@ -1216,35 +1216,35 @@ exports[`multitenant administration responsive release snapshots > captures Peop
               data-slot="table-row"
             >
               <th
-                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-head"
                 scope="col"
               >
                 Person
               </th>
               <th
-                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-head"
                 scope="col"
               >
                 Status
               </th>
               <th
-                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-head"
                 scope="col"
               >
                 Profiles and access groups
               </th>
               <th
-                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-head"
                 scope="col"
               >
                 Last activity
               </th>
               <th
-                class="text-foreground h-10 px-2 py-3 align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
+                class="text-foreground h-10 px-2 py-3 align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px] text-end"
                 data-slot="table-head"
                 scope="col"
               >
@@ -1265,7 +1265,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
               data-slot="table-row"
             >
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-cell"
               >
                 <div
@@ -1280,7 +1280,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 </div>
               </td>
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-cell"
               >
                 <span
@@ -1292,7 +1292,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 </span>
               </td>
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                 data-slot="table-cell"
               >
                 <div
@@ -1325,13 +1325,13 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 </div>
               </td>
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-muted-foreground text-sm"
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px] text-muted-foreground text-sm"
                 data-slot="table-cell"
               >
                 8/13/2026
               </td>
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
+                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px] text-end"
                 data-slot="table-cell"
               >
                 <button
@@ -1427,7 +1427,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
       class="border-primary/20 bg-primary/5 sticky bottom-4 z-20 flex flex-wrap items-center gap-2 rounded-2xl border p-3 shadow-lg backdrop-blur"
     >
       <strong
-        class="mr-auto text-sm"
+        class="me-auto text-sm"
       >
         1,234 people selected
       </strong>
@@ -1510,7 +1510,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
         >
           <svg
             aria-hidden="true"
-            class="lucide lucide-plus mr-2 h-4 w-4"
+            class="lucide lucide-plus me-2 h-4 w-4"
             fill="none"
             height="24"
             stroke="currentColor"
@@ -1539,7 +1539,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
         >
           <svg
             aria-hidden="true"
-            class="lucide lucide-search text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+            class="lucide lucide-search text-muted-foreground absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2"
             fill="none"
             height="24"
             stroke="currentColor"
@@ -1561,7 +1561,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
           </svg>
           <input
             aria-label="Search organizations"
-            class="border-border bg-background selection:bg-primary selection:text-primary-foreground file:text-foreground placeholder:text-muted-foreground h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:border-destructive aria-invalid:ring-destructive/20 pl-9"
+            class="border-border bg-background selection:bg-primary selection:text-primary-foreground file:text-foreground placeholder:text-muted-foreground h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:border-destructive aria-invalid:ring-destructive/20 ps-9"
             data-slot="input"
             placeholder="Search name or slug"
             type="search"
@@ -1614,35 +1614,35 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                 data-slot="table-row"
               >
                 <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-head"
                   scope="col"
                 >
                   Organization
                 </th>
                 <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-head"
                   scope="col"
                 >
                   Status
                 </th>
                 <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-head"
                   scope="col"
                 >
                   People
                 </th>
                 <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-head"
                   scope="col"
                 >
                   Profiles
                 </th>
                 <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-head"
                   scope="col"
                 >
@@ -1659,7 +1659,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                 data-slot="table-row"
               >
                 <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-cell"
                 >
                   <a
@@ -1676,7 +1676,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                   </a>
                 </td>
                 <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-cell"
                 >
                   <span
@@ -1688,19 +1688,19 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                   </span>
                 </td>
                 <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-cell"
                 >
                   12
                 </td>
                 <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-cell"
                 >
                   18
                 </td>
                 <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-cell"
                 >
                   3
@@ -1722,7 +1722,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
         >
           <svg
             aria-hidden="true"
-            class="lucide lucide-chevron-left mr-1 h-4 w-4"
+            class="lucide lucide-chevron-left me-1 h-4 w-4"
             fill="none"
             height="24"
             stroke="currentColor"
@@ -1755,7 +1755,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
           Next page
           <svg
             aria-hidden="true"
-            class="lucide lucide-chevron-right ml-1 h-4 w-4"
+            class="lucide lucide-chevron-right ms-1 h-4 w-4"
             fill="none"
             height="24"
             stroke="currentColor"
@@ -1811,7 +1811,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
         >
           <svg
             aria-hidden="true"
-            class="lucide lucide-plus mr-2 h-4 w-4"
+            class="lucide lucide-plus me-2 h-4 w-4"
             fill="none"
             height="24"
             stroke="currentColor"
@@ -1840,7 +1840,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
         >
           <svg
             aria-hidden="true"
-            class="lucide lucide-search text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+            class="lucide lucide-search text-muted-foreground absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2"
             fill="none"
             height="24"
             stroke="currentColor"
@@ -1862,7 +1862,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
           </svg>
           <input
             aria-label="Search organizations"
-            class="border-border bg-background selection:bg-primary selection:text-primary-foreground file:text-foreground placeholder:text-muted-foreground h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:border-destructive aria-invalid:ring-destructive/20 pl-9"
+            class="border-border bg-background selection:bg-primary selection:text-primary-foreground file:text-foreground placeholder:text-muted-foreground h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:border-destructive aria-invalid:ring-destructive/20 ps-9"
             data-slot="input"
             placeholder="Search name or slug"
             type="search"
@@ -1915,35 +1915,35 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                 data-slot="table-row"
               >
                 <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-head"
                   scope="col"
                 >
                   Organization
                 </th>
                 <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-head"
                   scope="col"
                 >
                   Status
                 </th>
                 <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-head"
                   scope="col"
                 >
                   People
                 </th>
                 <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-head"
                   scope="col"
                 >
                   Profiles
                 </th>
                 <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="text-foreground h-10 px-2 py-3 text-start align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-head"
                   scope="col"
                 >
@@ -1960,7 +1960,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                 data-slot="table-row"
               >
                 <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-cell"
                 >
                   <a
@@ -1977,7 +1977,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                   </a>
                 </td>
                 <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-cell"
                 >
                   <span
@@ -1989,19 +1989,19 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                   </span>
                 </td>
                 <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-cell"
                 >
                   12
                 </td>
                 <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-cell"
                 >
                   18
                 </td>
                 <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]"
                   data-slot="table-cell"
                 >
                   3
@@ -2023,7 +2023,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
         >
           <svg
             aria-hidden="true"
-            class="lucide lucide-chevron-left mr-1 h-4 w-4"
+            class="lucide lucide-chevron-left me-1 h-4 w-4"
             fill="none"
             height="24"
             stroke="currentColor"
@@ -2056,7 +2056,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
           Next page
           <svg
             aria-hidden="true"
-            class="lucide lucide-chevron-right ml-1 h-4 w-4"
+            class="lucide lucide-chevron-right ms-1 h-4 w-4"
             fill="none"
             height="24"
             stroke="currentColor"

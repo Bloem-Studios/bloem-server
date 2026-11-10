@@ -112,7 +112,7 @@ export default function PeopleTable({
               variant="outline"
               size="sm"
               aria-label={bt("bloem.admin.people.table.detailsFor", {
-                value: person.display_name || person.email,
+                person: person.display_name || person.email,
               })}
               onClick={() => onInspect(person)}
             >
