@@ -1,6 +1,6 @@
 # How Bloem CI works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-10
 > and checked against `main` at `f12b3c75f`, which includes Silo through `07f0ae21c`.
 > Since 2 November Silo's work comes in through the merge bot, and the GitHub upstream
 > sync is switched off. Bloem's CI, image and upstream-sync workflows are Bloem
@@ -330,7 +330,8 @@ The Go test shards skip Silo's database-list tests, the ones named in
 they run: the marker population sync walks every eligible file in it, and
 failed on November 1 and 2, 2026 when another package's files appeared
 mid-test. Go database pins runs both lists on a fresh database, as Silo does,
-so the shards pass `-skip` with the pattern
+and since Silo `51b1e0a40` the runner gives each package its own copy of that
+database, so the shards pass `-skip` with the pattern
 `scripts/ci/bloem-db-list-skip.py` prints. The script refuses a list name that
 is also a test in a package the lists do not name, because `-skip` matches
 names, not packages, and that test would then run nowhere.
@@ -769,7 +770,9 @@ tests need:
 
 - the `integration` build tag, which the target sets;
 - a migrated database whose name starts with `bloem_storage_test_`, which the
-  tagged tests clone as a template. Packages therefore run one at a time;
+  tagged tests clone as a template. Packages therefore run one at a time, and
+  the target passes the runner `-shared`: without it the runner hands each
+  package a `dbpins_*` copy, whose name the tests refuse;
 - `SILO_TEST_REDIS_URL=redis://127.0.0.1:65421/0` on a disposable Redis. The
   tests flush it, so they refuse any other address unless
   `SILO_TEST_REDIS_DISPOSABLE_ADDR` names that same loopback address: the
