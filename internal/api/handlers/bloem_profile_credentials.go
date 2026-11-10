@@ -138,9 +138,17 @@ func writeProfileCredentialError(w http.ResponseWriter, err error) {
 		writeError(w, 409, "credential_email_in_use", "This login email is already registered")
 	case errors.Is(err, auth.ErrProfileCredentialRevisionConflict):
 		writeError(w, 409, "credential_revision_conflict", "Profile credentials changed. Reload and review before trying again")
+	case errors.Is(err, auth.ErrProfilePasswordsDisabled):
+		writeProfilePasswordsDisabled(w)
 	case errors.Is(err, passwordhash.ErrBusy):
 		writeAPIError(w, busyError(err))
 	default:
 		writeError(w, 503, "unavailable", "Profile credential operation failed")
 	}
+}
+
+// writeProfilePasswordsDisabled answers a profile password sign-in or a new
+// profile password while the server has profile passwords turned off.
+func writeProfilePasswordsDisabled(w http.ResponseWriter) {
+	writeError(w, http.StatusForbidden, "profile_passwords_disabled", "Profile passwords are turned off on this server")
 }

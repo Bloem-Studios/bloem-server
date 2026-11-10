@@ -23,6 +23,7 @@ import RequestsSettings from "./RequestsSettings";
 import ProvidersSettings from "./ProvidersSettings";
 import AISettings from "./AISettings";
 import AnnouncementsAdminSettings from "./AnnouncementsAdminSettings";
+import BloemProfilePasswordsSettings from "./BloemProfilePasswordsSettings";
 import NotificationsAdminSettings from "./NotificationsAdminSettings";
 import CompatibilityProxiesSettings from "./CompatibilityProxiesSettings";
 import NetworkAccessSettings from "./NetworkAccessSettings";
@@ -38,6 +39,7 @@ const SETTINGS_COMPONENTS: Record<string, ComponentType> = {
   appearance: AppearanceSettings,
   security: SecurityAccessSettings,
   "sign-in": SignInSettings,
+  "profile-passwords": BloemProfilePasswordsSettings,
   library: LibraryMetadataSettings,
   autoscan: AutoscanSettings,
   playback: PlaybackSettings,

@@ -275,6 +275,18 @@
       "value": "⟦Þļåñš~~⟧"
     }
   ],
+  "bloem.adminNav.profilePasswords.description": [
+    {
+      "type": 0,
+      "value": "⟦Ŵĥéţĥéŕ ĥöûšéĥöļđ þŕöƒîļéš çåñ šîĝñ îñ ŵîţĥ ţĥéîŕ öŵñ éɱåîļ åñđ þåššŵöŕđ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.profilePasswords.label": [
+    {
+      "type": 0,
+      "value": "⟦Þŕöƒîļé þåššŵöŕđš~~~~~~~~⟧"
+    }
+  ],
   "bloem.adminNav.section.organization": [
     {
       "type": 0,
@@ -475,12 +487,6 @@
       "value": "~~~~~~~~~~~~⟧"
     }
   ],
-  "bloem.profiles.directCredentials.thisServerDoesnTSupport": [
-    {
-      "type": 0,
-      "value": "⟦Ţĥîš šéŕṽéŕ đöéšñ’ţ šûþþöŕţ šéþåŕåţé þŕöƒîļé šîĝñ-îñš.~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
-    }
-  ],
   "bloem.profiles.directCredentials.tryAgain": [
     {
       "type": 0,
@@ -491,6 +497,12 @@
     {
       "type": 0,
       "value": "⟦Ţûŕñ öƒƒ îţš šîĝñ-îñ~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnedOff": [
+    {
+      "type": 0,
+      "value": "⟦Þŕöƒîļé þåššŵöŕđš åŕé ţûŕñéđ öƒƒ öñ ţĥîš šéŕṽéŕ. Å šéŕṽéŕ åđɱîñîšţŕåţöŕ çåñ ţûŕñ ţĥéɱ öñ îñ Šéţţîñĝš, ûñđéŕ Šîĝñ-îñ & Šéçûŕîţý.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
     }
   ],
   "bloem.profiles.directCredentials.yourAccountPassword": [

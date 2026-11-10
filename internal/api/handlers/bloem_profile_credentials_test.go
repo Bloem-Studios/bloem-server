@@ -167,6 +167,7 @@ func TestBloemProfileCredentialsWriteErrors(t *testing.T) {
 		{"ownership changed", auth.ErrProfileCredentialNotFound, 404, "not_found"},
 		{"internal failure", errors.New("private backend detail"), 503, "unavailable"},
 		{"busy hashing", fmt.Errorf("hashing profile password: %w", passwordhash.ErrBusy), 503, "service_unavailable"},
+		{"profile passwords off", auth.ErrProfilePasswordsDisabled, 403, "profile_passwords_disabled"},
 	} {
 		for _, method := range []string{http.MethodPut, http.MethodDelete} {
 			t.Run(test.name+method, func(t *testing.T) {

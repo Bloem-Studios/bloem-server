@@ -507,5 +507,6 @@ func newV1TenancyDatabase(t *testing.T) *pgxpool.Pool {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
+	enableProfilePasswords(t, pool)
 	return pool
 }

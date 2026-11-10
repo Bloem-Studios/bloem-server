@@ -275,6 +275,11 @@ export type BloemMessageKey =
   | "bloem.admin.policy.review.withTheirOwnSettingsChange"
   | "bloem.admin.policy.review.withTheirOwnSettingsStay"
   | "bloem.admin.policy.valueChange.policyValuePolicyValue2"
+  | "bloem.admin.profilePasswords.loadFailed"
+  | "bloem.admin.profilePasswords.loading"
+  | "bloem.admin.profilePasswords.retry"
+  | "bloem.admin.profilePasswords.switchDescription"
+  | "bloem.admin.profilePasswords.title"
   | "bloem.admin.search.matching.frequency"
   | "bloem.admin.storage.addDialog.addStorageSource"
   | "bloem.admin.storage.addDialog.apiKey"
@@ -437,6 +442,8 @@ export type BloemMessageKey =
   | "bloem.adminNav.platformOrganizations.label"
   | "bloem.adminNav.platformPlans.description"
   | "bloem.adminNav.platformPlans.label"
+  | "bloem.adminNav.profilePasswords.description"
+  | "bloem.adminNav.profilePasswords.label"
   | "bloem.adminNav.section.organization"
   | "bloem.adminNav.section.platform"
   | "bloem.adminTitle.organization"
@@ -465,9 +472,9 @@ export type BloemMessageKey =
   | "bloem.profiles.directCredentials.separateSignInForA"
   | "bloem.profiles.directCredentials.thisProfileHasNoSign"
   | "bloem.profiles.directCredentials.thisProfileSignsInAs"
-  | "bloem.profiles.directCredentials.thisServerDoesnTSupport"
   | "bloem.profiles.directCredentials.tryAgain"
   | "bloem.profiles.directCredentials.turnOffItsSignIn"
+  | "bloem.profiles.directCredentials.turnedOff"
   | "bloem.profiles.directCredentials.yourAccountPassword";
 
 /** Languages with a Bloem catalog; the pseudo-locales are generated from English. */

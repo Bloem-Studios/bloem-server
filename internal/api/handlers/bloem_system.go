@@ -33,6 +33,10 @@ type BloemSystemHandler struct {
 	ebookRequests               bool
 	bookRequestConnectionAdmin  bool
 	nativeAudioReadiness        func(context.Context) bool
+	// profilePasswordsEnabled reads the admin switch that turns profile
+	// passwords on; direct profile login and credential management are
+	// advertised only while it is on.
+	profilePasswordsEnabled func(context.Context) bool
 }
 
 func NewBloemSystemHandler(organizations BloemOrganizationStore) *BloemSystemHandler {
@@ -186,7 +190,8 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	if h.nativeAudioReadiness != nil && h.nativeAudioReadiness(request.Context()) {
 		featureTokens = append(featureTokens, "native_audiobook_presentations_v1")
 	}
-	if h.profileCredentialManagement {
+	profilePasswords := h.profilePasswordsEnabled != nil && h.profilePasswordsEnabled(request.Context())
+	if h.profileCredentialManagement && profilePasswords {
 		featureTokens = append(featureTokens, "profile_credential_management_v1")
 	}
 	if h.bookRequests {
@@ -220,7 +225,7 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 			LegacySiloV1:            true,
 			OrganizationMemberships: true,
 			TenantBoundedMediaScope: true,
-			DirectProfileLogin:      h.directProfileLogin,
+			DirectProfileLogin:      h.directProfileLogin && profilePasswords,
 		},
 		MediaTypes:    slices.Clone(mediaTypesServed),
 		FeatureTokens: featureTokens,
@@ -288,6 +293,12 @@ func (h *BloemSystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.
 	}
 
 	writeJSON(w, http.StatusOK, bloemOrganizationListResponse{Organizations: result})
+}
+
+// SetProfilePasswordsEnabled supplies the admin switch for profile passwords.
+// Without it, profile passwords are not advertised.
+func (h *BloemSystemHandler) SetProfilePasswordsEnabled(enabled func(context.Context) bool) {
+	h.profilePasswordsEnabled = enabled
 }
 
 // SetNativeAudioReadiness advertises only the composed native audio service.

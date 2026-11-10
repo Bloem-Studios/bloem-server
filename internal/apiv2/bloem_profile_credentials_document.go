@@ -72,7 +72,11 @@ func registerBloemProfileCredentialDocument(reg *Registry) {
 		if method == "PUT" {
 			invalid = "validation_failed: expected_revision is not positive, login_email is not a bare email address, or password is shorter than 8 characters or longer than 72 bytes."
 		}
-		bloemDocumentDescribe(&op, map[int]string{422: invalid})
+		describe := map[int]string{422: invalid}
+		if method == "PUT" {
+			describe[403] = "account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password; profile_passwords_disabled: the server has profile passwords turned off, so a password cannot be set (DELETE stays allowed)."
+		}
+		bloemDocumentDescribe(&op, describe)
 		if method == "PUT" {
 			registerBloemChiDocument[BloemProfileCredentialSetInput, struct{}](reg, op)
 		} else {

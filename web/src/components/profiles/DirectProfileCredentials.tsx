@@ -55,8 +55,10 @@ export function DirectProfileCredentials() {
           ])}
         />
       ) : (
+        // The probe stops advertising the token while an administrator has
+        // profile passwords turned off (Settings → Profile passwords).
         <p className="text-muted-foreground text-sm">
-          {bt("bloem.profiles.directCredentials.thisServerDoesnTSupport")}
+          {bt("bloem.profiles.directCredentials.turnedOff")}
         </p>
       )}
     </section>

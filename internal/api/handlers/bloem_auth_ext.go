@@ -91,6 +91,10 @@ func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request)
 			writeAPIError(w, busyError(err))
 			return
 		}
+		if errors.Is(err, auth.ErrProfilePasswordsDisabled) {
+			writeProfilePasswordsDisabled(w)
+			return
+		}
 		// The password-policy refusals use the account login's codes.
 		if errors.Is(err, auth.ErrLocalLoginDisabled) || errors.Is(err, auth.ErrNotPermitted) {
 			writeAPIError(w, externalSignInError(err))

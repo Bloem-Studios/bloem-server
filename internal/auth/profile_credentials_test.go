@@ -290,6 +290,7 @@ func newProfileCredentialService(t *testing.T) profileCredentialTestService {
 		t.Fatalf("migrate database: %v", err)
 	}
 	activateProfileCredentialTestTenant(t, pool)
+	setProfilePasswords(t, pool, true)
 	return profileCredentialTestService{ProfileCredentialService: NewProfileCredentialService(pool), pool: pool}
 }
 

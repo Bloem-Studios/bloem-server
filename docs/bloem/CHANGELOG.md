@@ -3,6 +3,22 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 10, 2026 — profile passwords are an admin setting, off by default
+
+A household could give each profile its own email and password whenever the
+server offered profile passwords. Whether profiles may do that is now a server
+setting, **Profile passwords** (`bloem.auth.profile_passwords_enabled`), and it is
+off by default, so a server that has not turned it on offers no profile sign-in.
+While it is off, a correct profile password is refused with
+`403 profile_passwords_disabled` (a wrong one still reads as a wrong password),
+setting or changing a profile password is refused the same way, and the capability
+probe stops advertising `profile_credential_management_v1` and direct-profile
+login, so the profile settings hide the section. Stored profile passwords are kept
+and work again once an administrator turns the setting on; a household can still
+clear one. Profile sessions already signed in keep running, as account sessions do
+when password sign-in is turned off for the server. A restore keeps the setting at
+the stricter value.
+
 ## November 10, 2026 — profile passwords follow the password sign-in policy
 
 A profile's own password (`POST /api/v1/auth/profile-login`) now follows the server's

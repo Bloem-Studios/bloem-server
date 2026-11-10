@@ -237,6 +237,16 @@ and a positive `expected_revision`, compared under the profile row lock. A stale
 returns `409 credential_revision_conflict` and preserves newer credentials and direct
 sessions. Successful rotation or disable revokes direct sessions for that profile.
 
+Profile passwords are offered only while the server setting
+`bloem.auth.profile_passwords_enabled` is on; it is off by default. While it is off,
+the capability probe advertises neither `profile_credential_management_v1` nor
+direct-profile login, a correct profile password is refused with
+`403 profile_passwords_disabled` after the password comparison (so a refusal does not
+reveal which emails are registered), and PUT answers the same code. GET and DELETE keep
+working, so a household can see and clear a stored password. Stored passwords are kept
+and work again when the setting is turned on. Existing direct-profile sessions are not
+ended, as with the server's password sign-in switch.
+
 A profile password follows the server's password sign-in policy, like the account
 password. Direct-profile login checks it after the password, so a refusal does not
 reveal which emails are registered: `403 local_login_disabled` while password sign-in

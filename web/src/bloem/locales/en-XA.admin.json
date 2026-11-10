@@ -2451,6 +2451,36 @@
       "value": "~~⟧"
     }
   ],
+  "bloem.admin.profilePasswords.loadFailed": [
+    {
+      "type": 0,
+      "value": "⟦Þŕöƒîļé þåššŵöŕđ šéţţîñĝš çöûļđ ñöţ ƀé ļöåđéđ.~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.profilePasswords.loading": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ šéţţîñĝš~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.profilePasswords.retry": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéţŕý~~⟧"
+    }
+  ],
+  "bloem.admin.profilePasswords.switchDescription": [
+    {
+      "type": 0,
+      "value": "⟦Ļéţ å ĥöûšéĥöļđ ĝîṽé éåçĥ þŕöƒîļé îţš öŵñ éɱåîļ åñđ þåššŵöŕđ ţö šîĝñ îñ ŵîţĥ. Öƒƒ ƀý đéƒåûļţ. Ţûŕñîñĝ îţ öƒƒ šţöþš þŕöƒîļé þåššŵöŕđš ƒŕöɱ šîĝñîñĝ îñ; šåṽéđ þåššŵöŕđš åŕé ķéþţ, åñđ þŕöƒîļéš åļŕéåđý šîĝñéđ îñ šţåý šîĝñéđ îñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.profilePasswords.title": [
+    {
+      "type": 0,
+      "value": "⟦Þŕöƒîļé þåššŵöŕđš~~~~~~~~⟧"
+    }
+  ],
   "bloem.admin.search.matching.frequency": [
     {
       "type": 0,

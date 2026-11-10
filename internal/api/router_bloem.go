@@ -114,6 +114,9 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	// capability that disagrees with the route table is worse than no
 	// capability at all.
 	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
+	if deps.DB != nil {
+		system.SetProfilePasswordsEnabled(auth.NewProfileCredentialService(deps.DB).ProfilePasswordsEnabled)
+	}
 	system.SetPlaybackOverlaysAvailable(deps.Promotions != nil)
 	var credentialHandler *handlers.BloemProfileCredentialsHandler
 	var credentialLimit func(http.Handler) http.Handler

@@ -94,6 +94,7 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate tenant foundation: %v", err)
 	}
+	enableProfilePasswords(t, pool)
 	// Match a fresh application connection after the ID-widening migrations;
 	// legacy prepared result types must not survive the schema transition.
 	pool.Reset()

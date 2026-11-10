@@ -9,6 +9,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/clientip"
+	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/scenariocatalog"
 	"github.com/Silo-Server/silo-server/internal/secret"
@@ -73,6 +74,9 @@ func (e *Env) withBloemRowFixture(row scenariocatalog.Row) func() {
 		if previousOverlay != nil {
 			previousOverlay()
 		}
+		// Profile passwords are an admin switch, off by default.
+		e.mustExec(`INSERT INTO server_settings (key, value) VALUES ($1, 'true')
+			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, config.ProfilePasswordsEnabledSettingKey)
 		credentials := auth.NewProfileCredentialService(e.pool)
 		member := e.users[fixtureMember]
 		if err := credentials.Set(e.ctx, member.ID, profileSecondary, bloemDirectEmail, bloemDirectPassword); err != nil {

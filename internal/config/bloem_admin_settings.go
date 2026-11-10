@@ -4,19 +4,24 @@ const (
 	// EbookRequestsEnabledSettingKey controls internal ebook request admission.
 	// Public audiobook requests do not depend on this opt-in.
 	EbookRequestsEnabledSettingKey = "bloem.requests.ebooks_enabled"
+
+	// ProfilePasswordsEnabledSettingKey lets household profiles sign in with
+	// their own email and password. Off by default.
+	ProfilePasswordsEnabledSettingKey = "bloem.auth.profile_passwords_enabled"
 )
 
 // bloemAdminSettingDefaults extends Silo's adminSettingDefaults.
 var bloemAdminSettingDefaults = map[string]string{
-	EbookRequestsEnabledSettingKey: "false",
-	"livetv.dvr_path":              DefaultLiveTVDVRPath,
-	"livetv.max_transcodes":        "3",
-	"livetv.hw_accel":              DefaultLiveTVHWAccel,
-	"livetv.hw_decode":             DefaultLiveTVHWDecode,
-	"livetv.encoder_preset":        DefaultLiveTVEncoderPreset,
-	"livetv.framerate_cap":         DefaultLiveTVFrameRateCap,
-	"livetv.max_resolution":        DefaultLiveTVMaxResolution,
-	"livetv.play_method":           DefaultLiveTVPlayMethod,
+	EbookRequestsEnabledSettingKey:    "false",
+	ProfilePasswordsEnabledSettingKey: "false",
+	"livetv.dvr_path":                 DefaultLiveTVDVRPath,
+	"livetv.max_transcodes":           "3",
+	"livetv.hw_accel":                 DefaultLiveTVHWAccel,
+	"livetv.hw_decode":                DefaultLiveTVHWDecode,
+	"livetv.encoder_preset":           DefaultLiveTVEncoderPreset,
+	"livetv.framerate_cap":            DefaultLiveTVFrameRateCap,
+	"livetv.max_resolution":           DefaultLiveTVMaxResolution,
+	"livetv.play_method":              DefaultLiveTVPlayMethod,
 
 	// LAN service advertisement (_bloem._tcp mDNS). Off by default: it needs
 	// the host's L2 broadcast domain, and operators on shared networks may
@@ -42,7 +47,7 @@ func normalizeBloemAdminSetting(key, raw, value string) (string, bool, error) {
 	switch key {
 	case "s3.user_db_path_style", "s3.user_db_endpoint":
 		return raw, true, nil
-	case EbookRequestsEnabledSettingKey, "lan.advertisement_enabled":
+	case EbookRequestsEnabledSettingKey, ProfilePasswordsEnabledSettingKey, "lan.advertisement_enabled":
 		normalized, err = normalizeAdminBool(key, value)
 	case "livetv.max_transcodes":
 		normalized, err = normalizeAdminInt(key, value, -1, 1024)

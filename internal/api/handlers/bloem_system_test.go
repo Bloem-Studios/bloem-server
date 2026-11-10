@@ -35,14 +35,32 @@ func (s bloemOrganizationStoreStub) GetOrganization(_ context.Context, id uuid.U
 	return organization, nil
 }
 
+// Profile passwords are advertised only while they are wired and the admin
+// switch is on; the switch defaults off, and an unwired switch reads as off.
 func TestBloemProfileCredentialManagementCapabilityTracksWiring(t *testing.T) {
-	for _, enabled := range []bool{false, true} {
+	on := func(context.Context) bool { return true }
+	off := func(context.Context) bool { return false }
+	for _, test := range []struct {
+		name      string
+		wired     bool
+		switchFn  func(context.Context) bool
+		advertise bool
+	}{
+		{"not wired", false, on, false},
+		{"switch unwired", true, nil, false},
+		{"switch off", true, off, false},
+		{"switch on", true, on, true},
+	} {
 		h := NewBloemSystemHandler(nil)
-		h.SetProfileCredentialManagementAvailable(enabled)
+		h.SetDirectProfileLoginAvailable(test.wired)
+		h.SetProfileCredentialManagementAvailable(test.wired)
+		h.SetProfilePasswordsEnabled(test.switchFn)
 		rec := httptest.NewRecorder()
 		h.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
-		if strings.Contains(rec.Body.String(), "profile_credential_management_v1") != enabled {
-			t.Fatalf("capability enabled=%v body=%s", enabled, rec.Body.String())
+		body := rec.Body.String()
+		if strings.Contains(body, "profile_credential_management_v1") != test.advertise ||
+			strings.Contains(body, `"direct_profile_login":true`) != test.advertise {
+			t.Fatalf("%s: want advertised=%v, body=%s", test.name, test.advertise, body)
 		}
 	}
 }
@@ -70,6 +88,7 @@ func TestBloemSeasonalViewerCapabilityTracksWiring(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
 		h := NewBloemSystemHandler(nil)
 		h.SetProfileCredentialManagementAvailable(true)
+		h.SetProfilePasswordsEnabled(func(context.Context) bool { return true })
 		h.SetSeasonalViewerAvailable(enabled)
 		rec := httptest.NewRecorder()
 		h.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
@@ -98,6 +117,7 @@ func TestBloemCapabilitiesExactContract(t *testing.T) {
 	// direct profile login advertises it, one without does not.
 	handler := NewBloemSystemHandler(nil)
 	handler.SetDirectProfileLoginAvailable(true)
+	handler.SetProfilePasswordsEnabled(func(context.Context) bool { return true })
 	rec := httptest.NewRecorder()
 	handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
 	if rec.Code != http.StatusOK {

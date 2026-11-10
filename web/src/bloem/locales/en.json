@@ -263,6 +263,18 @@
       "value": "Plans"
     }
   ],
+  "bloem.adminNav.profilePasswords.description": [
+    {
+      "type": 0,
+      "value": "Whether household profiles can sign in with their own email and password."
+    }
+  ],
+  "bloem.adminNav.profilePasswords.label": [
+    {
+      "type": 0,
+      "value": "Profile passwords"
+    }
+  ],
   "bloem.adminNav.section.organization": [
     {
       "type": 0,
@@ -451,12 +463,6 @@
       "value": "loginEmail"
     }
   ],
-  "bloem.profiles.directCredentials.thisServerDoesnTSupport": [
-    {
-      "type": 0,
-      "value": "This server doesn’t support separate profile sign-ins."
-    }
-  ],
   "bloem.profiles.directCredentials.tryAgain": [
     {
       "type": 0,
@@ -467,6 +473,12 @@
     {
       "type": 0,
       "value": "Turn off its sign-in"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnedOff": [
+    {
+      "type": 0,
+      "value": "Profile passwords are turned off on this server. A server administrator can turn them on in Settings, under Sign-in & Security."
     }
   ],
   "bloem.profiles.directCredentials.yourAccountPassword": [
