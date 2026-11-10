@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useBloemT } from "@/bloem/i18n";
 import { Badge } from "@/components/ui/badge";
 import { useLiveTVTuners } from "@/hooks/queries/useLiveTV";
 import { useSettingsForm } from "@/hooks/useSettingsForm";
@@ -16,6 +17,11 @@ const KEYS = [
   "livetv.max_transcodes",
 ];
 
+// Product names, shown as they are in every language.
+const NVENC_LABEL = "NVIDIA NVENC";
+const QSV_LABEL = "Intel Quick Sync (QSV)";
+const VAAPI_LABEL = "VA-API";
+
 /**
  * Live TV transcoding policy. Broadcast is MPEG-2 with AC-3 audio, which native
  * TV players decode directly but browsers cannot, so those sessions are
@@ -23,6 +29,7 @@ const KEYS = [
  * These settings exist to get the encode onto the GPU and keep it there.
  */
 export function LiveTVTranscodingTab() {
+  const bt = useBloemT();
   const form = useSettingsForm({ keys: useMemo(() => KEYS, []) });
   const tuners = useLiveTVTuners();
 
@@ -33,86 +40,97 @@ export function LiveTVTranscodingTab() {
     (tuner) => (tuner.transcode_codecs ?? []).length > 0,
   );
 
-  if (form.isLoading) return <p className="text-muted-foreground text-sm">Loading settings…</p>;
+  if (form.isLoading)
+    return (
+      <p className="text-muted-foreground text-sm">{bt("bloem.admin.liveTv.conversion.loading")}</p>
+    );
 
   return (
     <div className="flex h-full flex-col">
       <div className="mb-6 space-y-2">
-        <h2 className="text-xl font-medium">Conversion</h2>
+        <h2 className="text-xl font-medium">{bt("bloem.admin.liveTv.conversion.heading")}</h2>
         <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-          Devices that can play a broadcast get it as it is. For the rest, Bloem converts it as it
-          plays, and the conversion has to keep up with the live feed.
+          {bt("bloem.admin.liveTv.conversion.intro")}
         </p>
       </div>
 
       <div className="flex-1 space-y-6">
-        <FieldGroup label="Hardware">
+        <FieldGroup label={bt("bloem.admin.liveTv.conversion.hardware")}>
           <SettingField
-            label="Hardware acceleration"
+            label={bt("bloem.admin.liveTv.conversion.hwAccel.label")}
             type="select"
-            hint="What converts live video. Auto picks what this server has."
+            hint={bt("bloem.admin.liveTv.conversion.hwAccel.hint")}
             options={[
-              { value: "auto", label: "Auto" },
-              { value: "nvenc", label: "NVIDIA NVENC" },
-              { value: "qsv", label: "Intel Quick Sync (QSV)" },
-              { value: "vaapi", label: "VA-API" },
-              { value: "none", label: "Software" },
+              { value: "auto", label: bt("bloem.admin.liveTv.conversion.hwAccel.auto") },
+              { value: "nvenc", label: NVENC_LABEL },
+              { value: "qsv", label: QSV_LABEL },
+              { value: "vaapi", label: VAAPI_LABEL },
+              { value: "none", label: bt("bloem.admin.liveTv.conversion.hwAccel.software") },
             ]}
             value={form.getValue("livetv.hw_accel")}
             onChange={(v) => form.setValue("livetv.hw_accel", v)}
           />
           <SettingField
-            label="Hardware decoding"
+            label={bt("bloem.admin.liveTv.conversion.hwDecode.label")}
             type="select"
-            hint="Read the broadcast on the graphics card. Reading it without one is the usual reason a conversion falls behind. Auto uses it when available."
+            hint={bt("bloem.admin.liveTv.conversion.hwDecode.hint")}
             options={[
-              { value: "auto", label: "Auto" },
-              { value: "on", label: "Always on" },
-              { value: "off", label: "Off (software decode)" },
+              { value: "auto", label: bt("bloem.admin.liveTv.conversion.hwDecode.auto") },
+              { value: "on", label: bt("bloem.admin.liveTv.conversion.hwDecode.on") },
+              { value: "off", label: bt("bloem.admin.liveTv.conversion.hwDecode.off") },
             ]}
             value={form.getValue("livetv.hw_decode")}
             onChange={(v) => form.setValue("livetv.hw_decode", v)}
           />
           <SettingField
-            label="Encoder preset"
+            label={bt("bloem.admin.liveTv.conversion.preset.label")}
             type="select"
-            hint="Low latency keeps up with the feed. Quality looks better but may fall behind."
+            hint={bt("bloem.admin.liveTv.conversion.preset.hint")}
             options={[
-              { value: "low_latency", label: "Low latency (recommended)" },
-              { value: "balanced", label: "Balanced" },
-              { value: "quality", label: "Quality" },
+              {
+                value: "low_latency",
+                label: bt("bloem.admin.liveTv.conversion.preset.lowLatency"),
+              },
+              { value: "balanced", label: bt("bloem.admin.liveTv.conversion.preset.balanced") },
+              { value: "quality", label: bt("bloem.admin.liveTv.conversion.preset.quality") },
             ]}
             value={form.getValue("livetv.encoder_preset")}
             onChange={(v) => form.setValue("livetv.encoder_preset", v)}
           />
           <SettingField
-            label="Conversions at once"
+            label={bt("bloem.admin.liveTv.conversion.maxTranscodes.label")}
             type="number"
-            hint="Channels converted at the same time. Channels sent as they are don’t count. 0 means the default of 3; -1 means no limit."
+            hint={bt("bloem.admin.liveTv.conversion.maxTranscodes.hint")}
             value={form.getValue("livetv.max_transcodes")}
             onChange={(v) => form.setValue("livetv.max_transcodes", v)}
           />
         </FieldGroup>
 
-        <FieldGroup label="Output">
+        <FieldGroup label={bt("bloem.admin.liveTv.conversion.output")}>
           <SettingField
-            label="Frame rate cap"
+            label={bt("bloem.admin.liveTv.conversion.frameRate.label")}
             type="select"
-            hint="Only for hardware that can’t keep up. It halves smoothness, so leave it on Source unless conversions fall behind."
+            hint={bt("bloem.admin.liveTv.conversion.frameRate.hint")}
             options={[
-              { value: "source", label: "Source (recommended)" },
-              { value: "60", label: "60fps" },
-              { value: "30", label: "30fps" },
+              { value: "source", label: bt("bloem.admin.liveTv.conversion.frameRate.source") },
+              {
+                value: "60",
+                label: bt("bloem.admin.liveTv.conversion.frameRate.fps", { rate: 60 }),
+              },
+              {
+                value: "30",
+                label: bt("bloem.admin.liveTv.conversion.frameRate.fps", { rate: 30 }),
+              },
             ]}
             value={form.getValue("livetv.framerate_cap")}
             onChange={(v) => form.setValue("livetv.framerate_cap", v)}
           />
           <SettingField
-            label="Maximum resolution"
+            label={bt("bloem.admin.liveTv.conversion.maxResolution.label")}
             type="select"
-            hint="The largest size for converted video. Never makes video bigger than the broadcast."
+            hint={bt("bloem.admin.liveTv.conversion.maxResolution.hint")}
             options={[
-              { value: "source", label: "Source" },
+              { value: "source", label: bt("bloem.admin.liveTv.conversion.maxResolution.source") },
               { value: "1080p", label: "1080p" },
               { value: "720p", label: "720p" },
             ]}
@@ -120,29 +138,35 @@ export function LiveTVTranscodingTab() {
             onChange={(v) => form.setValue("livetv.max_resolution", v)}
           />
           <SettingField
-            label="Play method"
+            label={bt("bloem.admin.liveTv.conversion.playMethod.label")}
             type="select"
-            hint="Auto checks what each device can play. Always send as is skips conversion, which web browsers can’t play. Always convert converts for everyone."
+            hint={bt("bloem.admin.liveTv.conversion.playMethod.hint")}
             options={[
-              { value: "auto", label: "Auto (recommended)" },
-              { value: "copy", label: "Always send as is" },
-              { value: "transcode", label: "Always convert" },
+              { value: "auto", label: bt("bloem.admin.liveTv.conversion.playMethod.auto") },
+              { value: "copy", label: bt("bloem.admin.liveTv.conversion.playMethod.copy") },
+              {
+                value: "transcode",
+                label: bt("bloem.admin.liveTv.conversion.playMethod.transcode"),
+              },
             ]}
             value={form.getValue("livetv.play_method")}
             onChange={(v) => form.setValue("livetv.play_method", v)}
           />
         </FieldGroup>
 
-        <FieldGroup label="Conversion on the tuner">
+        <FieldGroup label={bt("bloem.admin.liveTv.conversion.tuner.heading")}>
           <div className="space-y-3 py-2">
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Some older HDHomeRun models (EXTEND) can convert video themselves. Bloem uses this
-              only when a tuner says it can.
+              {bt("bloem.admin.liveTv.conversion.tuner.intro")}
             </p>
             {tuners.isLoading ? (
-              <p className="text-muted-foreground text-sm">Checking tuners…</p>
+              <p className="text-muted-foreground text-sm">
+                {bt("bloem.admin.liveTv.conversion.tuner.checking")}
+              </p>
             ) : (tuners.data ?? []).length === 0 ? (
-              <p className="text-muted-foreground text-sm">No tuners yet.</p>
+              <p className="text-muted-foreground text-sm">
+                {bt("bloem.admin.liveTv.conversion.tuner.none")}
+              </p>
             ) : (
               <ul className="divide-border divide-y border-y">
                 {(tuners.data ?? []).map((tuner) => {
@@ -165,7 +189,7 @@ export function LiveTVTranscodingTab() {
                         </span>
                       ) : (
                         <Badge variant="outline" className="text-muted-foreground">
-                          Not supported by this tuner
+                          {bt("bloem.admin.liveTv.conversion.tuner.notSupported")}
                         </Badge>
                       )}
                     </li>
@@ -175,7 +199,7 @@ export function LiveTVTranscodingTab() {
             )}
             {deviceTranscodeTuners.length === 0 && (tuners.data ?? []).length > 0 && (
               <p className="text-muted-foreground text-xs">
-                No tuner can convert video itself, so Bloem converts on the server.
+                {bt("bloem.admin.liveTv.conversion.tuner.serverConverts")}
               </p>
             )}
           </div>

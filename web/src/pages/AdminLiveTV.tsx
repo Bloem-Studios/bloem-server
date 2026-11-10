@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Plus, Radar, RefreshCw, Trash2, X } from "lucide-react";
 import type { LiveTVDiscoveredTuner } from "@/api/bloemTypes";
+import { useBloemT, type BloemTranslate } from "@/bloem/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ import {
   useUpdateLiveTVGuideSource,
 } from "@/hooks/queries/useLiveTV";
 import type { SchedulesDirectLineupOption, XMLSyncLineupOption } from "@/api/bloemTypes";
+import { formatLocale } from "@/lib/appLocale";
 import { LiveTVTranscodingTab } from "@/pages/livetv/LiveTVTranscodingTab";
 import { XtreamProviderForm } from "@/components/livetv/XtreamProviderForm";
 import { XtreamGuideSourceForm } from "@/components/livetv/XtreamGuideSourceForm";
@@ -35,6 +37,25 @@ import { XtreamRemoveButton } from "@/components/livetv/XtreamRemoveButton";
 
 const LIVETV_TABS = ["tuners", "channels", "guide", "recordings", "transcoding"] as const;
 type LiveTVTab = (typeof LIVETV_TABS)[number];
+
+// Product names, shown as they are in every language.
+const DISPATCHARR = "Dispatcharr";
+const HDHOMERUN = "HDHomeRun";
+const SCHEDULES_DIRECT = "Schedules Direct";
+
+// Example values in empty fields: addresses, codes and IDs, not words.
+const TUNER_URL_PLACEHOLDER = "http://192.168.1.50";
+const STATION_ID_PLACEHOLDER = "12345";
+const COUNTRY_PLACEHOLDER = "USA";
+const POSTAL_CODE_PLACEHOLDER = "12345";
+const XML_LINEUP_PLACEHOLDER = "USA-lineupId-DEFAULT";
+const XML_HEADEND_PLACEHOLDER = "lineupId";
+const SD_LINEUP_PLACEHOLDER = "USA-OTA-12345";
+
+// Default names for a new guide source. They are saved on the server as the
+// source's name, so they stay English: data, not interface text.
+const SD_DEFAULT_NAME = "Schedules Direct";
+const XML_DEFAULT_NAME = "Free listings";
 
 function normalizeTab(value: string | null): LiveTVTab {
   return LIVETV_TABS.includes(value as LiveTVTab) ? (value as LiveTVTab) : "tuners";
@@ -45,17 +66,44 @@ function readable(value: string): string {
   return text ? text[0]!.toUpperCase() + text.slice(1) : value;
 }
 
-function count(value: number, noun: string): string {
-  return `${value.toLocaleString()} ${value === 1 ? noun : `${noun}s`}`;
+/** A tuner's, guide source's or recording's status; one the page doesn't know shows as sent. */
+function statusLabel(bt: BloemTranslate, status: string): string {
+  switch (status) {
+    case "pending":
+      return bt("bloem.admin.liveTv.status.pending");
+    case "discovered":
+      return bt("bloem.admin.liveTv.status.discovered");
+    case "ready":
+      return bt("bloem.admin.liveTv.status.ready");
+    case "error":
+      return bt("bloem.admin.liveTv.status.error");
+    case "idle":
+      return bt("bloem.admin.liveTv.status.idle");
+    case "syncing":
+      return bt("bloem.admin.liveTv.status.syncing");
+    case "scheduled":
+      return bt("bloem.admin.liveTv.status.scheduled");
+    case "recording":
+      return bt("bloem.admin.liveTv.status.recording");
+    case "completed":
+      return bt("bloem.admin.liveTv.status.completed");
+    case "failed":
+      return bt("bloem.admin.liveTv.status.failed");
+    case "cancelled":
+      return bt("bloem.admin.liveTv.status.cancelled");
+    default:
+      return readable(status);
+  }
 }
 
-function kindLabel(kind: string): string {
-  if (kind === "dispatcharr") return "Dispatcharr";
-  if (kind === "hdhomerun") return "HDHomeRun";
-  return kind || "Tuner";
+function kindLabel(bt: BloemTranslate, kind: string): string {
+  if (kind === "dispatcharr") return DISPATCHARR;
+  if (kind === "hdhomerun") return HDHOMERUN;
+  return kind || bt("bloem.admin.liveTv.tuners.found.tuner");
 }
 
 function TunersTab() {
+  const bt = useBloemT();
   const tuners = useLiveTVTuners();
   const addTuner = useAddLiveTVTuner();
   const discoverTuners = useDiscoverLiveTVTuners();
@@ -119,14 +167,12 @@ function TunersTab() {
     <div className="space-y-8">
       <section className="space-y-3" aria-labelledby="your-tuners">
         <h2 id="your-tuners" className="text-base font-medium">
-          Your tuners
+          {bt("bloem.admin.liveTv.tuners.heading")}
         </h2>
         {tuners.isLoading ? (
-          <p className="text-muted-foreground text-sm">Loading…</p>
+          <p className="text-muted-foreground text-sm">{bt("bloem.admin.liveTv.loading")}</p>
         ) : (tuners.data?.length ?? 0) === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            None yet. Add an antenna tuner or an Xtream provider below.
-          </p>
+          <p className="text-muted-foreground text-sm">{bt("bloem.admin.liveTv.tuners.none")}</p>
         ) : (
           <ul className="divide-border divide-y border-y">
             {tuners.data?.map((tuner) => (
@@ -134,16 +180,21 @@ function TunersTab() {
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{tuner.model || tuner.device_id}</span>
-                    <Badge variant="secondary">{readable(tuner.status)}</Badge>
+                    <Badge variant="secondary">{statusLabel(bt, tuner.status)}</Badge>
                     <span className="text-muted-foreground text-sm tabular-nums">
-                      {tuner.channel_count} {tuner.channel_count === 1 ? "channel" : "channels"}
+                      {bt("bloem.admin.liveTv.tuners.channelCount", {
+                        count: tuner.channel_count,
+                        shown: tuner.channel_count,
+                      })}
                     </span>
                   </div>
                   <p className="text-muted-foreground truncate font-mono text-xs">
                     {tuner.base_url || tuner.device_id}
                   </p>
                   {tuner.last_error ? (
-                    <p className="text-destructive text-xs">Last problem: {tuner.last_error}</p>
+                    <p className="text-destructive text-xs">
+                      {bt("bloem.admin.liveTv.lastProblem", { error: tuner.last_error })}
+                    </p>
                   ) : null}
                 </div>
                 <div className="flex items-center gap-2">
@@ -154,7 +205,7 @@ function TunersTab() {
                     onClick={() => scanTuner.mutate(tuner.id)}
                   >
                     <RefreshCw />
-                    Find channels again
+                    {bt("bloem.admin.liveTv.tuners.findChannelsAgain")}
                   </Button>
                   {tuner.type === "xtream" ? (
                     <XtreamRemoveButton
@@ -170,7 +221,7 @@ function TunersTab() {
                       onClick={() => setRemoving(tuner.id)}
                     >
                       <Trash2 />
-                      Remove
+                      {bt("bloem.admin.liveTv.tuners.remove")}
                     </Button>
                   )}
                 </div>
@@ -181,9 +232,9 @@ function TunersTab() {
         <ConfirmDialog
           open={removing !== null}
           onOpenChange={(open) => !open && setRemoving(null)}
-          title="Remove this tuner?"
-          description="Its channels disappear from Live TV and the guide. You can add the tuner again later."
-          confirmLabel="Remove tuner"
+          title={bt("bloem.admin.liveTv.tuners.removeConfirm.title")}
+          description={bt("bloem.admin.liveTv.tuners.removeConfirm.description")}
+          confirmLabel={bt("bloem.admin.liveTv.tuners.removeConfirm.confirm")}
           variant="destructive"
           isPending={deleteTuner.isPending}
           onConfirm={() => {
@@ -196,41 +247,48 @@ function TunersTab() {
       <section className="max-w-2xl space-y-4" aria-labelledby="add-tuner">
         <div>
           <h2 id="add-tuner" className="text-base font-medium">
-            Add an antenna tuner
+            {bt("bloem.admin.liveTv.tuners.add.heading")}
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            HDHomeRun tuners, and Dispatcharr through its HDHomeRun mode. Bloem finds the channels
-            once the tuner is added.
+            {bt("bloem.admin.liveTv.tuners.add.intro")}
           </p>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="tuner-url">Tuner address</Label>
+          <Label htmlFor="tuner-url">{bt("bloem.admin.liveTv.tuners.add.address")}</Label>
           <Input
             id="tuner-url"
-            placeholder="http://192.168.1.50"
+            placeholder={TUNER_URL_PLACEHOLDER}
             value={tunerURL}
             onChange={(e) => setTunerURL(e.target.value)}
           />
           <p className="text-muted-foreground text-xs">
-            Optional for a search. For Dispatcharr, use its address, like
-            http://dispatcharr.local:9191.
+            {bt("bloem.admin.liveTv.tuners.add.addressHelp")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={submit} disabled={addTuner.isPending || !tunerURL.trim()}>
             <Plus />
-            {addTuner.isPending ? "Adding…" : "Add tuner"}
+            {addTuner.isPending
+              ? bt("bloem.admin.liveTv.tuners.add.adding")
+              : bt("bloem.admin.liveTv.tuners.add.addTuner")}
           </Button>
           <Button variant="outline" onClick={runDiscovery} disabled={discoverTuners.isPending}>
             <Radar />
-            {discoverTuners.isPending ? "Searching…" : "Search my network"}
+            {discoverTuners.isPending
+              ? bt("bloem.admin.liveTv.tuners.add.searching")
+              : bt("bloem.admin.liveTv.tuners.add.searchNetwork")}
           </Button>
         </div>
         {searched && candidates.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No tuners found.</p>
+          <p className="text-muted-foreground text-sm">
+            {bt("bloem.admin.liveTv.tuners.add.noneFound")}
+          </p>
         ) : null}
         {candidates.length > 0 ? (
-          <ul className="divide-border divide-y border-y" aria-label="Tuners found">
+          <ul
+            className="divide-border divide-y border-y"
+            aria-label={bt("bloem.admin.liveTv.tuners.found.label")}
+          >
             {candidates.map((c) => (
               <li
                 key={`${c.device_id}-${c.base_url || c.discover_url}`}
@@ -239,13 +297,18 @@ function TunersTab() {
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">
-                      {c.friendly_name || c.model || c.device_id || "Tuner"}
+                      {c.friendly_name ||
+                        c.model ||
+                        c.device_id ||
+                        bt("bloem.admin.liveTv.tuners.found.tuner")}
                     </span>
                     <span className="text-muted-foreground text-sm">
-                      {kindLabel(c.kind)}
                       {c.tuner_count > 0
-                        ? ` · ${c.tuner_count} ${c.tuner_count === 1 ? "tuner" : "tuners"}`
-                        : ""}
+                        ? bt("bloem.admin.liveTv.tuners.found.kindAndTunerCount", {
+                            kind: kindLabel(bt, c.kind),
+                            count: c.tuner_count,
+                          })
+                        : kindLabel(bt, c.kind)}
                     </span>
                   </div>
                   <p className="text-muted-foreground truncate font-mono text-xs">
@@ -253,7 +316,9 @@ function TunersTab() {
                   </p>
                 </div>
                 {c.already_added ? (
-                  <span className="text-muted-foreground text-sm">Added</span>
+                  <span className="text-muted-foreground text-sm">
+                    {bt("bloem.admin.liveTv.tuners.found.added")}
+                  </span>
                 ) : (
                   <Button
                     size="sm"
@@ -261,7 +326,7 @@ function TunersTab() {
                     onClick={() => addCandidate(c)}
                   >
                     <Plus />
-                    Add
+                    {bt("bloem.admin.liveTv.tuners.found.add")}
                   </Button>
                 )}
               </li>
@@ -277,12 +342,10 @@ function TunersTab() {
         ) : null}
         <details className="text-sm">
           <summary className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
-            Search doesn’t find your tuner?
+            {bt("bloem.admin.liveTv.tuners.add.searchHelp.summary")}
           </summary>
           <p className="text-muted-foreground mt-2">
-            The network search listens for tuners announcing themselves, which Docker’s default
-            network setup blocks. Type the tuner’s address and choose Add tuner instead, or run
-            Bloem with host networking.
+            {bt("bloem.admin.liveTv.tuners.add.searchHelp.body")}
           </p>
         </details>
       </section>
@@ -295,6 +358,7 @@ function TunersTab() {
 }
 
 function ChannelsTab() {
+  const bt = useBloemT();
   const channels = useLiveTVChannels();
   const patchChannel = usePatchLiveTVChannel();
   const [editingStation, setEditingStation] = useState<string | null>(null);
@@ -314,22 +378,21 @@ function ChannelsTab() {
 
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">
-        Turn on the channels people can watch. Once a guide source has synced, Bloem matches each
-        channel to its listings by number and call sign. Fix a match only if it’s wrong.
-      </p>
+      <p className="text-muted-foreground text-sm">{bt("bloem.admin.liveTv.channels.intro")}</p>
       {sorted.length > 0 ? (
         <p className="text-muted-foreground text-xs">
-          {mappedCount} of {sorted.length} channels have listings
-          {mappedCount < sorted.length ? ". Sync a guide source to match the rest." : "."}
+          {bt(
+            mappedCount < sorted.length
+              ? "bloem.admin.liveTv.channels.coverage"
+              : "bloem.admin.liveTv.channels.coverageComplete",
+            { mapped: mappedCount, total: sorted.length, totalShown: sorted.length },
+          )}
         </p>
       ) : null}
       {channels.isLoading ? (
-        <p className="text-muted-foreground text-sm">Loading…</p>
+        <p className="text-muted-foreground text-sm">{bt("bloem.admin.liveTv.loading")}</p>
       ) : sorted.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No channels yet. Add a tuner on the Tuners tab first.
-        </p>
+        <p className="text-muted-foreground text-sm">{bt("bloem.admin.liveTv.channels.none")}</p>
       ) : (
         <ul className="divide-border divide-y border-y">
           {sorted.map((channel) => {
@@ -341,28 +404,39 @@ function ChannelsTab() {
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">
-                      {channel.number_override || channel.number} ·{" "}
-                      {channel.callsign || channel.name}
+                      {bt("bloem.admin.liveTv.channels.channelName", {
+                        number: channel.number_override || channel.number,
+                        name: channel.callsign || channel.name,
+                      })}
                     </span>
-                    {channel.hd ? <Badge variant="secondary">HD</Badge> : null}
+                    {channel.hd ? (
+                      <Badge variant="secondary">{bt("bloem.admin.liveTv.channels.hd")}</Badge>
+                    ) : null}
                     {mapped ? (
-                      <Badge variant="outline" title={`Station ${channel.guide_station_id}`}>
-                        Listings matched
+                      <Badge
+                        variant="outline"
+                        title={bt("bloem.admin.liveTv.channels.station", {
+                          stationId: channel.guide_station_id,
+                        })}
+                      >
+                        {bt("bloem.admin.liveTv.channels.listingsMatched")}
                       </Badge>
                     ) : (
-                      <Badge variant="secondary">No listings</Badge>
+                      <Badge variant="secondary">
+                        {bt("bloem.admin.liveTv.channels.noListings")}
+                      </Badge>
                     )}
                   </div>
                   {editing ? (
                     <div className="flex flex-wrap items-end gap-2">
                       <div className="space-y-1">
                         <Label htmlFor={`station-${channel.id}`} className="text-xs">
-                          Station ID from your guide source
+                          {bt("bloem.admin.liveTv.channels.stationIdLabel")}
                         </Label>
                         <Input
                           id={`station-${channel.id}`}
                           className="w-48"
-                          placeholder="12345"
+                          placeholder={STATION_ID_PLACEHOLDER}
                           autoFocus
                           value={stationValue}
                           onChange={(e) =>
@@ -400,7 +474,7 @@ function ChannelsTab() {
                         size="sm"
                         onClick={() => setEditingStation(null)}
                       >
-                        Done
+                        {bt("bloem.admin.liveTv.channels.done")}
                       </Button>
                     </div>
                   ) : (
@@ -411,7 +485,9 @@ function ChannelsTab() {
                       className="text-muted-foreground h-auto px-0"
                       onClick={() => setEditingStation(channel.id)}
                     >
-                      {mapped ? "Fix listings match" : "Match listings by hand"}
+                      {mapped
+                        ? bt("bloem.admin.liveTv.channels.fixMatch")
+                        : bt("bloem.admin.liveTv.channels.matchByHand")}
                     </Button>
                   )}
                 </div>
@@ -420,7 +496,7 @@ function ChannelsTab() {
                     htmlFor={`enabled-${channel.id}`}
                     className="text-muted-foreground text-sm"
                   >
-                    Show in Live TV
+                    {bt("bloem.admin.liveTv.channels.showInLiveTv")}
                   </Label>
                   <Switch
                     id={`enabled-${channel.id}`}
@@ -444,6 +520,7 @@ function ChannelsTab() {
 }
 
 function GuideTab() {
+  const bt = useBloemT();
   const sources = useLiveTVGuideSources();
   const createSource = useCreateLiveTVGuideSource();
   const updateSource = useUpdateLiveTVGuideSource();
@@ -452,7 +529,7 @@ function GuideTab() {
   const lookupSDLineups = useLookupSchedulesDirectLineups();
   const lookupXMLLineups = useLookupXMLSyncLineups();
 
-  const [sdDisplayName, setSDDisplayName] = useState("Schedules Direct");
+  const [sdDisplayName, setSDDisplayName] = useState(SD_DEFAULT_NAME);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [sdCountry, setSDCountry] = useState("USA");
@@ -460,7 +537,7 @@ function GuideTab() {
   const [sdLineup, setSDLineup] = useState("");
   const [sdLineups, setSDLineups] = useState<SchedulesDirectLineupOption[]>([]);
 
-  const [xmlDisplayName, setXMLDisplayName] = useState("Free listings");
+  const [xmlDisplayName, setXMLDisplayName] = useState(XML_DEFAULT_NAME);
   const [kind, setKind] = useState<"xml" | "sd" | "xtream">("xml");
   const [removing, setRemoving] = useState<string | null>(null);
   const [xmlCountry, setXMLCountry] = useState("USA");
@@ -517,7 +594,7 @@ function GuideTab() {
       {
         type: "schedules_direct",
         enabled: true,
-        display_name: sdDisplayName.trim() || "Schedules Direct",
+        display_name: sdDisplayName.trim() || SD_DEFAULT_NAME,
         priority: 100,
         config: {
           username: username.trim(),
@@ -541,7 +618,7 @@ function GuideTab() {
       {
         type: "xml_sync",
         enabled: true,
-        display_name: xmlDisplayName.trim() || "Free listings",
+        display_name: xmlDisplayName.trim() || XML_DEFAULT_NAME,
         priority: 100,
         config: {
           country: xmlCountry.trim() || "USA",
@@ -568,92 +645,105 @@ function GuideTab() {
       <section className="space-y-3" aria-labelledby="guide-sources">
         <div>
           <h2 id="guide-sources" className="text-base font-medium">
-            Guide sources
+            {bt("bloem.admin.liveTv.guide.sources.heading")}
           </h2>
           <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
-            Where the TV guide comes from. Up to three can be on at once.
+            {bt("bloem.admin.liveTv.guide.sources.intro")}
           </p>
         </div>
         {sources.isLoading ? (
-          <p className="text-muted-foreground text-sm">Loading…</p>
+          <p className="text-muted-foreground text-sm">{bt("bloem.admin.liveTv.loading")}</p>
         ) : (sources.data?.length ?? 0) === 0 ? (
-          <p className="text-muted-foreground text-sm">None yet. Add one below.</p>
+          <p className="text-muted-foreground text-sm">
+            {bt("bloem.admin.liveTv.guide.sources.none")}
+          </p>
         ) : (
           <ul className="divide-border divide-y border-y">
-            {sources.data?.map((source) => (
-              <li
-                key={source.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-4"
-              >
-                <div className="min-w-0 space-y-1">
+            {sources.data?.map((source) => {
+              const syncState = source.last_sync_at
+                ? bt("bloem.admin.liveTv.guide.sources.lastSynced", {
+                    time: new Date(source.last_sync_at).toLocaleString(formatLocale()),
+                  })
+                : bt("bloem.admin.liveTv.guide.sources.notSynced");
+              return (
+                <li
+                  key={source.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-4"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">
+                        {source.display_name || sourceTypeLabel(bt, source.type)}
+                      </span>
+                      <span className="text-muted-foreground text-sm">
+                        {sourceTypeLabel(bt, source.type)}
+                      </span>
+                      <Badge variant="outline">{statusLabel(bt, source.status)}</Badge>
+                    </div>
+                    <p className="text-muted-foreground truncate text-xs">
+                      {source.config?.postalcode
+                        ? bt("bloem.admin.liveTv.guide.sources.withPostalCode", {
+                            postalCode: source.config.postalcode,
+                            syncState,
+                          })
+                        : syncState}
+                    </p>
+                    {source.last_error ? (
+                      <p className="text-destructive text-xs">
+                        {bt("bloem.admin.liveTv.lastProblem", { error: source.last_error })}
+                      </p>
+                    ) : null}
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">
-                      {source.display_name || sourceTypeLabel(source.type)}
-                    </span>
-                    <span className="text-muted-foreground text-sm">
-                      {sourceTypeLabel(source.type)}
-                    </span>
-                    <Badge variant="outline">{readable(source.status)}</Badge>
-                  </div>
-                  <p className="text-muted-foreground truncate text-xs">
-                    {source.config?.postalcode ? `${source.config.postalcode} · ` : ""}
-                    {source.last_sync_at
-                      ? `Last synced ${new Date(source.last_sync_at).toLocaleString()}`
-                      : "Not synced yet"}
-                  </p>
-                  {source.last_error ? (
-                    <p className="text-destructive text-xs">Last problem: {source.last_error}</p>
-                  ) : null}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-2">
-                    <Label
-                      htmlFor={`source-enabled-${source.id}`}
-                      className="text-muted-foreground text-sm"
+                    <div className="flex items-center gap-2">
+                      <Label
+                        htmlFor={`source-enabled-${source.id}`}
+                        className="text-muted-foreground text-sm"
+                      >
+                        {bt("bloem.admin.liveTv.guide.sources.on")}
+                      </Label>
+                      <Switch
+                        id={`source-enabled-${source.id}`}
+                        checked={source.enabled}
+                        disabled={updateSource.isPending || (!source.enabled && atLimit)}
+                        onCheckedChange={(checked) =>
+                          updateSource.mutate({
+                            id: source.id,
+                            body: { enabled: checked },
+                          })
+                        }
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={syncSource.isPending}
+                      onClick={() => syncSource.mutate(source.id)}
                     >
-                      On
-                    </Label>
-                    <Switch
-                      id={`source-enabled-${source.id}`}
-                      checked={source.enabled}
-                      disabled={updateSource.isPending || (!source.enabled && atLimit)}
-                      onCheckedChange={(checked) =>
-                        updateSource.mutate({
-                          id: source.id,
-                          body: { enabled: checked },
-                        })
-                      }
-                    />
+                      <RefreshCw />
+                      {bt("bloem.admin.liveTv.guide.sources.syncNow")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={deleteSource.isPending}
+                      onClick={() => setRemoving(source.id)}
+                    >
+                      <Trash2 />
+                      {bt("bloem.admin.liveTv.guide.sources.remove")}
+                    </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={syncSource.isPending}
-                    onClick={() => syncSource.mutate(source.id)}
-                  >
-                    <RefreshCw />
-                    Sync now
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={deleteSource.isPending}
-                    onClick={() => setRemoving(source.id)}
-                  >
-                    <Trash2 />
-                    Remove
-                  </Button>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
         <ConfirmDialog
           open={removing !== null}
           onOpenChange={(open) => !open && setRemoving(null)}
-          title="Remove this guide source?"
-          description="Channels that only it covered lose their listings until another source covers them."
-          confirmLabel="Remove source"
+          title={bt("bloem.admin.liveTv.guide.removeConfirm.title")}
+          description={bt("bloem.admin.liveTv.guide.removeConfirm.description")}
+          confirmLabel={bt("bloem.admin.liveTv.guide.removeConfirm.confirm")}
           variant="destructive"
           isPending={deleteSource.isPending}
           onConfirm={() => {
@@ -665,19 +755,31 @@ function GuideTab() {
 
       <section className="max-w-xl space-y-4" aria-labelledby="add-guide-source">
         <h2 id="add-guide-source" className="text-base font-medium">
-          Add a guide source
+          {bt("bloem.admin.liveTv.guide.add.heading")}
         </h2>
         {atLimit ? (
           <p className="border-border bg-muted/40 rounded-lg border p-3 text-sm">
-            Three guide sources are on. Turn one off to add another.
+            {bt("bloem.admin.liveTv.guide.add.atLimit")}
           </p>
         ) : null}
-        <fieldset className="grid gap-2" role="radiogroup" aria-label="Kind of guide source">
+        <fieldset
+          className="grid gap-2"
+          role="radiogroup"
+          aria-label={bt("bloem.admin.liveTv.guide.add.kind")}
+        >
           {(
             [
-              ["xml", "Free listings", "By postal code. No account needed."],
-              ["sd", "Schedules Direct", "A paid listings account."],
-              ["xtream", "Xtream provider", "The guide that comes with your Xtream provider."],
+              [
+                "xml",
+                bt("bloem.admin.liveTv.guide.kind.xml.label"),
+                bt("bloem.admin.liveTv.guide.kind.xml.hint"),
+              ],
+              ["sd", SCHEDULES_DIRECT, bt("bloem.admin.liveTv.guide.kind.sd.hint")],
+              [
+                "xtream",
+                bt("bloem.admin.liveTv.guide.kind.xtream.label"),
+                bt("bloem.admin.liveTv.guide.kind.xtream.hint"),
+              ],
             ] as const
           ).map(([value, label, hint]) => (
             <label
@@ -705,25 +807,25 @@ function GuideTab() {
         {kind === "xml" ? (
           <div className="space-y-4">
             <p className="text-muted-foreground text-sm">
-              Enter your postal code, find your lineup, then add it.
+              {bt("bloem.admin.liveTv.guide.xml.intro")}
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="xml-country">Country</Label>
+                <Label htmlFor="xml-country">{bt("bloem.admin.liveTv.guide.country")}</Label>
                 <Input
                   id="xml-country"
                   value={xmlCountry}
                   onChange={(e) => setXMLCountry(e.target.value)}
-                  placeholder="USA"
+                  placeholder={COUNTRY_PLACEHOLDER}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="xml-postal">Postal or ZIP code</Label>
+                <Label htmlFor="xml-postal">{bt("bloem.admin.liveTv.guide.postalCode")}</Label>
                 <Input
                   id="xml-postal"
                   value={xmlPostalCode}
                   onChange={(e) => setXMLPostalCode(e.target.value)}
-                  placeholder="12345"
+                  placeholder={POSTAL_CODE_PLACEHOLDER}
                 />
               </div>
             </div>
@@ -734,11 +836,13 @@ function GuideTab() {
               disabled={lookupXMLLineups.isPending || !xmlPostalCode.trim()}
             >
               <Radar />
-              {lookupXMLLineups.isPending ? "Looking up…" : "Find lineups"}
+              {lookupXMLLineups.isPending
+                ? bt("bloem.admin.liveTv.guide.lookingUp")
+                : bt("bloem.admin.liveTv.guide.findLineups")}
             </Button>
             {xmlLineups.length > 0 ? (
               <div className="space-y-1.5">
-                <Label htmlFor="xml-lineup">Lineup</Label>
+                <Label htmlFor="xml-lineup">{bt("bloem.admin.liveTv.guide.lineup")}</Label>
                 <select
                   id="xml-lineup"
                   className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -755,8 +859,16 @@ function GuideTab() {
                 >
                   {xmlLineups.map((item) => (
                     <option key={`${item.lineup}:${item.headend}`} value={item.lineup}>
-                      {item.name}
-                      {item.location ? ` (${item.location})` : ""} · {item.transport}
+                      {item.location
+                        ? bt("bloem.admin.liveTv.guide.lineupOptionWithLocation", {
+                            name: item.name,
+                            location: item.location,
+                            transport: item.transport,
+                          })
+                        : bt("bloem.admin.liveTv.guide.lineupOption", {
+                            name: item.name,
+                            transport: item.transport,
+                          })}
                     </option>
                   ))}
                 </select>
@@ -764,32 +876,36 @@ function GuideTab() {
             ) : (
               <details className="text-sm">
                 <summary className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
-                  Enter a lineup ID instead
+                  {bt("bloem.admin.liveTv.guide.enterLineupId")}
                 </summary>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="xml-lineup-manual">Lineup ID</Label>
+                    <Label htmlFor="xml-lineup-manual">
+                      {bt("bloem.admin.liveTv.guide.lineupId")}
+                    </Label>
                     <Input
                       id="xml-lineup-manual"
                       value={xmlLineup}
                       onChange={(e) => setXMLLineup(e.target.value)}
-                      placeholder="USA-lineupId-DEFAULT"
+                      placeholder={XML_LINEUP_PLACEHOLDER}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="xml-headend-manual">Headend ID</Label>
+                    <Label htmlFor="xml-headend-manual">
+                      {bt("bloem.admin.liveTv.guide.headendId")}
+                    </Label>
                     <Input
                       id="xml-headend-manual"
                       value={xmlHeadend}
                       onChange={(e) => setXMLHeadend(e.target.value)}
-                      placeholder="lineupId"
+                      placeholder={XML_HEADEND_PLACEHOLDER}
                     />
                   </div>
                 </div>
               </details>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="xml-guide-name">Name</Label>
+              <Label htmlFor="xml-guide-name">{bt("bloem.admin.liveTv.guide.name")}</Label>
               <Input
                 id="xml-guide-name"
                 value={xmlDisplayName}
@@ -798,7 +914,9 @@ function GuideTab() {
             </div>
             <Button onClick={addXMLSync} disabled={createSource.isPending || !canAddXML}>
               <Plus />
-              {createSource.isPending ? "Adding…" : "Add free listings"}
+              {createSource.isPending
+                ? bt("bloem.admin.liveTv.guide.adding")
+                : bt("bloem.admin.liveTv.guide.xml.add")}
             </Button>
           </div>
         ) : null}
@@ -814,20 +932,22 @@ function GuideTab() {
             }}
           >
             <p className="text-muted-foreground text-sm">
-              Sign in with your{" "}
-              <a
-                href="https://www.schedulesdirect.org/"
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-2"
-              >
-                Schedules Direct
-              </a>{" "}
-              account, find your lineup, then add it.
+              {bt("bloem.admin.liveTv.guide.sd.intro", {
+                link: (chunks) => (
+                  <a
+                    href="https://www.schedulesdirect.org/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline underline-offset-2"
+                  >
+                    {chunks}
+                  </a>
+                ),
+              })}
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="sd-username">Username</Label>
+                <Label htmlFor="sd-username">{bt("bloem.admin.liveTv.guide.sd.username")}</Label>
                 <Input
                   id="sd-username"
                   autoComplete="username"
@@ -836,7 +956,7 @@ function GuideTab() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="sd-password">Password</Label>
+                <Label htmlFor="sd-password">{bt("bloem.admin.liveTv.guide.sd.password")}</Label>
                 <Input
                   id="sd-password"
                   type="password"
@@ -848,21 +968,21 @@ function GuideTab() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="sd-country">Country</Label>
+                <Label htmlFor="sd-country">{bt("bloem.admin.liveTv.guide.country")}</Label>
                 <Input
                   id="sd-country"
                   value={sdCountry}
                   onChange={(e) => setSDCountry(e.target.value)}
-                  placeholder="USA"
+                  placeholder={COUNTRY_PLACEHOLDER}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="sd-postal">Postal or ZIP code</Label>
+                <Label htmlFor="sd-postal">{bt("bloem.admin.liveTv.guide.postalCode")}</Label>
                 <Input
                   id="sd-postal"
                   value={sdPostalCode}
                   onChange={(e) => setSDPostalCode(e.target.value)}
-                  placeholder="12345"
+                  placeholder={POSTAL_CODE_PLACEHOLDER}
                 />
               </div>
             </div>
@@ -875,11 +995,13 @@ function GuideTab() {
               }
             >
               <Radar />
-              {lookupSDLineups.isPending ? "Looking up…" : "Find lineups"}
+              {lookupSDLineups.isPending
+                ? bt("bloem.admin.liveTv.guide.lookingUp")
+                : bt("bloem.admin.liveTv.guide.findLineups")}
             </Button>
             {sdLineups.length > 0 ? (
               <div className="space-y-1.5">
-                <Label htmlFor="sd-lineup">Lineup</Label>
+                <Label htmlFor="sd-lineup">{bt("bloem.admin.liveTv.guide.lineup")}</Label>
                 <select
                   id="sd-lineup"
                   className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -888,7 +1010,10 @@ function GuideTab() {
                 >
                   {sdLineups.map((item) => (
                     <option key={item.lineup} value={item.lineup}>
-                      {item.name} · {item.transport}
+                      {bt("bloem.admin.liveTv.guide.lineupOption", {
+                        name: item.name,
+                        transport: item.transport,
+                      })}
                     </option>
                   ))}
                 </select>
@@ -896,21 +1021,23 @@ function GuideTab() {
             ) : (
               <details className="text-sm">
                 <summary className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
-                  Enter a lineup ID instead
+                  {bt("bloem.admin.liveTv.guide.enterLineupId")}
                 </summary>
                 <div className="mt-3 space-y-1.5">
-                  <Label htmlFor="sd-lineup-manual">Lineup ID</Label>
+                  <Label htmlFor="sd-lineup-manual">
+                    {bt("bloem.admin.liveTv.guide.lineupId")}
+                  </Label>
                   <Input
                     id="sd-lineup-manual"
                     value={sdLineup}
                     onChange={(e) => setSDLineup(e.target.value)}
-                    placeholder="USA-OTA-12345"
+                    placeholder={SD_LINEUP_PLACEHOLDER}
                   />
                 </div>
               </details>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="guide-name">Name</Label>
+              <Label htmlFor="guide-name">{bt("bloem.admin.liveTv.guide.name")}</Label>
               <Input
                 id="guide-name"
                 value={sdDisplayName}
@@ -919,7 +1046,9 @@ function GuideTab() {
             </div>
             <Button type="submit" disabled={createSource.isPending || !canAddSD}>
               <Plus />
-              {createSource.isPending ? "Adding…" : "Add Schedules Direct"}
+              {createSource.isPending
+                ? bt("bloem.admin.liveTv.guide.adding")
+                : bt("bloem.admin.liveTv.guide.sd.add")}
             </Button>
           </form>
         ) : null}
@@ -928,60 +1057,71 @@ function GuideTab() {
   );
 }
 
-function sourceTypeLabel(type: string): string {
-  if (type === "xml_sync") return "Free listings";
-  if (type === "schedules_direct") return "Schedules Direct";
-  if (type === "xtream") return "Xtream provider";
+function sourceTypeLabel(bt: BloemTranslate, type: string): string {
+  if (type === "xml_sync") return bt("bloem.admin.liveTv.guide.kind.xml.label");
+  if (type === "schedules_direct") return SCHEDULES_DIRECT;
+  if (type === "xtream") return bt("bloem.admin.liveTv.guide.kind.xtream.label");
   return readable(type);
 }
 
 function RecordingsTab() {
+  const bt = useBloemT();
   const recordings = useLiveTVRecordings();
   const cancelRecording = useCancelLiveTVRecording();
 
   if (recordings.isLoading) {
-    return <p className="text-muted-foreground text-sm">Loading…</p>;
+    return <p className="text-muted-foreground text-sm">{bt("bloem.admin.liveTv.loading")}</p>;
   }
   if ((recordings.data?.length ?? 0) === 0) {
     return (
-      <p className="text-muted-foreground text-sm">
-        No recordings yet. People schedule them from the guide.
-      </p>
+      <p className="text-muted-foreground text-sm">{bt("bloem.admin.liveTv.recordings.none")}</p>
     );
   }
 
   return (
     <ul className="divide-border divide-y border-y">
-      {recordings.data?.map((rec) => (
-        <li key={rec.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium">{rec.title || "Untitled"}</span>
-              <Badge variant="secondary">{readable(rec.status)}</Badge>
+      {recordings.data?.map((rec) => {
+        const start = new Date(rec.start).toLocaleString(formatLocale());
+        const stop = new Date(rec.stop).toLocaleString(formatLocale());
+        return (
+          <li key={rec.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">
+                  {rec.title || bt("bloem.admin.liveTv.recordings.untitled")}
+                </span>
+                <Badge variant="secondary">{statusLabel(bt, rec.status)}</Badge>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                {rec.last_error
+                  ? bt("bloem.admin.liveTv.recordings.timeWithProblem", {
+                      start,
+                      stop,
+                      error: rec.last_error,
+                    })
+                  : bt("bloem.admin.liveTv.recordings.time", { start, stop })}
+              </p>
             </div>
-            <p className="text-muted-foreground text-xs">
-              {new Date(rec.start).toLocaleString()} – {new Date(rec.stop).toLocaleString()}
-              {rec.last_error ? ` · Problem: ${rec.last_error}` : ""}
-            </p>
-          </div>
-          {rec.status === "scheduled" ? (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={cancelRecording.isPending}
-              onClick={() => cancelRecording.mutate(rec.id)}
-            >
-              <X />
-              Cancel recording
-            </Button>
-          ) : null}
-        </li>
-      ))}
+            {rec.status === "scheduled" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={cancelRecording.isPending}
+                onClick={() => cancelRecording.mutate(rec.id)}
+              >
+                <X />
+                {bt("bloem.admin.liveTv.recordings.cancel")}
+              </Button>
+            ) : null}
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
 export default function AdminLiveTV() {
+  const bt = useBloemT();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = normalizeTab(searchParams.get("tab"));
   const tuners = useLiveTVTuners();
@@ -1003,27 +1143,30 @@ export default function AdminLiveTV() {
       <div className="page-header">
         <div className="space-y-2">
           <div className="flex items-center gap-2.5">
-            <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Live TV</h1>
+            <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">
+              {bt("bloem.admin.liveTv.page.title")}
+            </h1>
           </div>
           <p className="text-muted-foreground max-w-2xl text-sm leading-6">
-            Watch and record TV: add an antenna tuner or Xtream provider, choose the channels, and
-            add a guide source for the listings.
+            {bt("bloem.admin.liveTv.page.intro")}
           </p>
           <p className="text-muted-foreground text-sm tabular-nums">
-            {count(tuners.data?.length ?? 0, "tuner")} ·{" "}
-            {count(channels.data?.length ?? 0, "channel")} ·{" "}
-            {sources.data?.filter((s) => s.enabled).length ?? 0} of 3 guide sources on
+            {bt("bloem.admin.liveTv.page.summary", {
+              tuners: tuners.data?.length ?? 0,
+              channels: channels.data?.length ?? 0,
+              enabledSources: sources.data?.filter((s) => s.enabled).length ?? 0,
+            })}
           </p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-5">
         <TabsList variant="line" className="border-border w-full justify-start border-b">
-          <TabsTrigger value="tuners">Tuners</TabsTrigger>
-          <TabsTrigger value="channels">Channels</TabsTrigger>
-          <TabsTrigger value="guide">Guide</TabsTrigger>
-          <TabsTrigger value="recordings">Recordings</TabsTrigger>
-          <TabsTrigger value="transcoding">Conversion</TabsTrigger>
+          <TabsTrigger value="tuners">{bt("bloem.admin.liveTv.tabs.tuners")}</TabsTrigger>
+          <TabsTrigger value="channels">{bt("bloem.admin.liveTv.tabs.channels")}</TabsTrigger>
+          <TabsTrigger value="guide">{bt("bloem.admin.liveTv.tabs.guide")}</TabsTrigger>
+          <TabsTrigger value="recordings">{bt("bloem.admin.liveTv.tabs.recordings")}</TabsTrigger>
+          <TabsTrigger value="transcoding">{bt("bloem.admin.liveTv.tabs.conversion")}</TabsTrigger>
         </TabsList>
         <TabsContent value="tuners">
           <TunersTab />
