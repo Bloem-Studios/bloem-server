@@ -221,8 +221,8 @@ func CatalogSearchSettingsFromMap(values map[string]string) (CatalogSearchSettin
 		settings.Timeout = time.Duration(timeoutMS) * time.Millisecond
 	}
 	if strategy := strings.TrimSpace(strings.ToLower(values[SearchSettingMeilisearchMatchingStrategy])); strategy != "" {
-		if strategy != "last" && strategy != "all" {
-			return settings, fmt.Errorf("%s must be last or all", SearchSettingMeilisearchMatchingStrategy)
+		if strategy != "last" && strategy != "all" && strategy != "frequency" {
+			return settings, fmt.Errorf("%s must be last, all or frequency", SearchSettingMeilisearchMatchingStrategy)
 		}
 		settings.MatchingStrategy = strategy
 	}

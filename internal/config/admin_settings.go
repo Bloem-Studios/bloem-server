@@ -980,7 +980,7 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 	case "catalog.search.provider":
 		return normalizeAdminEnum(key, value, "postgres", "meilisearch")
 	case "catalog.search.meilisearch.matching_strategy":
-		return normalizeAdminEnum(key, value, "last", "all")
+		return normalizeAdminEnum(key, value, "last", "all", "frequency")
 	case "s3.public_url_auth":
 		return normalizeAdminEnum(key, value, "", "presigned", "public", "cloudflare_token")
 

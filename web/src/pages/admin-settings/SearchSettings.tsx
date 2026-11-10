@@ -215,6 +215,10 @@ export default function SearchSettings() {
                 }
                 options={[
                   { value: "last", label: "Drop trailing words until something matches" },
+                  {
+                    value: "frequency",
+                    label: "Drop the most common words until something matches",
+                  },
                   { value: "all", label: "Require every word" },
                 ]}
                 disabled={!meiliEnabled}

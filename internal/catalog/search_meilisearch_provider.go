@@ -667,11 +667,12 @@ func (p *MeilisearchSearchProvider) matchingStrategyForRequest(req CatalogSearch
 	if strategy == "" {
 		strategy = DefaultMeilisearchMatchingStrategy
 	}
-	if strategy != "last" {
+	if strategy == "all" {
 		return strategy
 	}
-	// Two-term title searches are easy for Meili's "last" strategy to over-relax
-	// after typo correction (e.g. "spnge bob" degenerating into "spnge").
+	// Two-term title searches are easy for Meili's "last" and "frequency"
+	// strategies to over-relax after typo correction (e.g. "spnge bob"
+	// degenerating into "spnge").
 	if len(catalogSearchQueryTerms(req.Query)) == meilisearchStrictMatchingTermCount {
 		return "all"
 	}

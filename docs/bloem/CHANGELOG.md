@@ -3,6 +3,19 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 10, 2026 — search can drop the most common words first
+
+Meilisearch's `last` matching drops words from the end of a search until something
+matches, so a search that describes a title ends up matched on its first, usually
+generic, words. The matching strategy now also accepts Meilisearch's `frequency`, which
+drops the most common words first and keeps the distinctive ones; two-word searches stay
+strict, as they do under `last`. On the live index, 200 searches that describe a title
+without naming it found it in the top 50 36.5% of the time with `frequency`, against
+16.5% with `last`, with no change for exact or misspelled titles. Three new temporary
+seams (`internal/catalog/search_meilisearch_provider.go`,
+`internal/catalog/search_provider.go`, `web/src/pages/admin-settings/SearchSettings.tsx`),
+to drop when Silo accepts `frequency`; the ledger goes from 330 to 333.
+
 ## November 10, 2026 — gemini-embedding-2 gets task labels
 
 Production's embeddings moved from `gemini-embedding-001` to `gemini-embedding-2` on

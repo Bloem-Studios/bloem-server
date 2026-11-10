@@ -137,6 +137,8 @@ internal/catalog/collection_sync_scheduler.go
 internal/catalog/filesplit/filesplit.go  # native selected-target authorization boundary
 internal/catalog/folder_repo.go
 internal/catalog/library_repo.go
+internal/catalog/search_meilisearch_provider.go  # two-word searches stay strict under frequency as under last; temporary, frequency matching (descriptive searches in the top 50: 16.5% -> 36.5% on the live index, titles unchanged, 2026-11-10), drop when Silo's version merges
+internal/catalog/search_provider.go  # accept frequency as a matching strategy; temporary, frequency matching (descriptive searches in the top 50: 16.5% -> 36.5% on the live index, titles unchanged, 2026-11-10), drop when Silo's version merges
 internal/catalogseed/service.go
 internal/config/admin_settings.go
 internal/config/config.go
@@ -317,6 +319,7 @@ web/src/pages/ItemDetail/SeasonContent.test.tsx
 web/src/pages/Notifications.test.tsx
 web/src/pages/Notifications.tsx
 web/src/pages/admin-settings/AdminSettingsLayout.tsx
+web/src/pages/admin-settings/SearchSettings.tsx  # offer frequency as a matching strategy; temporary, frequency matching (descriptive searches in the top 50: 16.5% -> 36.5% on the live index, titles unchanged, 2026-11-10), drop when Silo's version merges
 web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permission-list hook after upstream split the user detail page
 web/src/pages/watchtogether/StartPartySheet.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
 web/src/pages/watchtogether/room/browse/CandidateStage.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
