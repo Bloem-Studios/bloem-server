@@ -3,6 +3,7 @@ import { ChevronRight, ShieldCheck, ShieldX } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
+import { useBloemT } from "@/bloem/i18n";
 import {
   accessActionLabel,
   accessReasonLabel,
@@ -29,6 +30,7 @@ interface DecisionExplanation {
 }
 
 export default function PolicyDecisionsPage() {
+  const bt = useBloemT();
   const { active } = useAdminContext();
   const contextKey = active?.key ?? "organization:unavailable";
   const [selectedID, setSelectedID] = useState<number>();
@@ -57,7 +59,7 @@ export default function PolicyDecisionsPage() {
       (libraryQuery.data ?? []).map((library) => ({ id: library.folder_id, name: library.name })),
     [libraryQuery.data],
   );
-  useDocumentTitle("Access Checks");
+  useDocumentTitle(bt("bloem.admin.organization.decisions.title"));
   const rows = decisions.data?.pages.flatMap((page) => page.decisions) ?? [];
 
   return (
@@ -65,25 +67,29 @@ export default function PolicyDecisionsPage() {
       <div className="page-header">
         <div className="space-y-2">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
-            Access Checks
+            {bt("bloem.admin.organization.decisions.title")}
           </h1>
           <p className="page-subtitle max-w-3xl">
-            When Bloem checks whether someone in {active?.name ?? "this organization"} may do
-            something, such as use a library, play a video or use a permission, it records the
-            answer here. Pick one to see why.
+            {bt("bloem.admin.organization.decisions.subtitle", {
+              organization: active?.name ?? bt("bloem.admin.organization.thisOrganization"),
+            })}
           </p>
         </div>
       </div>
 
-      {decisions.isLoading ? <p className="text-muted-foreground text-sm">Loading…</p> : null}
+      {decisions.isLoading ? (
+        <p className="text-muted-foreground text-sm">
+          {bt("bloem.admin.organization.decisions.loading")}
+        </p>
+      ) : null}
       {decisions.isError ? (
         <p className="text-destructive text-sm" role="alert">
-          Access checks couldn’t be loaded. Reload the page to try again.
+          {bt("bloem.admin.organization.decisions.loadFailed")}
         </p>
       ) : null}
       {!decisions.isLoading && !decisions.isError && rows.length === 0 ? (
         <p className="surface-panel text-muted-foreground rounded-2xl p-8 text-center text-sm">
-          Nothing has been checked yet.
+          {bt("bloem.admin.organization.decisions.empty")}
         </p>
       ) : null}
       {rows.length ? (
@@ -104,11 +110,22 @@ export default function PolicyDecisionsPage() {
                 )}
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium">
-                    {accessActionLabel(decision.action)}: {decision.allowed ? "allowed" : "refused"}
+                    {bt(
+                      decision.allowed
+                        ? "bloem.admin.organization.decisions.allowed"
+                        : "bloem.admin.organization.decisions.refused",
+                      {
+                        action: accessActionLabel(decision.action),
+                      },
+                    )}
                   </span>
                   <span className="text-muted-foreground block truncate text-sm">
-                    {decision.allowed ? "" : `${accessReasonLabel(decision.reason_code)} · `}
-                    {formatDateTime(decision.timestamp)}
+                    {decision.allowed
+                      ? formatDateTime(decision.timestamp)
+                      : bt("bloem.admin.organization.decisions.reasonAndTime", {
+                          reason: accessReasonLabel(decision.reason_code),
+                          time: formatDateTime(decision.timestamp),
+                        })}
                   </span>
                 </span>
                 <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
@@ -121,18 +138,24 @@ export default function PolicyDecisionsPage() {
                 onClick={() => void decisions.fetchNextPage()}
                 disabled={decisions.isFetchingNextPage}
               >
-                {decisions.isFetchingNextPage ? "Loading…" : "Show more"}
+                {decisions.isFetchingNextPage
+                  ? bt("bloem.admin.organization.decisions.loading")
+                  : bt("bloem.admin.organization.decisions.showMore")}
               </button>
             ) : null}
           </div>
           <div className="surface-panel min-h-48 rounded-2xl p-5 lg:sticky lg:top-4 lg:self-start">
             {selectedID === undefined ? (
-              <p className="text-muted-foreground text-sm">Pick a check to see the details.</p>
+              <p className="text-muted-foreground text-sm">
+                {bt("bloem.admin.organization.decisions.pickOne")}
+              </p>
             ) : selected.isLoading ? (
-              <p className="text-muted-foreground text-sm">Loading…</p>
+              <p className="text-muted-foreground text-sm">
+                {bt("bloem.admin.organization.decisions.loading")}
+              </p>
             ) : selected.isError ? (
               <p className="text-destructive text-sm" role="alert">
-                This check couldn’t be loaded.
+                {bt("bloem.admin.organization.decisions.detailLoadFailed")}
               </p>
             ) : selected.data ? (
               <DecisionDetails decision={selected.data} libraries={libraries} />
@@ -151,12 +174,26 @@ function DecisionDetails({
   decision: DecisionExplanation;
   libraries: NamedLibrary[];
 }) {
+  const bt = useBloemT();
   const resource = Object.entries(decision.resource);
+  const accountId = decision.subject.account_id ?? null;
+  const account =
+    accountId === null
+      ? bt("bloem.admin.organization.decisions.accountNotRecorded")
+      : bt("bloem.admin.organization.decisions.account", { accountId });
+  const none = bt("bloem.admin.organization.decisions.none");
   return (
     <div className="space-y-5">
       <div>
         <h2 className="text-lg font-medium">
-          {accessActionLabel(decision.action)}: {decision.allowed ? "allowed" : "refused"}
+          {bt(
+            decision.allowed
+              ? "bloem.admin.organization.decisions.allowed"
+              : "bloem.admin.organization.decisions.refused",
+            {
+              action: accessActionLabel(decision.action),
+            },
+          )}
         </h2>
         <p className="text-muted-foreground text-sm">{formatDateTime(decision.timestamp)}</p>
       </div>
@@ -167,24 +204,36 @@ function DecisionDetails({
       ) : null}
       <dl className="grid gap-4 text-sm sm:grid-cols-2">
         <Detail
-          label="Who"
-          value={`Account ${decision.subject.account_id ?? "not recorded"}${
-            decision.subject.profile_id ? ` · Profile ${decision.subject.profile_id}` : ""
-          }`}
+          label={bt("bloem.admin.organization.decisions.who")}
+          value={
+            decision.subject.profile_id
+              ? bt("bloem.admin.organization.decisions.withProfile", {
+                  account,
+                  profileId: decision.subject.profile_id,
+                })
+              : account
+          }
         />
         <Detail
-          label="Access group"
-          value={decision.group.name ?? (decision.group.id ? `Group ${decision.group.id}` : "None")}
+          label={bt("bloem.admin.organization.decisions.accessGroup")}
+          value={
+            decision.group.name ??
+            (decision.group.id
+              ? bt("bloem.admin.organization.decisions.groupNumber", { groupId: decision.group.id })
+              : none)
+          }
         />
         <Detail
-          label="Libraries they could use"
+          label={bt("bloem.admin.organization.decisions.libraries")}
           value={libraryListLabel(decision.library_ceiling, libraries)}
           wide
         />
       </dl>
       {resource.length ? (
         <section>
-          <h3 className="text-sm font-medium">What they asked for</h3>
+          <h3 className="text-sm font-medium">
+            {bt("bloem.admin.organization.decisions.requested")}
+          </h3>
           <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
             {resource.map(([key, value]) => (
               <Detail key={key} label={sentence(key)} value={formatValue(value)} />
@@ -194,27 +243,50 @@ function DecisionDetails({
       ) : null}
       <details className="text-sm">
         <summary className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
-          Details
+          {bt("bloem.admin.organization.decisions.details")}
         </summary>
         <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-          <Detail label="Check" value={String(decision.id)} />
-          <Detail label="Reason code" value={decision.reason_code || "None"} />
-          <Detail label="Organization ID" value={decision.organization.id} />
-          <Detail label="Membership ID" value={decision.organization.membership_id ?? "None"} />
+          <Detail
+            label={bt("bloem.admin.organization.decisions.check")}
+            value={String(decision.id)}
+          />
+          <Detail
+            label={bt("bloem.admin.organization.decisions.reasonCode")}
+            value={decision.reason_code || none}
+          />
+          <Detail
+            label={bt("bloem.admin.organization.decisions.organizationId")}
+            value={decision.organization.id}
+          />
+          <Detail
+            label={bt("bloem.admin.organization.decisions.membershipId")}
+            value={decision.organization.membership_id ?? none}
+          />
           {decision.group.id ? (
-            <Detail label="Access group ID" value={String(decision.group.id)} />
+            <Detail
+              label={bt("bloem.admin.organization.decisions.accessGroupId")}
+              value={String(decision.group.id)}
+            />
           ) : null}
           <Detail
-            label="Rules checked"
+            label={bt("bloem.admin.organization.decisions.rulesChecked")}
             value={
               decision.policy_versions.length
                 ? decision.policy_versions
-                    .map(
-                      (version) =>
-                        `${version.kind}${version.name ? ` ${version.name}` : ""} version ${version.version}`,
+                    .map((version) =>
+                      version.name
+                        ? bt("bloem.admin.organization.decisions.ruleVersionNamed", {
+                            kind: version.kind,
+                            name: version.name,
+                            version: version.version,
+                          })
+                        : bt("bloem.admin.organization.decisions.ruleVersion", {
+                            kind: version.kind,
+                            version: version.version,
+                          }),
                     )
                     .join(", ")
-                : "None recorded"
+                : bt("bloem.admin.organization.decisions.noneRecorded")
             }
             wide
           />
@@ -225,12 +297,16 @@ function DecisionDetails({
 }
 
 function Detail({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
-  const redacted = value === "[redacted]";
+  const bt = useBloemT();
+  const hidden =
+    value === "[redacted]" ? (
+      <span className="sr-only">{bt("bloem.admin.organization.decisions.sensitiveHidden")}</span>
+    ) : null;
   return (
     <div className={wide ? "min-w-0 sm:col-span-2" : "min-w-0"}>
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 break-words">
-        {value} {redacted ? <span className="sr-only">Sensitive value hidden</span> : null}
+        {value} {hidden}
       </dd>
     </div>
   );

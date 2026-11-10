@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { GitBranch } from "lucide-react";
 import { Link } from "react-router";
 
+import { useBloemT } from "@/bloem/i18n";
 import { PolicySummary } from "@/components/admin/policy/PolicyReview";
 import {
   derivationLabel,
@@ -19,6 +20,7 @@ import { useOrganizationLibraries } from "@/hooks/queries/admin/organizationLibr
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 export default function EntitlementCohortsPage() {
+  const bt = useBloemT();
   const { active } = useAdminContext();
   const contextKey = active?.key ?? "organization:unavailable";
   const cohorts = useOrganizationEntitlementCohorts(contextKey, true);
@@ -28,7 +30,7 @@ export default function EntitlementCohortsPage() {
       (libraryQuery.data ?? []).map((library) => ({ id: library.folder_id, name: library.name })),
     [libraryQuery.data],
   );
-  useDocumentTitle("Cohorts");
+  useDocumentTitle(bt("bloem.admin.organization.cohorts.title"));
   const activeCohorts = cohorts.data?.filter((cohort) => !cohort.archived) ?? [];
   const archivedCohorts = cohorts.data?.filter((cohort) => cohort.archived) ?? [];
 
@@ -37,18 +39,22 @@ export default function EntitlementCohortsPage() {
       <div className="page-header">
         <div className="space-y-2">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
-            Cohorts
+            {bt("bloem.admin.organization.cohorts.title")}
           </h1>
           <p className="page-subtitle max-w-3xl">
-            A cohort is a group of accounts in {active?.name ?? "this organization"} that share the
-            same settings. A cohort never changes. To give accounts different settings, select them
-            on the People page and move them.
+            {bt("bloem.admin.organization.cohorts.subtitle", {
+              organization: active?.name ?? bt("bloem.admin.organization.thisOrganization"),
+            })}
           </p>
         </div>
       </div>
 
       {cohorts.isLoading ? (
-        <div className="grid gap-4 xl:grid-cols-2" role="status" aria-label="Loading cohorts">
+        <div
+          className="grid gap-4 xl:grid-cols-2"
+          role="status"
+          aria-label={bt("bloem.admin.organization.cohorts.loading")}
+        >
           <Skeleton className="h-80" />
           <Skeleton className="h-80" />
         </div>
@@ -57,14 +63,16 @@ export default function EntitlementCohortsPage() {
           className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-4"
           role="alert"
         >
-          Cohorts couldn’t be loaded. Reload the page to try again.
+          {bt("bloem.admin.organization.cohorts.loadFailed")}
         </div>
       ) : cohorts.data?.length === 0 ? (
         <div className="surface-panel text-muted-foreground rounded-2xl p-10 text-center text-sm">
           <GitBranch className="mx-auto mb-3 size-8" aria-hidden />
-          <p>No cohorts yet. One appears when you first put people on a plan.</p>
+          <p>{bt("bloem.admin.organization.cohorts.empty")}</p>
           <Button asChild size="sm" variant="outline" className="mt-4">
-            <Link to="/admin/organization/people">Go to People</Link>
+            <Link to="/admin/organization/people">
+              {bt("bloem.admin.organization.cohorts.goToPeople")}
+            </Link>
           </Button>
         </div>
       ) : (
@@ -77,10 +85,12 @@ export default function EntitlementCohortsPage() {
           {archivedCohorts.length ? (
             <details className="space-y-4">
               <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm transition-colors">
-                Archived cohorts ({archivedCohorts.length})
+                {bt("bloem.admin.organization.cohorts.archived", {
+                  count: archivedCohorts.length,
+                })}
               </summary>
               <p className="text-muted-foreground mt-3 text-sm">
-                Kept for the record. Nobody can be moved to an archived cohort.
+                {bt("bloem.admin.organization.cohorts.archivedNote")}
               </p>
               <div className="mt-4 grid items-start gap-5 xl:grid-cols-2">
                 {archivedCohorts.map((cohort) => (
@@ -102,27 +112,48 @@ function CohortCard({
   cohort: EntitlementCohort;
   libraries: NamedLibrary[];
 }) {
+  const bt = useBloemT();
   const origin = cohort.source_template_key
-    ? `From plan ${cohort.source_template_key}${cohort.source_template_revision ? `, revision ${cohort.source_template_revision}` : ""}`
+    ? cohort.source_template_revision
+      ? bt("bloem.admin.organization.cohorts.fromPlanRevision", {
+          plan: cohort.source_template_key,
+          revision: cohort.source_template_revision,
+        })
+      : bt("bloem.admin.organization.cohorts.fromPlan", { plan: cohort.source_template_key })
     : derivationLabel(cohort.derivation_kind);
   const details: Array<[string, string]> = [
-    ["How it was made", derivationLabel(cohort.derivation_kind)],
-    ["Cohort revision", String(cohort.revision)],
+    [bt("bloem.admin.organization.cohorts.howItWasMade"), derivationLabel(cohort.derivation_kind)],
+    [bt("bloem.admin.organization.cohorts.cohortRevision"), String(cohort.revision)],
     ...(cohort.parent_cohort_id
-      ? [["Started from cohort", cohort.parent_cohort_id] as [string, string]]
+      ? [
+          [bt("bloem.admin.organization.cohorts.startedFromCohort"), cohort.parent_cohort_id] as [
+            string,
+            string,
+          ],
+        ]
       : []),
-    ["Created", formatDateTime(cohort.created_at)],
+    [bt("bloem.admin.organization.cohorts.created"), formatDateTime(cohort.created_at)],
     ...(cohort.created_by_account_id
-      ? [["Created by", `Account ${cohort.created_by_account_id}`] as [string, string]]
+      ? [
+          [
+            bt("bloem.admin.organization.cohorts.createdBy"),
+            bt("bloem.admin.organization.cohorts.account", {
+              accountId: cohort.created_by_account_id,
+            }),
+          ] as [string, string],
+        ]
       : []),
-    ["Access group", String(cohort.access_group_id)],
-    ["Cohort ID", cohort.cohort_id],
-    ["Settings fingerprint", cohort.policy_digest],
+    [bt("bloem.admin.organization.cohorts.accessGroup"), String(cohort.access_group_id)],
+    [bt("bloem.admin.organization.cohorts.cohortId"), cohort.cohort_id],
+    [bt("bloem.admin.organization.cohorts.settingsFingerprint"), cohort.policy_digest],
   ];
   return (
     <article
       className="surface-panel space-y-4 rounded-2xl p-5"
-      aria-label={`${cohort.name} revision ${cohort.revision}`}
+      aria-label={bt("bloem.admin.organization.cohorts.cardLabel", {
+        name: cohort.name,
+        revision: cohort.revision,
+      })}
     >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -130,17 +161,23 @@ function CohortCard({
           <p className="text-muted-foreground mt-1 text-sm">{origin}</p>
         </div>
         <p className="text-muted-foreground text-sm tabular-nums">
-          {cohort.member_count.toLocaleString()}{" "}
-          {cohort.member_count === 1 ? "account" : "accounts"}
-          {cohort.archived ? " · Archived" : null}
+          {cohort.archived
+            ? bt("bloem.admin.organization.cohorts.memberCountArchived", {
+                count: cohort.member_count,
+              })
+            : bt("bloem.admin.organization.cohorts.memberCount", { count: cohort.member_count })}
         </p>
       </header>
 
-      <PolicySummary policy={cohort.policy} libraries={libraries} label="Settings" />
+      <PolicySummary
+        policy={cohort.policy}
+        libraries={libraries}
+        label={bt("bloem.admin.organization.cohorts.settings")}
+      />
 
       <details className="text-sm">
         <summary className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
-          Details
+          {bt("bloem.admin.organization.cohorts.details")}
         </summary>
         <dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {details.map(([label, value]) => (
@@ -157,9 +194,11 @@ function CohortCard({
           <Button asChild size="sm" variant="outline">
             <Link
               to={`/admin/organization/people?policy_cohort=${encodeURIComponent(cohort.cohort_id)}`}
-              aria-label={`Move people to ${cohort.name}`}
+              aria-label={bt("bloem.admin.organization.cohorts.movePeopleTo", {
+                name: cohort.name,
+              })}
             >
-              Move people here
+              {bt("bloem.admin.organization.cohorts.movePeopleHere")}
             </Link>
           </Button>
         </div>

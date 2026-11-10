@@ -1,5 +1,6 @@
 import { Building2, Library, ShieldCheck, UserRound, Users } from "lucide-react";
 
+import { useBloemT } from "@/bloem/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
@@ -8,15 +9,20 @@ import { useAccountNames } from "@/components/admin/policy/useAccountNames";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 export default function OrganizationOverviewPage() {
+  const bt = useBloemT();
   const { active } = useAdminContext();
   const contextKey = active?.key ?? "organization:unavailable";
   const overview = useOrganizationOverview(contextKey);
   const accountName = useAccountNames();
-  useDocumentTitle(active?.name ?? "Organization overview");
+  useDocumentTitle(active?.name ?? bt("bloem.admin.organization.overview.title"));
 
   if (overview.isLoading) {
     return (
-      <section className="admin-page space-y-5" role="status" aria-label="Loading organization">
+      <section
+        className="admin-page space-y-5"
+        role="status"
+        aria-label={bt("bloem.admin.organization.overview.loading")}
+      >
         <Skeleton className="h-16 w-80 max-w-full" />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }, (_, index) => (
@@ -32,17 +38,37 @@ export default function OrganizationOverviewPage() {
         className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-4"
         role="alert"
       >
-        This organization couldn’t be loaded. Reload the page to try again.
+        {bt("bloem.admin.organization.overview.loadFailed")}
       </div>
     );
   }
 
   const organization = overview.data;
   const metrics = [
-    { label: "Members", value: organization.membership_count, icon: Users },
-    { label: "Profiles", value: organization.profile_count, icon: UserRound },
-    { label: "Owned libraries", value: organization.library_count, icon: Library },
-    { label: "Libraries shared with it", value: organization.entitlement_count, icon: ShieldCheck },
+    {
+      id: "members",
+      label: bt("bloem.admin.organization.overview.members"),
+      value: organization.membership_count,
+      icon: Users,
+    },
+    {
+      id: "profiles",
+      label: bt("bloem.admin.organization.overview.profiles"),
+      value: organization.profile_count,
+      icon: UserRound,
+    },
+    {
+      id: "owned",
+      label: bt("bloem.admin.organization.overview.ownedLibraries"),
+      value: organization.library_count,
+      icon: Library,
+    },
+    {
+      id: "shared",
+      label: bt("bloem.admin.organization.overview.sharedLibraries"),
+      value: organization.entitlement_count,
+      icon: ShieldCheck,
+    },
   ];
   return (
     <section className="admin-page space-y-6">
@@ -54,19 +80,19 @@ export default function OrganizationOverviewPage() {
               {organization.name}
             </h1>
           </div>
-          <p className="page-subtitle">Members, libraries and who owns this organization.</p>
+          <p className="page-subtitle">{bt("bloem.admin.organization.overview.subtitle")}</p>
         </div>
         <Badge
           variant={organization.status === "active" ? "secondary" : "destructive"}
           className="capitalize"
         >
-          {organization.status}
+          {bt("bloem.admin.organization.overview.status", { status: organization.status })}
         </Badge>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.map(({ label, value, icon: Icon }) => (
-          <article key={label} className="surface-panel rounded-2xl p-5">
+        {metrics.map(({ id, label, value, icon: Icon }) => (
+          <article key={id} className="surface-panel rounded-2xl p-5">
             <Icon className="text-muted-foreground h-5 w-5" />
             <p className="mt-5 text-3xl font-semibold tabular-nums">{value.toLocaleString()}</p>
             <p className="text-muted-foreground mt-1 text-sm">{label}</p>
@@ -75,22 +101,28 @@ export default function OrganizationOverviewPage() {
       </div>
 
       <div className="surface-panel rounded-2xl p-5">
-        <h2 className="font-medium">About</h2>
+        <h2 className="font-medium">{bt("bloem.admin.organization.overview.about")}</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-muted-foreground">Owner</dt>
+            <dt className="text-muted-foreground">
+              {bt("bloem.admin.organization.overview.owner")}
+            </dt>
             <dd className="mt-1 font-medium">
               {organization.owner_account_id
                 ? accountName(organization.owner_account_id)
-                : "Nobody yet"}
+                : bt("bloem.admin.organization.overview.noOwner")}
             </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Short name</dt>
+            <dt className="text-muted-foreground">
+              {bt("bloem.admin.organization.overview.shortName")}
+            </dt>
             <dd className="mt-1 font-mono">{organization.slug}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Settings revision</dt>
+            <dt className="text-muted-foreground">
+              {bt("bloem.admin.organization.overview.settingsRevision")}
+            </dt>
             <dd className="mt-1 tabular-nums">{organization.policy_revision}</dd>
           </div>
         </dl>

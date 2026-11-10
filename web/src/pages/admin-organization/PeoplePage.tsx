@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AdminV2ClientError } from "@/api/adminV2Client";
+import { useBloemT, type BloemTranslate } from "@/bloem/i18n";
 import BulkJobResult from "@/components/admin/people/BulkJobResult";
 import BulkPeopleActionBar from "@/components/admin/people/BulkPeopleActionBar";
 import BulkPolicyDrawer from "@/components/admin/people/BulkPolicyDrawer";
@@ -53,13 +54,18 @@ type ProfileConflict = {
   intendedGroupId: number;
   currentRevision: number;
   intendedGroup: string;
-  currentGroup: string;
+  /** The profile's group now; undefined when it has none on record. */
+  currentGroup?: string;
+  /** The profile could not be reloaded, so its current group is not known. */
+  currentGroupFailed?: boolean;
   message: string;
 };
 
 export default function PeoplePage() {
-  useDocumentTitle("People");
+  const bt = useBloemT();
+  useDocumentTitle(bt("bloem.admin.organization.people.title"));
   const { active } = useAdminContext();
+  const organizationName = active?.name ?? bt("bloem.admin.organization.thisOrganization");
   const contextKey = active?.key ?? "organization:unavailable";
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => peopleFiltersFromSearch(searchParams), [searchParams]);
@@ -166,7 +172,8 @@ export default function PeoplePage() {
 
   async function changeGroup(person: OrganizationPerson, profileId: string, groupId: number) {
     const intendedGroup =
-      groups.data?.find((group) => group.id === groupId)?.name ?? `Group ${groupId}`;
+      groups.data?.find((group) => group.id === groupId)?.name ??
+      bt("bloem.admin.organization.people.groupNumber", { groupId });
     setGroupDrafts((drafts) => ({ ...drafts, [profileId]: groupId }));
     setProfileConflict(null);
     setChangingProfileId(profileId);
@@ -193,9 +200,8 @@ export default function PeoplePage() {
             intendedGroupId: groupId,
             currentRevision: current.security_revision,
             intendedGroup,
-            currentGroup: currentProfile?.group_name ?? "unknown",
-            message:
-              "This profile changed on the server. Review the current group before retrying.",
+            currentGroup: currentProfile?.group_name,
+            message: bt("bloem.admin.organization.people.conflictChanged"),
           });
         } catch {
           setProfileConflict({
@@ -204,9 +210,8 @@ export default function PeoplePage() {
             intendedGroupId: groupId,
             currentRevision: person.security_revision,
             intendedGroup,
-            currentGroup: "could not be reloaded",
-            message:
-              "This profile changed on the server, but its current state could not be loaded.",
+            currentGroupFailed: true,
+            message: bt("bloem.admin.organization.people.conflictNotReloaded"),
           });
         }
       } else {
@@ -216,10 +221,11 @@ export default function PeoplePage() {
           intendedGroupId: groupId,
           currentRevision: person.security_revision,
           intendedGroup,
-          currentGroup:
-            person.profiles.find((profile) => profile.id === profileId)?.group_name ?? "unknown",
+          currentGroup: person.profiles.find((profile) => profile.id === profileId)?.group_name,
           message:
-            error instanceof Error ? error.message : "The profile group could not be changed.",
+            error instanceof Error
+              ? error.message
+              : bt("bloem.admin.organization.people.conflictFailed"),
         });
       }
     } finally {
@@ -233,11 +239,10 @@ export default function PeoplePage() {
       <div className="page-header">
         <div className="space-y-2">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
-            People
+            {bt("bloem.admin.organization.people.title")}
           </h1>
           <p className="page-subtitle">
-            Everyone in {active?.name ?? "this organization"}. Change a profile’s access group here,
-            or select everyone that matches your filters to change their plan or membership.
+            {bt("bloem.admin.organization.people.subtitle", { organization: organizationName })}
           </p>
         </div>
         {resultCount > 0 ? (
@@ -247,8 +252,8 @@ export default function PeoplePage() {
             disabled={createSelection.isPending}
           >
             {createSelection.isPending
-              ? "Selecting…"
-              : `Select all ${resultCount.toLocaleString()}`}
+              ? bt("bloem.admin.organization.people.selecting")
+              : bt("bloem.admin.organization.people.selectAll", { count: resultCount })}
           </Button>
         ) : null}
       </div>
@@ -265,15 +270,15 @@ export default function PeoplePage() {
           <Search className="text-muted-foreground absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2" />
           <Input
             type="search"
-            aria-label="Search people"
-            placeholder="Name, email or profile"
+            aria-label={bt("bloem.admin.organization.people.searchPeople")}
+            placeholder={bt("bloem.admin.organization.people.searchPlaceholder")}
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             className="ps-9"
           />
         </div>
         <select
-          aria-label="Membership status"
+          aria-label={bt("bloem.admin.organization.people.membershipStatus")}
           className="border-input bg-background h-9 rounded-md border px-3 text-sm"
           value={filters.status[0] ?? "all"}
           onChange={(event) =>
@@ -285,13 +290,13 @@ export default function PeoplePage() {
             })
           }
         >
-          <option value="all">Any status</option>
-          <option value="active">Active</option>
-          <option value="suspended">Suspended</option>
-          <option value="invited">Invited</option>
+          <option value="all">{bt("bloem.admin.organization.people.anyStatus")}</option>
+          <option value="active">{bt("bloem.admin.organization.people.statusActive")}</option>
+          <option value="suspended">{bt("bloem.admin.organization.people.statusSuspended")}</option>
+          <option value="invited">{bt("bloem.admin.organization.people.statusInvited")}</option>
         </select>
         <select
-          aria-label="Access group"
+          aria-label={bt("bloem.admin.organization.people.accessGroup")}
           className="border-input bg-background h-9 rounded-md border px-3 text-sm"
           value={filters.groupIds[0] ?? "all"}
           onChange={(event) =>
@@ -300,7 +305,7 @@ export default function PeoplePage() {
             })
           }
         >
-          <option value="all">Any access group</option>
+          <option value="all">{bt("bloem.admin.organization.people.anyAccessGroup")}</option>
           {(groups.data ?? []).map((group) => (
             <option key={group.id} value={group.id}>
               {group.name}
@@ -309,8 +314,8 @@ export default function PeoplePage() {
         </select>
         <Input
           type="date"
-          aria-label="Active since"
-          title="Active since"
+          aria-label={bt("bloem.admin.organization.people.activeSince")}
+          title={bt("bloem.admin.organization.people.activeSince")}
           value={filters.activeSince?.slice(0, 10) ?? ""}
           onChange={(event) =>
             updateFilters({
@@ -321,16 +326,18 @@ export default function PeoplePage() {
           }
         />
         <select
-          aria-label="Sort people"
+          aria-label={bt("bloem.admin.organization.people.sortPeople")}
           className="border-input bg-background h-9 rounded-md border px-3 text-sm"
           value={filters.sort}
           onChange={(event) => updateFilters({ sort: event.target.value as PeopleFilters["sort"] })}
         >
-          <option value="name">Name</option>
-          <option value="email">Email</option>
-          <option value="recent_activity">Recent activity</option>
+          <option value="name">{bt("bloem.admin.organization.people.sortName")}</option>
+          <option value="email">{bt("bloem.admin.organization.people.sortEmail")}</option>
+          <option value="recent_activity">
+            {bt("bloem.admin.organization.people.sortRecentActivity")}
+          </option>
         </select>
-        <Button type="submit">Search</Button>
+        <Button type="submit">{bt("bloem.admin.organization.people.search")}</Button>
       </form>
 
       {profileConflict ? (
@@ -338,8 +345,16 @@ export default function PeoplePage() {
           className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-4 text-sm"
           role="alert"
         >
-          {profileConflict.message} You chose {profileConflict.intendedGroup}; it is now{" "}
-          {profileConflict.currentGroup}.
+          {bt("bloem.admin.organization.people.conflictSummary", {
+            message: profileConflict.message,
+            intendedGroup: profileConflict.intendedGroup,
+            currentGroup: profileConflict.currentGroup ?? "",
+            currentGroupState: profileConflict.currentGroupFailed
+              ? "failed"
+              : profileConflict.currentGroup === undefined
+                ? "unknown"
+                : "known",
+          })}
           <Button
             className="ms-3"
             size="sm"
@@ -367,19 +382,27 @@ export default function PeoplePage() {
                   setProfileConflict({
                     ...conflict,
                     message:
-                      error instanceof Error ? error.message : "The retry could not be completed.",
+                      error instanceof Error
+                        ? error.message
+                        : bt("bloem.admin.organization.people.retryFailed"),
                   }),
                 )
                 .finally(() => setChangingProfileId(undefined));
             }}
           >
-            Use {profileConflict.intendedGroup} anyway
+            {bt("bloem.admin.organization.people.useAnyway", {
+              group: profileConflict.intendedGroup,
+            })}
           </Button>
         </div>
       ) : null}
 
       {people.isLoading ? (
-        <div className="space-y-3" role="status" aria-label="Loading people">
+        <div
+          className="space-y-3"
+          role="status"
+          aria-label={bt("bloem.admin.organization.people.loading")}
+        >
           {Array.from({ length: 6 }, (_, index) => (
             <Skeleton key={index} className="h-16 w-full" />
           ))}
@@ -389,12 +412,12 @@ export default function PeoplePage() {
           className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-4"
           role="alert"
         >
-          People couldn’t be loaded. Reload the page to try again.
+          {bt("bloem.admin.organization.people.loadFailed")}
         </div>
       ) : (people.data?.items.length ?? 0) === 0 ? (
         <div className="surface-panel text-muted-foreground rounded-2xl p-10 text-center">
           <Users className="mx-auto mb-3 h-8 w-8" />
-          Nobody matches these filters.
+          {bt("bloem.admin.organization.people.noMatches")}
         </div>
       ) : (
         <PeopleTable
@@ -409,7 +432,10 @@ export default function PeoplePage() {
         />
       )}
 
-      <nav className="flex items-center justify-between" aria-label="People pages">
+      <nav
+        className="flex items-center justify-between"
+        aria-label={bt("bloem.admin.organization.people.pages")}
+      >
         <Button
           variant="outline"
           disabled={!filters.cursor || cursorHistory.length <= 1}
@@ -420,10 +446,10 @@ export default function PeoplePage() {
             setSearchParams(peopleFiltersToSearch({ ...filters, cursor: previousCursor }));
           }}
         >
-          <ChevronLeft className="me-2 h-4 w-4" /> Previous
+          <ChevronLeft className="me-2 h-4 w-4" /> {bt("bloem.admin.organization.people.previous")}
         </Button>
         <span className="text-muted-foreground text-sm">
-          About {resultCount.toLocaleString()} {resultCount === 1 ? "person" : "people"}
+          {bt("bloem.admin.organization.people.approximateCount", { count: resultCount })}
         </span>
         <Button
           variant="outline"
@@ -435,7 +461,7 @@ export default function PeoplePage() {
             setSearchParams(peopleFiltersToSearch({ ...filters, cursor: nextCursor }));
           }}
         >
-          Next <ChevronRight className="ms-2 h-4 w-4" />
+          {bt("bloem.admin.organization.people.next")} <ChevronRight className="ms-2 h-4 w-4" />
         </Button>
       </nav>
 
@@ -452,7 +478,7 @@ export default function PeoplePage() {
         <BulkPolicyDrawer
           open={policyDrawerOpen}
           contextKey={contextKey}
-          organizationName={active?.name ?? "this organization"}
+          organizationName={organizationName}
           selection={selection}
           cohorts={cohorts.data ?? []}
           initialCohortID={searchParams.get("policy_cohort") || undefined}
@@ -470,24 +496,24 @@ export default function PeoplePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {pendingAction
-                ? actionLabel(pendingAction, groups.data ?? [])
-                : "Change these people"}
-              ?
+                ? actionQuestion(pendingAction, groups.data ?? [], bt)
+                : bt("bloem.admin.organization.people.confirmChange")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This changes {selection?.matched.toLocaleString() ?? 0}{" "}
-              {selection?.matched === 1 ? "person" : "people"} in{" "}
-              {active?.name ?? "this organization"} ({filterSummary(filters, groups.data ?? [])})
-              {selection?.excluded
-                ? `; ${selection.excluded.toLocaleString()} more match but are left out`
-                : ""}
-              . People who match later are not included.
+              {bt("bloem.admin.organization.people.confirmDescription", {
+                count: selection?.matched ?? 0,
+                organization: organizationName,
+                filters: filterSummary(filters, groups.data ?? [], bt),
+                excluded: selection?.excluded ?? 0,
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{bt("bloem.admin.organization.people.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => void startBulkJob()} disabled={createJob.isPending}>
-              {pendingAction?.kind === "suspend_memberships" ? "Suspend" : "Apply"}
+              {pendingAction?.kind === "suspend_memberships"
+                ? bt("bloem.admin.organization.people.suspend")
+                : bt("bloem.admin.organization.people.apply")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -496,24 +522,73 @@ export default function PeoplePage() {
   );
 }
 
-function actionLabel(action: PendingAction, groups: { id: number; name: string }[]): string {
+/** The bulk change confirm dialog's title, a question. */
+function actionQuestion(
+  action: PendingAction,
+  groups: { id: number; name: string }[],
+  bt: BloemTranslate,
+): string {
   if (action.kind === "assign_group") {
     const group = groups.find((candidate) => candidate.id === action.groupId);
-    return `Move their profiles to ${group?.name ?? `group ${action.groupId}`}`;
+    return group
+      ? bt("bloem.admin.organization.people.confirmMoveProfiles", { group: group.name })
+      : bt("bloem.admin.organization.people.confirmMoveProfilesToNumber", {
+          groupId: action.groupId ?? "",
+        });
   }
-  if (action.kind === "reactivate_memberships") return "Reactivate their memberships";
-  return "Suspend their memberships";
+  if (action.kind === "reactivate_memberships") {
+    return bt("bloem.admin.organization.people.confirmReactivate");
+  }
+  return bt("bloem.admin.organization.people.confirmSuspend");
 }
 
-function filterSummary(filters: PeopleFilters, groups: { id: number; name: string }[]): string {
+/** Joins items with one of the messages that take {list} and {item}. */
+function joinWith(
+  items: string[],
+  bt: BloemTranslate,
+  id:
+    | "bloem.admin.organization.people.filterOr"
+    | "bloem.admin.organization.people.filterSeparator",
+): string {
+  return items.reduce((list, item) => bt(id, { list, item }));
+}
+
+function filterSummary(
+  filters: PeopleFilters,
+  groups: { id: number; name: string }[],
+  bt: BloemTranslate,
+): string {
+  const or = "bloem.admin.organization.people.filterOr" as const;
   const selectedGroups = filters.groupIds.map(
-    (id) => groups.find((group) => group.id === id)?.name ?? `#${id}`,
+    (id) =>
+      groups.find((group) => group.id === id)?.name ??
+      bt("bloem.admin.organization.people.groupHash", { groupId: id }),
   );
   const parts = [
-    filters.query ? `matching “${filters.query}”` : "",
-    filters.status.length ? filters.status.join(" or ") : "",
-    selectedGroups.length ? `in ${selectedGroups.join(" or ")}` : "",
-    filters.activeSince ? `active since ${filters.activeSince.slice(0, 10)}` : "",
+    filters.query
+      ? bt("bloem.admin.organization.people.filterMatching", { query: filters.query })
+      : "",
+    filters.status.length
+      ? joinWith(
+          filters.status.map((status) =>
+            bt("bloem.admin.organization.people.filterStatus", { status }),
+          ),
+          bt,
+          or,
+        )
+      : "",
+    selectedGroups.length
+      ? bt("bloem.admin.organization.people.filterInGroups", {
+          groups: joinWith(selectedGroups, bt, or),
+        })
+      : "",
+    filters.activeSince
+      ? bt("bloem.admin.organization.people.filterActiveSince", {
+          date: filters.activeSince.slice(0, 10),
+        })
+      : "",
   ].filter(Boolean);
-  return parts.length ? parts.join(", ") : "everyone";
+  return parts.length
+    ? joinWith(parts, bt, "bloem.admin.organization.people.filterSeparator")
+    : bt("bloem.admin.organization.people.filterEveryone");
 }

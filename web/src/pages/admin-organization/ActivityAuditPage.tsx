@@ -2,6 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { adminV2Api, adminV2QueryKey, captureAdminRequestContext } from "@/api/adminV2Client";
 import type { AdminContextSummary } from "@/api/bloemTypes";
+import { useBloemT, type BloemMessageKey, type BloemTranslate } from "@/bloem/i18n";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useAccountNames } from "@/components/admin/policy/useAccountNames";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -24,13 +25,15 @@ interface AuditPage {
 }
 
 export default function ActivityAuditPage() {
+  const bt = useBloemT();
   const { active } = useAdminContext();
-  useDocumentTitle("Activity");
+  useDocumentTitle(bt("bloem.admin.organization.activity.title"));
   if (active?.scope !== "organization")
-    return <p role="alert">Choose an organization to see its activity.</p>;
+    return <p role="alert">{bt("bloem.admin.organization.activity.chooseOrganization")}</p>;
   return <OrganizationAudit key={active.key} context={active} />;
 }
 function OrganizationAudit({ context }: { context: AdminContextSummary }) {
+  const bt = useBloemT();
   const authority = captureAdminRequestContext(context.key);
   const accountName = useAccountNames();
   const query = useInfiniteQuery({
@@ -50,55 +53,68 @@ function OrganizationAudit({ context }: { context: AdminContextSummary }) {
     <section className="admin-page space-y-6">
       <header className="space-y-2">
         <h1 className="page-title" tabIndex={-1}>
-          Activity
+          {bt("bloem.admin.organization.activity.title")}
         </h1>
         <p className="page-subtitle max-w-3xl">
-          Changes to {context.name}: its name and status, its members, and their plans. Sign-ins,
-          playback and other server events are not listed here.
+          {bt("bloem.admin.organization.activity.subtitle", { organization: context.name })}
         </p>
         <div className="flex flex-wrap gap-4 text-sm">
           <Link className="underline" to="/admin/organization/policy-decisions">
-            Access checks
+            {bt("bloem.admin.organization.activity.accessChecks")}
           </Link>
           <Link className="underline" to="/admin/organization/invitations">
-            Invitations
+            {bt("bloem.admin.organization.activity.invitations")}
           </Link>
         </div>
       </header>
-      {query.isPending && <p role="status">Loading…</p>}
+      {query.isPending && <p role="status">{bt("bloem.admin.organization.activity.loading")}</p>}
       {query.isError && (
         <div role="alert" className="space-y-3">
-          <p className="text-destructive">Activity couldn’t be loaded.</p>
+          <p className="text-destructive">{bt("bloem.admin.organization.activity.loadFailed")}</p>
           <Button variant="outline" onClick={() => void query.refetch()}>
-            Try again
+            {bt("bloem.admin.organization.activity.tryAgain")}
           </Button>
         </div>
       )}
       {query.isSuccess && query.data.pages[0]?.events.length === 0 && (
-        <p className="text-muted-foreground">Nothing has changed yet.</p>
+        <p className="text-muted-foreground">{bt("bloem.admin.organization.activity.empty")}</p>
       )}
       {query.data && (
-        <ol className="divide-border divide-y border-y" aria-label="Activity">
+        <ol
+          className="divide-border divide-y border-y"
+          aria-label={bt("bloem.admin.organization.activity.title")}
+        >
           {query.data.pages
             .flatMap((page) => page.events)
             .map((event) => (
               <li key={`${event.source}:${event.id}`} className="space-y-2 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="font-medium">{activityLabel(event.action)}</h2>
+                  <h2 className="font-medium">{activityLabel(event.action, bt)}</h2>
                   {event.outcome !== "success" && event.outcome !== "succeeded" ? (
-                    <Badge variant="outline">{outcomeLabel(event.outcome)}</Badge>
+                    <Badge variant="outline">{outcomeLabel(event.outcome, bt)}</Badge>
                   ) : null}
                 </div>
                 <p className="text-muted-foreground text-sm">
-                  <time dateTime={event.created_at}>{formatDate(event.created_at)}</time> · By{" "}
-                  {event.actor_account_id ? accountName(event.actor_account_id) : "Bloem"}
+                  {event.actor_account_id
+                    ? bt("bloem.admin.organization.activity.byAccount", {
+                        date: formatDate(event.created_at),
+                        actor: accountName(event.actor_account_id),
+                        time: (chunks) => <time dateTime={event.created_at}>{chunks}</time>,
+                      })
+                    : bt("bloem.admin.organization.activity.byBloem", {
+                        date: formatDate(event.created_at),
+                        time: (chunks) => <time dateTime={event.created_at}>{chunks}</time>,
+                      })}
                 </p>
                 <details className="text-muted-foreground text-xs">
                   <summary className="hover:text-foreground cursor-pointer transition-colors">
-                    Details
+                    {bt("bloem.admin.organization.activity.details")}
                   </summary>
                   <p className="mt-1 font-mono break-all">
-                    {event.action} · {event.target_id}
+                    {bt("bloem.admin.organization.activity.technical", {
+                      action: event.action,
+                      targetId: event.target_id,
+                    })}
                   </p>
                 </details>
               </li>
@@ -111,55 +127,68 @@ function OrganizationAudit({ context }: { context: AdminContextSummary }) {
           disabled={query.isFetching}
           onClick={() => void query.fetchNextPage()}
         >
-          {query.isFetchingNextPage ? "Loading…" : "Show older"}
+          {query.isFetchingNextPage
+            ? bt("bloem.admin.organization.activity.loading")
+            : bt("bloem.admin.organization.activity.showOlder")}
         </Button>
       )}
     </section>
   );
 }
 
-const ACTIVITY_LABELS: Record<string, string> = {
-  "organization.created": "Organization created",
-  "organization.renamed": "Renamed",
-  "organization.slug_changed": "Short name changed",
-  "organization.suspended": "Suspended",
-  "organization.reactivated": "Reactivated",
-  "organization.ownership_transferred": "Ownership transferred",
-  "organization.entitlement_applied": "Plan applied",
-  "membership.created": "Member added",
-  "membership.role_changed": "Member's role changed",
-  "membership.status_changed": "Member suspended or reactivated",
-  "entitlement.policy_assignment": "Plan or settings changed for an account",
-  "people.bulk_job_created": "Bulk change started",
-  "people.bulk_policy_job_created": "Bulk plan or settings change started",
-  "people.bulk_job_completed": "Bulk change finished",
-  "people.bulk_job_failed": "Bulk change failed",
-  "people.bulk_job_cancelled": "Bulk change stopped",
-  "people.bulk_group_assigned": "Profiles moved to an access group",
-  "people.bulk_policy_assigned": "Account moved to a new plan or settings",
-  "people.bulk_membership_suspended": "Member suspended in a bulk change",
-  "people.bulk_membership_reactivated": "Member reactivated in a bulk change",
-  "people.bulk_record_skipped": "An account was skipped in a bulk change",
-  "people.bulk_record_failed": "An account failed in a bulk change",
-  "people.membership_updated": "Membership changed",
-  "people.profile_group_updated": "Profile moved to another access group",
+// Event codes and outcomes to their labels' message ids; the text is read when shown.
+const ACTIVITY_LABELS: Record<string, BloemMessageKey> = {
+  "organization.created": "bloem.admin.organization.activity.action.organizationCreated",
+  "organization.renamed": "bloem.admin.organization.activity.action.organizationRenamed",
+  "organization.slug_changed": "bloem.admin.organization.activity.action.organizationSlugChanged",
+  "organization.suspended": "bloem.admin.organization.activity.action.organizationSuspended",
+  "organization.reactivated": "bloem.admin.organization.activity.action.organizationReactivated",
+  "organization.ownership_transferred":
+    "bloem.admin.organization.activity.action.organizationOwnershipTransferred",
+  "organization.entitlement_applied":
+    "bloem.admin.organization.activity.action.organizationEntitlementApplied",
+  "membership.created": "bloem.admin.organization.activity.action.membershipCreated",
+  "membership.role_changed": "bloem.admin.organization.activity.action.membershipRoleChanged",
+  "membership.status_changed": "bloem.admin.organization.activity.action.membershipStatusChanged",
+  "entitlement.policy_assignment":
+    "bloem.admin.organization.activity.action.entitlementPolicyAssignment",
+  "people.bulk_job_created": "bloem.admin.organization.activity.action.peopleBulkJobCreated",
+  "people.bulk_policy_job_created":
+    "bloem.admin.organization.activity.action.peopleBulkPolicyJobCreated",
+  "people.bulk_job_completed": "bloem.admin.organization.activity.action.peopleBulkJobCompleted",
+  "people.bulk_job_failed": "bloem.admin.organization.activity.action.peopleBulkJobFailed",
+  "people.bulk_job_cancelled": "bloem.admin.organization.activity.action.peopleBulkJobCancelled",
+  "people.bulk_group_assigned": "bloem.admin.organization.activity.action.peopleBulkGroupAssigned",
+  "people.bulk_policy_assigned":
+    "bloem.admin.organization.activity.action.peopleBulkPolicyAssigned",
+  "people.bulk_membership_suspended":
+    "bloem.admin.organization.activity.action.peopleBulkMembershipSuspended",
+  "people.bulk_membership_reactivated":
+    "bloem.admin.organization.activity.action.peopleBulkMembershipReactivated",
+  "people.bulk_record_skipped": "bloem.admin.organization.activity.action.peopleBulkRecordSkipped",
+  "people.bulk_record_failed": "bloem.admin.organization.activity.action.peopleBulkRecordFailed",
+  "people.membership_updated": "bloem.admin.organization.activity.action.peopleMembershipUpdated",
+  "people.profile_group_updated":
+    "bloem.admin.organization.activity.action.peopleProfileGroupUpdated",
 };
 
-const OUTCOME_LABELS: Record<string, string> = {
-  partial_failure: "Some not changed",
-  conflict: "Not changed",
-  failed: "Failed",
-  failure: "Failed",
-  skipped: "Skipped",
-  denied: "Refused",
+const OUTCOME_LABELS: Record<string, BloemMessageKey> = {
+  partial_failure: "bloem.admin.organization.activity.outcome.partialFailure",
+  conflict: "bloem.admin.organization.activity.outcome.conflict",
+  failed: "bloem.admin.organization.activity.outcome.failed",
+  failure: "bloem.admin.organization.activity.outcome.failed",
+  skipped: "bloem.admin.organization.activity.outcome.skipped",
+  denied: "bloem.admin.organization.activity.outcome.denied",
 };
 
-function outcomeLabel(outcome: string): string {
-  return OUTCOME_LABELS[outcome] ?? outcome.replace(/_/g, " ");
+function outcomeLabel(outcome: string, bt: BloemTranslate): string {
+  const id = OUTCOME_LABELS[outcome];
+  return id ? bt(id) : outcome.replace(/_/g, " ");
 }
 
-function activityLabel(action: string): string {
-  if (ACTIVITY_LABELS[action]) return ACTIVITY_LABELS[action]!;
+function activityLabel(action: string, bt: BloemTranslate): string {
+  const id = ACTIVITY_LABELS[action];
+  if (id) return bt(id);
   const text = action.replace(/[._]+/g, " ").trim();
   return text ? text[0]!.toUpperCase() + text.slice(1) : action;
 }
