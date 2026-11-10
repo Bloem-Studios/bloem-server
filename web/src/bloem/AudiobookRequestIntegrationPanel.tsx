@@ -8,18 +8,23 @@ import {
   type AudiobookIntegration,
 } from "@/api/bloemAudiobookAcquisitions";
 import type { RequestIntegrationTestResult } from "@/api/bloemBookRequests";
+import { useBloemT, type BloemMessageKey } from "@/bloem/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAudiobookAdminScope } from "./useAudiobookAdminScope";
 import { AudiobookRequestConfigForm } from "./AudiobookRequestConfigForm";
 import { audiobookConfigDefaults } from "./audiobookRequestFields";
-const credentialFields = [
-  ["qbittorrent_password", "qBittorrent password"],
-  ["nzbget_password", "NZBGet password"],
-  ["abook_email", "abook.link email"],
-  ["abook_password", "abook.link password"],
-  ["ai_api_key", "AI API key"],
-] as const;
+// Credential keys are sent to the server; their labels are catalog keys.
+const credentialFields: [string, BloemMessageKey][] = [
+  [
+    "qbittorrent_password",
+    "bloem.admin.bookRequests.audiobookSetup.credential.qbittorrentPassword",
+  ],
+  ["nzbget_password", "bloem.admin.bookRequests.audiobookSetup.credential.nzbgetPassword"],
+  ["abook_email", "bloem.admin.bookRequests.audiobookSetup.credential.abookEmail"],
+  ["abook_password", "bloem.admin.bookRequests.audiobookSetup.credential.abookPassword"],
+  ["ai_api_key", "bloem.admin.bookRequests.audiobookSetup.credential.aiApiKey"],
+];
 interface ConnectionEditor {
   id: string;
   name: string;
@@ -37,7 +42,10 @@ function editorFor(integration: AudiobookIntegration): ConnectionEditor {
 function enteredCredentials(credentials: Record<string, string>) {
   return Object.fromEntries(Object.entries(credentials).filter(([, value]) => value !== ""));
 }
+// A divider glyph between facts, the same in every language.
+const DIVIDER = " · ";
 // Download receipts are tied to the client URL they were handed to.
+// The labels are product names, shown as they are in every language.
 const downloadClientURLs = [
   ["qbittorrent_url", "qBittorrent"],
   ["nzbget_url", "NZBGet"],
@@ -51,6 +59,7 @@ function movedDownloadClients(editor: ConnectionEditor, saved: AudiobookIntegrat
     .map(([, label]) => label);
 }
 export function AudiobookRequestIntegrationPanel() {
+  const bt = useBloemT();
   const scope = useAudiobookAdminScope();
   const qc = useQueryClient();
   const queryKey = ["bloem-audiobook-setup", scope.key];
@@ -90,14 +99,12 @@ export function AudiobookRequestIntegrationPanel() {
     setBlocked(true);
     if (create && !(error instanceof AdminV2ClientError)) {
       setUnknownCreate(true);
-      setMessage(
-        "Connection outcome is unknown. Reload connections and inspect them before adding another connection.",
-      );
+      setMessage(bt("bloem.admin.bookRequests.audiobookSetup.createUnknown"));
     } else
       setMessage(
         error instanceof AdminV2ClientError
-          ? `${error.message} Reload connections before another action.`
-          : "The save outcome is unknown. Reload connections before another action.",
+          ? bt("bloem.admin.bookRequests.audiobookSetup.actionRefused", { error: error.message })
+          : bt("bloem.admin.bookRequests.audiobookSetup.saveUnknown"),
       );
   };
   const create = useMutation({
@@ -105,7 +112,7 @@ export function AudiobookRequestIntegrationPanel() {
     gcTime: 0,
     mutationFn: () => {
       if (!scope.editing || !scope.current() || !plugin || blocked || unknownCreate)
-        throw new Error("Reload this administrative context before creating a connection.");
+        throw new Error(bt("bloem.admin.bookRequests.audiobookSetup.reloadBeforeCreate"));
       return audiobookAcquisitionsApi.createIntegration(
         {
           name,
@@ -124,7 +131,7 @@ export function AudiobookRequestIntegrationPanel() {
       setRootsDraft(null);
       setName("");
       setValues(audiobookConfigDefaults());
-      setMessage("Audiobook connection added. Select its library and explicit download roots.");
+      setMessage(bt("bloem.admin.bookRequests.audiobookSetup.created"));
       void qc.invalidateQueries({ queryKey });
     },
     onError: (error) => onError(error, true),
@@ -136,7 +143,7 @@ export function AudiobookRequestIntegrationPanel() {
     retry: false,
     mutationFn: () => {
       if (!scope.editing || !scope.current() || !integration || !selectedLibrary || blocked)
-        throw new Error("Reload connections before saving a library.");
+        throw new Error(bt("bloem.admin.bookRequests.audiobookSetup.reloadBeforeLibrary"));
       return audiobookAcquisitionsApi.setLibrary(
         integration.id,
         selectedLibrary.id,
@@ -151,7 +158,7 @@ export function AudiobookRequestIntegrationPanel() {
       if (!scope.current()) return;
       setLibraryDraft(null);
       setRootsDraft(null);
-      setMessage("Audiobook library and download roots saved.");
+      setMessage(bt("bloem.admin.bookRequests.audiobookSetup.librarySaved"));
       void qc.invalidateQueries({ queryKey });
     },
     onError: (error) => onError(error),
@@ -161,7 +168,7 @@ export function AudiobookRequestIntegrationPanel() {
     gcTime: 0,
     mutationFn: () => {
       if (!scope.editing || !scope.current() || !editor || blocked)
-        throw new Error("Reload connections before saving a connection.");
+        throw new Error(bt("bloem.admin.bookRequests.audiobookSetup.reloadBeforeSave"));
       return audiobookAcquisitionsApi.updateIntegration(
         editor.id,
         {
@@ -177,7 +184,7 @@ export function AudiobookRequestIntegrationPanel() {
       setEditor(null);
       setEditMessage("");
       setTested(null);
-      setMessage("Audiobook connection saved.");
+      setMessage(bt("bloem.admin.bookRequests.audiobookSetup.saved"));
       void qc.invalidateQueries({ queryKey });
     },
     onError: (error) => {
@@ -196,7 +203,7 @@ export function AudiobookRequestIntegrationPanel() {
     retry: false,
     mutationFn: (id: string) => {
       if (!scope.editing || !scope.current() || blocked)
-        throw new Error("Reload connections before testing a connection.");
+        throw new Error(bt("bloem.admin.bookRequests.audiobookSetup.reloadBeforeTest"));
       return audiobookAcquisitionsApi.testIntegration(id, scope.context);
     },
     onMutate: () => setTested(null),
@@ -225,38 +232,42 @@ export function AudiobookRequestIntegrationPanel() {
     setRootsDraft(null);
     if (!unknownCreate) setMessage("");
   };
+  const moved = editor && integration ? movedDownloadClients(editor, integration) : [];
   return (
     <section
       className="space-y-4 rounded-xl border p-4 sm:p-5"
-      aria-label="Audiobook acquisition setup"
+      aria-label={bt("bloem.admin.bookRequests.audiobookSetup.title")}
     >
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">Audiobook acquisition setup</h2>
+        <h2 className="text-xl font-semibold">
+          {bt("bloem.admin.bookRequests.audiobookSetup.title")}
+        </h2>
         <Button
           variant="outline"
           size="sm"
           disabled={list.isFetching || create.isPending || binding.isPending || update.isPending}
           onClick={() => void refresh()}
         >
-          Reload connections
+          {bt("bloem.admin.bookRequests.audiobookSetup.reload")}
         </Button>
       </header>
       <p className="text-muted-foreground text-sm">
-        Connections deliver approved audiobooks to the linked library. A completed download becomes
-        fulfilled only after the host finds it in that library.
+        {bt("bloem.admin.bookRequests.audiobookSetup.intro")}
       </p>
-      {list.isPending && <p role="status">Loading audiobook connections…</p>}
+      {list.isPending && (
+        <p role="status">{bt("bloem.admin.bookRequests.audiobookSetup.loading")}</p>
+      )}
       {list.isError && (
-        <p role="alert">Unable to load audiobook connections. Reload to try again.</p>
+        <p role="alert">{bt("bloem.admin.bookRequests.audiobookSetup.loadFailed")}</p>
       )}
       {message && <p role={blocked ? "alert" : "status"}>{message}</p>}
       {!scope.editing && (
         <p className="text-muted-foreground text-sm">
-          A platform admin can configure acquisition connections for this organization.
+          {bt("bloem.admin.bookRequests.audiobookSetup.platformAdminOnly")}
         </p>
       )}
       {list.data?.available === false && (
-        <p role="status">Audiobook acquisition setup is unavailable in this organization.</p>
+        <p role="status">{bt("bloem.admin.bookRequests.audiobookSetup.unavailable")}</p>
       )}
       {list.data?.available &&
         (integration ? (
@@ -268,7 +279,7 @@ export function AudiobookRequestIntegrationPanel() {
             }}
           >
             <label className="grid gap-2 text-sm font-medium">
-              Audiobook connection
+              {bt("bloem.admin.bookRequests.audiobookSetup.connection")}
               <select
                 className="border-input h-9 min-w-0 rounded-md border bg-transparent px-3"
                 value={integration.id}
@@ -290,10 +301,12 @@ export function AudiobookRequestIntegrationPanel() {
               </select>
             </label>
             <p className="self-end text-sm" role="status">
-              {integration.ready ? "Ready" : "Not ready"}
-              {integration.library_name
-                ? ` · ${integration.library_name}`
-                : " · Library binding required"}
+              {integration.ready
+                ? bt("bloem.admin.bookRequests.audiobookSetup.ready")
+                : bt("bloem.admin.bookRequests.audiobookSetup.notReady")}
+              {DIVIDER +
+                (integration.library_name ||
+                  bt("bloem.admin.bookRequests.audiobookSetup.libraryBindingRequired"))}
             </p>
             {scope.editing && (
               <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
@@ -303,7 +316,9 @@ export function AudiobookRequestIntegrationPanel() {
                   disabled={busy}
                   onClick={() => test.mutate(integration.id)}
                 >
-                  {test.isPending ? "Testing connection…" : "Test connection"}
+                  {test.isPending
+                    ? bt("bloem.admin.bookRequests.connectionTest.testing")
+                    : bt("bloem.admin.bookRequests.connectionTest.test")}
                 </Button>
                 <Button
                   type="button"
@@ -314,17 +329,22 @@ export function AudiobookRequestIntegrationPanel() {
                     setEditMessage("");
                   }}
                 >
-                  Edit connection
+                  {bt("bloem.admin.bookRequests.audiobookSetup.edit")}
                 </Button>
                 {!integration.plugin_config && (
                   <p role="status" className="text-muted-foreground text-sm">
-                    The saved settings could not be read. Reload connections before editing.
+                    {bt("bloem.admin.bookRequests.audiobookSetup.settingsUnreadable")}
                   </p>
                 )}
                 {tested?.id === integration.id && (
                   <p role={tested.result.ok ? "status" : "alert"} className="text-sm">
-                    {tested.result.ok ? "Connection works: " : "Connection test failed: "}
-                    {tested.result.message}
+                    {tested.result.ok
+                      ? bt("bloem.admin.bookRequests.connectionTest.works", {
+                          message: tested.result.message,
+                        })
+                      : bt("bloem.admin.bookRequests.connectionTest.failed", {
+                          message: tested.result.message,
+                        })}
                   </p>
                 )}
                 {test.isError && <p role="alert">{test.error.message}</p>}
@@ -333,7 +353,7 @@ export function AudiobookRequestIntegrationPanel() {
             {scope.editing ? (
               <>
                 <label className="grid gap-2 text-sm font-medium">
-                  Audiobook library
+                  {bt("bloem.admin.bookRequests.audiobookSetup.library")}
                   <select
                     className="border-input h-9 min-w-0 rounded-md border bg-transparent px-3"
                     value={library}
@@ -344,17 +364,19 @@ export function AudiobookRequestIntegrationPanel() {
                       setRootsDraft("");
                     }}
                   >
-                    <option value="">Select an eligible library</option>
+                    <option value="">
+                      {bt("bloem.admin.bookRequests.audiobookSetup.selectLibrary")}
+                    </option>
                     {list.data.libraries.map((row) => (
                       <option key={row.id} value={row.id}>
                         {row.name}
-                        {row.language ? ` · ${row.language}` : ""}
+                        {row.language ? DIVIDER + row.language : ""}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="grid gap-2 text-sm font-medium">
-                  Download roots (one per line)
+                  {bt("bloem.admin.bookRequests.audiobookSetup.downloadRoots")}
                   <textarea
                     className="border-input focus-visible:ring-ring min-h-20 w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
                     value={roots}
@@ -363,55 +385,65 @@ export function AudiobookRequestIntegrationPanel() {
                     onChange={(event) => setRootsDraft(event.target.value)}
                   />
                   <span className="text-muted-foreground text-xs">
-                    Choose explicit absolute roots inside the selected library. The host validates
-                    each root.
+                    {bt("bloem.admin.bookRequests.audiobookSetup.downloadRootsHelp")}
                   </span>
                 </label>
                 {selectedLibrary && (
                   <p className="text-muted-foreground text-sm break-all sm:col-span-2">
-                    Library paths: {selectedLibrary.paths.join(" · ")}
+                    {bt("bloem.admin.bookRequests.audiobookSetup.libraryPaths", {
+                      paths: selectedLibrary.paths.join(DIVIDER),
+                    })}
                   </p>
                 )}
                 <Button type="submit" disabled={busy || !selectedLibrary || !roots.trim()}>
-                  Save audiobook library and roots
+                  {bt("bloem.admin.bookRequests.audiobookSetup.saveLibrary")}
                 </Button>
               </>
             ) : (
               <p className="text-muted-foreground text-sm break-all sm:col-span-2">
-                Download roots: {integration.download_roots?.join(" · ") || "Not configured"}
+                {bt("bloem.admin.bookRequests.audiobookSetup.downloadRootsSummary", {
+                  roots:
+                    integration.download_roots?.join(DIVIDER) ||
+                    bt("bloem.admin.bookRequests.audiobookSetup.notConfigured"),
+                })}
               </p>
             )}
             {list.data.libraries.length === 0 && (
-              <p role="status">No eligible audiobook libraries are available.</p>
+              <p role="status">{bt("bloem.admin.bookRequests.audiobookSetup.noLibraries")}</p>
             )}
           </form>
         ) : (
-          <p role="status">No audiobook connections are configured.</p>
+          <p role="status">{bt("bloem.admin.bookRequests.audiobookSetup.noConnections")}</p>
         ))}
       {scope.editing && list.data?.available && integration && editor?.id === integration.id && (
         <form
           className="space-y-4 border-t pt-4"
-          aria-label="Edit audiobook connection"
+          aria-label={bt("bloem.admin.bookRequests.audiobookSetup.editFormLabel")}
           onSubmit={(event) => {
             event.preventDefault();
             if (!busy) update.mutate();
           }}
         >
-          <h3 className="font-semibold">Edit {integration.name}</h3>
+          <h3 className="font-semibold">
+            {bt("bloem.admin.bookRequests.audiobookSetup.editTitle", { name: integration.name })}
+          </h3>
           <p className="text-muted-foreground text-sm">
-            The connection keeps its library binding and any acquisitions in progress. Leave a
-            credential blank to keep the saved one. Changing a URL requires its credential again,
-            and clearing a URL removes its credentials.
+            {bt("bloem.admin.bookRequests.audiobookSetup.editHelp")}
           </p>
-          {movedDownloadClients(editor, integration).length > 0 && (
+          {moved.length > 0 && (
             <p role="alert" className="text-sm">
-              Changing the {movedDownloadClients(editor, integration).join(" and ")} URL makes
-              downloads already handed to the previous client fail their status checks. Retry those
-              requests after saving.
+              {moved.length === 1
+                ? bt("bloem.admin.bookRequests.audiobookSetup.urlChangeWarning", {
+                    client: moved[0],
+                  })
+                : bt("bloem.admin.bookRequests.audiobookSetup.urlChangeWarningBoth", {
+                    first: moved[0],
+                    second: moved[1],
+                  })}
             </p>
           )}
           <label className="grid gap-2 text-sm font-medium sm:max-w-sm">
-            Connection name
+            {bt("bloem.admin.bookRequests.connectionName")}
             <Input
               value={editor.name}
               required
@@ -426,17 +458,19 @@ export function AudiobookRequestIntegrationPanel() {
             disabled={busy}
           />
           <fieldset className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
-            <legend className="px-2 font-medium">Credentials</legend>
+            <legend className="px-2 font-medium">
+              {bt("bloem.admin.bookRequests.audiobookSetup.credentials")}
+            </legend>
             {credentialFields.map(([key, label]) => (
               <label key={key} className="grid gap-2 text-sm font-medium">
-                {label}
+                {bt(label)}
                 <Input
                   type="password"
                   autoComplete="off"
                   placeholder={
                     integration.stored_credentials?.includes(key)
-                      ? "Saved; leave blank to keep"
-                      : "Not set"
+                      ? bt("bloem.admin.bookRequests.audiobookSetup.credentialSaved")
+                      : bt("bloem.admin.bookRequests.audiobookSetup.credentialNotSet")
                   }
                   value={editor.credentials[key] ?? ""}
                   maxLength={1024}
@@ -451,13 +485,15 @@ export function AudiobookRequestIntegrationPanel() {
               </label>
             ))}
             <p className="text-muted-foreground text-xs sm:col-span-2">
-              Saved credentials are never shown. New values are cleared after submission.
+              {bt("bloem.admin.bookRequests.audiobookSetup.savedCredentialsHelp")}
             </p>
           </fieldset>
           {editMessage && <p role="alert">{editMessage}</p>}
           <div className="flex flex-wrap gap-3">
             <Button type="submit" disabled={busy || !editor.name.trim()}>
-              {update.isPending ? "Saving connection…" : "Save connection"}
+              {update.isPending
+                ? bt("bloem.admin.bookRequests.audiobookSetup.saving")
+                : bt("bloem.admin.bookRequests.audiobookSetup.save")}
             </Button>
             <Button
               type="button"
@@ -468,7 +504,7 @@ export function AudiobookRequestIntegrationPanel() {
                 setEditMessage("");
               }}
             >
-              Cancel
+              {bt("bloem.admin.bookRequests.audiobookSetup.cancel")}
             </Button>
           </div>
         </form>
@@ -484,10 +520,10 @@ export function AudiobookRequestIntegrationPanel() {
               if (!createBusy) create.mutate();
             }}
           >
-            <h3 className="font-semibold">Add audiobook connection</h3>
+            <h3 className="font-semibold">{bt("bloem.admin.bookRequests.audiobookSetup.add")}</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm font-medium">
-                Installed request plugin
+                {bt("bloem.admin.bookRequests.audiobookSetup.plugin")}
                 <select
                   className="border-input h-9 min-w-0 rounded-md border bg-transparent px-3"
                   value={`${plugin.id}:${plugin.capability_id}`}
@@ -505,7 +541,7 @@ export function AudiobookRequestIntegrationPanel() {
                 </select>
               </label>
               <label className="grid gap-2 text-sm font-medium">
-                Connection name
+                {bt("bloem.admin.bookRequests.connectionName")}
                 <Input
                   value={name}
                   required
@@ -521,10 +557,12 @@ export function AudiobookRequestIntegrationPanel() {
               disabled={createBusy}
             />
             <fieldset className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
-              <legend className="px-2 font-medium">Credentials</legend>
+              <legend className="px-2 font-medium">
+                {bt("bloem.admin.bookRequests.audiobookSetup.credentials")}
+              </legend>
               {credentialFields.map(([key, label]) => (
                 <label key={key} className="grid gap-2 text-sm font-medium">
-                  {label}
+                  {bt(label)}
                   <Input
                     type="password"
                     autoComplete="off"
@@ -538,17 +576,20 @@ export function AudiobookRequestIntegrationPanel() {
                 </label>
               ))}
               <p className="text-muted-foreground text-xs sm:col-span-2">
-                Credentials are write-only and cleared after submission. Leave unused services
-                empty.
+                {bt("bloem.admin.bookRequests.audiobookSetup.newCredentialsHelp")}
               </p>
             </fieldset>
             <Button type="submit" disabled={createBusy}>
-              {create.isPending ? "Adding connection…" : "Add audiobook connection"}
+              {create.isPending
+                ? bt("bloem.admin.bookRequests.audiobookSetup.adding")
+                : bt("bloem.admin.bookRequests.audiobookSetup.add")}
             </Button>
           </form>
         ) : (
           <Button asChild variant="outline">
-            <Link to="/admin/plugins">Install the audiobook request plugin</Link>
+            <Link to="/admin/plugins">
+              {bt("bloem.admin.bookRequests.audiobookSetup.installPlugin")}
+            </Link>
           </Button>
         ))}
     </section>

@@ -9,10 +9,14 @@ import {
 } from "@/api/bloemBookRequests";
 import { captureSessionIdentity } from "@/api/client";
 import { captureAdminRequestContext } from "@/api/adminV2Client";
+import { useBloemT } from "@/bloem/i18n";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+
+// An example address, the same in every language.
+const EXAMPLE_BASE_URL = "https://books.example";
 
 function allowsBaseURL(value: string, allowHttp: boolean) {
   try {
@@ -24,6 +28,7 @@ function allowsBaseURL(value: string, allowHttp: boolean) {
 }
 
 export function EbookRequestIntegrationPanel() {
+  const bt = useBloemT();
   const { active, switching } = useAdminContext();
   const context = active ? captureAdminRequestContext(active.key) : null;
   const identity = captureSessionIdentity();
@@ -70,7 +75,7 @@ export function EbookRequestIntegrationPanel() {
       );
       setEnabledDraft(null);
       void qc.invalidateQueries({ queryKey: ["bloem-ebook-requests"] });
-      toast.success("Ebook request policy saved");
+      toast.success(bt("bloem.admin.bookRequests.ebookSetup.policySaved"));
     },
   });
   const save = useMutation({
@@ -83,13 +88,13 @@ export function EbookRequestIntegrationPanel() {
         return next;
       });
       void qc.invalidateQueries({ queryKey: scope });
-      toast.success("Ebook fulfillment library saved");
+      toast.success(bt("bloem.admin.bookRequests.ebookSetup.librarySaved"));
     },
   });
   const create = useMutation({
     mutationFn: () => {
-      if (!plugin) throw new Error("Select an installed Bookwarehouse request plugin.");
-      if (!baseUrlAllowed) throw new Error("Use HTTPS or allow HTTP for a trusted local server.");
+      if (!plugin) throw new Error(bt("bloem.admin.bookRequests.ebookSetup.selectPlugin"));
+      if (!baseUrlAllowed) throw new Error(bt("bloem.admin.bookRequests.ebookSetup.httpsRequired"));
       return ebookRequestsApi.createIntegration(
         {
           name,
@@ -109,7 +114,7 @@ export function EbookRequestIntegrationPanel() {
       setAllowHttp(false);
       setSelected(created.id);
       void qc.invalidateQueries({ queryKey: scope });
-      toast.success("Ebook fulfillment connection added");
+      toast.success(bt("bloem.admin.bookRequests.ebookSetup.created"));
     },
   });
   const [tested, setTested] = useState<{
@@ -125,13 +130,15 @@ export function EbookRequestIntegrationPanel() {
     save.isPending || create.isPending || policy.isPending || test.isPending || switching;
   if (!allowed) return null;
   return (
-    <section className="space-y-4 rounded-xl border p-5" aria-label="Ebook fulfillment setup">
-      <h2 className="text-xl font-semibold">Ebook fulfillment</h2>
+    <section
+      className="space-y-4 rounded-xl border p-5"
+      aria-label={bt("bloem.admin.bookRequests.ebookSetup.sectionLabel")}
+    >
+      <h2 className="text-xl font-semibold">{bt("bloem.admin.bookRequests.ebookSetup.title")}</h2>
       <p className="text-muted-foreground text-sm">
-        Choose the library where each connection delivers ebooks. A provider reporting success is
-        not enough to fulfil a request; the ebook must appear in this library.
+        {bt("bloem.admin.bookRequests.ebookSetup.intro")}
       </p>
-      {list.isLoading && <p role="status">Loading ebook connections…</p>}
+      {list.isLoading && <p role="status">{bt("bloem.admin.bookRequests.ebookSetup.loading")}</p>}
       {list.isError && <p role="alert">{list.error.message}</p>}
       {list.data?.available && (
         <form
@@ -151,20 +158,21 @@ export function EbookRequestIntegrationPanel() {
                 policy.reset();
               }}
             />
-            Enable ebook requests
+            {bt("bloem.admin.bookRequests.ebookSetup.enable")}
           </label>
           <p className="text-muted-foreground text-sm">
-            Bookwarehouse can acquire books for approved requests. Turning this off prevents new
-            requests; work already started may continue.
+            {bt("bloem.admin.bookRequests.ebookSetup.enableHelp")}
           </p>
           {policy.isError && <p role="alert">{policy.error.message}</p>}
           <Button type="submit" disabled={busy || enabled === list.data.enabled}>
-            {policy.isPending ? "Saving policy…" : "Save ebook request policy"}
+            {policy.isPending
+              ? bt("bloem.admin.bookRequests.ebookSetup.savingPolicy")
+              : bt("bloem.admin.bookRequests.ebookSetup.savePolicy")}
           </Button>
         </form>
       )}
       {list.data?.available === false ? (
-        <p role="status">Ebook fulfillment is available only in the default organization.</p>
+        <p role="status">{bt("bloem.admin.bookRequests.ebookSetup.defaultOrganizationOnly")}</p>
       ) : (
         list.data?.available &&
         (integration ? (
@@ -177,7 +185,7 @@ export function EbookRequestIntegrationPanel() {
             }}
           >
             <label className="grid gap-2 text-sm font-medium">
-              Connection
+              {bt("bloem.admin.bookRequests.ebookSetup.connection")}
               <select
                 className="border-input h-9 rounded-md border bg-transparent px-3"
                 value={integration.id}
@@ -195,7 +203,7 @@ export function EbookRequestIntegrationPanel() {
               </select>
             </label>
             <label className="grid gap-2 text-sm font-medium">
-              Library
+              {bt("bloem.admin.bookRequests.ebookSetup.library")}
               <select
                 className="border-input h-9 rounded-md border bg-transparent px-3"
                 value={library}
@@ -203,7 +211,7 @@ export function EbookRequestIntegrationPanel() {
                 disabled={busy}
                 onChange={(event) => setDrafts({ ...drafts, [integration.id]: event.target.value })}
               >
-                <option value="">Select a library</option>
+                <option value="">{bt("bloem.admin.bookRequests.ebookSetup.selectLibrary")}</option>
                 {list.data.libraries.map((row) => (
                   <option key={row.id} value={row.id}>
                     {row.name}
@@ -215,7 +223,9 @@ export function EbookRequestIntegrationPanel() {
               type="submit"
               disabled={!library || Number(library) === integration.library_id || busy}
             >
-              {save.isPending ? "Saving…" : "Save library"}
+              {save.isPending
+                ? bt("bloem.admin.bookRequests.ebookSetup.saving")
+                : bt("bloem.admin.bookRequests.ebookSetup.saveLibrary")}
             </Button>
             <Button
               type="button"
@@ -223,25 +233,32 @@ export function EbookRequestIntegrationPanel() {
               disabled={busy}
               onClick={() => test.mutate(integration.id)}
             >
-              {test.isPending ? "Testing connection…" : "Test connection"}
+              {test.isPending
+                ? bt("bloem.admin.bookRequests.connectionTest.testing")
+                : bt("bloem.admin.bookRequests.connectionTest.test")}
             </Button>
             {save.isError && <p role="alert">{save.error.message}</p>}
             {tested?.id === integration.id && (
               <p role={tested.result.ok ? "status" : "alert"} className="text-sm">
-                {tested.result.ok ? "Connection works: " : "Connection test failed: "}
-                {tested.result.message}
+                {tested.result.ok
+                  ? bt("bloem.admin.bookRequests.connectionTest.works", {
+                      message: tested.result.message,
+                    })
+                  : bt("bloem.admin.bookRequests.connectionTest.failed", {
+                      message: tested.result.message,
+                    })}
               </p>
             )}
             {test.isError && <p role="alert">{test.error.message}</p>}
             {list.data.libraries.length === 0 && (
               <p role="status" className="text-muted-foreground text-sm">
-                No eligible ebook libraries are available.
+                {bt("bloem.admin.bookRequests.ebookSetup.noLibraries")}
               </p>
             )}
           </form>
         ) : (
           <p role="status" className="text-muted-foreground text-sm">
-            No eligible ebook fulfillment connections are configured.
+            {bt("bloem.admin.bookRequests.ebookSetup.noConnections")}
           </p>
         ))
       )}
@@ -254,13 +271,14 @@ export function EbookRequestIntegrationPanel() {
               if (!busy && baseUrlAllowed) create.mutate();
             }}
           >
-            <h3 className="font-semibold sm:col-span-2">Add Bookwarehouse connection</h3>
+            <h3 className="font-semibold sm:col-span-2">
+              {bt("bloem.admin.bookRequests.ebookSetup.addTitle")}
+            </h3>
             <p className="text-muted-foreground text-sm sm:col-span-2">
-              This connection requests EPUB ebooks. After adding it, choose its destination library
-              above.
+              {bt("bloem.admin.bookRequests.ebookSetup.addHelp")}
             </p>
             <label className="grid gap-2 text-sm font-medium">
-              Plugin
+              {bt("bloem.admin.bookRequests.ebookSetup.plugin")}
               <select
                 className="border-input h-9 rounded-md border bg-transparent px-3"
                 value={`${plugin.id}:${plugin.capability_id}`}
@@ -278,7 +296,7 @@ export function EbookRequestIntegrationPanel() {
               </select>
             </label>
             <label className="grid gap-2 text-sm font-medium">
-              Connection name
+              {bt("bloem.admin.bookRequests.connectionName")}
               <Input
                 value={name}
                 required
@@ -288,10 +306,10 @@ export function EbookRequestIntegrationPanel() {
               />
             </label>
             <label className="grid gap-2 text-sm font-medium">
-              Base URL
+              {bt("bloem.admin.bookRequests.ebookSetup.baseUrl")}
               <Input
                 type="url"
-                placeholder="https://books.example"
+                placeholder={EXAMPLE_BASE_URL}
                 value={baseUrl}
                 required
                 maxLength={2048}
@@ -300,7 +318,7 @@ export function EbookRequestIntegrationPanel() {
               />
             </label>
             <label className="grid gap-2 text-sm font-medium">
-              API key
+              {bt("bloem.admin.bookRequests.ebookSetup.apiKey")}
               <Input
                 type="password"
                 autoComplete="off"
@@ -318,16 +336,20 @@ export function EbookRequestIntegrationPanel() {
                 disabled={busy}
                 onCheckedChange={(checked) => setAllowHttp(checked === true)}
               />
-              Allow HTTP for a trusted local server
+              {bt("bloem.admin.bookRequests.ebookSetup.allowHttp")}
             </label>
             <Button type="submit" disabled={busy || !baseUrlAllowed}>
-              {create.isPending ? "Adding…" : "Add connection"}
+              {create.isPending
+                ? bt("bloem.admin.bookRequests.ebookSetup.adding")
+                : bt("bloem.admin.bookRequests.ebookSetup.add")}
             </Button>
             {create.isError && <p role="alert">{create.error.message}</p>}
           </form>
         ) : (
           <Button asChild variant="outline">
-            <Link to="/admin/plugins">Install the Bookwarehouse request plugin</Link>
+            <Link to="/admin/plugins">
+              {bt("bloem.admin.bookRequests.ebookSetup.installPlugin")}
+            </Link>
           </Button>
         ))}
     </section>

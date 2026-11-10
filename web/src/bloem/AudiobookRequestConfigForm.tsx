@@ -1,6 +1,13 @@
 import { Input } from "@/components/ui/input";
-import { audiobookConfigFields } from "./audiobookRequestFields";
+import { useBloemT, type BloemMessageKey } from "@/bloem/i18n";
+import { audiobookConfigFields, type AudiobookConfigGroup } from "./audiobookRequestFields";
 import type { AudiobookConnectionInput } from "@/api/bloemAudiobookAcquisitions";
+const groups: [AudiobookConfigGroup, BloemMessageKey][] = [
+  ["downloadClients", "bloem.admin.bookRequests.audiobookConfig.group.downloadClients"],
+  ["sources", "bloem.admin.bookRequests.audiobookConfig.group.sources"],
+  ["matching", "bloem.admin.bookRequests.audiobookConfig.group.matching"],
+  ["ai", "bloem.admin.bookRequests.audiobookConfig.group.ai"],
+];
 export function AudiobookRequestConfigForm({
   values,
   setValues,
@@ -10,11 +17,12 @@ export function AudiobookRequestConfigForm({
   setValues: (values: AudiobookConnectionInput["plugin_config"]) => void;
   disabled: boolean;
 }) {
+  const bt = useBloemT();
   return (
     <>
-      {["Download clients", "Sources", "Matching and verification", "AI"].map((group) => (
-        <details key={group} open={group === "Download clients"} className="rounded-lg border p-4">
-          <summary className="cursor-pointer font-medium">{group}</summary>
+      {groups.map(([group, heading]) => (
+        <details key={group} open={group === "downloadClients"} className="rounded-lg border p-4">
+          <summary className="cursor-pointer font-medium">{bt(heading)}</summary>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {audiobookConfigFields
               .filter((field) => field.group === group)
@@ -22,9 +30,10 @@ export function AudiobookRequestConfigForm({
                 const value = values[field.key] ?? field.default;
                 const update = (next: string | number | boolean | string[]) =>
                   setValues({ ...values, [field.key]: next });
+                const description = field.description?.();
                 return (
                   <label key={field.key} className="grid content-start gap-2 text-sm">
-                    <span className="font-medium">{field.label}</span>
+                    <span className="font-medium">{field.label()}</span>
                     {field.type === "boolean" ? (
                       <input
                         type="checkbox"
@@ -42,7 +51,7 @@ export function AudiobookRequestConfigForm({
                       >
                         {field.enum.map((option) => (
                           <option key={option} value={option}>
-                            {option || "Not set"}
+                            {option || bt("bloem.admin.bookRequests.audiobookConfig.notSet")}
                           </option>
                         ))}
                       </select>
@@ -76,10 +85,13 @@ export function AudiobookRequestConfigForm({
                         }
                       />
                     )}
-                    {field.description && (
+                    {description && (
                       <span className="text-muted-foreground text-xs">
-                        {field.description}
-                        {field.type === "array" ? " One per line." : ""}
+                        {field.type === "array"
+                          ? bt("bloem.admin.bookRequests.audiobookConfig.onePerLine", {
+                              description,
+                            })
+                          : description}
                       </span>
                     )}
                   </label>
