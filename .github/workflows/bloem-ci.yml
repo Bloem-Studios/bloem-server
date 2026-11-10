@@ -940,6 +940,10 @@ jobs:
 
       - name: Typecheck and build
         if: matrix.part == 'build'
+        # Silo's generated message keys and Bloem's catalog outgrow Node's
+        # default heap when the typecheck and the build run side by side.
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: |
           cache_dir="$RUNNER_TEMP/silo-tsc"
           mkdir -p "$cache_dir"

@@ -87,12 +87,6 @@ func (s *ProfileCredentialService) set(ctx context.Context, accountID int, profi
 	if email == "" {
 		return s.clear(ctx, accountID, profileID, expectedRevision)
 	}
-	// Clearing stays allowed while profile passwords are off, so a household
-	// can still remove a stored password; giving one is refused.
-	if err := ensureProfilePasswordsEnabled(ctx, s.pool); err != nil {
-		return err
-	}
-
 	hash, err := passwordhash.Generate(ctx, []byte(password), passwordHashCost)
 	if err != nil {
 		return fmt.Errorf("hashing profile password: %w", err)
@@ -104,6 +98,12 @@ func (s *ProfileCredentialService) set(ctx context.Context, accountID int, profi
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	if err := lockProfileCredentialSubject(ctx, tx, accountID, profileID, expectedRevision); err != nil {
+		return err
+	}
+	// Clearing stays allowed while profile passwords are off, so a household
+	// can still remove a stored password; giving one is refused. Checked in the
+	// write, after the hash, so a hasher with no turn still answers busy.
+	if err := ensureProfilePasswordsEnabled(ctx, tx); err != nil {
 		return err
 	}
 	// credential_revision is bumped and the profile's direct sessions are
