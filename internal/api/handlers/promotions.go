@@ -5,11 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"strings"
+
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/go-chi/chi/v5"
 	"github.com/oklog/ulid/v2"
-	"net/http"
-	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -42,33 +43,19 @@ func NewPromotionsHandler(svc *promotions.Service, inbox ...*notifications.Syste
 	return h
 }
 
-type promotionsResponse struct {
-	Surface    string            `json:"surface"`
-	Promotions []promotions.Card `json:"promotions"`
-}
-
-// HandleList handles GET /promotions?surface=detail|pre_playback&content_id=…
-// The response carries cards only: there is no timer or wait field, the
-// client always keeps "continue to content" as the default action.
-func (h *PromotionsHandler) HandleList(w http.ResponseWriter, r *http.Request) {
-	h.list(w, r, false)
-}
-
-// list serves both campaign lists. The plain list (native false) leaves
-// home cards to the `promoted` home section; the native route also serves
-// the home surface, with the row position.
-func (h *PromotionsHandler) list(w http.ResponseWriter, r *http.Request, native bool) {
+// HandleNativeList handles GET /api/bloem/v2/promotions?surface=…&content_id=…
+// for the home, detail, pre-playback and in-playback surfaces; the home
+// surface also carries the row position. The response carries cards only:
+// there is no timer or wait field, the client always keeps "continue to
+// content" as the default action.
+func (h *PromotionsHandler) HandleNativeList(w http.ResponseWriter, r *http.Request) {
 	if h == nil || h.source == nil {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Promotions are not available")
 		return
 	}
 	surface := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("surface")))
-	if !promotions.IsSurface(surface) || (!native && surface == promotions.SurfaceHome) {
-		message := "surface must be detail, pre_playback or in_playback"
-		if native {
-			message = "surface must be home, detail, pre_playback or in_playback"
-		}
-		writeError(w, http.StatusBadRequest, "bad_request", message)
+	if !promotions.IsSurface(surface) {
+		writeError(w, http.StatusBadRequest, "bad_request", "surface must be home, detail, pre_playback or in_playback")
 		return
 	}
 	viewer := promotionViewer(r)
@@ -102,11 +89,7 @@ func (h *PromotionsHandler) list(w http.ResponseWriter, r *http.Request, native 
 	if cards == nil {
 		cards = []promotions.Card{}
 	}
-	if native {
-		writeJSON(w, http.StatusOK, BloemPromotionsResponse{Surface: surface, Promotions: cards, HomePosition: position})
-		return
-	}
-	writeJSON(w, http.StatusOK, promotionsResponse{Surface: surface, Promotions: cards})
+	writeJSON(w, http.StatusOK, BloemPromotionsResponse{Surface: surface, Promotions: cards, HomePosition: position})
 }
 
 // promotionViewer is the profile a campaign request is evaluated for.

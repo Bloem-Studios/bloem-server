@@ -4,7 +4,8 @@
 > and checked against `main` at `5a93e8b41`. Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API, and its
+> home-section hooks after the v1 leftovers were deleted the same day.
 
 Bloem adds its features to Silo's code without rewriting it, so that Silo's work can
 be merged in every day. This page walks through the two ways Bloem does that, where
@@ -233,15 +234,15 @@ options from the context, never from Silo's `SectionViewer`, which has no Bloem 
 On `/api/v2` the line
 `ctx = bloemHomePromotionContext(ctx, in.BloemHomePromotionInput)` does the same before
 Silo's three calls in `internal/apiv2/home.go`. The v1 counterpart in
-`internal/api/handlers/sections.go` went with Silo's v1 API on 2026-11-11; its helper
-`withRequestSectionOptions` (`bloem_section_hooks.go`) has no caller left. The transform lines in
+`internal/api/handlers/sections.go` went with Silo's v1 API on 2026-11-11, and its
+helper `withRequestSectionOptions` was deleted after it. The transform lines in
 `home_views_service.go` read the options with `sectionOptions(ctx)`
 ([hooks](../../internal/api/handlers/bloem_section_hooks.go)). Until the merge of Silo
 through `2d5f22e7d` (2026-11-05) Bloem carried the opt-in in a `SectionViewer.Extensions`
 field and wrapped Silo's arguments with it; that merge returned
 `internal/api/handlers/library_views_service.go` to Silo's bytes.
-`TestBloemHomeReadsCarryPromotionOptIn` (v2) and
-`TestHomeEndpointsDeliverPromotedOnlyWhenOptedIn` (v1) pin the opt-in.
+`TestBloemHomeReadsCarryPromotionOptIn` and
+`TestBloemHomeLayoutBundlingKeepsPromotionOptIn` pin the opt-in.
 
 ### Playback tenant facts
 

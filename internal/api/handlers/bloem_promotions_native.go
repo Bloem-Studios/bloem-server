@@ -27,13 +27,6 @@ type BloemPromotionsResponse struct {
 	HomePosition *int `json:"home_position,omitempty" doc:"Home surface only: the index among the profile's home rows at which the campaign row is shown. A value past the last row means after the last row."`
 }
 
-// HandleNativeList handles GET /api/bloem/v2/promotions?surface=…&content_id=…
-// It is the plain list (HandleList) plus the home surface, which the plain
-// list leaves to Silo's home layout.
-func (h *PromotionsHandler) HandleNativeList(w http.ResponseWriter, r *http.Request) {
-	h.list(w, r, true)
-}
-
 // HandleDismiss handles PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}:
 // the profile does not want this campaign on that surface again. It is
 // idempotent and answers 204.

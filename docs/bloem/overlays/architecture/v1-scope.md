@@ -1,7 +1,8 @@
 # Bloem overlay: Silo v1 Scope
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and updated on
-> 2026-11-11 against `main` at `26cf9b3e4`, which includes Silo through `7bb66f9ad`. It lists what Bloem
+> 2026-11-11 against `main` at `26cf9b3e4`, which includes Silo through `7bb66f9ad`, and
+> again that day for the retired v1 promotions list. It lists what Bloem
 > adds to Silo's [`docs/architecture/v1-scope.md`](../../../architecture/v1-scope.md),
 > which stays exactly as Silo wrote it, including its table of removals. The
 > section-by-section changes are in the [For developers](#for-developers) section.
@@ -143,6 +144,16 @@ Silo's `POST /api/v1/events/ws-ticket`, until they went with Silo's v1 API on
 2026-11-11. No first-party client
 called the removed routes, because the web app, bloem-apple and bloem-android
 use the v2 sockets. Silo's removals table is unchanged.
+
+#### Retired Bloem v1 promotions list
+
+Removed on 2026-11-11: the handler of `GET /api/v1/promotions` and its response
+type `promotionsResponse`, a registered root of the client contract. The route went
+with Silo's v1 API the same day; the handler and type had no caller left. Viewers
+read campaigns from `GET /api/bloem/v2/promotions`, whose
+`BloemPromotionsResponse` adds the Home surface and its row position
+([retired v1 routes](../../api/v1-routes.md#campaigns)). The client contract digest
+was re-pinned; Silo's removals table is unchanged.
 
 #### Live TV recording path no longer sent
 

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"net/http"
 	"net/url"
 
 	"github.com/Silo-Server/silo-server/internal/sections"
@@ -31,12 +30,6 @@ func SectionOptions(ctx context.Context) url.Values {
 func sectionOptions(ctx context.Context) url.Values {
 	options, _ := ctx.Value(sectionOptionsKey{}).(url.Values)
 	return options
-}
-
-// withRequestSectionOptions carries a v1 home request's query to the home
-// reads as their extension options.
-func withRequestSectionOptions(r *http.Request) *http.Request {
-	return r.WithContext(WithSectionOptions(r.Context(), r.URL.Query()))
 }
 
 func (h *SectionHandler) transformHomeSections(ctx context.Context, resolved []sections.ResolvedSection, options url.Values) []sections.ResolvedSection {

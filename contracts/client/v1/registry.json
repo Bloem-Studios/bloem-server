@@ -139,12 +139,6 @@
           "dialect": "bloem"
         },
         {
-          "type": "promotionsResponse",
-          "direction": "response",
-          "dialect": "bloem",
-          "gate": "notifications.promotions"
-        },
-        {
           "type": "browseResponse",
           "direction": "response"
         },

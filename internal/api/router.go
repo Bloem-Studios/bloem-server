@@ -753,10 +753,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 			deviceLoginService.WithQuickConnectAttempts(quickConnectAttempts)
 		}
 		authHandler = handlers.NewAuthHandler(authService, jwtService, deviceLoginService)
-		// Same api-key/user sources AuthMiddleware.RequireAuth uses below —
-		// an "sa_" key must authenticate identically whether a request goes
-		// through the middleware or straight to /auth/me and friends.
-		authHandler.SetAPIKeyAuth(apiKeyRepo, userRepo)
 		authHandler.SetPrimaryProfileChecker(checkPrimaryProfile)
 		authHandler.SetLoginTenantResolver(tenancy.NewResolver(tenancy.NewStore(deps.DB)))
 		if accessGroupStore != nil {

@@ -1244,15 +1244,6 @@ public data class profileLoginResponse(
     public val credentialRevision: Long = 0L,
 )
 
-/** Wire type `internal/api/handlers.promotionsResponse`. Direction: response. Dialect: bloem. Gate: notifications.promotions. Registered root. */
-@Serializable
-public data class promotionsResponse(
-    @SerialName("surface")
-    public val surface: String = "",
-    @SerialName("promotions")
-    public val promotions: List<Card> = emptyList(),
-)
-
 /** Wire type `internal/api/handlers.requestListResponse`. Direction: response. Dialect: upstream-compat. Registered root. */
 @Serializable
 public data class requestListResponse(

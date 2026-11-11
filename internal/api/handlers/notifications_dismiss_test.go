@@ -68,12 +68,3 @@ func TestHandleDismissRefusesNonDismissible(t *testing.T) {
 		t.Fatalf("critical alert: status = %d (%s), want 409", rec.Code, rec.Body.String())
 	}
 }
-
-func TestParseIncludeDismissed(t *testing.T) {
-	for raw, want := range map[string]bool{"": false, "0": false, "1": true, "true": true, "yes": false} {
-		r := httptest.NewRequest(http.MethodGet, "/notifications?include_dismissed="+raw, nil)
-		if got := parseIncludeDismissed(r); got != want {
-			t.Errorf("include_dismissed=%q: got %v, want %v", raw, got, want)
-		}
-	}
-}

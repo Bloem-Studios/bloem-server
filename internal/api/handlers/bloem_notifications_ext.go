@@ -38,16 +38,6 @@ type notificationDismissedPayload struct {
 	ProfileID string `json:"profile_id"`
 }
 
-// parseIncludeDismissed reads the `include_dismissed` query flag shared by
-// the list and sync endpoints. Expired rows are never served regardless.
-func parseIncludeDismissed(r *http.Request) bool {
-	switch r.URL.Query().Get("include_dismissed") {
-	case "1", "true":
-		return true
-	}
-	return false
-}
-
 // deliveryDismisser is the repository seam HandleDismiss uses; tests
 // substitute a fake, production uses System.Deliveries.
 type deliveryDismisser interface {

@@ -153,12 +153,3 @@ func (p *AccountProvisioner) DeleteUserInTransaction(ctx context.Context, tx pgx
 	}
 	return users.DeleteInTransaction(ctx, tx, userID)
 }
-
-// MembershipLegacyRole preserves the legacy migration's two-value membership
-// contract without changing the account's stored role.
-func MembershipLegacyRole(role string) string {
-	if role == legacyRoleAdmin {
-		return legacyRoleAdmin
-	}
-	return legacyRoleUser
-}

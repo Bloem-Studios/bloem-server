@@ -12,7 +12,6 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
-	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
@@ -125,26 +124,4 @@ func bloemAdminGroupOrganization(ctx context.Context, tx pgx.Tx) (uuid.UUID, err
 		return uuid.Nil, err
 	}
 	return organizationID, nil
-}
-
-// bloemRevokeUserSessions revokes every login session of the account (and
-// those it impersonates through) and fans the revocation out, all under the
-// session-invalidation guard so a failing callback fails the mutation.
-func (h *AdminHandler) bloemRevokeUserSessions(ctx context.Context, userID int) error {
-	return sessioninvalidation.Run(ctx, func(invalidationCtx context.Context) error {
-		if h.sessionRepo != nil {
-			if err := h.sessionRepo.RevokeAllByUser(invalidationCtx, userID); err != nil {
-				return err
-			}
-			if err := h.sessionRepo.RevokeAllByImpersonator(invalidationCtx, userID); err != nil {
-				return err
-			}
-		}
-		if h.BloemOnUserSessionsRevoked != nil {
-			if err := h.BloemOnUserSessionsRevoked(invalidationCtx, userID); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
 }

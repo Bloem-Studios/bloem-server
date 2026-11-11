@@ -24,8 +24,6 @@ type AuthHandler struct {
 	jwt                  *auth.JWTService
 	device               *auth.DeviceLoginService
 	oauthRoutesAvailable bool
-	apiKeyValidator      apimw.APIKeyValidator  // nil if API keys not configured
-	apiKeyUserLoader     apimw.APIKeyUserLoader // nil if API keys not configured
 	accessGroups         access.GroupPolicyProvider
 	checkPrimaryProfile  apimw.PrimaryProfileChecker
 	bloemAuthHandlerExt

@@ -3927,37 +3927,6 @@ public enum Handlers {
         }
     }
 
-    /// Wire type `internal/api/handlers.promotionsResponse`. Direction: response. Dialect: bloem. Gate: notifications.promotions. Registered root.
-    public struct promotionsResponse: Codable, Hashable, Sendable {
-        public let surface: String
-        public let promotions: [Promotions.Card]
-
-        public enum CodingKeys: String, CodingKey {
-            case surface = "surface"
-            case promotions = "promotions"
-        }
-
-        public init(
-            surface: String = "",
-            promotions: [Promotions.Card] = []
-        ) {
-            self.surface = surface
-            self.promotions = promotions
-        }
-
-        public init(from decoder: any Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            self.surface = try container.decodeIfPresent(String.self, forKey: .surface) ?? ""
-            self.promotions = try container.decodeIfPresent([Promotions.Card].self, forKey: .promotions) ?? []
-        }
-
-        public func encode(to encoder: any Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(self.surface, forKey: .surface)
-            try container.encode(self.promotions, forKey: .promotions)
-        }
-    }
-
     /// Wire type `internal/api/handlers.requestListResponse`. Direction: response. Dialect: upstream-compat. Registered root.
     public struct requestListResponse: Codable, Hashable, Sendable {
         public let requests: [Requests.Request?]

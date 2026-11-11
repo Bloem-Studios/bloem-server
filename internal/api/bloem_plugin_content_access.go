@@ -71,21 +71,6 @@ func (b bloemPluginBoundary) content(resolve func(*http.Request) plugins.Content
 	return func(r *http.Request) plugins.ContentAccess { return b.apply(r, resolve(r)) }
 }
 
-// refused answers 403 for a plugin route or asset request Bloem does not let
-// through.
-func (b bloemPluginBoundary) refused(w http.ResponseWriter, r *http.Request, resolved pluginAccess) bool {
-	access := b.apply(r, plugins.ContentAccess{Authenticated: resolved.authenticated, Admin: resolved.admin, UserID: resolved.userID, ProfileID: resolved.profileID})
-	switch {
-	case access.PlaybackDenied:
-		http.Error(w, "Plugin content access has not been granted", http.StatusForbidden)
-	case access.ProfileBound:
-		http.Error(w, "Direct profile sessions cannot use plugin routes", http.StatusForbidden)
-	default:
-		return false
-	}
-	return true
-}
-
 func (b bloemPluginBoundary) apply(r *http.Request, result plugins.ContentAccess) plugins.ContentAccess {
 	if !result.Authenticated {
 		return result

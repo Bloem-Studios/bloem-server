@@ -17,19 +17,6 @@ type profileLoginService interface {
 	LoginProfile(context.Context, string, string, auth.DeviceClaim) (*auth.TokenPair, auth.SessionSubject, error)
 }
 
-// SetAPIKeyAuth wires API-key authentication into the handlers whose own
-// extractClaims previously only accepted a JWT — the same asymmetry
-// AuthMiddleware.RequireAuth already closed for the rest of the API. Without
-// this, a long-lived "sa_" API key authenticates against every other
-// endpoint but is silently rejected by /auth/me, /auth/sessions, and
-// friends, which is exactly backwards for a key whose whole purpose is to
-// outlive a login session. Nil validator/loader (the zero value) preserves
-// today's JWT-only behavior.
-func (h *AuthHandler) SetAPIKeyAuth(validator apimw.APIKeyValidator, loader apimw.APIKeyUserLoader) {
-	h.apiKeyValidator = validator
-	h.apiKeyUserLoader = loader
-}
-
 type profileLoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -124,41 +111,4 @@ func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request)
 // Silo-owned struct carries a single embedded line.
 type bloemAuthHandlerExt struct {
 	loginTenants apimw.TenantResolver
-}
-
-// bloemAPIKeyClaims validates a long-lived "sa_"-prefixed API key when
-// SetAPIKeyAuth has wired one in, the same way AuthMiddleware.RequireAuth
-// validates one for the rest of the API. Without that parity, an API key
-// works everywhere except here. handled=false leaves the token to the JWT path.
-func (h *AuthHandler) bloemAPIKeyClaims(r *http.Request, token string) (*auth.Claims, bool, error) {
-	if !strings.HasPrefix(token, "sa_") {
-		return nil, false, nil
-	}
-	if h.apiKeyValidator == nil || h.apiKeyUserLoader == nil {
-		return nil, true, auth.ErrInvalidToken
-	}
-	apiKey, err := h.apiKeyValidator.GetByKey(r.Context(), token)
-	if err != nil {
-		return nil, true, auth.ErrInvalidToken
-	}
-	user, err := h.apiKeyUserLoader.GetByID(r.Context(), apiKey.UserID)
-	if err != nil {
-		return nil, true, auth.ErrInvalidToken
-	}
-	if !user.Enabled {
-		return nil, true, auth.ErrInvalidToken
-	}
-	go func(id int64) {
-		_ = h.apiKeyValidator.UpdateLastUsed(context.Background(), id)
-	}(apiKey.ID)
-	return &auth.Claims{
-		UserID:               user.ID,
-		AccountIncarnationID: user.AccountIncarnationID.String(),
-		Role:                 user.Role,
-		SessionID:            "",
-		TokenType:            auth.TokenTypeAPIKey,
-		APIKeyID:             apiKey.ID,
-		RateTier:             apiKey.RateTier,
-		APIKeyScopes:         apiKey.Scopes,
-	}, true, nil
 }

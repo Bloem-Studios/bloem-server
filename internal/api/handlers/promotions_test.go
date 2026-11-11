@@ -54,7 +54,7 @@ func TestPromotionsListForwardsSurfaceContentAndViewer(t *testing.T) {
 	src := &fakePromotionSource{cards: []promotions.Card{promoCard("01PROMO")}}
 	h := &PromotionsHandler{source: src}
 	rec := httptest.NewRecorder()
-	h.HandleList(rec, newPromotionsRequest("/promotions?surface=Detail&content_id=movie-1"))
+	h.HandleNativeList(rec, newPromotionsRequest("/promotions?surface=Detail&content_id=movie-1"))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
 	}
@@ -96,30 +96,14 @@ func assertNoTimerFields(t *testing.T, raw json.RawMessage) {
 	}
 }
 
-func TestPromotionsListRejectsHomeAndUnknownSurfaces(t *testing.T) {
-	h := &PromotionsHandler{source: &fakePromotionSource{}}
-	for _, target := range []string{"/promotions", "/promotions?surface=home", "/promotions?surface=login"} {
-		rec := httptest.NewRecorder()
-		h.HandleList(rec, newPromotionsRequest(target))
-		if rec.Code != http.StatusBadRequest {
-			t.Fatalf("%s: status %d", target, rec.Code)
-		}
-	}
-	rec := httptest.NewRecorder()
-	h.HandleList(rec, newPromotionsRequest("/promotions?surface=pre_playback"))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"promotions":[]`) {
-		t.Fatalf("empty list must be [] not null: %d %s", rec.Code, rec.Body.String())
-	}
-}
-
 func TestPromotionsListUnavailableAndErrors(t *testing.T) {
 	rec := httptest.NewRecorder()
-	NewPromotionsHandler(nil).HandleList(rec, newPromotionsRequest("/promotions?surface=detail"))
+	NewPromotionsHandler(nil).HandleNativeList(rec, newPromotionsRequest("/promotions?surface=detail"))
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("nil service: %d", rec.Code)
 	}
 	rec = httptest.NewRecorder()
-	(&PromotionsHandler{source: &fakePromotionSource{err: errors.New("boom")}}).HandleList(rec, newPromotionsRequest("/promotions?surface=detail"))
+	(&PromotionsHandler{source: &fakePromotionSource{err: errors.New("boom")}}).HandleNativeList(rec, newPromotionsRequest("/promotions?surface=detail"))
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("source error: %d", rec.Code)
 	}
