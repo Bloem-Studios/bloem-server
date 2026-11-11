@@ -204,6 +204,12 @@ func (s *Service) SetupInitialUserInTransaction(
 		},
 		DefaultProfile: DefaultProfileOptions{Enabled: createDefaultProfile, Name: defaultProfileName},
 	}
+	// A default profile must join this transaction. Refuse a store that cannot
+	// (the SQLite bridge) before inserting the account or opening its files,
+	// rather than taking Silo's separate-store fallback.
+	if createDefaultProfile && !s.accounts.SupportsTransactionalProfiles() {
+		return nil, nil, ErrTransactionalProfileUnavailable
+	}
 	user, conflict, err := s.accounts.CreateUserInTransaction(ctx, tx, input.User)
 	if err == nil && conflict {
 		err = ErrDuplicate
