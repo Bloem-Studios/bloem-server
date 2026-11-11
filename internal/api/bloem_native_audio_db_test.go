@@ -229,7 +229,7 @@ func newNativeAudioAPIFixture(t *testing.T) *nativeAudioAPIFixture {
 		t.Fatal(err)
 	}
 	ctx = middleware.SetProfileID(access.SetScope(ctx, scope), pid)
-	ctx = context.WithValue(ctx, nativeVideoRequestKey{}, nativeVideoRequest{authorization: "Bearer " + token, method: "POST", path: "/api/v1/playback/start"})
+	ctx = context.WithValue(ctx, nativeVideoRequestKey{}, nativeVideoRequest{authorization: "Bearer " + token, method: "POST", path: "/api/v2/playback/start"})
 	registry := &coverRecipeRegistry{snapshot: &plugins.NativeStorageSnapshot{Source: source, Installation: &plugins.Installation{ID: int(install), Enabled: true}, Generation: 1, ArtifactChecksum: "approved"}}
 	provider := &audioDBProvider{data: data}
 	coordinator := &nativestorage.Coordinator{References: repo, Registry: registry, Runtime: coverDBRuntime{nativestorage.Lease{Context: t.Context(), Source: provider, Description: &storagev1.DescribeResponse{Revision: 1, Sources: []*storagev1.Source{{Id: "books", RootEntryId: "root", RevisionPinnedReads: true, MediaKinds: []string{"audiobooks"}, DirectoryOnlyListing: true}}}}}}
@@ -275,13 +275,31 @@ func (f *nativeAudioAPIFixture) handlers(t *testing.T) (*handlers.PlaybackHandle
 func (f *nativeAudioAPIFixture) startResponse(t *testing.T, h *handlers.PlaybackHandler, index int, position float64) *httptest.ResponseRecorder {
 	t.Helper()
 	request := playback.StartRequestV3{ProtocolVersion: playback.ProtocolV3, ClientFeatures: []string{playback.FeaturePlaybackPlanV3, playback.FeatureHeaderAuthenticatedMediaV3}, FileID: f.files[index].ID, ProfileID: f.profile, PlaybackAttemptID: uuid.NewString(), QualityPreference: "auto", SubtitleFidelityPreference: playback.SubtitleFidelityCompatibleV3, StartPosition: &position, Capabilities: playback.ClientCodecCapabilitiesV3{VideoEvidence: playback.EvidenceExactV3, AudioEvidence: playback.EvidenceExactV3, CodecsVideo: []string{"h264"}, CodecsAudio: []string{"mp3"}, Containers: []string{"mp3"}}, ClientPlaybackContext: playback.ClientPlaybackContextV3{ProtocolVersion: playback.ProtocolV3, FormFactor: "mobile", AppVersion: "test", Device: playback.DeviceContextV3{Platform: "android"}, Output: playback.OutputContextV3{OutputContextID: "audio-fixture"}, Deliveries: map[string]playback.DeliveryCapabilityV3{playback.DeliveryClassOriginalHTTPV3: {Enabled: true, SupportedOnDevice: true}}}}
-	body, err := json.Marshal(request)
+	w := httptest.NewRecorder()
+	response, err := h.StartPlaybackV2(f.ctx, f.playbackCaller(h), request)
 	if err != nil {
+		var opErr *handlers.PlaybackOperationError
+		if !errors.As(err, &opErr) {
+			t.Fatalf("start: %v", err)
+		}
+		w.WriteHeader(opErr.Status)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": opErr.Code, "message": opErr.Message})
+		return w
+	}
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		t.Fatal(err)
 	}
-	w := httptest.NewRecorder()
-	h.HandleStartPlayback(w, httptest.NewRequest("POST", "/api/v1/playback/start", bytes.NewReader(body)).WithContext(f.ctx))
 	return w
+}
+
+// playbackCaller is the v2 playback identity of the fixture's profile; Silo
+// retired the v1 start and stop handlers this test used to call.
+func (f *nativeAudioAPIFixture) playbackCaller(h *handlers.PlaybackHandler) handlers.PlaybackCaller {
+	if h.InstallationID == "" {
+		h.InstallationID = "native-audio-fixture"
+	}
+	return handlers.PlaybackCaller{UserID: middleware.GetUserID(f.ctx), ProfileID: middleware.GetProfileID(f.ctx), InstallationID: h.InstallationID}
 }
 
 func (f *nativeAudioAPIFixture) start(t *testing.T, h *handlers.PlaybackHandler, index int, position float64) playback.DecisionResponseV3 {
@@ -345,14 +363,8 @@ func TestNativeAudioPlaybackStartSeekNextTrackResumeDB(t *testing.T) {
 			t.Fatal("HEAD returned bytes")
 		}
 	}
-	stop := httptest.NewRequest("POST", "/api/v1/playback/"+first.SessionID+"/stop", nil).WithContext(f.ctx)
-	route := chi.NewRouteContext()
-	route.URLParams.Add("session_id", first.SessionID)
-	stop = stop.WithContext(context.WithValue(stop.Context(), chi.RouteCtxKey, route))
-	stopped := httptest.NewRecorder()
-	h.HandleStopPlayback(stopped, stop)
-	if stopped.Code != http.StatusNoContent {
-		t.Fatalf("stop=%d %s", stopped.Code, stopped.Body.String())
+	if _, err := h.StopPlaybackV2(f.ctx, f.playbackCaller(h), first.SessionID, handlers.PlaybackStopCommand{StopID: uuid.NewString()}); err != nil {
+		t.Fatalf("stop: %v", err)
 	}
 	if w := f.stream(t, stream, first, http.MethodGet); w.Code < 400 {
 		t.Fatalf("stopped stream=%d", w.Code)
