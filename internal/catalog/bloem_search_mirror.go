@@ -30,6 +30,9 @@ const (
 	searchMirrorDeadLetterRetryEvery = time.Hour
 	searchMirrorCopyQueueDepth       = 2
 	searchMirrorLeaseEvery           = 15 * time.Second
+	// searchMirrorLeaseMainEvery is how often, at most, the lease loop reads the main's identity
+	// marker for the lease.
+	searchMirrorLeaseMainEvery = time.Minute
 	// searchMirrorLockName names the mirror's own advisory lock.
 	searchMirrorLockName = "catalog.search_mirror"
 )
@@ -115,6 +118,10 @@ type SearchMirror struct {
 
 	stoodDown atomic.Bool // another Silo copy took over search; this process stops mirroring
 	startedAt time.Time   // this process's start, from the database clock on its first lease touch
+	// mainTarget is the main's identity marker as the lease loop last read it (nil before the
+	// first successful read). Every lease touch records it, so the settle after a failover can
+	// tell this process's main apart from the other copy's.
+	mainTarget atomic.Pointer[string]
 
 	startedOnce      sync.Once   // sets startedAt once, from a run's first successful lease touch
 	forceCopyPending atomic.Bool // ForceFullCopy asked for a copy that no run has recorded in the row yet
@@ -270,7 +277,7 @@ func (m *SearchMirror) run(ctx context.Context) (searchMirrorRunResult, error) {
 // runLocked is a run once it holds the mirror's lock.
 func (m *SearchMirror) runLocked(ctx context.Context) (searchMirrorRunResult, error) {
 	// 3. The lease. Its first insert, by StartProcessLease or here, fixes this process's start.
-	startedAt, err := touchSearchMirrorProcess(ctx, m.pool, m.opts.InstanceID, m.opts.Host)
+	startedAt, err := touchSearchMirrorProcess(ctx, m.pool, m.opts.InstanceID, m.opts.Host, m.seenMainTarget())
 	if err != nil {
 		return searchMirrorRunResult{}, fmt.Errorf("search mirror: %w", err)
 	}
@@ -501,17 +508,24 @@ func (m *SearchMirror) latchMisconfigured(ctx context.Context, row searchMirrorR
 }
 
 // StartProcessLease writes this process's lease now, then every LeaseEvery until ctx ends. The
-// settle replay reads the leases to learn when every Silo process older than a role swap has
-// stopped. A process that stood down keeps its lease: its main sync still runs.
+// lease carries the main's identity marker, read at most every searchMirrorLeaseMainEvery. The
+// settle replay reads the leases to learn when every Silo process that still talks to the old
+// main after a role swap has stopped. A process that stood down keeps its lease: its main sync
+// still runs.
 func (m *SearchMirror) StartProcessLease(ctx context.Context) {
 	if m == nil || m.pool == nil {
 		return
 	}
 	failing := false
+	var mainReadAt time.Time
 	touch := func() {
+		if m.main != nil && (mainReadAt.IsZero() || time.Since(mainReadAt) >= searchMirrorLeaseMainEvery) {
+			mainReadAt = time.Now()
+			m.readMainTarget(ctx)
+		}
 		touchCtx, cancel := context.WithTimeout(ctx, searchMirrorLeaseTouchTimeout)
 		defer cancel()
-		_, err := touchSearchMirrorProcess(touchCtx, m.pool, m.opts.InstanceID, m.opts.Host)
+		_, err := touchSearchMirrorProcess(touchCtx, m.pool, m.opts.InstanceID, m.opts.Host, m.seenMainTarget())
 		switch {
 		case err == nil:
 			failing = false
@@ -534,6 +548,32 @@ func (m *SearchMirror) StartProcessLease(ctx context.Context) {
 			}
 		}
 	}()
+}
+
+// readMainTarget reads the main's identity marker for this process's lease. A read that fails
+// keeps the last value: the main this process talks to has not changed because it is
+// unreachable for a moment.
+func (m *SearchMirror) readMainTarget(ctx context.Context) {
+	readCtx, cancel := context.WithTimeout(ctx, searchMirrorLeaseTouchTimeout)
+	defer cancel()
+	id, err := m.main.readTargetMarker(readCtx, m.startup.MeilisearchIndex)
+	if err != nil {
+		if ctx.Err() == nil {
+			slog.DebugContext(ctx, "search mirror lease: the main's identity marker was not read; the lease keeps the last one",
+				"component", "catalog", "error", err)
+		}
+		return
+	}
+	m.mainTarget.Store(&id)
+}
+
+// seenMainTarget is the main's identity marker as this process last read it; "" before the
+// first read.
+func (m *SearchMirror) seenMainTarget() string {
+	if id := m.mainTarget.Load(); id != nil {
+		return *id
+	}
+	return ""
 }
 
 // searchMirrorProcessRuntime is this process's mirror, as wiring recorded it.

@@ -223,6 +223,7 @@ func TestSearchMirrorDeadLetterAndProcessTables(t *testing.T) {
 				{"host", mirrorSchemaColumn{udtName: "text", nullable: "NO", dflt: "''::text"}},
 				{"started_at", mirrorSchemaColumn{udtName: "timestamptz", nullable: "NO", dflt: "now()"}},
 				{"heartbeat_at", mirrorSchemaColumn{udtName: "timestamptz", nullable: "NO", dflt: "now()"}},
+				{"main_target", mirrorSchemaColumn{udtName: "text", nullable: "NO", dflt: "''::text"}},
 			},
 		},
 	}
@@ -271,16 +272,17 @@ func TestSearchMirrorDeadLetterAndProcessTables(t *testing.T) {
 			attempts, lastError, failedTogether)
 	}
 
-	var host string
+	var host, mainTarget string
 	var started bool
 	err = tx.QueryRow(ctx, `
 		INSERT INTO bloem_search_mirror_processes (instance_id)
 		VALUES ('00000000-0000-4000-8000-000000000001')
-		RETURNING host, started_at = heartbeat_at`).Scan(&host, &started)
+		RETURNING host, started_at = heartbeat_at, main_target`).Scan(&host, &started, &mainTarget)
 	if err != nil {
 		t.Fatalf("insert process: %v", err)
 	}
-	if host != "" || !started {
-		t.Fatalf("process defaults = host %q, started=heartbeat %t; want empty, true", host, started)
+	if host != "" || !started || mainTarget != "" {
+		t.Fatalf("process defaults = host %q, started=heartbeat %t, main_target %q; want empty, true, empty",
+			host, started, mainTarget)
 	}
 }

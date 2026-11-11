@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"slices"
@@ -237,51 +238,91 @@ func TestPgSnapshotParseAndFormat(t *testing.T) {
 func TestSearchMirrorProcessLeaseKeepsStartTime(t *testing.T) {
 	e := newSearchMirrorTestEnv(t)
 	id := uuid.NewString()
-	lease := func() (startedAt, heartbeatAt time.Time) {
+	lease := func() (startedAt, heartbeatAt time.Time, mainTarget string) {
 		t.Helper()
-		err := e.Pool.QueryRow(t.Context(), `SELECT started_at, heartbeat_at FROM bloem_search_mirror_processes WHERE instance_id = $1`, id).
-			Scan(&startedAt, &heartbeatAt)
+		err := e.Pool.QueryRow(t.Context(), `SELECT started_at, heartbeat_at, main_target FROM bloem_search_mirror_processes WHERE instance_id = $1`, id).
+			Scan(&startedAt, &heartbeatAt, &mainTarget)
 		if err != nil {
 			t.Fatalf("read lease: %v", err)
 		}
-		return startedAt, heartbeatAt
+		return startedAt, heartbeatAt, mainTarget
 	}
 
-	first, err := touchSearchMirrorProcess(t.Context(), e.Pool, id, "host-a")
+	// Before the process has read its main's marker, the lease reports no main.
+	first, err := touchSearchMirrorProcess(t.Context(), e.Pool, id, "host-a", "")
 	if err != nil {
 		t.Fatalf("first touch: %v", err)
 	}
-	started, heartbeat := lease()
+	started, heartbeat, mainTarget := lease()
 	if !first.Equal(started) {
 		t.Fatalf("first touch returned %v, row has started_at %v", first, started)
+	}
+	if mainTarget != "" {
+		t.Fatalf("first touch main_target = %q, want empty", mainTarget)
 	}
 	var host string
 	if err := e.Pool.QueryRow(t.Context(), `SELECT host FROM bloem_search_mirror_processes WHERE instance_id = $1`, id).Scan(&host); err != nil || host != "host-a" {
 		t.Fatalf("host = %q, %v; want host-a", host, err)
 	}
 
-	second, err := touchSearchMirrorProcess(t.Context(), e.Pool, id, "host-a")
+	// A later touch records the main it now reports, and keeps the start.
+	second, err := touchSearchMirrorProcess(t.Context(), e.Pool, id, "host-a", "main-a")
 	if err != nil {
 		t.Fatalf("second touch: %v", err)
 	}
-	started2, heartbeat2 := lease()
+	started2, heartbeat2, mainTarget2 := lease()
 	if !second.Equal(first) || !started2.Equal(started) {
 		t.Fatalf("second touch moved the start: returned %v, row %v; want %v", second, started2, first)
 	}
 	if !heartbeat2.After(heartbeat) {
 		t.Fatalf("heartbeat_at %v did not advance past %v", heartbeat2, heartbeat)
 	}
+	if mainTarget2 != "main-a" {
+		t.Fatalf("second touch main_target = %q, want main-a", mainTarget2)
+	}
 
 	// The start stays the first insert's even when it is long past.
 	if _, err := e.Pool.Exec(t.Context(), `UPDATE bloem_search_mirror_processes SET started_at = started_at - interval '1 hour' WHERE instance_id = $1`, id); err != nil {
 		t.Fatalf("age start: %v", err)
 	}
-	third, err := touchSearchMirrorProcess(t.Context(), e.Pool, id, "host-a")
+	third, err := touchSearchMirrorProcess(t.Context(), e.Pool, id, "host-a", "main-b")
 	if err != nil {
 		t.Fatalf("third touch: %v", err)
 	}
 	if want := first.Add(-time.Hour); !third.Equal(want) {
 		t.Fatalf("third touch returned %v, want the aged start %v", third, want)
+	}
+	if _, _, mainTarget3 := lease(); mainTarget3 != "main-b" {
+		t.Fatalf("third touch main_target = %q, want main-b", mainTarget3)
+	}
+}
+
+// The lease loop reports the main's identity marker in the lease, and a marker that can't be
+// read keeps the last one: the main has not changed because it is down for a moment.
+func TestSearchMirrorProcessLeaseReportsMain(t *testing.T) {
+	e := newSearchMirrorTestEnv(t)
+	if err := e.Main.Client(t).writeTargetMarker(t.Context(), e.Prefix, "main-a"); err != nil {
+		t.Fatalf("write the main's marker: %v", err)
+	}
+	m := e.NewMirror(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	m.StartProcessLease(ctx) // the first touch is written before it returns
+
+	var mainTarget string
+	err := e.Pool.QueryRow(t.Context(), `SELECT main_target FROM bloem_search_mirror_processes WHERE instance_id = $1`, m.opts.InstanceID).
+		Scan(&mainTarget)
+	if err != nil {
+		t.Fatalf("read lease: %v", err)
+	}
+	if mainTarget != "main-a" {
+		t.Fatalf("lease main_target = %q, want main-a", mainTarget)
+	}
+
+	e.Main.Stop()
+	m.readMainTarget(t.Context())
+	if got := m.seenMainTarget(); got != "main-a" {
+		t.Fatalf("after a failed read the main target = %q, want main-a kept", got)
 	}
 }
 
@@ -294,31 +335,40 @@ func TestSearchMirrorOlderProcessAlive(t *testing.T) {
 	swapBy := uuid.NewString()
 	other := uuid.NewString()
 	const quiet = 2 * time.Minute
+	// After the swap the new main is the server that was the mirror; the old copy's processes
+	// still read the old main's marker.
+	const newMain, oldMain = "target-new-main", "target-old-main"
 
 	for _, tc := range []struct {
-		name      string
-		instance  string
-		started   string // relative to the swap
-		heartbeat string // relative to now
-		want      bool
+		name       string
+		instance   string
+		started    string // relative to the swap
+		heartbeat  string // relative to now
+		mainTarget string // the main the lease reports
+		want       bool
 	}{
-		{"older process with a fresh heartbeat", other, "-1 hour", "0", true},
-		{"older process quiet for 3 minutes", other, "-1 hour", "-3 minutes", false},
-		{"the swapping instance itself", swapBy, "-1 hour", "0", false},
-		{"a process started after the swap", other, "1 second", "0", false},
+		{"started before the swap, no main reported yet", other, "-1 hour", "0", "", true},
+		{"started before the swap, no main reported, quiet for 3 minutes", other, "-1 hour", "-3 minutes", "", false},
+		{"the swapping instance itself", swapBy, "-1 hour", "0", "", false},
+		{"started after the swap, no main reported yet", other, "1 second", "0", "", false},
+		{"a new-copy process started before the swap that reports the new main", other, "-1 hour", "0", newMain, false},
+		{"a process reporting the old main", other, "-1 hour", "0", oldMain, true},
+		{"a process started after the swap that reports the old main", other, "1 second", "0", oldMain, true},
+		{"a process reporting the old main, quiet for 3 minutes", other, "-1 hour", "-3 minutes", oldMain, false},
+		{"the swapping instance reporting the old main", swapBy, "-1 hour", "0", oldMain, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := e.Pool.Exec(t.Context(), `DELETE FROM bloem_search_mirror_processes`); err != nil {
 				t.Fatalf("clear: %v", err)
 			}
 			_, err := e.Pool.Exec(t.Context(), `
-				INSERT INTO bloem_search_mirror_processes (instance_id, host, started_at, heartbeat_at)
-				VALUES ($1, 'h', $2::timestamptz + $3::interval, now() + $4::interval)`,
-				tc.instance, swapAt, tc.started, tc.heartbeat)
+				INSERT INTO bloem_search_mirror_processes (instance_id, host, started_at, heartbeat_at, main_target)
+				VALUES ($1, 'h', $2::timestamptz + $3::interval, now() + $4::interval, $5)`,
+				tc.instance, swapAt, tc.started, tc.heartbeat, tc.mainTarget)
 			if err != nil {
 				t.Fatalf("insert: %v", err)
 			}
-			got, err := searchMirrorOlderProcessAlive(t.Context(), e.Pool, swapAt, swapBy, quiet)
+			got, err := searchMirrorOlderProcessAlive(t.Context(), e.Pool, swapAt, swapBy, newMain, quiet)
 			if err != nil {
 				t.Fatalf("older process alive: %v", err)
 			}

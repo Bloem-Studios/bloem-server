@@ -348,31 +348,37 @@ func searchMirrorEffectiveMaxLag(ctx context.Context, q pgxQuerier, configured t
 }
 
 // touchSearchMirrorProcess writes this process's lease: inserted with the database clock on the
-// first touch, its heartbeat moved on every later one. It returns the start time, which never
-// changes after the first insert.
-func touchSearchMirrorProcess(ctx context.Context, q pgxExecQuerier, instanceID, host string) (startedAt time.Time, err error) {
+// first touch, its heartbeat moved on every later one. mainTarget is the identity marker of the
+// main Meilisearch this process last saw ("" before it has read one); every touch records it. It
+// returns the start time, which never changes after the first insert.
+func touchSearchMirrorProcess(ctx context.Context, q pgxExecQuerier, instanceID, host, mainTarget string) (startedAt time.Time, err error) {
 	err = q.QueryRow(ctx, `
-		INSERT INTO bloem_search_mirror_processes (instance_id, host, started_at, heartbeat_at)
-		VALUES ($1, $2, now(), now())
-		ON CONFLICT (instance_id) DO UPDATE SET heartbeat_at = now()
-		RETURNING started_at`, instanceID, host).Scan(&startedAt)
+		INSERT INTO bloem_search_mirror_processes (instance_id, host, started_at, heartbeat_at, main_target)
+		VALUES ($1, $2, now(), now(), $3)
+		ON CONFLICT (instance_id) DO UPDATE SET heartbeat_at = now(), main_target = EXCLUDED.main_target
+		RETURNING started_at`, instanceID, host, mainTarget).Scan(&startedAt)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("touch search mirror process lease: %w", err)
 	}
 	return startedAt, nil
 }
 
-// searchMirrorOlderProcessAlive reports whether a process that started before the swap at
-// swapAt, other than swapBy which made it, has touched its lease within quiet.
-func searchMirrorOlderProcessAlive(ctx context.Context, q pgxQuerier, swapAt time.Time, swapBy string, quiet time.Duration) (bool, error) {
+// searchMirrorOlderProcessAlive reports whether a process older than the swap at swapAt, other
+// than swapBy which made it, has touched its lease within quiet. Processes are told apart by
+// the main they talk to, not by when they started: a process is older when its lease reports a
+// main other than newMain, the new main's identity marker, or when it started before the swap
+// and has not reported a main yet. A process that reports newMain is never older, whenever it
+// started.
+func searchMirrorOlderProcessAlive(ctx context.Context, q pgxQuerier, swapAt time.Time, swapBy, newMain string, quiet time.Duration) (bool, error) {
 	var alive bool
 	err := q.QueryRow(ctx, `
 		SELECT EXISTS (
 			SELECT 1 FROM bloem_search_mirror_processes
-			WHERE started_at < $1
-			  AND instance_id::text <> $2
+			WHERE instance_id::text <> $2
 			  AND heartbeat_at > now() - $3::bigint * interval '1 microsecond'
-		)`, swapAt, swapBy, quiet.Microseconds()).Scan(&alive)
+			  AND ((main_target <> '' AND main_target <> $4)
+			       OR (main_target = '' AND started_at < $1))
+		)`, swapAt, swapBy, quiet.Microseconds(), newMain).Scan(&alive)
 	if err != nil {
 		return false, fmt.Errorf("read search mirror process leases: %w", err)
 	}

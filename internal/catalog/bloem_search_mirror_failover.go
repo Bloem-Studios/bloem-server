@@ -359,17 +359,20 @@ func (m *SearchMirror) startOwedMainRebuild(ctx context.Context, row *searchMirr
 	return nil
 }
 
-// settle runs the settle replay while a swap is settling. It waits until no process that
-// started before the swap, other than the one that made it, has touched its lease within
-// SettleQuiet; then it reopens every main-index row marked done since the swap (less a minute's
-// margin), so the main index re-sends what an old Silo copy sent to the old main, and clears
-// Settling. It never reopens early, however long it waits.
+// settle runs the settle replay while a swap is settling. It waits until no older process,
+// other than the one that made the swap, has touched its lease within SettleQuiet: one whose
+// lease reports a main other than the new main (row.State.MainTarget after the swap), or one
+// that started before the swap and has not reported a main yet. A process of the new copy that
+// reports the new main never holds it up, whenever it started. Then it reopens every main-index
+// row marked done since the swap (less a minute's margin), so the main index re-sends what an
+// old Silo copy sent to the old main, and clears Settling. It never reopens early, however long
+// it waits.
 func (m *SearchMirror) settle(ctx context.Context, row *searchMirrorRow) error {
 	swap := row.State.Swap
 	if swap == nil || !swap.Settling {
 		return nil
 	}
-	alive, err := searchMirrorOlderProcessAlive(ctx, m.pool, swap.At, swap.By, m.opts.SettleQuiet)
+	alive, err := searchMirrorOlderProcessAlive(ctx, m.pool, swap.At, swap.By, row.State.MainTarget, m.opts.SettleQuiet)
 	if err != nil {
 		return fmt.Errorf("search mirror settle: %w", err)
 	}
