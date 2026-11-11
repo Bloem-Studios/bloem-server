@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -47,7 +48,7 @@ func TestBloemV2WireServesTheV2Shapes(t *testing.T) {
 	}
 	if _, err := wire.AccessGroupUpdate([]byte(`{"library_ids":["x"]}`)); err == nil {
 		t.Fatal("update with an invalid library ID was accepted")
-	} else if apiErr, ok := err.(*handlers.APIError); !ok || apiErr.Status != 422 || apiErr.Code != "validation_failed" {
+	} else if apiErr, ok := errors.AsType[*handlers.APIError](err); !ok || apiErr.Status != 422 || apiErr.Code != "validation_failed" {
 		t.Fatalf("update error = %#v, want the v2 validation problem", err)
 	}
 	if body, _ := json.Marshal(wire.AccessGroup(group)); !json.Valid(body) {

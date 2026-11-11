@@ -6,9 +6,10 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
+
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/go-chi/chi/v5"
 )
 
 // Bloem-owned. Request helpers Silo deleted with its /api/v1 tests
