@@ -43,7 +43,7 @@ func (h *BloemSearchMirrorHandler) HandleGet(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		// The error text can carry database detail; the response and the log say only that
 		// the status could not be read.
-		slog.Warn("search mirror status unavailable", "error", err)
+		slog.WarnContext(r.Context(), "search mirror status unavailable", "error", err)
 		writeError(w, http.StatusServiceUnavailable, "search_mirror_status_unavailable", "The search mirror status is unavailable.")
 		return
 	}

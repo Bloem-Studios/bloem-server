@@ -26,7 +26,7 @@ func registerBloemSearchMirrorDocument(reg *Registry) {
 		"The route is read-only. Responses are not cacheable."
 	op.Responses = map[string]*huma.Response{}
 	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
-		401: "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled.",
+		401: bloemPlatformCredential401,
 		403: "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key; forbidden: the API key's scopes exclude this route.",
 		503: "search_mirror_status_unavailable: the database is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked.",
 	})

@@ -1,5 +1,5 @@
 import { createElement, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, type QueryObserverOptions } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -50,8 +50,10 @@ describe("useSearchMirrorStatus", () => {
     const query = client.getQueryCache().find({
       queryKey: ["admin-v2", "platform", "search-mirror", 7],
     });
-    expect(query?.options.staleTime).toBe(15_000);
-    expect(query?.options.refetchInterval).toBe(30_000);
+    // A query's options hold its observers' options, which the cache types only as QueryOptions.
+    const options = query?.options as QueryObserverOptions | undefined;
+    expect(options?.staleTime).toBe(15_000);
+    expect(options?.refetchInterval).toBe(30_000);
   });
 
   it("does not ask in an organization context", () => {
