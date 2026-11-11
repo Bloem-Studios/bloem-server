@@ -230,7 +230,7 @@ and runtime checks. See the [contract transition](bloem-contract-adjudications.m
 
 #### Reproduce and verify
 
-Use the Go toolchain declared in the server's `go.mod` (now `1.26.10`; the October 14
+Use the Go toolchain declared in the server's `go.mod` (now `1.26.11`; the October 14
 integration used `1.26.9`). Go `1.27.1` changes standard-library JSON alias representation
 and is not the validated generation environment. Commands assume the repository root is the
 cwd:

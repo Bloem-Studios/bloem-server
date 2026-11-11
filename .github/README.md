@@ -991,7 +991,7 @@ runs with `POSTGRES_TUNE=off` and the database is tuned directly; see
 
 If you prefer running Bloem without Docker:
 
-1. **Install prerequisites**: Go 1.26.10+ (the patch `go.mod` names), Node.js 24+ for the frontend, pnpm 10.32.1, a C compiler and libvips development libraries for CGO, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
+1. **Install prerequisites**: Go 1.26.11+ (the patch `go.mod` names), Node.js 24+ for the frontend, pnpm 10.32.1, a C compiler and libvips development libraries for CGO, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
 
 2. **Configure the source process**
 
