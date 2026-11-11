@@ -40,7 +40,9 @@ const bloemProfileCredentialUnauthorized = "unauthorized: authentication is miss
 
 func registerBloemProfileCredentialDocument(reg *Registry) {
 	const path = "/profile-credentials/{id}"
-	const authority = "Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused."
+	// Profile sign-in is dormant: the routes are not mounted while it is (see
+	// internal/api/router_bloem.go), so the declaration says so first.
+	const authority = "Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (Silo retired /api/v1, where it lived). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused."
 	get := bloemChiDocumentOp(reg, "GET", path, "getBloemProfileCredentials", "profiles", "Read direct-profile credential status without exposing a password or hash.", "bloemAccountSession", 200)
 	get.Description = authority
 	bloemDocumentErrors[BloemNativeError](reg, &get, map[int]string{

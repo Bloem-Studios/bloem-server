@@ -118,7 +118,13 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	system.SetPlaybackOverlaysAvailable(deps.Promotions != nil)
 	var credentialHandler *handlers.BloemProfileCredentialsHandler
 	var credentialLimit func(http.Handler) http.Handler
-	if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" && deps.UserStoreProvider != nil {
+	// Profile sign-in is dormant: its sign-in route lived only on Silo's
+	// /api/v1, which Silo retired (Silo #3200), so a profile's own email and
+	// password cannot be used anywhere. The credential routes stay unmounted
+	// and unadvertised until a native profile sign-in exists; set this true
+	// together with that route.
+	const profileSignInActive = false
+	if profileSignInActive && deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" && deps.UserStoreProvider != nil {
 		credentialHandler = handlers.NewBloemProfileCredentialsHandler(deps.UserStoreProvider, auth.NewUserRepository(deps.DB), access.NewProfileTokenService(deps.Config.Auth.JWTSecret, 0), auth.NewProfileCredentialService(deps.DB))
 		if deps.RateLimitMW != nil {
 			// The budget must be one ratelimit.DefaultConfig names: an unknown

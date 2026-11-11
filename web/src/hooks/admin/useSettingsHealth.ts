@@ -25,7 +25,6 @@ export const ADMIN_SETTINGS_PAGE_IDS = [
   "appearance",
   "security",
   "sign-in",
-  "profile-passwords",
   "library",
   "autoscan",
   "playback",

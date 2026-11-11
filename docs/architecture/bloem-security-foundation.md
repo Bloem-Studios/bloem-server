@@ -19,8 +19,8 @@ an organization's own web address, and how a server gets its first owner.
 - **An account sign-in** is what an app gets from an email address and password, the same
   sign-in Silo's apps use. It acts for the account. The app names a **profile** on each
   request, and enters the profile's PIN where it has one.
-- **A profile sign-in** goes straight into one profile, with that profile's own email address
-  and password. The household's main profile sets it up. It can browse, play, and keep its own
+- **A profile sign-in** (dormant since 2026-11-11, see below) goes straight into one profile,
+  with that profile's own email address and password. The household's main profile sets it up. It can browse, play, and keep its own
   progress, settings and book requests. It cannot manage the household or administer
   anything.
 - **An administrator pass** is a separate key for running things. An administrator swaps an
@@ -227,8 +227,9 @@ Both grow additively. `organization_domains_v1` is one of the conditional tokens
 advertised when the domain and branding routes are mounted with both an account and an
 administrator gate.
 
-Direct-profile login is implemented on `/api/v1/auth/profile-login` when its dependencies are
-wired; the capability boolean reflects that wiring. The default-deny direct-session route
+Profile sign-in is dormant since 2026-11-11: its sign-in route lived only on Silo's `/api/v1`, which Silo retired (Silo #3200, merged into Bloem in `26cf9b3e4`). The credential routes are not mounted, `profile_credential_management_v1` and `direct_profile_login` are not advertised, and the web hides the credentials panel and the Profile passwords setting. The code stays; it comes back with a native profile sign-in route under `/api/bloem/v1`. Until then, the rest of
+this section describes how it worked: direct-profile login was implemented on
+`/api/v1/auth/profile-login` when its dependencies were wired. The default-deny direct-session route
 allowlist (`internal/api/direct_profile_routes.go`) still rejects Silo v2 and the native Bloem
 namespace (apart from the audiobook and ebook request viewer routes), so the embedded browser
 must use account login. A profile password follows the server's password sign-in policy

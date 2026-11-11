@@ -17,7 +17,7 @@ words in the tables mean, and how far each feature has been tested.
 ![Three columns of screens for viewers, organization administrators and platform administrators, with Silo's own screens in grey; below, the two APIs the web app calls and the one it no longer calls](images/bloem-web-feature-coverage/web-app-map.svg)
 
 - **For viewers:** Home with campaign cards, seasonal effects, Live TV with its guide
-  and recordings, playback cards in the player, profile sign-ins, and Silo's catalog,
+  and recordings, playback cards in the player, and Silo's catalog,
   player, profiles, requests and inbox.
 - **For an organization administrator:** the organization's people and their plans,
   access groups, invitations, library grants, activity and policy decisions.

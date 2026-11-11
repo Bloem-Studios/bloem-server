@@ -8,6 +8,11 @@ import (
 	"github.com/Silo-Server/silo-server/internal/remote"
 )
 
+// Remote control is dormant (docs/architecture/admin-remote-control.md): its
+// routes lived only on Silo's /api/v1, which Silo retired (Silo #3200), and
+// nothing wires a RemoteObserver, so these hooks are inert until native
+// remote-control routes are built.
+
 // PlanInvalidatedAdminReplan is the plan_invalidated reason an admin replan
 // carries. Clients treat the reason as opaque and act on plan_id alone.
 const PlanInvalidatedAdminReplan = "admin_replan"

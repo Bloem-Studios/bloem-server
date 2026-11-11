@@ -5,7 +5,7 @@
 > `client_upgrade_required`, Bloem's own routes there included; only the health and
 > readiness probes stay. The routes listed under "Still on `/api/v1`" below are gone:
 > campaigns and seasonal packs keep their `/api/bloem/v1` replacements, while remote
-> control and direct-profile sign-in have none yet. Bloem's native routes now serve
+> control and direct-profile sign-in are dormant until native routes are built. Bloem's native routes now serve
 > Silo's `/api/v2` shapes for organization groups, invitations and account devices.
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against `main`

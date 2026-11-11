@@ -16,7 +16,6 @@ import {
   Users,
   UsersRound,
   Megaphone,
-  UserRoundKey,
   type LucideIcon,
 } from "lucide-react";
 
@@ -225,31 +224,6 @@ function searchEntry(id: BloemMessageKey) {
 /** Bloem's settings pages, appended to Silo's ADMIN_SETTINGS_NAV. */
 export const BLOEM_ADMIN_SETTINGS: AdminSettingsSearchItem[] = [
   {
-    // Bloem's switch for household profile passwords, under Sign-in & Security.
-    id: "profile-passwords",
-    get label() {
-      return bloemT("bloem.adminNav.profilePasswords.label");
-    },
-    get description() {
-      return bloemT("bloem.adminNav.profilePasswords.description");
-    },
-    settings: [searchEntry("bloem.adminNav.profilePasswords.label")],
-    get keywords() {
-      return [
-        "profile sign-in",
-        "profile login",
-        "household",
-        "profile email",
-        "credentials",
-        ...englishTerms(
-          "bloem.adminNav.profilePasswords.label",
-          "bloem.adminNav.profilePasswords.description",
-        ),
-      ];
-    },
-    icon: UserRoundKey,
-  },
-  {
     id: "announcements",
     get label() {
       return bloemT("bloem.adminNav.announcementsSettings.label");
@@ -289,20 +263,10 @@ export function addBloemSettingsNavigation(sections: AdminNavSection[]): void {
     icon: Megaphone,
     href: "/admin/settings/announcements",
   });
-  const profilePasswords = navItem("profilePasswords", {
-    keywords: ["settings", "configuration", "profile sign-in", "household", "credentials"],
-    icon: UserRoundKey,
-    href: "/admin/settings/profile-passwords",
-  });
   for (const section of sections) {
     for (const entry of section.entries) {
       if (!("items" in entry)) continue;
       if (entry.id === "integrations") entry.items.push(item);
-      if (entry.id === "access") {
-        // Right after Silo's Sign-in page, which it extends.
-        const signIn = entry.items.findIndex((page) => page.href === "/admin/settings/sign-in");
-        entry.items.splice(signIn + 1, 0, profilePasswords);
-      }
     }
   }
 }

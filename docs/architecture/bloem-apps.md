@@ -43,10 +43,12 @@ Every way in ends in one profile of one account:
 - **Bloem's apps, Silo's apps and the web app** sign in to the account with
   email and password, then ask who is watching, then ask for that profile's PIN
   if it has one.
-- **A profile sign-in.** The household's main profile can give a profile a
-  sign-in of its own under **Settings → Profiles**. Apps that support it then
-  sign straight into that one profile. The browser always signs in to the
-  account.
+- **A profile sign-in** (dormant). The household's main profile could give a
+  profile a sign-in of its own, and apps that support it signed straight into
+  that one profile. Its sign-in route lived only on Silo's `/api/v1`, which Silo
+  retired on 2026-11-11, so it is parked: the setting and the credentials panel
+  are hidden until a native sign-in route exists. The browser always signs in to
+  the account.
 - **Jellyfin and Audiobookshelf apps** have one username box and one password
   box, so the profile goes in the username as `account#profile` (for example
   `sam#Kids`), and a PIN goes after the password as `password#PIN`.
@@ -88,6 +90,11 @@ Bloem's phone and TV apps keep using the server's public address for their devic
 sign-in page.
 
 ## Remote control
+
+Remote control is dormant since 2026-11-11: its routes lived only on Silo's
+`/api/v1`, which Silo retired, so nothing can send a command and the server
+advertises it as off. The code is parked until native routes are built; the
+rest of this section describes how it worked.
 
 Bloem lets an administrator, or a household's main profile, control a playing
 app: pause, resume, seek, stop, change volume or audio and subtitle tracks, or

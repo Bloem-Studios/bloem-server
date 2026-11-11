@@ -1,10 +1,12 @@
 # How remote control works
 
-> **Unreachable since 2026-11-11.** Remote control's routes (`/api/v1/admin/remote/...`,
+> **Dormant since 2026-11-11.** Remote control's routes (`/api/v1/admin/remote/...`,
 > the household command route and `PUT /api/v1/devices/{id}/remote-control`) lived
 > only on Silo's `/api/v1`, which Silo retired (Silo #3200, merged into Bloem in
-> `26cf9b3e4`). The HTTP handler went with them; it returns when native routes are
-> built. The rest of this page describes how it worked.
+> `26cf9b3e4`). It is parked: the HTTP handler went with the routes, no remote
+> observer is wired, and the notification capability reports `remote_control` as off.
+> The service, its store and the playback hooks stay, and it comes back with native
+> routes under `/api/bloem/v1`. The rest of this page describes how it worked.
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
 > `main` at `b6039036d`. Remote control is a Bloem addition: Silo's playback connection

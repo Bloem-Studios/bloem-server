@@ -1,13 +1,12 @@
 import PreviewItemCampaigns from "./preview/PreviewItemCampaigns";
 // Bloem routes and route wrappers, spliced into the Silo-owned App.tsx route
 // table at single insertion points so App.tsx stays close to upstream.
-import { Suspense, type ComponentType, type ReactElement, type ReactNode } from "react";
+import type { ComponentType, ReactElement, ReactNode } from "react";
 import { Navigate, Route } from "react-router";
 import { OrganizationContextGuard } from "@/contexts/AdminContextProvider";
 import { AdminContextRedirect, AdminContextSelection } from "./BloemAdminShell";
 import {
   AdminAccessGroups,
-  DirectProfileCredentials,
   LiveTVWatch,
   AdminLiveTV,
   ActivityAuditPage,
@@ -88,16 +87,14 @@ export const bloemAdminContextRoutes = (
   </>
 );
 
-/** Profile settings plus the direct-account profile credentials panel. */
+/**
+ * Profile settings. The direct-account profile credentials panel is dormant:
+ * profile sign-in lived only on Silo's retired /api/v1, so the panel stays
+ * hidden until a native profile sign-in exists
+ * (docs/architecture/bloem-security-foundation.md).
+ */
 export function withDirectProfileCredentials(settings: ReactElement) {
-  return (
-    <>
-      {settings}
-      <Suspense fallback={null}>
-        <DirectProfileCredentials />
-      </Suspense>
-    </>
-  );
+  return settings;
 }
 
 /** Item detail wrapped with engagement campaign placements. */

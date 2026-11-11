@@ -37,8 +37,8 @@ The routes fall into four groups, by what a caller must show:
    organization. The storefront's platform routes also take a platform administrator's API
    key. See [how Bloem's security foundation works](bloem-security-foundation.md).
 
-A **profile sign-in** (straight into one profile) reaches only the book request routes on
-Bloem's API. Everything else there needs an account sign-in.
+A **profile sign-in** (straight into one profile, dormant since Silo retired `/api/v1`, where
+its sign-in route lived) reaches only the book request routes on Bloem's API. Everything else there needs an account sign-in.
 
 ## How an app finds out what a server can do
 
