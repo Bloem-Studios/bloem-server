@@ -223,6 +223,14 @@ func (allowDownloadItemAccess) EnsureAccessible(context.Context, string, catalog
 	return nil
 }
 
+func (allowDownloadItemAccess) EnsureAccessibleIDs(_ context.Context, ids []string, _ catalog.AccessFilter) (map[string]bool, error) {
+	allowed := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		allowed[id] = true
+	}
+	return allowed, nil
+}
+
 func TestDownloadPolicyRejectsMissingTenantFactsBeforeEvaluation(t *testing.T) {
 	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true}}
 	resolver := DownloadQualityResolver{actionDecider: decider}
