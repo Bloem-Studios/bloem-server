@@ -125,6 +125,10 @@ func (m *SearchMirror) swap(ctx context.Context, row *searchMirrorRow) error {
 		return nil
 	}
 	swapped, err := m.swapLocked(ctx, row)
+	if swapped {
+		// The new main is the old mirror server: a copy the swap dropped left its side index there.
+		m.removeMainCopyLeftovers(ctx)
+	}
 	if err != nil || !swapped || row.State.RebuildMain == "" {
 		return err
 	}

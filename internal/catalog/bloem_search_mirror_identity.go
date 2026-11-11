@@ -15,7 +15,8 @@ import (
 // id is the main server's and which is the mirror's, and every run compares them with what
 // the servers show (spec §7).
 //
-// The marker is the only thing the mirror ever writes to the main server.
+// The marker is the only thing the mirror ever writes to the main server; the only other change
+// it makes there is removing its own leftover copy side indexes (bloem_search_mirror_mainclean.go).
 
 // errSearchMirrorSameServer is what settleTargets returns once the markers have shown that the
 // mirror address reaches the main server. The mirror is then misconfigured/same_server and

@@ -126,6 +126,7 @@ type SearchMirror struct {
 	startedOnce      sync.Once   // sets startedAt once, from a run's first successful lease touch
 	forceCopyPending atomic.Bool // ForceFullCopy asked for a copy that no run has recorded in the row yet
 	offForProcess    atomic.Bool // a run found the mirror misconfigured; it stays off until Silo restarts
+	mainCleanTried   atomic.Bool // a run with both servers as remembered looked for copy leftovers on the main
 
 	runLock atomic.Pointer[pglock.Lock] // the mirror's lock while a run of this process holds it
 }
@@ -396,6 +397,11 @@ func (m *SearchMirror) identities(ctx context.Context, row *searchMirrorRow, mai
 	case err != nil:
 		// An unreadable main marker, with nothing written: an error to record.
 		return true, m.runFailed(ctx, row, err)
+	}
+	// Once per process start, with both servers as remembered: copy side indexes an earlier crash
+	// left on the main (removeMainCopyLeftovers only logs a failure).
+	if verdict == verdictNormal && m.mainCleanTried.CompareAndSwap(false, true) {
+		m.removeMainCopyLeftovers(ctx)
 	}
 	// Markers adopted or written (and ForceCopy perhaps set) were saved by settleTargets.
 	return false, nil
