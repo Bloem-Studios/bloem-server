@@ -24,9 +24,7 @@ describe("LibraryAccessSelector", () => {
       </LibraryAccessScope>,
     );
 
-    expect(
-      screen.getByRole("switch", { name: "Allow all North Sea Media libraries" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "All libraries" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Allow Family Movies" })).toBeChecked();
     expect(screen.getByRole("switch", { name: "Allow Platform Series" })).not.toBeChecked();
   });

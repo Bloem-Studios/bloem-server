@@ -1,19 +1,21 @@
 import type { ComponentProps } from "react";
 
 import { useBloemT } from "@/bloem/i18n";
-import { useLibraryAccessScope } from "@/bloem/libraryAccessScope";
 import { Switch as Original } from "@/components/ui/switch";
 
 /**
- * LibraryAccessSelector's switches. Silo's all-libraries switch has no
- * accessible name of its own; it gets one naming whose libraries it allows.
- * A switch that names itself (each library's) keeps its own.
+ * LibraryAccessSelector's switches. A library's switch carries
+ * `data-bloem-library` (the library's name) and is named "Allow <library>"
+ * through Bloem's catalog. The all-libraries switch keeps the name Silo gives
+ * it, such as "All libraries" or "Inherit from access group".
  */
-export function Switch(props: ComponentProps<typeof Original>) {
+export function Switch({
+  "data-bloem-library": library,
+  ...props
+}: ComponentProps<typeof Original> & { "data-bloem-library"?: string }) {
   const bt = useBloemT();
-  const scope = useLibraryAccessScope();
-  const name = scope
-    ? bt("bloem.libraryAccess.allowAllIn", { scope })
-    : bt("bloem.libraryAccess.allowAll");
-  return <Original aria-label={name} {...props} />;
+  if (library === undefined) {
+    return <Original {...props} />;
+  }
+  return <Original {...props} aria-label={bt("bloem.libraryAccess.allowLibrary", { library })} />;
 }

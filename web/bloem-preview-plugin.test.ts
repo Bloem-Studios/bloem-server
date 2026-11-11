@@ -77,7 +77,7 @@ describe("bloemPreview importer-scoped swaps", () => {
       "@/i18n/index.ts",
       `${ADAPTERS}/i18nWithBloem.ts`,
     ],
-    ["pages/AdminAccessGroups.tsx", "@/i18n/index.ts", `${ADAPTERS}/i18nWithBloem.ts`],
+    ["components/admin/access-groups/AccessGroupPermissionsSection.tsx", "@/i18n/index.ts", `${ADAPTERS}/i18nWithBloem.ts`],
     ["lib/documentTitle.ts", "@/i18n/index.ts", `${ADAPTERS}/i18nWithBloem.ts`],
   ])("gives %s Bloem's %s", async (importer, source, adapter) => {
     await expect(resolveFrom(importer, source)).resolves.toBe(path.join(SRC, adapter));

@@ -63,7 +63,7 @@ const importerModules: Record<string, Record<string, string>> = {
     "i18n/index.ts": "adapters/i18nWithBloem.ts",
   },
   // Access groups list Bloem's Live TV permission with Silo's.
-  "pages/AdminAccessGroups.tsx": { "i18n/index.ts": "adapters/i18nWithBloem.ts" },
+  "components/admin/access-groups/AccessGroupPermissionsSection.tsx": { "i18n/index.ts": "adapters/i18nWithBloem.ts" },
   // Bloem's admin pages have Bloem titles.
   "lib/documentTitle.ts": { "i18n/index.ts": "adapters/i18nWithBloem.ts" },
 };
