@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,21 +18,28 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func bloemAcceptInvitation(ctx context.Context, handler *InvitationHandler, token, key string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/invitations/"+token+"/accept", bytes.NewBufferString(`{"password":"correct-horse-battery"}`)).WithContext(ctx)
-	if key != "" {
-		req.Header.Set("Idempotency-Key", key)
-	}
+// bloemAcceptInvitation accepts through the shared service /api/v2 calls and
+// renders its outcome with the status and code the refusal assertions check.
+// The retry key is kept for the callers; the service has no idempotency key,
+// so a retry is an ordinary second accept.
+func bloemAcceptInvitation(ctx context.Context, handler *InvitationHandler, token, _ string) *httptest.ResponseRecorder {
 	response := httptest.NewRecorder()
-	router := chi.NewRouter()
-	router.Post("/api/v1/invitations/{token}/accept", handler.HandleAcceptInvitation)
-	router.ServeHTTP(response, req)
+	view, err := handler.AcceptInvitation(ctx, token, "", "correct-horse-battery", "", "")
+	switch {
+	case err == nil:
+		writeJSON(response, http.StatusCreated, view)
+	case errors.Is(err, invitations.ErrNotFound):
+		writeError(response, http.StatusNotFound, "not_found", "This invitation is invalid or has expired")
+	case errors.Is(err, invitations.ErrNotClaimable):
+		writeError(response, http.StatusConflict, "already_used", "This invitation has already been used")
+	default:
+		writeError(response, http.StatusInternalServerError, "internal_error", err.Error())
+	}
 	return response
 }
 
@@ -95,7 +102,7 @@ JOIN user_profiles p ON p.user_id=u.id WHERE i.token_hash=$1`, invitations.HashT
 	}
 }
 
-func TestBloemInvitationAcceptIneligibleV1Contract(t *testing.T) {
+func TestBloemInvitationAcceptIneligible(t *testing.T) {
 	for _, state := range []string{"unknown", "expired", "revoked"} {
 		t.Run(state, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)

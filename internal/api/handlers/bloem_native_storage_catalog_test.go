@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"github.com/Silo-Server/silo-server/internal/auth"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
 func TestNativeCatalogCommandsRequireAdminContext(t *testing.T) {

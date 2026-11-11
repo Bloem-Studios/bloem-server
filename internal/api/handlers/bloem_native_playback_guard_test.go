@@ -31,10 +31,10 @@ func TestNativePlaybackStartDoesNotMarkStorageEbookMissing(t *testing.T) {
 				handler.MissingMarker = marker
 				handler.ProbeEnsurer = probe
 				if surface == "v1" {
-					request := httptest.NewRequest(http.MethodPost, "/api/v1/playback/start",
+					request := httptest.NewRequest(http.MethodPost, "/api/v2/playback/start",
 						strings.NewReader(marshalV3StartRequest(t, v3HandlerStartRequest()))).WithContext(newAuthorizedPlaybackContext())
 					response := httptest.NewRecorder()
-					handler.HandleStartPlayback(response, request)
+					serveStartPlaybackV2(t, handler, response, request)
 					if response.Code != http.StatusNotFound || !strings.Contains(response.Body.String(), `"error":"not_found"`) {
 						t.Errorf("status = %d, body = %s", response.Code, response.Body.String())
 					}
@@ -75,7 +75,12 @@ func TestNativePlaybackStreamSourcesNeverMarkMissing(t *testing.T) {
 			case "subtitle":
 				handler.HandleSubtitle(response, playbackTestRequest(http.MethodGet, "/api/v1/stream/"+session.ID+"/subtitles/0.ass", nil, params))
 			case "fonts":
-				handler.HandleSubtitleFonts(response, playbackTestRequest(http.MethodGet, "/api/v1/stream/"+session.ID+"/subtitles/0/fonts", nil, params))
+				request := playbackTestRequest(http.MethodGet, "/api/v2/stream/"+session.ID+"/subtitles/0/fonts", nil, params)
+				if fonts, err := handler.SubtitleFonts(request.Context(), SubtitleFontRequest{SessionID: session.ID, Track: "0", Query: request.URL.Query()}); err != nil {
+					writeAPIError(response, err)
+				} else {
+					writeJSON(response, http.StatusOK, fonts)
+				}
 			default:
 				method := http.MethodGet
 				if endpoint == "direct-head" {
@@ -170,7 +175,7 @@ func TestNativePlaybackReplanDoesNotMarkNativeSourceMissing(t *testing.T) {
 	handler.MissingMarker = marker
 	start := v3HandlerStartRequest()
 	response := httptest.NewRecorder()
-	handler.HandleStartPlayback(response, httptest.NewRequest(http.MethodPost, "/api/v1/playback/start", strings.NewReader(marshalV3StartRequest(t, start))).WithContext(newAuthorizedPlaybackContext()))
+	serveStartPlaybackV2(t, handler, response, httptest.NewRequest(http.MethodPost, "/api/v2/playback/start", strings.NewReader(marshalV3StartRequest(t, start))).WithContext(newAuthorizedPlaybackContext()))
 	var started playback.DecisionResponseV3
 	if response.Code != http.StatusCreated || json.Unmarshal(response.Body.Bytes(), &started) != nil || started.PlaybackPlan == nil {
 		t.Fatalf("local start = %d %s", response.Code, response.Body.String())
@@ -187,7 +192,7 @@ func TestNativePlaybackReplanDoesNotMarkNativeSourceMissing(t *testing.T) {
 	}
 	request := withPlaybackRouteParam(httptest.NewRequest(http.MethodPost, "/api/v1/playback/"+started.SessionID+"/replan", strings.NewReader(string(body))).WithContext(newAuthorizedPlaybackContext()), "session_id", started.SessionID)
 	response = httptest.NewRecorder()
-	handler.HandleReplanPlaybackV3(response, request)
+	serveReplanPlaybackV2(t, handler, response, request)
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "source_unavailable") {
 		t.Errorf("replan = %d %s; want source-unavailable terminal", response.Code, response.Body.String())
 	}
@@ -204,7 +209,7 @@ func TestNativePlaybackGuardPreservesFilesystemStartAndRanges(t *testing.T) {
 	handler.ItemAccess = allowAllPlaybackItemAccess{}
 	handler.SettingsRepo = &mutablePlaybackSettingsV3{values: map[string]string{}}
 	response := httptest.NewRecorder()
-	handler.HandleStartPlayback(response, httptest.NewRequest(http.MethodPost, "/api/v1/playback/start", strings.NewReader(marshalV3StartRequest(t, v3HandlerStartRequest()))).WithContext(newAuthorizedPlaybackContext()))
+	serveStartPlaybackV2(t, handler, response, httptest.NewRequest(http.MethodPost, "/api/v2/playback/start", strings.NewReader(marshalV3StartRequest(t, v3HandlerStartRequest()))).WithContext(newAuthorizedPlaybackContext()))
 	var started playback.DecisionResponseV3
 	if response.Code != http.StatusCreated || json.Unmarshal(response.Body.Bytes(), &started) != nil || started.PlaybackPlan == nil {
 		t.Fatalf("local start = %d %s", response.Code, response.Body.String())

@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/auth"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
 func TestBloemEngagementRequiresNativePlatformContextAndPreservesActor(t *testing.T) {

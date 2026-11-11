@@ -2,13 +2,9 @@ package handlers
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"time"
 
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/playback"
-	"github.com/google/uuid"
 )
 
 // wireRemotePlaybackStop withdraws this replica's producer without replaying
@@ -27,48 +23,4 @@ func (h *PlaybackHandler) wireRemotePlaybackStop() {
 		h.deleteProxyGrantV3(ctx, session.ID)
 		h.deleteNodeRecipeV3(ctx, session.TranscodeTransportID)
 	})
-}
-
-// stopDurablePlayback uses the existing sequenced stop/receipt authority even
-// for bridge clients which do not send stop IDs. Only sessions without an
-// attempt row fall back to the legacy in-memory path. A store failure is not
-// evidence of absence and must not bypass durable revocation.
-func (h *PlaybackHandler) stopDurablePlayback(w http.ResponseWriter, r *http.Request, sessionID string) bool {
-	store, ok := h.PlanStoreV3.(playback.ProgressStoreV3)
-	if !ok {
-		return false
-	}
-	// Durable attempt IDs are UUIDs. A legacy/non-UUID identifier cannot have
-	// a PostgreSQL attempt row; let the existing in-memory path resolve it
-	// rather than turning an invalid UUID cast into a dependency outage.
-	id, err := uuid.Parse(sessionID)
-	if err != nil {
-		return false
-	}
-	sessionID = id.String()
-	record, err := h.PlanStoreV3.GetAttempt(r.Context(), sessionID)
-	if errors.Is(err, playback.ErrSessionNotFound) {
-		return false
-	}
-	if err != nil || record == nil {
-		writeError(w, http.StatusServiceUnavailable, "dependency_unavailable", "Playback stop is temporarily unavailable")
-		return true
-	}
-	// Silo's ownsPlaybackSession rule: the account and the acting profile, so
-	// a sibling profile cannot stop another profile's playback.
-	if record.UserID != apimw.GetUserID(r.Context()) || record.ProfileID != apimw.GetProfileID(r.Context()) {
-		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
-		return true
-	}
-	receipt, _, err := store.StopAttempt(r.Context(), sessionID, uuid.NewString(), nil)
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "dependency_unavailable", "Playback stop is temporarily unavailable")
-		return true
-	}
-	if !receipt.Finalized {
-		h.finalizeStopV2(r.Context(), store, record, sessionID, receipt)
-	}
-	h.forgetProgressSideEffectLock(sessionID)
-	w.WriteHeader(http.StatusNoContent)
-	return true
 }

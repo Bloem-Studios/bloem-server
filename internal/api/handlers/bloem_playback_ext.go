@@ -136,24 +136,6 @@ func normalizeSiloApplePlaybackV3Body(body []byte) ([]byte, bool, error) {
 	return normalized, true, err
 }
 
-// bloemSiloApplePlaybackShim adapts a legacy silo-apple playback start body to
-// the v3 wire shape. For a legacy body it returns a buffering writer and a
-// finish func that rewrites the buffered response into the silo-apple shape
-// (non-2xx responses are copied through unchanged); for any other body it
-// returns w and a no-op finish. ok=false means it wrote a 400 itself.
-func bloemSiloApplePlaybackShim(w http.ResponseWriter, body []byte) (http.ResponseWriter, []byte, func(), bool) {
-	body, legacySiloApple, err := normalizeSiloApplePlaybackV3Body(body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
-		return w, body, func() {}, false
-	}
-	if !legacySiloApple {
-		return w, body, func() {}, true
-	}
-	buffered := newBufferedPlaybackResponse()
-	return buffered, body, func() { flushSiloApplePlaybackV3Response(w, buffered) }, true
-}
-
 // bloemPlaybackHandlerExt holds Bloem-only PlaybackHandler fields; they are
 // promoted, so callers keep writing h.RemoteObserver etc.
 type bloemPlaybackHandlerExt struct {

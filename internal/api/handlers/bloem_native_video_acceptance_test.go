@@ -272,7 +272,7 @@ func (a *nativeAcceptance) start(t *testing.T, delivery string, encode bool) pla
 		start.QualityPreference = "480p"
 	}
 	w := httptest.NewRecorder()
-	a.h.HandleStartPlayback(w, httptest.NewRequest(http.MethodPost, "/api/v1/playback/start", strings.NewReader(marshalV3StartRequest(t, start))).WithContext(newAuthorizedPlaybackContext()))
+	serveStartPlaybackV2(t, a.h, w, httptest.NewRequest(http.MethodPost, "/api/v2/playback/start", strings.NewReader(marshalV3StartRequest(t, start))).WithContext(newAuthorizedPlaybackContext()))
 	var result playback.DecisionResponseV3
 	if w.Code != 201 || json.Unmarshal(w.Body.Bytes(), &result) != nil || result.Outcome != playback.OutcomePlayableV3 || result.PlaybackPlan == nil {
 		t.Fatalf("start %d %s", w.Code, w.Body.String())

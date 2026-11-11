@@ -21,13 +21,10 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
-	"github.com/Silo-Server/silo-server/internal/invitations"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/preview"
 	"github.com/Silo-Server/silo-server/internal/previewcontext"
-	"github.com/Silo-Server/silo-server/internal/ratelimit"
-	"github.com/Silo-Server/silo-server/internal/remote"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/serverid"
 	"github.com/Silo-Server/silo-server/internal/serveridentity"
@@ -197,37 +194,6 @@ func wireBloemLiveTV(deps Dependencies) {
 	}
 }
 
-// newBloemRemoteControlHandler builds admin remote control, session rail
-// (S-5a, docs/architecture/admin-remote-control.md). The sender rides the playback
-// handler's existing socket path; the audit lives in Postgres when there is
-// one. Built under the same session-manager guard as the socket itself.
-func newBloemRemoteControlHandler(
-	deps Dependencies,
-	playbackHandler *handlers.PlaybackHandler,
-	deviceHandler *handlers.DeviceHandler,
-	profileHandler *handlers.ProfileHandler,
-	playbackSessionsLoader *handlers.PlaybackSessionsLoader,
-) *handlers.RemoteControlHandler {
-	var remoteStore remote.Store = remote.NewMemoryStore()
-	if deps.DB != nil {
-		remoteStore = remote.NewPostgresStore(deps.DB)
-	}
-	var remoteLimiter ratelimit.RateLimiter
-	if deps.RateLimitMW != nil {
-		remoteLimiter = deps.RateLimitMW.SharedLimiter()
-	}
-	remoteService := remote.NewService(remoteStore, handlers.NewPlaybackRemoteSender(playbackHandler), remoteLimiter, remote.DefaultConfig())
-	playbackHandler.RemoteObserver = remoteService
-	if deviceHandler != nil {
-		deviceHandler.RemoteCapabilities = remoteService
-	}
-	remoteControlHandler := handlers.NewRemoteControlHandler(remoteService, playbackHandler, profileHandler, deps.UserStoreProvider)
-	if remoteControlHandler != nil && playbackSessionsLoader != nil {
-		remoteControlHandler.SessionsLoader = playbackSessionsLoader
-	}
-	return remoteControlHandler
-}
-
 // wireBloemAdmin extends the admin handler with Bloem's tenancy, entitlement
 // and host-stats wiring and builds the tenant admin handlers (bloem-park
 // growth G2). Lifecycle idempotency is installed by wireBloemLifecycle.
@@ -236,7 +202,7 @@ func wireBloemAdmin(
 	userRepo *auth.UserRepository,
 	adminHandler *handlers.AdminHandler,
 	profileHandler *handlers.ProfileHandler,
-) (*handlers.AdminTenantsHandler, *handlers.AdminTenantMembersHandler) {
+) {
 	adminHandler.SetProfileHandler(profileHandler)
 	adminHandler.BloemOnUserSessionsRevoked = deps.BloemOnUserSessionsRevoked
 	adminHandler.HostStatsSource = deps.HostStatsSource
@@ -244,7 +210,7 @@ func wireBloemAdmin(
 		adminHandler.OnUserProfileSessionsRevoked = deps.OnUserProfileSessionsRevoked
 	}
 	if deps.DB == nil {
-		return nil, nil
+		return
 	}
 	// The tenant admin API (bloem-park growth G2): a park tenant is an
 	// organization, so the same tenancy.Store the OPA subject resolution uses
@@ -266,7 +232,6 @@ func wireBloemAdmin(
 	if platformPeople != nil {
 		adminHandler.SetPlatformEntitlementBulk(entitlementStore, platformPeople, tenantOrgStore, platformAuthorizer, deps.AdminPeopleWorker)
 	}
-	return newBloemTenantAdminHandlers(deps, userRepo, adminHandler, tenantOrgStore)
 }
 
 // newBloemTenantAdminHandlers builds the tenant and tenant-member handlers
@@ -291,16 +256,6 @@ func newBloemTenantAdminHandlers(
 	memberService.SetResourcePurger(adminTenantMembersHandler)
 	adminTenantsHandler := handlers.NewAdminTenantsHandler(tenantOrgStore, memberService)
 	return adminTenantsHandler, adminTenantMembersHandler
-}
-
-// newBloemV1InvitationHandler builds the /api/v1 invitation handler, scoped
-// to the tenant access groups.
-func newBloemV1InvitationHandler(deps Dependencies, invitationService *invitations.Service, accessGroupStore *access.TenantGroupStore) *handlers.InvitationHandler {
-	invitationHandler := handlers.NewInvitationHandler(invitationService)
-	if accessGroupStore != nil {
-		invitationHandler.SetAccessGroupProvider(accessGroupStore)
-	}
-	return invitationHandler
 }
 
 // newBloemTenantMiddleware builds the tenant middleware the legacy /api/v1
@@ -363,140 +318,6 @@ func wireBloemV2(v2deps *apiv2.Dependencies, deps Dependencies, tenantMiddleware
 		if freePlay != nil {
 			v2deps.PreviewFreePlay = freePlay
 		}
-	}
-}
-
-// newBloemEngagementHandlers builds Bloem's /api/v1 engagement handlers.
-// Active deployment-wide ambience packs ride on the public branding payload
-// so effects work on the login screen (S-3). The ambience registry and the S-2
-// promotion CRUD are registered in the admin group by
-// mountBloemLegacyAdminV1. Each handler exists only when its service is wired
-// (the route goldens wire neither).
-func newBloemEngagementHandlers(deps Dependencies, brandingHandler *handlers.BrandingHandler) (*handlers.AmbienceHandler, *handlers.AdminPromotionsHandler) {
-	if brandingHandler != nil && deps.Ambience != nil {
-		brandingHandler.SetAmbience(deps.Ambience)
-	}
-	var ambienceHandler *handlers.AmbienceHandler
-	if deps.Ambience != nil {
-		ambienceHandler = handlers.NewAmbienceHandler(deps.Ambience)
-	}
-	var adminPromotionsHandler *handlers.AdminPromotionsHandler
-	if deps.Promotions != nil {
-		adminPromotionsHandler = handlers.NewAdminPromotionsHandler(deps.Promotions)
-	}
-	return ambienceHandler, adminPromotionsHandler
-}
-
-// mountBloemPublicV1 mounts public (pre-login) ambience artwork serving.
-// ambienceHandler is non-nil exactly when deps.Ambience is.
-func mountBloemPublicV1(r chi.Router, deps Dependencies, ambienceHandler *handlers.AmbienceHandler) {
-	if deps.Ambience != nil {
-		r.Get("/ambience/assets/{ref}", ambienceHandler.HandleServeAsset)
-	}
-}
-
-// wireBloemNotifications hands the notifications handler the engagement
-// services it reports on.
-func wireBloemNotifications(notificationsHandler *handlers.NotificationsHandler, deps Dependencies) {
-	if deps.Ambience != nil {
-		notificationsHandler.SetAmbience(deps.Ambience)
-	}
-	notificationsHandler.SetPromotions(deps.Promotions != nil)
-}
-
-// mountBloemPromotionsV1 mounts S-2 detail / pre-playback delivery
-// (docs/architecture/playback-overlays.md) in the authenticated group.
-func mountBloemPromotionsV1(r chi.Router, deps Dependencies) {
-	if deps.Promotions != nil {
-		promotionHandler := handlers.NewPromotionsHandler(deps.Promotions, deps.Notifications)
-		r.With(apimw.RequireProfile).Get("/promotions", promotionHandler.HandleList)
-		r.With(apimw.RequireProfile).Post("/promotions/{id}/save", promotionHandler.HandleSave)
-	}
-}
-
-// mountBloemLegacyAdminV1 registers every Bloem route in the legacy
-// /api/v1/admin acting-admin group: tenants and members (bloem-park growth
-// G2), S-1 announcements, the S-3 ambience registry, S-2 promotion CRUD, and
-// the S-5a remote-control rail. Each block mounts only when its handler or
-// service is wired.
-func mountBloemLegacyAdminV1(
-	r chi.Router,
-	deps Dependencies,
-	adminTenantsHandler *handlers.AdminTenantsHandler,
-	adminTenantMembersHandler *handlers.AdminTenantMembersHandler,
-	ambienceHandler *handlers.AmbienceHandler,
-	adminPromotionsHandler *handlers.AdminPromotionsHandler,
-	remoteControlHandler *handlers.RemoteControlHandler,
-) {
-	if adminTenantsHandler != nil {
-		// Tenants (bloem-park growth G2): the
-		// contract park's media adapter speaks.
-		r.Post("/tenants", adminTenantsHandler.HandleCreate)
-		r.Get("/tenants", adminTenantsHandler.HandleList)
-		r.Get("/tenants/{id}", adminTenantsHandler.HandleGet)
-		r.Patch("/tenants/{id}/limits", adminTenantsHandler.HandleUpdateLimits)
-		r.Post("/tenants/{id}/freeze", adminTenantsHandler.HandleFreeze)
-		r.Post("/tenants/{id}/thaw", adminTenantsHandler.HandleThaw)
-		r.Delete("/tenants/{id}", adminTenantsHandler.HandleDelete)
-	}
-	if adminTenantMembersHandler != nil {
-		r.Get("/tenants/{tenant_id}/members", adminTenantMembersHandler.HandleList)
-		r.Post("/tenants/{tenant_id}/members", adminTenantMembersHandler.HandleCreate)
-		r.Get("/tenants/{tenant_id}/members/{user_id}", adminTenantMembersHandler.HandleGet)
-		r.Put("/tenants/{tenant_id}/members/{user_id}", adminTenantMembersHandler.HandleUpdate)
-		r.Delete("/tenants/{tenant_id}/members/{user_id}", adminTenantMembersHandler.HandleDelete)
-		r.Post("/tenants/{tenant_id}/members/{user_id}/suspend", adminTenantMembersHandler.HandleSuspend)
-		r.Post("/tenants/{tenant_id}/members/{user_id}/resume", adminTenantMembersHandler.HandleResume)
-		r.Post("/tenants/{tenant_id}/members/{user_id}/reset-password", adminTenantMembersHandler.HandleResetPassword)
-		r.Get("/tenants/{tenant_id}/members/{user_id}/profiles", adminTenantMembersHandler.HandleListProfiles)
-		r.Post("/tenants/{tenant_id}/members/{user_id}/profiles", adminTenantMembersHandler.HandleCreateProfile)
-		r.Put("/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}", adminTenantMembersHandler.HandleUpdateProfile)
-		r.Delete("/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}", adminTenantMembersHandler.HandleDeleteProfile)
-		r.Get("/tenants/{tenant_id}/members/{user_id}/devices", adminTenantMembersHandler.HandleListDevices)
-		r.Delete("/tenants/{tenant_id}/members/{user_id}/devices/{device_id}", adminTenantMembersHandler.HandleDeleteDevice)
-		r.Get("/tenants/{tenant_id}/members/{user_id}/auth-sessions", adminTenantMembersHandler.HandleListAuthSessions)
-		r.Delete("/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}", adminTenantMembersHandler.HandleRevokeAuthSession)
-		r.Delete("/tenants/{tenant_id}/members/{user_id}/auth-sessions", adminTenantMembersHandler.HandleRevokeAllAuthSessions)
-	}
-	if deps.Notifications != nil {
-		// S-1 admin compose (docs/architecture/admin-announcements.md).
-		announcementsHandler := handlers.NewAdminAnnouncementsHandler(deps.Notifications)
-		r.Route("/notifications/announcements", func(r chi.Router) {
-			r.Get("/", announcementsHandler.HandleList)
-			r.Post("/", announcementsHandler.HandleCreate)
-			r.Delete("/{id}", announcementsHandler.HandleDelete)
-		})
-	}
-	if ambienceHandler != nil {
-		// S-3 seasonal pack registry (docs/architecture/seasonal-scheduling.md).
-		r.Route("/ambience", func(r chi.Router) {
-			r.Get("/", ambienceHandler.HandleList)
-			r.Post("/", ambienceHandler.HandleCreate)
-			r.Put("/{id}", ambienceHandler.HandleUpdate)
-			r.Delete("/{id}", ambienceHandler.HandleDelete)
-			// Standalone upload (the authoring side pushes
-			// artwork before any pack exists); must be
-			// registered before the {id} pattern.
-			r.Post("/assets", ambienceHandler.HandleUploadAsset)
-			r.Post("/{id}/assets", ambienceHandler.HandleAttachAsset)
-		})
-	}
-	if adminPromotionsHandler != nil {
-		// S-2 promotion CRUD (docs/architecture/playback-overlays.md, "Admin routes").
-		r.Route("/promotions", func(r chi.Router) {
-			r.Get("/", adminPromotionsHandler.HandleList)
-			r.Post("/", adminPromotionsHandler.HandleCreate)
-			r.Put("/{id}", adminPromotionsHandler.HandleUpdate)
-			r.Delete("/{id}", adminPromotionsHandler.HandleDelete)
-		})
-	}
-	if remoteControlHandler != nil {
-		r.Route("/remote", func(r chi.Router) {
-			r.Get("/sessions", remoteControlHandler.HandleListSessions)
-			r.Post("/sessions/{session_id}/commands", remoteControlHandler.HandleAdminSendSessionCommand)
-			r.Get("/commands/{command_id}", remoteControlHandler.HandleGetCommand)
-			r.Get("/audit", remoteControlHandler.HandleListAudit)
-		})
 	}
 }
 

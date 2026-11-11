@@ -2,14 +2,12 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/sections"
 )
@@ -84,48 +82,6 @@ func TestMaybeInjectPromotedSkipsWhenDormantEmptyAnonymousOrAlreadyPresent(t *te
 	if got := (promoSectionHandler(src)).maybeInjectPromoted(profileRequest(), existing); len(got) != 2 || got[0].ID != "promoted" || src.calls != 0 {
 		t.Fatalf("existing: %+v calls=%d", got, src.calls)
 	}
-}
-
-// The promoted section's items are the `promo` variant of the section item
-// union: type "promo", content_id = promotion id, the card under `promo`.
-func TestBuildSectionsResponseEmitsPromoItemVariant(t *testing.T) {
-	h := promoSectionHandler(nil)
-	withItems := []sections.SectionWithItems{
-		{
-			ResolvedSection: sections.ResolvedSection{ID: SystemPromotedSectionID, SectionType: sections.SectionPromoted, Title: "Promoted", ItemLimit: 1, ExtensionData: []promotions.Card{promoCard("01PROMO")}},
-			Items:           []*models.MediaItem{},
-			TotalCount:      1,
-		},
-		{
-			ResolvedSection: sections.ResolvedSection{ID: "recent", SectionType: sections.SectionRecentlyAdded, Title: "Recently Added"},
-			Items:           []*models.MediaItem{{ContentID: "movie-1", Type: "movie", Title: "A Film", Status: "matched"}},
-		},
-	}
-	resp := h.buildSectionsResponse(httptest.NewRequest(http.MethodGet, "/home/sections", nil), withItems, nil)
-	if len(resp.Sections) != 2 || len(resp.Sections[0].Items) != 1 || resp.Sections[0].Items[0].Type != "promo" || resp.Sections[0].Items[0].Promo == nil || resp.Sections[1].Items[0].Promo != nil {
-		t.Fatalf("unexpected response: %+v", resp)
-	}
-	raw, err := json.Marshal(resp.Sections[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	var section struct {
-		SectionType string `json:"section_type"`
-		Items       []struct {
-			ContentID string          `json:"content_id"`
-			Type      string          `json:"type"`
-			Title     string          `json:"title"`
-			Promo     json.RawMessage `json:"promo"`
-		} `json:"items"`
-	}
-	if err := json.Unmarshal(raw, &section); err != nil {
-		t.Fatal(err)
-	}
-	if section.SectionType != "promoted" || section.Items[0].ContentID != "01PROMO" || section.Items[0].Title != "The Bloem Winter Collection" {
-		t.Fatalf("unexpected wire: %s", raw)
-	}
-	assertNoTimerFields(t, section.Items[0].Promo)
-	t.Logf("promoted section wire: %s", raw)
 }
 
 // The promoted section is opt-in per request: pre-S-2 and upstream-compat

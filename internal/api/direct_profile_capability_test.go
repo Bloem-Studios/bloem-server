@@ -81,14 +81,15 @@ func TestDirectProfileCapabilityMatchesRouteWiring(t *testing.T) {
 					t.Fatalf("router without authentication exposed native request policy: %d %s", requestStatus.Code, requestStatus.Body)
 				}
 				legacyStatus := performJSONRequest(t, router, http.MethodGet, "/api/v1/requests/status", "", "", nil)
-				if legacyStatus.Code != http.StatusNotFound {
+				// Silo retired /api/v1 (Silo #3200): its tombstone answers 410.
+				if legacyStatus.Code != http.StatusGone {
 					t.Fatalf("router without authentication mounted legacy request policy: %d %s", legacyStatus.Code, legacyStatus.Body)
 				}
 			}
 
 			login := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/profile-login",
 				`{"email":"probe@example.test","password":"probe","device_id":"probe"}`, "", nil)
-			routeMounted := login.Code != http.StatusNotFound
+			routeMounted := login.Code != http.StatusNotFound && login.Code != http.StatusGone
 
 			capabilities := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/capabilities", "", "", nil)
 			if capabilities.Code == http.StatusNotFound {

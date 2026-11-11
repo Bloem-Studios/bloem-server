@@ -1,11 +1,8 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"slices"
 	"testing"
@@ -13,7 +10,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/bloemtestclock"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -89,7 +85,7 @@ func TestBloemHomeSectionsWithWithdrawnLibraryGrant(t *testing.T) {
 	}
 	clock := bloemtestclock.Fixed(time.Date(2026, 9, 18, 12, 0, 0, 0, time.UTC))
 	promos := promotions.NewService(pool, clock, stores)
-	campaign, err := promos.Create(ctx, accountID, promotions.Input{
+	_, err = promos.Create(ctx, accountID, promotions.Input{
 		Surfaces: []string{"home"}, Headline: "Server message", ImageURL: "https://example.test/message.jpg",
 		Deeplink: "bloem://home", StartsAt: clock.Now().Add(-time.Hour), EndsAt: clock.Now().Add(time.Hour),
 	})
@@ -154,34 +150,14 @@ func TestBloemHomeSectionsWithWithdrawnLibraryGrant(t *testing.T) {
 					t.Fatalf("fetch %s: items=%d error=%v", section.SectionType, len(items.Items), err)
 				}
 			}
-			layout, err := h.HomeLayout(WithHomePromotions(viewerCtx, true), SectionViewer{})
-			if err != nil || len(layout.Sections) != len(resolved)+1 {
-				t.Fatalf("layout: sections=%d error=%v", len(layout.Sections), err)
-			}
-			for _, section := range layout.Sections {
-				// V1 uses this handler; V2 invokes HomeSectionItems directly.
-				routeCtx := chi.NewRouteContext()
-				routeCtx.URLParams.Add("id", section.ID)
-				req := httptest.NewRequest(http.MethodGet, "/api/v1/home/sections/"+section.ID+"/items?promoted=1", nil)
-				req = req.WithContext(context.WithValue(viewerCtx, chi.RouteCtxKey, routeCtx))
-				rec := httptest.NewRecorder()
-				h.HandleHomeSectionItems(rec, req)
-				if rec.Code != http.StatusOK {
-					t.Fatalf("section %s: status=%d body=%s", section.ID, rec.Code, rec.Body.String())
+			for _, section := range resolved {
+				// /api/v2 reads each home row through HomeSectionItems.
+				view, err := h.HomeSectionItems(viewerCtx, section.ID, SectionViewer{})
+				if err != nil {
+					t.Fatalf("section %s: %v", section.ID, err)
 				}
-				var wire promotedHomeWire
-				if err := json.Unmarshal(rec.Body.Bytes(), &wire); err != nil {
-					t.Fatal(err)
-				}
-				if wire.Section == nil {
-					t.Fatal("missing section response")
-				}
-				if section.ID == SystemPromotedSectionID {
-					if len(wire.Section.Items) != 1 || wire.Section.Items[0].ContentID != campaign.ID {
-						t.Fatalf("promotion missing: %s", rec.Body.String())
-					}
-				} else if len(wire.Section.Items) != 0 {
-					t.Fatalf("empty library returned media: %s", rec.Body.String())
+				if len(view.Items) != 0 {
+					t.Fatalf("section %s: empty library returned %d items", section.ID, len(view.Items))
 				}
 			}
 			if len(wantIDs) == 0 {

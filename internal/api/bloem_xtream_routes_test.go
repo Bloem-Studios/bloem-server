@@ -81,7 +81,7 @@ func TestBloemXtreamMountedAuthority(t *testing.T) {
 	stores := pgstore.NewPostgresProvider(pool)
 	deps := Dependencies{DB: pool, Config: appConfig, UserStoreProvider: stores}
 	mount := func() chi.Router {
-		surface := newBloemClientSurface(deps, authMW, tenantMW, nil, apimw.RequireActingAdmin(bloemLiveTVPrimaryProfileChecker(stores), nil))
+		surface := newBloemClientSurface(deps, authMW, tenantMW, nil, apimw.RequireActingAdminWith(apimw.NewActingAdminDecider(bloemLiveTVPrimaryProfileChecker(stores), nil)))
 		router := chi.NewRouter()
 		useBaseMiddleware(router, Dependencies{})
 		mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, nil, bloemRouteSurfaces{Client: surface})

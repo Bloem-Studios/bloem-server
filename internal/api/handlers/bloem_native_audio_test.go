@@ -175,7 +175,7 @@ func TestNativeAudioReplanKeepsBoundFile(t *testing.T) {
 			start.QualityPreference = "auto"
 			start.ClientFeatures = append(start.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3)
 			w := httptest.NewRecorder()
-			a.h.HandleStartPlayback(w, httptest.NewRequest("POST", "/api/v1/playback/start", strings.NewReader(marshalV3StartRequest(t, start))).WithContext(newAuthorizedPlaybackContext()))
+			serveStartPlaybackV2(t, a.h, w, httptest.NewRequest("POST", "/api/v2/playback/start", strings.NewReader(marshalV3StartRequest(t, start))).WithContext(newAuthorizedPlaybackContext()))
 			var started playback.DecisionResponseV3
 			if w.Code != 201 || json.Unmarshal(w.Body.Bytes(), &started) != nil || started.PlaybackPlan == nil || started.PlaybackPlan.Delivery != playback.DeliveryOriginalHTTPV3 {
 				t.Fatalf("start=%d %s", w.Code, w.Body.String())
@@ -186,7 +186,7 @@ func TestNativeAudioReplanKeepsBoundFile(t *testing.T) {
 				t.Fatalf("stored request=%+v err=%v", record, err)
 			}
 			key := playback.PlanAttemptKeyV3(*started.PlaybackPlan, start.ClientPlaybackContext.Output.OutputContextID, nil)
-			replanned := postPlaybackReplanV3(t, a.h, started.SessionID, playback.ReplanRequestV3{ProtocolVersion: playback.ProtocolV3, Operation: playback.ReplanOperationFailureRecoveryV3, PlaybackAttemptID: start.PlaybackAttemptID, ReplanRequestID: "native-audio-recovery-0001", FailedPlanID: started.PlaybackPlan.PlanID, PlanAttemptID: "native-audio-plan-0001", PlanAttemptKey: key, AttemptedPlanKeys: []string{key}, AttemptCount: 1, QualityPreference: "auto", SelectedTracks: started.PlaybackPlan.SelectedTracks, Failure: playback.FailureV3{Classification: "playback_error"}, Capabilities: start.Capabilities, ClientPlaybackContext: start.ClientPlaybackContext})
+			replanned := replanPlaybackDecisionV2(t, a.h, started.SessionID, playback.ReplanRequestV3{ProtocolVersion: playback.ProtocolV3, Operation: playback.ReplanOperationFailureRecoveryV3, PlaybackAttemptID: start.PlaybackAttemptID, ReplanRequestID: "native-audio-recovery-0001", FailedPlanID: started.PlaybackPlan.PlanID, PlanAttemptID: "native-audio-plan-0001", PlanAttemptKey: key, AttemptedPlanKeys: []string{key}, AttemptCount: 1, QualityPreference: "auto", SelectedTracks: started.PlaybackPlan.SelectedTracks, Failure: playback.FailureV3{Classification: "playback_error"}, Capabilities: start.Capabilities, ClientPlaybackContext: start.ClientPlaybackContext})
 			if replanned.PlaybackPlan != nil {
 				t.Fatalf("replan produced delivery=%s", replanned.PlaybackPlan.Delivery)
 			}

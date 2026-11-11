@@ -2,8 +2,10 @@ package notifications
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -137,4 +139,23 @@ func deliveryInsertColumns(delivery Delivery) ([]byte, *time.Time) {
 		expiresAt = body.ExpiresAt
 	}
 	return reasonFlags, expiresAt
+}
+
+// DecodeCursor parses an opaque cursor produced by Encode. Silo deleted it
+// with /api/v1 (Silo #3200); Bloem's /api/bloem/v1 notification routes still
+// page with it.
+func DecodeCursor(encoded string) (Cursor, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(encoded)
+	if err != nil {
+		return Cursor{}, errors.New("invalid cursor")
+	}
+	parts := strings.SplitN(string(raw), "|", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return Cursor{}, errors.New("invalid cursor")
+	}
+	createdAt, err := time.Parse(time.RFC3339Nano, parts[0])
+	if err != nil {
+		return Cursor{}, errors.New("invalid cursor")
+	}
+	return Cursor{CreatedAt: createdAt, ID: parts[1]}, nil
 }

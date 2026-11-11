@@ -64,14 +64,15 @@ func TestServerIdentityAndCapabilitiesAreMountedPublicly(t *testing.T) {
 
 // The Silo-compatible projection must not grow either of them. A client that
 // finds /api/v1/capabilities is talking to a different server than this one.
+// Silo retired /api/v1 (Silo #3200): its tombstone answers 410 for both.
 func TestTheNativeProbesAreNotServedOnV1(t *testing.T) {
 	router := NewRouter(Dependencies{})
 
 	for _, path := range []string{"/api/v1/capabilities", "/api/v1/server/identity"} {
 		rec := httptest.NewRecorder()
 		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
-		if rec.Code != http.StatusNotFound {
-			t.Errorf("GET %s = %d, want %d: the native surface lives on /api/bloem/v1", path, rec.Code, http.StatusNotFound)
+		if rec.Code != http.StatusGone {
+			t.Errorf("GET %s = %d, want %d: the native surface lives on /api/bloem/v1", path, rec.Code, http.StatusGone)
 		}
 	}
 }

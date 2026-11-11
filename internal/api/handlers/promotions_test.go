@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/promotions"
@@ -124,29 +122,5 @@ func TestPromotionsListUnavailableAndErrors(t *testing.T) {
 	(&PromotionsHandler{source: &fakePromotionSource{err: errors.New("boom")}}).HandleList(rec, newPromotionsRequest("/promotions?surface=detail"))
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("source error: %d", rec.Code)
-	}
-}
-
-func TestHomeDismissalSurfaceAcceptsPromoSurfaces(t *testing.T) {
-	for _, s := range []string{"continue_watching", "next_up", "promo:home", "promo:detail", "promo:pre_playback"} {
-		if !validHomeSurface(s) {
-			t.Fatalf("%s must be valid", s)
-		}
-	}
-	for _, s := range []string{"promo", "promo:", "promo:login", "watchlist"} {
-		if validHomeSurface(s) {
-			t.Fatalf("%s must be invalid", s)
-		}
-	}
-	// The upsert handler validates the surface before touching the store:
-	// an invalid one is 400 with no store provider needed.
-	h := NewHomeDismissalHandler(nil)
-	router := chi.NewRouter()
-	router.Put("/home/dismissals/{surface}/{item_id}", h.HandleUpsertDismissal)
-	req := httptest.NewRequest(http.MethodPut, "/home/dismissals/promo:login/01PROMO", strings.NewReader("{}"))
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("invalid promo surface: %d", rec.Code)
 	}
 }

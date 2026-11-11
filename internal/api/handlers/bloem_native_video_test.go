@@ -251,9 +251,9 @@ func TestNativeVideoStartAndStream(t *testing.T) {
 	h.ItemAccess = allowAllPlaybackItemAccess{}
 	h.MissingMarker = &recordingMissingMarker{}
 	h.ProbeEnsurer = &blockingProbeEnsurer{t: t}
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/playback/start", strings.NewReader(marshalV3StartRequest(t, v3HandlerStartRequest()))).WithContext(newAuthorizedPlaybackContext())
+	request := httptest.NewRequest(http.MethodPost, "/api/v2/playback/start", strings.NewReader(marshalV3StartRequest(t, v3HandlerStartRequest()))).WithContext(newAuthorizedPlaybackContext())
 	w := httptest.NewRecorder()
-	h.HandleStartPlayback(w, request)
+	serveStartPlaybackV2(t, h, w, request)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("start %d %s", w.Code, w.Body.String())
 	}

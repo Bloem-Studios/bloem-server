@@ -20,7 +20,7 @@ import (
 // evaluate in Silo's single-tenant mode with absent tenant facts.
 func TestPolicyActingAdminMiddlewareWithoutTenantUsesSiloMode(t *testing.T) {
 	decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
-	response := captureActingAdminResponse(NewPolicyActingAdminMiddleware(decider, nil, nil), adminClaims(), "")
+	response := captureActingAdminResponse(RequireActingAdminWith(NewPolicyActingAdminDecider(decider, nil, nil)), adminClaims(), "")
 	if response.code != http.StatusNoContent {
 		t.Fatalf("status = %d body = %s, want no content", response.code, response.body)
 	}
@@ -52,7 +52,7 @@ func TestPolicyMiddlewarePopulatesResolvedTenantFacts(t *testing.T) {
 	t.Run("acting admin", func(t *testing.T) {
 		decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
 		claims := adminClaims()
-		code := serve(NewPolicyActingAdminMiddleware(decider, nil, nil)(noContent), http.MethodGet, "/admin/sessions",
+		code := serve(RequireActingAdminWith(NewPolicyActingAdminDecider(decider, nil, nil))(noContent), http.MethodGet, "/admin/sessions",
 			claims.UserID, SetClaims(context.Background(), claims))
 		if code != http.StatusNoContent {
 			t.Fatalf("status = %d, want no content", code)
@@ -86,7 +86,7 @@ func TestPolicyMiddlewarePopulatesResolvedTenantFacts(t *testing.T) {
 func TestPolicyMiddlewareRejectsTenantForDifferentAccount(t *testing.T) {
 	t.Run("acting admin", func(t *testing.T) {
 		decider := &capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}}
-		next := NewPolicyActingAdminMiddleware(decider, nil, nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		next := RequireActingAdminWith(NewPolicyActingAdminDecider(decider, nil, nil))(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}))
 		req := httptest.NewRequest(http.MethodGet, "/admin/sessions", nil)

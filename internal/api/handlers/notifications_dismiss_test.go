@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -75,36 +74,6 @@ func TestParseIncludeDismissed(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, "/notifications?include_dismissed="+raw, nil)
 		if got := parseIncludeDismissed(r); got != want {
 			t.Errorf("include_dismissed=%q: got %v, want %v", raw, got, want)
-		}
-	}
-}
-
-func TestNotificationsCapabilityAdvertisesAnnouncements(t *testing.T) {
-	settings := &fakeServerSettingsStore{values: map[string]string{}}
-	h := NewNotificationsHandler(&notifications.System{Settings: notifications.NewSettings(settings)}, nil)
-	rec := httptest.NewRecorder()
-	h.HandleCapability(rec, downloadTestRequest(http.MethodGet, "/notifications/capability", nil, 7, "profile-a", ""))
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d (%s), want 200", rec.Code, rec.Body.String())
-	}
-	var got struct {
-		Announcements  bool     `json:"announcements"`
-		SupportedTypes []string `json:"supported_types"`
-		Dismiss        bool     `json:"dismiss"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatal(err)
-	}
-	if !got.Announcements || !got.Dismiss {
-		t.Fatalf("capability flags missing: %s", rec.Body.String())
-	}
-	found := map[string]bool{}
-	for _, typ := range got.SupportedTypes {
-		found[typ] = true
-	}
-	for _, want := range []string{notifications.DeliveryTypeSystemAlert, notifications.DeliveryTypeSystemAnnouncement, notifications.DeliveryTypeEpisodeAvailable} {
-		if !found[want] {
-			t.Errorf("supported_types missing %s: %v", want, got.SupportedTypes)
 		}
 	}
 }

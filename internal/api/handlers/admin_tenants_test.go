@@ -20,11 +20,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
-	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 )
@@ -198,104 +196,6 @@ func TestTenantAdminAPIWireContract(t *testing.T) {
 	if status, _ = tenantCall(t, server, http.MethodDelete,
 		"/api/v1/admin/tenants/"+created.TenantID, nil); status != http.StatusNotFound {
 		t.Fatalf("double delete = %d, want 404", status)
-	}
-}
-
-// TestAdminHandlerCreateUserEnforcesTenantSlotQuota exercises the OTHER
-// chokepoint the wire contract test above does not: POST /admin/users with
-// organization_id set, gated by the same tenant slot quota
-// TestTenantOrganizationLifecycle (internal/tenancy) already proves at the
-// store level — this proves the HTTP handler actually wires it.
-func TestAdminHandlerCreateUserEnforcesTenantSlotQuota(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("connect: %v", err)
-	}
-	t.Cleanup(pool.Close)
-	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-
-	tenantStore := tenancy.NewStore(pool)
-	tenant, err := tenantStore.CreateTenantOrganization(ctx, tenancy.CreateTenantOrganizationInput{
-		Name: "Slot Quota Co", ExternalOperatorID: "op-1", ExternalServiceID: "order-" + t.Name(),
-		Slots: 1, Transcodes: 1,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Explicit ordering, not t.Cleanup's LIFO: the organization must retire
-	// BEFORE the owner account is deleted (organizations.owner_account_id is
-	// RESTRICT), the same order the admin handler's own delete flow follows.
-	defer func() {
-		_ = tenantStore.DeleteTenantOrganization(context.Background(), tenant.ID)
-		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE email LIKE '%@tenant-quota.test'`)
-	}()
-
-	users := auth.NewUserRepository(pool)
-	operator, err := users.Create(ctx, models.CreateUserInput{Username: "operator-" + uuid.NewString(), Email: uuid.NewString() + "@operator.test", Password: "test-password", Role: models.RoleAdmin})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = users.Delete(context.Background(), operator.ID) })
-	if _, err := pool.Exec(ctx, `UPDATE users SET is_owner=true WHERE id=$1`, operator.ID); err != nil {
-		t.Fatal(err)
-	}
-	adminHandler := handlers.NewAdminHandler(users, pool, nil)
-	adminHandler.SetTenantStore(tenantStore)
-	r := chi.NewRouter()
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r.WithContext(apimw.SetClaims(r.Context(), &auth.Claims{UserID: operator.ID, Role: models.RoleAdmin})))
-		})
-	})
-	r.Post("/api/v1/admin/users", adminHandler.HandleCreateUser)
-	server := httptest.NewServer(r)
-	t.Cleanup(server.Close)
-
-	createUser := func(username string) (int, []byte) {
-		return tenantCall(t, server, http.MethodPost, "/api/v1/admin/users", map[string]any{
-			"username":        username,
-			"email":           username + "@tenant-quota.test",
-			"password":        "x-password-1",
-			"role":            "admin",
-			"organization_id": tenant.ID.String(),
-		})
-	}
-
-	// First account: the tenant's sole slot, and it becomes the owner.
-	status, body := createUser("owner")
-	if status != http.StatusCreated {
-		t.Fatalf("create first tenant user = %d %s", status, body)
-	}
-
-	// Second account: the tenant has one slot and it is already spent.
-	status, body = createUser("overflow")
-	if status != http.StatusConflict {
-		t.Fatalf("create over-quota tenant user = %d %s, want 409", status, body)
-	}
-	var conflict struct {
-		Error string `json:"error"`
-	}
-	if json.Unmarshal(body, &conflict) != nil || conflict.Error != "tenant_slots_exhausted" {
-		t.Fatalf("over-quota error body = %s, want error=tenant_slots_exhausted", body)
-	}
-
-	// A tenant id that does not exist is a validation error, not a crash.
-	status, body = tenantCall(t, server, http.MethodPost, "/api/v1/admin/users", map[string]any{
-		"username":        "ghost",
-		"email":           "ghost@tenant-quota.test",
-		"password":        "x-password-1",
-		"role":            "user",
-		"organization_id": "00000000-0000-0000-0000-000000000000",
-	})
-	if status != http.StatusUnprocessableEntity {
-		t.Fatalf("create against unknown tenant = %d %s, want 422", status, body)
 	}
 }
 

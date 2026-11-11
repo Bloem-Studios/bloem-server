@@ -3,11 +3,11 @@ package handlers
 import (
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
@@ -17,17 +17,12 @@ func TestAccessGroupHandlerUsesOnlyValidatedTenantContext(t *testing.T) {
 	store := newAccessGroupHandlerTestStore()
 	handler := NewAccessGroupHandler(store)
 	foreignOrganizationID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/access-groups", strings.NewReader(`{
-		"name": "Tenant Bound",
-		"organization_id": "20000000-0000-0000-0000-000000000002"
-	}`))
+	// The v2 service takes no organization from the caller; only the tenant
+	// the request context validated reaches the store.
+	req := accessGroupRequestWithTenant(httptest.NewRequest(http.MethodPost, "/api/v2/admin/access-groups", nil))
 	req.Header.Set("X-Organization-ID", foreignOrganizationID.String())
-	req = accessGroupRequestWithTenant(req)
-	rec := httptest.NewRecorder()
-
-	handler.HandleCreate(rec, req)
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("HandleCreate status = %d, body %s", rec.Code, rec.Body.String())
+	if _, err := handler.CreateAdminAccessGroup(req.Context(), access.CreateGroupInput{Name: "Tenant Bound"}); err != nil {
+		t.Fatalf("CreateAdminAccessGroup: %v", err)
 	}
 	if store.lastOrganizationID != accessGroupHandlerOrganizationID {
 		t.Fatalf("store organization = %s, want validated tenant %s", store.lastOrganizationID, accessGroupHandlerOrganizationID)

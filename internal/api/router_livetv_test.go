@@ -14,7 +14,7 @@ import (
 
 func TestLiveTVRoutesRequireSeparateGrant(t *testing.T) {
 	router := chi.NewRouter()
-	mountLiveTVRoutes(router, handlers.NewLiveTVHandler(livetv.NewService(nil)), apimw.RequireAdmin)
+	mountLiveTVRoutes(router, handlers.NewLiveTVHandler(livetv.NewService(nil)), apimw.RequireActingAdminWith(apimw.NewActingAdminDecider(nil, nil)))
 	for _, route := range []struct{ method, path string }{
 		{"GET", "/livetv/channels"}, {"GET", "/livetv/guide"}, {"GET", "/livetv/programs/p"},
 		{"GET", "/livetv/recordings"}, {"GET", "/livetv/series-rules"}, {"POST", "/livetv/channels/c/session"},

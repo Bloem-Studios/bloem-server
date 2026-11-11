@@ -5,12 +5,10 @@ package handlers
 // edits to them keep merging cleanly. These blank references keep the unused
 // linter quiet about them. If upstream deletes one, delete its line here.
 var (
-	_ = (*AdminHandler).presignPosterURL
 	_ = containsStringFoldV3
 )
 
 var (
-	_ adminUserProfileRow
 	_ libraryCollectionGroupsListResponse
 	_ createLibraryCollectionGroupRequest
 	_ updateLibraryCollectionGroupRequest

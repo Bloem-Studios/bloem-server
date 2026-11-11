@@ -54,7 +54,7 @@ func startNativeVersion(t *testing.T, h *PlaybackHandler, request playback.Start
 	scope := access.Scope{UserID: 1, ProfileID: "profile-1", PlaybackAllowed: true, LibrariesRestricted: true, AllowedLibraryIDs: []int{1}}
 	ctx := access.SetScope(newAuthorizedPlaybackContext(), scope)
 	w := httptest.NewRecorder()
-	h.HandleStartPlayback(w, httptest.NewRequest(http.MethodPost, "/api/v1/playback/start", strings.NewReader(marshalV3StartRequest(t, request))).WithContext(ctx))
+	serveStartPlaybackV2(t, h, w, httptest.NewRequest(http.MethodPost, "/api/v2/playback/start", strings.NewReader(marshalV3StartRequest(t, request))).WithContext(ctx))
 	if w.Code != http.StatusCreated {
 		t.Fatalf("start status=%d body=%s", w.Code, w.Body.String())
 	}
@@ -132,7 +132,7 @@ func TestNativeVideoMultipartStartMapsResumeAndPreflightsTarget(t *testing.T) {
 				request := v3HandlerStartRequest()
 				ctx := access.SetScope(newAuthorizedPlaybackContext(), access.Scope{UserID: 1, ProfileID: "profile-1", PlaybackAllowed: true, AllowedLibraryIDs: []int{1}})
 				w := httptest.NewRecorder()
-				h.HandleStartPlayback(w, httptest.NewRequest(http.MethodPost, "/api/v1/playback/start", strings.NewReader(marshalV3StartRequest(t, request))).WithContext(ctx))
+				serveStartPlaybackV2(t, h, w, httptest.NewRequest(http.MethodPost, "/api/v2/playback/start", strings.NewReader(marshalV3StartRequest(t, request))).WithContext(ctx))
 				if w.Code == http.StatusCreated || opens[second.ID] == 0 {
 					t.Fatalf("target source denial bypassed: status=%d opens=%v", w.Code, opens)
 				}

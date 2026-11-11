@@ -111,37 +111,6 @@ func personalCollectionPosterURL(ctx context.Context, resolver artworkurl.Resolv
 	return resolver.ResolveURLs(ctx, []string{key})[key].URL
 }
 
-// readCollectionImageMultipart reads a single image file from a multipart
-// request, validating MIME type and size.
-func readCollectionImageMultipart(r *http.Request, fieldName string) ([]byte, error) {
-	file, header, err := r.FormFile(fieldName)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	switch header.Header.Get("Content-Type") {
-	case "image/jpeg", "image/png", "image/webp":
-	default:
-		return nil, fmt.Errorf("%w: unsupported image type: %s", errCollectionArtworkInput, header.Header.Get("Content-Type"))
-	}
-	if header.Size > collectionImageMaxBytes {
-		return nil, fmt.Errorf("%w: file exceeds 10 MB limit", errCollectionArtworkInput)
-	}
-
-	data, err := io.ReadAll(io.LimitReader(file, collectionImageMaxBytes+1))
-	if err != nil {
-		return nil, fmt.Errorf("reading file: %w", err)
-	}
-	if len(data) > collectionImageMaxBytes {
-		return nil, fmt.Errorf("%w: file exceeds 10 MB limit", errCollectionArtworkInput)
-	}
-	if err := validateCollectionImageData(data); err != nil {
-		return nil, fmt.Errorf("%w: %w", errCollectionArtworkInput, err)
-	}
-	return data, nil
-}
-
 // invalidCollectionImage reports artwork the caller supplied that Silo cannot
 // use. The v2 routes render the 400 as a validation problem instead of a 500.
 func invalidCollectionImage(message string, cause error) *APIError {

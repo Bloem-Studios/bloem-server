@@ -4,14 +4,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/watchtogether"
 )
 
-// watchTogetherRoomResponseV1 is the wire shape MarshalJSON writes. Bloem
-// names it (upstream uses an anonymous struct) so the client DTO registry can
-// see the response shape through the custom marshaller.
-type watchTogetherRoomResponseV1 struct {
-	Room            watchTogetherRoomSnapshotV1 `json:"room"`
-	RoomAccessToken string                      `json:"room_access_token,omitempty"`
-}
-
 // The room websocket frames below were written as inline map literals, which
 // had no nameable type for the client DTO registry
 // (contracts/client/v1/registry.json). encoding/json marshals map keys in

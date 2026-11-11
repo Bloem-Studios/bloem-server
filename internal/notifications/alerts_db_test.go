@@ -148,7 +148,7 @@ func TestDeliveryRepositoryFiltersExpiredAndDismissed(t *testing.T) {
 		t.Fatalf("expires_at not derived from body: %v %v", expires, err)
 	}
 
-	inbox, err := repo.ListInbox(ctx, 1, profile, false, 10, nil)
+	inbox, err := repo.ListSync(ctx, 1, profile, nil, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,11 +185,11 @@ func TestDeliveryRepositoryFiltersExpiredAndDismissed(t *testing.T) {
 		t.Fatalf("dismiss plain: ok=%v err=%v", ok, err)
 	}
 
-	inbox, _ = repo.ListInbox(ctx, 1, profile, false, 10, nil)
+	inbox, _ = repo.ListSync(ctx, 1, profile, nil, 10)
 	if got := rowIDs(inbox); len(got) != 1 || got[0] != "critical" {
 		t.Fatalf("default inbox should hide dismissed rows: %v", got)
 	}
-	inbox, _ = repo.ListInbox(ctx, 1, profile, false, 10, nil, true)
+	inbox, _ = repo.ListSync(ctx, 1, profile, nil, 10, true)
 	if got := rowIDs(inbox); len(got) != 3 || containsString(got, "expired") {
 		t.Fatalf("include_dismissed inbox: %v", got)
 	}
@@ -330,7 +330,7 @@ func TestAnnouncementServiceCreateFansOutAndWithdraws(t *testing.T) {
 		t.Fatalf("unread rows should be deleted on withdraw; %d remain", remaining)
 	}
 	for userID, profile := range map[int]string{1: "p1", 2: "p2"} {
-		rows, err := system.Deliveries.ListInbox(ctx, userID, profile, false, 10, nil, true)
+		rows, err := system.Deliveries.ListSync(ctx, userID, profile, nil, 10, true)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -29,17 +27,14 @@ func TestTenantAccessGroupAdapterRejectsMissingAndZeroContext(t *testing.T) {
 			t.Fatal("DeleteMovingMembers accepted unavailable tenant")
 		}
 		h := NewTenantAccessGroupHandler(nil)
-		for _, handle := range []http.HandlerFunc{h.HandleList, h.HandleCreate, h.HandleGet, h.HandleUpdate, h.HandleDelete} {
-			rec := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodGet, "/access-groups", nil).WithContext(ctx)
-			RequireAccessGroupTenant(handle)(rec, req)
-			var body map[string]any
-			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-				t.Fatal(err)
-			}
-			if rec.Code != 503 || body["error"] != "tenant_unavailable" {
-				t.Fatalf("availability response: status=%d body=%s", rec.Code, rec.Body)
-			}
+		if _, _, err := h.ListAdminAccessGroupsPage(ctx, nil, 10); err == nil {
+			t.Fatal("v2 list accepted unavailable tenant")
+		}
+		if _, err := h.CreateAdminAccessGroup(ctx, access.CreateGroupInput{Name: "Unscoped"}); err == nil {
+			t.Fatal("v2 create accepted unavailable tenant")
+		}
+		if err := h.DeleteAdminAccessGroup(ctx, 1, access.GroupPrecondition{Any: true}); err == nil {
+			t.Fatal("v2 delete accepted unavailable tenant")
 		}
 		if _, err := h.GetAdminAccessGroup(ctx, 1); err == nil {
 			t.Fatal("v2 service accepted unavailable tenant")

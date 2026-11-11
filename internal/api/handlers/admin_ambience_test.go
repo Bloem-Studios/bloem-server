@@ -20,8 +20,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/Silo-Server/silo-server/internal/ambience"
-	"github.com/Silo-Server/silo-server/internal/branding"
-	"github.com/Silo-Server/silo-server/internal/notifications"
 )
 
 var (
@@ -308,58 +306,6 @@ func (f *fakeAmbienceSource) ActiveForAccount(_ context.Context, id int) ([]ambi
 
 func snowWire() ambience.Wire {
 	return ambience.Wire{ID: "pack-1", EffectID: "snow", Window: ambience.Window{StartsAt: ambienceStart, EndsAt: ambienceEnd}, Intensity: 0.5, Surfaces: []string{"all"}}
-}
-
-func TestBrandingPayloadCarriesActiveAmbience(t *testing.T) {
-	svc := branding.NewService(&fakeServerSettingsStore{values: map[string]string{}}, nil)
-	h := NewBrandingHandler(svc)
-
-	rec := httptest.NewRecorder()
-	h.HandleGetBranding(rec, httptest.NewRequest(http.MethodGet, "/theme/branding", nil))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"ambience":[]`) {
-		t.Fatalf("unwired registry must emit an empty ambience array: %d %s", rec.Code, rec.Body.String())
-	}
-
-	h.SetAmbience(&fakeAmbienceSource{public: []ambience.Wire{snowWire()}})
-	rec = httptest.NewRecorder()
-	h.HandleGetBranding(rec, httptest.NewRequest(http.MethodGet, "/theme/branding", nil))
-	want := `"ambience":[{"id":"pack-1","effect_id":"snow","window":{"starts_at":"2026-10-24T00:00:00Z","ends_at":"2026-11-01T00:00:00Z"},"intensity":0.5,"surfaces":["all"],"assets":{}}]`
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), want) {
-		t.Fatalf("branding echo: %d %s", rec.Code, rec.Body.String())
-	}
-	if !strings.Contains(rec.Body.String(), `"server_name":"Bloem"`) {
-		t.Fatalf("existing branding fields must be untouched: %s", rec.Body.String())
-	}
-
-	h.SetAmbience(&fakeAmbienceSource{err: errors.New("db down")})
-	rec = httptest.NewRecorder()
-	h.HandleGetBranding(rec, httptest.NewRequest(http.MethodGet, "/theme/branding", nil))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"ambience":[]`) {
-		t.Fatalf("registry errors must degrade to an empty block, never break branding: %d %s", rec.Code, rec.Body.String())
-	}
-}
-
-func TestNotificationsCapabilityAdvertisesAmbience(t *testing.T) {
-	settings := &fakeServerSettingsStore{values: map[string]string{}}
-	h := NewNotificationsHandler(&notifications.System{Settings: notifications.NewSettings(settings)}, nil)
-
-	rec := httptest.NewRecorder()
-	h.HandleCapability(rec, downloadTestRequest(http.MethodGet, "/notifications/capability", nil, 7, "p1", ""))
-	if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), `"ambience"`) {
-		t.Fatalf("dormant registry must omit the ambience key: %d %s", rec.Code, rec.Body.String())
-	}
-
-	h.SetAmbience(&fakeAmbienceSource{account: map[int][]ambience.Wire{7: {snowWire()}}})
-	rec = httptest.NewRecorder()
-	h.HandleCapability(rec, downloadTestRequest(http.MethodGet, "/notifications/capability", nil, 7, "p1", ""))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"ambience":[{"id":"pack-1","effect_id":"snow"`) {
-		t.Fatalf("wired: %d %s", rec.Code, rec.Body.String())
-	}
-	rec = httptest.NewRecorder()
-	h.HandleCapability(rec, downloadTestRequest(http.MethodGet, "/notifications/capability", nil, 8, "p2", ""))
-	if !strings.Contains(rec.Body.String(), `"ambience":[]`) {
-		t.Fatalf("other account sees only its own packs (empty array, key present): %s", rec.Body.String())
-	}
 }
 
 // gardenUpload mirrors the multipart shape the authoring side sends

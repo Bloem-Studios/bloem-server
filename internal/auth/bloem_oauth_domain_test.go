@@ -30,12 +30,12 @@ func TestOAuthWebFlowStaysOnTheOrganizationDomain(t *testing.T) {
 	rig.h.SetRequestBaseURL(domainBaseFromContext)
 
 	w := httptest.NewRecorder()
-	start := onOrganizationDomain(withInstallID(httptest.NewRequest(http.MethodPost, "https://main.domain.com/api/v1/auth/oauth/42/init?next=/me", nil), "42"), "https://main.domain.com")
-	rig.h.HandleInit(w, start)
+	start := onOrganizationDomain(httptest.NewRequest(http.MethodPost, "https://main.domain.com/api/v2/auth/oauth/42/init?next=/me", nil), "https://main.domain.com")
+	rig.serveWebStart(w, start, 42)
 	if w.Code != http.StatusFound || w.Header().Get("Location") != "https://idp.example/authorize" {
 		t.Fatalf("start on the organization domain = %d %q, want the provider (no bounce)", w.Code, w.Header().Get("Location"))
 	}
-	if got := rig.client.gotInit.GetRedirectUri(); got != "https://main.domain.com/api/v1/auth/oauth/42/callback" {
+	if got := rig.client.gotInit.GetRedirectUri(); got != "https://main.domain.com/api/v2/auth/oauth/42/callback" {
 		t.Fatalf("redirect_uri = %q, want the organization domain's callback", got)
 	}
 	var binder *http.Cookie
@@ -48,10 +48,10 @@ func TestOAuthWebFlowStaysOnTheOrganizationDomain(t *testing.T) {
 		t.Fatal("no binding cookie")
 	}
 
-	callback := onOrganizationDomain(withInstallID(httptest.NewRequest(http.MethodGet, "https://main.domain.com/api/v1/auth/oauth/42/callback?"+rig.stateQuery(), nil), "42"), "https://main.domain.com")
+	callback := onOrganizationDomain(httptest.NewRequest(http.MethodGet, "https://main.domain.com/api/v2/auth/oauth/42/callback?"+rig.stateQuery(), nil), "https://main.domain.com")
 	callback.AddCookie(&http.Cookie{Name: binder.Name, Value: binder.Value})
 	wCb := httptest.NewRecorder()
-	rig.h.HandleCallback(wCb, callback)
+	rig.h.ServeCallback(wCb, callback, oauthV2Prefix, 42)
 	if loc := wCb.Header().Get("Location"); wCb.Code != http.StatusFound || !strings.HasPrefix(loc, "https://main.domain.com/login/oauth-complete?") {
 		t.Fatalf("callback = %d %q, want the organization domain's completion page", wCb.Code, loc)
 	}
@@ -65,11 +65,11 @@ func TestOAuthWebFlowStaysOnTheOrganizationDomain(t *testing.T) {
 func TestOAuthOffTheOrganizationDomainKeepsThePublicURL(t *testing.T) {
 	rig := newOAuthRig(t)
 	rig.h.SetRequestBaseURL(domainBaseFromContext)
-	w, cookie := rig.start(t, "http://192.168.1.20:8080/api/v1/auth/oauth/42/init?next=/me")
+	w, cookie := rig.start(t, "http://192.0.2.20:8080/api/v2/auth/oauth/42/init?next=/me")
 	if w.Code != http.StatusTemporaryRedirect || cookie != nil || !strings.HasPrefix(w.Header().Get("Location"), "https://silo.test/") {
 		t.Fatalf("unregistered host = %d %q, want the bounce to the public URL", w.Code, w.Header().Get("Location"))
 	}
-	if _, cookie := rig.start(t, "https://silo.test/api/v1/auth/oauth/42/init"); cookie == nil || rig.client.gotInit.GetRedirectUri() != "https://silo.test/api/v1/auth/oauth/42/callback" {
+	if _, cookie := rig.start(t, "https://silo.test/api/v2/auth/oauth/42/init"); cookie == nil || rig.client.gotInit.GetRedirectUri() != "https://silo.test/api/v2/auth/oauth/42/callback" {
 		t.Fatalf("public origin: redirect_uri = %q", rig.client.gotInit.GetRedirectUri())
 	}
 }

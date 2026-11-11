@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -111,7 +112,7 @@ func TestHandleCreateProfile_EnforcesManagedGroupProfileLimit(t *testing.T) {
 		Legacy:         true,
 	}))
 	rr := httptest.NewRecorder()
-	handler.HandleCreateProfile(rr, req)
+	bloemCreateProfileV2(rr, handler, req, "Kids")
 
 	if rr.Code != http.StatusConflict {
 		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusConflict, rr.Body.String())
@@ -129,7 +130,7 @@ func TestHandleCreateProfile_ManagedZeroRejectsSecondaryProfile(t *testing.T) {
 	req := newAuthorizedProfileRequestWithRole(http.MethodPost, "/profiles", `{"name":"Kids"}`, "admin", "")
 	req = req.WithContext(tenancy.WithContext(req.Context(), tenancy.Context{OrganizationID: organizationID, AccountID: 1, Legacy: true}))
 	rr := httptest.NewRecorder()
-	handler.HandleCreateProfile(rr, req)
+	bloemCreateProfileV2(rr, handler, req, "Kids")
 	if rr.Code != http.StatusConflict {
 		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusConflict, rr.Body.String())
 	}
@@ -150,7 +151,7 @@ func TestHandleCreateProfile_InheritsAccountManagedGroup(t *testing.T) {
 		Legacy:         true,
 	}))
 	rr := httptest.NewRecorder()
-	handler.HandleCreateProfile(rr, req)
+	bloemCreateProfileV2(rr, handler, req, "Kids")
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusCreated, rr.Body.String())
@@ -210,4 +211,20 @@ func TestCreateProfile_AccountAdminUsesTheAccountsOrganization(t *testing.T) {
 	if got := store.created.AccessGroupID; got == nil || *got != accountGroup.ID {
 		t.Fatalf("created profile access group = %v, want the account's group %d", got, accountGroup.ID)
 	}
+}
+
+// bloemCreateProfileV2 creates a profile through the shared service /api/v2
+// calls, as the account behind req with no active profile, and records the
+// outcome with the status and code the assertions check.
+func bloemCreateProfileV2(rr *httptest.ResponseRecorder, handler *ProfileHandler, req *http.Request, name string) {
+	view, err := handler.CreateProfile(req.Context(), ProfileCreateCommand{
+		UserID:        apimw.GetUserID(req.Context()),
+		Request:       ProfileCreateRequest{Name: name},
+		VerifyProfile: func(*userstore.Profile) error { return nil },
+	})
+	if err != nil {
+		writeAPIError(rr, err)
+		return
+	}
+	writeJSON(rr, http.StatusCreated, view)
 }

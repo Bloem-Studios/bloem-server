@@ -13,13 +13,12 @@ import (
 )
 
 // An ebook read is a binary container (EPUB, PDF, CBZ) that is already
-// compressed. The v1 route is excluded from gzip; the native mount serves the
-// same bytes and must be excluded too. The prefix carries an extra path
+// compressed. The v2 route is excluded from gzip (Silo retired the v1 one);
+// a native mount serving the same bytes must be excluded too. The prefix carries an extra path
 // segment, so the exclusion has to know about it -- without that it silently
 // re-compresses every ebook download.
 func TestNativeEbookReadSkipsCompressionLikeV1(t *testing.T) {
 	for _, path := range []string{
-		"/api/v1/ebooks/c1/files/f1/read",
 		"/api/v2/ebooks/c1/files/f1/read",
 	} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)

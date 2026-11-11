@@ -174,39 +174,6 @@ func TestBloemSyncProgressReportsLastWriteWinsLossAsIgnored(t *testing.T) {
 	}
 }
 
-// The Silo-compatible projection must keep saying "ok". Silo clients parse that
-// value, and the finer vocabulary above is precisely why it is tempting to
-// change here — so the temptation is nailed down by a test rather than by a
-// comment.
-func TestV1SyncProgressKeepsTheSiloStatusVocabulary(t *testing.T) {
-	store := newPlaybackTestStore(t)
-	handler := &ProgressHandler{storeProvider: testUserStoreProvider{store: store}}
-
-	body := `{"items":[
-		{"media_item_id":"movie-below-floor","position":10,"duration":1000},
-		{"media_item_id":"movie-above-floor","position":500,"duration":1000},
-		{"media_item_id":"","position":500,"duration":1000}
-	]}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/sync/progress", strings.NewReader(body))
-	req = req.WithContext(newAuthorizedPlaybackContext())
-	rec := httptest.NewRecorder()
-	handler.HandleSyncProgress(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
-	}
-
-	got := syncProgressStatuses(t, rec.Body.Bytes())
-	want := []string{"ok", "ok", "error"}
-	if len(got) != len(want) {
-		t.Fatalf("statuses = %v, want %v", got, want)
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Fatalf("statuses = %v, want %v", got, want)
-		}
-	}
-}
-
 // allowAllProgressLookup answers every requested id as visible; the tests that
 // use it are about status vocabulary, not access enforcement.
 type allowAllProgressLookup struct{}
