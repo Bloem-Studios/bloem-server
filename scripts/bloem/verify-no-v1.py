@@ -73,6 +73,17 @@ def main():
             continue
         if names_retired_api(line[1:]) and not any(fnmatch.fnmatchcase(path, p) for p in patterns):
             found.append(f"{path}: {line[1:].strip()[:200]}")
+    # git diff leaves out files nobody has added yet; read those whole.
+    untracked = git("ls-files", "--others", "--exclude-standard", "-z").split("\0")
+    for path in filter(None, untracked):
+        if any(fnmatch.fnmatchcase(path, p) for p in patterns):
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                lines = f.read().splitlines()
+        except (UnicodeDecodeError, IsADirectoryError, FileNotFoundError):
+            continue
+        found.extend(f"{path}: {line.strip()[:200]}" for line in lines if names_retired_api(line))
     if found:
         print("\n".join(found))
         print(f"::error::{len(found)} Bloem line(s) name a retired API (/api/v1 or /api/bloem/v1). Use Silo's /api/v2 or "
