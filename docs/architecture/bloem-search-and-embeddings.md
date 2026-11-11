@@ -33,7 +33,8 @@ With **Meilisearch** as the search engine, a search runs like this:
 4. **Names first.** Bloem also looks for the search's words in the titles' names alone,
    every word required, and ranks a title whose name has all of them above the mixed
    list. Someone typing a title, even with a typing mistake, still gets it first while
-   meaning decides everything else.
+   meaning decides everything else. Episodes, which have no vectors, are found the same
+   way by name, and by their plots only as much as the words half counts.
 
 The words half answers alone when the meaning half cannot help: a one-word search, a
 search for episodes, and any kind of title that is still getting its vectors (see
@@ -155,9 +156,11 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   `meilisearchClient.Search` and `FederatedSearch`): keyword only, `matchingStrategy`
   `all`, on `title`, `original_title`, `sort_title` and `title_variants`, with the same
   filter and 1.2 times the hybrid query's weight. Meilisearch returns each document once.
-  In a search that mixes episodes and other types the title query joins the media
-  query. If Meilisearch refuses the federated request with a 4xx, the original request
-  runs unchanged; a timeout or 5xx is returned as it is.
+  In a search that mixes episodes and other types, Silo's keyword-only episode query
+  gets the same title twin, and its own weight is multiplied by `(1 - r) / r` for a
+  semantic ratio `r` above 0.5 (0.67 at 0.6), the keyword share Meilisearch gives the
+  words half inside a hybrid query. If Meilisearch refuses the federated request with a
+  4xx, the original request runs unchanged; a timeout or 5xx is returned as it is.
 - `timeout_ms` (default 800) bounds the search call. A search that fails or runs out of
   time is answered by the PostgreSQL provider. Indexing has its own two-minute limit
   (`meilisearchIndexingTimeout`), so the setting does not affect it.
@@ -229,6 +232,24 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   0.9) cost typed titles and left two-word genre searches such as "zombie comedy" on books
   with those words in their names. The title query adds about 15 ms; embedding a new
   search takes about 200 ms, cached for 15 minutes.
+
+  The web app's default search mixes in episodes, and that changed the picture. Silo's
+  episode query is keyword-only at weight 1, which balances the hybrid query at 0.5; at
+  0.6 episodes that share a plot word filled everyday searches ("funny movie about a dog"
+  returned ten episodes). Across the 22 everyday searches, episodes in the top 10, and 60
+  sampled episode titles found in the top 10:
+
+  | Mixed search | Episodes in everyday top 10s | Episode titles in the top 10 |
+  |---|---|---|
+  | 0.5, episodes at 1 | 18 | 73.3% |
+  | 0.6 and names first, episodes at 1 | 40 | 71.7% |
+  | episodes at 0.67, no name query | 0 | 63.3% |
+  | episodes at 0.5, no name query | 0 | 0% |
+  | episodes at 0.67 and names first | 16 | 73.3% |
+
+  Meaning scores sit high enough that a keyword query weighted 0.5 never reaches the top
+  50, so the episode name query is what keeps episodes findable. The 16 left are all
+  episodes named with the typed words, such as "Time Travel" and "Murder Mystery".
 - **Compressed vectors, November 11.** The index stores binary-quantized vectors. For
   the 163 descriptions, re-ranking Meilisearch's 500 nearest titles by the full 3,072
   numbers put the target first in 46.6% of searches instead of 40.5%, and in the top 10

@@ -12,7 +12,10 @@ names alone, every word required, and ranks those titles above the mixed list
 meaning-based share from 0.5 to 0.6, where everyday searches such as "funny movie about
 a dog" find dog movies instead of ebooks that share a word, while typed titles keep
 their place: on the live index, titles with one typo stayed in the top 10 93.3% of the
-time instead of falling to 78.0% at 0.6 alone. Measurements and the reasoning are in
+time instead of falling to 78.0% at 0.6 alone. In a search that mixes in episodes, the
+episode keyword query is weighted down to the words half's share (0.67 at 0.6) and gets
+its own name query, so episodes found only through a plot word no longer fill everyday
+searches while an episode typed by name still comes first. Measurements and the reasoning are in
 [How search finds titles](../architecture/bloem-search-and-embeddings.md#measurements).
 
 ## November 11, 2026 — search can keep a second Meilisearch up to date

@@ -100,28 +100,67 @@ func TestSearchesWithoutTheMeaningSideStayPlain(t *testing.T) {
 	}
 }
 
-func TestMixedSearchGetsTheTitleQueryForItsMediaHalfOnly(t *testing.T) {
-	client, calls := titleBoostServer(t, http.StatusOK)
+func mixedSearchRequest(ratio float64) meilisearchFederatedSearchRequest {
 	media := meilisearchFederatedQuery{IndexUID: "catalog", Query: "show about a chef", Filter: `type != "episode"`,
-		Vector: []float32{1}, Hybrid: &meilisearchHybridRequest{Embedder: "e", SemanticRatio: 0.6}}
+		Vector: []float32{1}, Hybrid: &meilisearchHybridRequest{Embedder: "e", SemanticRatio: ratio}}
 	media.FederationOptions.Weight = 1
 	episodes := meilisearchFederatedQuery{IndexUID: "catalog", Query: "show about a chef", Filter: `type = "episode"`}
 	episodes.FederationOptions.Weight = 1
-	_, err := client.FederatedSearch(context.Background(), meilisearchFederatedSearchRequest{
+	return meilisearchFederatedSearchRequest{
 		Federation: meilisearchFederationOptions{Limit: 20},
 		Queries:    []meilisearchFederatedQuery{media, episodes},
-	})
-	if err != nil {
+	}
+}
+
+func TestMixedSearchWeighsEpisodesByTheKeywordShareAndQueriesBothTitles(t *testing.T) {
+	client, calls := titleBoostServer(t, http.StatusOK)
+	if _, err := client.FederatedSearch(context.Background(), mixedSearchRequest(0.6)); err != nil {
 		t.Fatalf("FederatedSearch: %v", err)
 	}
 	got := calls()
-	if len(got) != 1 || len(got[0].Request.Queries) != 3 {
-		t.Fatalf("calls = %#v, want one request with three queries", got)
+	if len(got) != 1 || len(got[0].Request.Queries) != 4 {
+		t.Fatalf("calls = %#v, want one request with four queries", got)
 	}
-	queries := got[0].Request.Queries
-	if queries[0].Hybrid == nil || queries[1].MatchingStrategy != "all" || queries[1].Filter != media.Filter ||
-		queries[1].FederationOptions.Weight != bloemTitleBoostWeight || queries[2].Filter != episodes.Filter || queries[2].Hybrid != nil {
-		t.Fatalf("queries = %#v", queries)
+	q := got[0].Request.Queries
+	near := func(a, b float64) bool { return a-b < 1e-9 && b-a < 1e-9 }
+	if q[0].Hybrid == nil || !near(q[0].FederationOptions.Weight, 1) {
+		t.Fatalf("media query = %#v", q[0])
+	}
+	if q[1].MatchingStrategy != "all" || q[1].Filter != `type != "episode"` || q[1].Hybrid != nil ||
+		!near(q[1].FederationOptions.Weight, bloemTitleBoostWeight) {
+		t.Fatalf("media title query = %#v", q[1])
+	}
+	if q[2].Filter != `type = "episode"` || q[2].MatchingStrategy != "" || !near(q[2].FederationOptions.Weight, 0.4/0.6) {
+		t.Fatalf("episode query = %#v, want weight (1-0.6)/0.6", q[2])
+	}
+	if q[3].MatchingStrategy != "all" || q[3].Filter != `type = "episode"` ||
+		!slices.Equal(q[3].AttributesToSearchOn, bloemTitleBoostAttributes) ||
+		!near(q[3].FederationOptions.Weight, bloemTitleBoostWeight) {
+		t.Fatalf("episode title query = %#v", q[3])
+	}
+}
+
+func TestEpisodesKeepSilosWeightUpToAnEvenMix(t *testing.T) {
+	for _, ratio := range []float64{0.3, 0.5} {
+		client, calls := titleBoostServer(t, http.StatusOK)
+		if _, err := client.FederatedSearch(context.Background(), mixedSearchRequest(ratio)); err != nil {
+			t.Fatalf("FederatedSearch: %v", err)
+		}
+		if q := calls()[0].Request.Queries; len(q) != 4 || q[2].FederationOptions.Weight != 1 {
+			t.Fatalf("ratio %v: queries = %#v, want the episode query at weight 1", ratio, q)
+		}
+	}
+}
+
+func TestFederatedSearchWithoutAMeaningSideStaysAsItIs(t *testing.T) {
+	client, calls := titleBoostServer(t, http.StatusOK)
+	req := mixedSearchRequest(0.6)
+	req.Queries[0].Hybrid, req.Queries[0].Vector = nil, nil
+	if _, err := client.FederatedSearch(context.Background(), req); err != nil {
+		t.Fatalf("FederatedSearch: %v", err)
+	}
+	if q := calls()[0].Request.Queries; len(q) != 2 || q[1].FederationOptions.Weight != 1 {
+		t.Fatalf("queries = %#v, want the request unchanged", q)
 	}
 }
 
