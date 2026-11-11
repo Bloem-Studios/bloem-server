@@ -13,7 +13,7 @@ For the plain-language picture, read the [Apps and clients explainer](../../arch
 - [SDK compatibility and contract generation](../../architecture/bloem-sdk-compatibility.md)
 - [Protocol compatibility](../../architecture/bloem-compatibility-removal.md)
 
-## Operations (11)
+## Operations (10)
 
 | Method and path | Summary |
 | --- | --- |
@@ -24,7 +24,6 @@ For the plain-language picture, read the [Apps and clients explainer](../../arch
 | [`PUT /api/bloem/v1/profile-credentials/{id}`](#put-apibloemv1profile-credentialsid) | Set or replace direct-profile login credentials. |
 | [`DELETE /api/bloem/v1/profile-credentials/{id}`](#delete-apibloemv1profile-credentialsid) | Clear direct-profile login credentials. |
 | [`GET /api/bloem/v1/server/identity`](#get-apibloemv1serveridentity) | Which server this is, which surfaces it serves, and whether it has been set up. |
-| [`POST /api/bloem/v1/sync/progress`](#post-apibloemv1syncprogress) | Reconcile playback positions, including ones recorded offline. |
 | [`GET /api/bloem/v1/watch/home`](#get-apibloemv1watchhome) | The composed home document for this viewer. |
 | [`GET /api/bloem/v1/watch/items/{content_id}`](#get-apibloemv1watchitemscontent_id) | The composed document for one item. |
 | [`GET /api/bloem/v1/watch/search`](#get-apibloemv1watchsearch) | A composed document for a search query. |
@@ -191,34 +190,6 @@ Public. Mounted even without a database, so a 503 means this server has the endp
 | --- | --- | --- |
 | 200 | [`BloemServerIdentity`](#bloemserveridentity) | OK |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the installation identity or the setup state could not be read. The body never carries a provisional identifier. |
-
-### `POST /api/bloem/v1/sync/progress`
-
-Reconcile playback positions, including ones recorded offline.
-
-Operation ID: `syncBloemProgress`.
-Credentials: `bearerAuth`.
-
-Accepts a JSON body of at most 1 MiB with 1 to 100 items. Item visibility is checked against the selected profile's libraries and rating limits before anything is written. A bad item does not fail the batch: it is reported per item, and the request still answers 200. Replaying the same batch converges on the same state, so an offline queue may retry it after an uncertain response.
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `X-Profile-Id` | header | string | yes | The household profile acting for this request; it must belong to the authenticated account. |
-| `X-Profile-Token` | header | string |  | Verification proof for a PIN-locked profile; required only when the selected profile is locked. API keys skip PIN verification. |
-
-Request body (required, `application/json`): [`BloemSyncProgressInputBody`](#bloemsyncprogressinputbody).
-
-| Status | Body | Meaning |
-| --- | --- | --- |
-| 200 | [`BloemSyncProgressOutputBody`](#bloemsyncprogressoutputbody) | OK |
-| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing, the body is not valid JSON, or it has no items or more than 100. |
-| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
-| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
-| 413 | [`BloemNativeError`](README.md#bloemnativeerror) | payload_too_large: the body exceeds 1 MiB. |
-| 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
-| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the profile's progress store could not be opened. |
-| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. unavailable: item visibility could not be resolved; nothing was written. |
 
 ### `GET /api/bloem/v1/watch/home`
 
@@ -412,36 +383,6 @@ Searches the movies and series the selected profile may see and composes at most
 | `server_name` | string | yes | Display name, which may change at any time. Never use it as an identity. |
 | `setup_complete` | boolean | yes | False while the server has no owner account, which is the only state where the setup routes answer. |
 | `status` | string: `ok` | yes | Always ok. A server that cannot resolve its identity answers 503 instead. |
-
-### BloemSyncProgressInputBody
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `items` | array of [`BloemSyncProgressItem`](#bloemsyncprogressitem) | yes | Positions to reconcile, at most 100. |
-
-### BloemSyncProgressItem
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `duration` | number (double) | yes | Total runtime in seconds, as the client observed it. |
-| `force_overwrite` | boolean |  | Replace the stored position unconditionally. Ignored when updated_at is present. Defaults to false. |
-| `media_item_id` | string | yes | Item this position belongs to. An empty value is rejected for this item only. |
-| `position` | number (double) | yes | Playback position in seconds. |
-| `updated_at` | string |  | RFC 3339 time the client recorded this position; the newer of it and the stored event wins. Future times are clamped. Omit for a live update. An unparsable value is rejected for this item only. |
-
-### BloemSyncProgressOutputBody
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `results` | array of [`BloemSyncProgressResult`](#bloemsyncprogressresult) | yes | One result per submitted item, in request order. |
-
-### BloemSyncProgressResult
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `error` | string |  | Why this item was rejected: media_item_id is required, updated_at must be RFC3339, catalog item not found (absent or hidden from this profile) or failed to update progress. |
-| `media_item_id` | string | yes | Item this result belongs to. |
-| `status` | string: `updated`, `ignored`, `error` | yes | updated: the position was written. ignored: accepted but not written, because it fell below the minimum resume threshold or a newer stored event won; do not retry it. error: rejected; see error. |
 
 ### Document
 

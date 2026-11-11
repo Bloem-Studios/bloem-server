@@ -134,46 +134,6 @@
           ]
         },
         {
-          "type": "notificationListResponse",
-          "direction": "response",
-          "dialect": "bloem"
-        },
-        {
-          "type": "notificationSyncResponse",
-          "direction": "response",
-          "dialect": "bloem"
-        },
-        {
-          "type": "unreadCountResponse",
-          "direction": "response",
-          "dialect": "bloem"
-        },
-        {
-          "type": "wsTicketResponse",
-          "direction": "response",
-          "dialect": "bloem"
-        },
-        {
-          "type": "updatePreferencesRequest",
-          "direction": "request",
-          "dialect": "bloem"
-        },
-        {
-          "type": "applePushRegisterRequest",
-          "direction": "request",
-          "dialect": "bloem"
-        },
-        {
-          "type": "pushDeviceRegisterRequest",
-          "direction": "request",
-          "dialect": "bloem"
-        },
-        {
-          "type": "applePushRegisterResponse",
-          "direction": "response",
-          "dialect": "bloem"
-        },
-        {
           "type": "eventsCapabilityResponse",
           "direction": "response",
           "dialect": "bloem"
@@ -185,53 +145,7 @@
           "gate": "notifications.promotions"
         },
         {
-          "type": "remoteCapabilityRequest",
-          "direction": "request",
-          "dialect": "bloem",
-          "gate": "notifications.remote_control"
-        },
-        {
-          "type": "remoteCapabilityResponse",
-          "direction": "response",
-          "dialect": "bloem",
-          "gate": "notifications.remote_control"
-        },
-        {
-          "type": "remoteCommandRequest",
-          "direction": "request",
-          "dialect": "bloem",
-          "gate": "notifications.remote_control"
-        },
-        {
-          "type": "remoteSessionsResponse",
-          "direction": "response",
-          "dialect": "bloem",
-          "gate": "notifications.remote_control"
-        },
-        {
-          "type": "remoteAuditResponse",
-          "direction": "response",
-          "dialect": "bloem",
-          "gate": "notifications.remote_control"
-        },
-        {
           "type": "browseResponse",
-          "direction": "response"
-        },
-        {
-          "type": "itemFiltersResponse",
-          "direction": "response"
-        },
-        {
-          "type": "seasonsResponse",
-          "direction": "response"
-        },
-        {
-          "type": "seasonDetailResponse",
-          "direction": "response"
-        },
-        {
-          "type": "episodesListResponse",
           "direction": "response"
         },
         {
@@ -239,47 +153,11 @@
           "direction": "response"
         },
         {
-          "type": "trailerRefreshResponse",
-          "direction": "response"
-        },
-        {
-          "type": "trailerRefreshCapabilityResponse",
-          "direction": "response"
-        },
-        {
           "type": "filterItemsRequest",
           "direction": "request"
         },
         {
-          "type": "itemsListResponse",
-          "direction": "response"
-        },
-        {
           "type": "itemUserStateResponse",
-          "direction": "response"
-        },
-        {
-          "type": "progressEntryResponse",
-          "direction": "response"
-        },
-        {
-          "type": "progressListResponse",
-          "direction": "response"
-        },
-        {
-          "type": "syncProgressRequest",
-          "direction": "request"
-        },
-        {
-          "type": "syncProgressResponse",
-          "direction": "response"
-        },
-        {
-          "type": "ratingResponse",
-          "direction": "response"
-        },
-        {
-          "type": "ratingListResponse",
           "direction": "response"
         },
         {
@@ -299,15 +177,7 @@
           "direction": "request"
         },
         {
-          "type": "reorderSectionsRequest",
-          "direction": "request"
-        },
-        {
           "type": "restoreDefaultsRequest",
-          "direction": "request"
-        },
-        {
-          "type": "saveOverridesRequest",
           "direction": "request"
         },
         {
@@ -316,10 +186,6 @@
         },
         {
           "type": "homeLayoutResponse",
-          "direction": "response"
-        },
-        {
-          "type": "homeSectionItemsResponse",
           "direction": "response"
         },
         {
@@ -348,14 +214,6 @@
           "dialect": "bloem"
         },
         {
-          "type": "deviceResponse",
-          "direction": "response"
-        },
-        {
-          "type": "deviceListResponse",
-          "direction": "response"
-        },
-        {
           "type": "UserLibraryView",
           "direction": "response"
         },
@@ -376,18 +234,6 @@
           "direction": "request"
         },
         {
-          "type": "verifyPINRequest",
-          "direction": "request"
-        },
-        {
-          "type": "verifyPINResponse",
-          "direction": "response"
-        },
-        {
-          "type": "loginRequest",
-          "direction": "request"
-        },
-        {
           "type": "loginResponse",
           "direction": "response"
         },
@@ -400,39 +246,7 @@
           "direction": "response"
         },
         {
-          "type": "setupRequest",
-          "direction": "request"
-        },
-        {
-          "type": "setupStatusResponse",
-          "direction": "response"
-        },
-        {
-          "type": "signupRequest",
-          "direction": "request"
-        },
-        {
-          "type": "signupStatusResponse",
-          "direction": "response"
-        },
-        {
-          "type": "refreshRequest",
-          "direction": "request"
-        },
-        {
-          "type": "refreshResponse",
-          "direction": "response"
-        },
-        {
           "type": "UserView",
-          "direction": "response"
-        },
-        {
-          "type": "sessionResponse",
-          "direction": "response"
-        },
-        {
-          "type": "sessionsListResponse",
           "direction": "response"
         },
         {
@@ -440,152 +254,16 @@
           "direction": "response"
         },
         {
-          "type": "authProviderResponse",
-          "direction": "response"
-        },
-        {
-          "type": "deviceStartRequest",
-          "direction": "request"
-        },
-        {
-          "type": "deviceStartResponse",
-          "direction": "response"
-        },
-        {
-          "type": "deviceLookupResponse",
-          "direction": "response"
-        },
-        {
-          "type": "devicePollRequest",
-          "direction": "request"
-        },
-        {
-          "type": "devicePollResponse",
-          "direction": "response"
-        },
-        {
-          "type": "deviceDecisionRequest",
-          "direction": "request"
-        },
-        {
-          "type": "deviceLoginCapabilityResponse",
-          "direction": "response"
-        },
-        {
           "type": "calendarResponse",
           "direction": "response"
-        },
-        {
-          "type": "downloadRequest",
-          "direction": "request"
-        },
-        {
-          "type": "patchDownloadRequest",
-          "direction": "request"
-        },
-        {
-          "type": "downloadResponse",
-          "direction": "response"
-        },
-        {
-          "type": "downloadsListResponse",
-          "direction": "response"
-        },
-        {
-          "type": "downloadCapabilityResponse",
-          "direction": "response"
-        },
-        {
-          "type": "subscriptionRequest",
-          "direction": "request"
-        },
-        {
-          "type": "patchSubscriptionRequest",
-          "direction": "request"
-        },
-        {
-          "type": "subscriptionResponse",
-          "direction": "response"
-        },
-        {
-          "type": "subscriptionsListResponse",
-          "direction": "response"
-        },
-        {
-          "type": "subscriptionResultResponse",
-          "direction": "response"
-        },
-        {
-          "type": "subscriptionSyncResponse",
-          "direction": "response"
-        },
-        {
-          "type": "setSubtitlePrefRequest",
-          "direction": "request"
-        },
-        {
-          "type": "subtitlePrefResponse",
-          "direction": "response"
-        },
-        {
-          "type": "searchSubtitlesRequest",
-          "direction": "request"
-        },
-        {
-          "type": "downloadSubtitleRequest",
-          "direction": "request"
         },
         {
           "type": "SubtitleProviderStatusView",
           "direction": "response"
         },
         {
-          "type": "createWatchTogetherRoomRequest",
-          "direction": "request"
-        },
-        {
-          "type": "joinWatchTogetherRoomRequest",
-          "direction": "request"
-        },
-        {
-          "type": "updateWatchTogetherPolicyRequest",
-          "direction": "request"
-        },
-        {
-          "type": "selectWatchTogetherRoomItemRequest",
-          "direction": "request"
-        },
-        {
-          "type": "createWatchTogetherSuggestionRequest",
-          "direction": "request"
-        },
-        {
-          "type": "promoteSuggestionRequest",
-          "direction": "request"
-        },
-        {
-          "type": "watchTogetherRoomResponseV1",
-          "direction": "response"
-        },
-        {
-          "type": "watchTogetherSuggestionsResponse",
-          "direction": "response"
-        },
-        {
           "type": "watchTogetherClientMessage",
           "direction": "request"
-        },
-        {
-          "type": "scoredItemsResponse",
-          "direction": "response"
-        },
-        {
-          "type": "forYouMainResponse",
-          "direction": "response"
-        },
-        {
-          "type": "resolvedSimilarItemsResponse",
-          "direction": "response"
         },
         {
           "type": "discoverResponse",
@@ -598,14 +276,6 @@
         {
           "type": "watchTonightResponse",
           "direction": "response"
-        },
-        {
-          "type": "onboardingStateResponse",
-          "direction": "response"
-        },
-        {
-          "type": "onboardingProgressRequest",
-          "direction": "request"
         },
         {
           "type": "serverIdentityResponse",
@@ -1149,14 +819,6 @@
         },
         {
           "type": "BloemServerIdentity",
-          "direction": "response"
-        },
-        {
-          "type": "BloemSyncProgressItem",
-          "direction": "request"
-        },
-        {
-          "type": "BloemSyncProgressResult",
           "direction": "response"
         },
         {

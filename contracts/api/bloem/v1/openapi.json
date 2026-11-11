@@ -198,6 +198,261 @@
         ],
         "type": "object"
       },
+      "AdminAccessGroup": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "audio_transcode_allowed": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "download_allowed": {
+            "type": "boolean"
+          },
+          "download_transcode_allowed": {
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "library_ids": {
+            "items": {
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "max_local_stream_bitrate_kbps": {
+            "description": "Local per-stream bitrate ceiling in kbps; 0 means unlimited",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_playback_quality": {
+            "type": "string"
+          },
+          "max_profiles": {
+            "description": "Household profiles each member account may have, unless the account overrides it",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "max_remote_stream_bitrate_kbps": {
+            "description": "Remote per-stream bitrate ceiling in kbps; 0 means unlimited",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_streams": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_transcodes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "requests_allowed": {
+            "type": "boolean"
+          },
+          "transcode_allowed": {
+            "type": "boolean"
+          },
+          "updated_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "library_ids",
+          "max_playback_quality",
+          "download_allowed",
+          "download_transcode_allowed",
+          "transcode_allowed",
+          "audio_transcode_allowed",
+          "max_streams",
+          "max_transcodes",
+          "max_remote_stream_bitrate_kbps",
+          "max_local_stream_bitrate_kbps",
+          "max_profiles",
+          "allowed_permissions",
+          "requests_allowed",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "AdminAccessGroupListItem": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "audio_transcode_allowed": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "download_allowed": {
+            "type": "boolean"
+          },
+          "download_transcode_allowed": {
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "library_ids": {
+            "items": {
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "max_local_stream_bitrate_kbps": {
+            "description": "Local per-stream bitrate ceiling in kbps; 0 means unlimited",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_playback_quality": {
+            "type": "string"
+          },
+          "max_profiles": {
+            "description": "Household profiles each member account may have, unless the account overrides it",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "max_remote_stream_bitrate_kbps": {
+            "description": "Remote per-stream bitrate ceiling in kbps; 0 means unlimited",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_streams": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_transcodes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "member_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "requests_allowed": {
+            "type": "boolean"
+          },
+          "transcode_allowed": {
+            "type": "boolean"
+          },
+          "updated_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "member_count",
+          "id",
+          "name",
+          "description",
+          "library_ids",
+          "max_playback_quality",
+          "download_allowed",
+          "download_transcode_allowed",
+          "transcode_allowed",
+          "audio_transcode_allowed",
+          "max_streams",
+          "max_transcodes",
+          "max_remote_stream_bitrate_kbps",
+          "max_local_stream_bitrate_kbps",
+          "max_profiles",
+          "allowed_permissions",
+          "requests_allowed",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
+      },
       "AdminBrandingAssetForm": {
         "additionalProperties": false,
         "properties": {
@@ -424,6 +679,137 @@
         },
         "type": "object"
       },
+      "AdminInvitation": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "accepted_user_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "access_group_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "create_profile": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "delivery": {
+            "description": "How the link reached the invitee. email_unconfirmed: the send failed or its outcome is uncertain. unknown: created before delivery was recorded.",
+            "enum": [
+              "link",
+              "email_sent",
+              "email_unconfirmed",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "email": {
+            "description": "The bound address. Empty for a pending invitation created with delivery=link; after its acceptance, the address the account took.",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "invited_by": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "invited_by_name": {
+            "type": "string"
+          },
+          "library_ids": {
+            "description": "Null inherits library access; an empty array is an explicit empty override.",
+            "items": {
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "admin"
+            ],
+            "type": "string"
+          },
+          "show_tour": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "accepted",
+              "revoked",
+              "expired"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "delivery",
+          "role",
+          "library_ids",
+          "create_profile",
+          "show_tour",
+          "note",
+          "invited_by",
+          "invited_by_name",
+          "status",
+          "expires_at",
+          "created_at"
+        ],
+        "type": "object"
+      },
       "AdminOrganizationRef": {
         "additionalProperties": false,
         "properties": {
@@ -494,6 +880,101 @@
           "created_at",
           "expires_at",
           "is_impersonation_session"
+        ],
+        "type": "object"
+      },
+      "AdminUserDevice": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "device_name": {
+            "type": "string"
+          },
+          "device_platform": {
+            "type": "string"
+          },
+          "last_seen_at": {
+            "description": "Latest registration by the app; null when the device is known only from saved settings",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_updated": {
+            "description": "Latest of registration and saved-setting writes",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "override_count": {
+            "description": "Saved per-device settings across profiles",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/AdminUserDeviceProfile"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "device_id",
+          "device_name",
+          "device_platform",
+          "last_seen_at",
+          "last_updated",
+          "override_count",
+          "profiles"
+        ],
+        "type": "object"
+      },
+      "AdminUserDeviceProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "last_seen_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision, or null",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "override_count": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "profile_id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "profile_name": {
+            "description": "Empty when the profile no longer exists",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "profile_name",
+          "override_count",
+          "last_seen_at"
         ],
         "type": "object"
       },
@@ -4339,177 +4820,11 @@
         ],
         "type": "object"
       },
-      "BloemOrganizationGroup": {
-        "additionalProperties": false,
-        "properties": {
-          "allowed_permissions": {
-            "items": {
-              "type": "string"
-            },
-            "type": [
-              "array",
-              "null"
-            ]
-          },
-          "audio_transcode_allowed": {
-            "type": "boolean"
-          },
-          "created_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "download_allowed": {
-            "type": "boolean"
-          },
-          "download_transcode_allowed": {
-            "type": "boolean"
-          },
-          "id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "is_default": {
-            "type": "boolean"
-          },
-          "library_ids": {
-            "items": {
-              "format": "int64",
-              "type": "integer"
-            },
-            "type": [
-              "array",
-              "null"
-            ]
-          },
-          "max_playback_quality": {
-            "type": "string"
-          },
-          "max_streams": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "max_transcodes": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "member_count": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "name": {
-            "type": "string"
-          },
-          "requests_allowed": {
-            "type": "boolean"
-          },
-          "transcode_allowed": {
-            "type": "boolean"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "description",
-          "library_ids",
-          "max_playback_quality",
-          "download_allowed",
-          "download_transcode_allowed",
-          "transcode_allowed",
-          "audio_transcode_allowed",
-          "max_streams",
-          "max_transcodes",
-          "allowed_permissions",
-          "requests_allowed",
-          "is_default",
-          "member_count",
-          "created_at",
-          "updated_at"
-        ],
-        "type": "object"
-      },
-      "BloemOrganizationGroupCreate": {
-        "additionalProperties": false,
-        "properties": {
-          "allowed_permissions": {
-            "description": "Null or omission uses the default permission policy. Group responses collapse empty permission arrays to null.",
-            "items": {
-              "type": "string"
-            },
-            "type": [
-              "array",
-              "null"
-            ]
-          },
-          "audio_transcode_allowed": {
-            "type": "boolean"
-          },
-          "description": {
-            "type": "string"
-          },
-          "download_allowed": {
-            "type": "boolean"
-          },
-          "download_transcode_allowed": {
-            "type": "boolean"
-          },
-          "expected_revision": {
-            "format": "int64",
-            "minimum": 1,
-            "type": "integer"
-          },
-          "is_default": {
-            "type": "boolean"
-          },
-          "library_ids": {
-            "description": "Omit for the default policy; null adds no library restriction. Empty arrays are collapsed to null in group responses.",
-            "items": {
-              "format": "int64",
-              "type": "integer"
-            },
-            "type": [
-              "array",
-              "null"
-            ]
-          },
-          "max_playback_quality": {
-            "type": "string"
-          },
-          "max_streams": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "max_transcodes": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "name": {
-            "type": "string"
-          },
-          "requests_allowed": {
-            "type": "boolean"
-          },
-          "transcode_allowed": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "name",
-          "expected_revision"
-        ],
-        "type": "object"
-      },
       "BloemOrganizationGroupMutationResponse": {
         "additionalProperties": false,
         "properties": {
           "group": {
-            "$ref": "#/components/schemas/BloemOrganizationGroup"
+            "$ref": "#/components/schemas/AdminAccessGroup"
           },
           "policy_revision": {
             "format": "int64",
@@ -4526,7 +4841,7 @@
         "additionalProperties": false,
         "properties": {
           "group": {
-            "$ref": "#/components/schemas/BloemOrganizationGroup"
+            "$ref": "#/components/schemas/AdminAccessGroup"
           }
         },
         "required": [
@@ -4534,7 +4849,7 @@
         ],
         "type": "object"
       },
-      "BloemOrganizationGroupUpdate": {
+      "BloemOrganizationGroupWrite": {
         "additionalProperties": false,
         "properties": {
           "allowed_permissions": {
@@ -4568,26 +4883,49 @@
           },
           "library_ids": {
             "items": {
-              "format": "int64",
-              "type": "integer"
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "type": "string"
             },
             "type": [
               "array",
               "null"
             ]
           },
+          "max_local_stream_bitrate_kbps": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
           "max_playback_quality": {
             "type": "string"
           },
+          "max_profiles": {
+            "description": "Household profiles each member account may have; 5 when a new group omits it",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "max_remote_stream_bitrate_kbps": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
           "max_streams": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "max_transcodes": {
             "format": "int64",
+            "minimum": 0,
             "type": "integer"
           },
           "name": {
+            "minLength": 1,
             "type": "string"
           },
           "requests_allowed": {
@@ -4607,92 +4945,13 @@
         "properties": {
           "groups": {
             "items": {
-              "$ref": "#/components/schemas/BloemOrganizationGroup"
+              "$ref": "#/components/schemas/AdminAccessGroupListItem"
             },
             "type": "array"
           }
         },
         "required": [
           "groups"
-        ],
-        "type": "object"
-      },
-      "BloemOrganizationInvitation": {
-        "additionalProperties": false,
-        "properties": {
-          "accepted_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "accepted_user_id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "access_group_id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "create_profile": {
-            "type": "boolean"
-          },
-          "created_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "expires_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "id": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "invited_by": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "invited_by_name": {
-            "type": "string"
-          },
-          "library_ids": {
-            "items": {
-              "format": "int64",
-              "type": "integer"
-            },
-            "type": "array"
-          },
-          "note": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string"
-          },
-          "show_tour": {
-            "type": "boolean"
-          },
-          "status": {
-            "enum": [
-              "pending",
-              "accepted",
-              "expired",
-              "revoked"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "email",
-          "role",
-          "create_profile",
-          "show_tour",
-          "invited_by",
-          "status",
-          "expires_at",
-          "created_at"
         ],
         "type": "object"
       },
@@ -4748,7 +5007,7 @@
             "type": "string"
           },
           "invitation": {
-            "$ref": "#/components/schemas/BloemOrganizationInvitation"
+            "$ref": "#/components/schemas/AdminInvitation"
           }
         },
         "required": [
@@ -4777,7 +5036,7 @@
         "properties": {
           "invitations": {
             "items": {
-              "$ref": "#/components/schemas/BloemOrganizationInvitation"
+              "$ref": "#/components/schemas/AdminInvitation"
             },
             "type": "array"
           }
@@ -6373,100 +6632,6 @@
         ],
         "type": "object"
       },
-      "BloemSyncProgressInputBody": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "description": "Positions to reconcile, at most 100.",
-            "items": {
-              "$ref": "#/components/schemas/BloemSyncProgressItem"
-            },
-            "maxItems": 100,
-            "minItems": 1,
-            "type": "array"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "type": "object"
-      },
-      "BloemSyncProgressItem": {
-        "additionalProperties": false,
-        "properties": {
-          "duration": {
-            "description": "Total runtime in seconds, as the client observed it.",
-            "format": "double",
-            "type": "number"
-          },
-          "force_overwrite": {
-            "description": "Replace the stored position unconditionally. Ignored when updated_at is present. Defaults to false.",
-            "type": "boolean"
-          },
-          "media_item_id": {
-            "description": "Item this position belongs to. An empty value is rejected for this item only.",
-            "type": "string"
-          },
-          "position": {
-            "description": "Playback position in seconds.",
-            "format": "double",
-            "type": "number"
-          },
-          "updated_at": {
-            "description": "RFC 3339 time the client recorded this position; the newer of it and the stored event wins. Future times are clamped. Omit for a live update. An unparsable value is rejected for this item only.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "media_item_id",
-          "position",
-          "duration"
-        ],
-        "type": "object"
-      },
-      "BloemSyncProgressOutputBody": {
-        "additionalProperties": false,
-        "properties": {
-          "results": {
-            "description": "One result per submitted item, in request order.",
-            "items": {
-              "$ref": "#/components/schemas/BloemSyncProgressResult"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "results"
-        ],
-        "type": "object"
-      },
-      "BloemSyncProgressResult": {
-        "additionalProperties": false,
-        "properties": {
-          "error": {
-            "description": "Why this item was rejected: media_item_id is required, updated_at must be RFC3339, catalog item not found (absent or hidden from this profile) or failed to update progress.",
-            "type": "string"
-          },
-          "media_item_id": {
-            "description": "Item this result belongs to.",
-            "type": "string"
-          },
-          "status": {
-            "description": "updated: the position was written. ignored: accepted but not written, because it fell below the minimum resume threshold or a newer stored event won; do not retry it. error: rejected; see error.",
-            "enum": [
-              "updated",
-              "ignored",
-              "error"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "media_item_id",
-          "status"
-        ],
-        "type": "object"
-      },
       "BloemTenantCreateBody": {
         "additionalProperties": false,
         "properties": {
@@ -7336,47 +7501,6 @@
           "reason_flags",
           "created_at",
           "read_at"
-        ],
-        "type": "object"
-      },
-      "DeviceResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "changed_count": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "device_id": {
-            "type": "string"
-          },
-          "device_name": {
-            "type": "string"
-          },
-          "device_platform": {
-            "type": "string"
-          },
-          "is_current_device": {
-            "type": "boolean"
-          },
-          "last_seen_at": {
-            "type": "string"
-          },
-          "profile_id": {
-            "type": "string"
-          },
-          "profile_name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "device_id",
-          "device_name",
-          "device_platform",
-          "last_seen_at",
-          "profile_id",
-          "profile_name",
-          "is_current_device",
-          "changed_count"
         ],
         "type": "object"
       },
@@ -14095,7 +14219,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/BloemOrganizationGroupCreate"
+                "$ref": "#/components/schemas/BloemOrganizationGroupWrite"
               }
             }
           },
@@ -14395,7 +14519,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/BloemOrganizationGroupUpdate"
+                "$ref": "#/components/schemas/BloemOrganizationGroupWrite"
               }
             }
           },
@@ -21762,7 +21886,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/DeviceResponse"
+                    "$ref": "#/components/schemas/AdminUserDevice"
                   },
                   "type": "array"
                 }
@@ -35087,7 +35211,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/DeviceResponse"
+                    "$ref": "#/components/schemas/AdminUserDevice"
                   },
                   "type": "array"
                 }
@@ -45864,175 +45988,6 @@
         "tags": [
           "system"
         ]
-      }
-    },
-    "/api/bloem/v1/sync/progress": {
-      "post": {
-        "description": "Accepts a JSON body of at most 1 MiB with 1 to 100 items. Item visibility is checked against the selected profile's libraries and rating limits before anything is written. A bad item does not fail the batch: it is reported per item, and the request still answers 200. Replaying the same batch converges on the same state, so an offline queue may retry it after an uncertain response.",
-        "operationId": "syncBloemProgress",
-        "parameters": [
-          {
-            "description": "The household profile acting for this request; it must belong to the authenticated account.",
-            "in": "header",
-            "name": "X-Profile-Id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Verification proof for a PIN-locked profile; required only when the selected profile is locked. API keys skip PIN verification.",
-            "in": "header",
-            "name": "X-Profile-Token",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BloemSyncProgressInputBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemSyncProgressOutputBody"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "bad_request: X-Profile-Id is missing, the body is not valid JSON, or it has no items or more than 100."
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "not_found: X-Profile-Id names no profile of this account."
-          },
-          "413": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "payload_too_large: the body exceeds 1 MiB."
-          },
-          "429": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeRateLimitError"
-                }
-              }
-            },
-            "description": "The configured rate limit was exceeded.",
-            "headers": {
-              "Retry-After": {
-                "description": "Seconds to wait before retrying.",
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Reset": {
-                "description": "Reset time as Unix seconds.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "internal_error: the viewer's access could not be resolved, or the profile's progress store could not be opened."
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. unavailable: item visibility could not be resolved; nothing was written.",
-            "headers": {
-              "Retry-After": {
-                "description": "Seconds before retrying; sent with service_unavailable.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "summary": "Reconcile playback positions, including ones recorded offline.",
-        "tags": [
-          "watch"
-        ],
-        "x-silo-retry-safety": "natural_idempotent"
       }
     },
     "/api/bloem/v1/watch/home": {

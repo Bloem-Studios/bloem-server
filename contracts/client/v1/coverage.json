@@ -222,10 +222,6 @@
       "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
     },
     {
-      "type": "internal/api/handlers.AdminCSSView",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
-    },
-    {
       "type": "internal/api/handlers.AdminDeviceDetailView",
       "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
     },
@@ -1974,10 +1970,6 @@
       "reason": "OpenAPI-only description of native chi field validation errors; generated v2 clients use the separate Problem contract."
     },
     {
-      "type": "internal/apiv2.BloemOrganizationInvitation",
-      "reason": "OpenAPI-only restatement of the native organization admin handler's private invitation response type for the bundled web workflow."
-    },
-    {
       "type": "internal/apiv2.BloemOrganizationInvitationResendResponse",
       "reason": "OpenAPI-only one-time invitation-link handoff for Bloem organization web administration; native administration-client adoption is not part of this workflow."
     },
@@ -2462,12 +2454,12 @@
       "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
     },
     {
-      "type": "internal/apiv2.BloemOrganizationGroup",
-      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+      "type": "internal/remote.Command",
+      "reason": "Remote-control command record. Its only routes were on Silo's /api/v1, which Silo retired, so no generated client sends or decodes it."
     },
     {
-      "type": "internal/apiv2.BloemOrganizationGroupCreate",
-      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+      "type": "internal/apiv2.BloemOrganizationGroupWrite",
+      "reason": "OpenAPI-only declaration of the organization group write body: Silo's /api/v2 AdminAccessGroupBody plus expected_revision. Native administration-client adoption is separate; it is not a client DTO root."
     },
     {
       "type": "internal/apiv2.BloemOrganizationGroupMutationResponse",
@@ -2475,10 +2467,6 @@
     },
     {
       "type": "internal/apiv2.BloemOrganizationGroupResponse",
-      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
-    },
-    {
-      "type": "internal/apiv2.BloemOrganizationGroupUpdate",
       "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
     },
     {
@@ -2792,6 +2780,10 @@
     {
       "type": "internal/api/handlers.BloemPromotionsResponse",
       "reason": "Native viewer campaign list read by the embedded web app; the phone apps still read the /api/v1 promotions shape and have not adopted the native route."
+    },
+    {
+      "type": "internal/api/handlers.SectionOverrideWrite",
+      "reason": "Server-internal command shape: /api/v2 replaceProfileSectionOverrides lowers its own body (apiv2.SectionOverrideWrite) onto it, and the /api/v1 route that took it directly is retired. No generated client sends or decodes it."
     },
     {
       "type": "internal/apiv2.AdminAPIClient",

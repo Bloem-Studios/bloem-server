@@ -216,7 +216,7 @@ Credentials: `bloemOrganizationContext`.
 
 Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match.
 
-Request body (required, `application/json`): [`BloemOrganizationGroupCreate`](#bloemorganizationgroupcreate).
+Request body (required, `application/json`): [`BloemOrganizationGroupWrite`](#bloemorganizationgroupwrite).
 
 | Status | Body | Meaning |
 | --- | --- | --- |
@@ -262,7 +262,7 @@ Requires the selected organization administrative context. Current account, logi
 | --- | --- | --- | --- | --- |
 | `id` | path | integer (int64) | yes |  |
 
-Request body (required, `application/json`): [`BloemOrganizationGroupUpdate`](#bloemorganizationgroupupdate).
+Request body (required, `application/json`): [`BloemOrganizationGroupWrite`](#bloemorganizationgroupwrite).
 
 | Status | Body | Meaning |
 | --- | --- | --- |
@@ -864,7 +864,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 
 | Status | Body | Meaning |
 | --- | --- | --- |
-| 200 | array of [`DeviceResponse`](#deviceresponse) | OK |
+| 200 | array of [`AdminUserDevice`](#adminuserdevice) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an invalid account ID or body, a missing profile name, or an invalid max_playback_quality. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
@@ -2150,7 +2150,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 
 | Status | Body | Meaning |
 | --- | --- | --- |
-| 200 | array of [`DeviceResponse`](#deviceresponse) | OK |
+| 200 | array of [`AdminUserDevice`](#adminuserdevice) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an invalid ID or body, a missing profile name, or an invalid max_playback_quality. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
@@ -2453,6 +2453,55 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `error` | string |  |  |
 | `snapshot` | [`AccountPolicySnapshot`](#accountpolicysnapshot) |  |  |
 
+### AdminAccessGroup
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `allowed_permissions` | array of string or null | yes |  |
+| `audio_transcode_allowed` | boolean | yes |  |
+| `created_at` | string (date-time) | yes | RFC 3339 instant in UTC with millisecond precision |
+| `description` | string | yes |  |
+| `download_allowed` | boolean | yes |  |
+| `download_transcode_allowed` | boolean | yes |  |
+| `id` | string | yes | Opaque identifier |
+| `is_default` | boolean | yes |  |
+| `library_ids` | array of string or null | yes |  |
+| `max_local_stream_bitrate_kbps` | integer (int64) | yes | Local per-stream bitrate ceiling in kbps; 0 means unlimited |
+| `max_playback_quality` | string | yes |  |
+| `max_profiles` | integer (int64) | yes | Household profiles each member account may have, unless the account overrides it |
+| `max_remote_stream_bitrate_kbps` | integer (int64) | yes | Remote per-stream bitrate ceiling in kbps; 0 means unlimited |
+| `max_streams` | integer (int64) | yes |  |
+| `max_transcodes` | integer (int64) | yes |  |
+| `name` | string | yes |  |
+| `requests_allowed` | boolean | yes |  |
+| `transcode_allowed` | boolean | yes |  |
+| `updated_at` | string (date-time) | yes | RFC 3339 instant in UTC with millisecond precision |
+
+### AdminAccessGroupListItem
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `allowed_permissions` | array of string or null | yes |  |
+| `audio_transcode_allowed` | boolean | yes |  |
+| `created_at` | string (date-time) | yes | RFC 3339 instant in UTC with millisecond precision |
+| `description` | string | yes |  |
+| `download_allowed` | boolean | yes |  |
+| `download_transcode_allowed` | boolean | yes |  |
+| `id` | string | yes | Opaque identifier |
+| `is_default` | boolean | yes |  |
+| `library_ids` | array of string or null | yes |  |
+| `max_local_stream_bitrate_kbps` | integer (int64) | yes | Local per-stream bitrate ceiling in kbps; 0 means unlimited |
+| `max_playback_quality` | string | yes |  |
+| `max_profiles` | integer (int64) | yes | Household profiles each member account may have, unless the account overrides it |
+| `max_remote_stream_bitrate_kbps` | integer (int64) | yes | Remote per-stream bitrate ceiling in kbps; 0 means unlimited |
+| `max_streams` | integer (int64) | yes |  |
+| `max_transcodes` | integer (int64) | yes |  |
+| `member_count` | integer (int64) | yes |  |
+| `name` | string | yes |  |
+| `requests_allowed` | boolean | yes |  |
+| `transcode_allowed` | boolean | yes |  |
+| `updated_at` | string (date-time) | yes | RFC 3339 instant in UTC with millisecond precision |
+
 ### AdminBrandingAssetForm
 
 | Field | Type | Required | Description |
@@ -2465,6 +2514,27 @@ Requires an account bearer token or API key; no profile or organization needs to
 | --- | --- | --- | --- |
 | `id` | integer (int64) |  |  |
 | `name` | string |  |  |
+
+### AdminInvitation
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `accepted_at` | string (date-time) |  | RFC 3339 instant in UTC with millisecond precision |
+| `accepted_user_id` | string |  | Opaque identifier |
+| `access_group_id` | string |  | Opaque identifier |
+| `create_profile` | boolean | yes |  |
+| `created_at` | string (date-time) | yes | RFC 3339 instant in UTC with millisecond precision |
+| `delivery` | string: `link`, `email_sent`, `email_unconfirmed`, `unknown` | yes | How the link reached the invitee. email_unconfirmed: the send failed or its outcome is uncertain. unknown: created before delivery was recorded. |
+| `email` | string | yes | The bound address. Empty for a pending invitation created with delivery=link; after its acceptance, the address the account took. |
+| `expires_at` | string (date-time) | yes | RFC 3339 instant in UTC with millisecond precision |
+| `id` | string | yes | Opaque identifier |
+| `invited_by` | string | yes | Opaque identifier |
+| `invited_by_name` | string | yes |  |
+| `library_ids` | array of string or null | yes | Null inherits library access; an empty array is an explicit empty override. |
+| `note` | string | yes |  |
+| `role` | string: `user`, `admin` | yes |  |
+| `show_tour` | boolean | yes |  |
+| `status` | string: `pending`, `accepted`, `revoked`, `expired` | yes |  |
 
 ### AdminOrganizationRef
 
@@ -2494,6 +2564,27 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `is_impersonation_session` | boolean | yes |  |
 | `profile_id` | string |  |  |
 | `revoked_at` | string (date-time) |  |  |
+
+### AdminUserDevice
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `device_id` | string | yes |  |
+| `device_name` | string | yes |  |
+| `device_platform` | string | yes |  |
+| `last_seen_at` | string or null (date-time) | yes | Latest registration by the app; null when the device is known only from saved settings |
+| `last_updated` | string or null (date-time) | yes | Latest of registration and saved-setting writes |
+| `override_count` | integer (int64) | yes | Saved per-device settings across profiles |
+| `profiles` | array of [`AdminUserDeviceProfile`](#adminuserdeviceprofile) | yes |  |
+
+### AdminUserDeviceProfile
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `last_seen_at` | string or null (date-time) | yes | RFC 3339 instant in UTC with millisecond precision, or null |
+| `override_count` | integer (int64) | yes |  |
+| `profile_id` | string | yes | Opaque identifier |
+| `profile_name` | string | yes | Empty when the profile no longer exists |
 
 ### AdminUserView
 
@@ -2863,61 +2954,20 @@ Type: object.
 | `expected_revision` | integer (int64) | yes |  |
 | `status` | string: `active`, `suspended` | yes |  |
 
-### BloemOrganizationGroup
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `allowed_permissions` | array of string or null | yes |  |
-| `audio_transcode_allowed` | boolean | yes |  |
-| `created_at` | string (date-time) | yes |  |
-| `description` | string | yes |  |
-| `download_allowed` | boolean | yes |  |
-| `download_transcode_allowed` | boolean | yes |  |
-| `id` | integer (int64) | yes |  |
-| `is_default` | boolean | yes |  |
-| `library_ids` | array of integer (int64) or null | yes |  |
-| `max_playback_quality` | string | yes |  |
-| `max_streams` | integer (int64) | yes |  |
-| `max_transcodes` | integer (int64) | yes |  |
-| `member_count` | integer (int64) | yes |  |
-| `name` | string | yes |  |
-| `requests_allowed` | boolean | yes |  |
-| `transcode_allowed` | boolean | yes |  |
-| `updated_at` | string (date-time) | yes |  |
-
-### BloemOrganizationGroupCreate
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `allowed_permissions` | array of string or null |  | Null or omission uses the default permission policy. Group responses collapse empty permission arrays to null. |
-| `audio_transcode_allowed` | boolean |  |  |
-| `description` | string |  |  |
-| `download_allowed` | boolean |  |  |
-| `download_transcode_allowed` | boolean |  |  |
-| `expected_revision` | integer (int64) | yes |  |
-| `is_default` | boolean |  |  |
-| `library_ids` | array of integer (int64) or null |  | Omit for the default policy; null adds no library restriction. Empty arrays are collapsed to null in group responses. |
-| `max_playback_quality` | string |  |  |
-| `max_streams` | integer (int64) |  |  |
-| `max_transcodes` | integer (int64) |  |  |
-| `name` | string | yes |  |
-| `requests_allowed` | boolean |  |  |
-| `transcode_allowed` | boolean |  |  |
-
 ### BloemOrganizationGroupMutationResponse
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `group` | [`BloemOrganizationGroup`](#bloemorganizationgroup) | yes |  |
+| `group` | [`AdminAccessGroup`](#adminaccessgroup) | yes |  |
 | `policy_revision` | integer (int64) | yes |  |
 
 ### BloemOrganizationGroupResponse
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `group` | [`BloemOrganizationGroup`](#bloemorganizationgroup) | yes |  |
+| `group` | [`AdminAccessGroup`](#adminaccessgroup) | yes |  |
 
-### BloemOrganizationGroupUpdate
+### BloemOrganizationGroupWrite
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
@@ -2928,8 +2978,11 @@ Type: object.
 | `download_transcode_allowed` | boolean |  |  |
 | `expected_revision` | integer (int64) | yes |  |
 | `is_default` | boolean |  |  |
-| `library_ids` | array of integer (int64) or null |  |  |
+| `library_ids` | array of string or null |  |  |
+| `max_local_stream_bitrate_kbps` | integer (int64) |  |  |
 | `max_playback_quality` | string |  |  |
+| `max_profiles` | integer (int64) |  | Household profiles each member account may have; 5 when a new group omits it |
+| `max_remote_stream_bitrate_kbps` | integer (int64) |  |  |
 | `max_streams` | integer (int64) |  |  |
 | `max_transcodes` | integer (int64) |  |  |
 | `name` | string |  |  |
@@ -2940,27 +2993,7 @@ Type: object.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `groups` | array of [`BloemOrganizationGroup`](#bloemorganizationgroup) | yes |  |
-
-### BloemOrganizationInvitation
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `accepted_at` | string (date-time) |  |  |
-| `accepted_user_id` | integer (int64) |  |  |
-| `access_group_id` | integer (int64) |  |  |
-| `create_profile` | boolean | yes |  |
-| `created_at` | string (date-time) | yes |  |
-| `email` | string | yes |  |
-| `expires_at` | string (date-time) | yes |  |
-| `id` | integer (int64) | yes |  |
-| `invited_by` | integer (int64) | yes |  |
-| `invited_by_name` | string |  |  |
-| `library_ids` | array of integer (int64) |  |  |
-| `note` | string |  |  |
-| `role` | string | yes |  |
-| `show_tour` | boolean | yes |  |
-| `status` | string: `pending`, `accepted`, `expired`, `revoked` | yes |  |
+| `groups` | array of [`AdminAccessGroupListItem`](#adminaccessgrouplistitem) | yes |  |
 
 ### BloemOrganizationInvitationCreate
 
@@ -2979,7 +3012,7 @@ Type: object.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `claim_token` | string | yes | Single-use claim token returned only by this rotation response. The server retains only its hash; later reads cannot recover it. Treat it as a secret and deliver it directly to the invitee. |
-| `invitation` | [`BloemOrganizationInvitation`](#bloemorganizationinvitation) | yes |  |
+| `invitation` | [`AdminInvitation`](#admininvitation) | yes |  |
 
 ### BloemOrganizationInvitationRevision
 
@@ -2991,7 +3024,7 @@ Type: object.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `invitations` | array of [`BloemOrganizationInvitation`](#bloemorganizationinvitation) | yes |  |
+| `invitations` | array of [`AdminInvitation`](#admininvitation) | yes |  |
 
 ### BloemOrganizationLibrariesResponse
 
@@ -3319,19 +3352,6 @@ Type: object.
 | `source_template_key` | string |  |  |
 | `source_template_revision` | integer (int64) |  |  |
 | `state` | string | yes |  |
-
-### DeviceResponse
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `changed_count` | integer (int64) | yes |  |
-| `device_id` | string | yes |  |
-| `device_name` | string | yes |  |
-| `device_platform` | string | yes |  |
-| `is_current_device` | boolean | yes |  |
-| `last_seen_at` | string | yes |  |
-| `profile_id` | string | yes |  |
-| `profile_name` | string | yes |  |
 
 ### EffectivePolicySnapshot
 

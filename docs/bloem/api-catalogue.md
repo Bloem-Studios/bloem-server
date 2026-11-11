@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 951 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v1` | 271 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v1` | 270 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -293,7 +293,6 @@ security declaration and the wire reference before sending credentials or mutati
 | `PUT /api/bloem/v1/promotions/{id}/dismissals/{surface}` | `dismissBloemPromotion` | Stop showing a campaign to a profile on a surface. |
 | `POST /api/bloem/v1/promotions/{id}/save` | `saveBloemPromotion` | Save an in-playback campaign to the profile's inbox. |
 | `GET /api/bloem/v1/server/identity` | `getBloemServerIdentity` | Which server this is, which surfaces it serves, and whether it has been set up. |
-| `POST /api/bloem/v1/sync/progress` | `syncBloemProgress` | Reconcile playback positions, including ones recorded offline. |
 | `GET /api/bloem/v1/watch/home` | `getBloemWatchHome` | The composed home document for this viewer. |
 | `GET /api/bloem/v1/watch/items/{content_id}` | `getBloemWatchItem` | The composed document for one item. |
 | `GET /api/bloem/v1/watch/search` | `searchBloemWatch` | A composed document for a search query. |
