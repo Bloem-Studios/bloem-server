@@ -56,7 +56,6 @@ internal/api/handlers/auth.go
 internal/api/handlers/branding.go
 internal/api/handlers/catalog_seed.go
 internal/api/handlers/catalog_transfer_service.go
-internal/api/handlers/collections_service.go
 internal/api/handlers/downloads_test.go
 internal/api/handlers/home_views_service.go
 internal/api/handlers/household.go

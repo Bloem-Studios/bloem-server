@@ -166,6 +166,10 @@
 ./internal/jellycompat TestRevokedCompatSessionStaysDeletedPostgres
 ./internal/jellycompat TestDurableCompatPlaybackStoreUpdateRejectionAcrossReplicas
 ./internal/jellycompat TestDurableCompatPlaybackStoreDropsRejectedPendingUpdate
+./internal/jellycompat TestDurableCompatPlaybackStoreRetiresUpstreamSessionAcrossReplicas
+./internal/jellycompat TestDurableCompatPlaybackStoreRetireLeavesMovedPlay
+./internal/jellycompat TestDurableCompatPlaybackStoreRetryAfterFailedStatement
+./internal/jellycompat TestDurableCompatPlaybackStoreRetireHidesCopyWhenReplayFails
 ./internal/jellycompat TestPseudoUserOwnerAcrossReplicasPostgres
 ./internal/invitations TestLinkInvitationLifecycleDB
 ./internal/invitations TestEmailedInvitationLinkReplacementDB
@@ -482,6 +486,7 @@
 ./internal/api/handlers TestPlaybackLifecycleOrderAndStartStateDB
 ./internal/api/handlers TestLifecycleSweepSelectsWhatItCanEndDB
 ./internal/api/handlers TestLifecycleSweepPassesLiveJellyfinPlaysDB
+./internal/api/handlers TestLifecycleSweepBacksOffFailedEndsDB
 
 # Transactional administrator audit details and rollback isolation.
 ./internal/activitylog TestMutationCommitRollbackAndHistoryDB

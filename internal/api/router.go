@@ -2581,7 +2581,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			if deps.RecWorker != nil {
 				webhookSyncSvc.SetSignalsChangedNotifier(deps.RecWorker)
 			}
-			webhookSyncHandler = handlers.NewWebhookSyncHandler(webhookSyncSvc)
+			webhookSyncHandler = handlers.NewWebhookSyncHandler(webhookSyncSvc, deps.UserStoreProvider)
 		}
 	}
 
@@ -3249,7 +3249,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		wireBackupRestore(deps, adminHandler, libraryHandler, adminImageHandler, externalSignInPlugins, libraryCollectionHandler, sectionHandler, rateLimitHandler)
 	}
 	if deps.DB != nil && authService != nil && userRepo != nil {
-		v2deps.ExternalSignIn = handlers.NewExternalSignInHandler(auth.NewIdentityService(deps.DB), authService, userRepo, externalSignInPlugins)
+		externalSignIn := handlers.NewExternalSignInHandler(auth.NewIdentityService(deps.DB), authService, userRepo, externalSignInPlugins)
+		externalSignIn.Stores = deps.UserStoreProvider
+		v2deps.ExternalSignIn = externalSignIn
 	}
 	if deps.PluginService != nil {
 		v2deps.NetworkAccess = deps.PluginService
@@ -3341,6 +3343,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if webhookSyncHandler != nil {
 		v2deps.WebhookSync = webhookSyncHandler
+		v2deps.WebhookSyncManagement = webhookSyncHandler
 		v2deps.WebhookReceiver = webhookSyncHandler
 	}
 	if onboardingHandler != nil {
@@ -3470,6 +3473,9 @@ func (d Dependencies) overlayOrigins() handlers.OverlayOriginSource {
 // two drift, and a drifted copy is exactly how a broken writer chain passes its
 // own tests (see the §4.4 conformance requirement in the stream-telemetry design).
 func useBaseMiddleware(r chi.Router, deps Dependencies) {
+	// No response is used as a type it does not declare (see httpstream.NoSniff).
+	r.Use(httpstream.NoSniff)
+
 	// Server-generated request ID; never adopts a client-supplied one.
 	r.Use(apimw.RequestID)
 
