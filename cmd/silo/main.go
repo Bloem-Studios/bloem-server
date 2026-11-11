@@ -1980,6 +1980,7 @@ func main() {
 			},
 		)
 		pluginHost = pluginhost.NewHost(pluginhost.Config{
+			IdleStopAfter:   pluginhost.IdleStopAfter,
 			EventPublisher:  eventsHub,
 			LibraryLister:   pluginhost.NewLibraryLister(libDataSource),
 			CatalogPresence: catalogPresence,
