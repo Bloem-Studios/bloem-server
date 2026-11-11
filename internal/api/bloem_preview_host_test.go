@@ -240,3 +240,24 @@ func TestPreviewHostCapsPublicGuestTraffic(t *testing.T) {
 		t.Fatal("guest cap blocked a member host")
 	}
 }
+
+func TestPreviewTrafficLimitSkipsAppFilesAndSignedArtwork(t *testing.T) {
+	for _, tc := range []struct {
+		method, path string
+		exempt       bool
+	}{
+		{http.MethodGet, "/api/v2/artwork/storage-covers/1/original.abc.img", true},
+		{http.MethodHead, "/api/v2/artwork/items/1/poster.webp", true},
+		{http.MethodGet, "/assets/index-abc.js", true},
+		{http.MethodGet, "/collections", true},
+		{http.MethodGet, "/api/v2/catalog/query", false},
+		{http.MethodPost, "/api/v2/catalog/query", false},
+		{http.MethodPost, "/api/v2/artwork/storage-covers/1/original.abc.img", false},
+		{http.MethodGet, "/api/bloem/v1/preview/status", false},
+	} {
+		r := httptest.NewRequest(tc.method, tc.path, nil)
+		if got := previewTrafficExempt(r); got != tc.exempt {
+			t.Errorf("%s %s exempt = %v, want %v", tc.method, tc.path, got, tc.exempt)
+		}
+	}
+}

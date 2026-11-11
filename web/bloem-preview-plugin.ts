@@ -5,6 +5,7 @@ import type { Plugin } from "vite";
 // decoration once. Relative and aliased consumer imports resolve identically.
 const modules: Record<string, string> = {
   "pages/Collections.tsx": "adapters/Collections.tsx",
+  "pages/Calendar.tsx": "adapters/Calendar.tsx",
   "hooks/useSearchMediaScope.ts": "adapters/searchScope.ts",
   "pages/ItemDetail/components/SubtitleSearchDialog.tsx": "adapters/SubtitleSearchDialog.tsx",
   "hooks/queries/metadataAI.ts": "adapters/metadataAI.ts",
@@ -13,7 +14,6 @@ const modules: Record<string, string> = {
   "hooks/queries/useRequests.ts": "adapters/requests.ts",
   "components/HeroBanner.tsx": "adapters/HeroBanner.tsx",
   "components/LibraryHeader.tsx": "adapters/LibraryHeader.tsx",
-  "pages/LibraryRecommended.tsx": "adapters/LibraryRecommended.tsx",
   "bloem/audiobooks/BloemLibraryRecommended.tsx": "adapters/BloemLibraryRecommended.tsx",
   "hooks/queries/settingValues.ts": "adapters/settings.ts",
   "hooks/queries/libraryPageState.ts": "adapters/libraryPageState.ts",

@@ -65,7 +65,7 @@ func previewHostGuard(settings auth.PreviewGuestSettingsSource, tokens previewTo
 			current, err := settings.PreviewGuestSettings(r.Context())
 			carriesGuest := previewRequestCarriesGuest(r, tokens)
 			guestRequest := (current.Host != "" && host == current.Host) || strings.HasPrefix(r.URL.Path, "/api/bloem/v1/preview/") || carriesGuest
-			if guestRequest && !traffic.AllowGlobal() {
+			if guestRequest && !previewTrafficExempt(r) && !traffic.AllowGlobal() {
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Retry-After", "1")
 				w.WriteHeader(http.StatusTooManyRequests)
@@ -202,4 +202,17 @@ func previewRequestCarriesGuest(r *http.Request, tokens previewTokenValidator) b
 		io.Closer
 	}{io.MultiReader(bytes.NewReader(copied.Bytes()), original), original}
 	return isGuest(body.RefreshToken)
+}
+
+// previewTrafficExempt reports a request the guest traffic limit does not
+// count: the web app's own files and signed artwork. A library grid asks for
+// a hundred covers at once, which alone used up the limit's burst of 120 and
+// left covers blank (429). Artwork URLs are signed and expire, and covers read
+// from book files are bounded by their own reader slots, so the limit keeps
+// guarding the API calls that do real work.
+func previewTrafficExempt(r *http.Request) bool {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		return false
+	}
+	return strings.HasPrefix(r.URL.Path, "/api/v2/artwork/") || !strings.HasPrefix(r.URL.Path, "/api/")
 }

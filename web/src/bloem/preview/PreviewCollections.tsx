@@ -18,7 +18,7 @@ export default function PreviewCollections() {
       ) : error ? (
         <p role="alert">{bt("bloem.preview.collections.unavailable")}</p>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
           {data?.libraries
             .flatMap((library) =>
               library.collections.map((entry) => ({
@@ -29,11 +29,23 @@ export default function PreviewCollections() {
             .map((entry) => (
               <Link
                 key={entry.id}
-                className="rounded-xl border p-5"
+                className="group/card block"
                 to={buildLibraryCollectionCatalogHref(entry.id, entry.title, entry.libraryId)}
               >
-                <h2 className="font-semibold">{entry.title}</h2>
-                <p className="text-muted-foreground mt-2 text-sm">
+                {/* The same poster the Collections page shows; a guest gets no
+                    pin or edit controls, so this card has none. */}
+                <div className="media-card-image bg-muted relative aspect-[2/3] overflow-hidden rounded-xl">
+                  {entry.poster_url ? (
+                    <img
+                      src={entry.poster_url}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover transition duration-300 group-hover/card:scale-[1.05]"
+                    />
+                  ) : null}
+                </div>
+                <h2 className="mt-2 truncate font-semibold">{entry.title}</h2>
+                <p className="text-muted-foreground text-sm">
                   {bt("bloem.preview.collections.titleCount", { count: entry.item_count })}
                 </p>
               </Link>

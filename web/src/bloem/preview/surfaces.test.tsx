@@ -82,9 +82,9 @@ it("removes library shuffle", () => {
   expect(screen.queryByRole("button", { name: "Shuffle" })).not.toBeInTheDocument();
 });
 it.each([
-  ["movies", "Recommended"],
-  ["audiobooks", "Home"],
-] as const)("leaves the personal %s tab out of a preview library", (libraryType, label) => {
+  ["movies", "Recommended", true],
+  ["audiobooks", "Home", false],
+] as const)("shows the %s %s tab to a preview: %s", (libraryType, label, shown) => {
   const renderHeader = (preview: boolean) =>
     render(
       <MemoryRouter>
@@ -116,7 +116,10 @@ it.each([
   expect(screen.getByRole("tab", { name: label })).toBeInTheDocument();
   subscriber.unmount();
   renderHeader(true);
-  expect(screen.queryByRole("tab", { name: label })).not.toBeInTheDocument();
+  // A library's rows reach a preview without the personal ones; the audiobook
+  // deck is personal throughout.
+  if (shown) expect(screen.getByRole("tab", { name: label })).toBeInTheDocument();
+  else expect(screen.queryByRole("tab", { name: label })).not.toBeInTheDocument();
   expect(screen.getByRole("tab", { name: "Library" })).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: "Collections" })).toBeInTheDocument();
 });

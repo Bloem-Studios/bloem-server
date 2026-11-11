@@ -3,6 +3,18 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 11, 2026 — the preview shows what a subscriber sees
+
+A side-by-side crawl of 32 kinds of page as a guest and as a subscriber found the
+preview behind the features added since October. A guest now gets the library's
+Recommended rows (without the personal ones; audiobooks keep their Library tab),
+collection posters, box sets in search and on movie pages, poster rating badges, the
+calendar opened on All, and the narrator and "Also by" author on audiobook pages.
+The guest allow-list (`internal/apiv2/bloem_preview_gate.go`) gains six reads with
+nothing personal in them, and the preview host's traffic limit no longer counts the
+web app's files and signed artwork: a library grid's hundred covers had used up its
+burst and come back 429. Personal rows, requests, files and playback stay hidden.
+
 ## November 11, 2026 — short-word typos, and Meilisearch for the preview
 
 Search now forgives one typo in words of three letters or more instead of five

@@ -70,3 +70,48 @@ it.each(["ebook", "audiobook", "manga"] as const)(
     if (type === "manga") expect(screen.getByText("Chapter One")).toBeInTheDocument();
   },
 );
+
+it("names an audiobook's narrator and author to a preview, as the subscriber page does", () => {
+  const item = {
+    type: "audiobook",
+    content_id: "book",
+    title: "A Book",
+    overview: "A description",
+    genres: [],
+    versions: [],
+    studios: [],
+    cast: [],
+    crew: [],
+    audiobook: {
+      authors: [{ name: "Ann Author" }],
+      narrators: [{ name: "Ned Narrator" }],
+      related: { also_by_author: [{ content_id: "other", title: "Another Book" }], similar: [] },
+    },
+  } as unknown as ItemDetail;
+  render(
+    <MemoryRouter>
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <PreviewModeContext.Provider
+          value={{
+            kind: "guest",
+            ends_at: null,
+            cta_url: "https://store.test/trial",
+            cta_label: "Subscribe",
+            item_cta_label: "",
+            cta_message: "",
+            subscribe_label: "",
+            subscribe_url: "",
+            storefront_url: "",
+            launch_url: "",
+          }}
+        >
+          <AudiobookContent item={item as never} libraryId={28} />
+        </PreviewModeContext.Provider>
+      </QueryClientProvider>
+    </MemoryRouter>,
+  );
+  expect(screen.getByText("Ned Narrator")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Also by Ann Author" })).toBeInTheDocument();
+});

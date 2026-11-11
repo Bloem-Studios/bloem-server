@@ -3,8 +3,10 @@ import Original from "../../../components/LibraryHeader";
 import { usePreviewMode } from "../usePreviewMode";
 type LibraryTabs = NonNullable<ComponentProps<typeof Original>["availableTabs"]>;
 const ALL_TABS: LibraryTabs = ["recommended", "library", "collections"];
-// Recommendations (the audiobook "Home" deck too) are personal and refused to a
-// preview visitor, so a preview library has only its library and collections.
+// A library's Recommended tab is its row layout, which the server serves a
+// preview without the personal rows (Continue Watching, For You and the like).
+// The audiobook library's opening deck is built from the personal feed, so an
+// audiobook library keeps only its library and collections.
 //
 // At phone width, with large text, three tabs can outgrow the row: they
 // tighten there, and the bar scrolls rather than running off the screen's edge.
@@ -18,7 +20,7 @@ export default function LibraryHeader(props: ComponentProps<typeof Original>) {
       <Original
         {...props}
         availableTabs={
-          preview
+          preview && props.libraryType === "audiobooks"
             ? (props.availableTabs ?? ALL_TABS).filter((tab) => tab !== "recommended")
             : props.availableTabs
         }

@@ -60,7 +60,10 @@ What keeps guests safe:
 3. **Sessions end on their own.** After two hours, or after 20 minutes without
    use. Switching the preview off ends every guest session at once.
 4. **Capacity is capped.** By default 200 guests at once, and three per internet
-   address; a fourth from the same address ends the oldest.
+   address; a fourth from the same address ends the oldest. The traffic limit (60
+   requests a second across all guests) counts API calls only: the web app's own
+   files and signed artwork pass uncounted, because a library grid alone asks for
+   about a hundred covers at once.
 5. **Little is kept about guests.** Bloem stores no visitor's internet address
    or browser details, and keeps preview events only as daily counts.
 6. **Only an allowed list of actions works.** Anything not on the list is refused,
@@ -95,7 +98,11 @@ sessions.
 
 - A banner that names the preview and shows any free time left, with buttons that
   lead back to the storefront.
-- The chosen libraries and their titles, with search.
+- The chosen libraries and their titles, with search. A library opens on its
+  Recommended rows without the personal ones (the audiobook library's opening deck
+  is personal, so it opens on its Library tab), collections show their posters, box
+  sets appear in search and on their movies, posters carry their rating badges, and
+  the calendar opens on All because a guest follows no shows.
 - No personal pages: no Continue Watching, favourites, watchlist, requests,
   settings, notifications or profile pages. Trying to open one leads to the
   title or home page with a sign-up button.
@@ -344,7 +351,11 @@ intersections explicit. The settings maturity ceiling only tightens host limits.
 Playback, downloads and Live TV stay denied (outside free play, below).
 Authority lookup failures fail closed.
 
-Home and library layouts filter personalized and social recipes before row lookup.
+Home and library layouts filter personalized and social recipes before row lookup,
+so a preview may read both (`getHomeLayout`, `getLibraryLayout`). Box sets
+(`searchCatalogBoxSets`, `getCatalogBoxSet`, `getCatalogItemBoxSet`), the poster
+overlay settings (`getOverlayConfig`) and the row-type catalog (`listSectionRecipes`)
+are reads with nothing personal in them, allowed since 2026-11-11.
 Continue Watching, Next Up, Favorites and Watchlist are excluded explicitly because
 the recipe gallery categorizes them as library staples. Profile-owned collection
 rows are excluded too; hidden row IDs cannot be read through section queries.

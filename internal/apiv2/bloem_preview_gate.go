@@ -46,6 +46,14 @@ var previewOperations = map[string]previewAccess{
 	"getLiteraryWork": previewSafe, "listAudiobookGroups": previewSafe, "getCalendar": previewSafe,
 	"listCollections": previewSafe, "getCollection": previewSafe, "getCollectionItems": previewSafe,
 	"listServerCollections": previewSafe,
+	// Box sets (a franchise's movies) and a library's row layout. The layout
+	// drops personal rows for a preview (filterBloemPreviewSections), as the
+	// home layout does.
+	"searchCatalogBoxSets": previewSafe, "getCatalogBoxSet": previewSafe, "getCatalogItemBoxSet": previewSafe,
+	"getLibraryLayout": previewSafe,
+	// Display reads: poster rating badges and the row-type catalog that row
+	// links are built from.
+	"getOverlayConfig": previewSafe, "listSectionRecipes": previewSafe,
 	// People (cast links): read as a prefetch, see previewPrefetchReads.
 	"listPeople": previewSafe, "getPerson": previewSafe,
 	// Recommendations: global rows only; For You, discover and taste are refused.
