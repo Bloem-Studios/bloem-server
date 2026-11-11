@@ -382,6 +382,12 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      # Bloem: compile the tagged tests too. The database jobs build with
+      # -tags=integration, and nothing else compiles them, so a call to a
+      # removed handler would otherwise surface only there.
+      - name: Vet tagged tests
+        run: make vet-tagged
+
       # Bloem: reachable-vulnerability scan (govulncheck is a go.mod tool).
       - name: Reachable Go vulnerability scan
         run: go tool govulncheck ./...
@@ -520,7 +526,7 @@ jobs:
       - name: Verify the v2 OpenAPI artifact is current
         run: make verify-apiv2-openapi
 
-      # Bloem: the same byte comparison for the native /api/bloem/v1 document,
+      # Bloem: the same byte comparison for the native /api/bloem/v2 document,
       # and for the API catalogue generated from it, so a document change that
       # does not regenerate both fails here.
       - name: Verify the Bloem native OpenAPI artifact is current
@@ -560,6 +566,11 @@ jobs:
 
       - name: Verify the seam ledger covers Silo-file changes
         run: make verify-seams
+
+      # Bloem: no Bloem line may name Silo's retired v1 API or Bloem's
+      # retired v1 API (scripts/bloem/verify-no-v1.py).
+      - name: Verify no Bloem line names a retired API
+        run: make verify-no-v1
 
       - name: Verify the local gate runs every CI command
         run: make verify-local-gate

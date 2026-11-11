@@ -211,7 +211,7 @@ verify-upstream-sync-merge:
 
 # Check committed content for local machine path leaks. This target is part of
 # the CI/release gate, so keep the upstream merge fixture attached here too.
-BLOEM_OPENAPI := contracts/api/bloem/v1/openapi.json
+BLOEM_OPENAPI := contracts/api/bloem/v2/openapi.json
 
 # The Bloem-native surface's OpenAPI artifact. /api/v2 has had one since it
 # existed; the surface Bloem itself owns did not, which is why "does this
@@ -230,6 +230,20 @@ verify-bloem-openapi:
 verify-seams:
 	@bash scripts/verify-seams_test.sh
 	@./scripts/verify-seams.sh
+
+# Fail when a line Bloem adds names Silo's retired v1 API or Bloem's retired v1
+# API. Needs upstream/main (the last merged Silo commit is the base).
+# Exceptions live in contracts/bloem-v1-allow.txt.
+.PHONY: verify-no-v1
+verify-no-v1:
+	python3 scripts/bloem/verify-no-v1_test.py
+	python3 scripts/bloem/verify-no-v1.py
+
+# Vet the tagged tests that go vet ./... skips: the database suites build with
+# -tags=integration, and a few Bloem tests with -tags=bloem.
+.PHONY: vet-tagged
+vet-tagged:
+	go vet -tags integration,bloem ./...
 
 # The local gate (scripts/bloem/local-gate.py) runs every Bloem CI job on a
 # developer machine. Its test fails when bloem-ci.yml gains a make target or a

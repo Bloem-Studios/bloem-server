@@ -93,6 +93,7 @@ STEPS = [
     ),
     Step("build", "go-build", "go build ./..."),
     Step("build", "go-vet", "go vet ./..."),
+    Step("build", "go-vet-tagged", "make vet-tagged"),
     # go-verify, in CI's order, plus the checks the web job and this gate own.
     Step("verify", "settings-bindings", "make verify-settings-bindings"),
     Step("verify", "client-dtos", "make verify-client-dtos"),
@@ -104,6 +105,7 @@ STEPS = [
     Step("verify", "apiv2-contract", "make verify-apiv2-contract BASE_REF=@BASE@"),
     Step("verify", "apiv2-fixtures", "make verify-apiv2-fixtures"),
     Step("verify", "seams", "git fetch --quiet upstream main && make verify-seams"),
+    Step("verify", "no-v1", "git fetch --quiet upstream main && make verify-no-v1"),
     Step("verify", "client-coverage", "go test ./cmd/... ./contracts/..."),
     Step("verify", "local-paths", "make verify-local-paths"),
     Step("verify", "local-gate", "make verify-local-gate"),

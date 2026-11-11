@@ -1,0 +1,26 @@
+# Paths where a Bloem line may name /api/v1 or /api/bloem/v1, checked by
+# scripts/bloem/verify-no-v1.py (make verify-no-v1). One path or shell glob per
+# line, with its reason. Keep this short: everything else uses Silo's /api/v2
+# or Bloem's /api/bloem/v2.
+docs/operations/20*                 # dated records keep the facts of their day
+docs/bloem/CHANGELOG.md             # integration history, written as it happened
+docs/superpowers/*                  # frozen historical plans
+.superpowers/*                      # frozen historical plans
+migrations/sql/20261031234831_bloem_native_ambience_asset_paths.sql  # moved stored paths off /api/v1; never edited
+migrations/bloem_native_ambience_asset_paths_test.go                 # tests that migration's old values
+migrations/sql/20261111215029_bloem_api_v2_ambience_asset_paths.sql  # moves stored /api/bloem/v1 and /api/v1 paths to v2
+migrations/bloem_api_v2_ambience_asset_paths_test.go                 # tests that migration's old values
+docs/architecture/bloem-leaving-silo-v1.md        # the page about the v1 retirement; names retired paths as history
+docs/bloem/api/v1-routes.md                       # hand-written record of Bloem's retired v1 routes
+docs/bloem/overlays/architecture/v1-scope.md      # overlay on Silo's v1 scope; records the retirement
+scripts/bloem/pictures/leaving_silo_v1.py         # pictures for the v1 retirement page
+scripts/bloem/pictures/v1_routes.py               # picture for the retired v1 routes record
+scripts/bloem/pictures/overlay_v1_scope.py        # picture for the v1 scope overlay
+docs/architecture/images/leaving-silo-v1/*        # drawn from leaving_silo_v1.py
+docs/architecture/images/v1-routes/*              # drawn from v1_routes.py
+docs/architecture/images/overlay-v1-scope/*       # drawn from overlay_v1_scope.py
+contracts/bloem-v1-allow.txt        # this file
+scripts/bloem/verify-no-v1.py       # the guard's own description and pattern
+internal/api/v1_route_surface_test.go          # pins that only Silo's tombstone is mounted under /api/v1
+internal/api/testdata/v1_routes_*.txt          # that test's goldens
+cmd/clientdtogen/internal/digestfile/digestfile_test.go   # fixture rows of the client digest's historical removals table
