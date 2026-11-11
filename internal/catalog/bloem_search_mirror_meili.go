@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // The Meilisearch calls the search mirror needs beyond Silo's client: whether an index
@@ -128,17 +130,24 @@ func (c *meilisearchClient) readTargetMarker(ctx context.Context, prefix string)
 // writeTargetMarker sets the identity the server carries for prefix to id and waits until
 // Meilisearch has stored it.
 //
-// It creates the marker index with content_id as its primary key, then replaces the marker
-// document. When the index exists already, Meilisearch 1.56 accepts the creation and fails its
-// task with index_already_exists; that task is not waited for. Tasks on one index run in the
-// order they were enqueued, so the document is stored after the creation either way.
+// When the marker index is absent it creates it with content_id as its primary key; then it
+// replaces the marker document. It checks first because Meilisearch 1.56 accepts the creation of
+// an index that exists and leaves a failed index_already_exists task behind. The creation task is
+// not waited for: tasks on one index run in the order they were enqueued, so the document is
+// stored after the creation.
 func (c *meilisearchClient) writeTargetMarker(ctx context.Context, prefix, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return errors.New("search mirror marker id is empty")
 	}
 	index := searchMirrorMarkerIndex(prefix)
-	if _, err := c.CreateIndex(ctx, index); err != nil {
-		return fmt.Errorf("create the marker index %s: %w", index, err)
+	exists, err := c.indexExists(ctx, index)
+	if err != nil {
+		return fmt.Errorf("check the marker index %s: %w", index, err)
+	}
+	if !exists {
+		if _, err := c.CreateIndex(ctx, index); err != nil {
+			return fmt.Errorf("create the marker index %s: %w", index, err)
+		}
 	}
 	var task meilisearchTask
 	docs := []searchMirrorMarkerDocument{{ContentID: searchMirrorMarkerDocumentID, TargetID: id}}
@@ -170,6 +179,25 @@ func (c *meilisearchClient) indexInfo(ctx context.Context, uid string) (searchMi
 	return info, err
 }
 
+// searchMirrorIndexCreatedAt parses the createdAt of uid's info. An empty or unreadable value is
+// an error, because publishIndex tells a fresh copy from moved contents by it.
+func searchMirrorIndexCreatedAt(uid string, info searchMirrorIndexInfo) (time.Time, error) {
+	if strings.TrimSpace(info.CreatedAt) == "" {
+		return time.Time{}, fmt.Errorf("no createdAt for %s from Meilisearch", uid)
+	}
+	at, err := time.Parse(time.RFC3339Nano, info.CreatedAt)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("read the createdAt of %s: %w", uid, err)
+	}
+	return at, nil
+}
+
+// errSearchMirrorSideStale is publishIndex refusing a side index that is not newer than the
+// existing target: an earlier attempt swapped it already and failed after the swap, so side
+// holds target's old contents, or something newer was published since. Swapping it would put
+// stale contents under target. It classifies as rejected; the caller copies again.
+var errSearchMirrorSideStale = errors.New("the side index is not newer than the target: it was swapped already or something newer was published")
+
 // publishIndex puts side's contents (documents and settings) under target in one step and
 // deletes side. Nothing is visible under target before the step.
 //
@@ -190,15 +218,37 @@ func (c *meilisearchClient) indexInfo(ctx context.Context, uid string) (searchMi
 //     index_not_found when the rename did not happen; that failure is expected and ignored.
 //  2. It checks the swap took effect: target's createdAt must be the one side had before.
 //
+// It is safe to call again after it failed. Before a swap onto an existing target it requires
+// side to be newer than target (createdAt), and otherwise returns errSearchMirrorSideStale
+// without swapping: a failure after an accepted swap leaves side holding target's old contents,
+// and swapping again would bring them back. A second call after a rename fails reading side,
+// which is gone, or enqueues a rename that fails behind the first. Once the check in step 2 has
+// confirmed a swap, failing to delete side does not fail the publish: it is logged, and the
+// copy's cleanup removes the leftover "_mirrorcopy_" index.
+//
 // Callers wait for every task on side before publishing it.
 func (c *meilisearchClient) publishIndex(ctx context.Context, side, target string) error {
 	sideInfo, err := c.indexInfo(ctx, side)
 	if err != nil {
 		return fmt.Errorf("publish %s: read it: %w", side, err)
 	}
-	targetExists, err := c.indexExists(ctx, target)
+	sideCreatedAt, err := searchMirrorIndexCreatedAt(side, sideInfo)
 	if err != nil {
+		return fmt.Errorf("publish %s: %w", side, err)
+	}
+	targetInfo, err := c.indexInfo(ctx, target)
+	targetExists := err == nil
+	if err != nil && !isMeilisearchIndexNotFound(err) {
 		return fmt.Errorf("publish %s as %s: %w", side, target, err)
+	}
+	if targetExists {
+		targetCreatedAt, err := searchMirrorIndexCreatedAt(target, targetInfo)
+		if err != nil {
+			return fmt.Errorf("publish %s as %s: %w", side, target, err)
+		}
+		if !sideCreatedAt.After(targetCreatedAt) {
+			return fmt.Errorf("publish %s as %s: %w", side, target, errSearchMirrorSideStale)
+		}
 	}
 	swaps := []searchMirrorIndexSwap{{Indexes: [2]string{side, target}, Rename: !targetExists}}
 	if err := c.do(ctx, http.MethodPost, "/swap-indexes", swaps, nil); err != nil {
@@ -224,12 +274,15 @@ func (c *meilisearchClient) publishIndex(ctx context.Context, side, target strin
 	if !targetExists {
 		return nil
 	}
+	// target is published. side holds only target's old contents, and a retry would refuse it,
+	// so a failed deletion is logged and not returned.
 	ref, err := c.DeleteIndex(ctx, side)
 	if err == nil {
 		err = c.WaitTask(ctx, ref)
 	}
 	if err != nil {
-		return fmt.Errorf("publish %s as %s: delete the old contents under %s: %w", side, target, side, err)
+		slog.WarnContext(ctx, "search mirror: published, but could not delete the old contents",
+			"component", "catalog", "index", side, "target", target, "err", err)
 	}
 	return nil
 }
