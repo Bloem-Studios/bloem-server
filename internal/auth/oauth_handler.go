@@ -652,6 +652,7 @@ func (h *OAuthHandler) ServeCallback(w http.ResponseWriter, r *http.Request, pre
 	if strings.HasPrefix(location, h.webCompletionURL()+"?") {
 		http.SetCookie(w, oauthCompletionCookie(completionBinder, h.PublicURL(oauthV2Prefix+oauthCompletePath, nil)))
 	}
+	h.bloemSetDomainCompletionCookie(r.Context(), w, location, completionBinder)
 	http.Redirect(w, r, location, http.StatusFound)
 }
 

@@ -8,6 +8,7 @@ package auth
 
 import (
 	"context"
+	"net/http"
 	"strings"
 )
 
@@ -52,4 +53,16 @@ func (h *OAuthHandler) postLogoutRedirectURLFor(ctx context.Context) string {
 // webCompletionURLFor is webCompletionURL on the base of ctx's request.
 func (h *OAuthHandler) webCompletionURLFor(ctx context.Context) string {
 	return h.baseURLFor(ctx) + h.deps.FrontendCompletePath
+}
+
+// bloemSetDomainCompletionCookie sets the completion cookie for a flow that
+// finishes on an organization domain. Silo's callback sets it only when the
+// location is the public URL's completion page, so on an organization domain
+// the browser would arrive without it and could not redeem the code.
+func (h *OAuthHandler) bloemSetDomainCompletionCookie(ctx context.Context, w http.ResponseWriter, location, completionBinder string) {
+	domainCompletion := h.webCompletionURLFor(ctx)
+	if domainCompletion == h.webCompletionURL() || !strings.HasPrefix(location, domainCompletion+"?") {
+		return
+	}
+	http.SetCookie(w, oauthCompletionCookie(completionBinder, h.PublicURL(oauthV2Prefix+oauthCompletePath, nil)))
 }
