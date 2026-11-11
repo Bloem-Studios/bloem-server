@@ -28,8 +28,9 @@ same settings and the same vectors.
   its own main index. There is one mirror, and it holds only the catalog search index.
 - **The mirror is never required.** A mirror that is down, slow or set up wrongly
   never slows, blocks or breaks the main index, and never stops Silo from starting.
-  The mirror also never writes to the main server's catalog index. Its identity marker
-  is the only thing it writes to the main server.
+  The mirror also never writes to the main server's catalog index. The only things it
+  writes to the main server are its identity marker and the removal of its own leftover
+  copy indexes (see [leftover side indexes](#leftover-side-indexes-on-the-new-main)).
 - **The mirror is off unless it is configured.** With no mirror address, Bloem
   registers no mirror task, writes no marker and no row, exports no metric, shows no
   admin section and logs nothing. The only footprint is one column and one index on
@@ -184,7 +185,10 @@ cleared, because the copy holds those items as they are now. The ones the copy i
 refused stay.
 Superseded indexes **on the mirror only** are deleted: this prefix's `_rebuild_*` and
 `_mirrorcopy_*` names and the previously published index. The identity marker index
-and every index outside the prefix are never touched.
+and every index outside the prefix are never touched. A copy that a failover
+interrupts leaves its side index on the server that becomes the main; the mirror
+removes it from there after the swap (see
+[leftover side indexes](#leftover-side-indexes-on-the-new-main)).
 
 ### Following the main index's rebuilds
 
@@ -273,6 +277,19 @@ requires the generation the run loaded. A run that lost the row, because another
 saved it, or lost its lock, because a database failover dropped it, stops quietly and
 records nothing. A stale process therefore cannot undo a swap.
 
+### Leftover side indexes on the new main
+
+A copy that a failover interrupts leaves its side index, `<prefix>_mirrorcopy_<unix
+seconds>`, on the server that is now the main. Silo's own cleanup never removes it: it
+deletes only the main's `_rebuild_*` names and the previous index. A leftover can be
+as big as a whole catalog index.
+
+After a swap, and once every time a process starts, the mirror deletes its own leftover
+`<prefix>_mirrorcopy_*` indexes from the main server. It deletes nothing else there:
+never the main's active index, never a `_rebuild_*` index, never the identity marker
+and never a name outside that pattern. The only writes the mirror makes to the main
+server are therefore its identity marker and the removal of its own copy leftovers.
+
 ### Two Silo copies run together for a while
 
 During a move, the old copy keeps running for a short while after the new one serves.
@@ -291,12 +308,19 @@ overlap, in three parts.
    life and logs "another Silo copy took over search". That prevents flip-backs, which
    would set the bookmark from the oldest unfinished row and could hide rows the old
    copy sent to the wrong server.
-2. **The settle replay.** While the swap is **settling**, the mirror waits until no
-   process that started before the swap, other than the one that did it, has touched
-   its lease for 2 minutes. Then it reopens every main-index row marked done since the
-   swap, less a minute's margin, so the main index re-sends them to the new main. It
-   clears "settling". Rows the old copy handled *before* the swap need nothing: the
-   bookmark describes the old mirror server's content exactly, whoever processed what.
+2. **The settle replay.** While the swap is **settling**, the mirror waits for the old
+   copy, and only for it. Each process records in its lease which main server it talks
+   to: the id of that server's identity marker, in the column `main_target`. The
+   settle waits for a process that has touched its lease within 2 minutes and either
+   still talks to another main than the new one (the old main, which is now the
+   mirror), or started before the swap and has not reported a main yet. The process
+   that did the swap is never waited for. A process of the new copy talks to the new
+   main, so the new copy can run several processes without keeping the swap settling.
+   When no such process is left, the mirror reopens every main-index row marked done
+   since the swap, less a minute's margin, so the main index re-sends them to the new
+   main. It clears "settling". Rows the old copy handled *before* the swap need
+   nothing: the bookmark describes the old mirror server's content exactly, whoever
+   processed what.
 3. **The new mirror needs nothing extra.** Whatever the old copy sent to the old main
    after the swap is already on the old main. Everything else is replayed from the
    oldest-unfinished-row bookmark.
@@ -347,6 +371,11 @@ Bloem puts a **mirror-aware wrapper** around that step.
 - **Otherwise:** it applies the same conditions plus one more. It keeps every row the
   mirror's bookmark has not covered yet. While a copy runs, that means every row
   since the copy began.
+
+The second case runs a copy of Silo's query, kept in `searchMirrorSiloPruneSQL`. A test
+reads Silo's `PruneProcessed` and fails when the two differ, so a change in Silo cannot
+leave operators with a mirror on the old query unnoticed (see
+[the tests](#tests)).
 
 **The cap** is `SILO_MEILISEARCH_MIRROR_MAX_LAG`, 72 hours by default, which covers a
 weekend outage of the other node. It cannot be 24 hours, because cleanup already keeps
@@ -502,16 +531,6 @@ tasks on the existing tasks page: `sync_catalog_search_mirror` and
   and the new index side by side until the copy is published. Run it off-peak.
 - **Meilisearch upgrades are the operator's job.** The mirror does not carry the
   Meilisearch binary, so upgrade both servers and keep their versions equal.
-- **The settle replay waits on every older process with the mirror configured,** not
-  only on the old copy. A copy that runs two or more such processes can therefore stay
-  settling after a move, and the admin section shows `settling_overdue` after 30
-  minutes.
-- **A copy interrupted by a failover leaves its side index behind.** Its
-  `<prefix>_mirrorcopy_*` index stays on the server that is now the main. The mirror
-  writes nothing to the main server except its marker, so it never deletes that index.
-  Remove it by hand.
-- **No test pins the copy of Silo's cleanup query yet.** When Silo changes
-  `PruneProcessed`, compare it with `searchMirrorSiloPruneSQL` by hand.
 
 ## Who can change what
 
@@ -532,7 +551,7 @@ tasks on the existing tasks page: `sync_catalog_search_mirror` and
 | Side index | `<prefix>_mirrorcopy_<unix seconds>`, where `<prefix>` is `CatalogSearchSettings.MeilisearchIndex` |
 | Identity marker | the index `<prefix>_bloem_target` |
 | Dead-letters | `bloem_search_mirror_dead_letters` |
-| The lease | `bloem_search_mirror_processes`, one row per Silo process with the mirror configured |
+| The lease | `bloem_search_mirror_processes`, one row per Silo process with the mirror configured: when it started, when it last touched the row, and `main_target`, the id of the identity marker of the main server it talks to |
 | Mirror-aware cleanup | `SearchMirrorAwarePruner` in `internal/catalog/bloem_search_mirror_prune.go`, wired by `bloemWireSearchMirror` in `cmd/silo/bloem_main.go` |
 | The metrics | `internal/catalog/bloem_search_mirror_metrics.go`, prefix `silo_search_mirror_` |
 | The admin route | `GET /api/bloem/v1/admin/search/mirror` |
@@ -591,7 +610,9 @@ Every new line is in a `bloem_*` file, a Bloem-owned file or an existing seam.
 - The same migration adds `catalog_search_index_state.bloem_mirror jsonb`, which holds
   the bookmark snapshot, the resume point, the state, both servers' identities, the
   copy progress, the last error and since when, and the lag cap. It also creates
-  `bloem_search_mirror_dead_letters` and `bloem_search_mirror_processes`.
+  `bloem_search_mirror_dead_letters` and `bloem_search_mirror_processes`. The lease
+  table also holds `main_target`, the id of the identity marker of the main server the
+  process talks to, which the settle replay reads.
 - `migrations/sql/20261111083321_bloem_search_mirror_tx_index.sql` builds
   `idx_catalog_search_index_events_tx` on `(tx_id, id)` with `CREATE INDEX
   CONCURRENTLY`, in a no-transaction migration, after dropping an invalid leftover of
@@ -704,15 +725,19 @@ index.
 
 ### Invariants
 
-- The mirror never writes to the main Meilisearch's catalog index, and never to the
-  main server except the identity marker.
+- The mirror never writes to the main Meilisearch's catalog index. The only writes to
+  the main server are its identity marker and the deletion of its own leftover
+  `<prefix>_mirrorcopy_*` indexes, after a swap and once at each process start. It
+  never deletes the main's active index or any other name.
 - The mirror never takes `searchIndexMaintenanceLockID`, except inside the swap step.
   Its own advisory lock, its own database connection and its own Meilisearch client
   keep it apart from the main sync.
 - A mirror never changes the main index's sync: with the mirror down or slow, the main
   sync's runs, timings and results are unchanged.
 - The cleanup wrapper's copy of Silo's query must stay identical to Silo's
-  `PruneProcessed`. No test pins it yet (see [known limits](#known-limits)).
+  `PruneProcessed`. `TestSearchMirrorPrunePinsSiloQuery` fails when Silo changes it:
+  update `searchMirrorSiloPruneSQL` in `bloem_search_mirror_prune.go` and re-check the
+  hold.
 - The mirror's row is saved by compare-and-set on its generation counter, so a run
   that no longer owns the mirror never overwrites a newer row.
 - The wrapper is always installed, even without a variable. With no mirror row it calls
@@ -723,6 +748,10 @@ index.
   `node_heartbeats`. That table has one row per node id, and two copies that share a
   compose file may share a node id. Every process with the mirror configured, which
   are the processes that run Silo's main sync, writes its lease every 15 seconds.
+- The lease also says which main server the process talks to (`main_target`, the id of
+  that main's identity marker). The settle replay waits only for live processes that
+  talk to another main than the new one, or that started before the swap and have
+  reported none yet, so a copy may run any number of processes.
 
 ### Tests
 
@@ -748,14 +777,31 @@ index.
   - Meilisearch (`bloem_search_mirror_meili_test.go`): the contract tests above, how
     errors are sorted, the fake's helpers, and a publish that keeps the side index
     when the swap fails;
+  - the cleanup's copy of Silo's query (`bloem_search_mirror_prune_pin_test.go`):
+    `TestSearchMirrorPrunePinsSiloQuery` reads `PruneProcessed` out of
+    `search_index_repo.go` and compares its query, white space aside, with
+    `searchMirrorSiloPruneSQL`. It needs no database. It fails with "Silo changed
+    PruneProcessed; update searchMirrorSiloPruneSQL in bloem_search_mirror_prune.go and
+    re-check the hold";
+  - the wiring (`cmd/silo/bloem_search_mirror_wire_test.go`), which runs for every
+    operator:
+    - `TestBloemWireSearchMirrorOffRegistersNothing`: with the mirror variables unset,
+      no mirror task, no log line, and Silo's `cleanup_catalog_search_index_events` step
+      is still replaced, in place, by the mirror-aware one;
+    - `TestBloemWireSearchMirrorBadConfigNeverStopsSilo`: for each of the five problems,
+      the wiring returns, registers no task, logs exactly one error line, and that line
+      holds no key, key file content or password;
+    - `TestBloemWireSearchMirrorConfiguredRegistersBoth`: both tasks are registered and
+      the process writes its lease. It needs the test database and skips when
+      `SILO_TEST_DATABASE_URL` is unset;
   - the web: `web/src/bloem/admin/SearchMirrorStatus.test.tsx` (what the section shows
     in each state, the warnings, the copy progress, the capped count, the last error
     and the dead-letters, and nothing outside a Platform context) and
     `web/src/hooks/queries/admin/searchMirror.test.tsx` (the query runs only in a
     Platform context, bound to its authority).
-- Following, full copies, failover, settle, cleanup, failure handling, the metrics,
-  the status route and the wiring have no tests yet. That was a deliberate decision
-  for this release, not an oversight.
+- Following, full copies, failover, settle, what the cleanup does with a mirror row,
+  failure handling, the metrics and the status route have no tests yet. That was a
+  deliberate decision for this release, not an oversight.
 
 ### Related pages
 
