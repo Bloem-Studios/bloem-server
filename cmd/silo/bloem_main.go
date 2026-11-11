@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"os"
 	"strconv"
 	"time"
 
@@ -41,6 +42,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/serveridentity"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
+	"github.com/Silo-Server/silo-server/internal/taskmanager"
+	"github.com/Silo-Server/silo-server/internal/taskmanager/tasks"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/worker"
 )
@@ -493,5 +496,58 @@ func bloemUserSessionsRevoker(
 			return fmt.Errorf("publish session revocation: %w", err)
 		}
 		return nil
+	}
+}
+
+// bloemWireSearchMirror wires the optional Meilisearch search mirror. It always replaces the
+// event cleanup step with the mirror-aware one, which is Silo's own while no mirror row exists.
+// Without SILO_MEILISEARCH_MIRROR_URL it does nothing else: no task, no lease, no metrics, no log
+// line. A configuration with a problem logs one error and registers no task; the metrics still
+// start so the state shows misconfigured. Nothing here ever stops Silo.
+func bloemWireSearchMirror(ctx context.Context, taskMgr *taskmanager.TaskManager, pool *pgxpool.Pool, settings catalog.SettingsStore,
+	startup catalog.CatalogSearchSettings, indexer *catalog.CatalogSearchIndexer, steps []taskmanager.Task) []taskmanager.Task {
+	for i, step := range steps {
+		if step != nil && step.Key() == "cleanup_catalog_search_index_events" {
+			steps[i] = tasks.NewCatalogSearchEventRetentionTask(catalog.NewSearchMirrorAwarePruner(pool))
+		}
+	}
+
+	// cfg holds the mirror's API key: log only cfg.LogMessage() and cfg.RedactedURL().
+	cfg := catalog.LoadSearchMirrorConfig(os.Getenv, os.ReadFile, startup.MeilisearchURL)
+	catalog.SetSearchMirrorRuntime(cfg, nil)
+	if !cfg.Configured {
+		return steps
+	}
+	if cfg.Problem != "" {
+		slog.ErrorContext(ctx, cfg.LogMessage(), "component", "catalog")
+		bloemStartSearchMirrorMetrics(ctx, pool, cfg)
+		return steps
+	}
+	if indexer == nil {
+		slog.ErrorContext(ctx, "search mirror not started: no catalog search indexer", "component", "catalog")
+		return steps
+	}
+
+	mirror, err := catalog.NewSearchMirror(pool, cfg, settings, startup, indexer, catalog.SearchMirrorOptions{
+		StartTask: func(key string) error {
+			_, err := taskMgr.StartTask(key)
+			return err
+		},
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "search mirror not started", "component", "catalog", "error", err)
+		return steps
+	}
+	taskMgr.Register(tasks.NewSyncCatalogSearchMirrorTask(mirror))
+	taskMgr.Register(tasks.NewRebuildCatalogSearchMirrorTask(mirror))
+	mirror.StartProcessLease(ctx)
+	catalog.SetSearchMirrorRuntime(cfg, mirror)
+	bloemStartSearchMirrorMetrics(ctx, pool, cfg)
+	return steps
+}
+
+func bloemStartSearchMirrorMetrics(ctx context.Context, pool *pgxpool.Pool, cfg catalog.SearchMirrorConfig) {
+	if err := catalog.StartSearchMirrorMetrics(ctx, pool, cfg); err != nil {
+		slog.WarnContext(ctx, "search mirror metrics not started", "component", "catalog", "error", err)
 	}
 }
