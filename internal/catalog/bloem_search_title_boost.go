@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 )
 
 // Bloem: title matches stay first in hybrid search.
@@ -32,6 +33,15 @@ import (
 // (73% in the top 10 either way) while plot matches no longer crowd out the
 // meaning results (16, all episodes named with the typed words).
 //
+// The title query goes out twice: as typed, and with the last word marked as
+// finished (a trailing space). Meilisearch treats the last word as a prefix
+// still being typed and does not forgive a swapped letter in a short prefix,
+// so "breaking bda" matched no title as typed but does as a finished word; the
+// as-typed query keeps "breaking ba" finding Breaking Bad while typing. With
+// typo tolerance from three letters (bloem_search_typo_tolerance.go) a typo in
+// a 3-4 letter word put the right title in the top 10 for 79.1% of searches
+// with one query and 86.8% with both.
+//
 // If Meilisearch rejects the federated request, the original request runs
 // unchanged, so the boost never makes a search worse than before.
 
@@ -46,17 +56,24 @@ func bloemTitleBoostApplies(query string, hybrid *meilisearchHybridRequest) bool
 	return hybrid != nil && len(catalogSearchQueryTerms(query)) >= meilisearchShortHybridMinTerms
 }
 
-func bloemTitleQuery(base meilisearchFederatedQuery) meilisearchFederatedQuery {
-	query := meilisearchFederatedQuery{
-		IndexUID:             base.IndexUID,
-		Query:                base.Query,
-		Filter:               base.Filter,
-		AttributesToRetrieve: base.AttributesToRetrieve,
-		AttributesToSearchOn: append([]string(nil), bloemTitleBoostAttributes...),
-		MatchingStrategy:     "all",
+// bloemTitleQueries returns the title query as typed and with its last word
+// finished.
+func bloemTitleQueries(base meilisearchFederatedQuery) []meilisearchFederatedQuery {
+	typed := strings.TrimSpace(base.Query)
+	queries := make([]meilisearchFederatedQuery, 0, 2)
+	for _, text := range []string{typed, typed + " "} {
+		query := meilisearchFederatedQuery{
+			IndexUID:             base.IndexUID,
+			Query:                text,
+			Filter:               base.Filter,
+			AttributesToRetrieve: base.AttributesToRetrieve,
+			AttributesToSearchOn: append([]string(nil), bloemTitleBoostAttributes...),
+			MatchingStrategy:     "all",
+		}
+		query.FederationOptions.Weight = base.FederationOptions.Weight * bloemTitleBoostWeight
+		queries = append(queries, query)
 	}
-	query.FederationOptions.Weight = base.FederationOptions.Weight * bloemTitleBoostWeight
-	return query
+	return queries
 }
 
 // withBloemTitleBoost puts a title query after every query of a request that
@@ -77,15 +94,15 @@ func withBloemTitleBoost(req meilisearchFederatedSearchRequest) (meilisearchFede
 	if ratio := hybrid.SemanticRatio; ratio > 0.5 {
 		keywordShare = (1 - ratio) / ratio
 	}
-	queries := make([]meilisearchFederatedQuery, 0, 2*len(req.Queries))
+	queries := make([]meilisearchFederatedQuery, 0, 3*len(req.Queries))
 	for _, query := range req.Queries {
-		title := bloemTitleQuery(query)
+		titles := bloemTitleQueries(query)
 		if query.Hybrid == nil {
 			query.FederationOptions.Weight *= keywordShare
 		}
 		queries = append(queries, query)
 		if len(catalogSearchQueryTerms(query.Query)) >= meilisearchShortHybridMinTerms {
-			queries = append(queries, title)
+			queries = append(queries, titles...)
 		}
 	}
 	req.Queries = queries
@@ -113,7 +130,7 @@ func (c *meilisearchClient) bloemTitleBoostSearch(ctx context.Context, uid strin
 	main.FederationOptions.Weight = 1
 	return c.bloemRunTitleBoost(ctx, meilisearchFederatedSearchRequest{
 		Federation: meilisearchFederationOptions{Offset: req.Offset, Limit: req.Limit},
-		Queries:    []meilisearchFederatedQuery{main, bloemTitleQuery(main)},
+		Queries:    append([]meilisearchFederatedQuery{main}, bloemTitleQueries(main)...),
 	})
 }
 

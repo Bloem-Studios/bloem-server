@@ -47,7 +47,11 @@ func IsPreviewPrincipal(ctx context.Context) bool {
 }
 
 func withPreviewPrincipal(ctx context.Context) context.Context {
-	return previewcontext.With(context.WithValue(ctx, previewPrincipalKey{}, true))
+	ctx = previewcontext.With(context.WithValue(ctx, previewPrincipalKey{}, true))
+	if claims := GetClaims(ctx); claims != nil && claims.SessionID != "" {
+		ctx = previewcontext.WithSearchScope(ctx, claims.SessionID)
+	}
+	return ctx
 }
 
 // WritePreviewOnly refuses a request because the caller is a preview principal.

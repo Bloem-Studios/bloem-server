@@ -794,7 +794,7 @@ func catalogSearchMeilisearchSettings(embedder string, semanticEnabled, binaryQu
 		}
 		settings["embedders"] = catalogSearchMeilisearchEmbedderSettings(embedder, binaryQuantized)
 	}
-	return settings
+	return withBloemSearchSettings(settings) // Bloem: bloem_search_typo_tolerance.go
 }
 
 func coalesceSearchIndexEvents(events []SearchIndexEvent) (upsertIDs []string, deleteIDs []string) {

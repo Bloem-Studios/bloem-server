@@ -3,6 +3,24 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 11, 2026 — short-word typos, and Meilisearch for the preview
+
+Search now forgives one typo in words of three letters or more instead of five
+(`internal/catalog/bloem_search_typo_tolerance.go`, a hook line in Silo's
+`search_indexer.go`, a temporary seam), and the names-first query also runs with the
+last word treated as finished, because Meilisearch forgives no swapped letter in a
+short word it thinks is still being typed. On a scratch copy of the live index a typo
+in a 3-4 letter word ("mda max", "breaking bda") put the right title in the top 10 for
+86.8% of searches instead of 60.5%, with no change for exact titles, long-word typos or
+descriptions. The live index got the setting by a settings update; it needs no reindex.
+
+The public preview searched with PostgreSQL, which found three titles for "breaking
+bad". It now searches the Meilisearch index by keyword only
+(`internal/catalog/bloem_preview_search.go`): still no AI call, but the same keyword
+ranking a subscriber gets. Every guest shares one account, so search ranking sessions
+are kept per guest login session (`previewcontext.SearchScope`, set by the preview
+middleware) rather than per account.
+
 ## November 11, 2026 — search ranks by meaning and keeps names first
 
 Every hybrid search of two or more words now also looks for its words in the titles'

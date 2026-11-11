@@ -24,7 +24,7 @@ func (s *DetailService) ForPreview(ctx context.Context) *DetailService {
 type bloemPreviewSearch struct{ ordinary, keyword CatalogSearchProvider }
 
 func BloemPreviewSearch(ordinary CatalogSearchProvider, repo *ItemRepository) CatalogSearchProvider {
-	return &bloemPreviewSearch{ordinary: ordinary, keyword: NewPostgresSearchProvider(repo)}
+	return &bloemPreviewSearch{ordinary: ordinary, keyword: bloemPreviewKeywordSearch(ordinary, repo)}
 }
 func (s *bloemPreviewSearch) Search(ctx context.Context, req CatalogSearchRequest) (*CatalogSearchResult, error) {
 	if previewcontext.Active(ctx) {
@@ -34,13 +34,14 @@ func (s *bloemPreviewSearch) Search(ctx context.Context, req CatalogSearchReques
 }
 
 // ForPreview retains the original provider's concrete identity and capabilities
-// for subscribers; previews receive a request-local keyword-only resolver.
+// for subscribers; previews receive a request-local keyword-only resolver
+// (bloem_preview_search.go).
 func (r *CatalogResolver) ForPreview(ctx context.Context) *CatalogResolver {
 	if r == nil || !previewcontext.Active(ctx) {
 		return r
 	}
 	clone := *r
-	clone.searchProvider = NewPostgresSearchProvider(r.itemRepo)
+	clone.searchProvider = bloemPreviewKeywordSearch(r.searchProvider, r.itemRepo)
 	clone.watchlistPromoter = nil
 	return &clone
 }

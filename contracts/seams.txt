@@ -137,6 +137,7 @@ internal/catalog/collection_sync_scheduler.go
 internal/catalog/filesplit/filesplit.go  # native selected-target authorization boundary
 internal/catalog/folder_repo.go
 internal/catalog/library_repo.go
+internal/catalog/search_indexer.go  # one hook line: index settings forgive one typo from three letters (bloem_search_typo_tolerance.go); temporary, typos in 3-4 letter words in the top 10: 60.5% -> 86.8% on a scratch copy of the live index, 2026-11-11, drop when Silo has an equivalent
 internal/catalog/search_meilisearch_client.go  # two hook lines: hybrid searches also query the title fields so title matches stay first (bloem_search_title_boost.go); temporary, lets the semantic ratio go to 0.6 without losing typed titles (one-typo titles in the top 10: 78% -> 93% at 0.6 on the live index, 2026-11-11), drop when Silo has an equivalent
 internal/catalog/search_meilisearch_provider.go  # two-word searches stay strict under frequency as under last; temporary, frequency matching (descriptive searches in the top 50: 16.5% -> 36.5% on the live index, titles unchanged, 2026-11-10), drop when Silo's version merges
 internal/catalog/search_provider.go  # accept frequency as a matching strategy; temporary, frequency matching (descriptive searches in the top 50: 16.5% -> 36.5% on the live index, titles unchanged, 2026-11-10), drop when Silo's version merges

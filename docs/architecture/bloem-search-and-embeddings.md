@@ -20,7 +20,8 @@ With **Meilisearch** as the search engine, a search runs like this:
 1. **Words.** Meilisearch looks for the search's words in each title's name, its other
    names, its people, studios, networks, genres, keywords, plot and tagline. A match in
    the name counts most, a match in the tagline least. It forgives small typing mistakes:
-   one wrong letter in a word of five letters or more, two in a word of nine or more.
+   one wrong letter in a word of three letters or more (Bloem's setting; Meilisearch's
+   default starts at five), two in a word of nine or more.
 2. **Meaning.** An **embedding** is a list of numbers, a **vector**, that an AI model
    makes from a piece of text. Texts that mean similar things get vectors that lie close
    together. Every title has one, made from its genres, plot, name, year, rating,
@@ -34,7 +35,11 @@ With **Meilisearch** as the search engine, a search runs like this:
    every word required, and ranks a title whose name has all of them above the mixed
    list. Someone typing a title, even with a typing mistake, still gets it first while
    meaning decides everything else. Episodes, which have no vectors, are found the same
-   way by name, and by their plots only as much as the words half counts.
+   way by name, and by their plots only as much as the words half counts. Meilisearch
+   treats the last word as still being typed and then forgives no swapped letter in a
+   short word, so the names are searched twice: as typed, which keeps "breaking ba"
+   finding Breaking Bad, and with the last word finished, which lets "breaking bda" find
+   it too.
 
 The words half answers alone when the meaning half cannot help: a one-word search, a
 search for episodes, and any kind of title that is still getting its vectors (see
@@ -156,7 +161,14 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   `meilisearchClient.Search` and `FederatedSearch`): keyword only, `matchingStrategy`
   `all`, on `title`, `original_title`, `sort_title` and `title_variants`, with the same
   filter and 1.2 times the hybrid query's weight. Meilisearch returns each document once.
-  In a search that mixes episodes and other types, Silo's keyword-only episode query
+  The title query goes out twice, as typed and with a trailing space that marks the
+  last word finished (Meilisearch matches the last word as a prefix and does not
+  forgive a transposition in a short prefix). The index settings set
+  `typoTolerance.minWordSizeForTypos.oneTypo` to 3 (`bloem_search_typo_tolerance.go`,
+  hooked into `catalogSearchMeilisearchSettings`). It is a search-time setting outside
+  the schema version: changing it needs no reindex and forces no rebuild, and an index
+  built earlier gets it from a one-time settings update.
+- In a search that mixes episodes and other types, Silo's keyword-only episode query
   gets the same title twin, and its own weight is multiplied by `(1 - r) / r` for a
   semantic ratio `r` above 0.5 (0.67 at 0.6), the keyword share Meilisearch gives the
   words half inside a hybrid query. If Meilisearch refuses the federated request with a
@@ -250,6 +262,16 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   Meaning scores sit high enough that a keyword query weighted 0.5 never reaches the top
   50, so the episode name query is what keeps episodes findable. The 16 left are all
   episodes named with the typed words, such as "Time Travel" and "Murder Mystery".
+- **Short-word typos, November 11.** A scratch Meilisearch with the 1.27 million
+  non-episode documents and production's settings, merged with production's hybrid
+  results the way federation merges them (head to head by weighted score; 603 of 608
+  top results matched production). Target in the top 10, one-typo minimum word length
+  5 / 4 / 3 / 3 with the finished-word title query: typo in a 3-4 letter word (129
+  searches) 60.5% / 70.5% / 79.1% / 86.8%; typo in a long word 91.3% / 92.0% / 92.0% /
+  92.0%; exact titles 98.2% throughout; well-known titles typed right 94.9% throughout;
+  descriptions 65.6% throughout. One of 22 everyday searches changed its top 10. The
+  meaning half cannot fix these: "breaking bda" ranked Breaking Bad 230th by meaning,
+  148th with full vectors.
 - **Compressed vectors, November 11.** The index stores binary-quantized vectors. For
   the 163 descriptions, re-ranking Meilisearch's 500 nearest titles by the full 3,072
   numbers put the target first in 46.6% of searches instead of 40.5%, and in the top 10
@@ -268,13 +290,15 @@ Listed in `contracts/seams.txt`, to drop when Silo has the change:
 `internal/recommendations/search_query_vector.go` (labels, `9df39cadb`);
 `internal/catalog/search_meilisearch_provider.go`, `internal/catalog/search_provider.go`
 and `web/src/pages/admin-settings/SearchSettings.tsx` (`frequency`, `7acd2c7e0`);
-`internal/catalog/search_meilisearch_client.go` (names first).
+`internal/catalog/search_meilisearch_client.go` (names first);
+`internal/catalog/search_indexer.go` (typo tolerance from three letters).
 `internal/config/admin_settings.go` was already a seam.
 
 Tests: `internal/recommendations/embeddings/bloem_task_labels_test.go`,
 `internal/recommendations/bloem_search_query_labels_test.go`,
 `internal/catalog/bloem_matching_strategy_test.go`,
 `internal/catalog/bloem_search_title_boost_test.go`,
+`internal/catalog/bloem_preview_search_test.go`,
 `internal/config/bloem_search_matching_test.go`,
 `web/src/pages/admin-settings/bloemSearchMatchingStrategy.test.tsx`.
 

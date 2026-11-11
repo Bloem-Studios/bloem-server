@@ -348,8 +348,14 @@ Home and library layouts filter personalized and social recipes before row looku
 Continue Watching, Next Up, Favorites and Watchlist are excluded explicitly because
 the recipe gallery categorizes them as library staples. Profile-owned collection
 rows are excluded too; hidden row IDs cannot be read through section queries.
-Preview catalogue and native Watch search delegate to PostgreSQL keyword retrieval
-without calling the configured external or semantic provider.
+Preview catalogue and native Watch search never call a semantic provider. With
+Meilisearch configured they use it by keyword only (`internal/catalog/bloem_preview_search.go`,
+since 2026-11-11): no query embedding, and the ranking of the words half of a
+subscriber's search. Search ranking sessions, at most 16 per account, are kept per
+login session instead, because every guest shares one account. Without Meilisearch,
+previews keep PostgreSQL keyword retrieval, which they used for everything before:
+it found three titles for "breaking bad" where the Meilisearch index finds every
+title holding both words.
 
 Preview detail uses request-local readers without probe repair, copy-safety racing,
 chapter extraction, marker population or watchlist promotion. Metadata refresh

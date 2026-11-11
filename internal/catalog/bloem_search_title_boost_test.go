@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"slices"
 	"sync"
 	"testing"
@@ -65,10 +66,10 @@ func TestHybridSearchAlsoQueriesTitlesWithMoreWeight(t *testing.T) {
 		t.Fatalf("calls = %#v, want one /multi-search", got)
 	}
 	req := got[0].Request
-	if req.Federation.Offset != 20 || req.Federation.Limit != 10 || len(req.Queries) != 2 {
+	if req.Federation.Offset != 20 || req.Federation.Limit != 10 || len(req.Queries) != 3 {
 		t.Fatalf("federated request = %#v", req)
 	}
-	main, title := req.Queries[0], req.Queries[1]
+	main, title, finished := req.Queries[0], req.Queries[1], req.Queries[2]
 	if main.Hybrid == nil || main.Hybrid.SemanticRatio != 0.6 || len(main.Vector) != 2 || main.FederationOptions.Weight != 1 ||
 		main.MatchingStrategy != "frequency" || main.IndexUID != "catalog" {
 		t.Fatalf("hybrid query = %#v", main)
@@ -78,6 +79,13 @@ func TestHybridSearchAlsoQueriesTitlesWithMoreWeight(t *testing.T) {
 		title.Filter != main.Filter || title.Query != main.Query || title.IndexUID != "catalog" ||
 		title.FederationOptions.Weight != bloemTitleBoostWeight {
 		t.Fatalf("title query = %#v", title)
+	}
+	// The second title query marks the last word as finished, so a typo in a
+	// short last word ("breaking bda") is forgiven like any other word.
+	want := title
+	want.Query = main.Query + " "
+	if !reflect.DeepEqual(finished, want) {
+		t.Fatalf("finished-word title query = %#v, want %#v", finished, want)
 	}
 }
 
@@ -118,8 +126,8 @@ func TestMixedSearchWeighsEpisodesByTheKeywordShareAndQueriesBothTitles(t *testi
 		t.Fatalf("FederatedSearch: %v", err)
 	}
 	got := calls()
-	if len(got) != 1 || len(got[0].Request.Queries) != 4 {
-		t.Fatalf("calls = %#v, want one request with four queries", got)
+	if len(got) != 1 || len(got[0].Request.Queries) != 6 {
+		t.Fatalf("calls = %#v, want one request with six queries", got)
 	}
 	q := got[0].Request.Queries
 	near := func(a, b float64) bool { return a-b < 1e-9 && b-a < 1e-9 }
@@ -130,13 +138,21 @@ func TestMixedSearchWeighsEpisodesByTheKeywordShareAndQueriesBothTitles(t *testi
 		!near(q[1].FederationOptions.Weight, bloemTitleBoostWeight) {
 		t.Fatalf("media title query = %#v", q[1])
 	}
-	if q[2].Filter != `type = "episode"` || q[2].MatchingStrategy != "" || !near(q[2].FederationOptions.Weight, 0.4/0.6) {
-		t.Fatalf("episode query = %#v, want weight (1-0.6)/0.6", q[2])
+	if q[2].Query != "show about a chef " || q[2].Filter != q[1].Filter || !near(q[2].FederationOptions.Weight, bloemTitleBoostWeight) {
+		t.Fatalf("media finished-word title query = %#v", q[2])
 	}
-	if q[3].MatchingStrategy != "all" || q[3].Filter != `type = "episode"` ||
-		!slices.Equal(q[3].AttributesToSearchOn, bloemTitleBoostAttributes) ||
-		!near(q[3].FederationOptions.Weight, bloemTitleBoostWeight) {
-		t.Fatalf("episode title query = %#v", q[3])
+	if q[3].Filter != `type = "episode"` || q[3].MatchingStrategy != "" || !near(q[3].FederationOptions.Weight, 0.4/0.6) {
+		t.Fatalf("episode query = %#v, want weight (1-0.6)/0.6", q[3])
+	}
+	for _, title := range q[4:] {
+		if title.MatchingStrategy != "all" || title.Filter != `type = "episode"` ||
+			!slices.Equal(title.AttributesToSearchOn, bloemTitleBoostAttributes) ||
+			!near(title.FederationOptions.Weight, bloemTitleBoostWeight) {
+			t.Fatalf("episode title query = %#v", title)
+		}
+	}
+	if q[4].Query != "show about a chef" || q[5].Query != "show about a chef " {
+		t.Fatalf("episode title queries = %q, %q", q[4].Query, q[5].Query)
 	}
 }
 
@@ -146,7 +162,7 @@ func TestEpisodesKeepSilosWeightUpToAnEvenMix(t *testing.T) {
 		if _, err := client.FederatedSearch(context.Background(), mixedSearchRequest(ratio)); err != nil {
 			t.Fatalf("FederatedSearch: %v", err)
 		}
-		if q := calls()[0].Request.Queries; len(q) != 4 || q[2].FederationOptions.Weight != 1 {
+		if q := calls()[0].Request.Queries; len(q) != 6 || q[3].FederationOptions.Weight != 1 {
 			t.Fatalf("ratio %v: queries = %#v, want the episode query at weight 1", ratio, q)
 		}
 	}
@@ -182,5 +198,18 @@ func TestTitleBoostDoesNotRetryAServerFailure(t *testing.T) {
 	}
 	if got := calls(); len(got) != 1 {
 		t.Fatalf("calls = %#v, want one", got)
+	}
+}
+
+func TestIndexSettingsForgiveOneTypoFromThreeLetters(t *testing.T) {
+	for _, semantic := range []bool{false, true} {
+		settings := catalogSearchMeilisearchSettings("silo_recommendations", semantic, true)
+		raw, err := json.Marshal(settings["typoTolerance"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(raw) != `{"minWordSizeForTypos":{"oneTypo":3,"twoTypos":9}}` {
+			t.Fatalf("semantic=%v: typoTolerance = %s", semantic, raw)
+		}
 	}
 }
