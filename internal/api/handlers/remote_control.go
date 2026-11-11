@@ -9,7 +9,7 @@ import (
 )
 
 // Remote control is dormant (docs/architecture/admin-remote-control.md): its
-// routes lived only on Silo's /api/v1, which Silo retired (Silo #3200), and
+// routes lived only on Silo's alpha v1 API, which Silo retired (Silo #3200), and
 // nothing wires a RemoteObserver, so these hooks are inert until native
 // remote-control routes are built.
 

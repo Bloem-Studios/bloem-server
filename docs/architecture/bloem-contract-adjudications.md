@@ -1,6 +1,6 @@
 # How Bloem's contract adjudications work
 
-> **Retired on 2026-11-11.** Silo retired `/api/v1` and deleted its scenario catalogs,
+> **Retired on 2026-11-11.** Silo retired its v1 API and deleted its scenario catalogs,
 > their executor and the v1/v2 pairing model (Silo #3200, merged into Bloem in
 > `26cf9b3e4`). The adjudications, Bloem's extra catalogs and executor hooks went with
 > them, as did the gate's `scenarios` phase and Bloem CI's scenario executor job. This
@@ -12,6 +12,7 @@
 > reviewed, pinned decision replaces that expectation. Silo's files are unchanged. The
 > technical rules are in the [For developers](#for-developers) section; the dated results
 > there are history.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Silo describes how its API must behave in **scenario files**: a request, who sends it, and the
 answer Silo expects. Bloem runs those same files against its own server. This page explains
@@ -202,11 +203,11 @@ from the ordinary gate.
 unchanged route snapshots and lists every affected method and path:
 
 - Three OAuth routes are existing upstream Silo routes, verified in the tracked upstream
-  router: `POST /api/v1/auth/oauth/complete`, `POST /api/v1/auth/oauth/{install_id}/init`,
-  and `GET /api/v1/auth/oauth/{install_id}/callback`. They are not new fork-only v1 features.
+  router, under its v1 prefix: `POST /auth/oauth/complete`, `POST /auth/oauth/{install_id}/init`,
+  and `GET /auth/oauth/{install_id}/callback`. They are not new fork-only v1 features.
   The full surface check now requires these additions explicitly.
-- The 28 historical `/api/v1/livetv/...` entries describe Bloem's Prairie-derived feature, not
-  an upstream Silo capability. Their maintained home is `/api/bloem/v1/livetv/...`, as already
+- The 28 historical v1 `/livetv/...` entries describe Bloem's Prairie-derived feature, not
+  an upstream Silo capability. Their maintained home is `/api/bloem/v2/livetv/...`, as already
   implemented by the native Live TV work. This review records the namespace correction; it
   does not introduce aliases, redirects or another v1 removal at runtime. Older callers of the
   fork-only prefix must migrate; they are not claimed compatible.

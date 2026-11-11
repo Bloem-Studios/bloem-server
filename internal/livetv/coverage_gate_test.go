@@ -423,13 +423,13 @@ func TestMediaTransportDialControlBlocksMetadata(t *testing.T) {
 }
 
 func TestPublicSessionHelpers(t *testing.T) {
-	if path := PublicSessionStreamPath("abc"); path != "/api/v1/livetv/sessions/abc/stream" {
+	if path := PublicSessionStreamPath("abc"); path != "/api/bloem/v2/livetv/sessions/abc/stream" {
 		t.Fatalf("path=%q", path)
 	}
 	if IsClientSafePlayURL("") || IsClientSafePlayURL("//evil") || IsClientSafePlayURL("http://x") {
 		t.Fatal("unsafe urls")
 	}
-	if !IsClientSafePlayURL("/api/v1/x") {
+	if !IsClientSafePlayURL("/api/v2/x") {
 		t.Fatal("relative path should be safe")
 	}
 }

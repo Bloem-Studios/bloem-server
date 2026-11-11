@@ -5,6 +5,7 @@
 > set of accounts per server and one kind of administrator. This page explains it in
 > plain language; the technical rules are in the [For developers](#for-developers)
 > section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Bloem's admin console serves two kinds of administrator, one who runs the whole
 platform and one who runs a single organization. This page walks through the two
@@ -123,10 +124,10 @@ Silo-style connections work as they do in Silo.
 
 | On this page | In the code and database |
 | --- | --- |
-| Context, pass | an administrative context token from `POST /api/bloem/v1/admin/session` (`internal/auth/admin_context.go`, `AdminContextTokenLifetime`) |
+| Context, pass | an administrative context token from `POST /api/bloem/v2/admin/session` (`internal/auth/admin_context.go`, `AdminContextTokenLifetime`) |
 | Every request checks again | `internal/api/middleware/admin_context.go` |
-| Platform context | `/api/bloem/v1/admin/platform/...` |
-| Organization context | `/api/bloem/v1/admin/organization/...` |
+| Platform context | `/api/bloem/v2/admin/platform/...` |
+| Organization context | `/api/bloem/v2/admin/organization/...` |
 | Organization administrator | the `organization_admin` membership role |
 | Membership | `organization_memberships`, at most one per account |
 | Organization settings moving on | the membership's and organization's policy and security revisions |
@@ -137,9 +138,9 @@ Silo-style connections work as they do in Silo.
 ## For developers
 
 - **API:** [organizations and administration](../bloem/api/organizations.md):
-  [exchanging a session for a context](../bloem/api/organizations.md#post-apibloemv1adminsession),
-  the Organization context routes (`/api/bloem/v1/admin/organization/...`) and the
-  Platform context routes (`/api/bloem/v1/admin/platform/...`).
+  [exchanging a session for a context](../bloem/api/organizations.md#post-apibloemv2adminsession),
+  the Organization context routes (`/api/bloem/v2/admin/organization/...`) and the
+  Platform context routes (`/api/bloem/v2/admin/platform/...`).
 
 ### Session and authority boundary
 
@@ -150,7 +151,7 @@ entitlements, invitations, and policy-decision evidence. Navigation never mixes
 those scopes.
 
 The Silo-compatible account session remains the authentication root. An
-authenticated caller exchanges it at `POST /api/bloem/v1/admin/session` for a signed
+authenticated caller exchanges it at `POST /api/bloem/v2/admin/session` for a signed
 administrative context token lasting no more than 15 minutes. The token contains
 either Platform authority or one exact organization membership plus current policy
 and security revisions. Organization authority never comes from a path, query,
@@ -178,9 +179,10 @@ refresh is then refused as revoked, and the client signs in again. See
 
 ### Websocket credentials
 
-The v1 bridge sockets use Silo's handshake unchanged: the socket authenticates with
-the ordinary login credential, and `POST /api/v1/events/ws-ticket` (profile
-required) binds only the profile. Bloem adds no v1 ticket routes.
+The v1 bridge sockets went with Silo's v1 API on 2026-11-11. They used Silo's handshake
+unchanged: the socket authenticated with the ordinary login credential, and Silo's v1
+`POST /events/ws-ticket` (profile required) bound only the profile. Bloem added no v1
+ticket routes.
 
 The v2 events and playback-control sockets use Silo's socket tickets with a Bloem
 adapter (`internal/api/handlers/bloem_socket_authority.go`) on Silo's `Validate`
@@ -219,7 +221,7 @@ The embedded organization console provides three further bounded workflows:
   persistent storage.
 - **Activity:** explicitly load 50-event cursor pages from the selected
   organization's lifecycle and entitlement ledgers
-  (`GET /api/bloem/v1/admin/organization/activity`). Responses contain redacted
+  (`GET /api/bloem/v2/admin/organization/activity`). Responses contain redacted
   summaries, without raw before/after documents or platform-wide events. Only
   recorded events appear; the page does not imply complete auditing of every
   operation.
@@ -285,9 +287,9 @@ so a client sees one organization's libraries and never a union across them.
 
 #### Keeping it that way
 
-Silo retired `/api/v1` on 11 November 2026 (Silo #3200, merged into Bloem in
+Silo retired its v1 API on 11 November 2026 (Silo #3200, merged into Bloem in
 `26cf9b3e4`), so there is no longer a v1 route contract to keep.
-`TestV1RouteSurfaceWithADatabaseIsUnchanged` now holds `/api/v1` to exactly Silo's
+`TestV1RouteSurfaceWithADatabaseIsUnchanged` now holds the v1 prefix to exactly Silo's
 tombstone, so a Bloem route added there fails.
 
 Behaviour needs its own guard, because the route surface cannot see it. A client

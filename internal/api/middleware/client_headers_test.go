@@ -44,7 +44,7 @@ func seenHeaders(req *http.Request) http.Header {
 }
 
 func newRequest() *http.Request {
-	return httptest.NewRequest(http.MethodGet, "/api/v1/settings/values", nil)
+	return httptest.NewRequest(http.MethodGet, "/api/v2/settings/values", nil)
 }
 
 // Every header in the family is covered in all four presence combinations:

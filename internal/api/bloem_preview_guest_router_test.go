@@ -88,10 +88,10 @@ func TestPreviewGuestJourneyThroughTheRouter(t *testing.T) {
 	}
 
 	// Exchange works only on the preview host.
-	if w := do("lib.example.test", "POST", "/api/bloem/v1/preview/sessions", "", map[string]string{"ticket": ticket()}); w.Code != http.StatusNotFound {
+	if w := do("lib.example.test", "POST", "/api/bloem/v2/preview/sessions", "", map[string]string{"ticket": ticket()}); w.Code != http.StatusNotFound {
 		t.Fatalf("exchange on the normal host: %d %s", w.Code, w.Body)
 	}
-	w := do("browse.example.test", "POST", "/api/bloem/v1/preview/sessions", "", map[string]string{"ticket": ticket()})
+	w := do("browse.example.test", "POST", "/api/bloem/v2/preview/sessions", "", map[string]string{"ticket": ticket()})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("exchange: %d %s", w.Code, w.Body)
 	}
@@ -138,7 +138,7 @@ func TestPreviewGuestJourneyThroughTheRouter(t *testing.T) {
 	if err := json.Unmarshal(capability.Body.Bytes(), &caps); err != nil || capability.Code != 200 || caps.Allowed == nil || *caps.Allowed || caps.Denial.Code != "preview_only" || caps.Denial.CTALabel != "Subscribe to Example" {
 		t.Fatalf("guest capabilities: %d %s", capability.Code, capability.Body)
 	}
-	if w := do("browse.example.test", "POST", "/api/bloem/v1/preview/events", session.AccessToken, map[string]string{"event": "cta_shown"}); w.Code != 204 {
+	if w := do("browse.example.test", "POST", "/api/bloem/v2/preview/events", session.AccessToken, map[string]string{"event": "cta_shown"}); w.Code != 204 {
 		t.Fatalf("guest event: %d %s", w.Code, w.Body)
 	}
 	if me.Email != "" || len(me.Permissions) != 0 || me.DownloadAllowed {
@@ -218,10 +218,10 @@ func TestPreviewGuestJourneyThroughTheRouter(t *testing.T) {
 	}
 
 	// Status.
-	if w := do("browse.example.test", "GET", "/api/bloem/v1/preview/status", "", nil); w.Code != http.StatusOK || !bytes.Contains(w.Body.Bytes(), []byte(`"storefront_url"`)) {
+	if w := do("browse.example.test", "GET", "/api/bloem/v2/preview/status", "", nil); w.Code != http.StatusOK || !bytes.Contains(w.Body.Bytes(), []byte(`"storefront_url"`)) {
 		t.Fatalf("status on the preview host: %d %s", w.Code, w.Body)
 	}
-	if w := do("lib.example.test", "GET", "/api/bloem/v1/preview/status", "", nil); bytes.Contains(w.Body.Bytes(), []byte(`"storefront_url"`)) {
+	if w := do("lib.example.test", "GET", "/api/bloem/v2/preview/status", "", nil); bytes.Contains(w.Body.Bytes(), []byte(`"storefront_url"`)) {
 		t.Fatalf("status elsewhere exposes landing details: %s", w.Body)
 	}
 
@@ -233,7 +233,7 @@ func TestPreviewGuestJourneyThroughTheRouter(t *testing.T) {
 	if w := do("browse.example.test", "GET", "/api/v2/user/libraries", session.AccessToken, nil); w.Code != http.StatusUnauthorized {
 		t.Fatalf("guest after kill switch: %d", w.Code)
 	}
-	if w := do("browse.example.test", "POST", "/api/bloem/v1/preview/sessions", "", map[string]string{"ticket": ticket()}); w.Code != http.StatusNotFound {
+	if w := do("browse.example.test", "POST", "/api/bloem/v2/preview/sessions", "", map[string]string{"ticket": ticket()}); w.Code != http.StatusNotFound {
 		t.Fatalf("exchange after kill switch: %d", w.Code)
 	}
 }

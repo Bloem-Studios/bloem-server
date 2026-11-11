@@ -19,7 +19,7 @@ import (
 
 // bloemClientSurface is the native client surface: what a television or a phone
 // talks to, as opposed to the administrative and tenancy routes the rest of
-// /api/bloem/v1 serves.
+// /api/bloem/v2 serves.
 //
 // It exists as its own type because these routes answer to a different
 // authority than the admin routes do. The admin tree requires a tenant-selected
@@ -184,7 +184,7 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	return surface
 }
 
-// mount registers the client routes inside an /api/bloem/v1 subrouter.
+// mount registers the client routes inside an /api/bloem/v2 subrouter.
 //
 // The identity probe is public: a client has to answer "which server is this,
 // and can I log into it yet" before it holds any credentials. Everything else
@@ -219,9 +219,9 @@ func (s bloemClientSurface) mount(r chi.Router) {
 			// it the handlers see an empty scope and answer for the account.
 			r.Use(s.viewer.RequireViewerAccess)
 		}
-		// The demo guard is intentionally absent: its blocklist is written in
-		// /api/v1 path prefixes and explicitly permits playback progress, so it
-		// would be a no-op here.
+		// The demo guard is intentionally absent: its blocklist was written for
+		// Silo's retired v1 routes and explicitly permitted playback progress,
+		// so it would be a no-op here.
 		r.Use(requireBloemLiveTVProfile)
 
 		if s.notifications != nil {

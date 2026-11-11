@@ -1,7 +1,8 @@
 # How announcements work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Announcements are a Bloem addition: Silo has the
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against
+> `main` at `b6039036d` and checked again on 2026-11-11, after Silo retired its v1 API.
+> Announcements are a Bloem addition: Silo has the
 > notification inbox but no way to write a message to it. This page explains them in
 > plain language; the technical rules are in the [For developers](#for-developers)
 > section.
@@ -90,41 +91,41 @@ every inbox by itself.
 ## For developers
 
 - **API:** [messages and promotions](../bloem/api/messages.md):
-  `GET`, `POST /api/bloem/v1/admin/platform/announcements` and
-  `DELETE /api/bloem/v1/admin/platform/announcements/{id}`, with the `Announcement`,
-  `AnnouncementInput` and `AlertBody` schemas. The old routes,
-  `GET`/`POST /api/v1/admin/notifications/announcements` and `DELETE …/{id}`, are
-  listed on [Bloem's routes on Silo's `/api/v1`](../bloem/api/v1-routes.md#announcements).
+  `GET`, `POST /api/bloem/v2/admin/platform/announcements` and
+  `DELETE /api/bloem/v2/admin/platform/announcements/{id}`, with the `Announcement`,
+  `AnnouncementInput` and `AlertBody` schemas. The old routes on Silo's
+  v1 API, `GET`/`POST /admin/notifications/announcements` and `DELETE …/{id}`, were retired
+  on 2026-11-11; [Bloem's retired v1 routes](../bloem/api/v1-routes.md#announcements)
+  records them.
 
 ### History
 
-The admin API (`GET`/`POST /api/v1/admin/notifications/announcements`,
-`DELETE …/{id}`) and the alert body rules in `internal/notifications/alert_body.go`
+The admin API (`GET`/`POST /admin/notifications/announcements` and `DELETE …/{id}` on
+Silo's v1 API) and the alert body rules in `internal/notifications/alert_body.go`
 came first, in `06285608c` (2026-09-01), as "S-1" of Bloem's September client
 engagement spec. That spec was removed on 2026-11-01; its rules still in force are on
 this page.
-Those routes are mounted by `mountBloemLegacyAdminV1` in
-`internal/api/router_bloem_wiring.go`. This page and the web authoring screen were
+Those routes were mounted by `mountBloemLegacyAdminV1` in
+`internal/api/router_bloem_wiring.go` until Silo retired its v1 API on 2026-11-11. This page and the web authoring screen were
 added in `f66a6ee3b` (2026-09-05). In `03f658ba9` (2026-09-23) the navigation and
 search entries moved into `web/src/lib/bloemAdminNavigation.ts`
 (`withBloemSettingsNavigation`, `withBloemAdminSettings`), so Silo's settings layout
 (`web/src/pages/admin-settings/AdminSettingsLayout.tsx`) needs only a small, ledgered
 edit. On 2026-10-31 (`3eb77be33`) the storefront and the settings page moved to the
-native platform routes; see [leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md).
+native platform routes; see [leaving Silo's v1 API](bloem-leaving-silo-v1.md).
 
 ### Routes and authority
 
 - The native routes are mounted by `mountBloemPlatformStorefront`
-  (`internal/api/router_bloem_storefront.go`) under `/api/bloem/v1`. They take a
+  (`internal/api/router_bloem_storefront.go`) under `/api/bloem/v2`. They take a
   Platform administrative context or an enabled administrator's unscoped API key
   (`bloemEitherPlatformCredential`), then `RequireBloemPlatformAdmin` rechecks on every
   request that the account is still an enabled `admin`. Organization contexts, scoped
   keys and ordinary sessions get `403 insufficient_platform_authority`; when the check
   cannot run, `503 tenant_unavailable`.
-- The legacy `/api/v1/admin/notifications/announcements` routes stay mounted in the
-  acting-admin group. The current storefront and web app no longer call them; they stay
-  for one release, for an older storefront release, then go.
-- Both mounts use `handlers.AdminAnnouncementsHandler`
+- The legacy v1 announcement routes are gone: Silo's v1 API answers `410 Gone` since
+  2026-11-11. Nothing in Bloem called them by then.
+- The native routes use `handlers.AdminAnnouncementsHandler`
   (`internal/api/handlers/admin_announcements.go`). The author recorded on the
   publication is the Platform context's account, or the request's user
   (`engagementActorID`).
@@ -179,7 +180,7 @@ native platform routes; see [leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)
 - `AnnouncementsAdminSettings.tsx` renders only in the Platform context; otherwise it
   says "Select the platform context to publish announcements." It calls
   `/platform/announcements` through `adminV2Api` (`web/src/api/adminV2Client.ts`, prefix
-  `/api/bloem/v1/admin`), with the context's captured authority and generation in the
+  `/api/bloem/v2/admin`), with the context's captured authority and generation in the
   query key.
 - It lists publication records, previews a new message before `POST`, and confirms a
   withdrawal before `DELETE`. `POST` and `DELETE` use the non-retrying transport policy
@@ -253,7 +254,7 @@ From `TestAdminAnnouncementsCreateReturnsCreatedWithRecipientCount`
 numbers, `profile_ids` strings.
 
 ```json
-POST /api/bloem/v1/admin/platform/announcements
+POST /api/bloem/v2/admin/platform/announcements
 {
   "type": "system.alert",
   "body": {"title": "Maintenance", "body": "Tonight", "severity": "warning",

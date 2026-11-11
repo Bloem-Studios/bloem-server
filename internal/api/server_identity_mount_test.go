@@ -29,7 +29,7 @@ func TestServerIdentityAndCapabilitiesAreMountedPublicly(t *testing.T) {
 	if err := json.Unmarshal(capabilities.Body.Bytes(), &advertised); err != nil {
 		t.Fatalf("decode capabilities %q: %v", capabilities.Body.String(), err)
 	}
-	if advertised.API != "bloem/v1" || len(advertised.MediaTypes) == 0 {
+	if advertised.API != "bloem/v2" || len(advertised.MediaTypes) == 0 {
 		t.Fatalf("capabilities body = %s, want the populated contract shape", capabilities.Body.String())
 	}
 	// The capability document is a property of the build, so a router with no
@@ -62,17 +62,16 @@ func TestServerIdentityAndCapabilitiesAreMountedPublicly(t *testing.T) {
 	}
 }
 
-// The Silo-compatible projection must not grow either of them. A client that
-// finds /api/v1/capabilities is talking to a different server than this one.
-// Silo retired /api/v1 (Silo #3200): its tombstone answers 410 for both.
+// Silo's retired v1 projection must not grow either of them: its tombstone
+// answers 410 for both (Silo #3200).
 func TestTheNativeProbesAreNotServedOnV1(t *testing.T) {
 	router := NewRouter(Dependencies{})
 
-	for _, path := range []string{"/api/v1/capabilities", "/api/v1/server/identity"} {
+	for _, path := range []string{"/api/v1/capabilities", "/api/v1/server/identity"} { // v1-guard: allow
 		rec := httptest.NewRecorder()
 		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 		if rec.Code != http.StatusGone {
-			t.Errorf("GET %s = %d, want %d: the native surface lives on /api/bloem/v1", path, rec.Code, http.StatusGone)
+			t.Errorf("GET %s = %d, want %d: the native surface lives on /api/bloem/v2", path, rec.Code, http.StatusGone)
 		}
 	}
 }

@@ -266,7 +266,7 @@ func TestNativeVideoStartAndStream(t *testing.T) {
 	}
 	stream := NewStreamHandler(s.Sessions, s.Files)
 	stream.NativeVideo = s
-	r := playbackTestRequest(http.MethodGet, "/api/v1/stream/"+decision.SessionID, nil, map[string]string{"session_id": decision.SessionID})
+	r := playbackTestRequest(http.MethodGet, "/api/v2/stream/"+decision.SessionID, nil, map[string]string{"session_id": decision.SessionID})
 	r.Header.Set("Range", "bytes=2-4")
 	w = httptest.NewRecorder()
 	stream.HandleStream(w, r)
@@ -294,7 +294,7 @@ func TestNativeVideoStopDuringTransportAdmissionReturnsNoBytes(t *testing.T) {
 	h := NewStreamHandler(manager, s.Files)
 	h.NativeVideo = s
 	w := httptest.NewRecorder()
-	r := playbackTestRequest(http.MethodGet, "/api/v1/stream/"+session.ID, nil, map[string]string{"session_id": session.ID})
+	r := playbackTestRequest(http.MethodGet, "/api/v2/stream/"+session.ID, nil, map[string]string{"session_id": session.ID})
 	h.HandleStream(w, r)
 	if w.Code == http.StatusOK || strings.Contains(w.Body.String(), "0123456789") {
 		t.Fatalf("stopped session served %d %s", w.Code, w.Body.String())

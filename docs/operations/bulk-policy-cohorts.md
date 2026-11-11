@@ -126,13 +126,13 @@ unticked. Afterwards Anna and Tom are on policy B, and Kids is still on its own 
   cohort, snapshot and bulk routes; the
   [organizations and administration API](../bloem/api/organizations.md) lists the
   organization people policy routes. The longer reference is the
-  [native `/api/bloem/v1` reference](../bloem-api-reference.md#platform-entitlement-cohorts-and-bulk-policy).
+  [native `/api/bloem/v2` reference](../bloem-api-reference.md#platform-entitlement-cohorts-and-bulk-policy).
 
 ### Where it came from
 
 Bulk policy cohorts are Bloem's. Silo has access groups (`internal/access`) but no
 entitlement templates, cohorts or bulk policy jobs: the `internal/entitlements` and
-`internal/adminpeople` packages, the `/api/bloem/v1` routes and the admin pages below
+`internal/adminpeople` packages, the `/api/bloem/v2` routes and the admin pages below
 exist only in Bloem.
 
 - **Added August 21–22, 2026.** The commits are `af226de60` (immutable cohorts),
@@ -142,7 +142,7 @@ exist only in Bloem.
   and `20260822100000_admin_people_policy_jobs`. This page and the
   [runbook](bulk-policy-cohorts-runbook.md) were added in `cf14f1635`.
 - **Changed since then:**
-  - `811fb4d29` (September 2) moved Bloem's native API to `/api/bloem/v1`.
+  - `811fb4d29` (September 2) moved Bloem's native API to `/api/bloem/v2`.
   - `f1e6f1ab5` (October 13) records the acting administrator as the cohort creator.
   - `22e4a4b05` (October 14) refuses a derived cohort of the preview template.
   - `c60b7008e` (October 26) moved account policy back onto `users`, where Silo keeps
@@ -192,9 +192,9 @@ Organization administrators use:
   **Change plan or settings**;
 - **Organization → Policy Cohorts** (`/admin/organization/policy-cohorts`) to inspect
   source revision, policy, lineage, member count, creator/time, and archive state; and
-- the organization routes `GET /api/bloem/v1/admin/organization/entitlement-cohorts`
+- the organization routes `GET /api/bloem/v2/admin/organization/entitlement-cohorts`
   and `…/entitlement-cohorts/{cohort_id}`, `POST …/organization/people/selections`, and
-  the people policy routes under `/api/bloem/v1/admin/organization/people`
+  the people policy routes under `/api/bloem/v2/admin/organization/people`
   (`policy-previews`, `policy-jobs`, `policy-jobs/{job_id}`,
   `policy-jobs/{job_id}/cancel`) for preview, enqueue, status, and cancel.
 
@@ -205,25 +205,25 @@ organization, resolved server-side. Equivalent organization routes take the
 organization UUID in the path:
 
 ```text
-GET  /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts
-GET  /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}
-POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews
-POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs
-GET  /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}
-POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel
-POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews
-POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs
-GET  /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}
-POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel
+GET  /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts
+GET  /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}
+POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews
+POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs
+GET  /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}
+POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel
+POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-previews
+POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs
+GET  /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}
+POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel
 ```
 
 Authoritative platform reads are:
 
 ```text
-GET  /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
-GET  /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
-POST /api/bloem/v1/admin/platform/accounts/entitlement-snapshots
-POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots
+GET  /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement
+GET  /api/bloem/v2/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
+POST /api/bloem/v2/admin/platform/accounts/entitlement-snapshots
+POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-snapshots
 ```
 
 The bulk snapshot body is `{ "account_ids": [41, 42] }`, at most 10,000 IDs

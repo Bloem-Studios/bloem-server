@@ -2,7 +2,8 @@
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
 > `main` at `b6039036d`, which contains Silo through `63ef34b23`; the Meilisearch steps were
-> updated on 2026-11-10 against `7acd2c7e0`. This is Bloem's own
+> updated on 2026-11-10 against `7acd2c7e0`, and the API paths checked again on
+> 2026-11-11, after Silo retired its v1 API. This is Bloem's own
 > installation guide. It began as Silo's Docker guide, which Silo has since removed;
 > Bloem runs Silo's code on Silo's multi-container Compose file, and serving an
 > organization on its own domain is a Bloem addition. The technical rules are in the
@@ -579,9 +580,9 @@ have all been checked.
 
 ## For developers
 
-- **API:** [organizations and administration](../../../api/organizations.md#get-apibloemv1adminplatformtenantsiddomains):
+- **API:** [organizations and administration](../../../api/organizations.md#get-apibloemv2adminplatformtenantsiddomains):
   the platform routes for an organization's domains and branding under
-  `/api/bloem/v1/admin/platform/tenants/{id}`. Sign-in errors are in
+  `/api/bloem/v2/admin/platform/tenants/{id}`. Sign-in errors are in
   [authentication](../../../../auth-api.md#ordinary-v2-authentication), and
   distributed download delivery in the
   [Downloads API](../../../../downloads-api.md#411-distributed-proxy-delivery).
@@ -742,13 +743,12 @@ capability `organization_domains_v1`.
   it started on (`Directory.OAuthBaseURL`, installed with
   `auth.OAuthHandler.SetRequestBaseURL`; `internal/auth/oauth_handler.go` is a declared
   seam). Register, per domain:
-  `https://<domain>/api/v1/auth/oauth/<installation>/callback`,
-  `https://<domain>/api/v2/auth/oauth/<installation>/callback`, and, when provider
+  `https://<domain>/api/v2/auth/oauth/<installation>/callback` and, when provider
   sign-out is on, `https://<domain>/login` as a post-logout redirect URI. Silo's plugin
   installation page and the `/api/v2/auth/provider-logout` description name only the
   public URL's addresses.
 - **Who registers.** The platform routes under
-  `/api/bloem/v1/admin/platform/tenants/{id}` (`domains`: list, add, set primary,
+  `/api/bloem/v2/admin/platform/tenants/{id}` (`domains`: list, add, set primary,
   remove; `branding`: read, update, and `PUT|DELETE …/branding/assets/{kind}`) take a
   Platform administrative context or an administrator's unscoped API key. An API key
   records a domain with source `garden`, anything else as `platform`.
@@ -1056,11 +1056,11 @@ plus its rebuilt indexes, and on a large library the `media_files` copy can run 
 update. The release notes name the releases that carry a migration like this.
 
 `health` reports process liveness. `ready` also checks required dependencies, including
-PostgreSQL and configured S3 storage. Both are retained operational probes: they keep
-these paths after the `/api/v1` contract is retired, so probe configuration does not
-change when the server moves to `/api/v2`. Apart from these probes, the web app and the
-storefront call none of Silo's `/api/v1`; see
-[leaving Silo's `/api/v1`](../../../../architecture/bloem-leaving-silo-v1.md).
+PostgreSQL and configured S3 storage. Both are retained operational probes: they kept
+their paths when Silo retired its v1 API on 2026-11-11, so probe configuration did not
+change. Apart from these probes, every v1 route answers `410 Gone`, and nothing in
+Bloem calls one; see
+[leaving Silo's v1 API](../../../../architecture/bloem-leaving-silo-v1.md).
 
 ### Release-specific steps
 

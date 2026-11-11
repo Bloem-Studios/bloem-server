@@ -28,7 +28,7 @@ func TestDirectProfileSessionsFailClosedWithoutARouteGuard(t *testing.T) {
 	}
 	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	request := func() *http.Request {
-		r := httptest.NewRequest(http.MethodGet, "/api/v1/items/1", nil)
+		r := httptest.NewRequest(http.MethodGet, "/api/v2/items/1", nil)
 		r.Header.Set("Authorization", "Bearer direct-token")
 		return r
 	}

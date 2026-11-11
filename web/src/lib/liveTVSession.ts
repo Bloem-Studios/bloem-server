@@ -30,7 +30,7 @@ export function startLiveTVPlayback(
     const id = sessionId;
     sessionId = null;
     // Retain the original viewer even if cleanup runs after logout/profile switch.
-    void fetch(`/api/bloem/v1/livetv/sessions/${encodeURIComponent(id)}`, {
+    void fetch(`/api/bloem/v2/livetv/sessions/${encodeURIComponent(id)}`, {
       method: "DELETE",
       headers: headers(),
       keepalive: true,

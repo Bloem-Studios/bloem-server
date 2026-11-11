@@ -89,7 +89,7 @@ func TestFreePlayGuestJourneyThroughTheRouter(t *testing.T) {
 		router.ServeHTTP(w, r)
 		return w
 	}
-	w := do("POST", "/api/bloem/v1/preview/sessions", "", map[string]string{"ticket": ticket})
+	w := do("POST", "/api/bloem/v2/preview/sessions", "", map[string]string{"ticket": ticket})
 	var session struct {
 		AccessToken string `json:"access_token"`
 	}

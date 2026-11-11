@@ -60,7 +60,7 @@ func TestNormalizeRejectsInvalidInput(t *testing.T) {
 		"missing image":       func(i *Input) { i.ImageURL = "" },
 		"http image":          func(i *Input) { i.ImageURL = "http://cdn.example/a.jpg" },
 		"data image":          func(i *Input) { i.ImageURL = "data:image/png;base64,AAAA" },
-		"foreign app path":    func(i *Input) { i.ImageURL = "/api/v1/items/x/poster" },
+		"foreign app path":    func(i *Input) { i.ImageURL = "/api/v2/items/x/poster" },
 		"poster aspect":       func(i *Input) { i.ImageWidth, i.ImageHeight = &badW, &badH },
 		"just off 16:9":       func(i *Input) { i.ImageWidth, i.ImageHeight = &offW, &offH },
 		"width only":          func(i *Input) { i.ImageWidth = &w },
@@ -93,7 +93,7 @@ func TestNormalizeRejectsInvalidInput(t *testing.T) {
 		t.Fatalf("1600x900 must pass: %v", err)
 	}
 	in.ImageWidth, in.ImageHeight = &w, &h
-	in.ImageURL = "/api/v1/ambience/assets/0123456789abcdef.png"
+	in.ImageURL = "/api/bloem/v2/ambience/assets/0123456789abcdef.png"
 	if _, err := Normalize(in); err != nil {
 		t.Fatalf("S-3 asset path must pass: %v", err)
 	}

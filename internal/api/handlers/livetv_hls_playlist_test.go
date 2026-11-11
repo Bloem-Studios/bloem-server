@@ -41,7 +41,7 @@ func TestServeLiveHLSPlaylistPropagatesQuery(t *testing.T) {
 	if err := os.WriteFile(path, []byte("#EXTM3U\nseg_00000.ts\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/livetv/live-hls/x/index.m3u8?token=t&profile_id=p", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/bloem/v2/livetv/live-hls/x/index.m3u8?token=t&profile_id=p", nil)
 	rr := httptest.NewRecorder()
 	serveLiveHLSPlaylist(rr, req, path)
 	if rr.Code != http.StatusOK {

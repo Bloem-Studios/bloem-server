@@ -3,9 +3,10 @@
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
 > and checked against `main` at `209447445`, the merge of Silo through `56e6f871c`, with
 > its Bloem fixes. The tenant foundation (organizations, memberships, platform
-> ownership, administrator passes and the native `/api/bloem/v1` namespace) is a Bloem
+> ownership, administrator passes and the native `/api/bloem/v2` namespace) is a Bloem
 > addition: Silo has one set of accounts, profiles and sign-ins per server. The technical
 > rules are in the [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Bloem keeps each organization's people, libraries and settings apart, on one server. This
 page walks through the kinds of sign-in and what each may do, what Bloem checks on every
@@ -136,8 +137,8 @@ Riverside Club is a reseller organization served on its own address, `watch.rive
 | On this page | In the code and database |
 | --- | --- |
 | Account sign-in | an account login session (`auth_sessions` row) and its access token |
-| Profile sign-in | a direct-profile session, from `POST /api/v1/auth/profile-login`; credentials at `/api/bloem/v1/profile-credentials/{id}` |
-| Administrator pass | an administrative context token (`auth.AdminContextClaims`, `internal/auth/admin_context.go`) from `POST /api/bloem/v1/admin/session` |
+| Profile sign-in | a direct-profile session, from the retired v1 `POST /auth/profile-login` (dormant); credentials at `/api/bloem/v2/profile-credentials/{id}` |
+| Administrator pass | an administrative context token (`auth.AdminContextClaims`, `internal/auth/admin_context.go`) from `POST /api/bloem/v2/admin/session` |
 | Platform pass, organization pass | scope `platform` (`AdminScopePlatform`) or `organization` (`AdminScopeOrganization`) |
 | API key | an `sa_` bearer key |
 | Membership unchanged | the organization's `policy_revision` and the membership's `security_revision` |
@@ -145,7 +146,7 @@ Riverside Club is a reseller organization served on its own address, `watch.rive
 | Ownership waits | `platform_security.ownership_resolution_required` |
 | Signing members out everywhere | a `security_revision` bump, recorded by migration `20260923160000_bloem_org_session_revocations` |
 | Organization's own address | `bloem_organization_domains` (`internal/orgdomains`) |
-| Capabilities | `GET /api/bloem/v1/capabilities` |
+| Capabilities | `GET /api/bloem/v2/capabilities` |
 
 ## For developers
 
@@ -173,25 +174,25 @@ applies only to the August 2026 foundation release.
 
 ### The native namespace and capabilities
 
-Bloem keeps the Silo-compatible `/api/v1` account login, profile picker, PIN unlock, token
-refresh and administrative projection. The native `/api/bloem/v1` namespace is a separate
+Bloem keeps Silo's own `/api/v2` account login, profile picker, PIN unlock, token
+refresh and administration; Silo's alpha v1 API, which carried them before, is retired. The native `/api/bloem/v2` namespace is a separate
 additive boundary. Its discovery and administration surface exposes:
 
-- public `GET /api/bloem/v1/capabilities`;
-- public `GET /api/bloem/v1/server/identity`;
-- authenticated `GET /api/bloem/v1/organizations`;
-- administrative context exchange and management routes under `/api/bloem/v1/admin`;
+- public `GET /api/bloem/v2/capabilities`;
+- public `GET /api/bloem/v2/server/identity`;
+- authenticated `GET /api/bloem/v2/organizations`;
+- administrative context exchange and management routes under `/api/bloem/v2/admin`;
 - the native client surface in [how Bloem's native API is organized](bloem-client-surface.md).
 
 The capability response is the source of truth. It advertises legacy v1 compatibility,
 organization membership discovery and tenant-bounded media scope, beside the media types this
 build serves and the feature tokens clients match against. This is an illustrative subset,
 not an exhaustive token list; consult the runtime response and the
-[wire reference](../bloem-api-reference.md#get-apibloemv1capabilities):
+[wire reference](../bloem-api-reference.md#get-apibloemv2capabilities):
 
 ```json
 {
-  "api": "bloem/v1",
+  "api": "bloem/v2",
   "identity_schema": 1,
   "features": {
     "legacy_silo_v1": false,
@@ -227,16 +228,16 @@ Both grow additively. `organization_domains_v1` is one of the conditional tokens
 advertised when the domain and branding routes are mounted with both an account and an
 administrator gate.
 
-Profile sign-in is dormant since 2026-11-11: its sign-in route lived only on Silo's `/api/v1`, which Silo retired (Silo #3200, merged into Bloem in `26cf9b3e4`). The credential routes are not mounted, `profile_credential_management_v1` and `direct_profile_login` are not advertised, and the web hides the credentials panel and the Profile passwords setting. The code stays; it comes back with a native profile sign-in route under `/api/bloem/v1`. Until then, the rest of
+Profile sign-in is dormant since 2026-11-11: its sign-in route lived only on Silo's v1 API, which Silo retired (Silo #3200, merged into Bloem in `26cf9b3e4`). The credential routes are not mounted, `profile_credential_management_v1` and `direct_profile_login` are not advertised, and the web hides the credentials panel and the Profile passwords setting. The code stays; it comes back with a native profile sign-in route under `/api/bloem/v2`. Until then, the rest of
 this section describes how it worked: direct-profile login was implemented on
-`/api/v1/auth/profile-login` when its dependencies were wired. The default-deny direct-session route
+Silo's v1 `POST /auth/profile-login` when its dependencies were wired. The default-deny direct-session route
 allowlist (`internal/api/direct_profile_routes.go`) still rejects Silo v2 and the native Bloem
 namespace (apart from the audiobook and ebook request viewer routes), so the embedded browser
 must use account login. A profile password follows the server's password sign-in policy
 like an account password, with no break-glass exemption
 ([auth overlay](../bloem/overlays/auth-api.md#bloem-household-profile-credentials)).
 Household credential status, set and clear are available through
-`/api/bloem/v1/profile-credentials/{id}` when `profile_credential_management_v1` is
+`/api/bloem/v2/profile-credentials/{id}` when `profile_credential_management_v1` is
 advertised. They require a non-impersonated account login, existing household/PIN permission,
 and the current local account password for writes. Direct sessions and API keys cannot manage
 these credentials; SSO-only reauthentication is not implemented. Credential changes require a
@@ -416,12 +417,11 @@ address that refused. It is 409, not 403, because `/api/v2` renders a 403 at sig
 `permission_denied`, which the sign-in page reports as a disabled account. Requests on
 unregistered hosts (IP addresses, LAN names) and impersonation sessions are not refused. A
 sign-in or sign-out through the OAuth provider stays on the domain it started on, so each
-domain's two callbacks (`/api/v1/auth/oauth/<installation>/callback` and
-`/api/v2/auth/oauth/<installation>/callback`) and its `/login` (post-logout redirect) must be
+domain's callback (`/api/v2/auth/oauth/<installation>/callback`) and its `/login` (post-logout redirect) must be
 registered at the provider. A domain never grants or narrows access: the tenant middleware
 takes the organization from the account or session whatever host the request arrived on. The
-platform routes are `/api/bloem/v1/admin/platform/tenants/{id}/domains` and
-`/api/bloem/v1/admin/platform/tenants/{id}/branding`, advertised by `organization_domains_v1`
+platform routes are `/api/bloem/v2/admin/platform/tenants/{id}/domains` and
+`/api/bloem/v2/admin/platform/tenants/{id}/branding`, advertised by `organization_domains_v1`
 ([organization domains and branding](bloem-organization-domains.md)).
 
 ### Upgrade behavior
@@ -574,7 +574,7 @@ A verified legacy viewer in the initializing default organization may receive pu
 during Silo-compatible switching; this does not activate that organization or permit
 organization-targeted packs. Public packs and current-organization packs are filtered with
 active membership in the same database read as their contents. Public login branding and the
-public `GET /api/bloem/v1/ambience/public` (the deployment-wide packs that the web app's
+public `GET /api/bloem/v2/ambience/public` (the deployment-wide packs that the web app's
 signed-out seasonal layer reads) never include organization-targeted packs. Direct-profile
 admission remains default-deny.
 

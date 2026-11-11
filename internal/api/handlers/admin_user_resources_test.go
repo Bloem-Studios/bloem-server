@@ -295,16 +295,18 @@ func newAdminUserResourceStore(t *testing.T, suffix string) userstore.UserStore 
 
 func routeAdminUserResources(handler *AdminHandler) http.Handler {
 	router := chi.NewRouter()
-	router.Route("/api/v1/admin/users/{user_id}", func(r chi.Router) {
-		r.Get("/profiles", handler.HandleListUserProfiles)
-		r.Post("/profiles", handler.HandleCreateUserProfile)
-		r.Put("/profiles/{profile_id}", handler.HandleUpdateUserProfile)
-		r.Delete("/profiles/{profile_id}", handler.HandleDeleteUserProfile)
-		r.Get("/devices", handler.HandleListUserDevices)
-		r.Delete("/devices/{device_id}", handler.HandleDeleteUserDevice)
-		r.Get("/auth-sessions", handler.HandleListUserAuthSessions)
-		r.Delete("/auth-sessions/{session_id}", handler.HandleRevokeUserAuthSession)
-		r.Delete("/auth-sessions", handler.HandleRevokeAllUserAuthSessions)
+	// Mounted as the native platform routes are (router_bloem_storefront.go).
+	account := BloemPlatformAccountResource
+	router.Route("/api/bloem/v2/admin/platform/accounts/{account_id}", func(r chi.Router) {
+		r.Get("/profiles", account(handler.HandleListUserProfiles))
+		r.Post("/profiles", account(handler.HandleCreateUserProfile))
+		r.Put("/profiles/{profile_id}", account(handler.HandleUpdateUserProfile))
+		r.Delete("/profiles/{profile_id}", account(handler.HandleDeleteUserProfile))
+		r.Get("/devices", account(handler.HandleListUserDevices))
+		r.Delete("/devices/{device_id}", account(handler.HandleDeleteUserDevice))
+		r.Get("/auth-sessions", account(handler.HandleListUserAuthSessions))
+		r.Delete("/auth-sessions/{session_id}", account(handler.HandleRevokeUserAuthSession))
+		r.Delete("/auth-sessions", account(handler.HandleRevokeAllUserAuthSessions))
 	})
 	return router
 }
@@ -377,9 +379,9 @@ func TestAdminUserResources_ListsOnlyURLUserResources(t *testing.T) {
 		ownedID   string
 		foreignID string
 	}{
-		{path: "/api/v1/admin/users/1/profiles", ownedID: "profile-a-primary", foreignID: "profile-b-primary"},
-		{path: "/api/v1/admin/users/1/devices", ownedID: "device-a", foreignID: "device-b"},
-		{path: "/api/v1/admin/users/1/auth-sessions", ownedID: "session-a", foreignID: "session-b"},
+		{path: "/api/bloem/v2/admin/platform/accounts/1/profiles", ownedID: "profile-a-primary", foreignID: "profile-b-primary"},
+		{path: "/api/bloem/v2/admin/platform/accounts/1/devices", ownedID: "device-a", foreignID: "device-b"},
+		{path: "/api/bloem/v2/admin/platform/accounts/1/auth-sessions", ownedID: "session-a", foreignID: "session-b"},
 	} {
 		recorder := adminUserResourceRequest(t, router, http.MethodGet, test.path, "")
 		if recorder.Code != http.StatusOK {
@@ -401,10 +403,10 @@ func TestAdminUserResources_RejectsCrossAccountSubordinates(t *testing.T) {
 		path   string
 		body   string
 	}{
-		{method: http.MethodPut, path: "/api/v1/admin/users/1/profiles/profile-b-secondary", body: `{"name":"stolen"}`},
-		{method: http.MethodDelete, path: "/api/v1/admin/users/1/profiles/profile-b-secondary"},
-		{method: http.MethodDelete, path: "/api/v1/admin/users/1/devices/device-b"},
-		{method: http.MethodDelete, path: "/api/v1/admin/users/1/auth-sessions/session-b"},
+		{method: http.MethodPut, path: "/api/bloem/v2/admin/platform/accounts/1/profiles/profile-b-secondary", body: `{"name":"stolen"}`},
+		{method: http.MethodDelete, path: "/api/bloem/v2/admin/platform/accounts/1/profiles/profile-b-secondary"},
+		{method: http.MethodDelete, path: "/api/bloem/v2/admin/platform/accounts/1/devices/device-b"},
+		{method: http.MethodDelete, path: "/api/bloem/v2/admin/platform/accounts/1/auth-sessions/session-b"},
 	} {
 		recorder := adminUserResourceRequest(t, router, test.method, test.path, test.body)
 		if recorder.Code != http.StatusNotFound {
@@ -430,7 +432,7 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 		handler, _, _ := newAdminUserResourceHandler(t)
 		router := routeAdminUserResources(handler)
 		created := adminUserResourceRequest(t, router, http.MethodPost,
-			"/api/v1/admin/users/1/profiles", `{"name":" Guest "}`)
+			"/api/bloem/v2/admin/platform/accounts/1/profiles", `{"name":" Guest "}`)
 		if created.Code != http.StatusCreated || !strings.Contains(created.Body.String(), `"name":"Guest"`) {
 			t.Fatalf("create = %d: %s", created.Code, created.Body.String())
 		}
@@ -439,7 +441,7 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 			t.Fatalf("decode created profile: %v", err)
 		}
 		updated := adminUserResourceRequest(t, router, http.MethodPut,
-			"/api/v1/admin/users/1/profiles/"+body.ID, `{"name":" Visitor "}`)
+			"/api/bloem/v2/admin/platform/accounts/1/profiles/"+body.ID, `{"name":" Visitor "}`)
 		if updated.Code != http.StatusOK || !strings.Contains(updated.Body.String(), `"name":"Visitor"`) {
 			t.Fatalf("update = %d: %s", updated.Code, updated.Body.String())
 		}
@@ -448,7 +450,7 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 	t.Run("duplicate name is conflict", func(t *testing.T) {
 		handler, _, _ := newAdminUserResourceHandler(t)
 		recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodPost,
-			"/api/v1/admin/users/1/profiles", `{"name":" main a "}`)
+			"/api/bloem/v2/admin/platform/accounts/1/profiles", `{"name":" main a "}`)
 		if recorder.Code != http.StatusConflict {
 			t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 		}
@@ -461,7 +463,7 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 			2: {ID: 2, MaxProfiles: new(4)},
 		}}
 		recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodPost,
-			"/api/v1/admin/users/1/profiles", `{"name":"Over quota"}`)
+			"/api/bloem/v2/admin/platform/accounts/1/profiles", `{"name":"Over quota"}`)
 		if recorder.Code != http.StatusUnprocessableEntity {
 			t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 		}
@@ -476,7 +478,7 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 			2: {ID: 2, MaxProfiles: new(4)},
 		}}
 		handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 2, ManagedTemplateKey: new("managed-test")}}
-		request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/1/profiles", strings.NewReader(`{"name":"Over managed quota"}`))
+		request := httptest.NewRequest(http.MethodPost, "/api/bloem/v2/admin/platform/accounts/1/profiles", strings.NewReader(`{"name":"Over managed quota"}`))
 		request.Header.Set("Content-Type", "application/json")
 		request = request.WithContext(withAdminResourceOrganization(request.Context(), organizationID))
 		recorder := httptest.NewRecorder()
@@ -493,7 +495,7 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 		key := "browse-only"
 		handler.userRepo = testAdminUserRepo{users: map[int]*models.User{1: {ID: 1, MaxProfiles: new(5)}}}
 		handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 0, ManagedTemplateKey: &key}}
-		request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/1/profiles", strings.NewReader(`{"name":"Over managed zero quota"}`))
+		request := httptest.NewRequest(http.MethodPost, "/api/bloem/v2/admin/platform/accounts/1/profiles", strings.NewReader(`{"name":"Over managed zero quota"}`))
 		request.Header.Set("Content-Type", "application/json")
 		request = request.WithContext(withAdminResourceOrganization(request.Context(), organizationID))
 		recorder := httptest.NewRecorder()
@@ -506,7 +508,7 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 	t.Run("primary profile cannot be deleted", func(t *testing.T) {
 		handler, _, _ := newAdminUserResourceHandler(t)
 		recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodDelete,
-			"/api/v1/admin/users/1/profiles/profile-a-primary", "")
+			"/api/bloem/v2/admin/platform/accounts/1/profiles/profile-a-primary", "")
 		if recorder.Code != http.StatusConflict {
 			t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 		}
@@ -528,7 +530,7 @@ func TestAdminUserProfiles_UpdateRemovesReplacedUploadedAvatar(t *testing.T) {
 	handler.SetProfileHandler(profileHandler)
 
 	recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodPut,
-		"/api/v1/admin/users/1/profiles/profile-a-secondary", `{"avatar":"avatar-1"}`)
+		"/api/bloem/v2/admin/platform/accounts/1/profiles/profile-a-secondary", `{"avatar":"avatar-1"}`)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 	}
@@ -554,7 +556,7 @@ func TestAdminUserProfiles_DeleteRemovesUploadedAvatarAndPurgesProfileDevices(t 
 	handler.SetProfileHandler(profileHandler)
 
 	recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodDelete,
-		"/api/v1/admin/users/1/profiles/profile-a-secondary", "")
+		"/api/bloem/v2/admin/platform/accounts/1/profiles/profile-a-secondary", "")
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 	}
@@ -578,7 +580,7 @@ func TestAdminUserProfiles_CleanupFailuresFollowNativeMutationSemantics(t *testi
 		handler.SetProfileHandler(profileHandler)
 
 		recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodPut,
-			"/api/v1/admin/users/1/profiles/profile-a-secondary", `{"avatar":"avatar-1"}`)
+			"/api/bloem/v2/admin/platform/accounts/1/profiles/profile-a-secondary", `{"avatar":"avatar-1"}`)
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 		}
@@ -600,7 +602,7 @@ func TestAdminUserProfiles_CleanupFailuresFollowNativeMutationSemantics(t *testi
 		handler.SetProfileHandler(profileHandler)
 
 		recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodDelete,
-			"/api/v1/admin/users/1/profiles/profile-a-secondary", "")
+			"/api/bloem/v2/admin/platform/accounts/1/profiles/profile-a-secondary", "")
 		if recorder.Code != http.StatusNoContent {
 			t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 		}
@@ -615,8 +617,8 @@ func TestAdminUserResources_UnknownDeviceAndSessionDeletesAreIdempotent(t *testi
 	handler, _, _ := newAdminUserResourceHandler(t)
 	router := routeAdminUserResources(handler)
 	for _, path := range []string{
-		"/api/v1/admin/users/1/devices/never-seen",
-		"/api/v1/admin/users/1/auth-sessions/never-issued",
+		"/api/bloem/v2/admin/platform/accounts/1/devices/never-seen",
+		"/api/bloem/v2/admin/platform/accounts/1/auth-sessions/never-issued",
 	} {
 		recorder := adminUserResourceRequest(t, router, http.MethodDelete, path, "")
 		if recorder.Code != http.StatusNoContent {
@@ -630,7 +632,7 @@ func TestAdminUserResources_OwnedDeviceAndSessionDeletesReturnNoContent(t *testi
 	router := routeAdminUserResources(handler)
 
 	deviceDelete := adminUserResourceRequest(t, router, http.MethodDelete,
-		"/api/v1/admin/users/1/devices/device-a", "")
+		"/api/bloem/v2/admin/platform/accounts/1/devices/device-a", "")
 	if deviceDelete.Code != http.StatusNoContent {
 		t.Fatalf("device delete = %d: %s", deviceDelete.Code, deviceDelete.Body.String())
 	}
@@ -642,7 +644,7 @@ func TestAdminUserResources_OwnedDeviceAndSessionDeletesReturnNoContent(t *testi
 	}
 
 	sessionDelete := adminUserResourceRequest(t, router, http.MethodDelete,
-		"/api/v1/admin/users/1/auth-sessions/session-a", "")
+		"/api/bloem/v2/admin/platform/accounts/1/auth-sessions/session-a", "")
 	if sessionDelete.Code != http.StatusNoContent {
 		t.Fatalf("session delete = %d: %s", sessionDelete.Code, sessionDelete.Body.String())
 	}
@@ -654,7 +656,7 @@ func TestAdminUserResources_OwnedDeviceAndSessionDeletesReturnNoContent(t *testi
 func TestAdminUserAuthSessions_RevokeAllOnlyTouchesSelectedUser(t *testing.T) {
 	handler, _, sessions := newAdminUserResourceHandler(t)
 	recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodDelete,
-		"/api/v1/admin/users/1/auth-sessions", "")
+		"/api/bloem/v2/admin/platform/accounts/1/auth-sessions", "")
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 	}
@@ -673,10 +675,10 @@ func TestAdminUserAuthSessions_CompatInvalidationSurvivesRequestCancellation(t *
 		path   string
 		scoped bool
 	}{
-		{name: "global single", path: "/api/v1/admin/users/1/auth-sessions/session-a"},
-		{name: "global all", path: "/api/v1/admin/users/1/auth-sessions"},
-		{name: "profile scoped single", path: "/api/v1/admin/users/1/auth-sessions/session-a", scoped: true},
-		{name: "profile scoped all", path: "/api/v1/admin/users/1/auth-sessions", scoped: true},
+		{name: "global single", path: "/api/bloem/v2/admin/platform/accounts/1/auth-sessions/session-a"},
+		{name: "global all", path: "/api/bloem/v2/admin/platform/accounts/1/auth-sessions"},
+		{name: "profile scoped single", path: "/api/bloem/v2/admin/platform/accounts/1/auth-sessions/session-a", scoped: true},
+		{name: "profile scoped all", path: "/api/bloem/v2/admin/platform/accounts/1/auth-sessions", scoped: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			handler, stores, sessions := newAdminUserResourceHandler(t)
@@ -734,7 +736,7 @@ func TestAdminUserAuthSessions_ProfileScopedRevokeAllIsAtomicAcrossRequestCancel
 	sessions.cancelAfterRevoke = cancelRequest
 
 	recorder := adminUserResourceRequestWithContext(t, routeAdminUserResources(handler), requestCtx, http.MethodDelete,
-		"/api/v1/admin/users/1/auth-sessions")
+		"/api/bloem/v2/admin/platform/accounts/1/auth-sessions")
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("status = %d: %s, want 204", recorder.Code, recorder.Body.String())
 	}
@@ -774,8 +776,8 @@ func TestAdminUserResources_InvalidUserAndMissingUserAreSafe(t *testing.T) {
 		path string
 		want int
 	}{
-		{path: "/api/v1/admin/users/not-a-number/profiles", want: http.StatusBadRequest},
-		{path: "/api/v1/admin/users/999/profiles", want: http.StatusNotFound},
+		{path: "/api/bloem/v2/admin/platform/accounts/not-a-number/profiles", want: http.StatusBadRequest},
+		{path: "/api/bloem/v2/admin/platform/accounts/999/profiles", want: http.StatusNotFound},
 	} {
 		recorder := adminUserResourceRequest(t, router, http.MethodGet, test.path, "")
 		if recorder.Code != test.want {

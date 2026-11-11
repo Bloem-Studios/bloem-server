@@ -10,7 +10,7 @@ import (
 // this package must not import handlers, and
 // TestBloemCapabilityDocumentMatchesTheServedShape holds them together.
 type BloemCapabilityFeatures struct {
-	LegacySiloV1            bool `json:"legacy_silo_v1" doc:"This build still answers Silo's frozen /api/v1 surface."`
+	LegacySiloV1            bool `json:"legacy_silo_v1" doc:"This build still answers Silo's retired alpha v1 API. Always false: Silo retired it."`
 	OrganizationMemberships bool `json:"organization_memberships" doc:"Accounts can belong to organizations."`
 	TenantBoundedMediaScope bool `json:"tenant_bounded_media_scope" doc:"Media visibility is bounded by the viewer's organization."`
 	DirectProfileLogin      bool `json:"direct_profile_login" doc:"A profile can hold its own credentials rather than logging in through its account."`
@@ -20,7 +20,7 @@ type BloemCapabilityFeatures struct {
 
 // BloemCapabilities is the native surface's capability probe response.
 type BloemCapabilities struct {
-	API            string                  `json:"api" doc:"Identifier of the native surface this build serves." example:"bloem/v1"`
+	API            string                  `json:"api" doc:"Identifier of the native surface this build serves." example:"bloem/v2"`
 	IdentitySchema int                     `json:"identity_schema" doc:"Version of the server/organization/account/profile identity model."`
 	Features       BloemCapabilityFeatures `json:"features"`
 	MediaTypes     []string                `json:"media_types" doc:"The item types this build can serve."`

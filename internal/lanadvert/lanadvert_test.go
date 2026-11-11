@@ -174,11 +174,11 @@ func TestTXTRecordMatchesIdentityContract(t *testing.T) {
 	if txt["bloem"] != wantBloem {
 		t.Errorf("bloem = %q, want %q: the record must carry exactly the native surfaces the identity document publishes", txt["bloem"], wantBloem)
 	}
-	if len(handlers.NativeAPISurfaces()) != 1 || handlers.NativeAPISurfaces()[0] != "v1" {
+	if len(handlers.NativeAPISurfaces()) != 1 || handlers.NativeAPISurfaces()[0] != "v2" {
 		t.Errorf("nativeAPISurfaces = %v; the pinned expectation below only holds for the current contract and must be updated consciously", handlers.NativeAPISurfaces())
 	}
-	if wantBloem != "v1" {
-		t.Errorf("native surfaces %v produce %q; clients shipped parsing \"v1\" — update this pin together with nativeAPISurfaces", handlers.NativeAPISurfaces(), wantBloem)
+	if wantBloem != "v2" {
+		t.Errorf("native surfaces %v produce %q; clients parse \"v2\" — update this pin together with nativeAPISurfaces", handlers.NativeAPISurfaces(), wantBloem)
 	}
 }
 

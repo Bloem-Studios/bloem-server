@@ -260,7 +260,7 @@ function playerProps(overrides: Partial<Parameters<typeof VideoPlayer>[0]> = {})
   return {
     title: "Test movie",
     contentId: "episode-1",
-    streamUrl: "/api/v1/stream/session-1?st=scoped-stream-token",
+    streamUrl: "/api/v1/stream/session-1?token=token",
     plan: directPlan,
     planRevision: 1,
     sessionId: "session-1",

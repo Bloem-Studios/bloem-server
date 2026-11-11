@@ -96,18 +96,18 @@ func TestBloemEbookRouterRealPluginRPC(t *testing.T) {
 					return map[string]string{"id": "provider-row", "isbn13": "9780306406157", "status": state, "selected_format": tc.format, "format": tc.format}
 				}
 				switch r.URL.Path {
-				case "/api/v1/monitoring":
+				case "/api/v1/monitoring": // v1-guard: allow (Bookwarehouse's own API, not Silo's)
 					rows := []any{}
 					if exists.Load() {
 						rows = append(rows, row())
 					}
 					write(map[string]any{"requests": rows, "page": 1, "limit": 100, "total": len(rows)})
-				case "/api/v1/books":
+				case "/api/v1/books": // v1-guard: allow (Bookwarehouse's own API, not Silo's)
 					if r.URL.Query().Get("format") != tc.format {
 						t.Error("wrong format reached backend")
 					}
 					write(map[string]any{"books": []any{}, "pagination": map[string]int{"page": 1, "limit": 100, "total_items": 0, "total_pages": 0}})
-				case "/api/v1/monitoring/add":
+				case "/api/v1/monitoring/add": // v1-guard: allow (Bookwarehouse's own API, not Silo's)
 					if r.Method != "POST" {
 						t.Error("wrong method")
 					}
@@ -126,7 +126,7 @@ func TestBloemEbookRouterRealPluginRPC(t *testing.T) {
 						exists.Store(true)
 						write(map[string]string{"request_id": "provider-row", "status": "searching"})
 					}
-				case "/api/v1/monitoring/provider-row":
+				case "/api/v1/monitoring/provider-row": // v1-guard: allow (Bookwarehouse's own API, not Silo's)
 					write(row())
 				default:
 					t.Errorf("unexpected backend path %s", r.URL.Path)
@@ -207,15 +207,15 @@ func TestBloemEbookRouterRealPluginRPC(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			write := func(v any) { _ = json.NewEncoder(w).Encode(v) }
 			switch r.URL.Path {
-			case "/api/v1/monitoring":
+			case "/api/v1/monitoring": // v1-guard: allow (Bookwarehouse's own API, not Silo's)
 				rows := []any{}
 				if posts.Load() > 0 {
 					rows = append(rows, map[string]string{"id": "accepted-before-cancel", "isbn13": "9780306406157", "status": "searching_now", "selected_format": "epub"})
 				}
 				write(map[string]any{"requests": rows, "page": 1, "limit": 100, "total": len(rows)})
-			case "/api/v1/books":
+			case "/api/v1/books": // v1-guard: allow (Bookwarehouse's own API, not Silo's)
 				write(map[string]any{"books": []any{}, "pagination": map[string]int{"page": 1, "limit": 100, "total_items": 0, "total_pages": 0}})
-			case "/api/v1/monitoring/add":
+			case "/api/v1/monitoring/add": // v1-guard: allow (Bookwarehouse's own API, not Silo's)
 				posts.Add(1)
 				close(started)
 				<-release

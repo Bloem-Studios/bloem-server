@@ -343,7 +343,7 @@ pattern. `scripts/ci/go-test-shard_test.sh` checks both. CI does not run that
 test; run it by hand with `bash scripts/ci/go-test-shard_test.sh`.
 
 The Go contract checks job byte-compares the Bloem native OpenAPI artifact
-(`make verify-bloem-openapi`, `contracts/api/bloem/v1/openapi.json`) and
+(`make verify-bloem-openapi`, `contracts/api/bloem/v2/openapi.json`) and
 [the API catalogue](api-catalogue.md) generated from it
 (`make verify-bloem-api-catalogue`) with a fresh generation. Both became CI
 steps on October 27, 2026; before that the catalogue could fall behind the

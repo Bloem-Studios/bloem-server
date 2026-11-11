@@ -145,8 +145,8 @@ source is still switched on.
 ## For developers
 
 - **API:** [storage sources](../bloem/api/storage.md): every route under
-  `/api/bloem/v1/admin/{platform,organization}/native-storage` and
-  `/api/bloem/v1/admin/{platform,organization}/library-locations`, with its
+  `/api/bloem/v2/admin/{platform,organization}/native-storage` and
+  `/api/bloem/v2/admin/{platform,organization}/library-locations`, with its
   fields and error codes.
 
 ### Start-up admission
@@ -260,7 +260,7 @@ storage location after the commit.
 ### Installing, upgrading and fencing
 
 Sources are installed, upgraded, configured, disabled and uninstalled through the
-protected `/api/bloem/v1/admin/{platform,organization}/native-storage` routes
+protected `/api/bloem/v2/admin/{platform,organization}/native-storage` routes
 (`internal/api/router_bloem_native_storage_management.go`): `capabilities`,
 `artifacts`, `sources`, `sources/{source_key}` and its `browse`,
 `configuration` and `credentials`, `installations` and

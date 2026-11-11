@@ -4,6 +4,7 @@
 > and checked against `main` at `5a93e8b41`. Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Bloem adds its features to Silo's code without rewriting it, so that Silo's work can
 be merged in every day. This page walks through the two ways Bloem does that, where
@@ -229,11 +230,11 @@ apply an adapter twice.
 
 Bloem's home transformers (the promoted row, delivered only on `promoted=1`) read their
 options from the context, never from Silo's `SectionViewer`, which has no Bloem field.
-On `/api/v1` Bloem's own line `r = withRequestSectionOptions(r)` puts the request's
-query on the context before each of Silo's `HomeLayout`, `HomeSections` and
-`homeSectionItems` calls in `internal/api/handlers/sections.go`. On `/api/v2` the line
+On `/api/v2` the line
 `ctx = bloemHomePromotionContext(ctx, in.BloemHomePromotionInput)` does the same before
-Silo's three calls in `internal/apiv2/home.go`. The transform lines in
+Silo's three calls in `internal/apiv2/home.go`. The v1 counterpart in
+`internal/api/handlers/sections.go` went with Silo's v1 API on 2026-11-11; its helper
+`withRequestSectionOptions` (`bloem_section_hooks.go`) has no caller left. The transform lines in
 `home_views_service.go` read the options with `sectionOptions(ctx)`
 ([hooks](../../internal/api/handlers/bloem_section_hooks.go)). Until the merge of Silo
 through `2d5f22e7d` (2026-11-05) Bloem carried the opt-in in a `SectionViewer.Extensions`
@@ -410,11 +411,11 @@ which adds the audiobook and ebook request tabs around Silo's page, in place of
 Silo's `pages/Requests`. Every other importer, Silo's own `pages/Requests` test
 included, keeps Silo's page (`web/bloem-preview-plugin.test.ts`).
 
-The web app calls none of Silo's `/api/v1`. It reaches Silo's `/api/v2` through
-Silo's own web functions (`web/src/api/v2/`), and `/api/bloem/v1` through `nativeApi`
+The web app calls none of Silo's retired v1 API. It reaches Silo's `/api/v2` through
+Silo's own web functions (`web/src/api/v2/`), and `/api/bloem/v2` through `nativeApi`
 or `nativeApiWithProfileRequestContext` (`web/src/api/bloemClient.ts`). The former
-`/api/v1` helpers `bloemV1Api` and `bloemV1ApiWithProfileRequestContext` were removed
-in `3eb77be33` ([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)). Silo's lint
+v1 helpers `bloemV1Api` and `bloemV1ApiWithProfileRequestContext` were removed
+in `3eb77be33` ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)). Silo's lint
 rule against `api<T>()` and `apiWithProfileRequestContext<T>()` stays meaningful for
 routes that have a v2 contract; do not alias the native helpers to `api`.
 
@@ -435,10 +436,10 @@ later Silo version.
 
 ### Realtime socket tickets
 
-The v1 events, watch-together and playback-control sockets run Silo's handshake
-unchanged since `a7436b4e5` (2026-10-25): the ordinary login credential authenticates
-the socket, and Silo's `POST /api/v1/events/ws-ticket` binds the profile and its PIN
-proof. The v2 events and playback-control sockets keep Silo's ticket store and add
+Until Silo retired its v1 API on 2026-11-11, the v1 events, watch-together and
+playback-control sockets ran Silo's handshake unchanged (since `a7436b4e5`,
+2026-10-25): the ordinary login credential authenticated the socket, and Silo's v1
+`POST /events/ws-ticket` bound the profile and its PIN proof. The v2 events and playback-control sockets keep Silo's ticket store and add
 Bloem's tenant authority through Silo's `Validate` hook
 ([`bloem_socket_authority.go`](../../internal/api/handlers/bloem_socket_authority.go)).
 

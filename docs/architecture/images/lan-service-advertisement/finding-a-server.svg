@@ -35,10 +35,10 @@
 <text x="450" y="488" font-size="14" font-weight="700" fill="#C2410C" text-anchor="start">api</text>
 <text x="560" y="488" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">1</text>
 <text x="450" y="518" font-size="14" font-weight="700" fill="#C2410C" text-anchor="start">bloem</text>
-<text x="560" y="518" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">v1</text>
+<text x="560" y="518" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">v2</text>
 <rect x="820" y="304" width="340" height="250" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
 <text x="840" y="336" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The identity check decides</text>
-<text x="840" y="364" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The app asks /api/bloem/v1/server/identity</text>
+<text x="840" y="364" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The app asks /api/bloem/v2/server/identity</text>
 <text x="840" y="384" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">at the address it found. Only that answer</text>
 <text x="840" y="404" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">decides whether to connect.</text>
 <text x="840" y="454" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The card can only make an app skip a</text>

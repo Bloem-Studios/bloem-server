@@ -19,7 +19,7 @@ describe("audiobook acquisition authority", () => {
     const abort = new AbortController();
     await audiobookAcquisitionsApi.list(context(), "review", "opaque/+", abort.signal);
     expect(fetchMock.mock.calls[0]![0]).toBe(
-      "/api/bloem/v1/admin/organization/book-requests/acquisitions?state=review&limit=100&cursor=opaque%2F%2B",
+      "/api/bloem/v2/admin/organization/book-requests/acquisitions?state=review&limit=100&cursor=opaque%2F%2B",
     );
     abort.abort();
     expect(fetchMock.mock.calls[0]![1].signal.aborted).toBe(true);
@@ -32,7 +32,7 @@ describe("audiobook acquisition authority", () => {
     ).rejects.toThrow();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]![0]).toBe(
-      "/api/bloem/v1/admin/organization/book-requests/book%2Fid/approve-candidate",
+      "/api/bloem/v2/admin/organization/book-requests/book%2Fid/approve-candidate",
     );
     expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toEqual({
       expected_revision: 7,

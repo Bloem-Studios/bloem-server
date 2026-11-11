@@ -101,7 +101,7 @@ func (f clientSurfaceFixture) profileHeaders() map[string]string {
 
 // TestWatchDocumentsAreServedByTheRealRouter drives the real router end to end:
 // the routes are mounted inside the authenticated, viewer-scoped,
-// profile-scoped group on /api/bloem/v1, the database-backed reader runs its real
+// profile-scoped group on /api/bloem/v2, the database-backed reader runs its real
 // queries, and both documents conform to the contracts schema. The
 // handler-level tests use a fake reader, so this is the only place the
 // adapter's SQL is exercised.

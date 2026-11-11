@@ -1,16 +1,17 @@
 # Bloem overlay: Canonical Settings API
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`, and checked again on
+> 2026-11-11, after Silo retired its v1 API and its settings bridge. It lists what Bloem
 > adds to Silo's [`docs/settings-api.md`](../../settings-api.md), which stays exactly
 > as Silo wrote it. Bloem replaces nothing there. The additions are in the
 > [For developers](#for-developers) section.
 
 Silo's settings page explains how apps read and change settings: the server's,
 an account's, a profile's and a device's. Bloem serves Silo's settings contract as
-Silo documents it: the `/api/v2` settings operations, and the frozen `/api/v1`
-settings bridge with its headers, scopes, write mirror, atomic shortcuts and device
-registry. Bloem adds three notes, because Bloem has **organizations** and
+Silo documents it: the `/api/v2` settings operations with their headers, scopes,
+write mirror, atomic shortcuts and device registry. Silo's v1 settings bridge is
+retired. Bloem adds three notes, because Bloem has **organizations** and
 **profiles with a sign-in of their own**.
 
 ## What Bloem changes
@@ -19,9 +20,9 @@ registry. Bloem adds three notes, because Bloem has **organizations** and
   set a default value for some settings. On Bloem that default is the server's,
   and it applies in every organization alike. There is no per-organization
   default.
-- **A profile's own sign-in reaches only some settings.** A session signed in
-  straight to one profile can read and change that profile's settings, but not
-  the account-wide ones.
+- **A profile's own sign-in reaches no settings.** A session signed in straight to
+  one profile reached only that profile's settings on Silo's v1 bridge. Profile
+  sign-in is dormant since Silo retired that API on 2026-11-11.
 - **Each organization's domain shows its own brand.** On an organization's own
   domain, the public branding Silo serves before sign-in (name, logo, colours)
   is that organization's. Silo's own branding settings stay the server's.
@@ -31,7 +32,7 @@ registry. Bloem adds three notes, because Bloem has **organizations** and
 | On this page | In the code and API |
 | --- | --- |
 | An administrator's default | a server setting `defaults.<key>`, for definitions marked `admin_default` |
-| A profile's own sign-in | a direct-profile session from `POST /api/v1/auth/profile-login` |
+| A profile's own sign-in | a direct-profile session, from Silo's retired v1 `POST /auth/profile-login` (dormant) |
 | Its allowed routes | the default-deny allowlist in `internal/api/direct_profile_routes.go` |
 | An organization's brand | `bloem_organization_branding`, served through `orgdomains.SettingsOverlay` |
 
@@ -81,8 +82,8 @@ Silo's branding service reads its settings through `orgdomains.SettingsOverlay`
 or for a request authenticated in that organization, the keys in
 `branding.PresentationSettingKeys()` (server name, login subtitle, accent colour,
 default theme and the asset references) answer that organization's values from
-`bloem_organization_branding`. That covers `GET /api/v2/theme/branding`, the
-frozen v1 `/theme/branding`, `/api/v2/branding/assets/{kind}`, the page shell and
+`bloem_organization_branding`. That covers `GET /api/v2/theme/branding`,
+`/api/v2/branding/assets/{kind}`, the page shell and
 web app manifest, and the brand in emails. An unset value is Silo's built-in
 default there, never the server's: the server's branding is the default
 organization's brand. For the default organization, or no organization, every
@@ -90,7 +91,7 @@ key is the server's.
 
 A write goes to an organization only when its context carries
 `WithBrandingWrite`, as the platform routes
-`/api/bloem/v1/admin/platform/tenants/{id}/branding` do (`PUT|DELETE
+`/api/bloem/v2/admin/platform/tenants/{id}/branding` do (`PUT|DELETE
 …/branding/assets/{kind}` for assets); those routes refuse the default
 organization with `409 default_organization`. Every other write, including Silo's
 own branding settings and asset uploads made on an organization's domain, is the
@@ -98,17 +99,16 @@ server's. See [organization domains](../../architecture/bloem-organization-domai
 
 ---
 
-**Location:** section “Bridge: the frozen `/api/v1` settings routes”, subsection
-“Request identity headers”, after the paragraph beginning “Authenticated settings
-routes use the active account and profile…”. **Bloem adds:**
+**Location:** section “Settings semantics”, subsection “Request identity headers”
+(until Silo #3200 a subsection of the v1 bridge section, which Silo removed), after
+the paragraph beginning “Authenticated settings routes use the active account and
+profile…”. **Bloem adds:**
 
-A Bloem direct-profile session (`POST /api/v1/auth/profile-login`) is bound to
-its token's profile; naming another profile answers `403`. Its default-deny
-route allowlist admits the settings contract, effective, device-override,
-explicit-value and `nav.shortcuts/item` routes, but not the account-wide
-`/settings/` list or `/settings/{key}`. An explicit-value request at
-`scope=account` answers `403 forbidden`. The session reaches no `/api/v2`
-settings operation.
+A Bloem direct-profile session is bound to its token's profile. Its default-deny
+route allowlist (`internal/api/direct_profile_routes.go`) admitted only settings
+routes on Silo's v1 bridge, never a `/api/v2` settings operation, so since Silo
+retired its v1 API on 2026-11-11 the session reaches no settings route. Profile
+sign-in itself is dormant: its sign-in route was on the same retired API.
 
 ### Related pages
 

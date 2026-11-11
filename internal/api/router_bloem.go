@@ -19,8 +19,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
-// mountBloem mounts the native Bloem API independently from the Silo-compatible
-// /api/v1 projection. Organization listing is account-authenticated but occurs
+// mountBloem mounts the native Bloem API independently from Silo's own
+// /api/v2. Organization listing is account-authenticated but occurs
 // before a tenant is selected; future organization-bound routes must add
 // tenantMW.RequireBloem.
 //
@@ -110,7 +110,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 		}
 	}
 	// Direct profile login stays unadvertised: /auth/profile-login lived only
-	// on Silo's /api/v1, which Silo retired (Silo #3200), and a capability
+	// on Silo's retired v1 API (Silo #3200), and a capability
 	// that disagrees with the route table is worse than no capability at all.
 	if deps.DB != nil {
 		system.SetProfilePasswordsEnabled(auth.NewProfileCredentialService(deps.DB).ProfilePasswordsEnabled)
@@ -119,7 +119,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	var credentialHandler *handlers.BloemProfileCredentialsHandler
 	var credentialLimit func(http.Handler) http.Handler
 	// Profile sign-in is dormant: its sign-in route lived only on Silo's
-	// /api/v1, which Silo retired (Silo #3200), so a profile's own email and
+	// retired v1 API (Silo #3200), so a profile's own email and
 	// password cannot be used anywhere. The credential routes stay unmounted
 	// and unadvertised until a native profile sign-in exists; set this true
 	// together with that route.
@@ -191,7 +191,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 	entitlementHandler := surfaces.Entitlement
 	accountPolicyHandler := surfaces.AccountPolicy
 	client := surfaces.Client
-	r.Route("/api/bloem/v1", func(r chi.Router) {
+	r.Route("/api/bloem/v2", func(r chi.Router) {
 		r.Get("/capabilities", system.HandleCapabilities)
 		mountBloemPreviewAdmin(r, surfaces.PreviewAdmin, authMW, adminMW)
 		mountBloemLibraryFigures(r, surfaces.LibraryFigures, authMW, adminMW)

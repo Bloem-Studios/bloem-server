@@ -142,7 +142,7 @@ func deliveryInsertColumns(delivery Delivery) ([]byte, *time.Time) {
 }
 
 // DecodeCursor parses an opaque cursor produced by Encode. Silo deleted it
-// with /api/v1 (Silo #3200); Bloem's /api/bloem/v1 notification routes still
+// with its v1 API (Silo #3200); Bloem's /api/bloem/v2 notification routes still
 // page with it.
 func DecodeCursor(encoded string) (Cursor, error) {
 	raw, err := base64.RawURLEncoding.DecodeString(encoded)

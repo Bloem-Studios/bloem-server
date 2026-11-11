@@ -7,7 +7,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = Path("docs/bloem/api-catalogue.md")
-NATIVE = "/api/bloem/v1"
+NATIVE = "/api/bloem/v2"
 METHODS = {"get", "head", "post", "put", "patch", "delete", "options", "trace"}
 METHOD_CONSTANTS = {
     "Get": "GET", "Head": "HEAD", "Post": "POST", "Put": "PUT",
@@ -60,8 +60,8 @@ def render(v2, native, inventory):
         "| Surface | Typed operations | Contract and usage |",
         "| --- | ---: | --- |",
         f"| Silo native `/api/v2` | {len(v2_operations)} | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |",
-        f"| Bloem extensions `/api/bloem/v1` | {len(documented)} | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |",
-        "| Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |",
+        f"| Bloem extensions `/api/bloem/v2` | {len(documented)} | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |",
+        "| Retired alpha v1 API (410 Gone except the health and ready probes) | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |",
         "",
         "OpenAPI documents typed operations, including separately described raw transports.",
         "The inventory also observes mount adapters and all-method chi handlers. A dispatcher",
@@ -110,7 +110,7 @@ def main():
     parser.add_argument("--check", action="store_true", help="fail if the catalogue is stale")
     args = parser.parse_args()
     documents = [json.loads((ROOT / name).read_text()) for name in (
-        "contracts/api/v2/openapi.json", "contracts/api/bloem/v1/openapi.json",
+        "contracts/api/v2/openapi.json", "contracts/api/bloem/v2/openapi.json",
         "contracts/api/v2/route-inventory.json",
     )]
     report = render(*documents)

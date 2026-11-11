@@ -6,6 +6,7 @@
 > [media requests](media-requests.md)). Bloem adds adapters that tie them to its
 > organizations and to the profile that asks. The technical rules are in the
 > [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 When a viewer asks for a movie or a series, Silo's request service decides
 whether they may ask, how many requests they have left and whether a request
@@ -85,8 +86,8 @@ leaves the rules exactly as they were.
   [media requests](media-requests.md). Bloem changes who may call them, not
   their shape.
 
-"Native listeners" below means the two routers that serve Silo's API: the
-`/api/v1` router and the `/api/v2` listener.
+"Native listeners" below means the routers that serve Silo's API: the
+`/api/v2` listener, and until Silo retired its v1 API on 2026-11-11 the v1 router.
 
 ### Composition
 

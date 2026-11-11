@@ -70,10 +70,10 @@ beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   requests = [];
   respond = (path) => {
-    if (path === "/api/bloem/v1/capabilities")
+    if (path === "/api/bloem/v2/capabilities")
       return json({ features: {}, feature_tokens: ["seasonal_viewer_v1"] });
-    if (path === "/api/bloem/v1/ambience") return json({ ambience: [pack("organization")] });
-    if (path === "/api/bloem/v1/ambience/public") return json({ ambience: [pack("public")] });
+    if (path === "/api/bloem/v2/ambience") return json({ ambience: [pack("organization")] });
+    if (path === "/api/bloem/v2/ambience/public") return json({ ambience: [pack("public")] });
     throw new Error(`Unexpected request: ${path}`);
   };
   vi.stubGlobal(
@@ -106,7 +106,7 @@ afterEach(() => {
 it("delivers organization artwork through the capability-gated native viewer request with captured profile and PIN authority", async () => {
   mount();
   await waitFor(() => expect(artwork("organization")).not.toBeNull());
-  expect(paths()).toEqual(["/api/bloem/v1/capabilities", "/api/bloem/v1/ambience"]);
+  expect(paths()).toEqual(["/api/bloem/v2/capabilities", "/api/bloem/v2/ambience"]);
   const headers = new Headers(requests[1]!.options?.headers);
   expect(headers.get("Authorization")).toBe("Bearer test-account-token");
   expect(headers.get("X-Profile-Id")).toBe("viewer");
@@ -123,7 +123,7 @@ it.each([false, true])("keeps login presentation public-only (signed in: %s)", a
   }
   mount("/login");
   await waitFor(() => expect(artwork("public")).not.toBeNull());
-  expect(paths()).toEqual(["/api/bloem/v1/ambience/public"]);
+  expect(paths()).toEqual(["/api/bloem/v2/ambience/public"]);
   expect(new Headers(requests[0]!.options?.headers).has("Authorization")).toBe(false);
   expect(requests[0]!.options?.credentials).toBe("omit");
   expect(artwork("organization")).toBeNull();
@@ -133,12 +133,12 @@ it.each(["missing token", "unsupported probe"])(
   "uses credential-free public fallback for %s",
   async (mode) => {
     respond = (path) =>
-      path === "/api/bloem/v1/capabilities"
+      path === "/api/bloem/v2/capabilities"
         ? json({ features: {}, feature_tokens: [] }, mode === "unsupported probe" ? 404 : 200)
         : json({ ambience: [pack("public")] });
     mount();
     await waitFor(() => expect(artwork("public")).not.toBeNull());
-    expect(paths()).toEqual(["/api/bloem/v1/capabilities", "/api/bloem/v1/ambience/public"]);
+    expect(paths()).toEqual(["/api/bloem/v2/capabilities", "/api/bloem/v2/ambience/public"]);
     expect(new Headers(requests[1]!.options?.headers).has("Authorization")).toBe(false);
     expect(requests[1]!.options?.credentials).toBe("omit");
   },
@@ -147,7 +147,7 @@ it.each(["missing token", "unsupported probe"])(
 it("does not use public branding as an authenticated fallback when viewer delivery is forbidden", async () => {
   const original = respond;
   respond = (path) =>
-    path === "/api/bloem/v1/ambience"
+    path === "/api/bloem/v2/ambience"
       ? json({ error: "profile_unverified", message: "Profile verification required" }, 403)
       : original(path);
   const view = mount();
@@ -159,16 +159,16 @@ it("does not use public branding as an authenticated fallback when viewer delive
         .some((query) => query.state.status === "error"),
     ).toBe(true),
   );
-  expect(paths()).toEqual(["/api/bloem/v1/capabilities", "/api/bloem/v1/ambience"]);
+  expect(paths()).toEqual(["/api/bloem/v2/capabilities", "/api/bloem/v2/ambience"]);
   expect(document.querySelector("img")).toBeNull();
   respond = original;
   setProfileToken("newly-verified-pin-proof");
   view.update();
   await waitFor(() => expect(artwork("organization")).not.toBeNull());
   expect(paths()).toEqual([
-    "/api/bloem/v1/capabilities",
-    "/api/bloem/v1/ambience",
-    "/api/bloem/v1/ambience",
+    "/api/bloem/v2/capabilities",
+    "/api/bloem/v2/ambience",
+    "/api/bloem/v2/ambience",
   ]);
 });
 
@@ -185,13 +185,13 @@ it.each(["account", "profile", "PIN"])(
     let finish!: (response: Response) => void;
     const original = respond;
     respond = (path) =>
-      path === "/api/bloem/v1/ambience"
+      path === "/api/bloem/v2/ambience"
         ? new Promise<Response>((resolve) => {
             finish = resolve;
           })
         : original(path);
     const view = mount();
-    await waitFor(() => expect(paths()).toContain("/api/bloem/v1/ambience"));
+    await waitFor(() => expect(paths()).toContain("/api/bloem/v2/ambience"));
     if (change === "account") setAccessToken("new-account-token");
     if (change === "profile") {
       viewer.profileId = "new-profile";
@@ -199,7 +199,7 @@ it.each(["account", "profile", "PIN"])(
     }
     if (change === "PIN") setProfileToken("new-pin-proof");
     respond = (path) =>
-      path === "/api/bloem/v1/ambience" ? json({ ambience: [pack("current")] }) : original(path);
+      path === "/api/bloem/v2/ambience" ? json({ ambience: [pack("current")] }) : original(path);
     view.update();
     await waitFor(() => expect(artwork("current")).not.toBeNull());
     await act(async () => finish(json({ ambience: [pack("previous")] })));
@@ -220,13 +220,13 @@ it("rejects a late response after a PIN proof is removed and reinstalled, even b
   let finish!: (response: Response) => void;
   const original = respond;
   respond = (path) =>
-    path === "/api/bloem/v1/ambience"
+    path === "/api/bloem/v2/ambience"
       ? new Promise<Response>((resolve) => {
           finish = resolve;
         })
       : original(path);
   mount();
-  await waitFor(() => expect(paths()).toContain("/api/bloem/v1/ambience"));
+  await waitFor(() => expect(paths()).toContain("/api/bloem/v2/ambience"));
   setProfileToken(null);
   setProfileToken("test-pin-proof");
   await act(async () => finish(json({ ambience: [pack("previous")] })));
@@ -245,13 +245,13 @@ it("clears private artwork on logout and rejects a previous login's late respons
   let finish!: (response: Response) => void;
   const original = respond;
   respond = (path) =>
-    path === "/api/bloem/v1/ambience"
+    path === "/api/bloem/v2/ambience"
       ? new Promise<Response>((resolve) => {
           finish = resolve;
         })
       : original(path);
   const view = mount();
-  await waitFor(() => expect(paths()).toContain("/api/bloem/v1/ambience"));
+  await waitFor(() => expect(paths()).toContain("/api/bloem/v2/ambience"));
   viewer.signedIn = false;
   viewer.profileId = "";
   setAccessToken(null);
@@ -297,7 +297,7 @@ it("removes delivery at its exclusive end time without waiting for a refetch", a
   vi.setSystemTime(new Date("2030-01-01T00:00:00Z"));
   const original = respond;
   respond = (path) =>
-    path === "/api/bloem/v1/ambience"
+    path === "/api/bloem/v2/ambience"
       ? json({
           ambience: [
             {

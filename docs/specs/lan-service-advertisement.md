@@ -22,7 +22,7 @@ the server announces, how an app uses it, and how it differs from Silo's announc
    facts** (a DNS-SD TXT record): the server's ID, its name, whether it speaks `http`
    or `https`, and which API versions it offers.
 3. **A Bloem app on the same network sees the card.** Before offering the server, it
-   asks the server's **identity route**, `/api/bloem/v1/server/identity`, who it is.
+   asks the server's **identity route**, `/api/bloem/v2/server/identity`, who it is.
    Only that answer decides whether the app connects.
 
 The card is a hint, not a key. Anyone on the network could send one, so it can only
@@ -57,7 +57,7 @@ Bloem's setting does not publish `_silo._tcp`. Bloem's apps look for `_bloem._tc
 | The setting | `lan.advertisement_enabled` (`internal/config/bloem_admin_settings.go`, `cfg.LAN.AdvertisementEnabled`) |
 | Starting it | `bloemStartListeners` (`cmd/silo/bloem_main.go`) |
 | Card of facts | the TXT record (`txtRecord`) |
-| Identity route | `GET /api/bloem/v1/server/identity` (`internal/api/handlers/server_identity.go`) |
+| Identity route | `GET /api/bloem/v2/server/identity` (`internal/api/handlers/server_identity.go`) |
 | Silo's announcement | `_silo._tcp`, `internal/landiscovery`, setting `server.lan_discovery` |
 
 ## For developers
@@ -68,7 +68,7 @@ Bloem's setting does not publish `_silo._tcp`. Bloem's apps look for `_bloem._tc
 
 ### History
 
-Written on 2026-09-02 (`8993d1b3b`) after the native API moved to `/api/bloem/v1`,
+Written on 2026-09-02 (`8993d1b3b`) after the native API moved to `/api/bloem/v2`,
 when aligning the clients showed that they browsed for a service no server published.
 `8173499df` (2026-09-02) added `internal/lanadvert`, which publishes `_bloem._tcp`
 through `github.com/brutella/dnssd`. Silo added `_silo._tcp` later, in `fdedf5a27`
@@ -113,7 +113,7 @@ Service type `_bloem._tcp`, on the port the API is served from.
 | `bloem` | comma-separated native surface versions, i.e. `v1` | The record-level counterpart of the identity document's `bloem_api`. A parseable list naming no surface the client speaks is the one reason a client withholds an attempt early. |
 
 The advertisement is an unauthenticated hint. It can only ever push a candidate toward
-"not worth attempting"; it never grants trust. `GET /api/bloem/v1/server/identity`
+"not worth attempting"; it never grants trust. `GET /api/bloem/v2/server/identity`
 remains the authority on whether a connection is made.
 
 `bloem` is a key added on 2026-09-02: no client shipped before then reads it, and every

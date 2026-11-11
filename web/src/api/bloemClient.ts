@@ -1,6 +1,6 @@
 // Bloem's JSON API client. Bloem screens call Silo's /api/v2 through v2() and
-// Bloem's native /api/bloem/v1 through nativeApi(); Silo retired /api/v1 and
-// nothing in Bloem calls it (docs/architecture/bloem-leaving-silo-v1.md).
+// Bloem's native /api/bloem/v2 through nativeApi(); Silo's retired alpha API
+// is never called (docs/architecture/bloem-leaving-silo-v1.md).
 // Built on the Silo-owned session transport in client.ts so that file stays
 // close to upstream.
 import type { ApiError } from "./types";
@@ -127,7 +127,7 @@ export async function nativeApi<T>(
       options,
       policy ?? (readOnly ? "safe" : "none"),
       undefined,
-      "/api/bloem/v1",
+      "/api/bloem/v2",
     ),
   );
 }
@@ -144,14 +144,14 @@ export function nativeApiWithProfileRequestContext<T>(
   options: RequestInit = {},
   policy: RequestPolicy = "safe",
 ): Promise<T> {
-  return apiForProfile<T>(path, snapshot, options, "/api/bloem/v1", policy);
+  return apiForProfile<T>(path, snapshot, options, "/api/bloem/v2", policy);
 }
 
 async function apiForProfile<T>(
   path: string,
   snapshot: ProfileRequestContextSnapshot,
   options: RequestInit,
-  prefix: "/api/bloem/v1",
+  prefix: "/api/bloem/v2",
   policy: RequestPolicy = "safe",
 ): Promise<T> {
   if (!isProfileRequestContextCurrent(snapshot)) {
@@ -179,7 +179,7 @@ async function apiResponseInternal(
   options: RequestInit,
   policy: RequestPolicy,
   snapshot?: ProfileRequestContextSnapshot,
-  prefix: "/api/bloem/v1" = "/api/bloem/v1",
+  prefix: "/api/bloem/v2" = "/api/bloem/v2",
 ): Promise<Response> {
   const { res, requestProfileId, requestProfileToken } = await fetchWithSession(
     `${prefix}${path}`,

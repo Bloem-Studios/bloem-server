@@ -32,7 +32,7 @@ import (
 // a path alone cannot separate editing your own profile from deleting it.
 
 // readOnlySubtrees admit GET and HEAD on every route beneath them. Empty
-// since Silo retired /api/v1 (Silo #3200), where every subtree lived; a
+// since Silo retired its v1 API (Silo #3200), where every subtree lived; a
 // direct-profile session reads nothing on /api/v2.
 var readOnlySubtrees []string
 
@@ -43,16 +43,16 @@ var directProfileAllowedRoutes = map[string][]string{
 	// organization attribution: each is filed, read and withdrawn as the bound
 	// profile, and a bound profile is a user of Bloem like any other. Approval,
 	// retry and setup stay administrative and are absent.
-	"/api/bloem/v1/book-requests/capability":   {http.MethodGet},
-	"/api/bloem/v1/book-requests/mine":         {http.MethodGet},
-	"/api/bloem/v1/book-requests":              {http.MethodPost},
-	"/api/bloem/v1/book-requests/{id}":         {http.MethodGet},
-	"/api/bloem/v1/book-requests/{id}/cancel":  {http.MethodPost},
-	"/api/bloem/v1/ebook-requests/capability":  {http.MethodGet},
-	"/api/bloem/v1/ebook-requests/mine":        {http.MethodGet},
-	"/api/bloem/v1/ebook-requests":             {http.MethodPost},
-	"/api/bloem/v1/ebook-requests/{id}":        {http.MethodGet},
-	"/api/bloem/v1/ebook-requests/{id}/cancel": {http.MethodPost},
+	"/api/bloem/v2/book-requests/capability":   {http.MethodGet},
+	"/api/bloem/v2/book-requests/mine":         {http.MethodGet},
+	"/api/bloem/v2/book-requests":              {http.MethodPost},
+	"/api/bloem/v2/book-requests/{id}":         {http.MethodGet},
+	"/api/bloem/v2/book-requests/{id}/cancel":  {http.MethodPost},
+	"/api/bloem/v2/ebook-requests/capability":  {http.MethodGet},
+	"/api/bloem/v2/ebook-requests/mine":        {http.MethodGet},
+	"/api/bloem/v2/ebook-requests":             {http.MethodPost},
+	"/api/bloem/v2/ebook-requests/{id}":        {http.MethodGet},
+	"/api/bloem/v2/ebook-requests/{id}/cancel": {http.MethodPost},
 }
 
 // directProfileDeniedRoutes are routes inside an admitted read subtree that
@@ -101,7 +101,7 @@ func newDirectProfileRouteGuard(match func(*chi.Context, string, string) bool) a
 		// Always resolve against the root router rather than reading the
 		// in-flight route context: authentication runs partway through
 		// routing, where the pattern is still a partial one like
-		// "/api/v1/*", and matching that against the allowlist would refuse
+		// "/api/v2/*", and matching that against the allowlist would refuse
 		// everything.
 		if match == nil {
 			return false

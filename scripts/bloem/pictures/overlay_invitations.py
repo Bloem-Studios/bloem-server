@@ -35,7 +35,7 @@ def two_paths():
     # Silo's routes.
     s.rect(40, 120, 545, 360, SILO["fill"], SILO["stroke"], rx=16, sw=1.8)
     s.text(64, 156, "Silo's administrator routes", size=19, weight="700")
-    _mono(s, 64, 182, "/api/v2/admin/invitations (and /api/v1)")
+    _mono(s, 64, 182, "/api/v2/admin/invitations")
     s.badge(64, 198, "Default organization only", SILO, size=13)
     _facts(s, 64, 262, [
         (True, "Lists, sends, resends, revokes and deletes the default organization's invitations."),
@@ -47,7 +47,7 @@ def two_paths():
     # Organization console.
     s.rect(615, 120, 545, 360, o["fill"], o["stroke"], rx=16, sw=1.8)
     s.text(639, 156, "The organization console", size=19, weight="700")
-    _mono(s, 639, 182, "/api/bloem/v1/admin/organization/invitations")
+    _mono(s, 639, 182, "/api/bloem/v2/admin/organization/invitations")
     s.badge(639, 198, "Its own organization", o, size=13)
     _facts(s, 639, 262, [
         (True, "Invites ordinary users only, never an administrator."),

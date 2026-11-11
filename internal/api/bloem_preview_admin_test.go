@@ -52,7 +52,7 @@ func TestPreviewAdminRouterScopedControlPlane(t *testing.T) {
 		router.ServeHTTP(w, r)
 		return w
 	}
-	const prefix = "/api/bloem/v1/admin/platform/preview"
+	const prefix = "/api/bloem/v2/admin/platform/preview"
 	w := call("POST", prefix+"/account", key.Key, map[string]any{"issuer": "operator-test"})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("ensure: %d %s", w.Code, w.Body)

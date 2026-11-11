@@ -26,6 +26,7 @@ related:
 > ebook requests, browse-only previews, promotional cards and seasonal artwork, separate
 > sign-ins for household profiles, and organizations' own addresses. The technical details are
 > in the [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Somebody you know runs a Bloem server, a private streaming service for a library they look
 after, and has given you a way in. This guide walks through getting in, profiles, finding
@@ -465,9 +466,9 @@ of which app uses which entrance, see [How apps connect](../architecture/bloem-a
 | "This account signs in at …" | `409 wrong_organization_domain` (`conflict` on `/api/v2`) |
 | Asked to sign in again | `401` with reason `session_invalid` (`session_expired` on `/api/v2`) |
 | Sign in a TV | `/activate` |
-| Profile sign-in credentials | `/api/bloem/v1/profile-credentials/{id}` |
+| Profile sign-in credentials | `/api/bloem/v2/profile-credentials/{id}` |
 | Live TV permission | `watch_live_tv` |
-| Seasonal artwork on the sign-in page | `GET /api/bloem/v1/ambience/public` |
+| Seasonal artwork on the sign-in page | `GET /api/bloem/v2/ambience/public` |
 | Compatibility sign-in | `account#profile`, with `#PIN` after the password |
 
 ## Glossary
@@ -488,7 +489,7 @@ of which app uses which entrance, see [How apps connect](../architecture/bloem-a
 
 - **API:** [apps](../bloem/api/apps.md) (profile sign-in credentials and what Bloem's apps read),
   [messages](../bloem/api/messages.md) (campaign cards and seasonal packs, including
-  `GET /api/bloem/v1/ambience/public`), [Live TV](../bloem/api/live-tv.md),
+  `GET /api/bloem/v2/ambience/public`), [Live TV](../bloem/api/live-tv.md),
   [requests](../bloem/api/requests.md) and [organizations](../bloem/api/organizations.md)
   (organization domains).
 
@@ -540,8 +541,8 @@ of which app uses which entrance, see [How apps connect](../architecture/bloem-a
 - Live TV: Xtream VOD and series are not imported; watching and recording share the provider's
   configured connection budget. Reloading recordings does not resend the previous write. A
   completed recording without a library link needs its folder scanned into a library.
-- Signed-out seasonal packs come from `GET /api/bloem/v1/ambience/public`; the web app calls none
-  of Silo's `/api/v1` ([leaving Silo's `/api/v1`](../architecture/bloem-leaving-silo-v1.md)).
+- Signed-out seasonal packs come from `GET /api/bloem/v2/ambience/public`; the web app calls none
+  of Silo's retired v1 API ([leaving Silo's v1 API](../architecture/bloem-leaving-silo-v1.md)).
 - Compatibility apps sign in with `account#profile` and `#PIN` after the password, on ports `8096`
   (Jellyfin) and `13378` (Audiobookshelf) by default.
 

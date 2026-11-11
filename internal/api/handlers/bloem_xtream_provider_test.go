@@ -22,7 +22,7 @@ func TestBloemXtreamProviderEndpointFailClosed(t *testing.T) {
 		{"oversized credential body", `{"password":"` + strings.Repeat("private-password-marker", 2000) + `"}`, 400},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodPost, "/api/bloem/v1/livetv/tuners/xtream", strings.NewReader(test.body))
+			r := httptest.NewRequest(http.MethodPost, "/api/bloem/v2/livetv/tuners/xtream", strings.NewReader(test.body))
 			w := httptest.NewRecorder()
 			h.HandleAddXtreamTuner(w, r)
 			if w.Code != test.status {
@@ -34,7 +34,7 @@ func TestBloemXtreamProviderEndpointFailClosed(t *testing.T) {
 		})
 	}
 	w := httptest.NewRecorder()
-	h.HandleAddTuner(w, httptest.NewRequest(http.MethodPost, "/api/bloem/v1/livetv/tuners", strings.NewReader(`{"type":"xtream","url":"https://provider.invalid"}`)))
+	h.HandleAddTuner(w, httptest.NewRequest(http.MethodPost, "/api/bloem/v2/livetv/tuners", strings.NewReader(`{"type":"xtream","url":"https://provider.invalid"}`)))
 	if w.Code != http.StatusBadRequest {
 		t.Fatal("generic tuner endpoint accepted ambiguous Xtream setup")
 	}
@@ -43,7 +43,7 @@ func TestBloemXtreamProviderEndpointFailClosed(t *testing.T) {
 func TestBloemXtreamCapabilityAdvertisesSupportWithoutGrantOrMetadata(t *testing.T) {
 	h := NewLiveTVHandler(livetv.NewService(nil))
 	w := httptest.NewRecorder()
-	h.HandleCapability(w, httptest.NewRequest(http.MethodGet, "/api/bloem/v1/livetv/capability", nil))
+	h.HandleCapability(w, httptest.NewRequest(http.MethodGet, "/api/bloem/v2/livetv/capability", nil))
 	var capability livetv.CapabilityResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &capability); err != nil {
 		t.Fatal(err)

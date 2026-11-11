@@ -97,6 +97,6 @@
 <path d="M969.6,528.24 L973.8,532.56 L981.0,523.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="995" y="533" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Every organization</text>
 <rect x="40" y="612" width="1120" height="72" rx="12" fill="#F9FAFB" stroke="#E5E7EB" stroke-width="1.5"/>
-<text x="60" y="640" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An account sign-in is swapped for a pass at POST /api/bloem/v1/admin/session. The pass ends with the sign-in it came from. A platform administrator's API</text>
+<text x="60" y="640" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An account sign-in is swapped for a pass at POST /api/bloem/v2/admin/session. The pass ends with the sign-in it came from. A platform administrator's API</text>
 <text x="60" y="660" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">key opens the storefront's platform routes too, never an organization's.</text>
 </svg>

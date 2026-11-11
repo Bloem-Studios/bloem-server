@@ -50,7 +50,7 @@ func decodeNativePromotions(t *testing.T, rec *httptest.ResponseRecorder) map[st
 }
 
 // The native list serves the home surface, with the row position, which the
-// /api/v1 list leaves to the home layout.
+// plain list (HandleList) leaves to the home layout.
 func TestNativePromotionsListServesHomeWithItsPosition(t *testing.T) {
 	src := &fakePromotionViewerSource{homeCards: []promotions.Card{promoCard("01HOME")}, homePosition: 3}
 	rec := httptest.NewRecorder()
@@ -68,7 +68,7 @@ func TestNativePromotionsListServesHomeWithItsPosition(t *testing.T) {
 	}
 }
 
-// Other surfaces answer as /api/v1 does, without home_position, and an empty
+// Other surfaces answer as the plain list does, without home_position, and an empty
 // result is [] rather than null.
 func TestNativePromotionsListOtherSurfaces(t *testing.T) {
 	src := &fakePromotionViewerSource{}
@@ -90,7 +90,8 @@ func TestNativePromotionsListOtherSurfaces(t *testing.T) {
 	}
 }
 
-// /api/v1 keeps refusing the home surface; its response shape is unchanged.
+// The plain list (HandleList) keeps refusing the home surface; its response
+// shape is unchanged.
 func TestV1PromotionsListStillRefusesHome(t *testing.T) {
 	rec := httptest.NewRecorder()
 	(&PromotionsHandler{source: &fakePromotionViewerSource{}}).HandleList(rec, newPromotionsRequest("/promotions?surface=home"))

@@ -100,7 +100,7 @@ describe("typed campaign authoring", () => {
 });
 it("reviews annual seasonal schedules and uploads artwork through the supplied adapter", async () => {
   const save = vi.fn().mockResolvedValue(undefined),
-    upload = vi.fn().mockResolvedValue("/api/v1/ambience/assets/banner.webp");
+    upload = vi.fn().mockResolvedValue("/api/bloem/v2/ambience/assets/banner.webp");
   render(
     <SeasonEditor
       pending={false}
@@ -121,7 +121,9 @@ it("reviews annual seasonal schedules and uploads artwork through the supplied a
   const file = new File(["image"], "banner.webp", { type: "image/webp" });
   fireEvent.change(screen.getByLabelText(/Or upload an image/), { target: { files: [file] } });
   await waitFor(() =>
-    expect(screen.getByLabelText("Artwork")).toHaveValue("/api/v1/ambience/assets/banner.webp"),
+    expect(screen.getByLabelText("Artwork")).toHaveValue(
+      "/api/bloem/v2/ambience/assets/banner.webp",
+    ),
   );
   expect(upload).toHaveBeenCalledWith(file, "season_banner");
   fireEvent.click(screen.getByRole("button", { name: "Check seasonal pack" }));
@@ -134,7 +136,7 @@ it("reviews annual seasonal schedules and uploads artwork through the supplied a
         repeat_yearly: true,
         timezone: "UTC",
       },
-      assets: { banner_url: "/api/v1/ambience/assets/banner.webp", sprites: [] },
+      assets: { banner_url: "/api/bloem/v2/ambience/assets/banner.webp", sprites: [] },
     }),
   );
 });
@@ -149,7 +151,7 @@ it.each([
   expect(campaignImage(url)).toBeNull();
 });
 it("accepts HTTPS artwork and bounded local asset paths, not arbitrary authenticated endpoints", () => {
-  expect(campaignImage("/api/v1/ambience/assets/banner.webp")).toBeTruthy();
-  expect(campaignImage("/api/v1/users/private-avatar")).toBeNull();
+  expect(campaignImage("/api/bloem/v2/ambience/assets/banner.webp")).toBeTruthy();
+  expect(campaignImage("/api/v2/users/private-avatar")).toBeNull();
   expect(campaignLink("/collections/winter")).toBe("/collections/winter");
 });

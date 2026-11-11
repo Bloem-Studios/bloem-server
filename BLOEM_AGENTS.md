@@ -35,23 +35,24 @@ see [FORK.md](FORK.md).
 
 ## API posture
 
-Other people's clients use the Silo-compatible v1 projection (`/api/v1`); Bloem's own native
-extensions live under `/api/bloem/v1` ([docs/bloem-api-reference.md](docs/bloem-api-reference.md)).
-Read the upstream "API contract rules" section with that in mind: a client-visible change must
-fit the current v1 posture, and new features still expose a capability endpoint.
+Other people's clients use Silo's native API, `/api/v2`; Bloem's own native extensions live
+under `/api/bloem/v2` ([docs/bloem-api-reference.md](docs/bloem-api-reference.md)). Read the
+upstream "API contract rules" section with that in mind: a client-visible change must fit the
+current `/api/v2` posture, and new features still expose a capability endpoint.
 
-Silo will retire `/api/v1`, and Bloem must be ready for it
-([leaving Silo's `/api/v1`](docs/architecture/bloem-leaving-silo-v1.md)):
+Silo retired its alpha v1 API on 2026-11-11: every v1 route answers `410 Gone` with
+`client_upgrade_required`, except the health and ready probes, and Bloem's own routes there
+went with it ([leaving Silo's v1 API](docs/architecture/bloem-leaving-silo-v1.md)):
 
-- Add nothing to `/api/v1`. A Bloem feature gets a typed route under `/api/bloem/v1` with an
-  OpenAPI declaration (`internal/apiv2/bloem_*_document.go`), which the
-  [API by topic](docs/bloem/api/README.md) pages are generated from.
+- Add nothing under Silo's v1 prefix, and call nothing there. A Bloem feature gets a typed
+  route under `/api/bloem/v2` with an OpenAPI declaration (`internal/apiv2/bloem_*_document.go`),
+  which the [API by topic](docs/bloem/api/README.md) pages are generated from.
+  `make verify-no-v1` fails on a Bloem line that names a retired path.
 - Bloem's own callers (the storefront, the web app's Bloem pages, Bloem's apps) use Silo's
-  `/api/v2` for Silo's features and `/api/bloem/v1` for Bloem's. Where Silo's `/api/v2` lacks
-  something Bloem needs, add a native route rather than calling `/api/v1`. Prefer that over
-  changing Silo's `/api/v2` code.
-- `/api/bloem/v1` is Bloem's own version and does not follow Silo's: it stays `v1`, grows by
-  adding fields and routes behind `feature_tokens`, and gets a `v2` only for a breaking change to
+  `/api/v2` for Silo's features and `/api/bloem/v2` for Bloem's. Where Silo's `/api/v2` lacks
+  something Bloem needs, add a native route. Prefer that over changing Silo's `/api/v2` code.
+- `/api/bloem/v2` is Bloem's own version and does not follow Silo's: it stays `v2`, grows by
+  adding fields and routes behind `feature_tokens`, and gets a `v3` only for a breaking change to
   Bloem's own contract.
 
 ## Live TV is in scope (overrides the Non-goals section)

@@ -123,7 +123,7 @@ func TestLiveTVHandlerListTuners(t *testing.T) {
 		tuners: []livetv.Tuner{{ID: "t1", Type: livetv.TunerTypeHDHomeRun, DeviceID: "abc", Status: "ready"}},
 	})
 	h := NewLiveTVHandler(svc)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/livetv/tuners", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/bloem/v2/livetv/tuners", nil)
 	rec := httptest.NewRecorder()
 	h.HandleListTuners(rec, req)
 	if rec.Code != http.StatusOK {
@@ -143,7 +143,7 @@ func TestLiveTVHandlerListTuners(t *testing.T) {
 func TestLiveTVHandlerGetProgramNotFound(t *testing.T) {
 	svc := livetv.NewServiceWithStore(&fakeLiveTVStore{})
 	h := NewLiveTVHandler(svc)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/livetv/programs/missing", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/bloem/v2/livetv/programs/missing", nil)
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("programId", "missing")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))

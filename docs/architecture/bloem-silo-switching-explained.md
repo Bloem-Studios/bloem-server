@@ -7,6 +7,7 @@
 > plain language; the technical page,
 > [Silo backend switching](silo-backend-switching.md), holds the commands and
 > invariants.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 A Silo installation can try Bloem on the same database and go back to Silo
 later, without losing or corrupting anything. This is what lets someone move to
@@ -109,9 +110,9 @@ the one before wrote and write something for the next one to read.
 - Silo's [omnibus image](omnibus-image.md): how the all-in-one container starts
   and where it keeps its data.
 - The switch is a database contract, not an API: neither server calls the other.
-- The switch check drives both servers through Silo's `/api/v2`, so it keeps
-  working after Silo retires `/api/v1`
-  ([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)).
+- The switch check drives both servers through Silo's `/api/v2`, so Silo's
+  retirement of its v1 API on 2026-11-11 did not affect it
+  ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
 
 The pictures are SVG files under `images/silo-switching/`, drawn by
 `scripts/bloem/draw-pictures.py`. Redraw them there, not by hand.

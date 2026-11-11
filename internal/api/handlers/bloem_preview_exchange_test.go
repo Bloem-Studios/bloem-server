@@ -20,7 +20,7 @@ func (previewExchangeFixture) Exchange(context.Context, preview.ExchangeInput) (
 func TestBloemPreviewExchangePreservesVerifiedAttribution(t *testing.T) {
 	h := NewBloemPreviewHandler(previewExchangeFixture{}, nil, preview.NewClientBuckets())
 	w := httptest.NewRecorder()
-	h.HandleCreateSession(w, httptest.NewRequest("POST", "/api/bloem/v1/preview/sessions", strings.NewReader(`{"ticket":"synthetic-ticket"}`)))
+	h.HandleCreateSession(w, httptest.NewRequest("POST", "/api/bloem/v2/preview/sessions", strings.NewReader(`{"ticket":"synthetic-ticket"}`)))
 	var body map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)

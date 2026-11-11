@@ -133,7 +133,7 @@ func TestPreviewPrincipalRouterBoundary(t *testing.T) {
 		{"PUT", "/api/v2/profile/sections"},
 		{"POST", "/api/v2/collections"},
 		{"GET", "/api/v2/markers/items/movie:missing"},
-		{"GET", "/api/bloem/v1/livetv/capability"},
+		{"GET", "/api/bloem/v2/livetv/capability"},
 	} {
 		w := serve(tc.method, tc.path, "bearer")
 		if w.Code != http.StatusForbidden || w.Header().Get("X-Bloem-Denial") != "preview_only" {

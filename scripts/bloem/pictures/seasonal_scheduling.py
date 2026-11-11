@@ -47,10 +47,10 @@ def from_calendar_to_screen():
     # Two readers.
     box(s, 830, 158, 330, 150, g, "Signed-out page", "The sign-in page asks the public route and gets only "
         "the packs for everyone.", size=14)
-    s.text(848, 292, "/api/bloem/v1/ambience/public", size=12.5, fill=SOFT)
+    s.text(848, 292, "/api/bloem/v2/ambience/public", size=12.5, fill=SOFT)
     box(s, 830, 330, 330, 150, a, "Signed-in Home", "Asks the viewer route with the chosen profile, and also "
         "gets its own organization's packs.", size=14)
-    s.text(848, 464, "/api/bloem/v1/ambience", size=12.5, fill=SOFT)
+    s.text(848, 464, "/api/bloem/v2/ambience", size=12.5, fill=SOFT)
     s.arrow(764, 270, 826, 234)
     s.arrow(764, 368, 826, 404)
 

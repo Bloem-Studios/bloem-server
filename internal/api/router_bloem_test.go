@@ -31,7 +31,7 @@ func TestBloemCapabilitiesMountedOutsideV1(t *testing.T) {
 	router := NewRouter(Dependencies{})
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"api":"bloem/v1"`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"api":"bloem/v2"`) {
 		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
 	}
 }
@@ -42,7 +42,7 @@ func TestBloemSurfaceMountedAndV10Absent(t *testing.T) {
 
 	native := httptest.NewRecorder()
 	router.ServeHTTP(native, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
-	if native.Code != http.StatusOK || !strings.Contains(native.Body.String(), `"api":"bloem/v1"`) {
+	if native.Code != http.StatusOK || !strings.Contains(native.Body.String(), `"api":"bloem/v2"`) {
 		t.Fatalf("native capabilities = %d %s", native.Code, native.Body.String())
 	}
 

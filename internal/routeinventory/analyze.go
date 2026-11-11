@@ -1129,8 +1129,8 @@ func (a *Analyzer) followHelper(call *ast.CallExpr, env *walkEnv) error {
 			"register routes inside an enumerated listener or an analyzed helper", a.set.exprText(call.Fun))
 	}
 	// Recursion guard, not a visit-once guard. A helper legitimately mounts at
-	// more than one prefix -- mountLiveTVRoutes serves both /api/v1 and the
-	// Bloem-native surface from one definition -- and each call really does
+	// more than one prefix -- one definition can serve both Silo's /api/v2 and
+	// the Bloem-native surface -- and each call really does
 	// produce its own set of routes, which the inventory should record under
 	// each prefix. What must never happen is following a helper that is already
 	// on the stack, which would not terminate. So the mark is cleared on the

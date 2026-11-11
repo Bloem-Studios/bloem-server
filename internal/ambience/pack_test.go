@@ -59,7 +59,7 @@ func TestNormalizeRejectsInvalidFields(t *testing.T) {
 		"http banner":          func(i *Input) { i.Assets.BannerURL = "http://cdn.example/b.png" },
 		"javascript banner":    func(i *Input) { i.Assets.BannerURL = "javascript:alert(1)" },
 		"protocol-relative":    func(i *Input) { i.Assets.BannerURL = "//cdn.example/b.png" },
-		"foreign app path":     func(i *Input) { i.Assets.BannerURL = "/api/v1/branding/assets/mark" },
+		"foreign app path":     func(i *Input) { i.Assets.BannerURL = "/api/v2/branding/assets/mark" },
 		"bad server asset ref": func(i *Input) { i.Assets.BannerURL = AssetURLBase + "../etc/passwd" },
 		"http sprite":          func(i *Input) { i.Assets.Sprites = []string{"http://cdn.example/s.png"} },
 		"too many sprites":     func(i *Input) { i.Assets.Sprites = make([]string, 33) },

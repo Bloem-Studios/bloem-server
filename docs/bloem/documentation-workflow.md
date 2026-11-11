@@ -1,7 +1,8 @@
 # Writing Bloem documentation
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. These rules are
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`; its API facts were
+> checked again on 2026-11-11, after Silo retired its v1 API. These rules are
 > Bloem's own: Silo's documents stay as Silo wrote them, and Bloem writes its pages
 > beside them. The technical rules are in the [For developers](#for-developers)
 > section.
@@ -289,8 +290,8 @@ architecture for technical invariants instead of duplicating them in user steps.
 | Surface | Source and generated output | Viewer and authority |
 | --- | --- | --- |
 | `/api/v2` | `internal/apiv2` registries → `contracts/api/v2/openapi.json` | `/api/v2/docs` loads `/api/v2/openapi.json`; normal account/profile and acting-admin rules apply |
-| `/api/bloem/v1` | Owned Bloem registrations → `contracts/api/bloem/v1/openapi.json` | Load the file in trusted local Swagger tooling; the v2 viewer does not include these extensions |
-| Frozen alpha `/api/v1` | Mounted handlers, upstream API references, [contract overlay](overlays/architecture/api-contract.md) and inventory | Bridge and retirement policy is separate from native extensions |
+| `/api/bloem/v2` | Owned Bloem registrations → `contracts/api/bloem/v2/openapi.json` | Load the file in trusted local Swagger tooling; the v2 viewer does not include these extensions |
+| Retired alpha v1 API | Silo's `410 Gone` tombstone (only the health and ready probes stay), pinned by `internal/api/v1_route_surface_test.go`; [contract overlay](overlays/architecture/api-contract.md) | Nothing in Bloem adds to it or calls it; `make verify-no-v1` checks Bloem's lines |
 | Native client DTOs | `contracts/client/v1/registry.json` and Go wire types → Kotlin/Swift trees and graph digest | Server-owned generated files require explicit adoption by each client |
 | Settings | `contracts/settings/v1/` → Go/TypeScript/Kotlin/Swift bindings | Inheritance, scope and null semantics are part of the contract |
 
@@ -339,8 +340,8 @@ make verify-local-paths verify-seams
 table), and the explainer pictures under `docs/architecture/images/`
 (`scripts/bloem/draw-pictures.py`). `make verify-bloem-api-catalogue`, which CI runs,
 also runs the catalogue generator's tests and fails when the catalogue, the topic
-pages or a picture is out of date. The `/api/v1` routes page and the explainer
-pages are written by hand.
+pages or a picture is out of date. The [retired v1 routes](api/v1-routes.md) page and
+the explainer pages are written by hand.
 
 When Go wire types or registered roots change, also run `make client-dtos`.
 Run `make client-digest` only after reviewing and recording a genuine graph change.
@@ -448,19 +449,19 @@ The first fifteen were first written down in October 2026, at `e852f92bf` and
   and colours (`internal/orgdomains`, migration
   `20261101055208_bloem_organization_domains`, capability
   `organization_domains_v1`, platform routes
-  `/api/bloem/v1/admin/platform/tenants/{id}/domains` and `/branding`). A domain
+  `/api/bloem/v2/admin/platform/tenants/{id}/domains` and `/branding`). A domain
   decides presentation, never access. Emails link to the organization's primary
   domain. A sign-in on another organization's domain is refused with
   `409 wrong_organization_domain`, naming where to sign in; an organization
   without a domain signs in at the server's public address. A sign-in or sign-out
   through the OAuth provider (Authentik) stays on the domain it started on, so each
-  domain's two callbacks and its `/login` (the post-logout redirect) must be
+  domain's OAuth callback and its `/login` (the post-logout redirect) must be
   registered at the provider. See
   [organization domains](../architecture/bloem-organization-domains.md).
-- The web app and the storefront call none of Silo's `/api/v1`; the phone apps
-  still do. The web app's signed-out seasonal layer reads
-  `GET /api/bloem/v1/ambience/public`. See
-  [leaving Silo's `/api/v1`](../architecture/bloem-leaving-silo-v1.md).
+- Silo retired its v1 API on 2026-11-11: every v1 route answers `410 Gone`
+  except the health and ready probes, and nothing in Bloem calls it. The web
+  app's signed-out seasonal layer reads `GET /api/bloem/v2/ambience/public`. See
+  [leaving Silo's v1 API](../architecture/bloem-leaving-silo-v1.md).
 - A sign-in that started before its organization revoked the account is ended
   with `401 session_invalid` (`session_expired` on `/api/v2`), so the app asks the
   person to sign in again instead of showing a broken home page

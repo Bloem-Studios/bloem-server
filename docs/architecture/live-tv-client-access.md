@@ -6,6 +6,7 @@
 > is adapted from Prairie Server; the access rules on this page are Bloem's own. Every
 > route, field, error code and invariant is in the [For developers](#for-developers)
 > section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Live TV is only in the web app and Bloem's own apps. This page walks through who may
 watch, how an app finds out what it may show, how it tunes in to a channel and lets go
@@ -71,8 +72,8 @@ recordings folder to a library and scans it.
 | --- | --- |
 | Live TV permission | `watch_live_tv` (`internal/permissioncatalog`), resolved as `LiveTVAllowed` (`access.LiveTVAllowed`) |
 | Permission to play video | `PlaybackAllowed` on the viewer's scope |
-| Ask what's allowed | `GET /api/bloem/v1/livetv/capability`, advertised as `live_tv_access_v1` |
-| Session | a Live TV session, `POST /api/bloem/v1/livetv/channels/{channelId}/session` |
+| Ask what's allowed | `GET /api/bloem/v2/livetv/capability`, advertised as `live_tv_access_v1` |
+| Session | a Live TV session, `POST /api/bloem/v2/livetv/channels/{channelId}/session` |
 | Ticket | the signed `st` query parameter, purpose `bloem_livetv_hls` |
 | Recording, recording rule | DVR entries (`/recordings`) and series rules (`/series-rules`) |
 | The routes | `mountLiveTVRoutes` in `internal/api/router_livetv.go` |
@@ -80,13 +81,13 @@ recordings folder to a library and scans it.
 ## For developers
 
 - **API:** [Live TV](../bloem/api/live-tv.md): every route under
-  `/api/bloem/v1/livetv`, with its credentials, fields and error codes.
+  `/api/bloem/v2/livetv`, with its credentials, fields and error codes.
 
 History: Bloem's Live TV, OTA tuner, guide and DVR subsystem is adapted from Prairie
 Server (`ef2d38171`, 2026-08-13; see [FORK.md](../../FORK.md#prairie-server-live-tv)).
 The access contract on this page is Bloem's own: the `watch_live_tv` permission
 (`internal/permissioncatalog`), `access.LiveTVAllowed`, the capability route and the
-native `/api/bloem/v1/livetv` mount (`internal/api/router_livetv.go`, mounted from
+native `/api/bloem/v2/livetv` mount (`internal/api/router_livetv.go`, mounted from
 `internal/api/router_bloem_client.go`). The contract was added in `8c612bd96`,
 `31b857b2b` and `fdb002310` (all 2026-09-05). The web workflows came in `53534d9f0`
 (2026-09-18) and the Xtream capability bit in `23ee4c1ac` (2026-09-19). Since
@@ -121,7 +122,7 @@ which the frozen v1 account body lists for an enabled admin, names it. v2
 ### Capability
 
 `live_tv_access_v1` in the native capability document identifies this contract. An
-authenticated, selected profile can request `GET /api/bloem/v1/livetv/capability`:
+authenticated, selected profile can request `GET /api/bloem/v2/livetv/capability`:
 
 - `supported`: the server implements this contract.
 - `xtream_supported`: this build supports authenticated Xtream live providers; absent
@@ -137,7 +138,7 @@ distinguish denial, unsupported servers and network errors.
 ### Routes and their gates
 
 Channel, guide, session, DVR and tuner-administration endpoints are mounted under
-`/api/bloem/v1/livetv`, not `/api/v1/livetv` or Silo's `/api/v2`. The embedded web uses
+`/api/bloem/v2/livetv`, not under Silo's `/api/v2` (and never under Silo's retired v1 API). The embedded web uses
 this native prefix for reads, mutations, lease renewal and teardown. The app-facing
 route group enforces the grant: without it, `RequireLiveTVAccess` answers
 `403 live_tv_forbidden`. Delivery routes (`/sessions/{sessionId}/stream` and
@@ -151,7 +152,7 @@ free a tuner. Tuner, guide-source and channel administration sit behind the
 acting-administrator gate.
 
 The native constructor returns native media URLs and supplies the signing secret. Only
-`GET /api/bloem/v1/livetv/live-hls/{id}/index.m3u8` and its segment paths accept
+`GET /api/bloem/v2/livetv/live-hls/{id}/index.m3u8` and its segment paths accept
 headerless `st` delivery, with the signed `bloem_livetv_hls` purpose, delivery ID, expiry
 and freshly resolved tenant/profile grant. The raw MPEG-TS proxy retains normal
 account/profile authentication. Tokens cannot authorize operational routes or broaden

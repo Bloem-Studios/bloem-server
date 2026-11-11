@@ -6,7 +6,7 @@
 // Usage: bloem-silo-switch-check <step> --base http://127.0.0.1:18090 --state state.json
 // Steps: silo-setup, bloem-writes, silo-verify-and-write, bloem-verify.
 //
-// It speaks Silo's /api/v2 to both servers: Silo will retire /api/v1, and the
+// It speaks Silo's /api/v2 to both servers: Silo retired its v1 API, and the
 // check must keep working against a Silo image that no longer serves it.
 package main
 

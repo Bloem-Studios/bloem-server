@@ -5,8 +5,8 @@
 //
 // Usage:
 //
-//	bloem-openapi -out contracts/api/bloem/v1/openapi.json
-//	bloem-openapi -check contracts/api/bloem/v1/openapi.json
+//	bloem-openapi -out contracts/api/bloem/v2/openapi.json
+//	bloem-openapi -check contracts/api/bloem/v2/openapi.json
 package main
 
 import (

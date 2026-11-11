@@ -13,8 +13,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// The Bloem-native surface lives at NativeAPIPrefix. /api/v1 is the
-// Silo-compatible projection and /api/v2 is reserved for upstream Silo, whose
+// The Bloem-native surface lives at NativeAPIPrefix. Silo retired its v1
+// projection, and /api/v2 is reserved for upstream Silo, whose
 // own v2 would otherwise answer the paths this project's clients call. The
 // golden below is this surface's drift guard: it never had one while it lived
 // on /api/v2, so a native route could be moved or dropped silently.

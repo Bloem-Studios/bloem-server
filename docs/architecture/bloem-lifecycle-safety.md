@@ -2,7 +2,8 @@
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
 > `main` at `b6039036d`; the library deletion parts were updated on 2026-11-10, when
-> deleting a library started taking it out of the starting set. Organizations, their retirement and the starting set are
+> deleting a library started taking it out of the starting set, and the routes checked
+> again on 2026-11-11, after Silo retired its v1 API. Organizations, their retirement and the starting set are
 > Bloem additions; library deletion and its job runner are Silo's, and Bloem's guard
 > wraps them. This page explains both in plain language; the technical rules are in
 > the [For developers](#for-developers) section.
@@ -85,16 +86,16 @@ What it does not do:
 
 ## For developers
 
-- **API:** retiring is `DELETE /api/bloem/v1/admin/platform/tenants/{id}` on the
-  [organizations and administration](../bloem/api/organizations.md#delete-apibloemv1adminplatformtenantsid)
-  page; the legacy `DELETE /api/v1/admin/tenants/{id}` uses the same handler. Library
+- **API:** retiring is `DELETE /api/bloem/v2/admin/platform/tenants/{id}` on the
+  [organizations and administration](../bloem/api/organizations.md#delete-apibloemv2adminplatformtenantsid)
+  page. The legacy v1 tenant delete went with Silo's v1 API on 2026-11-11. Library
   deletion is Silo's `DELETE /api/v2/libraries/{id}`, with Bloem's guard described
   in the [libraries API overlay](../bloem/overlays/libraries-api.md).
 
 ### Tenant retirement
 
-The tenant-delete routes (`DELETE /api/bloem/v1/admin/platform/tenants/{id}`, and
-`DELETE /api/v1/admin/tenants/{id}`, Bloem's tenant admin API) use
+The tenant-delete route (`DELETE /api/bloem/v2/admin/platform/tenants/{id}`, Bloem's
+tenant admin API) uses
 `tenancy.MemberService.RetireOrganizationInTransaction`. The transaction locks the
 organization before enumerating members, then applies the same deletion rules as an
 individual tenant-member removal (`MemberService.DeleteInTransaction`):
@@ -219,7 +220,7 @@ bundle-retained libraries (`5436ed812`, migration
 and with them this page's sections on keyed retirement and encrypted invitation
 receipts. `c60b7008e` (2026-10-26) limited each account to one membership. The
 storefront moved to the native tenant routes on 2026-10-31
-([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)). On 2026-11-10 production's
+([leaving Silo's v1 API](bloem-leaving-silo-v1.md)). On 2026-11-10 production's
 original Audio Books and Electronic Books libraries could not be deleted because the
 starting set named them; `20261110123408_bloem_library_starting_set.sql` made deletion
 take a library out of the starting set instead of refusing.

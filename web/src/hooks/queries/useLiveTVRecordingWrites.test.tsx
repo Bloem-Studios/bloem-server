@@ -119,8 +119,8 @@ describe.each(["schedule", "cancel"] as const)("guide %s reconciliation", (actio
       const [url, init] = writes()[0]!;
       expect(url).toBe(
         action === "schedule"
-          ? "/api/bloem/v1/livetv/recordings"
-          : "/api/bloem/v1/livetv/recordings/recording%2F1",
+          ? "/api/bloem/v2/livetv/recordings"
+          : "/api/bloem/v2/livetv/recordings/recording%2F1",
       );
       expect(new Headers(init?.headers).get("X-Profile-Id")).toBe("viewer-1");
       await act(async () => {
@@ -368,8 +368,8 @@ it("performs readback when no recordings list is mounted", async () => {
     await view.result.current.mutateAsync({ program_id: "program-1" });
   });
   expect(fetchMock.mock.calls.map(([url, init]) => [url, init?.method ?? "GET"])).toEqual([
-    ["/api/bloem/v1/livetv/recordings", "POST"],
-    ["/api/bloem/v1/livetv/recordings", "GET"],
+    ["/api/bloem/v2/livetv/recordings", "POST"],
+    ["/api/bloem/v2/livetv/recordings", "GET"],
   ]);
   expect(
     client

@@ -1,7 +1,7 @@
 # Organizations and administration API
 
 > **Generated** by `scripts/bloem/api-topic-docs.py` from
-> [`contracts/api/bloem/v1/openapi.json`](../../../contracts/api/bloem/v1/openapi.json).
+> [`contracts/api/bloem/v2/openapi.json`](../../../contracts/api/bloem/v2/openapi.json).
 > Do not edit by hand: change the handler's OpenAPI declaration, run `make bloem-openapi`, then
 > the script. Shared conventions, credentials and the error body are on the [index](README.md).
 
@@ -18,107 +18,107 @@ For the plain-language picture, read the [Organizations and administration expla
 
 | Method and path | Summary |
 | --- | --- |
-| [`GET /api/bloem/v1/admin/organization/activity`](#get-apibloemv1adminorganizationactivity) | Page the selected organization's sanitized activity and entitlement audit. |
-| [`PUT /api/bloem/v1/admin/organization/entitlements/{folder_id}`](#put-apibloemv1adminorganizationentitlementsfolder_id) | Set an organization library entitlement status. |
-| [`DELETE /api/bloem/v1/admin/organization/entitlements/{folder_id}`](#delete-apibloemv1adminorganizationentitlementsfolder_id) | Remove an organization library entitlement. |
-| [`GET /api/bloem/v1/admin/organization/groups/`](#get-apibloemv1adminorganizationgroups) | List access groups in the selected organization. |
-| [`POST /api/bloem/v1/admin/organization/groups/`](#post-apibloemv1adminorganizationgroups) | Create an organization access group. |
-| [`GET /api/bloem/v1/admin/organization/groups/{id}`](#get-apibloemv1adminorganizationgroupsid) | Read one organization access group. |
-| [`PUT /api/bloem/v1/admin/organization/groups/{id}`](#put-apibloemv1adminorganizationgroupsid) | Update an organization access group. |
-| [`DELETE /api/bloem/v1/admin/organization/groups/{id}`](#delete-apibloemv1adminorganizationgroupsid) | Delete an organization access group and report its impact. |
-| [`GET /api/bloem/v1/admin/organization/invitations`](#get-apibloemv1adminorganizationinvitations) | List invitation metadata without claim tokens. |
-| [`POST /api/bloem/v1/admin/organization/invitations`](#post-apibloemv1adminorganizationinvitations) | Create a user invitation and disclose its claim token once. |
-| [`DELETE /api/bloem/v1/admin/organization/invitations/{id}`](#delete-apibloemv1adminorganizationinvitationsid) | Revoke an unaccepted, unrevoked user invitation in the selected organization. |
-| [`POST /api/bloem/v1/admin/organization/invitations/{id}/resend`](#post-apibloemv1adminorganizationinvitationsidresend) | Rotate an unaccepted, unrevoked user invitation and return its new claim token once. |
-| [`GET /api/bloem/v1/admin/organization/libraries`](#get-apibloemv1adminorganizationlibraries) | List the organization library entitlement projection. |
-| [`GET /api/bloem/v1/admin/organization/overview`](#get-apibloemv1adminorganizationoverview) | Read the selected organization overview. |
-| [`GET /api/bloem/v1/admin/organization/people/`](#get-apibloemv1adminorganizationpeople) | Page organization people and their profiles. |
-| [`POST /api/bloem/v1/admin/organization/people/bulk-jobs`](#post-apibloemv1adminorganizationpeoplebulk-jobs) | Enqueue a people bulk mutation. |
-| [`GET /api/bloem/v1/admin/organization/people/bulk-jobs/{job_id}`](#get-apibloemv1adminorganizationpeoplebulk-jobsjob_id) | Read progress and per-record results of a people job. |
-| [`POST /api/bloem/v1/admin/organization/people/policy-jobs`](#post-apibloemv1adminorganizationpeoplepolicy-jobs) | Enqueue a confirmed people policy command. |
-| [`GET /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}`](#get-apibloemv1adminorganizationpeoplepolicy-jobsjob_id) | Read progress and per-record results of a people job. |
-| [`POST /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}/cancel`](#post-apibloemv1adminorganizationpeoplepolicy-jobsjob_idcancel) | Cancel an eligible people policy job. |
-| [`POST /api/bloem/v1/admin/organization/people/policy-previews`](#post-apibloemv1adminorganizationpeoplepolicy-previews) | Preview a policy command and obtain a bound confirmation token. |
-| [`POST /api/bloem/v1/admin/organization/people/selections`](#post-apibloemv1adminorganizationpeopleselections) | Create an immutable expiring selection from people filters. |
-| [`GET /api/bloem/v1/admin/organization/people/{account_id}/`](#get-apibloemv1adminorganizationpeopleaccount_id) | Read an organization person and profile summary. |
-| [`PATCH /api/bloem/v1/admin/organization/people/{account_id}/memberships/current`](#patch-apibloemv1adminorganizationpeopleaccount_idmembershipscurrent) | Change an organization person membership status. |
-| [`PATCH /api/bloem/v1/admin/organization/people/{account_id}/profiles/{profile_id}`](#patch-apibloemv1adminorganizationpeopleaccount_idprofilesprofile_id) | Assign an organization person profile to an access group. |
-| [`GET /api/bloem/v1/admin/organization/policy-decisions`](#get-apibloemv1adminorganizationpolicy-decisions) | Page sanitized organization policy decision explanations. |
-| [`GET /api/bloem/v1/admin/organization/policy-decisions/{id}`](#get-apibloemv1adminorganizationpolicy-decisionsid) | Read a sanitized organization policy decision explanation. |
-| [`POST /api/bloem/v1/admin/platform/accounts`](#post-apibloemv1adminplatformaccounts) | Create an account, optionally on a plan. |
-| [`PUT /api/bloem/v1/admin/platform/accounts/{account_id}`](#put-apibloemv1adminplatformaccountsaccount_id) | Update an account, optionally moving it to a plan. |
-| [`GET /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions`](#get-apibloemv1adminplatformaccountsaccount_idauth-sessions) | List an account's sign-in sessions. |
-| [`DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions`](#delete-apibloemv1adminplatformaccountsaccount_idauth-sessions) | End every sign-in session of an account. |
-| [`DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions/{session_id}`](#delete-apibloemv1adminplatformaccountsaccount_idauth-sessionssession_id) | End one of an account's sign-in sessions. |
-| [`GET /api/bloem/v1/admin/platform/accounts/{account_id}/devices`](#get-apibloemv1adminplatformaccountsaccount_iddevices) | List an account's devices. |
-| [`DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/devices/{device_id}`](#delete-apibloemv1adminplatformaccountsaccount_iddevicesdevice_id) | Remove an account's device. |
-| [`GET /api/bloem/v1/admin/platform/accounts/{account_id}/profiles`](#get-apibloemv1adminplatformaccountsaccount_idprofiles) | List an account's profiles. |
-| [`POST /api/bloem/v1/admin/platform/accounts/{account_id}/profiles`](#post-apibloemv1adminplatformaccountsaccount_idprofiles) | Create a profile for an account. |
-| [`PUT /api/bloem/v1/admin/platform/accounts/{account_id}/profiles/{profile_id}`](#put-apibloemv1adminplatformaccountsaccount_idprofilesprofile_id) | Change an account's profile. |
-| [`DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/profiles/{profile_id}`](#delete-apibloemv1adminplatformaccountsaccount_idprofilesprofile_id) | Delete an account's profile. |
-| [`GET /api/bloem/v1/admin/platform/library-figures`](#get-apibloemv1adminplatformlibrary-figures) | Read item counts for every library. |
-| [`GET /api/bloem/v1/admin/platform/new-arrivals`](#get-apibloemv1adminplatformnew-arrivals) | List recent additions to libraries. |
-| [`GET /api/bloem/v1/admin/platform/organizations/`](#get-apibloemv1adminplatformorganizations) | Page organizations with current summary counts. |
-| [`POST /api/bloem/v1/admin/platform/organizations/`](#post-apibloemv1adminplatformorganizations) | Create an organization for an existing owner account. |
-| [`GET /api/bloem/v1/admin/platform/organizations/{id}/`](#get-apibloemv1adminplatformorganizationsid) | Read an organization summary. |
-| [`PATCH /api/bloem/v1/admin/platform/organizations/{id}/`](#patch-apibloemv1adminplatformorganizationsid) | Change organization name or slug. |
-| [`GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement`](#get-apibloemv1adminplatformorganizationsidentitlement) | Read the managed organization entitlement. |
-| [`POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/apply`](#post-apibloemv1adminplatformorganizationsidentitlementapply) | Apply a pinned entitlement template. |
-| [`GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement/audit`](#get-apibloemv1adminplatformorganizationsidentitlementaudit) | Read organization entitlement audit history. |
-| [`POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/dry-run`](#post-apibloemv1adminplatformorganizationsidentitlementdry-run) | Preview a pinned entitlement template. |
-| [`GET /api/bloem/v1/admin/platform/organizations/{id}/memberships`](#get-apibloemv1adminplatformorganizationsidmemberships) | Page an organization membership directory. |
-| [`POST /api/bloem/v1/admin/platform/organizations/{id}/memberships`](#post-apibloemv1adminplatformorganizationsidmemberships) | Create an organization membership for an existing account. |
-| [`PATCH /api/bloem/v1/admin/platform/organizations/{id}/memberships/{membership_id}`](#patch-apibloemv1adminplatformorganizationsidmembershipsmembership_id) | Change a membership role or status. |
-| [`POST /api/bloem/v1/admin/platform/organizations/{id}/reactivate`](#post-apibloemv1adminplatformorganizationsidreactivate) | Reactivate an organization. |
-| [`POST /api/bloem/v1/admin/platform/organizations/{id}/suspend`](#post-apibloemv1adminplatformorganizationsidsuspend) | Suspend an organization. |
-| [`POST /api/bloem/v1/admin/platform/organizations/{id}/transfer-ownership`](#post-apibloemv1adminplatformorganizationsidtransfer-ownership) | Transfer ownership after explicit confirmation and reauthentication. |
-| [`GET /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement`](#get-apibloemv1adminplatformorganizationsorganization_idaccountsaccount_identitlement) | Read authoritative account and profile entitlement policies. |
-| [`POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs`](#post-apibloemv1adminplatformorganizationsorganization_identitlement-bulkpolicy-jobs) | Enqueue a confirmed bulk entitlement policy job. |
-| [`GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}`](#get-apibloemv1adminplatformorganizationsorganization_identitlement-bulkpolicy-jobsjob_id) | Read a bulk entitlement policy job. |
-| [`POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel`](#post-apibloemv1adminplatformorganizationsorganization_identitlement-bulkpolicy-jobsjob_idcancel) | Cancel an eligible bulk entitlement policy job. |
-| [`POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews`](#post-apibloemv1adminplatformorganizationsorganization_identitlement-bulkpolicy-previews) | Create a selection and preview a bulk policy command. |
-| [`GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts`](#get-apibloemv1adminplatformorganizationsorganization_identitlement-cohorts) | List organization entitlement cohorts. |
-| [`GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}`](#get-apibloemv1adminplatformorganizationsorganization_identitlement-cohortscohort_id) | Read one organization entitlement cohort. |
-| [`POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots`](#post-apibloemv1adminplatformorganizationsorganization_identitlement-snapshots) | Read bounded account policy snapshots in one observation. |
-| [`GET /api/bloem/v1/admin/platform/tenants`](#get-apibloemv1adminplatformtenants) | List reseller organizations with live usage. |
-| [`POST /api/bloem/v1/admin/platform/tenants`](#post-apibloemv1adminplatformtenants) | Create a reseller organization. |
-| [`GET /api/bloem/v1/admin/platform/tenants/{id}`](#get-apibloemv1adminplatformtenantsid) | Read one reseller organization. |
-| [`DELETE /api/bloem/v1/admin/platform/tenants/{id}`](#delete-apibloemv1adminplatformtenantsid) | Retire a reseller organization. |
-| [`GET /api/bloem/v1/admin/platform/tenants/{id}/branding`](#get-apibloemv1adminplatformtenantsidbranding) | Read an organization's branding. |
-| [`PUT /api/bloem/v1/admin/platform/tenants/{id}/branding`](#put-apibloemv1adminplatformtenantsidbranding) | Change an organization's branding. |
-| [`PUT /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}`](#put-apibloemv1adminplatformtenantsidbrandingassetskind) | Upload an organization's branding image. |
-| [`DELETE /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}`](#delete-apibloemv1adminplatformtenantsidbrandingassetskind) | Remove an organization's branding image. |
-| [`GET /api/bloem/v1/admin/platform/tenants/{id}/domains`](#get-apibloemv1adminplatformtenantsiddomains) | List an organization's domains. |
-| [`POST /api/bloem/v1/admin/platform/tenants/{id}/domains`](#post-apibloemv1adminplatformtenantsiddomains) | Register a domain to an organization. |
-| [`DELETE /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}`](#delete-apibloemv1adminplatformtenantsiddomainshost) | Unregister a domain. |
-| [`PUT /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}/primary`](#put-apibloemv1adminplatformtenantsiddomainshostprimary) | Make a domain the organization's primary. |
-| [`POST /api/bloem/v1/admin/platform/tenants/{id}/freeze`](#post-apibloemv1adminplatformtenantsidfreeze) | Suspend a reseller organization. |
-| [`PATCH /api/bloem/v1/admin/platform/tenants/{id}/limits`](#patch-apibloemv1adminplatformtenantsidlimits) | Change seats and shared conversions. |
-| [`POST /api/bloem/v1/admin/platform/tenants/{id}/thaw`](#post-apibloemv1adminplatformtenantsidthaw) | Lift an administrative suspension. |
-| [`GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members`](#get-apibloemv1adminplatformtenantstenant_idmembers) | List a reseller organization's members. |
-| [`POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members`](#post-apibloemv1adminplatformtenantstenant_idmembers) | Add a member account to a reseller organization. |
-| [`GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}`](#get-apibloemv1adminplatformtenantstenant_idmembersuser_id) | Read one member. |
-| [`PUT /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}`](#put-apibloemv1adminplatformtenantstenant_idmembersuser_id) | Change a member's username or email. |
-| [`DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}`](#delete-apibloemv1adminplatformtenantstenant_idmembersuser_id) | Remove a member. |
-| [`GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions`](#get-apibloemv1adminplatformtenantstenant_idmembersuser_idauth-sessions) | List a member's sign-in sessions. |
-| [`DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions`](#delete-apibloemv1adminplatformtenantstenant_idmembersuser_idauth-sessions) | End every sign-in session of a member. |
-| [`DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}`](#delete-apibloemv1adminplatformtenantstenant_idmembersuser_idauth-sessionssession_id) | End one of a member's sign-in sessions. |
-| [`GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/devices`](#get-apibloemv1adminplatformtenantstenant_idmembersuser_iddevices) | List a member's devices. |
-| [`DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/devices/{device_id}`](#delete-apibloemv1adminplatformtenantstenant_idmembersuser_iddevicesdevice_id) | Remove a member's device. |
-| [`GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles`](#get-apibloemv1adminplatformtenantstenant_idmembersuser_idprofiles) | List a member's profiles. |
-| [`POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles`](#post-apibloemv1adminplatformtenantstenant_idmembersuser_idprofiles) | Create a profile for a member. |
-| [`PUT /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}`](#put-apibloemv1adminplatformtenantstenant_idmembersuser_idprofilesprofile_id) | Change a member's profile. |
-| [`DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}`](#delete-apibloemv1adminplatformtenantstenant_idmembersuser_idprofilesprofile_id) | Delete a member's profile. |
-| [`POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/reset-password`](#post-apibloemv1adminplatformtenantstenant_idmembersuser_idreset-password) | Set a member's password. |
-| [`POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/resume`](#post-apibloemv1adminplatformtenantstenant_idmembersuser_idresume) | Resume a suspended member's account. |
-| [`POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/suspend`](#post-apibloemv1adminplatformtenantstenant_idmembersuser_idsuspend) | Suspend a member's account. |
-| [`GET /api/bloem/v1/admin/search/mirror`](#get-apibloemv1adminsearchmirror) | Read the search mirror's status. |
-| [`POST /api/bloem/v1/admin/session`](#post-apibloemv1adminsession) | Exchange a login session for a scoped administrative context. |
-| [`GET /api/bloem/v1/organizations`](#get-apibloemv1organizations) | The organizations this account belongs to. |
+| [`GET /api/bloem/v2/admin/organization/activity`](#get-apibloemv2adminorganizationactivity) | Page the selected organization's sanitized activity and entitlement audit. |
+| [`PUT /api/bloem/v2/admin/organization/entitlements/{folder_id}`](#put-apibloemv2adminorganizationentitlementsfolder_id) | Set an organization library entitlement status. |
+| [`DELETE /api/bloem/v2/admin/organization/entitlements/{folder_id}`](#delete-apibloemv2adminorganizationentitlementsfolder_id) | Remove an organization library entitlement. |
+| [`GET /api/bloem/v2/admin/organization/groups/`](#get-apibloemv2adminorganizationgroups) | List access groups in the selected organization. |
+| [`POST /api/bloem/v2/admin/organization/groups/`](#post-apibloemv2adminorganizationgroups) | Create an organization access group. |
+| [`GET /api/bloem/v2/admin/organization/groups/{id}`](#get-apibloemv2adminorganizationgroupsid) | Read one organization access group. |
+| [`PUT /api/bloem/v2/admin/organization/groups/{id}`](#put-apibloemv2adminorganizationgroupsid) | Update an organization access group. |
+| [`DELETE /api/bloem/v2/admin/organization/groups/{id}`](#delete-apibloemv2adminorganizationgroupsid) | Delete an organization access group and report its impact. |
+| [`GET /api/bloem/v2/admin/organization/invitations`](#get-apibloemv2adminorganizationinvitations) | List invitation metadata without claim tokens. |
+| [`POST /api/bloem/v2/admin/organization/invitations`](#post-apibloemv2adminorganizationinvitations) | Create a user invitation and disclose its claim token once. |
+| [`DELETE /api/bloem/v2/admin/organization/invitations/{id}`](#delete-apibloemv2adminorganizationinvitationsid) | Revoke an unaccepted, unrevoked user invitation in the selected organization. |
+| [`POST /api/bloem/v2/admin/organization/invitations/{id}/resend`](#post-apibloemv2adminorganizationinvitationsidresend) | Rotate an unaccepted, unrevoked user invitation and return its new claim token once. |
+| [`GET /api/bloem/v2/admin/organization/libraries`](#get-apibloemv2adminorganizationlibraries) | List the organization library entitlement projection. |
+| [`GET /api/bloem/v2/admin/organization/overview`](#get-apibloemv2adminorganizationoverview) | Read the selected organization overview. |
+| [`GET /api/bloem/v2/admin/organization/people/`](#get-apibloemv2adminorganizationpeople) | Page organization people and their profiles. |
+| [`POST /api/bloem/v2/admin/organization/people/bulk-jobs`](#post-apibloemv2adminorganizationpeoplebulk-jobs) | Enqueue a people bulk mutation. |
+| [`GET /api/bloem/v2/admin/organization/people/bulk-jobs/{job_id}`](#get-apibloemv2adminorganizationpeoplebulk-jobsjob_id) | Read progress and per-record results of a people job. |
+| [`POST /api/bloem/v2/admin/organization/people/policy-jobs`](#post-apibloemv2adminorganizationpeoplepolicy-jobs) | Enqueue a confirmed people policy command. |
+| [`GET /api/bloem/v2/admin/organization/people/policy-jobs/{job_id}`](#get-apibloemv2adminorganizationpeoplepolicy-jobsjob_id) | Read progress and per-record results of a people job. |
+| [`POST /api/bloem/v2/admin/organization/people/policy-jobs/{job_id}/cancel`](#post-apibloemv2adminorganizationpeoplepolicy-jobsjob_idcancel) | Cancel an eligible people policy job. |
+| [`POST /api/bloem/v2/admin/organization/people/policy-previews`](#post-apibloemv2adminorganizationpeoplepolicy-previews) | Preview a policy command and obtain a bound confirmation token. |
+| [`POST /api/bloem/v2/admin/organization/people/selections`](#post-apibloemv2adminorganizationpeopleselections) | Create an immutable expiring selection from people filters. |
+| [`GET /api/bloem/v2/admin/organization/people/{account_id}/`](#get-apibloemv2adminorganizationpeopleaccount_id) | Read an organization person and profile summary. |
+| [`PATCH /api/bloem/v2/admin/organization/people/{account_id}/memberships/current`](#patch-apibloemv2adminorganizationpeopleaccount_idmembershipscurrent) | Change an organization person membership status. |
+| [`PATCH /api/bloem/v2/admin/organization/people/{account_id}/profiles/{profile_id}`](#patch-apibloemv2adminorganizationpeopleaccount_idprofilesprofile_id) | Assign an organization person profile to an access group. |
+| [`GET /api/bloem/v2/admin/organization/policy-decisions`](#get-apibloemv2adminorganizationpolicy-decisions) | Page sanitized organization policy decision explanations. |
+| [`GET /api/bloem/v2/admin/organization/policy-decisions/{id}`](#get-apibloemv2adminorganizationpolicy-decisionsid) | Read a sanitized organization policy decision explanation. |
+| [`POST /api/bloem/v2/admin/platform/accounts`](#post-apibloemv2adminplatformaccounts) | Create an account, optionally on a plan. |
+| [`PUT /api/bloem/v2/admin/platform/accounts/{account_id}`](#put-apibloemv2adminplatformaccountsaccount_id) | Update an account, optionally moving it to a plan. |
+| [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions`](#get-apibloemv2adminplatformaccountsaccount_idauth-sessions) | List an account's sign-in sessions. |
+| [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions`](#delete-apibloemv2adminplatformaccountsaccount_idauth-sessions) | End every sign-in session of an account. |
+| [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions/{session_id}`](#delete-apibloemv2adminplatformaccountsaccount_idauth-sessionssession_id) | End one of an account's sign-in sessions. |
+| [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/devices`](#get-apibloemv2adminplatformaccountsaccount_iddevices) | List an account's devices. |
+| [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/devices/{device_id}`](#delete-apibloemv2adminplatformaccountsaccount_iddevicesdevice_id) | Remove an account's device. |
+| [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/profiles`](#get-apibloemv2adminplatformaccountsaccount_idprofiles) | List an account's profiles. |
+| [`POST /api/bloem/v2/admin/platform/accounts/{account_id}/profiles`](#post-apibloemv2adminplatformaccountsaccount_idprofiles) | Create a profile for an account. |
+| [`PUT /api/bloem/v2/admin/platform/accounts/{account_id}/profiles/{profile_id}`](#put-apibloemv2adminplatformaccountsaccount_idprofilesprofile_id) | Change an account's profile. |
+| [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/profiles/{profile_id}`](#delete-apibloemv2adminplatformaccountsaccount_idprofilesprofile_id) | Delete an account's profile. |
+| [`GET /api/bloem/v2/admin/platform/library-figures`](#get-apibloemv2adminplatformlibrary-figures) | Read item counts for every library. |
+| [`GET /api/bloem/v2/admin/platform/new-arrivals`](#get-apibloemv2adminplatformnew-arrivals) | List recent additions to libraries. |
+| [`GET /api/bloem/v2/admin/platform/organizations/`](#get-apibloemv2adminplatformorganizations) | Page organizations with current summary counts. |
+| [`POST /api/bloem/v2/admin/platform/organizations/`](#post-apibloemv2adminplatformorganizations) | Create an organization for an existing owner account. |
+| [`GET /api/bloem/v2/admin/platform/organizations/{id}/`](#get-apibloemv2adminplatformorganizationsid) | Read an organization summary. |
+| [`PATCH /api/bloem/v2/admin/platform/organizations/{id}/`](#patch-apibloemv2adminplatformorganizationsid) | Change organization name or slug. |
+| [`GET /api/bloem/v2/admin/platform/organizations/{id}/entitlement`](#get-apibloemv2adminplatformorganizationsidentitlement) | Read the managed organization entitlement. |
+| [`POST /api/bloem/v2/admin/platform/organizations/{id}/entitlement/apply`](#post-apibloemv2adminplatformorganizationsidentitlementapply) | Apply a pinned entitlement template. |
+| [`GET /api/bloem/v2/admin/platform/organizations/{id}/entitlement/audit`](#get-apibloemv2adminplatformorganizationsidentitlementaudit) | Read organization entitlement audit history. |
+| [`POST /api/bloem/v2/admin/platform/organizations/{id}/entitlement/dry-run`](#post-apibloemv2adminplatformorganizationsidentitlementdry-run) | Preview a pinned entitlement template. |
+| [`GET /api/bloem/v2/admin/platform/organizations/{id}/memberships`](#get-apibloemv2adminplatformorganizationsidmemberships) | Page an organization membership directory. |
+| [`POST /api/bloem/v2/admin/platform/organizations/{id}/memberships`](#post-apibloemv2adminplatformorganizationsidmemberships) | Create an organization membership for an existing account. |
+| [`PATCH /api/bloem/v2/admin/platform/organizations/{id}/memberships/{membership_id}`](#patch-apibloemv2adminplatformorganizationsidmembershipsmembership_id) | Change a membership role or status. |
+| [`POST /api/bloem/v2/admin/platform/organizations/{id}/reactivate`](#post-apibloemv2adminplatformorganizationsidreactivate) | Reactivate an organization. |
+| [`POST /api/bloem/v2/admin/platform/organizations/{id}/suspend`](#post-apibloemv2adminplatformorganizationsidsuspend) | Suspend an organization. |
+| [`POST /api/bloem/v2/admin/platform/organizations/{id}/transfer-ownership`](#post-apibloemv2adminplatformorganizationsidtransfer-ownership) | Transfer ownership after explicit confirmation and reauthentication. |
+| [`GET /api/bloem/v2/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement`](#get-apibloemv2adminplatformorganizationsorganization_idaccountsaccount_identitlement) | Read authoritative account and profile entitlement policies. |
+| [`POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs`](#post-apibloemv2adminplatformorganizationsorganization_identitlement-bulkpolicy-jobs) | Enqueue a confirmed bulk entitlement policy job. |
+| [`GET /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}`](#get-apibloemv2adminplatformorganizationsorganization_identitlement-bulkpolicy-jobsjob_id) | Read a bulk entitlement policy job. |
+| [`POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel`](#post-apibloemv2adminplatformorganizationsorganization_identitlement-bulkpolicy-jobsjob_idcancel) | Cancel an eligible bulk entitlement policy job. |
+| [`POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews`](#post-apibloemv2adminplatformorganizationsorganization_identitlement-bulkpolicy-previews) | Create a selection and preview a bulk policy command. |
+| [`GET /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts`](#get-apibloemv2adminplatformorganizationsorganization_identitlement-cohorts) | List organization entitlement cohorts. |
+| [`GET /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}`](#get-apibloemv2adminplatformorganizationsorganization_identitlement-cohortscohort_id) | Read one organization entitlement cohort. |
+| [`POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-snapshots`](#post-apibloemv2adminplatformorganizationsorganization_identitlement-snapshots) | Read bounded account policy snapshots in one observation. |
+| [`GET /api/bloem/v2/admin/platform/tenants`](#get-apibloemv2adminplatformtenants) | List reseller organizations with live usage. |
+| [`POST /api/bloem/v2/admin/platform/tenants`](#post-apibloemv2adminplatformtenants) | Create a reseller organization. |
+| [`GET /api/bloem/v2/admin/platform/tenants/{id}`](#get-apibloemv2adminplatformtenantsid) | Read one reseller organization. |
+| [`DELETE /api/bloem/v2/admin/platform/tenants/{id}`](#delete-apibloemv2adminplatformtenantsid) | Retire a reseller organization. |
+| [`GET /api/bloem/v2/admin/platform/tenants/{id}/branding`](#get-apibloemv2adminplatformtenantsidbranding) | Read an organization's branding. |
+| [`PUT /api/bloem/v2/admin/platform/tenants/{id}/branding`](#put-apibloemv2adminplatformtenantsidbranding) | Change an organization's branding. |
+| [`PUT /api/bloem/v2/admin/platform/tenants/{id}/branding/assets/{kind}`](#put-apibloemv2adminplatformtenantsidbrandingassetskind) | Upload an organization's branding image. |
+| [`DELETE /api/bloem/v2/admin/platform/tenants/{id}/branding/assets/{kind}`](#delete-apibloemv2adminplatformtenantsidbrandingassetskind) | Remove an organization's branding image. |
+| [`GET /api/bloem/v2/admin/platform/tenants/{id}/domains`](#get-apibloemv2adminplatformtenantsiddomains) | List an organization's domains. |
+| [`POST /api/bloem/v2/admin/platform/tenants/{id}/domains`](#post-apibloemv2adminplatformtenantsiddomains) | Register a domain to an organization. |
+| [`DELETE /api/bloem/v2/admin/platform/tenants/{id}/domains/{host}`](#delete-apibloemv2adminplatformtenantsiddomainshost) | Unregister a domain. |
+| [`PUT /api/bloem/v2/admin/platform/tenants/{id}/domains/{host}/primary`](#put-apibloemv2adminplatformtenantsiddomainshostprimary) | Make a domain the organization's primary. |
+| [`POST /api/bloem/v2/admin/platform/tenants/{id}/freeze`](#post-apibloemv2adminplatformtenantsidfreeze) | Suspend a reseller organization. |
+| [`PATCH /api/bloem/v2/admin/platform/tenants/{id}/limits`](#patch-apibloemv2adminplatformtenantsidlimits) | Change seats and shared conversions. |
+| [`POST /api/bloem/v2/admin/platform/tenants/{id}/thaw`](#post-apibloemv2adminplatformtenantsidthaw) | Lift an administrative suspension. |
+| [`GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members`](#get-apibloemv2adminplatformtenantstenant_idmembers) | List a reseller organization's members. |
+| [`POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members`](#post-apibloemv2adminplatformtenantstenant_idmembers) | Add a member account to a reseller organization. |
+| [`GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}`](#get-apibloemv2adminplatformtenantstenant_idmembersuser_id) | Read one member. |
+| [`PUT /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}`](#put-apibloemv2adminplatformtenantstenant_idmembersuser_id) | Change a member's username or email. |
+| [`DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}`](#delete-apibloemv2adminplatformtenantstenant_idmembersuser_id) | Remove a member. |
+| [`GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions`](#get-apibloemv2adminplatformtenantstenant_idmembersuser_idauth-sessions) | List a member's sign-in sessions. |
+| [`DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions`](#delete-apibloemv2adminplatformtenantstenant_idmembersuser_idauth-sessions) | End every sign-in session of a member. |
+| [`DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}`](#delete-apibloemv2adminplatformtenantstenant_idmembersuser_idauth-sessionssession_id) | End one of a member's sign-in sessions. |
+| [`GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/devices`](#get-apibloemv2adminplatformtenantstenant_idmembersuser_iddevices) | List a member's devices. |
+| [`DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/devices/{device_id}`](#delete-apibloemv2adminplatformtenantstenant_idmembersuser_iddevicesdevice_id) | Remove a member's device. |
+| [`GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles`](#get-apibloemv2adminplatformtenantstenant_idmembersuser_idprofiles) | List a member's profiles. |
+| [`POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles`](#post-apibloemv2adminplatformtenantstenant_idmembersuser_idprofiles) | Create a profile for a member. |
+| [`PUT /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}`](#put-apibloemv2adminplatformtenantstenant_idmembersuser_idprofilesprofile_id) | Change a member's profile. |
+| [`DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}`](#delete-apibloemv2adminplatformtenantstenant_idmembersuser_idprofilesprofile_id) | Delete a member's profile. |
+| [`POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/reset-password`](#post-apibloemv2adminplatformtenantstenant_idmembersuser_idreset-password) | Set a member's password. |
+| [`POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/resume`](#post-apibloemv2adminplatformtenantstenant_idmembersuser_idresume) | Resume a suspended member's account. |
+| [`POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/suspend`](#post-apibloemv2adminplatformtenantstenant_idmembersuser_idsuspend) | Suspend a member's account. |
+| [`GET /api/bloem/v2/admin/search/mirror`](#get-apibloemv2adminsearchmirror) | Read the search mirror's status. |
+| [`POST /api/bloem/v2/admin/session`](#post-apibloemv2adminsession) | Exchange a login session for a scoped administrative context. |
+| [`GET /api/bloem/v2/organizations`](#get-apibloemv2organizations) | The organizations this account belongs to. |
 
 ## Reference
 
-### `GET /api/bloem/v1/admin/organization/activity`
+### `GET /api/bloem/v2/admin/organization/activity`
 
 Page the selected organization's sanitized activity and entitlement audit.
 
@@ -139,7 +139,7 @@ Requires an organization-scoped administrative-context token matching the resolv
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `PUT /api/bloem/v1/admin/organization/entitlements/{folder_id}`
+### `PUT /api/bloem/v2/admin/organization/entitlements/{folder_id}`
 
 Set an organization library entitlement status.
 
@@ -165,7 +165,7 @@ Request body (required, `application/json`): [`BloemOrganizationEntitlementUpdat
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed (fields.request): expected_revision is not positive or status is not active or suspended. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `DELETE /api/bloem/v1/admin/organization/entitlements/{folder_id}`
+### `DELETE /api/bloem/v2/admin/organization/entitlements/{folder_id}`
 
 Remove an organization library entitlement.
 
@@ -191,7 +191,7 @@ Request body (required, `application/json`): [`BloemRevisionRequest`](#bloemrevi
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/organization/groups/`
+### `GET /api/bloem/v2/admin/organization/groups/`
 
 List access groups in the selected organization.
 
@@ -207,7 +207,7 @@ Requires the selected organization administrative context. Current account, logi
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/organization/groups/`
+### `POST /api/bloem/v2/admin/organization/groups/`
 
 Create an organization access group.
 
@@ -228,7 +228,7 @@ Request body (required, `application/json`): [`BloemOrganizationGroupWrite`](#bl
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/organization/groups/{id}`
+### `GET /api/bloem/v2/admin/organization/groups/{id}`
 
 Read one organization access group.
 
@@ -249,7 +249,7 @@ Requires the selected organization administrative context. Current account, logi
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the group ID is not a positive integer or the group is absent from the organization. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `PUT /api/bloem/v1/admin/organization/groups/{id}`
+### `PUT /api/bloem/v2/admin/organization/groups/{id}`
 
 Update an organization access group.
 
@@ -275,7 +275,7 @@ Request body (required, `application/json`): [`BloemOrganizationGroupWrite`](#bl
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `DELETE /api/bloem/v1/admin/organization/groups/{id}`
+### `DELETE /api/bloem/v2/admin/organization/groups/{id}`
 
 Delete an organization access group and report its impact.
 
@@ -301,7 +301,7 @@ Request body (required, `application/json`): [`BloemRevisionRequest`](#bloemrevi
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/organization/invitations`
+### `GET /api/bloem/v2/admin/organization/invitations`
 
 List invitation metadata without claim tokens.
 
@@ -317,7 +317,7 @@ Requires the selected organization administrative context. Current account, logi
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/organization/invitations`
+### `POST /api/bloem/v2/admin/organization/invitations`
 
 Create a user invitation and disclose its claim token once.
 
@@ -338,7 +338,7 @@ Request body (required, `application/json`): [`BloemOrganizationInvitationCreate
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive, email is not a bare email address, access_group_id is not one of this organization's groups, or library_ids lists a library the organization neither owns nor is entitled to. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `DELETE /api/bloem/v1/admin/organization/invitations/{id}`
+### `DELETE /api/bloem/v2/admin/organization/invitations/{id}`
 
 Revoke an unaccepted, unrevoked user invitation in the selected organization.
 
@@ -364,7 +364,7 @@ Request body (required, `application/json`): [`BloemOrganizationInvitationRevisi
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/organization/invitations/{id}/resend`
+### `POST /api/bloem/v2/admin/organization/invitations/{id}/resend`
 
 Rotate an unaccepted, unrevoked user invitation and return its new claim token once.
 
@@ -390,7 +390,7 @@ Request body (required, `application/json`): [`BloemOrganizationInvitationRevisi
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. Also returned when the invitation's email now belongs to an account. |
 
-### `GET /api/bloem/v1/admin/organization/libraries`
+### `GET /api/bloem/v2/admin/organization/libraries`
 
 List the organization library entitlement projection.
 
@@ -406,7 +406,7 @@ Requires the selected organization administrative context. Current account, logi
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/organization/overview`
+### `GET /api/bloem/v2/admin/organization/overview`
 
 Read the selected organization overview.
 
@@ -423,7 +423,7 @@ Requires the selected organization administrative context. Current account, logi
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the selected organization no longer exists. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/organization/people/`
+### `GET /api/bloem/v2/admin/organization/people/`
 
 Page organization people and their profiles.
 
@@ -450,7 +450,7 @@ Requires the selected organization administrative context. Current account, logi
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: limit, group_id or active_since is malformed, a status or sort value is unknown, or cursor is invalid. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/organization/people/bulk-jobs`
+### `POST /api/bloem/v2/admin/organization/people/bulk-jobs`
 
 Enqueue a people bulk mutation.
 
@@ -472,7 +472,7 @@ Request body (required, `application/json`): [`BulkAction`](#bulkaction).
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed (fields.request): kind or group_id is invalid for the action, or selection_token is missing. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/organization/people/bulk-jobs/{job_id}`
+### `GET /api/bloem/v2/admin/organization/people/bulk-jobs/{job_id}`
 
 Read progress and per-record results of a people job.
 
@@ -493,7 +493,7 @@ Requires the selected organization administrative context. Current account, logi
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the job is absent from the organization. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/organization/people/policy-jobs`
+### `POST /api/bloem/v2/admin/organization/people/policy-jobs`
 
 Enqueue a confirmed people policy command.
 
@@ -519,7 +519,7 @@ Request body (required, `application/json`): [`BloemPolicyBulkAction`](#bloempol
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: idempotency_key is missing or longer than 128 characters, selection_token or confirmation_token is missing, or the command is invalid. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}`
+### `GET /api/bloem/v2/admin/organization/people/policy-jobs/{job_id}`
 
 Read progress and per-record results of a people job.
 
@@ -540,7 +540,7 @@ Requires the selected organization administrative context. Current account, logi
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the job is absent from the organization or is not a policy job. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}/cancel`
+### `POST /api/bloem/v2/admin/organization/people/policy-jobs/{job_id}/cancel`
 
 Cancel an eligible people policy job.
 
@@ -562,7 +562,7 @@ Requires the selected organization administrative context. Current account, logi
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | job_not_cancellable: the job is not a policy job; authorization_state_changed: the actor's authority changed since the job was queued. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/organization/people/policy-previews`
+### `POST /api/bloem/v2/admin/organization/people/policy-previews`
 
 Preview a policy command and obtain a bound confirmation token.
 
@@ -584,7 +584,7 @@ Request body (required, `application/json`): [`BloemPeoplePreviewRequest`](#bloe
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed (fields.request): the policy command is invalid. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/organization/people/selections`
+### `POST /api/bloem/v2/admin/organization/people/selections`
 
 Create an immutable expiring selection from people filters.
 
@@ -604,7 +604,7 @@ Request body (required, `application/json`): [`BloemPeopleSelectionRequest`](#bl
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed (fields.filters): a status or sort value is unknown, or a group ID is not positive. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/organization/people/{account_id}/`
+### `GET /api/bloem/v2/admin/organization/people/{account_id}/`
 
 Read an organization person and profile summary.
 
@@ -625,7 +625,7 @@ Requires the selected organization administrative context. Current account, logi
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: account_id is not a positive integer or the account is not a member of the organization. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `PATCH /api/bloem/v1/admin/organization/people/{account_id}/memberships/current`
+### `PATCH /api/bloem/v2/admin/organization/people/{account_id}/memberships/current`
 
 Change an organization person membership status.
 
@@ -651,7 +651,7 @@ Request body (required, `application/json`): [`BloemPeopleMembershipUpdate`](#bl
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed (fields.request): expected_revision is not positive, status is not active or suspended, or the organization owner would be suspended. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `PATCH /api/bloem/v1/admin/organization/people/{account_id}/profiles/{profile_id}`
+### `PATCH /api/bloem/v2/admin/organization/people/{account_id}/profiles/{profile_id}`
 
 Assign an organization person profile to an access group.
 
@@ -678,7 +678,7 @@ Request body (required, `application/json`): [`BloemPeopleProfileUpdate`](#bloem
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed (fields.request): expected_revision or group_id is not positive. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/organization/policy-decisions`
+### `GET /api/bloem/v2/admin/organization/policy-decisions`
 
 Page sanitized organization policy decision explanations.
 
@@ -701,7 +701,7 @@ Requires the selected organization administrative context. Current account, logi
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: limit is outside 1 to 200, or cursor is malformed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/organization/policy-decisions/{id}`
+### `GET /api/bloem/v2/admin/organization/policy-decisions/{id}`
 
 Read a sanitized organization policy decision explanation.
 
@@ -722,7 +722,7 @@ Requires the selected organization administrative context. Current account, logi
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the decision ID is not a positive integer or the decision is absent from the organization. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/accounts`
+### `POST /api/bloem/v2/admin/platform/accounts`
 
 Create an account, optionally on a plan.
 
@@ -745,7 +745,7 @@ Request body (required, `application/json`): [`BloemPlatformAccountCreateRequest
 | 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot manage accounts transactionally. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | entitlements_unavailable: plans are not configured. service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/accounts/{account_id}`
+### `PUT /api/bloem/v2/admin/platform/accounts/{account_id}`
 
 Update an account, optionally moving it to a plan.
 
@@ -773,7 +773,7 @@ Request body (required, `application/json`): [`BloemPlatformAccountUpdateBody`](
 | 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot manage accounts transactionally. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | entitlements_unavailable: plans are not configured. service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions`
+### `GET /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions`
 
 List an account's sign-in sessions.
 
@@ -798,7 +798,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions`
+### `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions`
 
 End every sign-in session of an account.
 
@@ -823,7 +823,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions/{session_id}`
+### `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions/{session_id}`
 
 End one of an account's sign-in sessions.
 
@@ -849,7 +849,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/accounts/{account_id}/devices`
+### `GET /api/bloem/v2/admin/platform/accounts/{account_id}/devices`
 
 List an account's devices.
 
@@ -874,7 +874,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/devices/{device_id}`
+### `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/devices/{device_id}`
 
 Remove an account's device.
 
@@ -900,7 +900,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/accounts/{account_id}/profiles`
+### `GET /api/bloem/v2/admin/platform/accounts/{account_id}/profiles`
 
 List an account's profiles.
 
@@ -925,7 +925,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/accounts/{account_id}/profiles`
+### `POST /api/bloem/v2/admin/platform/accounts/{account_id}/profiles`
 
 Create a profile for an account.
 
@@ -952,7 +952,7 @@ Request body (required, `application/json`): [`ProfileCreateRequest`](#profilecr
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/accounts/{account_id}/profiles/{profile_id}`
+### `PUT /api/bloem/v2/admin/platform/accounts/{account_id}/profiles/{profile_id}`
 
 Change an account's profile.
 
@@ -980,7 +980,7 @@ Request body (required, `application/json`): [`ProfileUpdateRequest`](#profileup
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/profiles/{profile_id}`
+### `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/profiles/{profile_id}`
 
 Delete an account's profile.
 
@@ -1006,7 +1006,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/library-figures`
+### `GET /api/bloem/v2/admin/platform/library-figures`
 
 Read item counts for every library.
 
@@ -1023,7 +1023,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator; forbidden: the API key's scopes exclude this route. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | library_figures_unavailable: the database is unavailable or the count timed out; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/new-arrivals`
+### `GET /api/bloem/v2/admin/platform/new-arrivals`
 
 List recent additions to libraries.
 
@@ -1040,7 +1040,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator; forbidden: the API key's scopes exclude this route. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | new_arrivals_unavailable: the database is unavailable or the read timed out; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/organizations/`
+### `GET /api/bloem/v2/admin/platform/organizations/`
 
 Page organizations with current summary counts.
 
@@ -1064,7 +1064,7 @@ Requires a current platform administrative context, except where the security al
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: limit is outside 1 to 200, status is unknown or cursor is invalid. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/organizations/`
+### `POST /api/bloem/v2/admin/platform/organizations/`
 
 Create an organization for an existing owner account.
 
@@ -1085,7 +1085,7 @@ Request body (required, `application/json`): [`BloemPlatformOrganizationCreate`]
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: name or slug is invalid, or owner_account_id does not identify an enabled account. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/platform/organizations/{id}/`
+### `GET /api/bloem/v2/admin/platform/organizations/{id}/`
 
 Read an organization summary.
 
@@ -1106,7 +1106,7 @@ Requires a current platform administrative context, except where the security al
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the organization ID is malformed or the organization does not exist. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `PATCH /api/bloem/v1/admin/platform/organizations/{id}/`
+### `PATCH /api/bloem/v2/admin/platform/organizations/{id}/`
 
 Change organization name or slug.
 
@@ -1132,7 +1132,7 @@ Request body (required, `application/json`): [`BloemPlatformOrganizationUpdate`]
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive, neither name nor slug is present, or a value is invalid. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement`
+### `GET /api/bloem/v2/admin/platform/organizations/{id}/entitlement`
 
 Read the managed organization entitlement.
 
@@ -1153,7 +1153,7 @@ Requires a current platform administrative context, except where the security al
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the organization ID is malformed, or the organization does not exist or is not externally provisioned. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/apply`
+### `POST /api/bloem/v2/admin/platform/organizations/{id}/entitlement/apply`
 
 Apply a pinned entitlement template.
 
@@ -1180,7 +1180,7 @@ Request body (required, `application/json`): [`BloemEntitlementApplyRequest`](#b
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) or [`BloemNativeError`](README.md#bloemnativeerror) | validation_failed with fields: the template selection, confirmation_token or idempotency_key is missing or invalid, or the confirmation token is expired or bound to another target or actor. template_unavailable without fields: the template revision is disabled or archived. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement/audit`
+### `GET /api/bloem/v2/admin/platform/organizations/{id}/entitlement/audit`
 
 Read organization entitlement audit history.
 
@@ -1201,7 +1201,7 @@ Requires a current platform administrative context, except where the security al
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the organization ID is malformed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/dry-run`
+### `POST /api/bloem/v2/admin/platform/organizations/{id}/entitlement/dry-run`
 
 Preview a pinned entitlement template.
 
@@ -1227,7 +1227,7 @@ Request body (required, `application/json`): [`BloemEntitlementApplyRequest`](#b
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) or [`BloemNativeError`](README.md#bloemnativeerror) | validation_failed with fields: template_key or template_revision is missing. template_unavailable without fields: the template revision is disabled or archived. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `GET /api/bloem/v1/admin/platform/organizations/{id}/memberships`
+### `GET /api/bloem/v2/admin/platform/organizations/{id}/memberships`
 
 Page an organization membership directory.
 
@@ -1251,7 +1251,7 @@ Requires a current platform administrative context, except where the security al
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: limit is outside 1 to 200 or cursor is invalid. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/organizations/{id}/memberships`
+### `POST /api/bloem/v2/admin/platform/organizations/{id}/memberships`
 
 Create an organization membership for an existing account.
 
@@ -1277,7 +1277,7 @@ Request body (required, `application/json`): [`BloemPlatformMembershipCreate`](#
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: a field is invalid, or account_id does not identify an existing account. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `PATCH /api/bloem/v1/admin/platform/organizations/{id}/memberships/{membership_id}`
+### `PATCH /api/bloem/v2/admin/platform/organizations/{id}/memberships/{membership_id}`
 
 Change a membership role or status.
 
@@ -1304,7 +1304,7 @@ Request body (required, `application/json`): [`BloemPlatformMembershipUpdate`](#
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive, neither legacy_role nor status is present, or a value is invalid. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/organizations/{id}/reactivate`
+### `POST /api/bloem/v2/admin/platform/organizations/{id}/reactivate`
 
 Reactivate an organization.
 
@@ -1330,7 +1330,7 @@ Request body (required, `application/json`): [`BloemRevisionRequest`](#bloemrevi
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/organizations/{id}/suspend`
+### `POST /api/bloem/v2/admin/platform/organizations/{id}/suspend`
 
 Suspend an organization.
 
@@ -1356,7 +1356,7 @@ Request body (required, `application/json`): [`BloemRevisionRequest`](#bloemrevi
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/organizations/{id}/transfer-ownership`
+### `POST /api/bloem/v2/admin/platform/organizations/{id}/transfer-ownership`
 
 Transfer ownership after explicit confirmation and reauthentication.
 
@@ -1382,7 +1382,7 @@ Request body (required, `application/json`): [`BloemPlatformOwnershipTransfer`](
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision or owner_account_id is not positive, confirmed is not true, or the new owner is not an enabled active member. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization, password verification or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement`
+### `GET /api/bloem/v2/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement`
 
 Read authoritative account and profile entitlement policies.
 
@@ -1404,7 +1404,7 @@ Requires a current platform administrative context, except where the security al
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: an ID is malformed or the account is not a member of the organization. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs`
+### `POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs`
 
 Enqueue a confirmed bulk entitlement policy job.
 
@@ -1431,7 +1431,7 @@ Request body (required, `application/json`): [`BloemPolicyBulkAction`](#bloempol
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: idempotency_key is missing or longer than 128 characters, selection_token or confirmation_token is missing, or the command is invalid. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}`
+### `GET /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}`
 
 Read a bulk entitlement policy job.
 
@@ -1453,7 +1453,7 @@ Requires a current platform administrative context, except where the security al
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the organization is malformed, absent or not active; direct paths resolve the deployment default organization. The job may also be absent from the organization, longer than 128 characters or not a policy job. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel`
+### `POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel`
 
 Cancel an eligible bulk entitlement policy job.
 
@@ -1479,7 +1479,7 @@ Request body (required, `application/json`): [`BloemJSONInputStruct {}Body`](#bl
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | job_not_cancellable: the job is not a policy job; authorization_state_changed: the actor's authority changed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews`
+### `POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews`
 
 Create a selection and preview a bulk policy command.
 
@@ -1505,7 +1505,7 @@ Request body (required, `application/json`): [`BloemPlatformPolicyPreviewRequest
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: account_ids is empty, has more than 10000 entries, or contains a non-positive or duplicate ID; or the command is invalid (fields.request). |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts`
+### `GET /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts`
 
 List organization entitlement cohorts.
 
@@ -1528,7 +1528,7 @@ Requires a current platform administrative context, except where the security al
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: include_archived is not true or false, or another query parameter is present. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}`
+### `GET /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}`
 
 Read one organization entitlement cohort.
 
@@ -1550,7 +1550,7 @@ Requires a current platform administrative context, except where the security al
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the organization is malformed, absent or not active; direct paths resolve the deployment default organization. The cohort may also be malformed or absent from the organization. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots`
+### `POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-snapshots`
 
 Read bounded account policy snapshots in one observation.
 
@@ -1575,7 +1575,7 @@ Request body (required, `application/json`): [`BloemAccountPolicySnapshotsReques
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: account_ids is empty, has more than 10000 entries or contains a non-positive ID. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `GET /api/bloem/v1/admin/platform/tenants`
+### `GET /api/bloem/v2/admin/platform/tenants`
 
 List reseller organizations with live usage.
 
@@ -1592,7 +1592,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/tenants`
+### `POST /api/bloem/v2/admin/platform/tenants`
 
 Create a reseller organization.
 
@@ -1613,7 +1613,7 @@ Request body (required, `application/json`): [`BloemTenantCreateBody`](#bloemten
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/tenants/{id}`
+### `GET /api/bloem/v2/admin/platform/tenants/{id}`
 
 Read one reseller organization.
 
@@ -1635,7 +1635,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/tenants/{id}`
+### `DELETE /api/bloem/v2/admin/platform/tenants/{id}`
 
 Retire a reseller organization.
 
@@ -1657,7 +1657,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: retirement is not available, or the credential could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/tenants/{id}/branding`
+### `GET /api/bloem/v2/admin/platform/tenants/{id}/branding`
 
 Read an organization's branding.
 
@@ -1680,7 +1680,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/tenants/{id}/branding`
+### `PUT /api/bloem/v2/admin/platform/tenants/{id}/branding`
 
 Change an organization's branding.
 
@@ -1707,7 +1707,7 @@ Request body (required, `application/json`): [`BloemOrganizationBrandingUpdate`]
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}`
+### `PUT /api/bloem/v2/admin/platform/tenants/{id}/branding/assets/{kind}`
 
 Upload an organization's branding image.
 
@@ -1735,7 +1735,7 @@ Request body (required, `multipart/form-data`): [`AdminBrandingAssetForm`](#admi
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: asset storage is not configured. |
 
-### `DELETE /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}`
+### `DELETE /api/bloem/v2/admin/platform/tenants/{id}/branding/assets/{kind}`
 
 Remove an organization's branding image.
 
@@ -1760,7 +1760,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/tenants/{id}/domains`
+### `GET /api/bloem/v2/admin/platform/tenants/{id}/domains`
 
 List an organization's domains.
 
@@ -1782,7 +1782,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/tenants/{id}/domains`
+### `POST /api/bloem/v2/admin/platform/tenants/{id}/domains`
 
 Register a domain to an organization.
 
@@ -1809,7 +1809,7 @@ Request body (required, `application/json`): [`BloemOrganizationDomainRequest`](
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}`
+### `DELETE /api/bloem/v2/admin/platform/tenants/{id}/domains/{host}`
 
 Unregister a domain.
 
@@ -1832,7 +1832,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}/primary`
+### `PUT /api/bloem/v2/admin/platform/tenants/{id}/domains/{host}/primary`
 
 Make a domain the organization's primary.
 
@@ -1855,7 +1855,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/tenants/{id}/freeze`
+### `POST /api/bloem/v2/admin/platform/tenants/{id}/freeze`
 
 Suspend a reseller organization.
 
@@ -1877,7 +1877,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `PATCH /api/bloem/v1/admin/platform/tenants/{id}/limits`
+### `PATCH /api/bloem/v2/admin/platform/tenants/{id}/limits`
 
 Change seats and shared conversions.
 
@@ -1903,7 +1903,7 @@ Request body (required, `application/json`): [`BloemTenantLimits`](#bloemtenantl
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/tenants/{id}/thaw`
+### `POST /api/bloem/v2/admin/platform/tenants/{id}/thaw`
 
 Lift an administrative suspension.
 
@@ -1925,7 +1925,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members`
+### `GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members`
 
 List a reseller organization's members.
 
@@ -1949,7 +1949,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members`
+### `POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members`
 
 Add a member account to a reseller organization.
 
@@ -1978,7 +1978,7 @@ Request body (required, `application/json`): [`BloemTenantMemberCreateBody`](#bl
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}`
+### `GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}`
 
 Read one member.
 
@@ -2003,7 +2003,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}`
+### `PUT /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}`
 
 Change a member's username or email.
 
@@ -2030,7 +2030,7 @@ Request body (required, `application/json`): [`BloemTenantMemberUpdateBody`](#bl
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}`
+### `DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}`
 
 Remove a member.
 
@@ -2055,7 +2055,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions`
+### `GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions`
 
 List a member's sign-in sessions.
 
@@ -2081,7 +2081,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions`
+### `DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions`
 
 End every sign-in session of a member.
 
@@ -2107,7 +2107,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}`
+### `DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}`
 
 End one of a member's sign-in sessions.
 
@@ -2134,7 +2134,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/devices`
+### `GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/devices`
 
 List a member's devices.
 
@@ -2160,7 +2160,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/devices/{device_id}`
+### `DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/devices/{device_id}`
 
 Remove a member's device.
 
@@ -2187,7 +2187,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles`
+### `GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles`
 
 List a member's profiles.
 
@@ -2213,7 +2213,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles`
+### `POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles`
 
 Create a profile for a member.
 
@@ -2241,7 +2241,7 @@ Request body (required, `application/json`): [`ProfileCreateRequest`](#profilecr
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}`
+### `PUT /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}`
 
 Change a member's profile.
 
@@ -2270,7 +2270,7 @@ Request body (required, `application/json`): [`ProfileUpdateRequest`](#profileup
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}`
+### `DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}`
 
 Delete a member's profile.
 
@@ -2297,7 +2297,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/reset-password`
+### `POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/reset-password`
 
 Set a member's password.
 
@@ -2324,7 +2324,7 @@ Request body (required, `application/json`): [`BloemTenantMemberPasswordBody`](#
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/resume`
+### `POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/resume`
 
 Resume a suspended member's account.
 
@@ -2349,7 +2349,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/suspend`
+### `POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/suspend`
 
 Suspend a member's account.
 
@@ -2374,7 +2374,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
-### `GET /api/bloem/v1/admin/search/mirror`
+### `GET /api/bloem/v2/admin/search/mirror`
 
 Read the search mirror's status.
 
@@ -2390,7 +2390,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key; forbidden: the API key's scopes exclude this route. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | search_mirror_status_unavailable: the database is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `POST /api/bloem/v1/admin/session`
+### `POST /api/bloem/v2/admin/session`
 
 Exchange a login session for a scoped administrative context.
 
@@ -2410,7 +2410,7 @@ Request body (required, `application/json`): [`BloemAdminSessionRequest`](#bloem
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the selected organization is absent, hidden or still initializing, or this account has no membership in it or only an invitation. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; service_unavailable: the login session could not be checked, retry after Retry-After. |
 
-### `GET /api/bloem/v1/organizations`
+### `GET /api/bloem/v2/organizations`
 
 The organizations this account belongs to.
 

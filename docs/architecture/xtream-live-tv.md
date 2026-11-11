@@ -87,17 +87,17 @@ match ends, its lease is released and the tablet can tune in.
 | On this page | In the code and database |
 | --- | --- |
 | Xtream provider | a Live TV tuner of type `xtream` (`internal/livetv/bloem_xtream_*.go`) |
-| Adding a provider | `POST /api/bloem/v1/livetv/tuners/xtream` |
+| Adding a provider | `POST /api/bloem/v2/livetv/tuners/xtream` |
 | Encrypted account | the `SECRET_KEY` cipher, bound to the tuner ID and canonical base URL |
 | Connections | `max_connections`, the tuner's connection budget |
 | Lease | a durable connection lease, 60 s expiry and 15 s renewal (`internal/livetv/bloem_xtream_store.go`) |
 | The provider's guide | a guide source of type `xtream` with `config.tuner_id` |
-| Feature check | `xtream_supported` in `GET /api/bloem/v1/livetv/capability` |
+| Feature check | `xtream_supported` in `GET /api/bloem/v2/livetv/capability` |
 
 ## For developers
 
 - **API:** [Live TV](../bloem/api/live-tv.md), including
-  `POST /api/bloem/v1/livetv/tuners/xtream` and the guide-source routes.
+  `POST /api/bloem/v2/livetv/tuners/xtream` and the guide-source routes.
 
 History: Bloem's Live TV subsystem (`internal/livetv`: HDHomeRun tuners, guides,
 streaming and DVR) is an attributed AGPL adaptation of Prairie Server, integrated in
@@ -121,7 +121,7 @@ arbitrary remote media URLs. HDHomeRun-compatible tuners remain supported.
 
 ### Setup and capability
 
-`GET /api/bloem/v1/livetv/capability` adds `xtream_supported`. This reports installed
+`GET /api/bloem/v2/livetv/capability` adds `xtream_supported`. This reports installed
 protocol support, not working credentials, encryption readiness, playback success or a
 viewer grant. Existing `allowed` and `available` retain their meanings.
 
@@ -129,7 +129,7 @@ An acting administrator with the account's selected primary profile and any requ
 PIN verification creates a provider with:
 
 ```http
-POST /api/bloem/v1/livetv/tuners/xtream
+POST /api/bloem/v2/livetv/tuners/xtream
 Content-Type: application/json
 ```
 

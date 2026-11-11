@@ -7,6 +7,7 @@
 > which stays exactly as Silo wrote it. Bloem replaces nothing; Silo's contract and
 > conformance rules apply to Bloem as written. The addition is in the
 > [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 When the server sends a large file, such as a video, it gives each piece a time
 limit, so a stalled connection is dropped without cutting off a slow but working
@@ -68,11 +69,11 @@ marker were removed; the Audiobookshelf server runs only on its own port. See
 
 Silo's exact-route compressor bypass (`skipNativeMediaCompression`, mounted with
 `httpstream.CompressWithExclusions` in `internal/api/router.go`) names only
-`/api/v1` and `/api/v2` routes: the stream, transcode segment, download,
+Silo's `/api/v2` routes: the stream, transcode segment, download,
 direct-download, theme audio and ebook read routes. Native-storage media served
 through those routes keeps its `ReadFrom` path. A Bloem route under
-`/api/bloem/v1`, such as Live TV's
-`/api/bloem/v1/livetv/sessions/{sessionId}/stream`, is not on that list, so it is
+`/api/bloem/v2`, such as Live TV's
+`/api/bloem/v2/livetv/sessions/{sessionId}/stream`, is not on that list, so it is
 served through the compressor's writer, which forwards `Unwrap` but not
 `ReadFrom`.
 

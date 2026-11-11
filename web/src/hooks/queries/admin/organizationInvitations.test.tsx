@@ -133,7 +133,7 @@ describe.each(["create", "resend"] as const)("%s direct invitation request", (ac
       expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
       const write = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
       expect(write[0]).toBe(
-        `/api/bloem/v1/admin/organization/invitations${action === "resend" ? "/3/resend" : ""}`,
+        `/api/bloem/v2/admin/organization/invitations${action === "resend" ? "/3/resend" : ""}`,
       );
       expect(new Headers(write[1]?.headers).get("Authorization")).toBe(
         "Bearer dummy-admin-authority",

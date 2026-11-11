@@ -6,6 +6,7 @@
 > Silo has the per-account settings and access groups that plans are built on.
 > This page explains them in plain language; the technical pages and the API are
 > in the [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 A **plan** decides what an account gets: which libraries, how many screens at
 once, video conversions, picture quality, downloads and requests. This page
@@ -126,17 +127,17 @@ the link are the administrator's.
 | Preview, guest session | preview principal and `preview_guest` sessions (`internal/preview`) |
 | Preview address | the preview host in the preview settings |
 | Free play | play grants (`bloem_preview_play_grants`) |
-| Upgrade prompt | `GET`/`PUT /api/bloem/v1/admin/platform/upgrade-prompt` |
+| Upgrade prompt | `GET`/`PUT /api/bloem/v2/admin/platform/upgrade-prompt` |
 
 ## For developers
 
 - **API:** [plans and preview](../bloem/api/plans.md) (templates, per-account and
   bulk policy, preview administration and guest sessions) and
   [messages](../bloem/api/messages.md) (the upgrade prompt). The storefront puts a
-  new account on a plan with `POST /api/bloem/v1/admin/platform/accounts`, and an
-  organization with `POST /api/bloem/v1/admin/platform/tenants`
-  ([organizations API](../bloem/api/organizations.md)). The storefront calls
-  none of Silo's `/api/v1` ([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)).
+  new account on a plan with `POST /api/bloem/v2/admin/platform/accounts`, and an
+  organization with `POST /api/bloem/v2/admin/platform/tenants`
+  ([organizations API](../bloem/api/organizations.md)). Nothing in Bloem calls
+  Silo's retired v1 API ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
 - [Entitlement templates guide](../wiki/admin/entitlement-templates.md) and
   [managing entitlement templates](../operations/entitlement-templates.md): the
   built-in plans, policy fields, key rules, confirmation and audit.

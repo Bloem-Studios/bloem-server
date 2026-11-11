@@ -25,7 +25,7 @@ async function publicRequest<T>(path: string, body?: unknown): Promise<T> {
     () => new Error(bloemT("bloem.preview.errors.requestTimedOut")),
   );
   try {
-    const response = await fetch(`/api/bloem/v1/preview/${path}`, {
+    const response = await fetch(`/api/bloem/v2/preview/${path}`, {
       method: body === undefined ? "GET" : "POST",
       headers: {
         Accept: "application/json",
@@ -71,7 +71,7 @@ export async function exchangePreviewTicket(ticket: string) {
 export function previewEvent(event: "cta_shown" | "cta_clicked" | "session_ended") {
   const token = getAccessToken();
   if (!token) return;
-  void fetch("/api/bloem/v1/preview/events", {
+  void fetch("/api/bloem/v2/preview/events", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ event }),

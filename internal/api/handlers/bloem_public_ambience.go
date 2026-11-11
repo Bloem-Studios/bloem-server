@@ -6,10 +6,11 @@ import (
 	"github.com/Silo-Server/silo-server/internal/ambience"
 )
 
-// BloemPublicAmbienceHandler serves GET /api/bloem/v1/ambience/public: the
+// BloemPublicAmbienceHandler serves GET /api/bloem/v2/ambience/public: the
 // deployment-wide seasonal packs active now, without a credential. The web
-// app's signed-out seasonal layer reads it; the same packs ride Silo's
-// /api/v1/theme/branding for the phone apps until they move. Bloem-owned.
+// app's signed-out seasonal layer reads it. The packs used to ride Silo's
+// branding route on the retired alpha v1 API; Silo's /api/v2/theme/branding
+// does not carry them. Bloem-owned.
 type BloemPublicAmbienceHandler struct {
 	branding *BrandingHandler
 }

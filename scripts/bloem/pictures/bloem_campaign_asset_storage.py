@@ -43,8 +43,8 @@ def where_artwork_goes():
     s.text(800, 348, "Showing it", size=18, weight="700")
     para(s, 800, 378, "Apps fetch the picture from the public artwork route, with no sign-in, because "
          "seasonal artwork can appear on the sign-in page.", 340, size=14, fill=INK, gap=20)
-    s.text(800, 466, "/api/bloem/v1/ambience/assets/{ref}", size=13, weight="600", fill=p["label"])
-    s.text(800, 488, "/api/v1/ambience/assets/{ref} (older links)", size=13, fill=SOFT)
+    s.text(800, 466, "/api/bloem/v2/ambience/assets/{ref}", size=13, weight="600", fill=p["label"])
+    s.text(800, 488, "the only artwork route", size=13, fill=SOFT)
     para(s, 800, 522, "The name never changes for the same bytes, so browsers keep a copy for a year.", 340,
          size=14, gap=20)
 

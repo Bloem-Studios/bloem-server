@@ -181,14 +181,15 @@ func postSetup(ctx context.Context, base, transport, username string, profile bo
 }
 
 // TestInitialSetupCompetingCallersDB drives two concurrent real-router setup
-// requests per transport into the corrected admission boundary. A held
+// requests into the corrected admission boundary. A held
 // session-level advisory lock on the setup key parks BOTH callers at the
 // boundary (observable as two ungranted waiters), so neither has yet passed
 // the in-transaction emptiness check. After release exactly one 201 is
 // issued; the other caller re-checks under the lock and gets the existing
-// refusal (401 setup_complete on v1, 409 on v2) with no extra rows.
+// refusal (409 on v2) with no extra rows. Silo retired its v1 API, so v2 is the
+// only setup transport.
 func TestInitialSetupCompetingCallersDB(t *testing.T) {
-	for _, transport := range []string{"v1", "v2", "mixed"} {
+	for _, transport := range []string{"v2"} {
 		t.Run(transport, func(t *testing.T) {
 			d := atomicSetupDatabase(t, "competing_"+transport)
 			server := d.router(t, pgstore.NewPostgresProvider(d.pool))
@@ -224,9 +225,6 @@ func TestInitialSetupCompetingCallersDB(t *testing.T) {
 			for i := range 2 {
 				name := fmt.Sprintf("contender%d", i)
 				requestTransport := transport
-				if transport == "mixed" {
-					requestTransport = []string{"v1", "v2"}[i]
-				}
 				go func() {
 					reply, err := postSetup(ctx, server.URL, requestTransport, name, true)
 					results <- outcome{name: name, transport: requestTransport, reply: reply, err: err}
@@ -273,12 +271,7 @@ func TestInitialSetupCompetingCallersDB(t *testing.T) {
 				}
 			}
 			slices.Sort(statuses)
-			expected := []int{http.StatusCreated, http.StatusUnauthorized}
-			for _, o := range outcomes {
-				if o.reply.status != http.StatusCreated && o.transport == "v2" {
-					expected = []int{http.StatusCreated, http.StatusConflict}
-				}
-			}
+			expected := []int{http.StatusCreated, http.StatusConflict}
 			c := d.counts(t)
 			t.Logf("%s statuses=%v counts=%+v", transport, statuses, c)
 			if !slices.Equal(statuses, expected) || winner == nil {
@@ -291,10 +284,7 @@ func TestInitialSetupCompetingCallersDB(t *testing.T) {
 				if o.reply.status == http.StatusCreated {
 					continue
 				}
-				if o.transport == "v1" && o.reply.body["error"] != "setup_complete" {
-					t.Fatalf("v1 loser body = %v, want setup_complete", o.reply.body)
-				}
-				if o.transport == "v2" && o.reply.body["status"] != float64(http.StatusConflict) {
+				if o.reply.body["status"] != float64(http.StatusConflict) {
 					t.Fatalf("v2 loser body = %v, want conflict problem", o.reply.body)
 				}
 			}
@@ -359,7 +349,7 @@ func (d *atomicSetupDB) assertIssuedSession(t *testing.T, body map[string]any, b
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte("wrong-"+atomicSetupPassword)); err == nil {
 		t.Fatal("stored password hash verifies a wrong password")
 	}
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, base+"/api/v1/auth/me", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, base+"/api/v2/account/me", nil)
 	req.Header.Set("Authorization", "Bearer "+access)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -367,7 +357,7 @@ func (d *atomicSetupDB) assertIssuedSession(t *testing.T, body map[string]any, b
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("GET /auth/me with issued access token = %d, want 200", resp.StatusCode)
+		t.Fatalf("GET /account/me with issued access token = %d, want 200", resp.StatusCode)
 	}
 }
 
@@ -459,14 +449,25 @@ func TestInitialSetupNoProfileDB(t *testing.T) {
 		t.Fatalf("counts = %+v", c)
 	}
 	d.assertIssuedSession(t, first.body, server.URL)
-	second, err := postSetup(ctx, server.URL, "v1", "second", true)
+	second, err := postSetup(ctx, server.URL, "v2", "second", true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.status != http.StatusUnauthorized || second.body["error"] != "setup_complete" {
-		t.Fatalf("v1 sequential refusal = %d %v", second.status, second.body)
+	if second.status != http.StatusConflict || second.body["status"] != float64(http.StatusConflict) {
+		t.Fatalf("v2 sequential refusal = %d %v", second.status, second.body)
 	}
 	if c := d.counts(t); c != (atomicCounts{users: 1, admins: 1, profiles: 0, sessions: 1}) {
 		t.Fatalf("refusal mutated rows: %+v", c)
+	}
+	// Silo retired its v1 API: its setup route answers 410 Gone and writes nothing.
+	retired, err := postSetup(ctx, server.URL, "v1", "third", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if retired.status != http.StatusGone {
+		t.Fatalf("v1 setup = %d %v, want 410", retired.status, retired.body)
+	}
+	if c := d.counts(t); c != (atomicCounts{users: 1, admins: 1, profiles: 0, sessions: 1}) {
+		t.Fatalf("retired v1 setup mutated rows: %+v", c)
 	}
 }

@@ -1,22 +1,26 @@
 # Bloem overlay: Observability
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`, and checked again on
+> 2026-11-11, when the server-load reading's route was retired with Silo's v1 API. It
+> lists what Bloem
 > adds to Silo's
 > [`docs/architecture/observability.md`](../../../architecture/observability.md),
 > which stays exactly as Silo wrote it. Bloem replaces nothing there. The additions
 > are in the [For developers](#for-developers) section.
 
 Silo's page explains how the server reports on itself: logs, metrics, traces and
-which database queries each request made. Bloem reports the same way. It adds two
-notes: a small server-load reading for administrator apps, and the visitors of the
-storefront preview, whose requests are not written to the request log.
+which database queries each request made. Bloem reports the same way. It adds one
+note: the visitors of the storefront preview, whose requests are not written to the
+request log. A small server-load reading for administrator apps lived on Silo's v1 API
+and was retired with it.
 
 ## What Bloem changes
 
-- **A server-load reading for apps.** Bloem's administrator apps read the server's
-  live CPU, memory and network use from one simple route. It reads the same
-  measurements Silo takes for its own resource reports.
+- **A server-load reading for apps (retired).** Bloem's administrator apps read the
+  server's live CPU, memory and network use from one simple route on Silo's v1 API. That
+  route went when Silo retired the API on 2026-11-11; Silo's
+  `GET /api/v2/admin/system/resources` reports the same measurements.
 - **Preview visitors are not logged per request.** People looking around through
   the storefront's **preview** (a browse-only guest visit) do not get a line in the
   request log. Their database work still counts in the totals and metrics.
@@ -25,7 +29,7 @@ storefront preview, whose requests are not written to the request log.
 
 | On this page | In the code and API |
 | --- | --- |
-| Server-load reading | `GET /api/v1/admin/host-stats` (`internal/api/handlers/admin_host_stats.go`) |
+| Server-load reading (retired) | the former v1 `GET /admin/host-stats` (`internal/api/handlers/admin_host_stats.go`, no longer mounted) |
 | The measurements | Silo's `internal/nodemetrics` sampler |
 | Preview visitors | preview guest requests (`internal/api/bloem_preview_activity.go`) |
 | Not logged | `skipGuestLogging` |
@@ -34,9 +38,10 @@ storefront preview, whose requests are not written to the request log.
 
 ### Where this overlay came from
 
-Bloem added `GET /api/v1/admin/host-stats`, a JSON host-usage endpoint for its
-mobile admin clients, in `4c8e3524d` (2026-08-26); it has read Silo's node sampler
-since `4313e6cd2` (2026-09-13). The `/api/bloem/v1` routes include the read-only
+Bloem added `GET /admin/host-stats` on Silo's v1 API, a JSON host-usage endpoint for
+its mobile admin clients, in `4c8e3524d` (2026-08-26); it has read Silo's node sampler
+since `4313e6cd2` (2026-09-13). It went with Silo's v1 API on 2026-11-11; its handler
+is no longer mounted, and Silo's `GET /api/v2/admin/system/resources` is the replacement. The `/api/bloem/v2` routes include the read-only
 preview, whose guest requests skip request logging since `0ebad1b49` (2026-10-14).
 The preview is a browse-only catalogue that guests reach on a configured preview
 host with signed guest sessions; see the
@@ -60,7 +65,7 @@ to Bloem as written, and both passages this overlay points at are unchanged.
 “This is deliberate and guarded: the trace-instrumentation libraries (`otelhttp`,
 etc.,…”. **Bloem adds:**
 
-`GET /api/v1/admin/host-stats` is a separate, third thing: a JSON (not Prometheus-text)
+Until 2026-11-11, the v1 `GET /admin/host-stats` was a separate, third thing: a JSON (not Prometheus-text)
 endpoint reporting live CPU%, memory used/total, and network rx/tx rates, meant for a
 mobile admin client to render directly rather than for a metrics backend to scrape. It's
 unrelated to the OTel pipeline above. It reads Silo's `internal/nodemetrics` sampler, so
@@ -79,9 +84,9 @@ before the first sample, or when no sampler is wired — see
 `api request`, `apiv2 request` and `jellycompat request` lines add, in order,…”.
 **Bloem adds:**
 
-Bloem's `/api/bloem/v1` routes share the main router, so they are logged on the
+Bloem's `/api/bloem/v2` routes share the main router, so they are logged on the
 `api request` line with the same `db_*` fields. Preview-guest requests (on the
-configured preview host, under `/api/bloem/v1/preview/`, or carrying a guest
+configured preview host, under `/api/bloem/v2/preview/`, or carrying a guest
 credential) write no `api request` line (`skipGuestLogging` in
 `internal/api/bloem_preview_activity.go`), so they carry no `db_*` request fields;
 their queries still count in site totals, metrics, events (with `request` false)

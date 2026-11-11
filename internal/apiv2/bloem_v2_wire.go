@@ -1,6 +1,6 @@
 package apiv2
 
-// Bloem-owned. Bloem's native /api/bloem/v1 routes serve Silo's /api/v2 wire
+// Bloem-owned. Bloem's native /api/bloem/v2 routes serve Silo's /api/v2 wire
 // shapes directly: an organization's access groups and invitations, and a
 // platform account's devices, are the same objects /api/v2 returns. The
 // shapes and their request decoding live in this package, which imports

@@ -123,7 +123,7 @@ func TestBloemCapabilitiesExactContract(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	want := `{"api":"bloem/v1","identity_schema":1,` +
+	want := `{"api":"bloem/v2","identity_schema":1,` +
 		`"features":{"legacy_silo_v1":false,"organization_memberships":true,"tenant_bounded_media_scope":true,` +
 		`"direct_profile_login":true,"shared_device_pairing":false,"delegated_admin_roles":false},` +
 		`"media_types":["movie","series","episode","audiobook","ebook","manga"],` +
@@ -157,8 +157,8 @@ func TestBloemCapabilitiesGrewAdditively(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode capabilities: %v", err)
 	}
-	if body.API != "bloem/v1" || body.IdentitySchema != 1 {
-		t.Fatalf("api/identity_schema = %q/%d, want bloem/v1 and 1", body.API, body.IdentitySchema)
+	if body.API != "bloem/v2" || body.IdentitySchema != 1 {
+		t.Fatalf("api/identity_schema = %q/%d, want bloem/v2 and 1", body.API, body.IdentitySchema)
 	}
 	for name, want := range map[string]bool{
 		"legacy_silo_v1": false, "organization_memberships": true, "tenant_bounded_media_scope": true,

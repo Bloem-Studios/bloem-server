@@ -24,12 +24,12 @@ func TestBaseMiddlewareFoldsBloemClientHeadersOntoTheCanonicalNames(t *testing.T
 	var seen http.Header
 	root := chi.NewRouter()
 	useBaseMiddleware(root, Dependencies{Config: cfg})
-	root.Get("/api/v1/probe", func(w http.ResponseWriter, r *http.Request) {
+	root.Get("/api/v2/probe", func(w http.ResponseWriter, r *http.Request) {
 		seen = r.Header.Clone()
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/probe", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v2/probe", nil)
 	req.Header.Set("X-Bloem-Client-Family", "tv")
 	req.Header.Set("X-Bloem-Device-Id", "living-room-tv")
 	req.Header.Set("X-Bloem-Device-Name", "Living Room")
@@ -49,7 +49,7 @@ func TestBaseMiddlewareFoldsBloemClientHeadersOntoTheCanonicalNames(t *testing.T
 	}
 
 	// And an upstream-compatible client is unaffected by the same chain.
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/probe", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v2/probe", nil)
 	req.Header.Set("X-Silo-Client-Family", "desktop")
 	root.ServeHTTP(httptest.NewRecorder(), req)
 	if got := seen.Get("X-Silo-Client-Family"); got != "desktop" {

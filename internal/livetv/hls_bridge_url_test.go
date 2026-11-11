@@ -11,16 +11,16 @@ func TestLiveHLSDeliveryID(t *testing.T) {
 		want string
 	}{
 		{"built path round-trips", PublicLiveHLSPath("abc123"), "abc123"},
-		{"segment path", "/api/v1/livetv/live-hls/abc123/seg_00007.ts", "abc123"},
-		{"already carries a query", "/api/v1/livetv/live-hls/abc123/index.m3u8?profile_id=p1", "abc123"},
-		{"fragment is not part of the id", "/api/v1/livetv/live-hls/abc123/index.m3u8#x", "abc123"},
-		{"absolute url", "https://host/api/v1/livetv/live-hls/abc123/index.m3u8", "abc123"},
+		{"segment path", "/api/bloem/v2/livetv/live-hls/abc123/seg_00007.ts", "abc123"},
+		{"already carries a query", "/api/bloem/v2/livetv/live-hls/abc123/index.m3u8?profile_id=p1", "abc123"},
+		{"fragment is not part of the id", "/api/bloem/v2/livetv/live-hls/abc123/index.m3u8#x", "abc123"},
+		{"absolute url", "https://host/api/bloem/v2/livetv/live-hls/abc123/index.m3u8", "abc123"},
 		// The MPEG-TS session proxy is keyed on a different ID, so it must not
 		// match -- binding a token to the wrong ID would fail verification.
 		{"session stream path does not match", PublicSessionStreamPath("abc123"), ""},
-		{"unrelated path", "/api/v1/stream/abc123", ""},
-		{"missing name", "/api/v1/livetv/live-hls/abc123", ""},
-		{"empty id", "/api/v1/livetv/live-hls//index.m3u8", ""},
+		{"unrelated path", "/api/v2/stream/abc123", ""},
+		{"missing name", "/api/bloem/v2/livetv/live-hls/abc123", ""},
+		{"empty id", "/api/bloem/v2/livetv/live-hls//index.m3u8", ""},
 		{"empty", "", ""},
 	}
 	for _, tc := range cases {

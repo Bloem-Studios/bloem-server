@@ -1,7 +1,8 @@
 # How Bloem forks Silo
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
-> and checked against `main` at `a7359de60`. This is Bloem's fork policy and
+> and checked against `main` at `a7359de60`; its API lines were checked again on
+> 2026-11-11, after Silo retired its v1 API. This is Bloem's fork policy and
 > provenance; Silo has no such file. Every rule, command and number is in the
 > [For developers](#for-developers) section.
 
@@ -135,10 +136,10 @@ primary domain.
 
 ## For developers
 
-- **API:** Bloem's own routes are under `/api/bloem/v1`, described by topic in
-  [the native API](docs/bloem/api/README.md). Bloem adds nothing to Silo's `/api/v1`;
-  the web app and the storefront call none of it
-  ([leaving Silo's `/api/v1`](docs/architecture/bloem-leaving-silo-v1.md)).
+- **API:** Bloem's own routes are under `/api/bloem/v2`, described by topic in
+  [the native API](docs/bloem/api/README.md). Bloem adds nothing to Silo's retired v1 API,
+  and nothing in Bloem calls it
+  ([leaving Silo's v1 API](docs/architecture/bloem-leaving-silo-v1.md)).
 
 ### This is a TRACKING fork, deliberately
 
@@ -273,8 +274,8 @@ overlay.
 
 ### What Bloem adds, in detail
 
-- A tenant and identity foundation under `/api/bloem/v1`, while `/api/v1` remains the
-  Silo-compatible surface. The shipped boundary includes organization lifecycle and
+- A tenant and identity foundation under `/api/bloem/v2`, while Silo's `/api/v2` remains
+  the Silo-compatible surface. The shipped boundary includes organization lifecycle and
   membership management (with an admin UI for people and security administration),
   organization-scoped profile groups, a separate administrative-context session
   system, and OPA-bounded visibility of organization-owned or explicitly entitled media
@@ -288,16 +289,16 @@ overlay.
   (`internal/orgdomains`, migration `20261101055208_bloem_organization_domains`,
   capability `organization_domains_v1`, November 1, 2026): an organization can be
   served on its own domains with its own name, logo and colours, managed through
-  `/api/bloem/v1/admin/platform/tenants/{id}/domains` and `/branding`. Emails link to
+  `/api/bloem/v2/admin/platform/tenants/{id}/domains` and `/branding`. Emails link to
   its primary domain; a sign-in on another organization's domain is refused with
   `409 wrong_organization_domain`, naming where to sign in; an organization without a domain
   signs in at the server's public address; a sign-in or sign-out through the OAuth
   provider stays on the domain it started on. A domain decides presentation, never
   access.
-- Bloem adds nothing to Silo's `/api/v1`. The storefront (October 31, 2026) and the web
-  app (November 1, 2026) call none of it; the web app's signed-out seasonal layer reads
-  `GET /api/bloem/v1/ambience/public`. The `/api/v1` routes stay mounted for the phone
-  apps ([leaving Silo's `/api/v1`](docs/architecture/bloem-leaving-silo-v1.md)).
+- Bloem adds nothing to Silo's v1 API, which Silo retired on November 11, 2026. The
+  storefront (October 31, 2026) and the web app (November 1, 2026) had left it by then; the web app's signed-out seasonal layer reads
+  `GET /api/bloem/v2/ambience/public`. Bloem's own v1 routes went with it
+  ([leaving Silo's v1 API](docs/architecture/bloem-leaving-silo-v1.md)).
 - [Silo backend switching](docs/architecture/silo-backend-switching.md): a database
   limited to one organization can be served by Silo or Bloem, one at a time.
 - Direct-profile login for supported native routes, plus household credential

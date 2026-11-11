@@ -8,6 +8,7 @@
 > (`internal/blobstore`), which applies to Bloem as written. This page adds only
 > Bloem's notes beside it; the technical rules are in the
 > [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 An *overlay* is a Bloem-owned page that records Bloem's additions to, or
 replacements of, a Silo-owned document; Silo's files stay exactly as Silo wrote
@@ -118,15 +119,16 @@ Index: [Bloem documentation](../README.md).
   packs** page report `storage_available: false` and refuse multipart uploads with
   `503` (`unavailable`); an HTTPS artwork URL can still be entered. The private
   (Operational) store is never used. Uploaded pictures are served publicly at
-  `GET /api/bloem/v1/ambience/assets/{ref}`, and still at
-  `/api/v1/ambience/assets/{ref}` for the phone apps; migration
-  `20261031234831_bloem_native_ambience_asset_paths.sql` rewrote the stored paths
-  in Bloem's own tables to the native prefix, and both prefixes stay valid input.
+  `GET /api/bloem/v2/ambience/assets/{ref}`, the only artwork route and the only
+  accepted path prefix since 2026-11-11. Migrations
+  `20261031234831_bloem_native_ambience_asset_paths.sql` and
+  `20261111215029_bloem_api_v2_ambience_asset_paths.sql` moved the paths stored in
+  Bloem's own tables to it; the older v1 artwork route went with Silo's v1 API.
   The web app's signed-out seasonal layer reads the active packs from
-  `GET /api/bloem/v1/ambience/public`. The design is in
+  `GET /api/bloem/v2/ambience/public`. The design is in
   [campaign and seasonal asset storage](../../architecture/bloem-campaign-asset-storage.md).
 - Organization branding assets: `PUT|DELETE
-  /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}` stores the
+  /api/bloem/v2/admin/platform/tenants/{id}/branding/assets/{kind}` stores the
   upload through Silo's `branding.Service.UploadAsset`, as a content-hashed
   reference under Silo's `branding/` prefix. Without an asset store the upload
   answers `503 unavailable`; deleting an organization's asset only clears its

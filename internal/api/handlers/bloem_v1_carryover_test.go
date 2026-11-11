@@ -12,7 +12,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
-// Bloem-owned. Request helpers Silo deleted with its /api/v1 tests
+// Bloem-owned. Request helpers Silo deleted with its alpha v1 API tests
 // (Silo #3200) that Bloem's own tests still build requests with.
 
 func newAuthorizedProfileRequestWithRole(

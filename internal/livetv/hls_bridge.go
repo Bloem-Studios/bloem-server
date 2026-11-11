@@ -19,7 +19,7 @@ import (
 
 // liveHLSPathPrefix is the route the live HLS bridge is served from. Shared by
 // the URL builder and the delivery-ID parser so the two cannot drift.
-const liveHLSPathPrefix = "/api/v1/livetv/live-hls/"
+const liveHLSPathPrefix = "/api/bloem/v2/livetv/live-hls/"
 
 // PublicLiveHLSPath is the authenticated relative URL for a live HLS remux.
 func PublicLiveHLSPath(playbackSessionID string) string {

@@ -1,7 +1,7 @@
 # Storage sources API
 
 > **Generated** by `scripts/bloem/api-topic-docs.py` from
-> [`contracts/api/bloem/v1/openapi.json`](../../../contracts/api/bloem/v1/openapi.json).
+> [`contracts/api/bloem/v2/openapi.json`](../../../contracts/api/bloem/v2/openapi.json).
 > Do not edit by hand: change the handler's OpenAPI declaration, run `make bloem-openapi`, then
 > the script. Shared conventions, credentials and the error body are on the [index](README.md).
 
@@ -17,52 +17,52 @@ For the plain-language picture, read the [Storage sources explainer](../../archi
 
 | Method and path | Summary |
 | --- | --- |
-| [`POST /api/bloem/v1/admin/organization/library-locations`](#post-apibloemv1adminorganizationlibrary-locations) | Read or atomically save filesystem paths and selected plugin directories. |
-| [`GET /api/bloem/v1/admin/organization/library-locations/{library_id}`](#get-apibloemv1adminorganizationlibrary-locationslibrary_id) | Read or atomically save filesystem paths and selected plugin directories. |
-| [`PUT /api/bloem/v1/admin/organization/library-locations/{library_id}`](#put-apibloemv1adminorganizationlibrary-locationslibrary_id) | Read or atomically save filesystem paths and selected plugin directories. |
-| [`GET /api/bloem/v1/admin/organization/native-storage/artifacts`](#get-apibloemv1adminorganizationnative-storageartifacts) | List automatically verified catalog releases and any optional manual artifacts. |
-| [`GET /api/bloem/v1/admin/organization/native-storage/capabilities`](#get-apibloemv1adminorganizationnative-storagecapabilities) | Read composition-dependent flags; backend verification remains false. |
-| [`POST /api/bloem/v1/admin/organization/native-storage/catalog/installations`](#post-apibloemv1adminorganizationnative-storagecataloginstallations) | Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload. |
-| [`POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/discover`](#post-apibloemv1adminorganizationnative-storagecataloginstallationsdiscover) | Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download. |
-| [`POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade`](#post-apibloemv1adminorganizationnative-storagecataloginstallationsinstallation_idupgrade) | Download and verify a catalog upgrade, retaining configuration and library. |
-| [`POST /api/bloem/v1/admin/organization/native-storage/installations`](#post-apibloemv1adminorganizationnative-storageinstallations) | Install an approved artifact and source without creating a library or scan. |
-| [`POST /api/bloem/v1/admin/organization/native-storage/installations/discover`](#post-apibloemv1adminorganizationnative-storageinstallationsdiscover) | Discover the root of a new approved S3 installation and publish it atomically without a library or scan. |
-| [`DELETE /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}`](#delete-apibloemv1adminorganizationnative-storageinstallationsinstallation_id) | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
-| [`POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/disable`](#post-apibloemv1adminorganizationnative-storageinstallationsinstallation_iddisable) | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
-| [`POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/upgrade`](#post-apibloemv1adminorganizationnative-storageinstallationsinstallation_idupgrade) | Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept. |
-| [`POST /api/bloem/v1/admin/organization/native-storage/s3/buckets`](#post-apibloemv1adminorganizationnative-storages3buckets) | List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses. |
-| [`POST /api/bloem/v1/admin/organization/native-storage/s3/folders`](#post-apibloemv1adminorganizationnative-storages3folders) | List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing. |
-| [`GET /api/bloem/v1/admin/organization/native-storage/sources`](#get-apibloemv1adminorganizationnative-storagesources) | List visible sources and their current configuration revisions. |
-| [`GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}`](#get-apibloemv1adminorganizationnative-storagesourcessource_key) | Read a visible source without configuration secrets. |
-| [`DELETE /api/bloem/v1/admin/organization/native-storage/sources/{source_key}`](#delete-apibloemv1adminorganizationnative-storagesourcessource_key) | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
-| [`GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/browse`](#get-apibloemv1adminorganizationnative-storagesourcessource_keybrowse) | Browse authorized directories without starting discovery or opening files. |
-| [`PUT /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/configuration`](#put-apibloemv1adminorganizationnative-storagesourcessource_keyconfiguration) | Replace complete configuration only while the source namespace is empty. |
-| [`POST /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/credentials`](#post-apibloemv1adminorganizationnative-storagesourcessource_keycredentials) | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
-| [`POST /api/bloem/v1/admin/platform/library-locations`](#post-apibloemv1adminplatformlibrary-locations) | Read or atomically save filesystem paths and selected plugin directories. |
-| [`GET /api/bloem/v1/admin/platform/library-locations/{library_id}`](#get-apibloemv1adminplatformlibrary-locationslibrary_id) | Read or atomically save filesystem paths and selected plugin directories. |
-| [`PUT /api/bloem/v1/admin/platform/library-locations/{library_id}`](#put-apibloemv1adminplatformlibrary-locationslibrary_id) | Read or atomically save filesystem paths and selected plugin directories. |
-| [`GET /api/bloem/v1/admin/platform/native-storage/artifacts`](#get-apibloemv1adminplatformnative-storageartifacts) | List automatically verified catalog releases and any optional manual artifacts. |
-| [`GET /api/bloem/v1/admin/platform/native-storage/capabilities`](#get-apibloemv1adminplatformnative-storagecapabilities) | Read composition-dependent flags; backend verification remains false. |
-| [`POST /api/bloem/v1/admin/platform/native-storage/catalog/installations`](#post-apibloemv1adminplatformnative-storagecataloginstallations) | Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload. |
-| [`POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/discover`](#post-apibloemv1adminplatformnative-storagecataloginstallationsdiscover) | Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download. |
-| [`POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade`](#post-apibloemv1adminplatformnative-storagecataloginstallationsinstallation_idupgrade) | Download and verify a catalog upgrade, retaining configuration and library. |
-| [`POST /api/bloem/v1/admin/platform/native-storage/installations`](#post-apibloemv1adminplatformnative-storageinstallations) | Install an approved artifact and source without creating a library or scan. |
-| [`POST /api/bloem/v1/admin/platform/native-storage/installations/discover`](#post-apibloemv1adminplatformnative-storageinstallationsdiscover) | Discover the root of a new approved S3 installation and publish it atomically without a library or scan. |
-| [`DELETE /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}`](#delete-apibloemv1adminplatformnative-storageinstallationsinstallation_id) | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
-| [`POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/disable`](#post-apibloemv1adminplatformnative-storageinstallationsinstallation_iddisable) | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
-| [`POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/upgrade`](#post-apibloemv1adminplatformnative-storageinstallationsinstallation_idupgrade) | Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept. |
-| [`POST /api/bloem/v1/admin/platform/native-storage/s3/buckets`](#post-apibloemv1adminplatformnative-storages3buckets) | List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses. |
-| [`POST /api/bloem/v1/admin/platform/native-storage/s3/folders`](#post-apibloemv1adminplatformnative-storages3folders) | List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing. |
-| [`GET /api/bloem/v1/admin/platform/native-storage/sources`](#get-apibloemv1adminplatformnative-storagesources) | List visible sources and their current configuration revisions. |
-| [`GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}`](#get-apibloemv1adminplatformnative-storagesourcessource_key) | Read a visible source without configuration secrets. |
-| [`DELETE /api/bloem/v1/admin/platform/native-storage/sources/{source_key}`](#delete-apibloemv1adminplatformnative-storagesourcessource_key) | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
-| [`GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse`](#get-apibloemv1adminplatformnative-storagesourcessource_keybrowse) | Browse authorized directories without starting discovery or opening files. |
-| [`PUT /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration`](#put-apibloemv1adminplatformnative-storagesourcessource_keyconfiguration) | Replace complete configuration only while the source namespace is empty. |
-| [`POST /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/credentials`](#post-apibloemv1adminplatformnative-storagesourcessource_keycredentials) | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
+| [`POST /api/bloem/v2/admin/organization/library-locations`](#post-apibloemv2adminorganizationlibrary-locations) | Read or atomically save filesystem paths and selected plugin directories. |
+| [`GET /api/bloem/v2/admin/organization/library-locations/{library_id}`](#get-apibloemv2adminorganizationlibrary-locationslibrary_id) | Read or atomically save filesystem paths and selected plugin directories. |
+| [`PUT /api/bloem/v2/admin/organization/library-locations/{library_id}`](#put-apibloemv2adminorganizationlibrary-locationslibrary_id) | Read or atomically save filesystem paths and selected plugin directories. |
+| [`GET /api/bloem/v2/admin/organization/native-storage/artifacts`](#get-apibloemv2adminorganizationnative-storageartifacts) | List automatically verified catalog releases and any optional manual artifacts. |
+| [`GET /api/bloem/v2/admin/organization/native-storage/capabilities`](#get-apibloemv2adminorganizationnative-storagecapabilities) | Read composition-dependent flags; backend verification remains false. |
+| [`POST /api/bloem/v2/admin/organization/native-storage/catalog/installations`](#post-apibloemv2adminorganizationnative-storagecataloginstallations) | Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload. |
+| [`POST /api/bloem/v2/admin/organization/native-storage/catalog/installations/discover`](#post-apibloemv2adminorganizationnative-storagecataloginstallationsdiscover) | Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download. |
+| [`POST /api/bloem/v2/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade`](#post-apibloemv2adminorganizationnative-storagecataloginstallationsinstallation_idupgrade) | Download and verify a catalog upgrade, retaining configuration and library. |
+| [`POST /api/bloem/v2/admin/organization/native-storage/installations`](#post-apibloemv2adminorganizationnative-storageinstallations) | Install an approved artifact and source without creating a library or scan. |
+| [`POST /api/bloem/v2/admin/organization/native-storage/installations/discover`](#post-apibloemv2adminorganizationnative-storageinstallationsdiscover) | Discover the root of a new approved S3 installation and publish it atomically without a library or scan. |
+| [`DELETE /api/bloem/v2/admin/organization/native-storage/installations/{installation_id}`](#delete-apibloemv2adminorganizationnative-storageinstallationsinstallation_id) | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
+| [`POST /api/bloem/v2/admin/organization/native-storage/installations/{installation_id}/disable`](#post-apibloemv2adminorganizationnative-storageinstallationsinstallation_iddisable) | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
+| [`POST /api/bloem/v2/admin/organization/native-storage/installations/{installation_id}/upgrade`](#post-apibloemv2adminorganizationnative-storageinstallationsinstallation_idupgrade) | Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept. |
+| [`POST /api/bloem/v2/admin/organization/native-storage/s3/buckets`](#post-apibloemv2adminorganizationnative-storages3buckets) | List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses. |
+| [`POST /api/bloem/v2/admin/organization/native-storage/s3/folders`](#post-apibloemv2adminorganizationnative-storages3folders) | List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing. |
+| [`GET /api/bloem/v2/admin/organization/native-storage/sources`](#get-apibloemv2adminorganizationnative-storagesources) | List visible sources and their current configuration revisions. |
+| [`GET /api/bloem/v2/admin/organization/native-storage/sources/{source_key}`](#get-apibloemv2adminorganizationnative-storagesourcessource_key) | Read a visible source without configuration secrets. |
+| [`DELETE /api/bloem/v2/admin/organization/native-storage/sources/{source_key}`](#delete-apibloemv2adminorganizationnative-storagesourcessource_key) | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
+| [`GET /api/bloem/v2/admin/organization/native-storage/sources/{source_key}/browse`](#get-apibloemv2adminorganizationnative-storagesourcessource_keybrowse) | Browse authorized directories without starting discovery or opening files. |
+| [`PUT /api/bloem/v2/admin/organization/native-storage/sources/{source_key}/configuration`](#put-apibloemv2adminorganizationnative-storagesourcessource_keyconfiguration) | Replace complete configuration only while the source namespace is empty. |
+| [`POST /api/bloem/v2/admin/organization/native-storage/sources/{source_key}/credentials`](#post-apibloemv2adminorganizationnative-storagesourcessource_keycredentials) | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
+| [`POST /api/bloem/v2/admin/platform/library-locations`](#post-apibloemv2adminplatformlibrary-locations) | Read or atomically save filesystem paths and selected plugin directories. |
+| [`GET /api/bloem/v2/admin/platform/library-locations/{library_id}`](#get-apibloemv2adminplatformlibrary-locationslibrary_id) | Read or atomically save filesystem paths and selected plugin directories. |
+| [`PUT /api/bloem/v2/admin/platform/library-locations/{library_id}`](#put-apibloemv2adminplatformlibrary-locationslibrary_id) | Read or atomically save filesystem paths and selected plugin directories. |
+| [`GET /api/bloem/v2/admin/platform/native-storage/artifacts`](#get-apibloemv2adminplatformnative-storageartifacts) | List automatically verified catalog releases and any optional manual artifacts. |
+| [`GET /api/bloem/v2/admin/platform/native-storage/capabilities`](#get-apibloemv2adminplatformnative-storagecapabilities) | Read composition-dependent flags; backend verification remains false. |
+| [`POST /api/bloem/v2/admin/platform/native-storage/catalog/installations`](#post-apibloemv2adminplatformnative-storagecataloginstallations) | Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload. |
+| [`POST /api/bloem/v2/admin/platform/native-storage/catalog/installations/discover`](#post-apibloemv2adminplatformnative-storagecataloginstallationsdiscover) | Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download. |
+| [`POST /api/bloem/v2/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade`](#post-apibloemv2adminplatformnative-storagecataloginstallationsinstallation_idupgrade) | Download and verify a catalog upgrade, retaining configuration and library. |
+| [`POST /api/bloem/v2/admin/platform/native-storage/installations`](#post-apibloemv2adminplatformnative-storageinstallations) | Install an approved artifact and source without creating a library or scan. |
+| [`POST /api/bloem/v2/admin/platform/native-storage/installations/discover`](#post-apibloemv2adminplatformnative-storageinstallationsdiscover) | Discover the root of a new approved S3 installation and publish it atomically without a library or scan. |
+| [`DELETE /api/bloem/v2/admin/platform/native-storage/installations/{installation_id}`](#delete-apibloemv2adminplatformnative-storageinstallationsinstallation_id) | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
+| [`POST /api/bloem/v2/admin/platform/native-storage/installations/{installation_id}/disable`](#post-apibloemv2adminplatformnative-storageinstallationsinstallation_iddisable) | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
+| [`POST /api/bloem/v2/admin/platform/native-storage/installations/{installation_id}/upgrade`](#post-apibloemv2adminplatformnative-storageinstallationsinstallation_idupgrade) | Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept. |
+| [`POST /api/bloem/v2/admin/platform/native-storage/s3/buckets`](#post-apibloemv2adminplatformnative-storages3buckets) | List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses. |
+| [`POST /api/bloem/v2/admin/platform/native-storage/s3/folders`](#post-apibloemv2adminplatformnative-storages3folders) | List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing. |
+| [`GET /api/bloem/v2/admin/platform/native-storage/sources`](#get-apibloemv2adminplatformnative-storagesources) | List visible sources and their current configuration revisions. |
+| [`GET /api/bloem/v2/admin/platform/native-storage/sources/{source_key}`](#get-apibloemv2adminplatformnative-storagesourcessource_key) | Read a visible source without configuration secrets. |
+| [`DELETE /api/bloem/v2/admin/platform/native-storage/sources/{source_key}`](#delete-apibloemv2adminplatformnative-storagesourcessource_key) | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
+| [`GET /api/bloem/v2/admin/platform/native-storage/sources/{source_key}/browse`](#get-apibloemv2adminplatformnative-storagesourcessource_keybrowse) | Browse authorized directories without starting discovery or opening files. |
+| [`PUT /api/bloem/v2/admin/platform/native-storage/sources/{source_key}/configuration`](#put-apibloemv2adminplatformnative-storagesourcessource_keyconfiguration) | Replace complete configuration only while the source namespace is empty. |
+| [`POST /api/bloem/v2/admin/platform/native-storage/sources/{source_key}/credentials`](#post-apibloemv2adminplatformnative-storagesourcessource_keycredentials) | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
 
 ## Reference
 
-### `POST /api/bloem/v1/admin/organization/library-locations`
+### `POST /api/bloem/v2/admin/organization/library-locations`
 
 Read or atomically save filesystem paths and selected plugin directories.
 
@@ -87,7 +87,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 500 | [`BloemNativeStorageError`](#bloemnativestorageerror) | internal_error: the library could not be created. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: library-location editing is not composed, or the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. A plugin selection for a library type the host does not admit is also native_storage_unavailable. mutation_outcome_unknown returns operation_id, operation and library_id: reconcile using the library_id, never assume rollback or retry. |
 
-### `GET /api/bloem/v1/admin/organization/library-locations/{library_id}`
+### `GET /api/bloem/v2/admin/organization/library-locations/{library_id}`
 
 Read or atomically save filesystem paths and selected plugin directories.
 
@@ -110,7 +110,7 @@ Requires matching signed administrative context and current actor/library/source
 | 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict: a concurrent filesystem path write holds the library's paths; returns current_library_revision. Retry the read. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: library-location editing is not composed, or the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
-### `PUT /api/bloem/v1/admin/organization/library-locations/{library_id}`
+### `PUT /api/bloem/v2/admin/organization/library-locations/{library_id}`
 
 Read or atomically save filesystem paths and selected plugin directories.
 
@@ -138,7 +138,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: library-location editing is not composed, or the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. A plugin selection for a library type the host does not admit is also native_storage_unavailable. mutation_outcome_unknown returns operation_id, operation and library_id: reconcile using the library_id, never assume rollback or retry. |
 
-### `GET /api/bloem/v1/admin/organization/native-storage/artifacts`
+### `GET /api/bloem/v2/admin/organization/native-storage/artifacts`
 
 List automatically verified catalog releases and any optional manual artifacts.
 
@@ -155,7 +155,7 @@ Experimental native storage sources served by host-approved storage plugins; the
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: the catalog could not be refreshed and no artifact is approved. tenant_unavailable: administrative authority could not be checked. |
 
-### `GET /api/bloem/v1/admin/organization/native-storage/capabilities`
+### `GET /api/bloem/v2/admin/organization/native-storage/capabilities`
 
 Read composition-dependent flags; backend verification remains false.
 
@@ -172,7 +172,7 @@ Experimental native storage sources served by host-approved storage plugins; the
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/organization/native-storage/catalog/installations`
+### `POST /api/bloem/v2/admin/organization/native-storage/catalog/installations`
 
 Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload.
 
@@ -196,7 +196,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the release is not an approved artifact, or the configuration does not satisfy its declared schema. artifact_rejected also covers a key with no catalog release. s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/discover`
+### `POST /api/bloem/v2/admin/organization/native-storage/catalog/installations/discover`
 
 Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download.
 
@@ -220,7 +220,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the key is not an admitted S3 catalog release, or the configuration does not satisfy its declared schema. s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. This includes the per-administrator rate limit (10 per minute, burst 3; Retry-After is set), discovery not being composed, and the provider failing to start or describe the source within 30 seconds. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade`
+### `POST /api/bloem/v2/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade`
 
 Download and verify a catalog upgrade, retaining configuration and library.
 
@@ -248,7 +248,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the release is not an approved artifact or is for a different plugin. artifact_rejected also covers a key with no catalog release. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/organization/native-storage/installations`
+### `POST /api/bloem/v2/admin/organization/native-storage/installations`
 
 Install an approved artifact and source without creating a library or scan.
 
@@ -272,7 +272,7 @@ Exactly two parts, request JSON (at most 1 MiB) and nonempty binary (at most 256
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the artifact is not host-approved, the uploaded bytes do not match it, or the configuration does not satisfy its declared schema. s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/organization/native-storage/installations/discover`
+### `POST /api/bloem/v2/admin/organization/native-storage/installations/discover`
 
 Discover the root of a new approved S3 installation and publish it atomically without a library or scan.
 
@@ -296,7 +296,7 @@ Exactly two parts, request JSON (at most 1 MiB) and nonempty binary (at most 256
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the artifact is not a host-approved bloem.storage.s3 artifact, the uploaded bytes do not match it, or the configuration does not satisfy its declared schema. s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. This includes discovery not being composed and the provider failing to start or describe the source within 30 seconds. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}`
+### `DELETE /api/bloem/v2/admin/organization/native-storage/installations/{installation_id}`
 
 Uninstall and detach a source no library reads from; its catalog and reading progress are retained.
 
@@ -323,7 +323,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/disable`
+### `POST /api/bloem/v2/admin/organization/native-storage/installations/{installation_id}/disable`
 
 Disable and detach a source no library reads from; its catalog and reading progress are retained.
 
@@ -350,7 +350,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/upgrade`
+### `POST /api/bloem/v2/admin/organization/native-storage/installations/{installation_id}/upgrade`
 
 Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept.
 
@@ -378,7 +378,7 @@ Exactly two parts, request JSON (at most 1 MiB) and nonempty binary (at most 256
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the artifact is not host-approved, the uploaded bytes do not match it, or it is for a different plugin. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/organization/native-storage/s3/buckets`
+### `POST /api/bloem/v2/admin/organization/native-storage/s3/buckets`
 
 List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses.
 
@@ -401,7 +401,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 502 | [`BloemNativeStorageError`](#bloemnativestorageerror) | s3_backend_error: the backend failed, timed out, redirected or returned a malformed or oversized response. Messages are fixed and never quote the backend. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute), the per-administrator cap of two concurrent requests or the server-wide cap of four (one reserved for platform administrators) refused the request; Retry-After is set for those refusals. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/organization/native-storage/s3/folders`
+### `POST /api/bloem/v2/admin/organization/native-storage/s3/folders`
 
 List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing.
 
@@ -424,7 +424,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 502 | [`BloemNativeStorageError`](#bloemnativestorageerror) | s3_backend_error: the backend failed, timed out, redirected or returned a malformed or oversized response. Messages are fixed and never quote the backend. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute), the per-administrator cap of two concurrent requests or the server-wide cap of four (one reserved for platform administrators) refused the request; Retry-After is set for those refusals. tenant_unavailable: administrative authority could not be checked. |
 
-### `GET /api/bloem/v1/admin/organization/native-storage/sources`
+### `GET /api/bloem/v2/admin/organization/native-storage/sources`
 
 List visible sources and their current configuration revisions.
 
@@ -448,7 +448,7 @@ Experimental native storage sources served by host-approved storage plugins; the
 | 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
-### `GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}`
+### `GET /api/bloem/v2/admin/organization/native-storage/sources/{source_key}`
 
 Read a visible source without configuration secrets.
 
@@ -471,7 +471,7 @@ Experimental native storage sources served by host-approved storage plugins; the
 | 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/organization/native-storage/sources/{source_key}`
+### `DELETE /api/bloem/v2/admin/organization/native-storage/sources/{source_key}`
 
 Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched.
 
@@ -498,7 +498,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
-### `GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/browse`
+### `GET /api/bloem/v2/admin/organization/native-storage/sources/{source_key}/browse`
 
 Browse authorized directories without starting discovery or opening files.
 
@@ -526,7 +526,7 @@ Starts at the retained configured source root. Directory references and cursors 
 | 502 | [`BloemNativeStorageError`](#bloemnativestorageerror) | invalid_provider_page: the provider returned an invalid directory page. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: browsing is not composed, or the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
-### `PUT /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/configuration`
+### `PUT /api/bloem/v2/admin/organization/native-storage/sources/{source_key}/configuration`
 
 Replace complete configuration only while the source namespace is empty.
 
@@ -554,7 +554,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/credentials`
+### `POST /api/bloem/v2/admin/organization/native-storage/sources/{source_key}/credentials`
 
 Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned.
 
@@ -581,7 +581,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/library-locations`
+### `POST /api/bloem/v2/admin/platform/library-locations`
 
 Read or atomically save filesystem paths and selected plugin directories.
 
@@ -606,7 +606,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 500 | [`BloemNativeStorageError`](#bloemnativestorageerror) | internal_error: the library could not be created. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: library-location editing is not composed, or the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. A plugin selection for a library type the host does not admit is also native_storage_unavailable. mutation_outcome_unknown returns operation_id, operation and library_id: reconcile using the library_id, never assume rollback or retry. |
 
-### `GET /api/bloem/v1/admin/platform/library-locations/{library_id}`
+### `GET /api/bloem/v2/admin/platform/library-locations/{library_id}`
 
 Read or atomically save filesystem paths and selected plugin directories.
 
@@ -629,7 +629,7 @@ Requires matching signed administrative context and current actor/library/source
 | 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict: a concurrent filesystem path write holds the library's paths; returns current_library_revision. Retry the read. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: library-location editing is not composed, or the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/library-locations/{library_id}`
+### `PUT /api/bloem/v2/admin/platform/library-locations/{library_id}`
 
 Read or atomically save filesystem paths and selected plugin directories.
 
@@ -657,7 +657,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: library-location editing is not composed, or the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. A plugin selection for a library type the host does not admit is also native_storage_unavailable. mutation_outcome_unknown returns operation_id, operation and library_id: reconcile using the library_id, never assume rollback or retry. |
 
-### `GET /api/bloem/v1/admin/platform/native-storage/artifacts`
+### `GET /api/bloem/v2/admin/platform/native-storage/artifacts`
 
 List automatically verified catalog releases and any optional manual artifacts.
 
@@ -674,7 +674,7 @@ Experimental native storage sources served by host-approved storage plugins; the
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: the catalog could not be refreshed and no artifact is approved. tenant_unavailable: administrative authority could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/native-storage/capabilities`
+### `GET /api/bloem/v2/admin/platform/native-storage/capabilities`
 
 Read composition-dependent flags; backend verification remains false.
 
@@ -691,7 +691,7 @@ Experimental native storage sources served by host-approved storage plugins; the
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/native-storage/catalog/installations`
+### `POST /api/bloem/v2/admin/platform/native-storage/catalog/installations`
 
 Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload.
 
@@ -715,7 +715,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the key names the S3 plugin, the release is not an approved artifact, or the configuration does not satisfy its declared schema. artifact_rejected also covers a key with no catalog release. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/discover`
+### `POST /api/bloem/v2/admin/platform/native-storage/catalog/installations/discover`
 
 Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download.
 
@@ -739,7 +739,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the key is not an admitted S3 catalog release, or the configuration does not satisfy its declared schema. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. This includes the per-administrator rate limit (10 per minute, burst 3; Retry-After is set), discovery not being composed, and the provider failing to start or describe the source within 30 seconds. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade`
+### `POST /api/bloem/v2/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade`
 
 Download and verify a catalog upgrade, retaining configuration and library.
 
@@ -767,7 +767,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the release is not an approved artifact or is for a different plugin. artifact_rejected also covers a key with no catalog release. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/native-storage/installations`
+### `POST /api/bloem/v2/admin/platform/native-storage/installations`
 
 Install an approved artifact and source without creating a library or scan.
 
@@ -791,7 +791,7 @@ Exactly two parts, request JSON (at most 1 MiB) and nonempty binary (at most 256
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the artifact is not host-approved, the uploaded bytes do not match it, or the configuration does not satisfy its declared schema. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/native-storage/installations/discover`
+### `POST /api/bloem/v2/admin/platform/native-storage/installations/discover`
 
 Discover the root of a new approved S3 installation and publish it atomically without a library or scan.
 
@@ -815,7 +815,7 @@ Exactly two parts, request JSON (at most 1 MiB) and nonempty binary (at most 256
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the artifact is not a host-approved bloem.storage.s3 artifact, the uploaded bytes do not match it, or the configuration does not satisfy its declared schema. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. This includes discovery not being composed and the provider failing to start or describe the source within 30 seconds. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}`
+### `DELETE /api/bloem/v2/admin/platform/native-storage/installations/{installation_id}`
 
 Uninstall and detach a source no library reads from; its catalog and reading progress are retained.
 
@@ -842,7 +842,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/disable`
+### `POST /api/bloem/v2/admin/platform/native-storage/installations/{installation_id}/disable`
 
 Disable and detach a source no library reads from; its catalog and reading progress are retained.
 
@@ -869,7 +869,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/upgrade`
+### `POST /api/bloem/v2/admin/platform/native-storage/installations/{installation_id}/upgrade`
 
 Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept.
 
@@ -897,7 +897,7 @@ Exactly two parts, request JSON (at most 1 MiB) and nonempty binary (at most 256
 | 422 | [`BloemNativeStorageError`](#bloemnativestorageerror) | artifact_rejected: the artifact is not host-approved, the uploaded bytes do not match it, or it is for a different plugin. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/native-storage/s3/buckets`
+### `POST /api/bloem/v2/admin/platform/native-storage/s3/buckets`
 
 List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses.
 
@@ -920,7 +920,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 502 | [`BloemNativeStorageError`](#bloemnativestorageerror) | s3_backend_error: the backend failed, timed out, redirected or returned a malformed or oversized response. Messages are fixed and never quote the backend. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute), the per-administrator cap of two concurrent requests or the server-wide cap of four (one reserved for platform administrators) refused the request; Retry-After is set for those refusals. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/native-storage/s3/folders`
+### `POST /api/bloem/v2/admin/platform/native-storage/s3/folders`
 
 List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing.
 
@@ -943,7 +943,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 502 | [`BloemNativeStorageError`](#bloemnativestorageerror) | s3_backend_error: the backend failed, timed out, redirected or returned a malformed or oversized response. Messages are fixed and never quote the backend. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute), the per-administrator cap of two concurrent requests or the server-wide cap of four (one reserved for platform administrators) refused the request; Retry-After is set for those refusals. tenant_unavailable: administrative authority could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/native-storage/sources`
+### `GET /api/bloem/v2/admin/platform/native-storage/sources`
 
 List visible sources and their current configuration revisions.
 
@@ -967,7 +967,7 @@ Experimental native storage sources served by host-approved storage plugins; the
 | 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}`
+### `GET /api/bloem/v2/admin/platform/native-storage/sources/{source_key}`
 
 Read a visible source without configuration secrets.
 
@@ -990,7 +990,7 @@ Experimental native storage sources served by host-approved storage plugins; the
 | 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/native-storage/sources/{source_key}`
+### `DELETE /api/bloem/v2/admin/platform/native-storage/sources/{source_key}`
 
 Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched.
 
@@ -1017,7 +1017,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse`
+### `GET /api/bloem/v2/admin/platform/native-storage/sources/{source_key}/browse`
 
 Browse authorized directories without starting discovery or opening files.
 
@@ -1045,7 +1045,7 @@ Starts at the retained configured source root. Directory references and cursors 
 | 502 | [`BloemNativeStorageError`](#bloemnativestorageerror) | invalid_provider_page: the provider returned an invalid directory page. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: browsing is not composed, or the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration`
+### `PUT /api/bloem/v2/admin/platform/native-storage/sources/{source_key}/configuration`
 
 Replace complete configuration only while the source namespace is empty.
 
@@ -1072,7 +1072,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body or the serialized configuration exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/credentials`
+### `POST /api/bloem/v2/admin/platform/native-storage/sources/{source_key}/credentials`
 
 Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned.
 

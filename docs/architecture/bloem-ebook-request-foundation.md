@@ -100,11 +100,11 @@ Bookwarehouse may finish work it already started.
 ## For developers
 
 - **API:** [requests](../bloem/api/requests.md): the viewer routes under
-  `/api/bloem/v1/ebook-requests`, the queue under
-  `/api/bloem/v1/admin/organization/ebook-requests`, the policy switch
-  `PUT /api/bloem/v1/admin/organization/ebook-request-policy`, and the
+  `/api/bloem/v2/ebook-requests`, the queue under
+  `/api/bloem/v2/admin/organization/ebook-requests`, the policy switch
+  `PUT /api/bloem/v2/admin/organization/ebook-request-policy`, and the
   connection routes under
-  `/api/bloem/v1/admin/organization/ebook-request-integrations`.
+  `/api/bloem/v2/admin/organization/ebook-request-integrations`.
 
 ### Lane boundary
 

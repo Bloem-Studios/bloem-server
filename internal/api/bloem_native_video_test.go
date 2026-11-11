@@ -256,7 +256,7 @@ func TestNativeVideoCapturePreservesOriginalRequestAcrossProjection(t *testing.T
 	req.Header.Set("X-Profile-Token", "pin-proof")
 	req = req.WithContext(tenancy.WithContext(access.SetScope(middleware.SetClaims(req.Context(), f.claims), f.viewer.scope), f.tenant.tenant))
 	captureNativeVideoRequest(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		synthetic := httptest.NewRequest(http.MethodGet, "/api/v1/playback/start", nil).WithContext(r.Context())
+		synthetic := httptest.NewRequest(http.MethodGet, "/api/v2/playback/start", nil).WithContext(r.Context())
 		captureNativeVideoRequest(http.HandlerFunc(func(_ http.ResponseWriter, s *http.Request) {
 			inputs, ok := s.Context().Value(nativeVideoRequestKey{}).(nativeVideoRequest)
 			if !ok || inputs.method != http.MethodPost || inputs.path != "/api/v2/playback/plans" || inputs.authorization != f.bearer || inputs.profileToken != "pin-proof" {
@@ -854,7 +854,8 @@ func TestNativeVideoStreamTokenAllowsOnlyBoundSubtitleAndFontRoutes(t *testing.T
 		allowed            bool
 	}{
 		{"subtitle", http.MethodGet, "/api/v2/stream/play-session/subtitles/0.vtt", true},
-		{"subtitle-head", http.MethodHead, "/api/v1/stream/play-session/subtitles/2.srt", true},
+		{"subtitle-head", http.MethodHead, "/api/v2/stream/play-session/subtitles/2.srt", true},
+		{"retired-v1", http.MethodGet, "/api/v1/stream/play-session/subtitles/0.vtt", false}, // v1-guard: allow
 		{"fonts", http.MethodGet, "/api/v2/stream/play-session/subtitles/1.ass/fonts", true},
 		{"fonts-head", http.MethodHead, "/api/v2/stream/play-session/subtitles/1.ass/fonts", false},
 		{"mutation", http.MethodPost, "/api/v2/stream/play-session/subtitles/0.vtt", false},

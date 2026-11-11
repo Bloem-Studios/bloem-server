@@ -19,10 +19,10 @@ func TestPreviewRouteAllowedIsAnExactAllowlist(t *testing.T) {
 		want            bool
 	}{
 		{http.MethodGet, previewCapabilitiesPath, true},
-		{http.MethodGet, "/api/bloem/v1/persons/{person_id}", true},
-		{http.MethodGet, "/api/bloem/v1/watch/items/{content_id}", true},
-		{http.MethodGet, "/api/bloem/v1/livetv/capability", false},
-		{http.MethodPost, "/api/bloem/v1/persons/{person_id}", false},
+		{http.MethodGet, "/api/bloem/v2/persons/{person_id}", true},
+		{http.MethodGet, "/api/bloem/v2/watch/items/{content_id}", true},
+		{http.MethodGet, "/api/bloem/v2/livetv/capability", false},
+		{http.MethodPost, "/api/bloem/v2/persons/{person_id}", false},
 		{http.MethodGet, "/api/v2/direct-download", false},
 		{http.MethodGet, "", false},
 	} {

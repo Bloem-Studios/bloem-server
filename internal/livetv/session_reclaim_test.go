@@ -397,7 +397,7 @@ type failingStopBridge struct {
 }
 
 func (failingStopBridge) StartLiveStream(context.Context, LiveStreamRequest) (string, string, error) {
-	return "pb-stop", "/api/v1/livetv/live-hls/pb-stop/index.m3u8", nil
+	return "pb-stop", "/api/bloem/v2/livetv/live-hls/pb-stop/index.m3u8", nil
 }
 
 func (b failingStopBridge) StopLiveStream(_ context.Context, id string) error {

@@ -5,6 +5,7 @@
 > Silo has one name, one look and one public address per server. This page explains
 > them in plain language; the technical rules are in the
 > [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 One Bloem server can look like several services. Each organization can have web
 addresses of its own, with its own name, logo and colours, and its emails link to
@@ -74,7 +75,7 @@ Bloem never refuses:
 
 ## Signing in through Authentik
 
-![The browser on Riverside Club's address asks Bloem to sign in with Authentik, goes to Authentik with that address's return address, comes back to it and finishes there; signing out returns to that address's login page; three return addresses to register per domain](images/organization-domains/provider-sign-in.svg)
+![The browser on Riverside Club's address asks Bloem to sign in with Authentik, goes to Authentik with that address's return address, comes back to it and finishes there; signing out returns to that address's login page; two return addresses to register per domain](images/organization-domains/provider-sign-in.svg)
 
 Some servers let people sign in through a **sign-in provider**, Authentik. On the web,
 a provider sign-in stays on the address where it started:
@@ -88,7 +89,7 @@ a provider sign-in stays on the address where it started:
 5. Signing out through Authentik, when the server has that switched on, returns the
    browser to the same address's sign-in page.
 
-Authentik only returns to addresses it knows. Each domain's two callbacks, and its
+Authentik only returns to addresses it knows. Each domain's callback, and its
 sign-in page for signing out, must be registered there first (see
 [a new domain, step by step](#a-new-domain-step-by-step)). Apps on phones and TVs,
 and any address no organization registered, keep using the server's public address.
@@ -97,7 +98,7 @@ and any address no organization registered, keep using the server's public addre
 
 1. Point the address at the server and give it a certificate.
 2. Route it to Bloem through the trusted proxy in front of the server.
-3. If people sign in through Authentik, register the address's callbacks and sign-in
+3. If people sign in through Authentik, register the address's callback and sign-in
    page there.
 4. Register the domain to the organization, in the organization's page in the admin
    console or from the storefront.
@@ -156,20 +157,20 @@ and its blue accent colour.
 | The organization presentation follows | `orgdomains.OrganizationFor` |
 | Wrong-address refusal | `auth.OrganizationDomainError`, answered as `409 wrong_organization_domain` |
 | Callback, sign-out return address | the OAuth handler's callback URL and post-logout redirect (`internal/auth/oauth_handler.go`, `bloem_oauth_domain.go`) |
-| Managing them | `/api/bloem/v1/admin/platform/tenants/{id}/domains` and `/branding`; capability `organization_domains_v1` |
+| Managing them | `/api/bloem/v2/admin/platform/tenants/{id}/domains` and `/branding`; capability `organization_domains_v1` |
 
 ## For developers
 
 - **API:** the domain and branding routes on the
   [organizations and administration](../bloem/api/organizations.md) page:
-  [list](../bloem/api/organizations.md#get-apibloemv1adminplatformtenantsiddomains),
-  [add](../bloem/api/organizations.md#post-apibloemv1adminplatformtenantsiddomains),
-  [make primary](../bloem/api/organizations.md#put-apibloemv1adminplatformtenantsiddomainshostprimary),
-  [remove](../bloem/api/organizations.md#delete-apibloemv1adminplatformtenantsiddomainshost),
-  [read branding](../bloem/api/organizations.md#get-apibloemv1adminplatformtenantsidbranding),
-  [change branding](../bloem/api/organizations.md#put-apibloemv1adminplatformtenantsidbranding),
-  [upload an image](../bloem/api/organizations.md#put-apibloemv1adminplatformtenantsidbrandingassetskind)
-  and [remove an image](../bloem/api/organizations.md#delete-apibloemv1adminplatformtenantsidbrandingassetskind).
+  [list](../bloem/api/organizations.md#get-apibloemv2adminplatformtenantsiddomains),
+  [add](../bloem/api/organizations.md#post-apibloemv2adminplatformtenantsiddomains),
+  [make primary](../bloem/api/organizations.md#put-apibloemv2adminplatformtenantsiddomainshostprimary),
+  [remove](../bloem/api/organizations.md#delete-apibloemv2adminplatformtenantsiddomainshost),
+  [read branding](../bloem/api/organizations.md#get-apibloemv2adminplatformtenantsidbranding),
+  [change branding](../bloem/api/organizations.md#put-apibloemv2adminplatformtenantsidbranding),
+  [upload an image](../bloem/api/organizations.md#put-apibloemv2adminplatformtenantsidbrandingassetskind)
+  and [remove an image](../bloem/api/organizations.md#delete-apibloemv2adminplatformtenantsidbrandingassetskind).
 
 The code is `internal/orgdomains`. The platform routes are in
 `internal/api/handlers/bloem_organization_domains.go`, the sign-in check is in
@@ -329,7 +330,7 @@ sign-out return address. Silo's plugin installation page and the
 
 ### Managing domains and branding
 
-The platform routes sit under `/api/bloem/v1/admin/platform/tenants/{id}`:
+The platform routes sit under `/api/bloem/v2/admin/platform/tenants/{id}`:
 
 - `domains`: list (`GET`), add (`POST`, body `host` and `primary`), set the primary
   with `PUT …/domains/{host}/primary`, and remove (`DELETE …/domains/{host}`);
@@ -362,9 +363,8 @@ A branding update changes only the fields it names; an empty string clears one.
 
 1. Point DNS at the ingress and issue a certificate for the host.
 2. Route the host to Bloem through a trusted proxy that forwards the client's host.
-3. For sign-in through Authentik on that domain, register its callbacks in the
-   provider: `https://<domain>/api/v1/auth/oauth/<installation>/callback` and
-   `https://<domain>/api/v2/auth/oauth/<installation>/callback`. When provider
+3. For sign-in through Authentik on that domain, register its callback in the
+   provider: `https://<domain>/api/v2/auth/oauth/<installation>/callback`. When provider
    sign-out is on, also register `https://<domain>/login` as a post-logout redirect
    URI.
 4. Register the domain, in the organization page or from the storefront.

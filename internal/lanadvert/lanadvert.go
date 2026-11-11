@@ -68,7 +68,7 @@ const (
 
 // Identity is everything the TXT record publishes, resolved before
 // advertising. ServerID must come from the deployment identity service — the
-// same value GET /api/bloem/v1/server/identity returns as server_id — and
+// same value GET /api/bloem/v2/server/identity returns as server_id — and
 // ServerName from the same branding name the identity document returns.
 type Identity struct {
 	ServerID   string

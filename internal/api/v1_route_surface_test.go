@@ -21,7 +21,7 @@ import (
 // Silo retired /api/v1 (Silo #3200): the main listener mounts only its
 // tombstone, which answers 410 client_upgrade_required, and the health and
 // readiness probes. Bloem adds nothing under /api/v1 -- its routes belong on
-// /api/bloem/v1 -- so the golden files below hold exactly what Silo's
+// /api/bloem/v2 -- so the golden files below hold exactly what Silo's
 // tombstone mounts, and any other /api/v1 route fails here. Regenerate only
 // when Silo changes the tombstone:
 //
@@ -97,7 +97,7 @@ func assertV1RouteSurface(t *testing.T, golden string, router chi.Router) {
 		t.Errorf("this branch REMOVES an /api/v1 route: %s", route)
 	}
 	if len(added) > 0 || len(removed) > 0 {
-		t.Fatalf("the /api/v1 surface changed against %s; native routes belong on /api/bloem/v1", golden)
+		t.Fatalf("the /api/v1 surface changed against %s; native routes belong on /api/bloem/v2", golden)
 	}
 }
 

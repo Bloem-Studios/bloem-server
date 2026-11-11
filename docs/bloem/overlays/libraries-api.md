@@ -6,6 +6,7 @@
 > adds to Silo's [`docs/libraries-api.md`](../../libraries-api.md), which stays
 > exactly as Silo wrote it. Bloem replaces nothing there. The additions are in the
 > [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Silo's page explains the library routes that report and repair a library's
 contents. Bloem serves them unchanged and adds two rules that come from Bloem's own
@@ -68,8 +69,8 @@ for a library with no `paths` and exactly one storage location; mixed and
 multi-location libraries are created, read and edited through the native
 [library-locations routes](../../bloem-api-reference.md#library-locations-and-reading).
 In `updateLibrary`, a storage library keeps its media type, and one without
-filesystem paths refuses non-empty `paths`. The frozen `/api/v1` routes neither
-return nor accept the member. See
+filesystem paths refuses non-empty `paths`. Silo's retired v1 routes never returned or
+accepted the member. See
 [creating a library](../../architecture/bloem-native-storage.md#creating-a-library).
 
 ---

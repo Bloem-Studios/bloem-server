@@ -12,7 +12,7 @@ import (
 )
 
 // mountBloemNativeStorageManagement registers only inside the existing
-// /api/bloem/v1/admin subtree AFTER AdminContextMiddleware.Require. It does not
+// /api/bloem/v2/admin subtree AFTER AdminContextMiddleware.Require. It does not
 // mount a second auth/session stack or attach production dependencies.
 func mountBloemNativeStorageManagement(r chi.Router, h *handlers.BloemNativeStorageManagementHandler) {
 	var locations *handlers.BloemLibraryLocationsHandler

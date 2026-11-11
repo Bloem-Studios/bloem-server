@@ -40,12 +40,12 @@ func TestStreamTokenAuthAuthorizesDeliveryPaths(t *testing.T) {
 	token := signStreamToken(t, session, time.Hour)
 
 	for _, target := range []string{
-		"/api/v1/playback/transcode/" + session + "/master.m3u8?st=" + token,
+		"/api/v2/playback/transcode/" + session + "/master.m3u8?st=" + token,
 		// The player follows the master's variant URI itself, so this fetch
 		// carries the stream token and no bearer. It must authorize like the
 		// master does.
-		"/api/v1/playback/transcode/" + session + "/media.m3u8?st=" + token,
-		"/api/v1/playback/transcode/" + session + "/segment/seg-00001.m4s?st=" + token,
+		"/api/v2/playback/transcode/" + session + "/media.m3u8?st=" + token,
+		"/api/v2/playback/transcode/" + session + "/segment/seg-00001.m4s?st=" + token,
 	} {
 		if !serveWithStreamTokenAuth(t, testStreamSecret, target) {
 			t.Errorf("%s was not authorized by a valid session-bound stream token", target)
@@ -57,7 +57,7 @@ func TestStreamTokenAuthAuthorizesDeliveryPaths(t *testing.T) {
 // session A fetching session B's bytes is the one thing binding prevents.
 func TestStreamTokenAuthRejectsCrossSessionToken(t *testing.T) {
 	token := signStreamToken(t, "session-a", time.Hour)
-	target := "/api/v1/playback/transcode/session-b/master.m3u8?st=" + token
+	target := "/api/v2/playback/transcode/session-b/master.m3u8?st=" + token
 	if serveWithStreamTokenAuth(t, testStreamSecret, target) {
 		t.Fatal("a token minted for session-a authorized delivery of session-b")
 	}
@@ -66,14 +66,14 @@ func TestStreamTokenAuthRejectsCrossSessionToken(t *testing.T) {
 func TestStreamTokenAuthRejectsCrossSessionTokenOnMediaPlaylist(t *testing.T) {
 	token := signStreamToken(t, "session-a", time.Hour)
 	if serveWithStreamTokenAuth(t, testStreamSecret,
-		"/api/v1/playback/transcode/session-b/media.m3u8?st="+token) {
+		"/api/v2/playback/transcode/session-b/media.m3u8?st="+token) {
 		t.Fatal("a token for session-a authorized session-b's media playlist")
 	}
 }
 
 func TestStreamTokenAuthRejectsBadSignatureAndExpiry(t *testing.T) {
 	const session = "session-1"
-	base := "/api/v1/playback/transcode/" + session + "/master.m3u8?st="
+	base := "/api/v2/playback/transcode/" + session + "/master.m3u8?st="
 
 	if serveWithStreamTokenAuth(t, testStreamSecret, base+"not-a-jwt") {
 		t.Error("a malformed token authorized delivery")
@@ -98,14 +98,14 @@ func TestStreamTokenAuthOnlyAppliesToDeliveryPaths(t *testing.T) {
 	token := signStreamToken(t, session, time.Hour)
 
 	for _, target := range []string{
-		"/api/v1/admin/users?st=" + token,
-		"/api/v1/playback/start?st=" + token,
-		"/api/v1/playback/" + session + "/progress?st=" + token,
-		"/api/v1/playback/transcode/" + session + "?st=" + token,
-		"/api/v1/playback/transcode/" + session + "/other.m3u8?st=" + token,
-		"/api/v1/playback/transcode/" + session + "/segment/?st=" + token,
+		"/api/v2/admin/users?st=" + token,
+		"/api/v2/playback/start?st=" + token,
+		"/api/v2/playback/" + session + "/progress?st=" + token,
+		"/api/v2/playback/transcode/" + session + "?st=" + token,
+		"/api/v2/playback/transcode/" + session + "/other.m3u8?st=" + token,
+		"/api/v2/playback/transcode/" + session + "/segment/?st=" + token,
 		// Must not climb out of the segment namespace.
-		"/api/v1/playback/transcode/" + session + "/segment/../../admin?st=" + token,
+		"/api/v2/playback/transcode/" + session + "/segment/../../admin?st=" + token,
 	} {
 		if serveWithStreamTokenAuth(t, testStreamSecret, target) {
 			t.Errorf("%s was authorized by a stream token; only HLS delivery paths may be", target)
@@ -116,7 +116,7 @@ func TestStreamTokenAuthOnlyAppliesToDeliveryPaths(t *testing.T) {
 func TestStreamTokenAuthInertWithoutTokenOrSecret(t *testing.T) {
 	const session = "session-1"
 	token := signStreamToken(t, session, time.Hour)
-	delivery := "/api/v1/playback/transcode/" + session + "/master.m3u8"
+	delivery := "/api/v2/playback/transcode/" + session + "/master.m3u8"
 
 	if serveWithStreamTokenAuth(t, testStreamSecret, delivery) {
 		t.Error("a delivery request with no stream token was authorized")
@@ -136,7 +136,7 @@ func TestStreamTokenQueryParamIsTheSharedContract(t *testing.T) {
 		t.Fatalf("streamtoken.QueryParam = %q, want \"st\" — existing clients and manifests carry this name", streamtoken.QueryParam)
 	}
 	const session = "session-1"
-	target := "/api/v1/playback/transcode/" + session + "/master.m3u8?" +
+	target := "/api/v2/playback/transcode/" + session + "/master.m3u8?" +
 		streamtoken.QueryParam + "=" + signStreamToken(t, session, time.Hour)
 	if !serveWithStreamTokenAuth(t, testStreamSecret, target) {
 		t.Error("a token presented under streamtoken.QueryParam was not honored")
@@ -145,40 +145,44 @@ func TestStreamTokenQueryParamIsTheSharedContract(t *testing.T) {
 
 func TestStreamTokenDeliverySessionParsing(t *testing.T) {
 	for target, want := range map[string]string{
-		"/api/v1/playback/transcode/abc/master.m3u8":       "abc",
-		"/api/v1/playback/transcode/abc/media.m3u8":        "abc",
-		"/api/v1/playback/transcode/abc/segment/seg-1.m4s": "abc",
+		"/api/v2/playback/transcode/abc/master.m3u8":       "abc",
+		"/api/v2/playback/transcode/abc/media.m3u8":        "abc",
+		"/api/v2/playback/transcode/abc/segment/seg-1.m4s": "abc",
 		"/playback/transcode/abc/master.m3u8":              "abc",
-		"/api/v1/playback/transcode//master.m3u8":          "",
-		"/api/v1/playback/transcode/abc":                   "",
-		"/api/v1/playback/transcode/abc/":                  "",
-		"/api/v1/playback/transcode/abc/segment":           "",
-		"/api/v1/playback/transcode/abc/segment/a/b":       "",
-		"/api/v1/playback/transcode/abc/master.m3u8/extra": "",
+		"/api/v2/playback/transcode//master.m3u8":          "",
+		"/api/v2/playback/transcode/abc":                   "",
+		"/api/v2/playback/transcode/abc/":                  "",
+		"/api/v2/playback/transcode/abc/segment":           "",
+		"/api/v2/playback/transcode/abc/segment/a/b":       "",
+		"/api/v2/playback/transcode/abc/master.m3u8/extra": "",
 		// Progressive (direct-play / remux) delivery. Previously excluded because
 		// this middleware was HLS-only, which 401'd every native-player fetch of
 		// the stream_url the server itself had signed.
-		"/api/v1/stream/abc": "abc",
+		"/api/v2/stream/abc": "abc",
 		// chi trims the mount prefix for sub-routers, so the middleware sees this
 		// shape too. Requiring the API prefix here 401'd every real request.
 		"/stream/abc": "abc",
 		// Sub-resources stay out: a stream token authorizes the session's media
 		// bytes and nothing wider.
-		"/api/v1/stream/abc/subtitles/2": "",
+		"/api/v2/stream/abc/subtitles/2": "",
 		// Unanchored matching would let any route containing "/stream/" through.
-		"/api/v1/playback/transcode/abc/stream/evil": "",
+		"/api/v2/playback/transcode/abc/stream/evil": "",
 		// Live TV HLS delivery. The app embeds its own access token here and hands
 		// the URL to a native player that cannot refresh it, so a rotating bearer
 		// 401'd the player forever once the token went stale.
-		"/api/v1/livetv/live-hls/abc/index.m3u8":   "abc",
-		"/api/v1/livetv/live-hls/abc/seg_00001.ts": "abc",
-		"/livetv/live-hls/abc/index.m3u8":          "abc",
+		"/api/bloem/v2/livetv/live-hls/abc/index.m3u8":   "abc",
+		"/api/bloem/v2/livetv/live-hls/abc/seg_00001.ts": "abc",
+		"/livetv/live-hls/abc/index.m3u8":                "abc",
 		// The name is one path segment: a token must not walk out of its session.
-		"/api/v1/livetv/live-hls/abc/../../evil": "",
-		"/api/v1/livetv/live-hls/abc/a/b":        "",
-		"/api/v1/livetv/live-hls/abc":            "",
-		"/api/v1/livetv/live-hls/abc/":           "",
-		"/api/v1/livetv/live-hls//index.m3u8":    "",
+		"/api/bloem/v2/livetv/live-hls/abc/../../evil": "",
+		"/api/bloem/v2/livetv/live-hls/abc/a/b":        "",
+		"/api/bloem/v2/livetv/live-hls/abc":            "",
+		"/api/bloem/v2/livetv/live-hls/abc/":           "",
+		"/api/bloem/v2/livetv/live-hls//index.m3u8":    "",
+		// Silo retired its v1 API and Bloem's API moved to /api/bloem/v2, so the
+		// old delivery paths no longer take a stream token.
+		"/api/v1/stream/abc":                     "", // v1-guard: allow
+		"/api/v1/livetv/live-hls/abc/index.m3u8": "", // v1-guard: allow
 	} {
 		got, ok := streamTokenDeliverySession(target)
 		if want == "" {
@@ -198,7 +202,7 @@ func TestStreamTokenDeliverySessionParsing(t *testing.T) {
 func TestRequireAuthHonorsStreamTokenMarker(t *testing.T) {
 	am := &AuthMiddleware{}
 	const session = "session-1"
-	target := "/api/v1/playback/transcode/" + session + "/master.m3u8?st=" + signStreamToken(t, session, time.Hour)
+	target := "/api/v2/playback/transcode/" + session + "/master.m3u8?st=" + signStreamToken(t, session, time.Hour)
 
 	var reached bool
 	chain := am.StreamTokenAuth(testStreamSecret)(am.RequireAuth(http.HandlerFunc(
@@ -215,7 +219,7 @@ func TestRequireAuthHonorsStreamTokenMarker(t *testing.T) {
 	reached = false
 	rec = httptest.NewRecorder()
 	chain.ServeHTTP(rec, httptest.NewRequest(http.MethodGet,
-		"/api/v1/playback/transcode/"+session+"/master.m3u8", nil))
+		"/api/v2/playback/transcode/"+session+"/master.m3u8", nil))
 	if reached || rec.Code != http.StatusUnauthorized {
 		t.Fatalf("tokenless delivery reached the handler: status=%d reached=%v", rec.Code, reached)
 	}
@@ -232,7 +236,7 @@ func TestRequireAuthHonorsStreamTokenMarker(t *testing.T) {
 // to do that with — see ViewerAccessMiddleware.SetTokenResolver.
 func TestRequireViewerAccessHonorsStreamTokenMarker(t *testing.T) {
 	const session = "session-1"
-	target := "/api/v1/playback/transcode/" + session + "/master.m3u8?st=" + signStreamToken(t, session, time.Hour)
+	target := "/api/v2/playback/transcode/" + session + "/master.m3u8?st=" + signStreamToken(t, session, time.Hour)
 
 	t.Run("no token resolver wired fails closed", func(t *testing.T) {
 		// A middleware built without SetTokenResolver (e.g. wiring that never
@@ -268,7 +272,7 @@ func TestRequireViewerAccessHonorsStreamTokenMarker(t *testing.T) {
 		}
 		rec := httptest.NewRecorder()
 		chain.ServeHTTP(rec, httptest.NewRequest(http.MethodGet,
-			"/api/v1/playback/transcode/"+session+"/master.m3u8?st="+token, nil))
+			"/api/v2/playback/transcode/"+session+"/master.m3u8?st="+token, nil))
 		if !reached || rec.Code != http.StatusOK {
 			t.Fatalf("stream-token delivery blocked by viewer access: status=%d reached=%v", rec.Code, reached)
 		}
@@ -286,7 +290,7 @@ func TestRequireViewerAccessHonorsStreamTokenMarker(t *testing.T) {
 // honored it here, so a native player following that URL got a 401 on every
 // attempt and surfaced it as a connection failure.
 func TestStreamTokenDeliverySessionAcceptsProgressiveStream(t *testing.T) {
-	sessionID, ok := streamTokenDeliverySession("/api/v1/stream/abc-123")
+	sessionID, ok := streamTokenDeliverySession("/api/v2/stream/abc-123")
 	if !ok || sessionID != "abc-123" {
 		t.Fatalf("streamTokenDeliverySession(progressive) = (%q, %v), want (abc-123, true)", sessionID, ok)
 	}
@@ -297,10 +301,10 @@ func TestStreamTokenDeliverySessionAcceptsProgressiveStream(t *testing.T) {
 // decision rather than a side effect of prefix matching.
 func TestStreamTokenDeliverySessionRejectsProgressiveSubResources(t *testing.T) {
 	for _, path := range []string{
-		"/api/v1/stream/abc-123/subtitles/2",
-		"/api/v1/stream/abc-123/subtitles/2/fonts",
-		"/api/v1/stream/",
-		"/api/v1/stream/abc-123/",
+		"/api/v2/stream/abc-123/subtitles/2",
+		"/api/v2/stream/abc-123/subtitles/2/fonts",
+		"/api/v2/stream/",
+		"/api/v2/stream/abc-123/",
 	} {
 		if sessionID, ok := streamTokenDeliverySession(path); ok {
 			t.Errorf("streamTokenDeliverySession(%q) = (%q, true), want no session", path, sessionID)
@@ -312,8 +316,8 @@ func TestStreamTokenDeliverySessionRejectsProgressiveSubResources(t *testing.T) 
 // nested segment of some other route and quietly widen what a token authorizes.
 func TestStreamTokenDeliverySessionRejectsNestedStreamSegment(t *testing.T) {
 	for _, path := range []string{
-		"/api/v1/playback/transcode/sess-1/stream/evil",
-		"/api/bloem/v1/stream/abc-123",
+		"/api/v2/playback/transcode/sess-1/stream/evil",
+		"/api/bloem/v2/stream/abc-123",
 		"/internal/stream/abc-123",
 	} {
 		if sessionID, ok := streamTokenDeliverySession(path); ok {
@@ -331,8 +335,8 @@ func TestStreamTokenAuthAuthorizesLiveHLSDelivery(t *testing.T) {
 	token := signStreamToken(t, session, time.Hour)
 
 	for _, target := range []string{
-		"/api/v1/livetv/live-hls/" + session + "/index.m3u8?st=" + token,
-		"/api/v1/livetv/live-hls/" + session + "/seg_00000.ts?st=" + token,
+		"/api/bloem/v2/livetv/live-hls/" + session + "/index.m3u8?st=" + token,
+		"/api/bloem/v2/livetv/live-hls/" + session + "/seg_00000.ts?st=" + token,
 	} {
 		if !serveWithStreamTokenAuth(t, testStreamSecret, target) {
 			t.Errorf("%s was not authorized by a valid session-bound stream token", target)
@@ -344,7 +348,7 @@ func TestStreamTokenAuthAuthorizesLiveHLSDelivery(t *testing.T) {
 // an expiring credential for an unbounded one.
 func TestStreamTokenAuthRejectsCrossSessionLiveHLSToken(t *testing.T) {
 	token := signStreamToken(t, "session-a", time.Hour)
-	target := "/api/v1/livetv/live-hls/session-b/index.m3u8?st=" + token
+	target := "/api/bloem/v2/livetv/live-hls/session-b/index.m3u8?st=" + token
 	if serveWithStreamTokenAuth(t, testStreamSecret, target) {
 		t.Error("a token minted for session-a authorized session-b's live HLS bytes")
 	}
@@ -357,11 +361,11 @@ func TestStreamTokenAuthOnlyAppliesToLiveHLSDelivery(t *testing.T) {
 	token := signStreamToken(t, session, time.Hour)
 
 	for _, target := range []string{
-		"/api/v1/livetv/guide?st=" + token,
-		"/api/v1/livetv/channels?st=" + token,
-		"/api/v1/livetv/recordings?st=" + token,
-		"/api/v1/livetv/sessions/" + session + "?st=" + token,
-		"/api/v1/livetv/channels/" + session + "/session?st=" + token,
+		"/api/bloem/v2/livetv/guide?st=" + token,
+		"/api/bloem/v2/livetv/channels?st=" + token,
+		"/api/bloem/v2/livetv/recordings?st=" + token,
+		"/api/bloem/v2/livetv/sessions/" + session + "?st=" + token,
+		"/api/bloem/v2/livetv/channels/" + session + "/session?st=" + token,
 	} {
 		if serveWithStreamTokenAuth(t, testStreamSecret, target) {
 			t.Errorf("%s was authorized by a stream token; only delivery paths may be", target)

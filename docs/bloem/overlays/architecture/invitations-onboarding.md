@@ -6,6 +6,7 @@
 > [`docs/architecture/invitations-onboarding.md`](../../../architecture/invitations-onboarding.md),
 > which stays exactly as Silo wrote it. The section-by-section changes are in the
 > [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Silo's page explains how an invitation becomes an account and how a new person is
 shown around the app. Everything there applies to Bloem: link invitations without
@@ -33,7 +34,7 @@ onboarding tour. Bloem changes only what organizations and profile sign-ins touc
 | --- | --- |
 | Which organization an invitation belongs to | `invitations.organization_id` |
 | One live invitation per address in each organization | partial unique index `invitations_one_pending_idx` on `(organization_id, email)` |
-| The organization console's routes | `/api/bloem/v1/admin/organization/invitations` |
+| The organization console's routes | `/api/bloem/v2/admin/organization/invitations` |
 | The one-time link | `claim_token` |
 | A profile store that cannot join the transaction | `ErrTransactionalProfileUnavailable` |
 
@@ -65,9 +66,9 @@ differences. Silo has not changed the document again through `63ef34b23`.
 paragraph beginning “Two complementary entry paths coexist…”. **Bloem adds:**
 
 Every invitation belongs to one organization. Silo's administrator invitation
-routes, on `/api/v1` and `/api/v2`, list, create, resend, revoke and delete only
+routes on `/api/v2` list, create, resend, revoke and delete only
 the default organization's invitations. Bloem's organization console has its
-own routes under `/api/bloem/v1/admin/organization/invitations`. They create
+own routes under `/api/bloem/v2/admin/organization/invitations`. They create
 email-bound invitations with role `user` only, in the console's organization.
 That flow never sends mail: the create and resend responses return the claim
 token once and the administrator delivers the link. Those rows are stored with

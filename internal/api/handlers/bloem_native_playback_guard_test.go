@@ -73,7 +73,7 @@ func TestNativePlaybackStreamSourcesNeverMarkMissing(t *testing.T) {
 			params := map[string]string{"session_id": session.ID, "track": "0.ass"}
 			switch endpoint {
 			case "subtitle":
-				handler.HandleSubtitle(response, playbackTestRequest(http.MethodGet, "/api/v1/stream/"+session.ID+"/subtitles/0.ass", nil, params))
+				handler.HandleSubtitle(response, playbackTestRequest(http.MethodGet, "/api/v2/stream/"+session.ID+"/subtitles/0.ass", nil, params))
 			case "fonts":
 				request := playbackTestRequest(http.MethodGet, "/api/v2/stream/"+session.ID+"/subtitles/0/fonts", nil, params)
 				if fonts, err := handler.SubtitleFonts(request.Context(), SubtitleFontRequest{SessionID: session.ID, Track: "0", Query: request.URL.Query()}); err != nil {
@@ -86,7 +86,7 @@ func TestNativePlaybackStreamSourcesNeverMarkMissing(t *testing.T) {
 				if endpoint == "direct-head" {
 					method = http.MethodHead
 				}
-				handler.HandleStream(response, playbackTestRequest(method, "/api/v1/stream/"+session.ID, nil, params))
+				handler.HandleStream(response, playbackTestRequest(method, "/api/v2/stream/"+session.ID, nil, params))
 			}
 			if response.Code != http.StatusNotFound {
 				t.Errorf("status = %d, body = %s", response.Code, response.Body.String())
@@ -190,7 +190,7 @@ func TestNativePlaybackReplanDoesNotMarkNativeSourceMissing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := withPlaybackRouteParam(httptest.NewRequest(http.MethodPost, "/api/v1/playback/"+started.SessionID+"/replan", strings.NewReader(string(body))).WithContext(newAuthorizedPlaybackContext()), "session_id", started.SessionID)
+	request := withPlaybackRouteParam(httptest.NewRequest(http.MethodPost, "/api/v2/playback/"+started.SessionID+"/replan", strings.NewReader(string(body))).WithContext(newAuthorizedPlaybackContext()), "session_id", started.SessionID)
 	response = httptest.NewRecorder()
 	serveReplanPlaybackV2(t, handler, response, request)
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "source_unavailable") {
@@ -215,7 +215,7 @@ func TestNativePlaybackGuardPreservesFilesystemStartAndRanges(t *testing.T) {
 		t.Fatalf("local start = %d %s", response.Code, response.Body.String())
 	}
 	stream := NewStreamHandler(manager, testPlaybackFileResolver{file: file})
-	request := playbackTestRequest(http.MethodGet, "/api/v1/stream/"+started.SessionID, nil, map[string]string{"session_id": started.SessionID})
+	request := playbackTestRequest(http.MethodGet, "/api/v2/stream/"+started.SessionID, nil, map[string]string{"session_id": started.SessionID})
 	request.Header.Set("Range", "bytes=1-3")
 	response = httptest.NewRecorder()
 	stream.HandleStream(response, request)

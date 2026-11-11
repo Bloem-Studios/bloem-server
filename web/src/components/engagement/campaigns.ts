@@ -80,7 +80,7 @@ export function campaignLink(value?: string): string | null {
 }
 export function campaignImage(value?: string): string | null {
   if (!value) return null;
-  if (/^\/api\/v1\/ambience\/assets\/[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(value)) return value;
+  if (/^\/api\/bloem\/v2\/ambience\/assets\/[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(value)) return value;
   const url = campaignLink(value);
   return url?.startsWith("https://") ? url : null;
 }

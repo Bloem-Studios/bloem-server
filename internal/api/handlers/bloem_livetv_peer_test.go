@@ -9,7 +9,7 @@ import (
 
 func TestLiveTVPeerRelaysCredentialsAndRangeOneHop(t *testing.T) {
 	peer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/livetv/live-hls/p/seg.ts" || r.URL.Query().Get("st") != "signed" || r.Header.Get("Authorization") != "Bearer owner" || r.Header.Get("X-Profile-Id") != "profile" || r.Header.Get(liveTVPeerHop) != "1" || r.Header.Get("Range") != "bytes=0-3" {
+		if r.URL.Path != "/api/bloem/v2/livetv/live-hls/p/seg.ts" || r.URL.Query().Get("st") != "signed" || r.Header.Get("Authorization") != "Bearer owner" || r.Header.Get("X-Profile-Id") != "profile" || r.Header.Get(liveTVPeerHop) != "1" || r.Header.Get("Range") != "bytes=0-3" {
 			t.Errorf("peer request lost routing or authority")
 		}
 		w.Header().Set("Content-Type", "video/mp2t")
@@ -18,7 +18,7 @@ func TestLiveTVPeerRelaysCredentialsAndRangeOneHop(t *testing.T) {
 		_, _ = io.WriteString(w, "data")
 	}))
 	defer peer.Close()
-	r := httptest.NewRequest("GET", "/api/v1/livetv/live-hls/p/seg.ts?st=signed", nil)
+	r := httptest.NewRequest("GET", "/api/bloem/v2/livetv/live-hls/p/seg.ts?st=signed", nil)
 	r.Header.Set("Authorization", "Bearer owner")
 	r.Header.Set("X-Profile-Id", "profile")
 	r.Header.Set("Range", "bytes=0-3")
@@ -37,7 +37,7 @@ func TestLiveTVPeerRefusesLoopsAndRedirects(t *testing.T) {
 	}))
 	defer peer.Close()
 	for _, hop := range []string{"1", ""} {
-		r := httptest.NewRequest("GET", "/api/v1/livetv/live-hls/p/index.m3u8?st=signed", nil)
+		r := httptest.NewRequest("GET", "/api/bloem/v2/livetv/live-hls/p/index.m3u8?st=signed", nil)
 		r.Header.Set(liveTVPeerHop, hop)
 		w := httptest.NewRecorder()
 		serveLiveTVPeer(w, r, peer.URL)

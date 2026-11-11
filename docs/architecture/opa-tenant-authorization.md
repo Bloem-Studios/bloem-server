@@ -6,6 +6,7 @@
 > organizations, memberships, ownership and grants into Silo's engine. This page
 > explains it in plain language; the technical rules, the failure handling and the
 > verification commands are in the [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Every time someone browses, searches or presses play, Bloem decides what they may
 reach. This page walks through how that decision is made, what an organization's
@@ -59,7 +60,7 @@ A change to a group that affects access takes effect for everyone in it at once.
 
 ## Apps built for Silo
 
-Apps built for Silo, and Silo's `/api/v1`, work as they do with Silo. When
+Apps built for Silo, and Silo's `/api/v2`, work as they do with Silo. When
 organizations arrived, every existing account and profile was placed in the default
 organization without changing profile IDs, PINs, sign-in or profile switching. Bloem
 ignores any organization an old app sends and works it out from the account and
@@ -105,7 +106,7 @@ restore instead.
 
 ## For developers
 
-- **API:** the capability probe `GET /api/bloem/v1/capabilities` is described in the
+- **API:** the capability probe `GET /api/bloem/v2/capabilities` is described in the
   [native API reference](../bloem-api-reference.md); administrative contexts and
   policy-decision explanations are on the
   [organizations and administration](../bloem/api/organizations.md) page.
@@ -118,17 +119,17 @@ returned scope to catalog and playback reads.
 
 ### Shipped boundary
 
-`GET /api/bloem/v1/capabilities` advertises `organization_memberships` and
-`tenant_bounded_media_scope` as `true`. Since Silo retired `/api/v1` (merged in
+`GET /api/bloem/v2/capabilities` advertises `organization_memberships` and
+`tenant_bounded_media_scope` as `true`. Since Silo retired its v1 API (merged in
 `26cf9b3e4`) it advertises `legacy_silo_v1` and direct-profile login
 (`direct_profile_login`) as `false`: the profile sign-in route lived only on
-`/api/v1`. That capability does not admit direct sessions to the native namespace or the browser's
+Silo's v1 API. That capability does not admit direct sessions to the native namespace or the browser's
 Silo v2 calls. Shared-device profile pairing (`shared_device_pairing`) and delegated
 administrative roles (`delegated_admin_roles`) remain `false`. Household credential
 management has its own capability and account/PIN/reauthentication boundary; see
 [the security foundation](bloem-security-foundation.md).
 
-Native administration is additive under `/api/bloem/v1/admin`: an authenticated
+Native administration is additive under `/api/bloem/v2/admin`: an authenticated
 account exchanges its session for one short-lived Platform or Organization context
 token. Every request that carries the token re-checks the login session it was
 exchanged from (`internal/api/middleware/admin_context.go`). Since `68070f04b` that
@@ -141,7 +142,7 @@ redacted activity pages, and policy-decision explanations. Grant changes check t
 grant security revision; invitation mutations check the organization policy
 revision. See [multitenant administration](multitenant-administration.md).
 
-`/api/v1` remains the Silo-compatible surface. Existing users and profiles are
+Silo's `/api/v2` is the Silo-compatible surface; its alpha v1 API is retired. Existing users and profiles are
 backfilled into the default organization without changing profile IDs, PINs, login
 payloads, profile switching, or legacy token claims. Legacy account requests ignore
 caller-supplied organization headers and use the server's account/profile tenant

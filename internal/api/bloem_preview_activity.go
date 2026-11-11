@@ -27,7 +27,7 @@ func guestFreeActivity(next activitylog.Writer, settings auth.PreviewGuestSettin
 }
 
 func (g *guestActivity) Write(entry activitylog.LogEntry) {
-	if strings.HasPrefix(entry.Path, "/api/bloem/v1/preview/") {
+	if strings.HasPrefix(entry.Path, "/api/bloem/v2/preview/") {
 		return
 	}
 	if entry.UserID != nil {

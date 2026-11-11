@@ -57,7 +57,7 @@ changing storage configuration.
 - The design is in
   [campaign and seasonal asset storage](../../../../architecture/bloem-campaign-asset-storage.md):
   store selection in `bloemWireServices` (`cmd/silo/bloem_main.go`), the upload rules,
-  and the public route `GET /api/bloem/v1/ambience/assets/{ref}`.
+  and the public route `GET /api/bloem/v2/ambience/assets/{ref}`.
 - Store selection: the catalog Assets store when configured, else the public S3
   client; with neither, `storage_available: false` and multipart upload `503`, while an
   HTTPS artwork URL can still be authored. Private avatar storage is never used.

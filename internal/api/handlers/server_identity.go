@@ -18,8 +18,8 @@ var serverAPIMajorVersions = []int{1}
 // nativeAPISurfaces are the native surface versions mounted under /api/bloem/.
 // Clients use the list to decide whether a discovered server speaks this API at
 // all; everything finer-grained is feature-detected through
-// GET /api/bloem/v1/capabilities, never inferred from a version.
-var nativeAPISurfaces = []string{"v1"}
+// GET /api/bloem/v2/capabilities, never inferred from a version.
+var nativeAPISurfaces = []string{"v2"}
 
 // ServerAPIMajorVersions returns a copy of the Silo-compatible API major
 // versions this build serves — the list the identity document publishes as
@@ -41,10 +41,10 @@ type SetupStateReporter interface {
 	NeedsSetup(ctx context.Context) (bool, error)
 }
 
-// ServerIdentityHandler serves GET /api/bloem/v1/server/identity: the public,
+// ServerIdentityHandler serves GET /api/bloem/v2/server/identity: the public,
 // unauthenticated answer to "which server is this, and can I log into it yet".
 //
-// It is a sibling of GET /api/bloem/v1/capabilities rather than a part of it. The
+// It is a sibling of GET /api/bloem/v2/capabilities rather than a part of it. The
 // capability document is a build constant that must never fail; identity
 // resolves through the database and legitimately answers 503, and its
 // setup_complete flips once, so it is served no-store. Folding one into the
@@ -79,7 +79,7 @@ func NewServerIdentityHandler(
 	return &ServerIdentityHandler{identity: identity, branding: brandingSvc, setup: setup}
 }
 
-// serverIdentityResponse is the body of GET /api/bloem/v1/server/identity.
+// serverIdentityResponse is the body of GET /api/bloem/v2/server/identity.
 //
 // status is carried so the body also satisfies the client contract's
 // ServerIdentity schema, which requires it; the rest is what scope keying

@@ -148,7 +148,7 @@ func HistoryMediaItemID(channelID string) string {
 
 // PublicSessionStreamPath is the authenticated relative URL clients should play.
 func PublicSessionStreamPath(sessionID string) string {
-	return "/api/v1/livetv/sessions/" + sessionID + "/stream"
+	return "/api/bloem/v2/livetv/sessions/" + sessionID + "/stream"
 }
 
 // IsClientSafePlayURL reports whether url is safe to return to clients (relative

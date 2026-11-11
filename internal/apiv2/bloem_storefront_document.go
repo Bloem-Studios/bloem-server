@@ -13,7 +13,7 @@ import (
 // key: reseller organizations (tenants) and their members, an account's
 // profiles, devices and sign-in sessions, and announcements
 // (api.mountBloemPlatformStorefront). The handlers are the ones behind the
-// legacy /api/v1/admin routes; these are their native addresses.
+// admin routes on Silo's retired alpha v1 API; these are their native addresses.
 
 // bloemPlatformCredential401 describes a refused Platform context or API key.
 const bloemPlatformCredential401 = "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
@@ -439,7 +439,7 @@ type BloemAmbienceAssetInput struct {
 // uploads point at (ambience.AssetURLBase).
 func registerBloemAmbienceAssetDocument(reg *Registry) {
 	op := bloemOp("GET", "/ambience/assets/{ref}", "getBloemAmbienceAsset", "engagement", "Serve uploaded seasonal and campaign artwork.")
-	op.Description = "Public: no credential, because artwork shows on the sign-in page. Uploads under /api/bloem/v1/admin/platform/ambience return paths here. The bytes are a PNG, WebP, JPEG or GIF image with its sniffed Content-Type; refs are content-addressed, so responses are immutable (Cache-Control public, max-age one year) and carry the ref as ETag. Paths under /api/v1/ambience/assets/ serve the same files."
+	op.Description = "Public: no credential, because artwork shows on the sign-in page. Uploads under /api/bloem/v2/admin/platform/ambience return paths here. The bytes are a PNG, WebP, JPEG or GIF image with its sniffed Content-Type; refs are content-addressed, so responses are immutable (Cache-Control public, max-age one year) and carry the ref as ETag."
 	op.DefaultStatus = http.StatusOK
 	op.Responses = map[string]*huma.Response{
 		"200": {Description: "The image bytes.", Content: map[string]*huma.MediaType{"image/*": {Schema: &huma.Schema{Type: "string", Format: "binary"}}}},
@@ -453,7 +453,7 @@ func registerBloemAmbienceAssetDocument(reg *Registry) {
 	registerBloemChiDocument[BloemAmbienceAssetInput, struct{}](reg, op)
 
 	public := bloemOp("GET", "/ambience/public", "getBloemPublicAmbience", "engagement", "List the active deployment-wide seasonal packs.")
-	public.Description = "Public: no credential, so a signed-out page can show the season. Only deployment-wide packs; a profile's own seasonal presentation is GET /api/bloem/v1/ambience. Always an array, empty when none are active."
+	public.Description = "Public: no credential, so a signed-out page can show the season. Only deployment-wide packs; a profile's own seasonal presentation is GET /api/bloem/v2/ambience. Always an array, empty when none are active."
 	public.DefaultStatus = http.StatusOK
 	registerBloemChiDocument[struct{}, BloemPublicAmbienceOutput](reg, public)
 }

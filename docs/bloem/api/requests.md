@@ -1,7 +1,7 @@
 # Requests API
 
 > **Generated** by `scripts/bloem/api-topic-docs.py` from
-> [`contracts/api/bloem/v1/openapi.json`](../../../contracts/api/bloem/v1/openapi.json).
+> [`contracts/api/bloem/v2/openapi.json`](../../../contracts/api/bloem/v2/openapi.json).
 > Do not edit by hand: change the handler's OpenAPI declaration, run `make bloem-openapi`, then
 > the script. Shared conventions, credentials and the error body are on the [index](README.md).
 
@@ -17,43 +17,43 @@ For the plain-language picture, read the [Requests explainer](../../architecture
 
 | Method and path | Summary |
 | --- | --- |
-| [`GET /api/bloem/v1/admin/organization/audiobook-request-integrations`](#get-apibloemv1adminorganizationaudiobook-request-integrations) | Read audiobook acquisition connections and eligible libraries/installations. |
-| [`POST /api/bloem/v1/admin/organization/audiobook-request-integrations`](#post-apibloemv1adminorganizationaudiobook-request-integrations) | Create an audiobook acquisition connection. |
-| [`PUT /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}`](#put-apibloemv1adminorganizationaudiobook-request-integrationsid) | Edit an audiobook acquisition connection and rotate its credentials. |
-| [`PUT /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/library`](#put-apibloemv1adminorganizationaudiobook-request-integrationsidlibrary) | Bind an acquisition connection to a local audiobook library and download directories. |
-| [`POST /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/test`](#post-apibloemv1adminorganizationaudiobook-request-integrationsidtest) | Run the audiobook plugin's connection checks for a saved connection. |
-| [`GET /api/bloem/v1/admin/organization/book-requests`](#get-apibloemv1adminorganizationbook-requests) | List audiobook requests in the selected administrative organization. |
-| [`GET /api/bloem/v1/admin/organization/book-requests/acquisitions`](#get-apibloemv1adminorganizationbook-requestsacquisitions) | List audiobook acquisitions by state in the selected organization. |
-| [`POST /api/bloem/v1/admin/organization/book-requests/{id}/accept-download`](#post-apibloemv1adminorganizationbook-requestsidaccept-download) | Accept the selected audiobook download for import. |
-| [`GET /api/bloem/v1/admin/organization/book-requests/{id}/acquisition`](#get-apibloemv1adminorganizationbook-requestsidacquisition) | Read an audiobook acquisition and its recent decisions. |
-| [`POST /api/bloem/v1/admin/organization/book-requests/{id}/approve`](#post-apibloemv1adminorganizationbook-requestsidapprove) | Approve an audiobook request; keep it awaiting fulfillment. |
-| [`POST /api/bloem/v1/admin/organization/book-requests/{id}/approve-candidate`](#post-apibloemv1adminorganizationbook-requestsidapprove-candidate) | Approve a held audiobook candidate for a new acquisition attempt. |
-| [`POST /api/bloem/v1/admin/organization/book-requests/{id}/decline`](#post-apibloemv1adminorganizationbook-requestsiddecline) | Decline a pending audiobook request and refund its quota slot. |
-| [`POST /api/bloem/v1/admin/organization/book-requests/{id}/fulfil`](#post-apibloemv1adminorganizationbook-requestsidfulfil) | Manually mark an audiobook request fulfilled. |
-| [`POST /api/bloem/v1/admin/organization/book-requests/{id}/retry`](#post-apibloemv1adminorganizationbook-requestsidretry) | Retry or recover an audiobook acquisition. |
-| [`GET /api/bloem/v1/admin/organization/ebook-request-integrations`](#get-apibloemv1adminorganizationebook-request-integrations) | Read ebook policy, connections and eligible libraries/installations. |
-| [`POST /api/bloem/v1/admin/organization/ebook-request-integrations`](#post-apibloemv1adminorganizationebook-request-integrations) | Create an explicit Bookwarehouse ebook fulfillment connection. |
-| [`PUT /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/library`](#put-apibloemv1adminorganizationebook-request-integrationsidlibrary) | Bind a connection to an eligible native Bookwarehouse ebook library. |
-| [`POST /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/test`](#post-apibloemv1adminorganizationebook-request-integrationsidtest) | Run the Bookwarehouse plugin's connection test for a saved connection. |
-| [`PUT /api/bloem/v1/admin/organization/ebook-request-policy`](#put-apibloemv1adminorganizationebook-request-policy) | Explicitly enable or disable ebook request admission and dispatch. |
-| [`GET /api/bloem/v1/admin/organization/ebook-requests`](#get-apibloemv1adminorganizationebook-requests) | List ebook requests in the selected default organization. |
-| [`POST /api/bloem/v1/admin/organization/ebook-requests/{id}/approve`](#post-apibloemv1adminorganizationebook-requestsidapprove) | Approve a pending ebook request. |
-| [`POST /api/bloem/v1/admin/organization/ebook-requests/{id}/decline`](#post-apibloemv1adminorganizationebook-requestsiddecline) | Decline a pending ebook request and refund its quota slot. |
-| [`POST /api/bloem/v1/admin/organization/ebook-requests/{id}/retry`](#post-apibloemv1adminorganizationebook-requestsidretry) | Recover uncertain provider state or retry a safely failed ebook dispatch. |
-| [`POST /api/bloem/v1/book-requests`](#post-apibloemv1book-requests) | File an audiobook request. |
-| [`GET /api/bloem/v1/book-requests/capability`](#get-apibloemv1book-requestscapability) | Read audiobook request capability and current viewer policy. |
-| [`GET /api/bloem/v1/book-requests/mine`](#get-apibloemv1book-requestsmine) | List this profile's audiobook requests in the current organization. |
-| [`GET /api/bloem/v1/book-requests/{id}`](#get-apibloemv1book-requestsid) | Read this profile's audiobook request. |
-| [`POST /api/bloem/v1/book-requests/{id}/cancel`](#post-apibloemv1book-requestsidcancel) | Withdraw a pending or approved audiobook request. |
-| [`POST /api/bloem/v1/ebook-requests`](#post-apibloemv1ebook-requests) | File an ISBN ebook request. |
-| [`GET /api/bloem/v1/ebook-requests/capability`](#get-apibloemv1ebook-requestscapability) | Read ebook request capability and current viewer policy. |
-| [`GET /api/bloem/v1/ebook-requests/mine`](#get-apibloemv1ebook-requestsmine) | List this profile's ebook request history. |
-| [`GET /api/bloem/v1/ebook-requests/{id}`](#get-apibloemv1ebook-requestsid) | Read an ebook request owned by this profile. |
-| [`POST /api/bloem/v1/ebook-requests/{id}/cancel`](#post-apibloemv1ebook-requestsidcancel) | Withdraw a pending or approved ebook request locally. |
+| [`GET /api/bloem/v2/admin/organization/audiobook-request-integrations`](#get-apibloemv2adminorganizationaudiobook-request-integrations) | Read audiobook acquisition connections and eligible libraries/installations. |
+| [`POST /api/bloem/v2/admin/organization/audiobook-request-integrations`](#post-apibloemv2adminorganizationaudiobook-request-integrations) | Create an audiobook acquisition connection. |
+| [`PUT /api/bloem/v2/admin/organization/audiobook-request-integrations/{id}`](#put-apibloemv2adminorganizationaudiobook-request-integrationsid) | Edit an audiobook acquisition connection and rotate its credentials. |
+| [`PUT /api/bloem/v2/admin/organization/audiobook-request-integrations/{id}/library`](#put-apibloemv2adminorganizationaudiobook-request-integrationsidlibrary) | Bind an acquisition connection to a local audiobook library and download directories. |
+| [`POST /api/bloem/v2/admin/organization/audiobook-request-integrations/{id}/test`](#post-apibloemv2adminorganizationaudiobook-request-integrationsidtest) | Run the audiobook plugin's connection checks for a saved connection. |
+| [`GET /api/bloem/v2/admin/organization/book-requests`](#get-apibloemv2adminorganizationbook-requests) | List audiobook requests in the selected administrative organization. |
+| [`GET /api/bloem/v2/admin/organization/book-requests/acquisitions`](#get-apibloemv2adminorganizationbook-requestsacquisitions) | List audiobook acquisitions by state in the selected organization. |
+| [`POST /api/bloem/v2/admin/organization/book-requests/{id}/accept-download`](#post-apibloemv2adminorganizationbook-requestsidaccept-download) | Accept the selected audiobook download for import. |
+| [`GET /api/bloem/v2/admin/organization/book-requests/{id}/acquisition`](#get-apibloemv2adminorganizationbook-requestsidacquisition) | Read an audiobook acquisition and its recent decisions. |
+| [`POST /api/bloem/v2/admin/organization/book-requests/{id}/approve`](#post-apibloemv2adminorganizationbook-requestsidapprove) | Approve an audiobook request; keep it awaiting fulfillment. |
+| [`POST /api/bloem/v2/admin/organization/book-requests/{id}/approve-candidate`](#post-apibloemv2adminorganizationbook-requestsidapprove-candidate) | Approve a held audiobook candidate for a new acquisition attempt. |
+| [`POST /api/bloem/v2/admin/organization/book-requests/{id}/decline`](#post-apibloemv2adminorganizationbook-requestsiddecline) | Decline a pending audiobook request and refund its quota slot. |
+| [`POST /api/bloem/v2/admin/organization/book-requests/{id}/fulfil`](#post-apibloemv2adminorganizationbook-requestsidfulfil) | Manually mark an audiobook request fulfilled. |
+| [`POST /api/bloem/v2/admin/organization/book-requests/{id}/retry`](#post-apibloemv2adminorganizationbook-requestsidretry) | Retry or recover an audiobook acquisition. |
+| [`GET /api/bloem/v2/admin/organization/ebook-request-integrations`](#get-apibloemv2adminorganizationebook-request-integrations) | Read ebook policy, connections and eligible libraries/installations. |
+| [`POST /api/bloem/v2/admin/organization/ebook-request-integrations`](#post-apibloemv2adminorganizationebook-request-integrations) | Create an explicit Bookwarehouse ebook fulfillment connection. |
+| [`PUT /api/bloem/v2/admin/organization/ebook-request-integrations/{id}/library`](#put-apibloemv2adminorganizationebook-request-integrationsidlibrary) | Bind a connection to an eligible native Bookwarehouse ebook library. |
+| [`POST /api/bloem/v2/admin/organization/ebook-request-integrations/{id}/test`](#post-apibloemv2adminorganizationebook-request-integrationsidtest) | Run the Bookwarehouse plugin's connection test for a saved connection. |
+| [`PUT /api/bloem/v2/admin/organization/ebook-request-policy`](#put-apibloemv2adminorganizationebook-request-policy) | Explicitly enable or disable ebook request admission and dispatch. |
+| [`GET /api/bloem/v2/admin/organization/ebook-requests`](#get-apibloemv2adminorganizationebook-requests) | List ebook requests in the selected default organization. |
+| [`POST /api/bloem/v2/admin/organization/ebook-requests/{id}/approve`](#post-apibloemv2adminorganizationebook-requestsidapprove) | Approve a pending ebook request. |
+| [`POST /api/bloem/v2/admin/organization/ebook-requests/{id}/decline`](#post-apibloemv2adminorganizationebook-requestsiddecline) | Decline a pending ebook request and refund its quota slot. |
+| [`POST /api/bloem/v2/admin/organization/ebook-requests/{id}/retry`](#post-apibloemv2adminorganizationebook-requestsidretry) | Recover uncertain provider state or retry a safely failed ebook dispatch. |
+| [`POST /api/bloem/v2/book-requests`](#post-apibloemv2book-requests) | File an audiobook request. |
+| [`GET /api/bloem/v2/book-requests/capability`](#get-apibloemv2book-requestscapability) | Read audiobook request capability and current viewer policy. |
+| [`GET /api/bloem/v2/book-requests/mine`](#get-apibloemv2book-requestsmine) | List this profile's audiobook requests in the current organization. |
+| [`GET /api/bloem/v2/book-requests/{id}`](#get-apibloemv2book-requestsid) | Read this profile's audiobook request. |
+| [`POST /api/bloem/v2/book-requests/{id}/cancel`](#post-apibloemv2book-requestsidcancel) | Withdraw a pending or approved audiobook request. |
+| [`POST /api/bloem/v2/ebook-requests`](#post-apibloemv2ebook-requests) | File an ISBN ebook request. |
+| [`GET /api/bloem/v2/ebook-requests/capability`](#get-apibloemv2ebook-requestscapability) | Read ebook request capability and current viewer policy. |
+| [`GET /api/bloem/v2/ebook-requests/mine`](#get-apibloemv2ebook-requestsmine) | List this profile's ebook request history. |
+| [`GET /api/bloem/v2/ebook-requests/{id}`](#get-apibloemv2ebook-requestsid) | Read an ebook request owned by this profile. |
+| [`POST /api/bloem/v2/ebook-requests/{id}/cancel`](#post-apibloemv2ebook-requestsidcancel) | Withdraw a pending or approved ebook request locally. |
 
 ## Reference
 
-### `GET /api/bloem/v1/admin/organization/audiobook-request-integrations`
+### `GET /api/bloem/v2/admin/organization/audiobook-request-integrations`
 
 Read audiobook acquisition connections and eligible libraries/installations.
 
@@ -70,7 +70,7 @@ Requires an organization administrative-context token. Every operation except re
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store, platform authority check or plugin host failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: audiobook request setup is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/audiobook-request-integrations`
+### `POST /api/bloem/v2/admin/organization/audiobook-request-integrations`
 
 Create an audiobook acquisition connection.
 
@@ -90,7 +90,7 @@ Request body (required, `application/json`): [`AudiobookRequestConnectionInput`]
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store, platform authority check or plugin host failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: audiobook request setup is not configured. |
 
-### `PUT /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}`
+### `PUT /api/bloem/v2/admin/organization/audiobook-request-integrations/{id}`
 
 Edit an audiobook acquisition connection and rotate its credentials.
 
@@ -116,7 +116,7 @@ Request body (required, `application/json`): [`AudiobookRequestConnectionUpdate`
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store, platform authority check or plugin host failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: audiobook request setup is not configured. |
 
-### `PUT /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/library`
+### `PUT /api/bloem/v2/admin/organization/audiobook-request-integrations/{id}/library`
 
 Bind an acquisition connection to a local audiobook library and download directories.
 
@@ -140,7 +140,7 @@ Request body (required, `application/json`): [`BloemAudiobookRequestLibraryInput
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store, platform authority check or plugin host failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: audiobook request setup is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/test`
+### `POST /api/bloem/v2/admin/organization/audiobook-request-integrations/{id}/test`
 
 Run the audiobook plugin's connection checks for a saved connection.
 
@@ -163,7 +163,7 @@ Requires an organization administrative-context token. Every operation except re
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store, platform authority check or plugin host failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: audiobook request setup is not configured. |
 
-### `GET /api/bloem/v1/admin/organization/book-requests`
+### `GET /api/bloem/v2/admin/organization/book-requests`
 
 List audiobook requests in the selected administrative organization.
 
@@ -186,7 +186,7 @@ Requires an organization administrative-context token; platform-scoped contexts 
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `GET /api/bloem/v1/admin/organization/book-requests/acquisitions`
+### `GET /api/bloem/v2/admin/organization/book-requests/acquisitions`
 
 List audiobook acquisitions by state in the selected organization.
 
@@ -210,7 +210,7 @@ Requires an organization administrative-context token and current administrator 
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/book-requests/{id}/accept-download`
+### `POST /api/bloem/v2/admin/organization/book-requests/{id}/accept-download`
 
 Accept the selected audiobook download for import.
 
@@ -236,7 +236,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `GET /api/bloem/v1/admin/organization/book-requests/{id}/acquisition`
+### `GET /api/bloem/v2/admin/organization/book-requests/{id}/acquisition`
 
 Read an audiobook acquisition and its recent decisions.
 
@@ -258,7 +258,7 @@ Requires an organization administrative-context token and current administrator 
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/book-requests/{id}/approve`
+### `POST /api/bloem/v2/admin/organization/book-requests/{id}/approve`
 
 Approve an audiobook request; keep it awaiting fulfillment.
 
@@ -284,7 +284,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/book-requests/{id}/approve-candidate`
+### `POST /api/bloem/v2/admin/organization/book-requests/{id}/approve-candidate`
 
 Approve a held audiobook candidate for a new acquisition attempt.
 
@@ -310,7 +310,7 @@ Request body (required, `application/json`): [`AudiobookCandidateApproval`](#aud
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/book-requests/{id}/decline`
+### `POST /api/bloem/v2/admin/organization/book-requests/{id}/decline`
 
 Decline a pending audiobook request and refund its quota slot.
 
@@ -336,7 +336,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/book-requests/{id}/fulfil`
+### `POST /api/bloem/v2/admin/organization/book-requests/{id}/fulfil`
 
 Manually mark an audiobook request fulfilled.
 
@@ -362,7 +362,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/book-requests/{id}/retry`
+### `POST /api/bloem/v2/admin/organization/book-requests/{id}/retry`
 
 Retry or recover an audiobook acquisition.
 
@@ -388,7 +388,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `GET /api/bloem/v1/admin/organization/ebook-request-integrations`
+### `GET /api/bloem/v2/admin/organization/ebook-request-integrations`
 
 Read ebook policy, connections and eligible libraries/installations.
 
@@ -405,7 +405,7 @@ Accepts an organization administrative context or a platform administrative cont
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store, platform authority check or plugin host failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: ebook request setup is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/ebook-request-integrations`
+### `POST /api/bloem/v2/admin/organization/ebook-request-integrations`
 
 Create an explicit Bookwarehouse ebook fulfillment connection.
 
@@ -425,7 +425,7 @@ Request body (required, `application/json`): [`EbookRequestConnectionInput`](#eb
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store, platform authority check or plugin host failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: ebook request setup is not configured. |
 
-### `PUT /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/library`
+### `PUT /api/bloem/v2/admin/organization/ebook-request-integrations/{id}/library`
 
 Bind a connection to an eligible native Bookwarehouse ebook library.
 
@@ -449,7 +449,7 @@ Request body (required, `application/json`): [`BloemEbookRequestLibraryInputBody
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store, platform authority check or plugin host failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: ebook request setup is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/test`
+### `POST /api/bloem/v2/admin/organization/ebook-request-integrations/{id}/test`
 
 Run the Bookwarehouse plugin's connection test for a saved connection.
 
@@ -472,7 +472,7 @@ Accepts an organization administrative context or a platform administrative cont
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store, platform authority check or plugin host failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: ebook request setup is not configured. |
 
-### `PUT /api/bloem/v1/admin/organization/ebook-request-policy`
+### `PUT /api/bloem/v2/admin/organization/ebook-request-policy`
 
 Explicitly enable or disable ebook request admission and dispatch.
 
@@ -492,7 +492,7 @@ Request body (required, `application/json`): [`EbookRequestPolicy`](#ebookreques
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store, platform authority check or plugin host failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: ebook request setup is not configured. |
 
-### `GET /api/bloem/v1/admin/organization/ebook-requests`
+### `GET /api/bloem/v2/admin/organization/ebook-requests`
 
 List ebook requests in the selected default organization.
 
@@ -515,7 +515,7 @@ Requires an organization administrative-context token; platform-scoped contexts 
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/ebook-requests/{id}/approve`
+### `POST /api/bloem/v2/admin/organization/ebook-requests/{id}/approve`
 
 Approve a pending ebook request.
 
@@ -541,7 +541,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/ebook-requests/{id}/decline`
+### `POST /api/bloem/v2/admin/organization/ebook-requests/{id}/decline`
 
 Decline a pending ebook request and refund its quota slot.
 
@@ -567,7 +567,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `POST /api/bloem/v1/admin/organization/ebook-requests/{id}/retry`
+### `POST /api/bloem/v2/admin/organization/ebook-requests/{id}/retry`
 
 Recover uncertain provider state or retry a safely failed ebook dispatch.
 
@@ -593,7 +593,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authority could not be checked; unavailable: the request service is not configured. |
 
-### `POST /api/bloem/v1/book-requests`
+### `POST /api/bloem/v2/book-requests`
 
 File an audiobook request.
 
@@ -623,7 +623,7 @@ Request body (required, `application/json`): [`CreateInput`](#createinput).
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: viewer access or the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable, tenant_unavailable or unavailable: the credential, tenant, viewer policy or request service could not be checked; retry later. |
 
-### `GET /api/bloem/v1/book-requests/capability`
+### `GET /api/bloem/v2/book-requests/capability`
 
 Read audiobook request capability and current viewer policy.
 
@@ -648,7 +648,7 @@ Bloem-owned audiobook requests use a separate table and independent quota counte
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: viewer access or the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable, tenant_unavailable or unavailable: the credential, tenant, viewer policy or request service could not be checked; retry later. |
 
-### `GET /api/bloem/v1/book-requests/mine`
+### `GET /api/bloem/v2/book-requests/mine`
 
 List this profile's audiobook requests in the current organization.
 
@@ -675,7 +675,7 @@ Bloem-owned audiobook requests use a separate table and independent quota counte
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: viewer access or the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable, tenant_unavailable or unavailable: the credential, tenant, viewer policy or request service could not be checked; retry later. |
 
-### `GET /api/bloem/v1/book-requests/{id}`
+### `GET /api/bloem/v2/book-requests/{id}`
 
 Read this profile's audiobook request.
 
@@ -701,7 +701,7 @@ Bloem-owned audiobook requests use a separate table and independent quota counte
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: viewer access or the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable, tenant_unavailable or unavailable: the credential, tenant, viewer policy or request service could not be checked; retry later. |
 
-### `POST /api/bloem/v1/book-requests/{id}/cancel`
+### `POST /api/bloem/v2/book-requests/{id}/cancel`
 
 Withdraw a pending or approved audiobook request.
 
@@ -730,7 +730,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: viewer access or the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable, tenant_unavailable or unavailable: the credential, tenant, viewer policy or request service could not be checked; retry later. |
 
-### `POST /api/bloem/v1/ebook-requests`
+### `POST /api/bloem/v2/ebook-requests`
 
 File an ISBN ebook request.
 
@@ -760,7 +760,7 @@ Request body (required, `application/json`): [`BloemEbookRequestCreateInputBody`
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: viewer access or the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable, tenant_unavailable or unavailable: the credential, tenant, viewer policy or request service could not be checked; retry later. |
 
-### `GET /api/bloem/v1/ebook-requests/capability`
+### `GET /api/bloem/v2/ebook-requests/capability`
 
 Read ebook request capability and current viewer policy.
 
@@ -785,7 +785,7 @@ Ebook requests are default-off, web/admin first, and limited to the durable defa
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: viewer access or the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable, tenant_unavailable or unavailable: the credential, tenant, viewer policy or request service could not be checked; retry later. |
 
-### `GET /api/bloem/v1/ebook-requests/mine`
+### `GET /api/bloem/v2/ebook-requests/mine`
 
 List this profile's ebook request history.
 
@@ -812,7 +812,7 @@ Ebook requests are default-off, web/admin first, and limited to the durable defa
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: viewer access or the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable, tenant_unavailable or unavailable: the credential, tenant, viewer policy or request service could not be checked; retry later. |
 
-### `GET /api/bloem/v1/ebook-requests/{id}`
+### `GET /api/bloem/v2/ebook-requests/{id}`
 
 Read an ebook request owned by this profile.
 
@@ -838,7 +838,7 @@ Ebook requests are default-off, web/admin first, and limited to the durable defa
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: viewer access or the request store failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable, tenant_unavailable or unavailable: the credential, tenant, viewer policy or request service could not be checked; retry later. |
 
-### `POST /api/bloem/v1/ebook-requests/{id}/cancel`
+### `POST /api/bloem/v2/ebook-requests/{id}/cancel`
 
 Withdraw a pending or approved ebook request locally.
 

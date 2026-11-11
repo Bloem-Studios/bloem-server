@@ -5,6 +5,7 @@
 > storage-provider protocol, the plugin-author SDK and the Kotlin and Swift client contracts
 > are Bloem additions. The technical rules are in the [For developers](#for-developers)
 > section; its dated refresh paragraphs are history.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Three things that work together ship on their own: the Bloem server, the SDK plugin authors
 build with, and the generated types Bloem's apps use. This page explains what each one is, how
@@ -268,10 +269,9 @@ server DTOs are generated.
 
 ### API surfaces and adoption limits
 
-`/api/bloem/v1` is Bloem's native extension surface. `/api/v2` remains the supported
-Silo-compatible native API; it has not been retired by this integration. `/api/v1`
-business-route retirement is a separate policy decision, while its health/readiness probe
-paths remain operational. Check the relevant committed OpenAPI document before implementing a
+`/api/bloem/v2` is Bloem's native extension surface. `/api/v2` remains the supported
+Silo-compatible native API. Silo retired its alpha v1 API on 2026-11-11: every v1 route
+answers `410 Gone` with `client_upgrade_required`, except the health and readiness probes. Check the relevant committed OpenAPI document before implementing a
 route.
 
 Native-storage administration requires a signed platform or organization administrative-context

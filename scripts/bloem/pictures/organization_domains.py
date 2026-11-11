@@ -146,11 +146,11 @@ def wrong_domain():
 
 
 def provider_sign_in():
-    s = Svg(1200, 870, "Signing in with the provider stays on the address",
+    s = Svg(1200, 846, "Signing in with the provider stays on the address",
             "A sequence between the browser on Riverside Club's address, the Bloem server and the sign-in provider "
             "(Authentik). Bloem asks the provider to return to that address's callback; the provider returns there; "
             "the sign-in finishes on that address where the browser's cookies are; a sign-out returns to that "
-            "address's login page. A box lists the three addresses to register at the provider for each domain.")
+            "address's login page. A box lists the two addresses to register at the provider for each domain.")
     s.header("Signing in with the provider stays on the address",
              "A sign-in or sign-out through Authentik ends on the address where it started.")
     a, o, p, g = TIERS["account"], TIERS["org"], TIERS["platform"], TIERS["grey"]
@@ -185,15 +185,14 @@ def provider_sign_in():
     s.text(210, 552, "Signed in, on the same address", size=14, weight="700", fill=a["label"], anchor="middle")
     step(5, 610, 986, 214, "Signing out: Authentik sends the browser back to", "watch.riverside.example/login", dash="6 5")
 
-    s.rect(40, 670, 1120, 168, "#FFFFFF", "#E5E7EB", rx=14)
-    s.rect(40, 670, 8, 168, p["stroke"], rx=4)
+    s.rect(40, 670, 1120, 144, "#FFFFFF", "#E5E7EB", rx=14)
+    s.rect(40, 670, 8, 144, p["stroke"], rx=4)
     s.text(66, 702, "Register these at the provider for each address", size=17, weight="700")
-    urls = ["https://<address>/api/v1/auth/oauth/<installation>/callback",
-            "https://<address>/api/v2/auth/oauth/<installation>/callback",
+    urls = ["https://<address>/api/v2/auth/oauth/<installation>/callback",
             "https://<address>/login   (post-logout redirect, when provider sign-out is on)"]
     for i, u in enumerate(urls):
         s.text(66, 732 + i * 24, u, size=14.5, weight="600", fill=INK)
-    s.text(66, 820, "Apps on phones and TVs, and any address no organization registered, keep using the server's "
+    s.text(66, 796, "Apps on phones and TVs, and any address no organization registered, keep using the server's "
                     "public address.", size=13.5, fill=MUTED)
     return s
 

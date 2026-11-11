@@ -44,7 +44,7 @@ func bloemTenantIdentityGate(deps Dependencies, h http.Handler) http.Handler {
 }
 
 // bloemCheckOperationPath accepts both surfaces registered through this
-// package: Silo's /api/v2 and Bloem's native /api/bloem/v1 (see
+// package: Silo's /api/v2 and Bloem's native /api/bloem/v2 (see
 // bloem_native_document.go). Both get the same checks, metadata, body limits
 // and class gates -- the alternative was a second registry that would drift
 // from this one.

@@ -32,13 +32,13 @@ import (
 
 func TestLibraryLocationsHTTPAdminRoutes(t *testing.T) {
 	router := chi.NewRouter()
-	router.Route("/api/bloem/v1/admin", func(r chi.Router) {
+	router.Route("/api/bloem/v2/admin", func(r chi.Router) {
 		mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil))
 	})
 	for _, scope := range []string{"platform", "organization"} {
 		for _, op := range []struct{ method, path string }{{"POST", "/library-locations"}, {"GET", "/library-locations/1"}, {"PUT", "/library-locations/1"}, {"GET", "/native-storage/sources/00000000-0000-0000-0000-000000000201/browse"}} {
 			w := httptest.NewRecorder()
-			router.ServeHTTP(w, httptest.NewRequest(op.method, "/api/bloem/v1/admin/"+scope+op.path, strings.NewReader(`{"secret":"never-decoded"}`)))
+			router.ServeHTTP(w, httptest.NewRequest(op.method, "/api/bloem/v2/admin/"+scope+op.path, strings.NewReader(`{"secret":"never-decoded"}`)))
 			if w.Code != 401 {
 				t.Errorf("%s %s: got %d want 401", op.method, scope+op.path, w.Code)
 			}
@@ -54,7 +54,7 @@ func TestLibraryLocationsHTTPActualAdminMiddleware(t *testing.T) {
 	for _, call := range []http.HandlerFunc{h.HandleCreate, h.HandleGet, h.HandleReplace} {
 		protected := apimw.NewAdminContextMiddleware(nil, nil, nil, nil, nil).Require(call)
 		w := httptest.NewRecorder()
-		protected.ServeHTTP(w, httptest.NewRequest("POST", "/api/bloem/v1/admin/platform/library-locations", strings.NewReader(`{"library":{"name":"x"}}`)))
+		protected.ServeHTTP(w, httptest.NewRequest("POST", "/api/bloem/v2/admin/platform/library-locations", strings.NewReader(`{"library":{"name":"x"}}`)))
 		if w.Code != 401 {
 			t.Fatalf("actual admin-context middleware status=%d", w.Code)
 		}

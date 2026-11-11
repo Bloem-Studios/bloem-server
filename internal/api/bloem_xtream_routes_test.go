@@ -156,7 +156,7 @@ func TestBloemXtreamMountedAuthority(t *testing.T) {
 		{"secondary profile", path, admin, "secondary", 403},
 		{"child profile", path, admin, "child", 403},
 		{"primary admin reaches validation", path, admin, "primary", 400},
-		{"no v1 alias", "/api/v1/livetv/tuners/xtream", admin, "primary", 404},
+		{"no v1 alias", "/api/v1/livetv/tuners/xtream", admin, "primary", 404}, // v1-guard: allow
 		{"no v2 alias", "/api/v2/livetv/tuners/xtream", admin, "primary", 404},
 	} {
 		t.Run(tc.name, func(t *testing.T) { request(t, tc.target, tc.bearer, tc.profile, "", tc.want) })

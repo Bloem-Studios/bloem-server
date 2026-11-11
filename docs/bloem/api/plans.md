@@ -1,7 +1,7 @@
 # Plans and preview API
 
 > **Generated** by `scripts/bloem/api-topic-docs.py` from
-> [`contracts/api/bloem/v1/openapi.json`](../../../contracts/api/bloem/v1/openapi.json).
+> [`contracts/api/bloem/v2/openapi.json`](../../../contracts/api/bloem/v2/openapi.json).
 > Do not edit by hand: change the handler's OpenAPI declaration, run `make bloem-openapi`, then
 > the script. Shared conventions, credentials and the error body are on the [index](README.md).
 
@@ -18,44 +18,44 @@ For the plain-language picture, read the [Plans and preview explainer](../../arc
 
 | Method and path | Summary |
 | --- | --- |
-| [`GET /api/bloem/v1/admin/organization/entitlement-cohorts`](#get-apibloemv1adminorganizationentitlement-cohorts) | List safe entitlement cohort projections. |
-| [`GET /api/bloem/v1/admin/organization/entitlement-cohorts/{cohort_id}`](#get-apibloemv1adminorganizationentitlement-cohortscohort_id) | Read a safe organization cohort projection. |
-| [`POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs`](#post-apibloemv1adminplatformaccountsentitlement-bulkpolicy-jobs) | Enqueue a confirmed bulk entitlement policy job. |
-| [`GET /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}`](#get-apibloemv1adminplatformaccountsentitlement-bulkpolicy-jobsjob_id) | Read a bulk entitlement policy job. |
-| [`POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel`](#post-apibloemv1adminplatformaccountsentitlement-bulkpolicy-jobsjob_idcancel) | Cancel an eligible bulk entitlement policy job. |
-| [`POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews`](#post-apibloemv1adminplatformaccountsentitlement-bulkpolicy-previews) | Create a selection and preview a bulk policy command. |
-| [`POST /api/bloem/v1/admin/platform/accounts/entitlement-snapshots`](#post-apibloemv1adminplatformaccountsentitlement-snapshots) | Read bounded account policy snapshots in one observation. |
-| [`GET /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement`](#get-apibloemv1adminplatformaccountsaccount_identitlement) | Read authoritative account and profile entitlement policies. |
-| [`POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/apply`](#post-apibloemv1adminplatformaccountsaccount_identitlementapply) | Apply a pinned entitlement template. |
-| [`POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run`](#post-apibloemv1adminplatformaccountsaccount_identitlementdry-run) | Preview a pinned entitlement template. |
-| [`GET /api/bloem/v1/admin/platform/entitlement-templates`](#get-apibloemv1adminplatformentitlement-templates) | List the entitlement template catalog. |
-| [`POST /api/bloem/v1/admin/platform/entitlement-templates`](#post-apibloemv1adminplatformentitlement-templates) | Create a versioned entitlement template. |
-| [`GET /api/bloem/v1/admin/platform/entitlement-templates/{key}`](#get-apibloemv1adminplatformentitlement-templateskey) | Read the latest or a selected entitlement template revision. |
-| [`POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/archive`](#post-apibloemv1adminplatformentitlement-templateskeyarchive) | Archive a template using its current revision. |
-| [`POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/clone`](#post-apibloemv1adminplatformentitlement-templateskeyclone) | Clone a template revision into a disabled new template. |
-| [`GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/history`](#get-apibloemv1adminplatformentitlement-templateskeyhistory) | List immutable template revisions (history alias). |
-| [`GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions`](#get-apibloemv1adminplatformentitlement-templateskeyrevisions) | List immutable template revisions. |
-| [`POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions`](#post-apibloemv1adminplatformentitlement-templateskeyrevisions) | Create a new revision or copy a historical policy into a new revision. |
-| [`POST /api/bloem/v1/admin/platform/preview/account`](#post-apibloemv1adminplatformpreviewaccount) | Ensure the issuer's shared preview account and primary profile. |
-| [`PUT /api/bloem/v1/admin/platform/preview/accounts/{account_id}/presentation`](#put-apibloemv1adminplatformpreviewaccountsaccount_idpresentation) | Set the personal preview end date for display. |
-| [`GET /api/bloem/v1/admin/platform/preview/capacity`](#get-apibloemv1adminplatformpreviewcapacity) | Read private guest capacity and account readiness. |
-| [`GET /api/bloem/v1/admin/platform/preview/catalog`](#get-apibloemv1adminplatformpreviewcatalog) | Find metadata visible to the preview for a showcase picker. |
-| [`PUT /api/bloem/v1/admin/platform/preview/keys`](#put-apibloemv1adminplatformpreviewkeys) | Replace the Ed25519 launch-key allowlist. |
-| [`PUT /api/bloem/v1/admin/platform/preview/libraries`](#put-apibloemv1adminplatformpreviewlibraries) | Revise the preview library selection and reapply it atomically. |
-| [`DELETE /api/bloem/v1/admin/platform/preview/sessions`](#delete-apibloemv1adminplatformpreviewsessions) | Revoke all guest sessions without disabling the preview. |
-| [`GET /api/bloem/v1/admin/platform/preview/settings`](#get-apibloemv1adminplatformpreviewsettings) | Read preview settings and public launch keys. |
-| [`PUT /api/bloem/v1/admin/platform/preview/settings`](#put-apibloemv1adminplatformpreviewsettings) | Merge explicitly supplied preview settings. |
-| [`POST /api/bloem/v1/admin/platform/preview/verify`](#post-apibloemv1adminplatformpreviewverify) | Verify a freshly signed launch ticket without consuming it. |
-| [`GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement`](#get-apibloemv1adminplatformusersuser_identitlement) | Read the legacy managed account entitlement projection. |
-| [`POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply`](#post-apibloemv1adminplatformusersuser_identitlementapply) | Apply a pinned entitlement template. |
-| [`POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run`](#post-apibloemv1adminplatformusersuser_identitlementdry-run) | Preview a pinned entitlement template. |
-| [`POST /api/bloem/v1/preview/events`](#post-apibloemv1previewevents) | Increment a daily aggregate preview counter. |
-| [`POST /api/bloem/v1/preview/sessions`](#post-apibloemv1previewsessions) | Exchange a signed launch ticket for a bounded guest session. |
-| [`GET /api/bloem/v1/preview/status`](#get-apibloemv1previewstatus) | Discover preview availability and host-specific presentation. |
+| [`GET /api/bloem/v2/admin/organization/entitlement-cohorts`](#get-apibloemv2adminorganizationentitlement-cohorts) | List safe entitlement cohort projections. |
+| [`GET /api/bloem/v2/admin/organization/entitlement-cohorts/{cohort_id}`](#get-apibloemv2adminorganizationentitlement-cohortscohort_id) | Read a safe organization cohort projection. |
+| [`POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs`](#post-apibloemv2adminplatformaccountsentitlement-bulkpolicy-jobs) | Enqueue a confirmed bulk entitlement policy job. |
+| [`GET /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}`](#get-apibloemv2adminplatformaccountsentitlement-bulkpolicy-jobsjob_id) | Read a bulk entitlement policy job. |
+| [`POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel`](#post-apibloemv2adminplatformaccountsentitlement-bulkpolicy-jobsjob_idcancel) | Cancel an eligible bulk entitlement policy job. |
+| [`POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-previews`](#post-apibloemv2adminplatformaccountsentitlement-bulkpolicy-previews) | Create a selection and preview a bulk policy command. |
+| [`POST /api/bloem/v2/admin/platform/accounts/entitlement-snapshots`](#post-apibloemv2adminplatformaccountsentitlement-snapshots) | Read bounded account policy snapshots in one observation. |
+| [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement`](#get-apibloemv2adminplatformaccountsaccount_identitlement) | Read authoritative account and profile entitlement policies. |
+| [`POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/apply`](#post-apibloemv2adminplatformaccountsaccount_identitlementapply) | Apply a pinned entitlement template. |
+| [`POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/dry-run`](#post-apibloemv2adminplatformaccountsaccount_identitlementdry-run) | Preview a pinned entitlement template. |
+| [`GET /api/bloem/v2/admin/platform/entitlement-templates`](#get-apibloemv2adminplatformentitlement-templates) | List the entitlement template catalog. |
+| [`POST /api/bloem/v2/admin/platform/entitlement-templates`](#post-apibloemv2adminplatformentitlement-templates) | Create a versioned entitlement template. |
+| [`GET /api/bloem/v2/admin/platform/entitlement-templates/{key}`](#get-apibloemv2adminplatformentitlement-templateskey) | Read the latest or a selected entitlement template revision. |
+| [`POST /api/bloem/v2/admin/platform/entitlement-templates/{key}/archive`](#post-apibloemv2adminplatformentitlement-templateskeyarchive) | Archive a template using its current revision. |
+| [`POST /api/bloem/v2/admin/platform/entitlement-templates/{key}/clone`](#post-apibloemv2adminplatformentitlement-templateskeyclone) | Clone a template revision into a disabled new template. |
+| [`GET /api/bloem/v2/admin/platform/entitlement-templates/{key}/history`](#get-apibloemv2adminplatformentitlement-templateskeyhistory) | List immutable template revisions (history alias). |
+| [`GET /api/bloem/v2/admin/platform/entitlement-templates/{key}/revisions`](#get-apibloemv2adminplatformentitlement-templateskeyrevisions) | List immutable template revisions. |
+| [`POST /api/bloem/v2/admin/platform/entitlement-templates/{key}/revisions`](#post-apibloemv2adminplatformentitlement-templateskeyrevisions) | Create a new revision or copy a historical policy into a new revision. |
+| [`POST /api/bloem/v2/admin/platform/preview/account`](#post-apibloemv2adminplatformpreviewaccount) | Ensure the issuer's shared preview account and primary profile. |
+| [`PUT /api/bloem/v2/admin/platform/preview/accounts/{account_id}/presentation`](#put-apibloemv2adminplatformpreviewaccountsaccount_idpresentation) | Set the personal preview end date for display. |
+| [`GET /api/bloem/v2/admin/platform/preview/capacity`](#get-apibloemv2adminplatformpreviewcapacity) | Read private guest capacity and account readiness. |
+| [`GET /api/bloem/v2/admin/platform/preview/catalog`](#get-apibloemv2adminplatformpreviewcatalog) | Find metadata visible to the preview for a showcase picker. |
+| [`PUT /api/bloem/v2/admin/platform/preview/keys`](#put-apibloemv2adminplatformpreviewkeys) | Replace the Ed25519 launch-key allowlist. |
+| [`PUT /api/bloem/v2/admin/platform/preview/libraries`](#put-apibloemv2adminplatformpreviewlibraries) | Revise the preview library selection and reapply it atomically. |
+| [`DELETE /api/bloem/v2/admin/platform/preview/sessions`](#delete-apibloemv2adminplatformpreviewsessions) | Revoke all guest sessions without disabling the preview. |
+| [`GET /api/bloem/v2/admin/platform/preview/settings`](#get-apibloemv2adminplatformpreviewsettings) | Read preview settings and public launch keys. |
+| [`PUT /api/bloem/v2/admin/platform/preview/settings`](#put-apibloemv2adminplatformpreviewsettings) | Merge explicitly supplied preview settings. |
+| [`POST /api/bloem/v2/admin/platform/preview/verify`](#post-apibloemv2adminplatformpreviewverify) | Verify a freshly signed launch ticket without consuming it. |
+| [`GET /api/bloem/v2/admin/platform/users/{user_id}/entitlement`](#get-apibloemv2adminplatformusersuser_identitlement) | Read the legacy managed account entitlement projection. |
+| [`POST /api/bloem/v2/admin/platform/users/{user_id}/entitlement/apply`](#post-apibloemv2adminplatformusersuser_identitlementapply) | Apply a pinned entitlement template. |
+| [`POST /api/bloem/v2/admin/platform/users/{user_id}/entitlement/dry-run`](#post-apibloemv2adminplatformusersuser_identitlementdry-run) | Preview a pinned entitlement template. |
+| [`POST /api/bloem/v2/preview/events`](#post-apibloemv2previewevents) | Increment a daily aggregate preview counter. |
+| [`POST /api/bloem/v2/preview/sessions`](#post-apibloemv2previewsessions) | Exchange a signed launch ticket for a bounded guest session. |
+| [`GET /api/bloem/v2/preview/status`](#get-apibloemv2previewstatus) | Discover preview availability and host-specific presentation. |
 
 ## Reference
 
-### `GET /api/bloem/v1/admin/organization/entitlement-cohorts`
+### `GET /api/bloem/v2/admin/organization/entitlement-cohorts`
 
 List safe entitlement cohort projections.
 
@@ -76,7 +76,7 @@ Requires the selected organization administrative context. Current account, logi
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: include_archived is not true or false, or another query parameter is present. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `GET /api/bloem/v1/admin/organization/entitlement-cohorts/{cohort_id}`
+### `GET /api/bloem/v2/admin/organization/entitlement-cohorts/{cohort_id}`
 
 Read a safe organization cohort projection.
 
@@ -97,7 +97,7 @@ Requires the selected organization administrative context. Current account, logi
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the cohort ID is malformed or the cohort is absent from the organization. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs`
+### `POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs`
 
 Enqueue a confirmed bulk entitlement policy job.
 
@@ -123,7 +123,7 @@ Request body (required, `application/json`): [`BloemPolicyBulkAction`](#bloempol
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: idempotency_key is missing or longer than 128 characters, selection_token or confirmation_token is missing, or the command is invalid. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `GET /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}`
+### `GET /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}`
 
 Read a bulk entitlement policy job.
 
@@ -144,7 +144,7 @@ Requires a current platform administrative context, except where the security al
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the organization is malformed, absent or not active; direct paths resolve the deployment default organization. The job may also be absent from the organization, longer than 128 characters or not a policy job. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel`
+### `POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel`
 
 Cancel an eligible bulk entitlement policy job.
 
@@ -169,7 +169,7 @@ Request body (required, `application/json`): [`BloemJSONInputStruct {}Body`](#bl
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | job_not_cancellable: the job is not a policy job; authorization_state_changed: the actor's authority changed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews`
+### `POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-previews`
 
 Create a selection and preview a bulk policy command.
 
@@ -191,7 +191,7 @@ Request body (required, `application/json`): [`BloemPlatformPolicyPreviewRequest
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: account_ids is empty, has more than 10000 entries, or contains a non-positive or duplicate ID; or the command is invalid (fields.request). |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `POST /api/bloem/v1/admin/platform/accounts/entitlement-snapshots`
+### `POST /api/bloem/v2/admin/platform/accounts/entitlement-snapshots`
 
 Read bounded account policy snapshots in one observation.
 
@@ -211,7 +211,7 @@ Request body (required, `application/json`): [`BloemAccountPolicySnapshotsReques
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: account_ids is empty, has more than 10000 entries or contains a non-positive ID. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `GET /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement`
+### `GET /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement`
 
 Read authoritative account and profile entitlement policies.
 
@@ -232,7 +232,7 @@ Requires a current platform administrative context, except where the security al
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: account_id is malformed or the account is not a member of the deployment default organization. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/apply`
+### `POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/apply`
 
 Apply a pinned entitlement template.
 
@@ -259,7 +259,7 @@ Request body (required, `application/json`): [`BloemEntitlementApplyRequest`](#b
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) or [`BloemNativeError`](README.md#bloemnativeerror) | validation_failed with fields: the template selection, confirmation_token or idempotency_key is missing or invalid, or the confirmation token is expired or bound to another target or actor. template_unavailable without fields: the template revision is disabled or archived. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run`
+### `POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/dry-run`
 
 Preview a pinned entitlement template.
 
@@ -284,7 +284,7 @@ Request body (required, `application/json`): [`BloemEntitlementApplyRequest`](#b
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) or [`BloemNativeError`](README.md#bloemnativeerror) | validation_failed with fields: template_key or template_revision is missing. template_unavailable without fields: the template revision is disabled or archived. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `GET /api/bloem/v1/admin/platform/entitlement-templates`
+### `GET /api/bloem/v2/admin/platform/entitlement-templates`
 
 List the entitlement template catalog.
 
@@ -305,7 +305,7 @@ Requires a current platform administrative context, except where the security al
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the context is not platform-scoped or its account is no longer a platform administrator; organization_suspended: an organization context names a suspended organization or membership. With an API key, forbidden: the key's scopes do not permit this route; insufficient_platform_authority: its account is not an enabled platform administrator. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
-### `POST /api/bloem/v1/admin/platform/entitlement-templates`
+### `POST /api/bloem/v2/admin/platform/entitlement-templates`
 
 Create a versioned entitlement template.
 
@@ -326,7 +326,7 @@ Request body (required, `application/json`): [`BloemEntitlementTemplateCreate`](
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: key or name is missing, or the policy is invalid (fields.policy). |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}`
+### `GET /api/bloem/v2/admin/platform/entitlement-templates/{key}`
 
 Read the latest or a selected entitlement template revision.
 
@@ -349,7 +349,7 @@ Requires a current platform administrative context, except where the security al
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: revision is not a positive integer. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/archive`
+### `POST /api/bloem/v2/admin/platform/entitlement-templates/{key}/archive`
 
 Archive a template using its current revision.
 
@@ -374,7 +374,7 @@ Request body (required, `application/json`): [`BloemRevisionRequest`](#bloemrevi
 | 409 | [`BloemNativeRevisionConflict`](#bloemnativerevisionconflict) | revision_conflict: expected_revision is not the current revision, or the template is already archived; protected_template: protected templates cannot be archived. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/clone`
+### `POST /api/bloem/v2/admin/platform/entitlement-templates/{key}/clone`
 
 Clone a template revision into a disabled new template.
 
@@ -400,7 +400,7 @@ Request body (required, `application/json`): [`BloemEntitlementTemplateClone`](#
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: key or name is missing. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/history`
+### `GET /api/bloem/v2/admin/platform/entitlement-templates/{key}/history`
 
 List immutable template revisions (history alias).
 
@@ -421,7 +421,7 @@ Requires a current platform administrative context, except where the security al
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the template does not exist. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions`
+### `GET /api/bloem/v2/admin/platform/entitlement-templates/{key}/revisions`
 
 List immutable template revisions.
 
@@ -442,7 +442,7 @@ Requires a current platform administrative context, except where the security al
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the template does not exist. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions`
+### `POST /api/bloem/v2/admin/platform/entitlement-templates/{key}/revisions`
 
 Create a new revision or copy a historical policy into a new revision.
 
@@ -468,7 +468,7 @@ Request body (required, `application/json`): [`BloemEntitlementTemplateRevise`](
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) or [`BloemNativeError`](README.md#bloemnativeerror) | validation_failed with fields: name, expected_revision or policy is missing or invalid. template_unavailable without fields: the template is archived. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/preview/account`
+### `POST /api/bloem/v2/admin/platform/preview/account`
 
 Ensure the issuer's shared preview account and primary profile.
 
@@ -488,7 +488,7 @@ Request body (required, `application/json`): [`BloemPreviewIssuerInputBody`](#bl
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_setup_conflict: issuer differs from the configured issuer, the reserved preview username belongs to another account, or the existing shared account is no longer eligible. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_unavailable: preview storage or the server identity is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/preview/accounts/{account_id}/presentation`
+### `PUT /api/bloem/v2/admin/platform/preview/accounts/{account_id}/presentation`
 
 Set the personal preview end date for display.
 
@@ -511,7 +511,7 @@ Request body (required, `application/json`): [`BloemPreviewPersonalPresentationI
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's API key with admin:preview or no scopes, or the account is no longer an enabled administrator; forbidden: the API key's scopes exclude this route. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_unavailable: preview storage or the server identity is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/preview/capacity`
+### `GET /api/bloem/v2/admin/platform/preview/capacity`
 
 Read private guest capacity and account readiness.
 
@@ -527,7 +527,7 @@ Requires a Platform administrative context or an enabled administrator's API key
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's API key with admin:preview or no scopes, or the account is no longer an enabled administrator; forbidden: the API key's scopes exclude this route. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_unavailable: preview storage or the server identity is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/preview/catalog`
+### `GET /api/bloem/v2/admin/platform/preview/catalog`
 
 Find metadata visible to the preview for a showcase picker.
 
@@ -551,7 +551,7 @@ Requires a Platform administrative context or an enabled administrator's API key
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_not_configured: the shared preview account is missing or not ready. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_unavailable: preview storage or the server identity is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/preview/keys`
+### `PUT /api/bloem/v2/admin/platform/preview/keys`
 
 Replace the Ed25519 launch-key allowlist.
 
@@ -571,7 +571,7 @@ Request body (required, `application/json`): [`BloemPreviewKeysInputBody`](#bloe
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_not_configured: ensure the shared preview account first. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_unavailable: preview storage or the server identity is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/preview/libraries`
+### `PUT /api/bloem/v2/admin/platform/preview/libraries`
 
 Revise the preview library selection and reapply it atomically.
 
@@ -591,7 +591,7 @@ Request body (required, `application/json`): [`BloemPreviewLibrariesInputBody`](
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_not_configured: ensure the shared preview account first. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_unavailable: preview storage or the server identity is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/preview/sessions`
+### `DELETE /api/bloem/v2/admin/platform/preview/sessions`
 
 Revoke all guest sessions without disabling the preview.
 
@@ -610,7 +610,7 @@ Request body (required, `application/json`): [`BloemPreviewIssuerInputBody`](#bl
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's API key with admin:preview or no scopes, or the account is no longer an enabled administrator; forbidden: the API key's scopes exclude this route. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_unavailable: preview storage or the server identity is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/preview/settings`
+### `GET /api/bloem/v2/admin/platform/preview/settings`
 
 Read preview settings and public launch keys.
 
@@ -626,7 +626,7 @@ Requires a Platform administrative context or an enabled administrator's API key
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's API key with admin:preview or no scopes, or the account is no longer an enabled administrator; forbidden: the API key's scopes exclude this route. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_unavailable: preview storage or the server identity is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/preview/settings`
+### `PUT /api/bloem/v2/admin/platform/preview/settings`
 
 Merge explicitly supplied preview settings.
 
@@ -646,7 +646,7 @@ Request body (required, `application/json`): [`SettingsPatch`](#settingspatch).
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_not_configured: ensure the shared preview account first. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_unavailable: preview storage or the server identity is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/preview/verify`
+### `POST /api/bloem/v2/admin/platform/preview/verify`
 
 Verify a freshly signed launch ticket without consuming it.
 
@@ -666,7 +666,7 @@ Request body (required, `application/json`): [`BloemPreviewVerifyInputBody`](#bl
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_not_configured: the shared preview account is missing or not ready (default-organization membership, preview template and library selection). |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_unavailable: preview storage or the server identity is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement`
+### `GET /api/bloem/v2/admin/platform/users/{user_id}/entitlement`
 
 Read the legacy managed account entitlement projection.
 
@@ -687,7 +687,7 @@ Requires a current platform administrative context, except where the security al
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: user_id is malformed, or the account is not an active member of the deployment default organization with an assigned access group. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply`
+### `POST /api/bloem/v2/admin/platform/users/{user_id}/entitlement/apply`
 
 Apply a pinned entitlement template.
 
@@ -714,7 +714,7 @@ Request body (required, `application/json`): [`BloemEntitlementApplyRequest`](#b
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) or [`BloemNativeError`](README.md#bloemnativeerror) | validation_failed with fields: the template selection, confirmation_token or idempotency_key is missing or invalid, or the confirmation token is expired or bound to another target or actor. template_unavailable without fields: the template revision is disabled or archived. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run`
+### `POST /api/bloem/v2/admin/platform/users/{user_id}/entitlement/dry-run`
 
 Preview a pinned entitlement template.
 
@@ -739,7 +739,7 @@ Request body (required, `application/json`): [`BloemEntitlementApplyRequest`](#b
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) or [`BloemNativeError`](README.md#bloemnativeerror) | validation_failed with fields: template_key or template_revision is missing. template_unavailable without fields: the template revision is disabled or archived. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
 
-### `POST /api/bloem/v1/preview/events`
+### `POST /api/bloem/v2/preview/events`
 
 Increment a daily aggregate preview counter.
 
@@ -759,7 +759,7 @@ Request body (required, `application/json`): [`BloemPreviewEventInputBody`](#blo
 | 429 | [`BloemNativeError`](README.md#bloemnativeerror) | rate_limited: this session's event budget (Retry-After 10) or the aggregate event budget is exhausted, or, with code preview_busy, the guest's request budget; the preview's shared guest traffic budget also returns rate_limited. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_unavailable: preview counters are unavailable; service_unavailable: the credential or guest session could not be checked; unavailable: the preview host settings could not be read. |
 
-### `POST /api/bloem/v1/preview/sessions`
+### `POST /api/bloem/v2/preview/sessions`
 
 Exchange a signed launch ticket for a bounded guest session.
 
@@ -781,7 +781,7 @@ Request body (required, `application/json`): [`BloemPreviewSessionInputBody`](#b
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the preview session could not start. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | preview_busy: guest capacity is exhausted; unavailable: the preview host settings could not be read while a credential was sent. |
 
-### `GET /api/bloem/v1/preview/status`
+### `GET /api/bloem/v2/preview/status`
 
 Discover preview availability and host-specific presentation.
 

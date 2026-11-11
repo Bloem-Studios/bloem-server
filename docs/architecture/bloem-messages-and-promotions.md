@@ -1,7 +1,8 @@
 # How messages and promotions work
 
 > **Provenance and status.** Bloem page, written on 2026-10-31, brought up to date on
-> 2026-11-01 and checked against `main` at `b6039036d`. Silo has the notification
+> 2026-11-01, checked against `main` at `b6039036d` and checked again on 2026-11-11,
+> after Silo retired its v1 API. Silo has the notification
 > inbox. Bloem adds announcements, campaigns, playback cards, seasonal packs and the
 > upgrade prompt. This page explains them in plain language; the technical rules are
 > in the [For developers](#for-developers) section and the pages it links.
@@ -87,22 +88,21 @@ the catalog's artwork, on local disk or S3
 | Campaign, promotion card | a promotion (`internal/promotions`), on surfaces `home`, `detail`, `pre_playback` or `in_playback` |
 | Playback card | a promotion on `in_playback`, with `playback_style` `card` or `pip` |
 | Seasonal pack | an ambience pack (`internal/ambience`) |
-| Packs on the sign-in page | `GET /api/bloem/v1/ambience/public` (public, packs for everyone) |
-| Packs after sign-in | `GET /api/bloem/v1/ambience` (`seasonal_viewer_v1`) |
+| Packs on the sign-in page | `GET /api/bloem/v2/ambience/public` (public, packs for everyone) |
+| Packs after sign-in | `GET /api/bloem/v2/ambience` (`seasonal_viewer_v1`) |
 
 ## For developers
 
 - **API:** [messages and promotions](../bloem/api/messages.md) for the native
   inbox, announcements, seasonal packs and their artwork, campaigns, the upgrade
   prompt and the `playback_overlays_v1` capability. The viewer's campaign cards,
-  hiding one and saving one to the inbox are under `/api/bloem/v1/promotions`
+  hiding one and saving one to the inbox are under `/api/bloem/v2/promotions`
   (`promotions_viewer_v1`). Signed-out pages read the packs for everyone from the
-  public `GET /api/bloem/v1/ambience/public`; signed-in Home reads
-  `GET /api/bloem/v1/ambience`. The web app and the storefront call none of Silo's
-  `/api/v1`. The phone apps still use the
-  [old `/api/v1` routes](../bloem/api/v1-routes.md#campaigns), including the `ambience`
-  block of `GET /api/v1/theme/branding`
-  ([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)).
+  public `GET /api/bloem/v2/ambience/public`; signed-in Home reads
+  `GET /api/bloem/v2/ambience`. Silo's v1 API is retired, and with it Bloem's
+  [old v1 campaign routes](../bloem/api/v1-routes.md#campaigns) and the `ambience`
+  block of Silo's v1 branding route; nothing in Bloem calls them
+  ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
 - [How announcements work](admin-announcements.md),
   [how playback cards work](playback-overlays.md) (with the
   [routes map](../playback-overlays-api.md)) and

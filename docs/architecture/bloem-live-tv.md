@@ -94,7 +94,7 @@ Good to know:
 
 | On this page | In the code and database |
 | --- | --- |
-| Live TV | `internal/livetv`, served under `/api/bloem/v1/livetv` |
+| Live TV | `internal/livetv`, served under `/api/bloem/v2/livetv` |
 | Live TV permission | `watch_live_tv` (`internal/permissioncatalog`) |
 | Source, tuner | a tuner row; an Xtream provider is a tuner of type `xtream` |
 | Connections | the tuner's connection budget; Xtream uses durable connection leases |
@@ -104,7 +104,7 @@ Good to know:
 ## For developers
 
 - **API:** [Live TV](../bloem/api/live-tv.md): every route under
-  `/api/bloem/v1/livetv`, with its credentials, fields and error codes.
+  `/api/bloem/v2/livetv`, with its credentials, fields and error codes.
 
 Technical pages, each with pictures of its own:
 

@@ -6,6 +6,7 @@
 > is the procedure for a platform administrator; it is a source check, not a
 > record of a production apply. The technical rules are in the
 > [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 An **entitlement template** is a plan: a named policy for what an account may do,
 kept as a series of **revisions** that never change once saved. This page walks
@@ -191,7 +192,7 @@ values as revision 3 and moves the same accounts to it.
   bulk policy) and [organizations and administration](../bloem/api/organizations.md)
   (organization applies and audit, account create and update, reseller
   organizations). The older
-  [native `/api/bloem/v1` reference](../bloem-api-reference.md#entitlement-template-administration)
+  [native `/api/bloem/v2` reference](../bloem-api-reference.md#entitlement-template-administration)
   also lists the routes and wire shapes.
 
 ### Policy fields
@@ -248,12 +249,12 @@ invalidate the affected authorization state.
   or updates the account's managed template group inside the default
   organization; other accounts and custom groups are not changed.
 - The canonical direct-account routes are
-  `/api/bloem/v1/admin/platform/accounts/{account_id}/entitlement` (with
+  `/api/bloem/v2/admin/platform/accounts/{account_id}/entitlement` (with
   `/dry-run` and `/apply`). The equivalent
-  `/api/bloem/v1/admin/platform/users/{user_id}/entitlement` routes remain as
+  `/api/bloem/v2/admin/platform/users/{user_id}/entitlement` routes remain as
   compatibility aliases.
 - Organization routes:
-  `/api/bloem/v1/admin/platform/organizations/{id}/entitlement` (with
+  `/api/bloem/v2/admin/platform/organizations/{id}/entitlement` (with
   `/dry-run`, `/apply` and `/audit`).
 
 ### Bulk jobs
@@ -285,7 +286,7 @@ successful application produce durable audit events. Organization entitlement
 history is available from its detail panel and from:
 
 ```text
-GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement/audit
+GET /api/bloem/v2/admin/platform/organizations/{id}/entitlement/audit
 ```
 
 ### API clients
@@ -295,8 +296,8 @@ and submits the returned `confirmation_token` plus a stable `idempotency_key` to
 apply. An API key owned by an enabled platform administrator, unscoped or
 carrying `admin:entitlements:accounts`, may also list the template catalog and
 dry-run and apply a template to one account, as a storefront does. Those routes
-are `GET` and `POST` on `/api/bloem/v1/admin/platform/entitlement-templates`, and
-`POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run`
+are `GET` and `POST` on `/api/bloem/v2/admin/platform/entitlement-templates`, and
+`POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/dry-run`
 and `/apply`; this arrived in `f4abe0645` (2026-10-13). The create route shares
 the catalog path, but its handler still requires an admin session. A refused key
 gets 403 `insufficient_platform_authority`.
@@ -305,21 +306,21 @@ apply routes, also need an admin session.
 
 An enabled administrator's unscoped API key can also put an account on an exact
 plan revision while creating or updating it
-(`POST /api/bloem/v1/admin/platform/accounts` and
-`PUT /api/bloem/v1/admin/platform/accounts/{account_id}` with
+(`POST /api/bloem/v2/admin/platform/accounts` and
+`PUT /api/bloem/v2/admin/platform/accounts/{account_id}` with
 `entitlement_template_key` and `entitlement_template_revision`; 422
 `entitlement_template_unavailable` when that revision cannot be applied), and
 put a new reseller organization on a plan
-(`POST /api/bloem/v1/admin/platform/tenants`). The storefront uses these
-native routes and calls none of Silo's `/api/v1`
-([leaving Silo's `/api/v1`](../architecture/bloem-leaving-silo-v1.md)).
+(`POST /api/bloem/v2/admin/platform/tenants`). The storefront uses these
+native routes; nothing in Bloem calls Silo's retired v1 API
+([leaving Silo's v1 API](../architecture/bloem-leaving-silo-v1.md)).
 
 ### History
 
 Templates were added on 2026-08-21: `3ec1650d7` (under Bloem's earlier working
 name Vondel, renamed in `b25394bc8`), `917696305` and `3d4339757` (server-wide
 enforcement). This page was added in `dbe8323d7`. `811fb4d29` (2026-09-02) moved
-the routes to `/api/bloem/v1`. `f4abe0645` (2026-10-13) let a storefront API key
+the routes to `/api/bloem/v2`. `f4abe0645` (2026-10-13) let a storefront API key
 list templates and preview and apply one to a single account. `25062b4df` and
 `21fae6837` (2026-10-14 and 15) seeded the protected `bloem-preview` template,
 and `22e4a4b05` refuses loosening it. `c60b7008e` (2026-10-26) moved account

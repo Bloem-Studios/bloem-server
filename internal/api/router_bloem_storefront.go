@@ -31,8 +31,8 @@ type bloemPlatformStorefrontHandlers struct {
 	DB                  *pgxpool.Pool
 }
 
-// newBloemPlatformStorefrontHandlers builds them from the same pieces as the
-// legacy /api/v1/admin routes, so the native routes behave alike.
+// newBloemPlatformStorefrontHandlers builds them from the same pieces as
+// Silo's admin routes, so the native routes behave alike.
 func newBloemPlatformStorefrontHandlers(deps Dependencies, admin *handlers.AdminHandler, promotions *handlers.AdminPromotionsHandler, ambience *handlers.AmbienceHandler) bloemPlatformStorefrontHandlers {
 	out := bloemPlatformStorefrontHandlers{Accounts: admin, Promotions: promotions, Ambience: ambience,
 		ServeAmbienceAssets: deps.Ambience != nil, DB: deps.DB}
@@ -53,14 +53,14 @@ func newBloemPlatformStorefrontHandlers(deps Dependencies, admin *handlers.Admin
 	return out
 }
 
-// mountBloemPlatformStorefront serves, under /api/bloem/v1/admin/platform, the
+// mountBloemPlatformStorefront serves, under /api/bloem/v2/admin/platform, the
 // platform administration that a storefront (Bloem Garden) needs: reseller
 // organizations (tenants) and their members, creating and updating an account
 // on a plan, an account's profiles, devices and sign-in sessions,
 // announcements, campaigns and seasonal packs. Each
 // route takes a Platform administrative context or an enabled administrator's
-// unscoped API key. The handlers are the ones behind the legacy /api/v1/admin
-// routes, which stay mounted for the clients that still call them.
+// unscoped API key. The handlers are Silo's own admin handlers, which its
+// retired v1 admin routes used.
 //
 // It also serves uploaded seasonal artwork publicly at /ambience/assets/{ref},
 // and the active deployment-wide packs at /ambience/public.

@@ -20,19 +20,19 @@ const streamTokenClaimsKey contextKey = "stream_token_claims"
 
 // HLS delivery lives at:
 //
-//	/api/v1/playback/transcode/{session_id}/master.m3u8
-//	/api/v1/playback/transcode/{session_id}/media.m3u8
-//	/api/v1/playback/transcode/{session_id}/segment/{name}
+//	/api/v2/playback/transcode/{session_id}/master.m3u8
+//	/api/v2/playback/transcode/{session_id}/media.m3u8
+//	/api/v2/playback/transcode/{session_id}/segment/{name}
 //
 // Matched on the raw path rather than chi URL params on purpose: middleware
 // registered on the parent group runs before the inner route is matched, so
 // chi.URLParam is still empty here. (That is also why a rejected request logs
-// path_pattern=/api/v1/playback/* instead of the real pattern.)
+// path_pattern=/api/v2/playback/* instead of the real pattern.)
 const transcodeDeliveryPrefix = "/playback/transcode/"
 
 // Progressive (direct-play / remux) delivery lives at:
 //
-//	/api/v1/stream/{session_id}
+//	/api/v2/stream/{session_id}
 //
 // A different prefix entirely, which is why it needs its own case: the token was
 // already minted for it (playbackStreamURL appends one to every non-transcode
@@ -42,12 +42,12 @@ const progressiveDeliveryPrefix = "/stream/"
 
 // apiVersionPrefix anchors the progressive match so "/stream/" is only honored
 // at the top level of the API, never as a nested segment of another route.
-const apiVersionPrefix = "/api/v1"
+const apiVersionPrefix = "/api/v2"
 
 // Live TV HLS delivery lives at:
 //
-//	/api/v1/livetv/live-hls/{playback_session_id}/index.m3u8
-//	/api/v1/livetv/live-hls/{playback_session_id}/seg_00000.ts
+//	/api/bloem/v2/livetv/live-hls/{playback_session_id}/index.m3u8
+//	/api/bloem/v2/livetv/live-hls/{playback_session_id}/seg_00000.ts
 //
 // Same disease as the progressive path above, one route later. The app embeds
 // its own access token in this URL and hands it to the native player, which
@@ -89,7 +89,7 @@ func streamTokenDeliverySession(urlPath string) (string, bool) {
 // be spent walking out of its own directory.
 func liveHLSDeliverySession(urlPath string) (string, bool) {
 	var rest string
-	for _, prefix := range []string{"/api/v1", "/api/bloem/v1", ""} {
+	for _, prefix := range []string{"/api/bloem/v2", ""} {
 		if strings.HasPrefix(urlPath, prefix+liveHLSDeliveryPrefix) {
 			rest = strings.TrimPrefix(urlPath, prefix+liveHLSDeliveryPrefix)
 			break
@@ -140,7 +140,7 @@ func transcodeDeliverySession(urlPath string) (string, bool) {
 // make on purpose rather than by accident of prefix matching.
 //
 // The prefix is anchored rather than searched. Searching for "/stream/"
-// anywhere would also match /api/v1/playback/transcode/{id}/stream/... and any
+// anywhere would also match /api/v2/playback/transcode/{id}/stream/... and any
 // future route containing that segment, quietly extending what a stream token
 // authorizes.
 func progressiveDeliverySession(urlPath string) (string, bool) {
@@ -151,10 +151,10 @@ func progressiveDeliverySession(urlPath string) (string, bool) {
 	// Must be a top-level /stream/, not a nested segment of some other route.
 	//
 	// An empty prefix counts: chi trims the mount prefix for sub-routers, so this
-	// middleware sees "/stream/{id}" as often as "/api/v1/stream/{id}" -- which is
+	// middleware sees "/stream/{id}" as often as "/api/v2/stream/{id}" -- which is
 	// also why the transcode matcher searches instead of anchoring. Requiring the
 	// API prefix rejected every real request and 401'd the player.
-	if before := urlPath[:idx]; before != "" && !strings.HasSuffix(before, apiVersionPrefix) && !strings.HasSuffix(before, "/api/v2") {
+	if before := urlPath[:idx]; before != "" && !strings.HasSuffix(before, apiVersionPrefix) {
 		return "", false
 	}
 	sessionID := urlPath[idx+len(progressiveDeliveryPrefix):]

@@ -17,7 +17,7 @@ func (s publicAmbienceStub) ActivePublic(context.Context) ([]ambience.Wire, erro
 }
 
 // The signed-out seasonal layer reads the deployment-wide packs from a native
-// route, not from Silo's /api/v1 branding.
+// route, not from Silo's branding.
 func TestPublicAmbienceListsTheDeploymentWidePacks(t *testing.T) {
 	h := NewBloemPublicAmbienceHandler(publicAmbienceStub{packs: []ambience.Wire{{ID: "winter"}}})
 	rec := httptest.NewRecorder()

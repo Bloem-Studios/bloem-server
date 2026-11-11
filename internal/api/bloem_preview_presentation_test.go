@@ -58,7 +58,7 @@ func TestPreviewPersonalPresentationThroughRouter(t *testing.T) {
 		router.ServeHTTP(w, r)
 		return w
 	}
-	prefix := "/api/bloem/v1/admin/platform/preview"
+	prefix := "/api/bloem/v2/admin/platform/preview"
 	if w := call("POST", prefix+"/account", key.Key, map[string]any{"issuer": "operator-test"}); w.Code != 201 {
 		t.Fatalf("setup: %d %s", w.Code, w.Body)
 	}
@@ -102,7 +102,7 @@ func TestPreviewPersonalPresentationThroughRouter(t *testing.T) {
 	if w := call("PUT", prefix+"/accounts/"+strconv.Itoa(ordinary)+"/presentation", key.Key, map[string]any{"issuer": "operator-test", "ends_at": deadline}); w.Code != 400 {
 		t.Fatalf("non-preview provision: %d %s", w.Code, w.Body)
 	}
-	eventPath := "/api/bloem/v1/preview/events"
+	eventPath := "/api/bloem/v2/preview/events"
 	if w := call("POST", eventPath, ordinaryToken, map[string]any{"event": "cta_shown"}); w.Code != 403 {
 		t.Fatalf("non-preview event: %d %s", w.Code, w.Body)
 	}

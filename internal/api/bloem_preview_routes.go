@@ -9,21 +9,21 @@ import (
 	"github.com/Silo-Server/silo-server/internal/apiv2"
 )
 
-const previewCapabilitiesPath = "/api/bloem/v1/capabilities"
+const previewCapabilitiesPath = "/api/bloem/v2/capabilities"
 
 // previewAllowedRoutes is everything a preview principal may call on v1 and
 // the native surface, by exact method and route pattern. Everything else is
 // refused, including every write, every byte route and /livetv/**. v2
 // operations are judged by apiv2's preview gate instead.
 var previewAllowedRoutes = map[string][]string{
-	"/api/bloem/v1/preview/events":                         {http.MethodPost},
+	"/api/bloem/v2/preview/events":                         {http.MethodPost},
 	previewCapabilitiesPath:                                {http.MethodGet},
-	"/api/bloem/v1/ambience":                               {http.MethodGet},
-	"/api/bloem/v1/persons/{person_id}":                    {http.MethodGet},
-	"/api/bloem/v1/catalog/items/{content_id}/collections": {http.MethodGet},
-	"/api/bloem/v1/watch/home":                             {http.MethodGet},
-	"/api/bloem/v1/watch/items/{content_id}":               {http.MethodGet},
-	"/api/bloem/v1/watch/search":                           {http.MethodGet},
+	"/api/bloem/v2/ambience":                               {http.MethodGet},
+	"/api/bloem/v2/persons/{person_id}":                    {http.MethodGet},
+	"/api/bloem/v2/catalog/items/{content_id}/collections": {http.MethodGet},
+	"/api/bloem/v2/watch/home":                             {http.MethodGet},
+	"/api/bloem/v2/watch/items/{content_id}":               {http.MethodGet},
+	"/api/bloem/v2/watch/search":                           {http.MethodGet},
 }
 
 func previewRouteAllowed(method, pattern string) bool {

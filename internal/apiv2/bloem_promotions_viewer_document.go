@@ -6,7 +6,7 @@ import (
 
 // bloemPromotionsViewerAuthority is the native viewer chain the three routes
 // share (mountBloemPromotionsViewer), stated once.
-const bloemPromotionsViewerAuthority = "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v1/capabilities feature_tokens."
+const bloemPromotionsViewerAuthority = "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens."
 
 type BloemPromotionsViewerHeaders struct {
 	ProfileID    string `header:"X-Profile-Id" required:"true" doc:"Verified profile belonging to the authenticated account."`
@@ -51,7 +51,7 @@ func registerBloemPromotionsViewerDocument(reg *Registry) {
 	}
 	{
 		op := bloemChiDocumentOp(reg, "GET", "/promotions", "listBloemPromotions", "engagement", "List the campaign cards a profile sees on a surface.", "bearerAuth", 200)
-		op.Description = bloemPromotionsViewerAuthority + " Replaces GET /api/v1/promotions and, for the home surface, the promoted row of the /api/v1 home layout: home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out."
+		op.Description = bloemPromotionsViewerAuthority + " Replaces the campaign list of Silo's retired alpha v1 API and, for the home surface, the promoted row of its home layout: home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out."
 		bloemDocumentErrors[BloemNativeError](reg, &op, viewerErrors)
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
 			400: "bad_request: X-Profile-Id is required, surface is missing or unknown, or content_id is missing for in_playback.",
@@ -62,7 +62,7 @@ func registerBloemPromotionsViewerDocument(reg *Registry) {
 	}
 	{
 		op := bloemChiDocumentOp(reg, "POST", "/promotions/{id}/save", "saveBloemPromotion", "engagement", "Save an in-playback campaign to the profile's inbox.", "bearerAuth", 200)
-		op.Description = bloemPromotionsViewerAuthority + " Replaces POST /api/v1/promotions/{id}/save. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy."
+		op.Description = bloemPromotionsViewerAuthority + " Replaces the campaign save of Silo's retired alpha v1 API. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy."
 		bloemDocumentErrors[BloemNativeError](reg, &op, viewerErrors)
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
 			400: "bad_request: X-Profile-Id is required; unavailable: the campaign cannot be saved.",
@@ -75,7 +75,7 @@ func registerBloemPromotionsViewerDocument(reg *Registry) {
 	}
 	{
 		op := bloemChiDocumentOp(reg, "PUT", "/promotions/{id}/dismissals/{surface}", "dismissBloemPromotion", "engagement", "Stop showing a campaign to a profile on a surface.", "bearerAuth", 204)
-		op.Description = bloemPromotionsViewerAuthority + " Replaces PUT /api/v1/home/dismissals/promo:{surface}/{id}, and writes the same per-profile dismissal. Idempotent: repeating it refreshes the dismissal."
+		op.Description = bloemPromotionsViewerAuthority + " Replaces the promo:{surface}/{id} home dismissal of Silo's retired alpha v1 API, and writes the same per-profile dismissal. Idempotent: repeating it refreshes the dismissal."
 		bloemDocumentErrors[BloemNativeError](reg, &op, viewerErrors)
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
 			400: "bad_request: X-Profile-Id is required, the surface is unknown, or the campaign ID is longer than 64 bytes.",

@@ -13,7 +13,7 @@ type countingPlaybackBridge struct {
 
 func (b *countingPlaybackBridge) StartLiveStream(context.Context, LiveStreamRequest) (string, string, error) {
 	b.starts.Add(1)
-	return "pb-count", "/api/v1/livetv/live-hls/pb-count/index.m3u8", nil
+	return "pb-count", "/api/bloem/v2/livetv/live-hls/pb-count/index.m3u8", nil
 }
 
 // The Jellyfin surface proxies the tuner's MPEG-TS itself. It used to start the

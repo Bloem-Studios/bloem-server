@@ -19,7 +19,7 @@ package tenancy
 // AdminMutationActor-audited mutation path admin_store.go uses for the
 // platform admin UI: the park contract is a service-to-service API
 // authenticated by admin API key (the same acting-admin gate
-// /api/v1/admin/users already uses), not a human, audited admin session.
+// Silo's admin user routes use), not a human, audited admin session.
 import (
 	"context"
 	"crypto/sha256"

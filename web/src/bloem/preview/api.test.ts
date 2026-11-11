@@ -15,7 +15,7 @@ it("does not turn the normal server host into a guest host after visiting previe
   const api = await import("./api");
   await expect(api.exchangePreviewTicket("synthetic")).rejects.toThrow();
   expect(session.guestHost()).toBe(false);
-  expect(paths).toEqual(["/api/bloem/v1/preview/status"]);
+  expect(paths).toEqual(["/api/bloem/v2/preview/status"]);
 });
 it("marks the preview status pending until it answers, and knows the host before it clears", async () => {
   vi.resetModules();

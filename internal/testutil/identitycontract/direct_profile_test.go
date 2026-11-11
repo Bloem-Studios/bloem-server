@@ -94,7 +94,7 @@ func newDirectProfileIdentityListener(t *testing.T, v directProfileViolations) *
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/v1/auth/profile-login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /api/v2/auth/profile-login", func(w http.ResponseWriter, r *http.Request) {
 		var creds struct {
 			Email    string `json:"email"`
 			Password string `json:"password"`
@@ -128,21 +128,21 @@ func newDirectProfileIdentityListener(t *testing.T, v directProfileViolations) *
 			next(w, r)
 		}
 	}
-	mux.HandleFunc("GET /api/v1/profiles/", requireAuth(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /api/v2/profiles/", requireAuth(func(w http.ResponseWriter, r *http.Request) {
 		if v.allowDirectory {
 			writeFixtureJSON(w, []map[string]any{{"id": refDirectProfileID}, {"id": refSiblingProfileID}})
 			return
 		}
 		refuse(w, http.StatusForbidden, "direct_profile_scope")
 	}))
-	mux.HandleFunc("GET /api/v1/profiles/household/sessions", requireAuth(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /api/v2/profiles/household/sessions", requireAuth(func(w http.ResponseWriter, r *http.Request) {
 		if v.allowHouseholdSessions {
 			writeFixtureJSON(w, []any{})
 			return
 		}
 		refuse(w, http.StatusForbidden, "direct_profile_scope")
 	}))
-	mux.HandleFunc("PUT /api/v1/profiles/{id}", requireAuth(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("PUT /api/v2/profiles/{id}", requireAuth(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		if id == refDirectProfileID {
 			if v.refuseOwnUpdate {
@@ -158,7 +158,7 @@ func newDirectProfileIdentityListener(t *testing.T, v directProfileViolations) *
 		}
 		refuse(w, http.StatusForbidden, "direct_profile_scope")
 	}))
-	mux.HandleFunc("GET /api/v1/profiles/{id}", requireAuth(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /api/v2/profiles/{id}", requireAuth(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		if id == refDirectProfileID && !v.hideOwnRecord {
 			writeFixtureJSON(w, map[string]any{"id": refDirectProfileID, "name": "Reader"})
@@ -166,14 +166,14 @@ func newDirectProfileIdentityListener(t *testing.T, v directProfileViolations) *
 		}
 		refuse(w, http.StatusForbidden, "direct_profile_scope")
 	}))
-	mux.HandleFunc("POST /api/v1/profiles/{id}/verify-pin", requireAuth(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /api/v2/profiles/{id}/verify-pin", requireAuth(func(w http.ResponseWriter, r *http.Request) {
 		if v.allowPinVerify {
 			writeFixtureJSON(w, map[string]any{"profile_token": "fixture-minted-profile-token-201"})
 			return
 		}
 		refuse(w, http.StatusForbidden, "direct_profile_scope")
 	}))
-	mux.HandleFunc("POST /api/v1/api-keys/", requireAuth(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /api/v2/api-keys/", requireAuth(func(w http.ResponseWriter, r *http.Request) {
 		if v.allowAPIKeyMint {
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]any{"key": "fixture-minted-api-key-202"})
@@ -181,7 +181,7 @@ func newDirectProfileIdentityListener(t *testing.T, v directProfileViolations) *
 		}
 		refuse(w, http.StatusForbidden, "direct_profile_scope")
 	}))
-	mux.HandleFunc("GET /api/v1/settings/values", requireAuth(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /api/v2/settings/values", requireAuth(func(w http.ResponseWriter, r *http.Request) {
 		writeFixtureJSON(w, map[string]any{"values": map[string]any{}})
 	}))
 	return httptest.NewServer(mux)

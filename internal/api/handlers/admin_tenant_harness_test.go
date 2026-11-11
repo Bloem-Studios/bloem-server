@@ -58,11 +58,11 @@ func tenantAdminHarness(t *testing.T) (*pgxpool.Pool, *tenancy.Store, *auth.User
 			next.ServeHTTP(w, r.WithContext(apimw.SetClaims(r.Context(), claims)))
 		})
 	})
-	router.Post("/api/v1/admin/tenants", handler.HandleCreate)
-	router.Post("/api/v1/admin/tenants/{id}/freeze", handler.HandleFreeze)
-	router.Post("/api/v1/admin/tenants/{id}/thaw", handler.HandleThaw)
-	router.Patch("/api/v1/admin/tenants/{id}/limits", handler.HandleUpdateLimits)
-	router.Delete("/api/v1/admin/tenants/{id}", handler.HandleDelete)
+	router.Post("/api/bloem/v2/admin/platform/tenants", handler.HandleCreate)
+	router.Post("/api/bloem/v2/admin/platform/tenants/{id}/freeze", handler.HandleFreeze)
+	router.Post("/api/bloem/v2/admin/platform/tenants/{id}/thaw", handler.HandleThaw)
+	router.Patch("/api/bloem/v2/admin/platform/tenants/{id}/limits", handler.HandleUpdateLimits)
+	router.Delete("/api/bloem/v2/admin/platform/tenants/{id}", handler.HandleDelete)
 	return pool, store, users, actor, router
 }
 

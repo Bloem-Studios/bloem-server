@@ -1,7 +1,7 @@
 # Messages and promotions API
 
 > **Generated** by `scripts/bloem/api-topic-docs.py` from
-> [`contracts/api/bloem/v1/openapi.json`](../../../contracts/api/bloem/v1/openapi.json).
+> [`contracts/api/bloem/v2/openapi.json`](../../../contracts/api/bloem/v2/openapi.json).
 > Do not edit by hand: change the handler's OpenAPI declaration, run `make bloem-openapi`, then
 > the script. Shared conventions, credentials and the error body are on the [index](README.md).
 
@@ -19,34 +19,34 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 
 | Method and path | Summary |
 | --- | --- |
-| [`GET /api/bloem/v1/admin/platform/ambience/`](#get-apibloemv1adminplatformambience) | List ambience packs and authoring capabilities. |
-| [`POST /api/bloem/v1/admin/platform/ambience/`](#post-apibloemv1adminplatformambience) | Create a registry entry. |
-| [`POST /api/bloem/v1/admin/platform/ambience/assets`](#post-apibloemv1adminplatformambienceassets) | Upload a standalone authoring asset without attaching it to a pack. |
-| [`PUT /api/bloem/v1/admin/platform/ambience/{id}`](#put-apibloemv1adminplatformambienceid) | Replace every editable field of a registry entry. |
-| [`DELETE /api/bloem/v1/admin/platform/ambience/{id}`](#delete-apibloemv1adminplatformambienceid) | Delete a registry entry. |
-| [`POST /api/bloem/v1/admin/platform/ambience/{id}/assets`](#post-apibloemv1adminplatformambienceidassets) | Upload artwork and attach it to an ambience pack. |
-| [`GET /api/bloem/v1/admin/platform/announcements`](#get-apibloemv1adminplatformannouncements) | List published announcements, including withdrawn ones. |
-| [`POST /api/bloem/v1/admin/platform/announcements`](#post-apibloemv1adminplatformannouncements) | Publish an announcement to its audience's inboxes. |
-| [`DELETE /api/bloem/v1/admin/platform/announcements/{id}`](#delete-apibloemv1adminplatformannouncementsid) | Withdraw an announcement. |
-| [`GET /api/bloem/v1/admin/platform/promotions/`](#get-apibloemv1adminplatformpromotions) | List platform-managed campaigns and supported delivery surfaces. |
-| [`POST /api/bloem/v1/admin/platform/promotions/`](#post-apibloemv1adminplatformpromotions) | Create a registry entry. |
-| [`PUT /api/bloem/v1/admin/platform/promotions/{id}`](#put-apibloemv1adminplatformpromotionsid) | Replace every editable field of a registry entry. |
-| [`DELETE /api/bloem/v1/admin/platform/promotions/{id}`](#delete-apibloemv1adminplatformpromotionsid) | Delete a registry entry. |
-| [`GET /api/bloem/v1/admin/platform/upgrade-prompt`](#get-apibloemv1adminplatformupgrade-prompt) | Read the upgrade prompt. |
-| [`PUT /api/bloem/v1/admin/platform/upgrade-prompt`](#put-apibloemv1adminplatformupgrade-prompt) | Replace the upgrade prompt. |
-| [`GET /api/bloem/v1/ambience`](#get-apibloemv1ambience) | Read seasonal presentation for the current verified tenant viewer. |
-| [`GET /api/bloem/v1/ambience/assets/{ref}`](#get-apibloemv1ambienceassetsref) | Serve uploaded seasonal and campaign artwork. |
-| [`GET /api/bloem/v1/ambience/public`](#get-apibloemv1ambiencepublic) | List the active deployment-wide seasonal packs. |
-| [`GET /api/bloem/v1/notifications`](#get-apibloemv1notifications) | The acting profile's inbox, newest first, with the alert fields a row needs to render. |
-| [`GET /api/bloem/v1/notifications/sync`](#get-apibloemv1notificationssync) | Rows newer than a cursor, for a client waking from a push or reconnecting across a gap. |
-| [`GET /api/bloem/v1/notifications/{id}`](#get-apibloemv1notificationsid) | One inbox row. Another profile's row is absent, not forbidden. |
-| [`GET /api/bloem/v1/promotions`](#get-apibloemv1promotions) | List the campaign cards a profile sees on a surface. |
-| [`PUT /api/bloem/v1/promotions/{id}/dismissals/{surface}`](#put-apibloemv1promotionsiddismissalssurface) | Stop showing a campaign to a profile on a surface. |
-| [`POST /api/bloem/v1/promotions/{id}/save`](#post-apibloemv1promotionsidsave) | Save an in-playback campaign to the profile's inbox. |
+| [`GET /api/bloem/v2/admin/platform/ambience/`](#get-apibloemv2adminplatformambience) | List ambience packs and authoring capabilities. |
+| [`POST /api/bloem/v2/admin/platform/ambience/`](#post-apibloemv2adminplatformambience) | Create a registry entry. |
+| [`POST /api/bloem/v2/admin/platform/ambience/assets`](#post-apibloemv2adminplatformambienceassets) | Upload a standalone authoring asset without attaching it to a pack. |
+| [`PUT /api/bloem/v2/admin/platform/ambience/{id}`](#put-apibloemv2adminplatformambienceid) | Replace every editable field of a registry entry. |
+| [`DELETE /api/bloem/v2/admin/platform/ambience/{id}`](#delete-apibloemv2adminplatformambienceid) | Delete a registry entry. |
+| [`POST /api/bloem/v2/admin/platform/ambience/{id}/assets`](#post-apibloemv2adminplatformambienceidassets) | Upload artwork and attach it to an ambience pack. |
+| [`GET /api/bloem/v2/admin/platform/announcements`](#get-apibloemv2adminplatformannouncements) | List published announcements, including withdrawn ones. |
+| [`POST /api/bloem/v2/admin/platform/announcements`](#post-apibloemv2adminplatformannouncements) | Publish an announcement to its audience's inboxes. |
+| [`DELETE /api/bloem/v2/admin/platform/announcements/{id}`](#delete-apibloemv2adminplatformannouncementsid) | Withdraw an announcement. |
+| [`GET /api/bloem/v2/admin/platform/promotions/`](#get-apibloemv2adminplatformpromotions) | List platform-managed campaigns and supported delivery surfaces. |
+| [`POST /api/bloem/v2/admin/platform/promotions/`](#post-apibloemv2adminplatformpromotions) | Create a registry entry. |
+| [`PUT /api/bloem/v2/admin/platform/promotions/{id}`](#put-apibloemv2adminplatformpromotionsid) | Replace every editable field of a registry entry. |
+| [`DELETE /api/bloem/v2/admin/platform/promotions/{id}`](#delete-apibloemv2adminplatformpromotionsid) | Delete a registry entry. |
+| [`GET /api/bloem/v2/admin/platform/upgrade-prompt`](#get-apibloemv2adminplatformupgrade-prompt) | Read the upgrade prompt. |
+| [`PUT /api/bloem/v2/admin/platform/upgrade-prompt`](#put-apibloemv2adminplatformupgrade-prompt) | Replace the upgrade prompt. |
+| [`GET /api/bloem/v2/ambience`](#get-apibloemv2ambience) | Read seasonal presentation for the current verified tenant viewer. |
+| [`GET /api/bloem/v2/ambience/assets/{ref}`](#get-apibloemv2ambienceassetsref) | Serve uploaded seasonal and campaign artwork. |
+| [`GET /api/bloem/v2/ambience/public`](#get-apibloemv2ambiencepublic) | List the active deployment-wide seasonal packs. |
+| [`GET /api/bloem/v2/notifications`](#get-apibloemv2notifications) | The acting profile's inbox, newest first, with the alert fields a row needs to render. |
+| [`GET /api/bloem/v2/notifications/sync`](#get-apibloemv2notificationssync) | Rows newer than a cursor, for a client waking from a push or reconnecting across a gap. |
+| [`GET /api/bloem/v2/notifications/{id}`](#get-apibloemv2notificationsid) | One inbox row. Another profile's row is absent, not forbidden. |
+| [`GET /api/bloem/v2/promotions`](#get-apibloemv2promotions) | List the campaign cards a profile sees on a surface. |
+| [`PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}`](#put-apibloemv2promotionsiddismissalssurface) | Stop showing a campaign to a profile on a surface. |
+| [`POST /api/bloem/v2/promotions/{id}/save`](#post-apibloemv2promotionsidsave) | Save an in-playback campaign to the profile's inbox. |
 
 ## Reference
 
-### `GET /api/bloem/v1/admin/platform/ambience/`
+### `GET /api/bloem/v2/admin/platform/ambience/`
 
 List ambience packs and authoring capabilities.
 
@@ -63,7 +63,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the registry operation failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the ambience registry is not configured. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/ambience/`
+### `POST /api/bloem/v2/admin/platform/ambience/`
 
 Create a registry entry.
 
@@ -83,14 +83,14 @@ Request body (required, `application/json`): [`BloemAmbienceBody`](#bloemambienc
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the registry operation failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the ambience registry is not configured. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/ambience/assets`
+### `POST /api/bloem/v2/admin/platform/ambience/assets`
 
 Upload a standalone authoring asset without attaching it to a pack.
 
 Operation ID: `uploadBloemPlatformAmbienceAsset`.
 Credentials: `bloemPlatformContext`; or `bearerAuth`.
 
-Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. Requires configured asset upload storage, reported as storage_available by the ambience list. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. Stored artwork is content-addressed; url is its public server path under /api/bloem/v1/ambience/assets/. Paths under /api/v1/ambience/assets/ from earlier uploads stay valid in pack and campaign bodies. asset_id is optional. Reusing it with identical bytes returns the existing asset; different bytes replace its recorded reference.
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. Requires configured asset upload storage, reported as storage_available by the ambience list. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. Stored artwork is content-addressed; url is its public server path under /api/bloem/v2/ambience/assets/. asset_id is optional. Reusing it with identical bytes returns the existing asset; different bytes replace its recorded reference.
 
 Request body (required, `multipart/form-data`): [`BloemAmbienceUploadForm`](#bloemambienceuploadform).
 
@@ -105,7 +105,7 @@ Request body (required, `multipart/form-data`): [`BloemAmbienceUploadForm`](#blo
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the registry operation failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the ambience registry or asset upload storage is not configured. tenant_unavailable: administrative authority could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/ambience/{id}`
+### `PUT /api/bloem/v2/admin/platform/ambience/{id}`
 
 Replace every editable field of a registry entry.
 
@@ -130,7 +130,7 @@ Request body (required, `application/json`): [`BloemAmbienceBody`](#bloemambienc
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the registry operation failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the ambience registry is not configured. tenant_unavailable: administrative authority could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/ambience/{id}`
+### `DELETE /api/bloem/v2/admin/platform/ambience/{id}`
 
 Delete a registry entry.
 
@@ -152,14 +152,14 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the registry operation failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the ambience registry is not configured. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/ambience/{id}/assets`
+### `POST /api/bloem/v2/admin/platform/ambience/{id}/assets`
 
 Upload artwork and attach it to an ambience pack.
 
 Operation ID: `attachBloemPlatformAmbienceAsset`.
 Credentials: `bloemPlatformContext`; or `bearerAuth`.
 
-Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. Requires configured asset upload storage, reported as storage_available by the ambience list. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. Stored artwork is content-addressed; url is its public server path under /api/bloem/v1/ambience/assets/. Paths under /api/v1/ambience/assets/ from earlier uploads stay valid in pack and campaign bodies. The default slot is banner; sprite appends to the pack. Do not automatically retry sprite attachment: it can append twice.
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. Requires configured asset upload storage, reported as storage_available by the ambience list. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. Stored artwork is content-addressed; url is its public server path under /api/bloem/v2/ambience/assets/. The default slot is banner; sprite appends to the pack. Do not automatically retry sprite attachment: it can append twice.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -179,7 +179,7 @@ Request body (required, `multipart/form-data`): [`BloemAmbienceAttachForm`](#blo
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the registry operation failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the ambience registry or asset upload storage is not configured. tenant_unavailable: administrative authority could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/announcements`
+### `GET /api/bloem/v2/admin/platform/announcements`
 
 List published announcements, including withdrawn ones.
 
@@ -196,7 +196,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: announcements are not configured. tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/announcements`
+### `POST /api/bloem/v2/admin/platform/announcements`
 
 Publish an announcement to its audience's inboxes.
 
@@ -217,7 +217,7 @@ Request body (required, `application/json`): [`AnnouncementInput`](#announcement
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: announcements are not configured. tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/announcements/{id}`
+### `DELETE /api/bloem/v2/admin/platform/announcements/{id}`
 
 Withdraw an announcement.
 
@@ -239,14 +239,14 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: announcements are not configured. tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/promotions/`
+### `GET /api/bloem/v2/admin/platform/promotions/`
 
 List platform-managed campaigns and supported delivery surfaces.
 
 Operation ID: `listBloemPlatformPromotions`.
 Credentials: `bloemPlatformContext`; or `bearerAuth`.
 
-Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. In-playback cards (surface in_playback) are available when /api/bloem/v1/capabilities lists playback_overlays_v1.
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. In-playback cards (surface in_playback) are available when /api/bloem/v2/capabilities lists playback_overlays_v1.
 
 | Status | Body | Meaning |
 | --- | --- | --- |
@@ -256,14 +256,14 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the registry operation failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the promotion registry is not configured. tenant_unavailable: administrative authority could not be checked. |
 
-### `POST /api/bloem/v1/admin/platform/promotions/`
+### `POST /api/bloem/v2/admin/platform/promotions/`
 
 Create a registry entry.
 
 Operation ID: `createBloemPlatformPromotion`.
 Credentials: `bloemPlatformContext`; or `bearerAuth`.
 
-Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. In-playback cards (surface in_playback) are available when /api/bloem/v1/capabilities lists playback_overlays_v1. JSON body limit: 64 KiB. Unknown fields and anything after the first JSON value are ignored. PUT is a full replacement, applying defaults to omitted optional fields. These writes have no expected_revision, If-Match or replay receipt; reconcile the list after an uncertain result before submitting again.
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. In-playback cards (surface in_playback) are available when /api/bloem/v2/capabilities lists playback_overlays_v1. JSON body limit: 64 KiB. Unknown fields and anything after the first JSON value are ignored. PUT is a full replacement, applying defaults to omitted optional fields. These writes have no expected_revision, If-Match or replay receipt; reconcile the list after an uncertain result before submitting again.
 
 Request body (required, `application/json`): [`BloemPromotionBody`](#bloempromotionbody).
 
@@ -276,14 +276,14 @@ Request body (required, `application/json`): [`BloemPromotionBody`](#bloempromot
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the registry operation failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the promotion registry is not configured. tenant_unavailable: administrative authority could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/promotions/{id}`
+### `PUT /api/bloem/v2/admin/platform/promotions/{id}`
 
 Replace every editable field of a registry entry.
 
 Operation ID: `updateBloemPlatformPromotion`.
 Credentials: `bloemPlatformContext`; or `bearerAuth`.
 
-Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. In-playback cards (surface in_playback) are available when /api/bloem/v1/capabilities lists playback_overlays_v1. JSON body limit: 64 KiB. Unknown fields and anything after the first JSON value are ignored. PUT is a full replacement, applying defaults to omitted optional fields. These writes have no expected_revision, If-Match or replay receipt; reconcile the list after an uncertain result before submitting again.
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. In-playback cards (surface in_playback) are available when /api/bloem/v2/capabilities lists playback_overlays_v1. JSON body limit: 64 KiB. Unknown fields and anything after the first JSON value are ignored. PUT is a full replacement, applying defaults to omitted optional fields. These writes have no expected_revision, If-Match or replay receipt; reconcile the list after an uncertain result before submitting again.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -301,14 +301,14 @@ Request body (required, `application/json`): [`BloemPromotionBody`](#bloempromot
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the registry operation failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the promotion registry is not configured. tenant_unavailable: administrative authority could not be checked. |
 
-### `DELETE /api/bloem/v1/admin/platform/promotions/{id}`
+### `DELETE /api/bloem/v2/admin/platform/promotions/{id}`
 
 Delete a registry entry.
 
 Operation ID: `deleteBloemPlatformPromotion`.
 Credentials: `bloemPlatformContext`; or `bearerAuth`.
 
-Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. In-playback cards (surface in_playback) are available when /api/bloem/v1/capabilities lists playback_overlays_v1.
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority. In-playback cards (surface in_playback) are available when /api/bloem/v2/capabilities lists playback_overlays_v1.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -323,7 +323,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the registry operation failed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the promotion registry is not configured. tenant_unavailable: administrative authority could not be checked. |
 
-### `GET /api/bloem/v1/admin/platform/upgrade-prompt`
+### `GET /api/bloem/v2/admin/platform/upgrade-prompt`
 
 Read the upgrade prompt.
 
@@ -339,7 +339,7 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator; forbidden: the API key's scopes exclude this route. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | upgrade_prompt_unavailable: the database is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `PUT /api/bloem/v1/admin/platform/upgrade-prompt`
+### `PUT /api/bloem/v2/admin/platform/upgrade-prompt`
 
 Replace the upgrade prompt.
 
@@ -359,14 +359,14 @@ Request body (required, `application/json`): [`UpgradePrompt`](#upgradeprompt).
 | 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_upgrade_prompt: a field is too long, the link is not https, or a prompt turned on lacks its title, button label or link. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | upgrade_prompt_unavailable: the database is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
-### `GET /api/bloem/v1/ambience`
+### `GET /api/bloem/v2/ambience`
 
 Read seasonal presentation for the current verified tenant viewer.
 
 Operation ID: `getBloemSeasonalViewer`.
 Credentials: `bearerAuth`.
 
-Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile. Account, profile, active organization and membership must agree; policy and security revisions must be positive. Explicit tenant claims are revalidated; legacy account sessions resolve to the default organization, not an organization selected by a header. While that default organization is still initializing, a legacy session's verified viewer receives deployment-wide packs only. The profile's organization is checked before delivering public and organization-owned packs. The existing default-deny route boundary excludes direct-profile sessions. This is private viewer delivery, separate from public login branding. Handler responses use Cache-Control: private, no-store. Availability is advertised by seasonal_viewer_v1 in /api/bloem/v1/capabilities feature_tokens.
+Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile. Account, profile, active organization and membership must agree; policy and security revisions must be positive. Explicit tenant claims are revalidated; legacy account sessions resolve to the default organization, not an organization selected by a header. While that default organization is still initializing, a legacy session's verified viewer receives deployment-wide packs only. The profile's organization is checked before delivering public and organization-owned packs. The existing default-deny route boundary excludes direct-profile sessions. This is private viewer delivery, separate from public login branding. Handler responses use Cache-Control: private, no-store. Availability is advertised by seasonal_viewer_v1 in /api/bloem/v2/capabilities feature_tokens.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -384,14 +384,14 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: viewer access could not be resolved. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the session or viewer access could not be checked; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. unavailable: seasonal presentation could not be read. |
 
-### `GET /api/bloem/v1/ambience/assets/{ref}`
+### `GET /api/bloem/v2/ambience/assets/{ref}`
 
 Serve uploaded seasonal and campaign artwork.
 
 Operation ID: `getBloemAmbienceAsset`.
 Credentials: none (public).
 
-Public: no credential, because artwork shows on the sign-in page. Uploads under /api/bloem/v1/admin/platform/ambience return paths here. The bytes are a PNG, WebP, JPEG or GIF image with its sniffed Content-Type; refs are content-addressed, so responses are immutable (Cache-Control public, max-age one year) and carry the ref as ETag. Paths under /api/v1/ambience/assets/ serve the same files.
+Public: no credential, because artwork shows on the sign-in page. Uploads under /api/bloem/v2/admin/platform/ambience return paths here. The bytes are a PNG, WebP, JPEG or GIF image with its sniffed Content-Type; refs are content-addressed, so responses are immutable (Cache-Control public, max-age one year) and carry the ref as ETag.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -406,21 +406,21 @@ Public: no credential, because artwork shows on the sign-in page. Uploads under 
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the artwork could not be read. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: seasonal packs or their asset storage are not configured. |
 
-### `GET /api/bloem/v1/ambience/public`
+### `GET /api/bloem/v2/ambience/public`
 
 List the active deployment-wide seasonal packs.
 
 Operation ID: `getBloemPublicAmbience`.
 Credentials: none (public).
 
-Public: no credential, so a signed-out page can show the season. Only deployment-wide packs; a profile's own seasonal presentation is GET /api/bloem/v1/ambience. Always an array, empty when none are active.
+Public: no credential, so a signed-out page can show the season. Only deployment-wide packs; a profile's own seasonal presentation is GET /api/bloem/v2/ambience. Always an array, empty when none are active.
 
 | Status | Body | Meaning |
 | --- | --- | --- |
 | 200 | [`BloemPublicAmbienceResponse`](#bloempublicambienceresponse) | OK |
 | default | `application/problem+json` [`Problem`](#problem) | Error |
 
-### `GET /api/bloem/v1/notifications`
+### `GET /api/bloem/v2/notifications`
 
 The acting profile's inbox, newest first, with the alert fields a row needs to render.
 
@@ -446,7 +446,7 @@ Credentials: `bearerAuth`.
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the inbox could not be read. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/notifications/sync`
+### `GET /api/bloem/v2/notifications/sync`
 
 Rows newer than a cursor, for a client waking from a push or reconnecting across a gap.
 
@@ -473,7 +473,7 @@ Without a cursor, returns the newest rows up to limit, oldest first, with has_mo
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the inbox could not be read. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/notifications/{id}`
+### `GET /api/bloem/v2/notifications/{id}`
 
 One inbox row. Another profile's row is absent, not forbidden.
 
@@ -497,14 +497,14 @@ Credentials: `bearerAuth`.
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the row could not be read. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/promotions`
+### `GET /api/bloem/v2/promotions`
 
 List the campaign cards a profile sees on a surface.
 
 Operation ID: `listBloemPromotions`.
 Credentials: `bearerAuth`.
 
-Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v1/capabilities feature_tokens. Replaces GET /api/v1/promotions and, for the home surface, the promoted row of the /api/v1 home layout: home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out.
+Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Replaces the campaign list of Silo's retired alpha v1 API and, for the home surface, the promoted row of its home layout: home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -524,14 +524,14 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: campaigns could not be loaded. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: campaigns are not available; service_unavailable or tenant_unavailable: the session, tenant or viewer access could not be checked. |
 
-### `PUT /api/bloem/v1/promotions/{id}/dismissals/{surface}`
+### `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}`
 
 Stop showing a campaign to a profile on a surface.
 
 Operation ID: `dismissBloemPromotion`.
 Credentials: `bearerAuth`.
 
-Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v1/capabilities feature_tokens. Replaces PUT /api/v1/home/dismissals/promo:{surface}/{id}, and writes the same per-profile dismissal. Idempotent: repeating it refreshes the dismissal.
+Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Replaces the promo:{surface}/{id} home dismissal of Silo's retired alpha v1 API, and writes the same per-profile dismissal. Idempotent: repeating it refreshes the dismissal.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -551,14 +551,14 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the dismissal could not be saved. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: campaigns or dismissals are not available; service_unavailable or tenant_unavailable: the session, tenant or viewer access could not be checked. |
 
-### `POST /api/bloem/v1/promotions/{id}/save`
+### `POST /api/bloem/v2/promotions/{id}/save`
 
 Save an in-playback campaign to the profile's inbox.
 
 Operation ID: `saveBloemPromotion`.
 Credentials: `bearerAuth`.
 
-Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v1/capabilities feature_tokens. Replaces POST /api/v1/promotions/{id}/save. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy.
+Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Replaces the campaign save of Silo's retired alpha v1 API. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |

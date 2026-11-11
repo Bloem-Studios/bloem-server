@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
-<title id="t">Who still calls Silo's /api/v1</title>
-<desc id="d">A grid. Rows are the apps that talk to a Bloem server: the storefront, the web app, Bloem's phone and TV apps, and Silo's own apps. Columns are Silo's /api/v1, Silo's /api/v2 and Bloem's /api/bloem/v1. The storefront and the web app left /api/v1 on 31 October and 1 November 2026; Bloem's phone and TV apps still call part of it.</desc>
+<title id="t">Who called Silo's /api/v1</title>
+<desc id="d">A grid. Rows are the apps that talk to a Bloem server: the storefront, the web app, Bloem's phone and TV apps, and Silo's own apps. Columns are Silo's /api/v1, Silo's /api/v2 and Bloem's /api/bloem/v2. The storefront and the web app left /api/v1 on 31 October and 1 November 2026. Silo retired it on 11 November 2026, so the phone and TV apps' remaining calls there now answer 410 Gone.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="639" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
-<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Who still calls Silo's /api/v1</text>
-<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Silo will retire /api/v1. Each caller moves to Silo's /api/v2 or to Bloem's own API.</text>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Who called Silo's /api/v1</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Silo retired /api/v1 on 11 November 2026. Every caller uses Silo's /api/v2 or Bloem's own API.</text>
 <rect x="334" y="118" width="268" height="64" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.6"/>
 <text x="468.0" y="146" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Silo's /api/v1</text>
-<text x="468.0" y="168" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">Frozen; to be retired</text>
+<text x="468.0" y="168" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">Retired: 410 Gone</text>
 <rect x="610" y="118" width="268" height="64" rx="12" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.6"/>
 <text x="744.0" y="146" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Silo's /api/v2</text>
 <text x="744.0" y="168" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">Silo's stable API</text>
 <rect x="886" y="118" width="268" height="64" rx="12" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.6"/>
-<text x="1020.0" y="146" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Bloem's /api/bloem/v1</text>
+<text x="1020.0" y="146" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Bloem's /api/bloem/v2</text>
 <text x="1020.0" y="168" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">Bloem's own features</text>
 <rect x="40" y="198" width="280" height="78" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
 <text x="60" y="232" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">The storefront</text>
@@ -50,8 +50,8 @@
 <rect x="334" y="374" width="268" height="78" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
 <circle cx="360" cy="413.0" r="12" fill="#FFFFFF" stroke="#F59E0B" stroke-width="2.5"/>
 <path d="M354.6,413.0 L365.4,413.0" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
-<text x="382" y="409.0" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Campaigns, remote control,</text>
-<text x="382" y="427.0" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">profile sign-in</text>
+<text x="382" y="409.0" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Old calls answer 410 since 11</text>
+<text x="382" y="427.0" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">November</text>
 <rect x="610" y="374" width="268" height="78" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
 <circle cx="636" cy="413.0" r="12" fill="#10B981"/>
 <path d="M630.6,413.24 L634.8,417.56 L642.0,408.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -66,7 +66,8 @@
 <rect x="334" y="462" width="268" height="78" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
 <circle cx="360" cy="501.0" r="12" fill="#FFFFFF" stroke="#F59E0B" stroke-width="2.5"/>
 <path d="M354.6,501.0 L365.4,501.0" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
-<text x="382" y="506.0" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">At most a health check</text>
+<text x="382" y="497.0" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">At most a health check, which</text>
+<text x="382" y="515.0" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">stays</text>
 <rect x="610" y="462" width="268" height="78" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
 <circle cx="636" cy="501.0" r="12" fill="#10B981"/>
 <path d="M630.6,501.24 L634.8,505.56 L642.0,496.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -75,6 +76,5 @@
 <circle cx="912" cy="501.0" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
 <path d="M906.6,495.6 L917.4,506.4 M917.4,495.6 L906.6,506.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
 <text x="934" y="506.0" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">They know nothing of it</text>
-<text x="40" y="580" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">When Silo answers /api/v1 with 410 Gone, the routes Bloem still keeps there go with it. Each one already has a replacement, or gets one when the phone apps</text>
-<text x="40" y="600" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">move.</text>
+<text x="40" y="600" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Bloem's routes on /api/v1 went with it. Campaigns and seasonal packs have replacements; remote control and profile sign-in wait for native routes.</text>
 </svg>

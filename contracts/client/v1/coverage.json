@@ -195,39 +195,39 @@
     },
     {
       "type": "internal/api/handlers.APIKeyConfiguration",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.APIKeyListItem",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminAPIKeyListItem",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminAutoscanConnectionView",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminAutoscanSettingsView",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminAutoscanSourceView",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminAutoscanStatusView",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminDeviceDetailView",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminDeviceSummaryView",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminDownloadedSubtitle",
@@ -243,7 +243,7 @@
     },
     {
       "type": "internal/api/handlers.AdminJellyfinCompatSettingsPatch",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminPlaybackActivity",
@@ -255,7 +255,7 @@
     },
     {
       "type": "internal/api/handlers.AdminPlaybackHistoryPageKey",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminPlaybackReliability",
@@ -263,27 +263,27 @@
     },
     {
       "type": "internal/api/handlers.AdminRateLimitAuthEndpointUpdate",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminRateLimitConfigView",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminRateLimitTierUpdate",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminRateLimitUpdate",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminRateLimitUpdateResult",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminSettingValue",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminStats",
@@ -291,7 +291,7 @@
     },
     {
       "type": "internal/api/handlers.AdminSubtitlePageKey",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminTimeseries",
@@ -315,7 +315,7 @@
     },
     {
       "type": "internal/api/handlers.AdminUserView",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Served to the storefront by Bloem's native platform account routes (BloemPlatformAccountOutput in contracts/api/bloem/v2/openapi.json); Silo's /api/v2 admin user routes answer with their own AdminUser projection, and no generated Kotlin or Swift client decodes it."
     },
     {
       "type": "internal/api/handlers.Candidate",
@@ -323,31 +323,31 @@
     },
     {
       "type": "internal/api/handlers.CollectionCapabilitiesView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.CollectionDisplayFilterPresetsView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.CollectionGroupCreateRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.CollectionGroupUpdateRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.CollectionGroupView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.CollectionSortPreferenceRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.CollectionSortPreferenceResponse",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.CompatConnectAccountInfo",
@@ -359,11 +359,11 @@
     },
     {
       "type": "internal/api/handlers.DiagnosticsChunkInitRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.DiagnosticsChunkInitResponse",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.EbookReaderAnnotation",
@@ -379,11 +379,11 @@
     },
     {
       "type": "internal/api/handlers.EffectivePolicyView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Nested in AdminUserView, which Bloem's native platform account routes serve to the storefront (contracts/api/bloem/v2/openapi.json); no generated Kotlin or Swift client decodes it."
     },
     {
       "type": "internal/api/handlers.EffectiveSubtitleAppearanceView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.ForceReloadResult",
@@ -395,23 +395,23 @@
     },
     {
       "type": "internal/api/handlers.ImagesCapabilityResponse",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.MDBListDiscoveryView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.MarkerContributionRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.MarkerProviderUpdate",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.MarkerProviderValidationView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.NodeHWAccel",
@@ -419,115 +419,115 @@
     },
     {
       "type": "internal/api/handlers.OverlayConfigView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PersonalCollectionCreateRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PersonalCollectionItemView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PersonalCollectionItemsView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and is no longer referenced outside its own definition and tests. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PersonalCollectionListView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PersonalCollectionPreviewItemView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PersonalCollectionPreviewRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PersonalCollectionPreviewView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PersonalCollectionUpdateRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PersonalCollectionView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PlaybackAcceptedProgress",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PlaybackControlBinding",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PlaybackControlTicket",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PlaybackMutationView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PlaybackProgressCommand",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PlaybackStopCommand",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PluginAssetView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PluginAuthBindingView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PluginCapabilityView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PluginCatalogEntryView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PluginConfigValueView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PluginInstallationView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PluginPresentationView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PluginRouteView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PluginTaskBindingView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PluginUserSettingsDetailView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PluginUserSettingsView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PolicyCapabilityView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.PolicyDecisionExplanation",
@@ -543,27 +543,27 @@
     },
     {
       "type": "internal/api/handlers.ScanAdmission",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.ScanCancellation",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.ServerCollectionsLibraryView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.ServerCollectionsView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.SettingsCapabilitiesView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.SubtitleAIStatusView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.SystemResources",
@@ -571,7 +571,7 @@
     },
     {
       "type": "internal/api/handlers.TranslateMetadataRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.UpdateItemMetadataRequest",
@@ -579,19 +579,19 @@
     },
     {
       "type": "internal/api/handlers.UpdatePersonRequest",
-      "reason": "Body of PATCH /api/v1/admin/people/{id} for librarian edits in the bundled web UI."
+      "reason": "Handler-layer body behind Silo's PATCH /api/v2/admin/people/{id}, which declares its own request body for librarian edits; the route on Silo's retired v1 API that took it directly is gone. No generated client sends it."
     },
     {
       "type": "internal/api/handlers.UserImportMDBListRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.UserImportTMDBRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.UserImportView",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.WatchProviderStats",
@@ -2455,7 +2455,7 @@
     },
     {
       "type": "internal/remote.Command",
-      "reason": "Remote-control command record. Its only routes were on Silo's /api/v1, which Silo retired, so no generated client sends or decodes it."
+      "reason": "Remote-control command record. Its only routes were on Silo's v1 API, which Silo retired, so no generated client sends or decodes it."
     },
     {
       "type": "internal/apiv2.BloemOrganizationGroupWrite",
@@ -2707,7 +2707,7 @@
     },
     {
       "type": "internal/api/handlers.AdminPlaybackHistoryFilter",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.BloemLibraryFigure",
@@ -2731,11 +2731,11 @@
     },
     {
       "type": "internal/api/handlers.AdminRateLimitSessionQuotaUpdate",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.AdminRateLimitSessionQuotaView",
-      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+      "reason": "Belonged to a handler of Silo's retired v1 API and now remains only inside internal/api/handlers. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.BloemOrganizationBranding",
@@ -2775,15 +2775,15 @@
     },
     {
       "type": "internal/api/handlers.BloemPublicAmbienceResponse",
-      "reason": "Public deployment-wide seasonal packs read by the embedded web app's signed-out seasonal layer; the phone apps still read the same packs from /api/v1/theme/branding and have not adopted the native route."
+      "reason": "Public deployment-wide seasonal packs read by the embedded web app's signed-out seasonal layer; the phone apps read the same packs from Silo's v1 branding route until Silo retired it and have not adopted the native route."
     },
     {
       "type": "internal/api/handlers.BloemPromotionsResponse",
-      "reason": "Native viewer campaign list read by the embedded web app; the phone apps still read the /api/v1 promotions shape and have not adopted the native route."
+      "reason": "Native viewer campaign list read by the embedded web app; the phone apps read Bloem's former v1 promotions shape until Silo retired that API and have not adopted the native route."
     },
     {
       "type": "internal/api/handlers.SectionOverrideWrite",
-      "reason": "Server-internal command shape: /api/v2 replaceProfileSectionOverrides lowers its own body (apiv2.SectionOverrideWrite) onto it, and the /api/v1 route that took it directly is retired. No generated client sends or decodes it."
+      "reason": "Server-internal command shape: /api/v2 replaceProfileSectionOverrides lowers its own body (apiv2.SectionOverrideWrite) onto it, and the route on Silo's retired v1 API that took it directly is gone. No generated client sends or decodes it."
     },
     {
       "type": "internal/apiv2.AdminAPIClient",

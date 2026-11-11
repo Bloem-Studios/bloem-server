@@ -141,7 +141,7 @@ play. She clicks **Preview** and lands on the preview address as a guest.
 | Preview plan | the protected `bloem-preview` entitlement template |
 | Personal preview, preview account | a preview principal (`internal/auth/bloem_preview_principal.go`) |
 | Guest session | a session with `auth_method=preview_guest` on the shared preview account |
-| One-time link | a signed launch ticket (`internal/preview/ticket.go`), exchanged at `POST /api/bloem/v1/preview/sessions` |
+| One-time link | a signed launch ticket (`internal/preview/ticket.go`), exchanged at `POST /api/bloem/v2/preview/sessions` |
 | Preview address | the preview host in the preview settings |
 | Allowance | a play grant (`bloem_preview_play_grants`); free play is `free_play_enabled` |
 | Counting the seconds | `preview.ChargeDelivery` |
@@ -151,9 +151,9 @@ play. She clicks **Preview** and lands on the preview address as a guest.
 ## For developers
 
 - **API:** [plans and preview](../bloem/api/plans.md): preview administration
-  under `/api/bloem/v1/admin/platform/preview`, the guest exchange
-  `POST /api/bloem/v1/preview/sessions`, `GET /api/bloem/v1/preview/status` and
-  `POST /api/bloem/v1/preview/events`.
+  under `/api/bloem/v2/admin/platform/preview`, the guest exchange
+  `POST /api/bloem/v2/preview/sessions`, `GET /api/bloem/v2/preview/status` and
+  `POST /api/bloem/v2/preview/events`.
 
 ### Transport checks
 
@@ -256,7 +256,7 @@ public discovery and sign-in artwork keep their public behavior.
 
 ### Guest preview sessions
 
-`POST /api/bloem/v1/preview/sessions` exchanges a signed launch ticket only on the
+`POST /api/bloem/v2/preview/sessions` exchanges a signed launch ticket only on the
 configured preview host. Ed25519 verification checks issuer, server audience,
 host, issue time, strict expiry, ticket identifier and optional item/reference.
 The issue-to-expiry window is at most 60 seconds (`MaxTicketLifetime`). Up to two

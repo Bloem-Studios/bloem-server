@@ -9,12 +9,13 @@ def replacements():
     s = Svg(1200, 700, "Where Bloem's /api/v1 routes moved",
             "Six rows, one for each area Bloem added to Silo's /api/v1: tenants, tenant members, announcements, "
             "campaigns, seasonal packs and remote control. Each row shows the old path and its replacement under "
-            "/api/bloem/v1. Remote control has no replacement yet.")
+            "/api/bloem/v2. Remote control has no replacement: it is dormant. Since 11 November 2026 every old route "
+            "answers 410 Gone.")
     s.header("Where Bloem's /api/v1 routes moved",
-             "The old routes stay mounted, unchanged, until their last callers move. Then Silo retires /api/v1.")
+             "Silo retired /api/v1 on 11 November 2026; every old route now answers 410 Gone.")
     s.text(40, 140, "Area", size=14, weight="700", fill=SOFT)
     s.text(250, 140, "Old, on Silo's /api/v1", size=14, weight="700", fill=OLD["label"])
-    s.text(700, 140, "Now, on Bloem's /api/bloem/v1", size=14, weight="700", fill=NEW["label"])
+    s.text(700, 140, "Now, on Bloem's /api/bloem/v2", size=14, weight="700", fill=NEW["label"])
     rows = [
         ("Tenants", "7", ["/admin/tenants/..."], ["/admin/platform/tenants/..."]),
         ("Tenant members", "17", ["/admin/tenants/{id}/members/..."], ["/admin/platform/tenants/{id}/members/..."]),
@@ -41,9 +42,9 @@ def replacements():
         else:
             s.rect(690, y + 8, 450, h - 16, "#F3F4F6", "#9CA3AF", rx=10, sw=1.2, dash="6 5")
             no_mark(s, 716, y + h / 2)
-            s.text(740, y + h / 2 + 5, "None yet: built when the phone apps move", size=14, fill=INK)
+            s.text(740, y + h / 2 + 5, "None: dormant until native routes are built", size=14, fill=INK)
         y += h + 12
-    footer(s, "Paths are shortened: each old path starts with /api/v1, each new one with /api/bloem/v1.", y=y + 34,
+    footer(s, "Paths are shortened: each old path starts with /api/v1, each new one with /api/bloem/v2.", y=y + 34,
            fill=INK)
     s.h = int(y + 70)
     return s

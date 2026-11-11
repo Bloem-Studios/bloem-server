@@ -15,7 +15,7 @@ import (
 // It did not used to be. The native surface was registered on chi, which
 // produces no machine-readable contract, and the consequences were not
 // theoretical. Asking "does this endpoint exist on /api/v2?" is one query
-// against contracts/api/v2/openapi.json; asking the same of /api/bloem/v1 meant
+// against contracts/api/v2/openapi.json; asking the same of /api/bloem/v2 meant
 // grepping for path literals, which silently fails because huma builds paths as
 // Prefix + "/thing" and chi routes are assembled across nested Route calls. A
 // whole duplicate ebook surface was built on that mistake before anyone checked
@@ -33,7 +33,7 @@ import (
 // BloemPrefix is the mount of Bloem's native surface. It is the same string as
 // handlers.NativeAPIPrefix; their independent declarations are checked by
 // TestBloemPrefixMatchesTheMountedRouter.
-const BloemPrefix = "/api/bloem/v1"
+const BloemPrefix = "/api/bloem/v2"
 
 // bloemAPIMajor is the native surface's major version, carried in the document
 // the way APIMajor is for v2.
@@ -60,11 +60,11 @@ func bloemHumaConfig() huma.Config {
 	}
 	cfg.Components.SecuritySchemes["bloemOrganizationContext"] = &huma.SecurityScheme{
 		Type: "http", Scheme: "bearer",
-		Description: "An organization-scoped administrative-context token obtained through /api/bloem/v1/admin/session. The account, originating login session, organization, membership and policy/security revisions are revalidated on every request. An account token or platform-scoped context alone is insufficient.",
+		Description: "An organization-scoped administrative-context token obtained through /api/bloem/v2/admin/session. The account, originating login session, organization, membership and policy/security revisions are revalidated on every request. An account token or platform-scoped context alone is insufficient.",
 	}
 	cfg.Components.SecuritySchemes["bloemPlatformContext"] = &huma.SecurityScheme{
 		Type: "http", Scheme: "bearer",
-		Description: "A platform-scoped administrative-context token obtained through /api/bloem/v1/admin/session. The originating login session and current platform authority are revalidated on every request. Account and organization-scoped tokens are insufficient.",
+		Description: "A platform-scoped administrative-context token obtained through /api/bloem/v2/admin/session. The originating login session and current platform authority are revalidated on every request. Account and organization-scoped tokens are insufficient.",
 	}
 
 	cfg.Components.SecuritySchemes["bloemAdminLoginSession"] = &huma.SecurityScheme{

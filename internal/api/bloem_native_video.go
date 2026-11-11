@@ -344,7 +344,7 @@ func (s *nativeVideoSubject) verifyStream(ctx context.Context) error {
 	return nil
 }
 func nativeVideoTokenPath(path, sessionID string) bool {
-	for _, prefix := range []string{"/api/v1", "/api/v2"} {
+	for _, prefix := range []string{"/api/v2"} {
 		if path == prefix+"/stream/"+sessionID {
 			return true
 		}

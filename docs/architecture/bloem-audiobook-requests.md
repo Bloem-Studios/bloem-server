@@ -5,6 +5,7 @@
 > beside Silo's movie and series request service (`internal/requests`, Silo's
 > [media requests](media-requests.md)), which it does not change. The technical
 > rules are in the [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 A viewer can ask for an audiobook the library doesn't have yet. This page walks
 through who can ask and who sees what, how Bloem fetches an approved book when an
@@ -168,9 +169,9 @@ the download folder with Ana's ISBN, Bloem matches it, and Ana gets a notice.
 ## For developers
 
 - **API:** [requests](../bloem/api/requests.md): the viewer routes under
-  `/api/bloem/v1/book-requests`, the organization queue under
-  `/api/bloem/v1/admin/organization/book-requests`, and the connection routes
-  under `/api/bloem/v1/admin/organization/audiobook-request-integrations`.
+  `/api/bloem/v2/book-requests`, the organization queue under
+  `/api/bloem/v2/admin/organization/book-requests`, and the connection routes
+  under `/api/bloem/v2/admin/organization/audiobook-request-integrations`.
 
 ### Lane boundary
 
@@ -391,8 +392,8 @@ fail their status checks; the web editor warns before such a save.
 Silo's generic request-integration editor keeps a saved `api_key_ref` whenever
 `base_url` is unchanged. Audiobook connections keep `base_url` empty and their
 URLs in `plugin_config`, so that rule never fires for them. The host refuses
-generic updates (v1 `PUT /api/v1/admin/request-integrations/{id}` and the v2
-twin) and option probes of any connection whose saved or submitted media types
+generic updates (`PUT /api/v2/admin/request-integrations/{id}`; the v1 twin went
+with Silo's v1 API) and option probes of any connection whose saved or submitted media types
 include `audiobook`, or whose installation is `bloem.requests.audiobooks`
 (`internal/requests/bloem_lane_integration_guard.go`). The refusal is a form
 validation error naming Bloem's audiobook setup. Generic creation stays open

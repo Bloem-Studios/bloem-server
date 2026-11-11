@@ -33,7 +33,7 @@ type BloemServerIdentity struct {
 	// which Bloem-native surfaces it serves. A client needs both to choose a
 	// dialect.
 	APIVersions   []int    `json:"api_versions" doc:"Silo-compatible API majors this build serves."`
-	BloemAPI      []string `json:"bloem_api" doc:"Native surface versions mounted under /api/bloem/." example:"v1"`
+	BloemAPI      []string `json:"bloem_api" doc:"Native surface versions mounted under /api/bloem/." example:"v2"`
 	SetupComplete bool     `json:"setup_complete" doc:"False while the server has no owner account, which is the only state where the setup routes answer."`
 }
 

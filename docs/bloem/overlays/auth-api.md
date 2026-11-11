@@ -1,7 +1,8 @@
 # Bloem overlay: Authentication API
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
-> and checked against `main` at `1430c3769`, which includes Silo through `cb4f45d0c`. It lists what Bloem
+> and checked against `main` at `1430c3769`, which includes Silo through `cb4f45d0c`, and
+> checked again on 2026-11-11, after Silo retired its v1 API. It lists what Bloem
 > adds to or replaces in Silo's [`docs/auth-api.md`](../../auth-api.md), which stays
 > exactly as Silo wrote it. The section-by-section changes are in the
 > [For developers](#for-developers) section.
@@ -37,7 +38,7 @@ their own, and organizations.
 
 | On this page | In the code and API |
 | --- | --- |
-| Direct-profile credential, profile sign-in | `POST /api/v1/auth/profile-login`; managed at `/api/bloem/v1/profile-credentials/{id}` (capability `profile_credential_management_v1`) |
+| Direct-profile credential, profile sign-in | dormant: the sign-in route was Silo's v1 `POST /auth/profile-login`, retired 2026-11-11; managed at `/api/bloem/v2/profile-credentials/{id}` (capability `profile_credential_management_v1`) |
 | The domain check | `auth.SignInDomainCheck`, `orgdomains.Directory.SignInCheck`, refusal `409 wrong_organization_domain` |
 | A provider sign-in staying on its domain | `orgdomains.Directory.OAuthBaseURL`, `auth.OAuthHandler.SetRequestBaseURL` |
 | A sign-in its organization revoked | `apimw.ErrSessionRevokedByOrganization`, answered `401 session_invalid` (`session_expired` on `/api/v2`) |
@@ -47,8 +48,9 @@ their own, and organizations.
 
 ### Where this overlay came from
 
-Bloem's direct-profile login (`POST /api/v1/auth/profile-login`) has had a
-default-deny route allowlist since `16baf5558` (2026-08-14). Account creation also
+Bloem's direct-profile login (v1 `POST /auth/profile-login`, dormant since Silo
+retired its v1 API on 2026-11-11) has had a default-deny route allowlist since
+`16baf5558` (2026-08-14). Account creation also
 provisions an organization membership. Bloem first documented these in the Silo
 file in September 2026 and moved the text here in `47ea7c889` (2026-09-23).
 
@@ -120,19 +122,17 @@ Since `bb92c4cfd` (2026-10-25), Bloem's own password hashing and checks run unde
 Silo's admission limit (`internal/auth/passwordhash`). The following answer a
 busy refusal with Silo's `503 service_unavailable` and `Retry-After`:
 
-- direct-profile login (`POST /api/v1/auth/profile-login`);
-- setting or rotating a profile credential (hashing the new credential);
-- tenant-member commands under `/api/v1/admin/tenants/{tenant_id}/members`,
-  which also hash their command receipt.
+- setting or rotating a profile credential (hashing the new credential).
+
+Until Silo retired its v1 API on 2026-11-11, the same held for direct-profile login
+and for the v1 tenant-member commands, which also hashed their command receipt.
 
 Two account-password re-checks also run under the limit, but any failure there,
 busy included, answers `503` without `Retry-After`: the check before a
 profile-credential write (`unavailable`) and the check before an organization
-ownership transfer (`tenant_unavailable`). v1 setup, signup and invitation
-acceptance run Silo's handlers again since `b017bfe84` (2026-10-26).
-`POST /api/v1/admin/users` creates the account through Bloem's
-`bloemCreateUser`, which maps a busy refusal the same way. All of them answer
-as described above.
+ownership transfer (`tenant_unavailable`). Setup, signup and invitation
+acceptance run Silo's handlers unchanged since `b017bfe84` (2026-10-26), now on
+`/api/v2`. All of them answer as described above.
 
 ---
 
@@ -140,12 +140,12 @@ as described above.
 “Every password sign-in also spends a budget kept for the name it signs in with…”.
 **Bloem adds:**
 
-Direct-profile login (`POST /api/v1/auth/profile-login`) spends no per-name budget.
-It spends the `login` budget, so account and profile sign-ins from one client
-address share one allowance, including the connection-address cap on forwarded
+Direct-profile login (dormant since 2026-11-11; it was Silo's v1
+`POST /auth/profile-login`) spent no per-name budget. It spent the `login` budget,
+so account and profile sign-ins from one client address shared one allowance, including the connection-address cap on forwarded
 clients described under [sign-in rate limits](../../auth-api.md#sign-in-rate-limits).
 Setting or clearing a profile credential (`PUT` and `DELETE`
-`/api/bloem/v1/profile-credentials/{id}`) checks the account password and spends
+`/api/bloem/v2/profile-credentials/{id}`) checks the account password and spends
 the `password_change` budget; reading the status spends none. A budget must be one
 `ratelimit.DefaultConfig` defines, because an unknown name gets no endpoint limit
 and cannot be configured: until 2026-11-10 these routes used the undefined names
@@ -191,9 +191,8 @@ browser back to that domain's callback, and the browser finishes on that domain'
 completion page, where its cookies are (`Directory.OAuthBaseURL`, installed with
 `auth.OAuthHandler.SetRequestBaseURL`). A provider sign-out started on an
 organization domain returns the browser to that domain's `/login`. So each domain
-needs, at the provider, both callbacks,
-`https://<domain>/api/v1/auth/oauth/<installation>/callback` and
-`https://<domain>/api/v2/auth/oauth/<installation>/callback`, and, when provider
+needs, at the provider, its callback
+`https://<domain>/api/v2/auth/oauth/<installation>/callback` and, when provider
 sign-out is on, `https://<domain>/login` as a post-logout redirect URI. On any
 other host the flow keeps the public URL and bounces there, as Silo's text above
 describes. `internal/auth/oauth_handler.go` is a declared seam for this: one field
@@ -230,7 +229,7 @@ keep their existing behavior; no cross-store transaction or backend conversion i
 #### Bloem household profile credentials
 
 When `profile_credential_management_v1` is advertised, the embedded web exposes
-status, set/rotate and disable at `/api/bloem/v1/profile-credentials/{id}`. These
+status, set/rotate and disable at `/api/bloem/v2/profile-credentials/{id}`. These
 GET/PUT/DELETE operations require a non-impersonated account session and the existing
 household/PIN authority. Writes additionally require the enabled local account password
 and a positive `expected_revision`, compared under the profile row lock. A stale write

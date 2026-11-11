@@ -7,7 +7,7 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 )
 
-// mountBloemSeasonalViewer is called inside /api/bloem/v1 alongside the client
+// mountBloemSeasonalViewer is called inside /api/bloem/v2 alongside the client
 // surface. All three authority resolvers are mandatory; a partially configured
 // server neither mounts nor advertises viewer delivery. RequireAuth retains the
 // existing default-deny direct-profile route guard unchanged.

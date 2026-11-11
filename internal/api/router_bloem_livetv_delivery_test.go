@@ -121,7 +121,7 @@ while true; do sleep 1; done
 		}
 		return rec
 	}
-	start := request(http.MethodPost, "/api/bloem/v1/livetv/channels/channel/session", bearer, http.StatusCreated)
+	start := request(http.MethodPost, "/api/bloem/v2/livetv/channels/channel/session", bearer, http.StatusCreated)
 	var session livetv.SessionStartResponse
 	if err := json.Unmarshal(start.Body.Bytes(), &session); err != nil {
 		t.Fatal(err)
@@ -133,7 +133,7 @@ while true; do sleep 1; done
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(u.Path, "/api/bloem/v1/livetv/live-hls/") || u.Host != "" || u.Scheme != "" {
+	if !strings.HasPrefix(u.Path, "/api/bloem/v2/livetv/live-hls/") || u.Host != "" || u.Scheme != "" {
 		t.Fatalf("session URL does not target native delivery: %s", u.Path)
 	}
 	if session.StreamURL != session.HLSURL || u.Query().Get("st") == "" || len(u.Query()) != 1 {
@@ -160,8 +160,8 @@ while true; do sleep 1; done
 	}
 	// An unexpired delivery ticket cannot outlive current playback policy.
 	exec(`UPDATE access_groups SET playback_allowed=false WHERE id=1`)
-	request(http.MethodGet, "/api/bloem/v1/livetv/channels", bearer, http.StatusOK)
-	request(http.MethodPost, "/api/bloem/v1/livetv/channels/channel/session", bearer, http.StatusForbidden)
+	request(http.MethodGet, "/api/bloem/v2/livetv/channels", bearer, http.StatusOK)
+	request(http.MethodPost, "/api/bloem/v2/livetv/channels/channel/session", bearer, http.StatusForbidden)
 	request(http.MethodGet, session.HLSURL, "", http.StatusForbidden)
 	request(http.MethodGet, segmentPath, "", http.StatusForbidden)
 	exec(`UPDATE access_groups SET playback_allowed=true WHERE id=1`)
@@ -223,10 +223,10 @@ while true; do sleep 1; done
 		{"POST", "/sessions/" + session.SessionID + "/heartbeat"}, {"DELETE", "/sessions/" + session.SessionID},
 		{"GET", "/sessions/" + session.SessionID + "/stream"},
 	} {
-		request(operation.method, "/api/bloem/v1/livetv"+operation.path+"?"+u.RawQuery, "", http.StatusUnauthorized)
+		request(operation.method, "/api/bloem/v2/livetv"+operation.path+"?"+u.RawQuery, "", http.StatusUnauthorized)
 	}
 	request(http.MethodPost, session.HLSURL, "", http.StatusUnauthorized)
-	request(http.MethodGet, strings.Replace(session.HLSURL, "/api/bloem/v1/", "/api/v1/", 1), "", http.StatusNotFound)
+	request(http.MethodGet, strings.Replace(session.HLSURL, "/api/bloem/v2/", "/api/v1/", 1), "", http.StatusNotFound) // v1-guard: allow
 	// Request-supplied query credentials must never be copied into HLS assets.
 	clean := request(http.MethodGet, session.HLSURL+"&token=account-secret&profile_id=sibling&profile_token=pin-secret", "", http.StatusOK)
 	if strings.Contains(clean.Body.String(), "account-secret") || strings.Contains(clean.Body.String(), "pin-secret") || strings.Contains(clean.Body.String(), "profile_id") {
@@ -251,8 +251,8 @@ while true; do sleep 1; done
 	if err != nil {
 		t.Fatal(err)
 	}
-	request(http.MethodPost, "/api/bloem/v1/livetv/channels/channel/session?"+u.RawQuery, direct, http.StatusForbidden)
-	request(http.MethodGet, "/api/bloem/v1/livetv/channels?"+u.RawQuery, direct, http.StatusForbidden)
+	request(http.MethodPost, "/api/bloem/v2/livetv/channels/channel/session?"+u.RawQuery, direct, http.StatusForbidden)
+	request(http.MethodGet, "/api/bloem/v2/livetv/channels?"+u.RawQuery, direct, http.StatusForbidden)
 
 	// A second API node must route through the durable owner, retain the native
 	// path and rerun authorization there. It has no local encoder session.
@@ -285,8 +285,8 @@ while true; do sleep 1; done
 	// available so permission loss does not strand the durable tuner claim.
 	exec(`UPDATE access_groups SET allowed_permissions='{}'`)
 	request(http.MethodGet, session.HLSURL, "", http.StatusForbidden)
-	request(http.MethodPost, "/api/bloem/v1/livetv/sessions/"+session.SessionID+"/heartbeat", bearer, http.StatusForbidden)
-	request(http.MethodDelete, "/api/bloem/v1/livetv/sessions/"+session.SessionID, bearer, http.StatusOK)
+	request(http.MethodPost, "/api/bloem/v2/livetv/sessions/"+session.SessionID+"/heartbeat", bearer, http.StatusForbidden)
+	request(http.MethodDelete, "/api/bloem/v2/livetv/sessions/"+session.SessionID, bearer, http.StatusOK)
 	exec(`UPDATE access_groups SET allowed_permissions=ARRAY['watch_live_tv']`)
 	request(http.MethodGet, session.HLSURL, "", http.StatusNotFound)
 
@@ -296,17 +296,17 @@ while true; do sleep 1; done
 	router = chi.NewRouter()
 	useBaseMiddleware(router, Dependencies{})
 	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, nil, bloemRouteSurfaces{Client: newBloemClientSurface(deps, authMW, tenantMW, nil, nil)})
-	rawStart := request(http.MethodPost, "/api/bloem/v1/livetv/channels/channel/session", bearer, http.StatusCreated)
+	rawStart := request(http.MethodPost, "/api/bloem/v2/livetv/channels/channel/session", bearer, http.StatusCreated)
 	var raw livetv.SessionStartResponse
 	if err := json.Unmarshal(rawStart.Body.Bytes(), &raw); err != nil {
 		t.Fatal(err)
 	}
-	if raw.StreamURL != "/api/bloem/v1/livetv/sessions/"+raw.SessionID+"/stream" || raw.HLSURL != raw.StreamURL || raw.Transport != "mpegts" {
+	if raw.StreamURL != "/api/bloem/v2/livetv/sessions/"+raw.SessionID+"/stream" || raw.HLSURL != raw.StreamURL || raw.Transport != "mpegts" {
 		t.Fatal("raw session did not return its native proxy URL")
 	}
 	request(http.MethodHead, raw.StreamURL, bearer, http.StatusOK)
 	request(http.MethodHead, raw.StreamURL+"?"+u.RawQuery, "", http.StatusUnauthorized)
-	request(http.MethodDelete, "/api/bloem/v1/livetv/sessions/"+raw.SessionID, bearer, http.StatusOK)
+	request(http.MethodDelete, "/api/bloem/v2/livetv/sessions/"+raw.SessionID, bearer, http.StatusOK)
 	// Exercise the real native constructor's household checker. Admin claims
 	// alone must not give secondary, child or unknown profiles the override.
 	exec("CREATE TEMP TABLE livetv_recordings (LIKE public.livetv_recordings INCLUDING DEFAULTS INCLUDING INDEXES) ON COMMIT PRESERVE ROWS")

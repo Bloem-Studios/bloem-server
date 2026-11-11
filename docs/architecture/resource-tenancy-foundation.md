@@ -6,6 +6,7 @@
 > owners, organizations or grants, and every library belongs to the whole server.
 > This page explains it in plain language; the technical rules, the checking queries
 > and the rollback boundary are in the [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Every library and plugin in Bloem has an owner, and an organization may only use
 what it owns or what the platform has granted it. This page walks through who owns
@@ -109,7 +110,7 @@ together with the database snapshot taken before the deployment.
 
 - **API:** organizations' libraries and grants are on the
   [organizations and administration](../bloem/api/organizations.md) page
-  (`/api/bloem/v1/admin/organization/libraries` and `/entitlements/{folder_id}`). The
+  (`/api/bloem/v2/admin/organization/libraries` and `/entitlements/{folder_id}`). The
   policy side is in [OPA tenant authorization](opa-tenant-authorization.md).
 
 Migration `20260813090000_resource_tenancy_roots.sql` establishes Bloem's first
@@ -185,7 +186,8 @@ its activation are a reviewed database change.
 
 ### Compatibility-created roots
 
-Legacy `/api/v1` create inputs do not contain ownership fields and remain unchanged.
+Silo's create inputs (on `/api/v2`, and on its v1 API until Silo retired it on 2026-11-11)
+do not contain ownership fields and remain unchanged.
 During this expand phase:
 
 - omitted root ownership defaults to the protected platform owner; and
@@ -331,7 +333,7 @@ to force the old schema to accept private resources.
 ### Row-level security
 
 The plan of 2026-08-13 was for the next slice to move library/catalog repository
-reads and writes onto required typed tenant/service scopes and lock `/api/v1` parity,
+reads and writes onto required typed tenant/service scopes and lock parity with Silo's then-current v1 API,
 with row-level security disabled until executable repository/RLS decisions matched
 exactly. Row-level security is still not enabled at `b6039036d` (no migration enables
 it); tenant scope is applied by the policy engine and SQL predicates (see

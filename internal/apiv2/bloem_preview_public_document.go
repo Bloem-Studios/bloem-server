@@ -46,7 +46,7 @@ func bloemPreviewDocRetryAfter(op *huma.Operation, statuses ...string) {
 }
 
 // The preview host guard runs ahead of routing for every request to
-// /api/bloem/v1/preview/: it spends the shared guest traffic budget and
+// /api/bloem/v2/preview/: it spends the shared guest traffic budget and
 // refuses credentials presented on the wrong host.
 const (
 	bloemPreviewGuardLimit   = "rate_limited: the preview's shared guest traffic budget (sixty requests per second, burst 120) is exhausted; retry after one second."

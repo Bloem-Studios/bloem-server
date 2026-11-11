@@ -109,7 +109,7 @@ type Channel struct {
 	HD             bool    `json:"hd"`
 	Enabled        bool    `json:"enabled"`
 	// StreamURL is the upstream tuner URL. MarshalJSON always emits stream_url
-	// as an empty string so the /api/v1 field remains additive without leaking
+	// as an empty string so the field remains additive without leaking
 	// private tuner addresses.
 	StreamURL      string `json:"-"`
 	GuideStationID string `json:"guide_station_id"`
@@ -206,7 +206,7 @@ type LiveSession struct {
 	LastSeenAt time.Time `json:"last_seen_at"`
 }
 
-// MarshalJSON preserves stream_url for /api/v1 clients using the public proxy path.
+// MarshalJSON gives clients stream_url as the authenticated public proxy path.
 func (s LiveSession) MarshalJSON() ([]byte, error) {
 	publicStream := ""
 	if s.ID != "" {

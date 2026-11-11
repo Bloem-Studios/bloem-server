@@ -31,6 +31,7 @@ related:
 > Most of what it describes is Silo's; organizations and their domains, plans, Live TV,
 > campaigns, previews and storage sources are Bloem additions. The technical rules,
 > file names and commit references are in the [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 This guide takes you from a blank machine to a household watching its own library, and
 then keeps the server healthy. Part 1 gets a server running; you can read it in an
@@ -79,7 +80,7 @@ Each of these is covered below:
 - **Storage sources.** Libraries that read from S3 or Bookwarehouse buckets as well as local
   folders ([2.2](#22-libraries)).
 - **Separate sign-in for a profile** in the Bloem apps ([user guide](user-guide.md#2-profiles)).
-- **A native API** for Bloem's own apps, `/api/bloem/v1` ([reference](../bloem-api-reference.md)).
+- **A native API** for Bloem's own apps, `/api/bloem/v2` ([reference](../bloem-api-reference.md)).
 
 ### What Bloem removed
 
@@ -117,7 +118,8 @@ Bloem's own changes on November 1:
 - **Old sign-ins sign in again.** When an organization signs an account out, a sign-in from
   before that point is ended, and the app asks the person to sign in again. Before, the web app
   showed a broken home page.
-- **The web app and the storefront no longer call Silo's `/api/v1`.** Announcements now need the
+- **The web app and the storefront no longer call Silo's v1 API** (which Silo retired on
+  2026-11-11). Announcements now need the
   Platform context ([2.16](#216-campaigns-and-seasonal-packs)).
 
 Earlier merges on October 31 brought these from Silo:
@@ -892,8 +894,7 @@ address is registered as its primary domain.
    the provider stays on the domain it started on, so the provider must know each domain's
    addresses. The **Sign-in** settings page shows only those for the server's public address. For
    each extra domain, register:
-   - two redirect URIs:
-     `https://<domain>/api/v1/auth/oauth/<installation>/callback` and
+   - the redirect URI
      `https://<domain>/api/v2/auth/oauth/<installation>/callback`;
    - and, when signing out at the provider is on (under **Advanced** on the Sign-in page),
      `https://<domain>/login` as a post-logout redirect URI.
@@ -997,7 +998,7 @@ lists the preparation for each release.
 | A Jellyfin or Audiobookshelf app cannot connect | Check that the app uses the compatibility port (`8096` or `13378`), not 8090; that the switch under **Integrations → Compatibility** is on and the server was restarted; and that the username is `account#profile`. |
 | Nobody can log in | Check that **Silo public URL** under **Server → General** matches what people type, including `http` or `https`. |
 | Someone is told "This account signs in at …" | They are on another organization's address. Send them to the address the message names ([2.18](#218-organization-domains-and-branding)). |
-| Sign-in through Authentik fails on an organization's domain | Register that domain's two callbacks, and its `/login` if signing out at the provider is on ([2.18](#218-organization-domains-and-branding)). |
+| Sign-in through Authentik fails on an organization's domain | Register that domain's callback, and its `/login` if signing out at the provider is on ([2.18](#218-organization-domains-and-branding)). |
 | A viewer is suddenly sent back to the sign-in page | Their organization ended a sign-in from before it changed their access or signed them out. They sign in again. |
 | The web app is slow to search | Switch on Meilisearch under **Server → Search**: [Optional Meilisearch](../bloem/overlays/wiki/deployment/docker.md#optional-meilisearch). |
 | The log warns "postgres restart required" on every start | The server could not read `pg_file_settings`, or PostgreSQL's configuration files have errors, so it lists every restart-only setting it tuned; the warning then does not prove a restart is needed. Otherwise it names only settings PostgreSQL has yet to apply, so restart PostgreSQL and Bloem once. See [the restart warning](../bloem/overlays/wiki/deployment/docker.md#the-restart-required-warning). With a PostgreSQL you manage yourself, set `POSTGRES_TUNE=off`. |
@@ -1048,7 +1049,7 @@ or less, because of the address they used.
 | In this guide | In the code and settings |
 | --- | --- |
 | Administrative context | the Platform or organization admin context ([multitenant administration](../architecture/multitenant-administration.md)); the sidebar comes from `buildAdminNavSections` in `web/src/lib/adminNavigation.ts` |
-| Organization | `organizations`, a "tenant" in `internal/tenancy` and in the `/api/bloem/v1/admin/platform/tenants` routes |
+| Organization | `organizations`, a "tenant" in `internal/tenancy` and in the `/api/bloem/v2/admin/platform/tenants` routes |
 | Default organization | the organization with `is_default` |
 | Plan | an entitlement template (`internal/entitlements`) |
 | The server's public address | `server.public_url`, labelled **Silo public URL** |
@@ -1087,7 +1088,7 @@ or less, because of the address they used.
 
 - **API:** [organizations and administration](../bloem/api/organizations.md) (administrative
   contexts, organization administration, the platform's organizations, and their domains and
-  branding under `/api/bloem/v1/admin/platform/tenants/{id}/domains` and `/branding`);
+  branding under `/api/bloem/v2/admin/platform/tenants/{id}/domains` and `/branding`);
   [plans and preview](../bloem/api/plans.md); [Live TV](../bloem/api/live-tv.md);
   [storage](../bloem/api/storage.md); [requests](../bloem/api/requests.md);
   [messages](../bloem/api/messages.md) (campaigns, seasonal packs, announcements);
@@ -1130,10 +1131,10 @@ or less, because of the address they used.
   `internal/api/middleware/bloem_viewer_session.go`, migration
   `20260923160000_bloem_org_session_revocations` and the
   [security foundation](../architecture/bloem-security-foundation.md).
-- Leaving Silo's `/api/v1`: the web app and the storefront call none of Silo's `/api/v1`. The web
-  app's signed-out seasonal layer reads `GET /api/bloem/v1/ambience/public`. Announcements use
-  `/api/bloem/v1/admin/platform/announcements` and need the platform context. See
-  [leaving Silo's `/api/v1`](../architecture/bloem-leaving-silo-v1.md).
+- Leaving Silo's v1 API: Silo retired it on 2026-11-11, and nothing in Bloem calls it. The web
+  app's signed-out seasonal layer reads `GET /api/bloem/v2/ambience/public`. Announcements use
+  `/api/bloem/v2/admin/platform/announcements` and need the platform context. See
+  [leaving Silo's v1 API](../architecture/bloem-leaving-silo-v1.md).
 
 ### Install, disk and Docker
 
@@ -1201,9 +1202,9 @@ or less, because of the address they used.
   `internal/api/handlers/bloem_organization_domains.go`; the sign-in check in
   `internal/auth/bloem_sign_in_domain.go` and `internal/api/handlers/bloem_sign_in_domain.go`;
   migration `20261101055208_bloem_organization_domains`; capability `organization_domains_v1` in
-  `/api/bloem/v1/capabilities`. Web: `web/src/pages/admin-platform/OrganizationDomainsPanel.tsx`
+  `/api/bloem/v2/capabilities`. Web: `web/src/pages/admin-platform/OrganizationDomainsPanel.tsx`
   and `OrganizationBrandingPanel.tsx` on `OrganizationDetailPage.tsx`.
-- Routes under `/api/bloem/v1/admin/platform/tenants/{id}`: `GET`/`POST …/domains`,
+- Routes under `/api/bloem/v2/admin/platform/tenants/{id}`: `GET`/`POST …/domains`,
   `PUT …/domains/{host}/primary`, `DELETE …/domains/{host}`; `GET`/`PUT …/branding`, and
   `PUT`/`DELETE …/branding/assets/{kind}` with `kind` one of `wordmark`, `mark`, `favicon`,
   `login_bg`. They take a Platform administrative context or an enabled administrator's unscoped
@@ -1231,7 +1232,6 @@ or less, because of the address they used.
 - OAuth (Authentik): a web sign-in stays on the domain it started on (`Directory.OAuthBaseURL`,
   `auth.OAuthHandler.SetRequestBaseURL`); a provider sign-out started there returns to that
   domain's `/login`. `internal/auth/oauth_handler.go` is a declared seam for this. Register
-  `https://<domain>/api/v1/auth/oauth/<installation>/callback`,
   `https://<domain>/api/v2/auth/oauth/<installation>/callback` and, with provider sign-out,
   `https://<domain>/login`. Silo's installation page and the `/api/v2/auth/provider-logout`
   description name only the public URL's.

@@ -1,7 +1,8 @@
 # Releasing bulk policy changes: the canary runbook
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Bulk policy changes are a Bloem addition, and this runbook is
+> `main` at `b6039036d`; its routes were checked again on 2026-11-11, after Silo retired
+> its v1 API. Bulk policy changes are a Bloem addition, and this runbook is
 > Bloem's own. It was written for the feature's first release in August 2026 and still
 > applies to any release that changes it. The technical rules are in the
 > [For developers](#for-developers) section.
@@ -225,7 +226,7 @@ beforehand: roll forward or restore the backup.
 
 | On this page | In the code and API |
 | --- | --- |
-| Release commit | the full SHA that `GET /api/v1/admin/system/build` reports as `revision` |
+| Release commit | the full SHA that `GET /api/v2/admin/system/build` reports as `revision` |
 | Canary account | one Server account ID, in an organization or `direct` (the default organization) |
 | Reading the account's policy | the authoritative entitlement reads (`internal/entitlements/account_policy.go`) |
 | Policy fingerprint (yours) | `jq -Sc '.policy' \| shasum -a 256` of the read |
@@ -303,15 +304,14 @@ image alone is not a database rollback. Rollback rules are fail-safe:
 
 ### The reads and checks
 
-- **Build:** `GET /api/v1/admin/system/build` (also `GET /api/v2/admin/system/build`)
-  with a platform-admin session; require `revision` to equal the full reviewed SHA.
+- **Build:** `GET /api/v2/admin/system/build` with a platform-admin session; require `revision` to equal the full reviewed SHA.
 - **Liveness and readiness:** `GET /api/v1/health` and `GET /api/v1/ready`, the retained
   operational probes.
 - **Authoritative policy reads** before preview, after apply and after restore:
 
   ```text
-  GET /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
-  GET /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
+  GET /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement
+  GET /api/bloem/v2/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
   ```
 
 - **Preview requirements:** `matched = 1` and `excluded = 0`; current cohort/group
@@ -324,18 +324,18 @@ image alone is not a database rollback. Rollback rules are fail-safe:
 - **After apply:** target group and cohort/template provenance match the preview; the
   account policy revision advanced; the complete effective policy matches the target;
   inherited profiles moved; custom profiles stayed unless movement was confirmed.
-- **Downloads** (these are Silo's `/api/v1` download routes, which Bloem still serves):
-  1. `GET /api/v1/downloads/capability`: `download_allowed`, `quality_presets` and
+- **Downloads** (Silo's `/api/v2` download routes; the v1 ones this runbook used before
+  2026-11-11 are retired):
+  1. `GET /api/v2/capabilities/downloads`: `download_allowed`, `quality_presets` and
      `transcode_user_allowed` must agree with the authoritative effective policy and
      server-level feature state.
-  2. Exactly one `POST /api/v1/downloads` for the recorded `content_id` (and `file_id`
-     when needed) with the chosen `quality`: `original` (the default) for the
+  2. Exactly one `POST /api/v2/downloads` for the recorded `content_id` (and
+     `media_file_id` when needed) with the chosen `quality`: `original` (the default) for the
      original-download gate, or a listed bitrate preset (`20mbps`, `10mbps`, `5mbps`,
      `2mbps`, `1mbps`) for the transcoded-download gate.
-  3. Allowed: require `202`, record the safe download ID with `quality` and
-     `effective_quality`, then `DELETE /api/v1/downloads/{id}` and require `204`.
-     Denied: require `403` with `forbidden` or `transcode_disabled`, and no download
-     row created.
+  3. Allowed: require `202`, record the safe download ID from `items` with `quality`
+     and `effective_quality`, then `DELETE /api/v2/downloads/{id}` and require `204`.
+     Denied: require `403` (`permission_denied`), and no download row created.
 - **Audit:** job and assignment events with the expected revisions, safe result counts,
   and no credentials or raw infrastructure errors. The assignment audit's
   `effective_policy_digest` must describe the complete post-assignment effective

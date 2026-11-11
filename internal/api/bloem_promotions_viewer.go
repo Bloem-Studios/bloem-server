@@ -16,10 +16,10 @@ func bloemPromotionsViewerHandler(deps Dependencies) *handlers.PromotionsHandler
 	return handlers.NewPromotionsHandler(deps.Promotions, deps.Notifications)
 }
 
-// mountBloemPromotionsViewer is called inside /api/bloem/v1 alongside the
+// mountBloemPromotionsViewer is called inside /api/bloem/v2 alongside the
 // client surface. It takes the native seasonal viewer's authority chain, and
-// serves what /api/v1/promotions and the home layout's `promoted` row do, so
-// nothing a viewer sees of a campaign depends on Silo's /api/v1.
+// serves what Silo's retired v1 promotions route and the home layout's
+// `promoted` row did, so nothing a viewer sees of a campaign depends on Silo.
 func mountBloemPromotionsViewer(r chi.Router, handler *handlers.PromotionsHandler, client bloemClientSurface, system *handlers.BloemSystemHandler) {
 	available := handler != nil && client.auth != nil && client.tenant != nil && client.viewer != nil
 	if system != nil {

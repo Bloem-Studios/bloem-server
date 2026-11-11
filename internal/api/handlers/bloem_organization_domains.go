@@ -1,7 +1,7 @@
 package handlers
 
 // Bloem-owned. An organization's domains and branding, managed from the
-// platform routes under /api/bloem/v1/admin/platform/tenants/{id}: by the
+// platform routes under /api/bloem/v2/admin/platform/tenants/{id}: by the
 // platform administrator's web pages and by the storefront (Bloem Garden)
 // with its API key. See docs/architecture/bloem-organization-domains.md.
 

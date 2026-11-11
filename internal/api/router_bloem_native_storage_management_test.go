@@ -26,10 +26,10 @@ func TestNativeOnboardingHTTPProtectedRouteRefusal(t *testing.T) {
 		for _, tt := range cases {
 			t.Run(scope+tt.method+tt.suffix, func(t *testing.T) {
 				router := chi.NewRouter()
-				router.Route("/api/bloem/v1/admin", func(r chi.Router) {
+				router.Route("/api/bloem/v2/admin", func(r chi.Router) {
 					mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil))
 				})
-				r := httptest.NewRequest(tt.method, "/api/bloem/v1/admin/"+scope+"/native-storage"+tt.suffix, strings.NewReader(`{"secret":"never-decoded"}`))
+				r := httptest.NewRequest(tt.method, "/api/bloem/v2/admin/"+scope+"/native-storage"+tt.suffix, strings.NewReader(`{"secret":"never-decoded"}`))
 				r.Header.Set("Content-Type", "application/json")
 				w := httptest.NewRecorder()
 				router.ServeHTTP(w, r)
@@ -50,7 +50,7 @@ func TestNativeOnboardingHTTPProtectedRouteRefusal(t *testing.T) {
 
 func TestNativeOnboardingHTTPRemovedLibraryRoutesAreGone(t *testing.T) {
 	router := chi.NewRouter()
-	router.Route("/api/bloem/v1/admin", func(r chi.Router) {
+	router.Route("/api/bloem/v2/admin", func(r chi.Router) {
 		mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil))
 	})
 	key := "00000000-0000-0000-0000-000000000001"
@@ -63,7 +63,7 @@ func TestNativeOnboardingHTTPRemovedLibraryRoutesAreGone(t *testing.T) {
 		{"GET", "/sources/" + key + "/bindings", 404}, {"POST", "/sources/" + key + "/enable", 404},
 	} {
 		w := httptest.NewRecorder()
-		router.ServeHTTP(w, httptest.NewRequest(request.method, "/api/bloem/v1/admin/platform/native-storage"+request.path, nil))
+		router.ServeHTTP(w, httptest.NewRequest(request.method, "/api/bloem/v2/admin/platform/native-storage"+request.path, nil))
 		if w.Code != request.status {
 			t.Fatalf("%s %s status=%d want=%d", request.method, request.path, w.Code, request.status)
 		}
@@ -84,7 +84,7 @@ func TestNativeOnboardingHTTPActualAdminMiddlewareFailClosed(t *testing.T) {
 
 func TestNativeOnboardingHTTPRouteFallbacksKeepPrivacyHeaders(t *testing.T) {
 	router := chi.NewRouter()
-	router.Route("/api/bloem/v1/admin", func(r chi.Router) {
+	router.Route("/api/bloem/v2/admin", func(r chi.Router) {
 		mountBloemNativeStorageManagement(r, handlers.NewBloemNativeStorageManagementHandler(nil))
 	})
 	for _, tt := range []struct {
@@ -95,7 +95,7 @@ func TestNativeOnboardingHTTPRouteFallbacksKeepPrivacyHeaders(t *testing.T) {
 		{"POST", "/libraries/7/repair", "not_found", 404},
 	} {
 		w := httptest.NewRecorder()
-		router.ServeHTTP(w, httptest.NewRequest(tt.method, "/api/bloem/v1/admin/platform/native-storage"+tt.path, nil))
+		router.ServeHTTP(w, httptest.NewRequest(tt.method, "/api/bloem/v2/admin/platform/native-storage"+tt.path, nil))
 		if w.Code != tt.status {
 			t.Fatalf("status=%d want=%d", w.Code, tt.status)
 		}

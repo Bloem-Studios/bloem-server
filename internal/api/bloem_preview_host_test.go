@@ -64,20 +64,22 @@ func TestPreviewHostGuard(t *testing.T) {
 		{"browse.example.test", "GET", "/api/v2/auth/oauth/x/start", "", http.StatusForbidden},
 		{"browse.example.test", "POST", "/api/v2/auth/device/start", "", http.StatusForbidden},
 		{"browse.example.test", "POST", "/api/v2/password-resets", "", http.StatusForbidden},
-		{"browse.example.test", "GET", "/api/v1/plugins/1/", "", http.StatusForbidden},
 		{"browse.example.test", "GET", "/api/v2/plugin-content/plugins/1/", "", http.StatusForbidden},
 		{"browse.example.test", "POST", "/api/v2/auth/refresh", "", http.StatusNoContent},
-		{"browse.example.test", "POST", "/api/v1/auth/refresh", "", http.StatusNoContent},
 		{"browse.example.test", "POST", "/api/v2/auth/logout", "guest", http.StatusNoContent},
-		{"browse.example.test", "POST", "/api/bloem/v1/preview/sessions", "", http.StatusNoContent},
+		{"browse.example.test", "POST", "/api/bloem/v2/preview/sessions", "", http.StatusNoContent},
 		{"browse.example.test", "GET", "/api/v2/catalog/items/x", "guest", http.StatusNoContent},
 		{"browse.example.test", "GET", "/api/v2/catalog/items/x", "member", http.StatusUnauthorized},
 		{"browse.example.test", "GET", "/api/v2/catalog/items/x", "sa_key", http.StatusUnauthorized},
 		{"browse.example.test", "GET", "/", "", http.StatusNoContent},
+		// Silo retired its v1 API, so its old auth and plugin paths are not
+		// special here: they reach routing, where Silo's tombstone answers 410.
+		{"browse.example.test", "GET", "/api/v1/plugins/1/", "", http.StatusNoContent},    // v1-guard: allow
+		{"browse.example.test", "POST", "/api/v1/auth/refresh", "", http.StatusNoContent}, // v1-guard: allow
 		// Elsewhere the guard does nothing; RequireAuth refuses guests there.
 		{"lib.example.test", "POST", "/api/v2/auth/login", "", http.StatusNoContent},
 		{"lib.example.test", "GET", "/api/v2/catalog/items/x", "member", http.StatusNoContent},
-		{"lib.example.test", "GET", "/api/v1/plugins/1/", "guest", http.StatusUnauthorized},
+		{"lib.example.test", "GET", "/api/v2/plugin-content/plugins/1/", "guest", http.StatusUnauthorized},
 	} {
 		if got := serve(tc.host, tc.method, tc.path, tc.bearer); got != tc.want {
 			t.Errorf("%s %s %s (%s) = %d, want %d", tc.host, tc.method, tc.path, tc.bearer, got, tc.want)
@@ -110,7 +112,7 @@ func TestPreviewHostGuardWithoutSettings(t *testing.T) {
 		{"GET", "/health/live", "", http.StatusNoContent},
 		{"GET", "/health/ready", "", http.StatusNoContent},
 		// Every auth route stays refused: a GET there can start a sign-in.
-		{"GET", "/api/v1/auth/device/capability", "", http.StatusServiceUnavailable},
+		{"GET", "/api/v2/auth/device/capability", "", http.StatusServiceUnavailable},
 		{"GET", "/api/v2/auth/oauth/x/start", "", http.StatusServiceUnavailable},
 		{"POST", "/api/v2/auth/login", "", http.StatusServiceUnavailable},
 		{"POST", "/api/v2/auth/refresh", "", http.StatusServiceUnavailable},
@@ -139,7 +141,7 @@ func TestGuestActivityIsNotRecorded(t *testing.T) {
 	w := guestFreeActivity(rec, hostSettings{auth.PreviewGuestSettings{Enabled: true, Host: "browse.example.test", AccountID: 7}})
 	guest, member := 7, 8
 	w.Write(activitylog.LogEntry{UserID: &guest, ClientIP: "198.51.100.1", UserAgent: "ua"})
-	w.Write(activitylog.LogEntry{Path: "/api/bloem/v1/preview/sessions", ClientIP: "198.51.100.1"})
+	w.Write(activitylog.LogEntry{Path: "/api/bloem/v2/preview/sessions", ClientIP: "198.51.100.1"})
 	w.Write(activitylog.LogEntry{UserID: &member, ClientIP: "198.51.100.2"})
 	if len(rec.entries) != 1 || *rec.entries[0].UserID != member {
 		t.Fatalf("recorded %+v, want only the member", rec.entries)
@@ -220,7 +222,7 @@ func TestPreviewHostCapsPublicGuestTraffic(t *testing.T) {
 	guard := previewHostGuard(hostSettings{auth.PreviewGuestSettings{Host: "browse.example.test"}}, hostTokens{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }))
 	admitted := 0
 	for range 180 {
-		r := httptest.NewRequest("GET", "/api/bloem/v1/preview/status", nil)
+		r := httptest.NewRequest("GET", "/api/bloem/v2/preview/status", nil)
 		r.Host = "browse.example.test"
 		w := httptest.NewRecorder()
 		guard.ServeHTTP(w, r)
@@ -252,7 +254,7 @@ func TestPreviewTrafficLimitSkipsAppFilesAndSignedArtwork(t *testing.T) {
 		{http.MethodGet, "/api/v2/catalog/query", false},
 		{http.MethodPost, "/api/v2/catalog/query", false},
 		{http.MethodPost, "/api/v2/artwork/storage-covers/1/original.abc.img", false},
-		{http.MethodGet, "/api/bloem/v1/preview/status", false},
+		{http.MethodGet, "/api/bloem/v2/preview/status", false},
 	} {
 		r := httptest.NewRequest(tc.method, tc.path, nil)
 		if got := previewTrafficExempt(r); got != tc.exempt {

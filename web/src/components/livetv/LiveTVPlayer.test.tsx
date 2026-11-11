@@ -90,7 +90,7 @@ function emitFatalAppendError() {
 async function mountHlsPlayer(hideNativeControls = true) {
   render(
     <LiveTVPlayer
-      streamUrl="/api/v1/livetv/live-hls/sess/index.m3u8"
+      streamUrl="/api/bloem/v2/livetv/live-hls/sess/index.m3u8"
       transport="hls"
       hideNativeControls={hideNativeControls}
     />,
@@ -184,14 +184,14 @@ describe("LiveTVPlayer HLS bufferAppendError recovery", () => {
     const playing = vi.fn();
     const view = render(
       <LiveTVPlayer
-        streamUrl="/api/v1/livetv/live-hls/session/index.m3u8?st=stream-ticket"
+        streamUrl="/api/bloem/v2/livetv/live-hls/session/index.m3u8?st=stream-ticket"
         transport="hls"
         onPlayingChange={playing}
       />,
     );
     const video = screen.getByLabelText("Live TV") as HTMLVideoElement;
     expect(video.src).toBe(
-      `${window.location.origin}/api/v1/livetv/live-hls/session/index.m3u8?st=stream-ticket`,
+      `${window.location.origin}/api/bloem/v2/livetv/live-hls/session/index.m3u8?st=stream-ticket`,
     );
     expect(mockHls.loadSource).not.toHaveBeenCalled();
     act(() => video.dispatchEvent(new Event("loadedmetadata")));
@@ -210,7 +210,9 @@ describe("LiveTVPlayer HLS bufferAppendError recovery", () => {
   it("never substitutes account query credentials for a missing native stream ticket", () => {
     vi.spyOn(Hls, "isSupported").mockReturnValue(false);
     vi.spyOn(HTMLMediaElement.prototype, "canPlayType").mockReturnValue("probably");
-    render(<LiveTVPlayer streamUrl="/api/v1/livetv/live-hls/session/index.m3u8" transport="hls" />);
+    render(
+      <LiveTVPlayer streamUrl="/api/bloem/v2/livetv/live-hls/session/index.m3u8" transport="hls" />,
+    );
     expect(screen.getByText(/This browser can’t play this channel/)).toBeInTheDocument();
     expect(screen.getByLabelText("Live TV")).not.toHaveAttribute("src");
   });

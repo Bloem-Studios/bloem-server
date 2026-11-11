@@ -1,6 +1,6 @@
 package handlers
 
-// Bloem-owned. Bloem's native /api/bloem/v1 routes serve Silo's /api/v2 wire
+// Bloem-owned. Bloem's native /api/bloem/v2 routes serve Silo's /api/v2 wire
 // shapes directly. Those shapes and their request decoding live in
 // internal/apiv2, which imports this package, so apiv2 installs them here
 // (internal/apiv2/bloem_v2_wire.go) instead of this package importing it.

@@ -1,5 +1,5 @@
 /**
- * The search mirror's status, as GET /api/bloem/v1/admin/search/mirror returns
+ * The search mirror's status, as GET /api/bloem/v2/admin/search/mirror returns
  * it (the SearchMirrorStatus struct in internal/catalog/bloem_search_mirror_status.go).
  * Written by hand: the route is Bloem's own, and its codes are English data.
  */

@@ -94,7 +94,8 @@ describe("AdminAccessGroups organization context", () => {
       "/organization/groups",
     );
     expect(
-      vi.mocked(adminV2Api).mock.calls.some(([path]) => String(path).includes("/api/v1")),
+      // Silo's retired alpha API is never called.
+      vi.mocked(adminV2Api).mock.calls.some(([path]) => String(path).includes("/api/v1")), // v1-guard: allow
     ).toBe(false);
   });
 

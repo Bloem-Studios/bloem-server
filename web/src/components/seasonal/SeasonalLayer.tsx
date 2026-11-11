@@ -113,9 +113,9 @@ export default function SeasonalLayer() {
         }
       } else {
         // The deployment-wide packs are public, including on servers without
-        // viewer delivery (Bloem's native route, not Silo's /api/v1 branding).
+        // viewer delivery (Bloem's native route, not Silo's branding route).
         // It must never be mistaken for an authenticated seasonal response.
-        const response = await fetch("/api/bloem/v1/ambience/public", {
+        const response = await fetch("/api/bloem/v2/ambience/public", {
           signal,
           credentials: "omit",
         });

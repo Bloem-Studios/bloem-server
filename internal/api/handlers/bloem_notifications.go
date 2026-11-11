@@ -116,7 +116,7 @@ func bloemNotificationLimit(r *http.Request, fallback int) int {
 	return min(limit, bloemNotificationMaxLimit)
 }
 
-// HandleBloemNotificationList handles GET /api/bloem/v1/notifications.
+// HandleBloemNotificationList handles GET /api/bloem/v2/notifications.
 func (h *NotificationsHandler) HandleBloemNotificationList(w http.ResponseWriter, r *http.Request) {
 	profileID := apimw.GetProfileID(r.Context())
 	limit := bloemNotificationLimit(r, bloemNotificationListDefault)
@@ -164,7 +164,7 @@ func bloemInboxPageOf(view NotificationInboxPageView) bloemNotificationPage {
 	return page
 }
 
-// HandleBloemNotificationSync handles GET /api/bloem/v1/notifications/sync: the
+// HandleBloemNotificationSync handles GET /api/bloem/v2/notifications/sync: the
 // forward, ascending traversal a client runs after waking from a push or
 // reconnecting across a gap.
 func (h *NotificationsHandler) HandleBloemNotificationSync(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +210,7 @@ func bloemSyncPageOf(rows []notifications.DeliveryRowPayload, more bool, unread 
 	return page
 }
 
-// HandleBloemNotificationGet handles GET /api/bloem/v1/notifications/{id}.
+// HandleBloemNotificationGet handles GET /api/bloem/v2/notifications/{id}.
 // Another profile's row is a 404, not a 403: whether it exists is not this
 // viewer's business.
 func (h *NotificationsHandler) HandleBloemNotificationGet(w http.ResponseWriter, r *http.Request) {

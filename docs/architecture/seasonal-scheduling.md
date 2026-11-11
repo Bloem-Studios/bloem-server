@@ -4,6 +4,7 @@
 > `main` at `b6039036d`. Seasonal packs are a Bloem addition; Silo has nothing like
 > them. This page explains how they switch on and off and who sees them, in plain
 > language; the technical rules are in the [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 A **seasonal pack** is a light decoration on Home and the sign-in page: falling snow,
 a banner or a few small pictures for a season or an occasion. This page walks through
@@ -87,17 +88,17 @@ and only after they sign in.
 | For everyone, for one organization | `organization_id` null, or an organization's ID |
 | Snow, banner, sprites | `effect_id` (`snow`), `assets.banner_url`, `assets.sprites` |
 | Home, sign-in page | `surfaces`: `all`, `home`, `login` |
-| Signed-out route | `GET /api/bloem/v1/ambience/public` |
-| Signed-in route | `GET /api/bloem/v1/ambience`, advertised as `seasonal_viewer_v1` |
+| Signed-out route | `GET /api/bloem/v2/ambience/public` |
+| Signed-in route | `GET /api/bloem/v2/ambience`, advertised as `seasonal_viewer_v1` |
 | The web layer | `web/src/components/seasonal/SeasonalLayer.tsx` |
 
 ## For developers
 
 - **API:** [messages and promotions](../bloem/api/messages.md): the registry under
-  `/api/bloem/v1/admin/platform/ambience`, `GET /api/bloem/v1/ambience`,
-  `GET /api/bloem/v1/ambience/public` and `GET /api/bloem/v1/ambience/assets/{ref}`.
+  `/api/bloem/v2/admin/platform/ambience`, `GET /api/bloem/v2/ambience`,
+  `GET /api/bloem/v2/ambience/public` and `GET /api/bloem/v2/ambience/assets/{ref}`.
   The legacy registry routes are on
-  [Bloem's routes on Silo's `/api/v1`](../bloem/api/v1-routes.md#seasonal-packs).
+  [Bloem's retired v1 routes](../bloem/api/v1-routes.md#seasonal-packs).
 
 ### History
 
@@ -107,15 +108,16 @@ was removed on 2026-11-01; its rules still in force are on this page.
 Annual schedules, migration `20260905090908_ambience_annual_schedule.sql` and the web
 snow renderer arrived in `f764adad8` (2026-09-05). `53534d9f0` (2026-09-18) added the
 embedded web authoring page (`web/src/pages/admin-platform/EngagementPage.tsx`), the
-platform-context routes `/api/bloem/v1/admin/platform/ambience` (then in
+platform-context routes `/api/bloem/v2/admin/platform/ambience` (then in
 `internal/api/router_bloem_engagement.go`; since `3eb77be33` mounted by
 `mountBloemPlatformStorefront` in `internal/api/router_bloem_storefront.go`), the
-viewer route `GET /api/bloem/v1/ambience` (`internal/api/bloem_seasonal_viewer.go`) and
+viewer route `GET /api/bloem/v2/ambience` (`internal/api/bloem_seasonal_viewer.go`) and
 the configured-S3 acceptance recorded below. Since `310c545f9` (2026-10-26) the
 ambience evaluator runs inside the server rather than as a bundled worker process; see
 [presentation evaluators](bloem-presentation-evaluators.md). On 2026-11-01
-(`45abcda81`) the web app's signed-out layer moved from the `ambience` block of
-`GET /api/v1/theme/branding` to `GET /api/bloem/v1/ambience/public`.
+(`45abcda81`) the web app's signed-out layer moved from the `ambience` block of Silo's
+v1 branding route to `GET /api/bloem/v2/ambience/public`. On 2026-11-11 Silo retired its v1
+API, and the legacy payloads and routes below went with it.
 
 ### Authoring
 
@@ -142,7 +144,8 @@ ambience evaluator runs inside the server rather than as a bundled worker proces
 - `intensity` is within 0.0 to 1.0 and defaults to 1.0. `surfaces` come from `all`,
   `home`, `login`, default `["all"]`; `all` absorbs the rest.
 - Asset URLs are absolute `https://` URLs or server paths under
-  `/api/bloem/v1/ambience/assets/` (or the older `/api/v1/ambience/assets/`). A pack
+  `/api/bloem/v2/ambience/assets/` (`ambience.AssetURLBase`, the only accepted prefix since
+  2026-11-11). A pack
   holds at most 32 sprites.
 
 ### Yearly occurrences
@@ -161,11 +164,11 @@ ambience evaluator runs inside the server rather than as a bundled worker proces
 
 ### Delivery
 
-- `GET /api/bloem/v1/ambience/public` is public and returns the active
+- `GET /api/bloem/v2/ambience/public` is public and returns the active
   deployment-wide packs (`organization_id` null), always as an array, empty when none
   are active (`ActivePublic`, `internal/api/handlers/bloem_public_ambience.go`). It is
   mounted by `mountBloemPlatformStorefront`.
-- `GET /api/bloem/v1/ambience` is mounted only when every authority resolver is
+- `GET /api/bloem/v2/ambience` is mounted only when every authority resolver is
   configured, and `seasonal_viewer_v1` is advertised only then
   (`mountBloemSeasonalViewer`). It requires authentication, native tenant resolution,
   the rate limit, viewer and PIN verification and a verified profile in the active
@@ -176,8 +179,9 @@ ambience evaluator runs inside the server rather than as a bundled worker proces
   organization; while it is still initializing they receive deployment-wide packs
   only. The default-deny route boundary excludes direct-profile sessions. Responses
   use `Cache-Control: private, no-store`.
-- The phone apps still read the `ambience` block of `GET /api/v1/theme/branding`
-  (public packs) and the packs echoed on `GET /api/v1/notifications/capability`.
+- The phone apps read the `ambience` block of Silo's v1 branding route (public packs)
+  and the packs echoed on the v1 notification capability. Both went with Silo's v1 API on
+  2026-11-11.
 - Publication or removal is visible on the next client refresh. Scheduled expiry does
   not require another network response. This matters when the storefront or the
   media server becomes unreachable.
@@ -208,11 +212,12 @@ A pack goes out in one shape wherever it appears (`Pack.Wire`):
 - A pack is active while `starts_at <= now < ends_at`, evaluated against the sections'
   seasonal clock (`recipes.Clock`). The window is still sent, so apps honour its
   bounds locally.
-- The legacy payloads the phone apps read: the `ambience` array on the public
-  `GET /api/v1/theme/branding` holds active deployment-wide packs only, always present
+- The legacy payloads the phone apps read until Silo retired its v1 API on 2026-11-11:
+  the `ambience` array on the public v1 `GET /theme/branding` held active deployment-wide
+  packs only, always present
   and `[]` when none is active, the registry is not wired or it fails (an organization's
   pack never shows before sign-in). The same array on the authenticated
-  `GET /api/v1/notifications/capability` adds the active packs of every active
+  v1 `GET /notifications/capability` added the active packs of every active
   organization the account is an active member of. There, a present key means the
   feature exists, `[]` means nothing is active, and a missing key means it is off.
 - **Rendering rules for apps.** Effect names are an open set: an app renders the ones
@@ -222,8 +227,8 @@ A pack goes out in one shape wherever it appears (`Pack.Wire`):
 
 ### Admin routes
 
-The registry routes (native under `/api/bloem/v1/admin/platform/ambience`, legacy under
-`/api/v1/admin/ambience`) share `handlers.AdminAmbienceHandler`:
+The registry routes (native under `/api/bloem/v2/admin/platform/ambience`; the legacy v1
+routes went with Silo's v1 API) use `handlers.AdminAmbienceHandler`:
 
 - `GET` lists every pack, soonest window first, with `storage_available` and
   `yearly_scheduling`.
@@ -251,7 +256,7 @@ left out (defaults `1.0` and `["all"]`); `organization_id` is a UUID string or n
 as they are in `assets`.
 
 ```json
-POST /api/bloem/v1/admin/platform/ambience
+POST /api/bloem/v2/admin/platform/ambience
 {"effect_id": "halloween",
  "window": {"starts_at": "2026-10-24T00:00:00Z", "ends_at": "2026-11-01T00:00:00Z"},
  "intensity": 0.7, "surfaces": ["home", "login"],
@@ -266,7 +271,7 @@ author's account ID), `created_at` and `updated_at`.
 A standalone upload (`TestAdminAmbienceStandaloneUploadReturnsPublicURL`, the multipart
 shape the storefront's `HTTPAssetTransport` sends) answers `201` with
 `{"asset": {"asset_id", "kind", "ref", "url", "checksum", "content_type",
-"size_bytes"}, "url": "/api/bloem/v1/ambience/assets/<ref>"}`. The storefront reads the
+"size_bytes"}, "url": "/api/bloem/v2/ambience/assets/<ref>"}`. The storefront reads the
 top-level `url` (or `asset.url`). A retry with the same `asset_id` and `checksum`
 answers the same body and stores nothing new.
 
@@ -278,12 +283,12 @@ answers the same body and stores nothing new.
 - It polls every 30 seconds, re-evaluates expiry locally every second and drops data
   older than 45 seconds. The device-local off toggle is stored under the
   `bloem-seasonal-effects` key, wrapped in try/catch.
-- Authenticated Home uses `GET /api/bloem/v1/ambience` when `seasonal_viewer_v1` is
+- Authenticated Home uses `GET /api/bloem/v2/ambience` when `seasonal_viewer_v1` is
   advertised. Sign-in, and Home on a server without viewer delivery, fetch
-  `GET /api/bloem/v1/ambience/public` without credentials; that answer is never taken
+  `GET /api/bloem/v2/ambience/public` without credentials; that answer is never taken
   for an authenticated one. Requests and cached results are bound to session, profile
   and PIN authority.
-- The web app calls none of Silo's `/api/v1`.
+- The web app calls none of Silo's retired v1 API.
 
 ### Android
 

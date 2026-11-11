@@ -9,8 +9,8 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 951 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v1` | 270 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
-| Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
+| Bloem extensions `/api/bloem/v2` | 270 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Retired alpha v1 API (410 Gone except the health and ready probes) | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher
@@ -26,276 +26,276 @@ security declaration and the wire reference before sending credentials or mutati
 
 | Method and path | Operation ID | Description |
 | --- | --- | --- |
-| `GET /api/bloem/v1/admin/organization/activity` | `listBloemOrganizationActivity` | Page the selected organization's sanitized activity and entitlement audit. |
-| `GET /api/bloem/v1/admin/organization/audiobook-request-integrations` | `getBloemAudiobookRequestSetup` | Read audiobook acquisition connections and eligible libraries/installations. |
-| `POST /api/bloem/v1/admin/organization/audiobook-request-integrations` | `createBloemAudiobookRequestIntegration` | Create an audiobook acquisition connection. |
-| `PUT /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}` | `updateBloemAudiobookRequestIntegration` | Edit an audiobook acquisition connection and rotate its credentials. |
-| `PUT /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/library` | `setBloemAudiobookRequestIntegrationLibrary` | Bind an acquisition connection to a local audiobook library and download directories. |
-| `POST /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/test` | `testBloemAudiobookRequestIntegration` | Run the audiobook plugin's connection checks for a saved connection. |
-| `GET /api/bloem/v1/admin/organization/book-requests` | `listBloemAdminBookRequests` | List audiobook requests in the selected administrative organization. |
-| `GET /api/bloem/v1/admin/organization/book-requests/acquisitions` | `listBloemAudiobookAcquisitions` | List audiobook acquisitions by state in the selected organization. |
-| `POST /api/bloem/v1/admin/organization/book-requests/{id}/accept-download` | `acceptBloemAudiobookDownload` | Accept the selected audiobook download for import. |
-| `GET /api/bloem/v1/admin/organization/book-requests/{id}/acquisition` | `getBloemAudiobookAcquisition` | Read an audiobook acquisition and its recent decisions. |
-| `POST /api/bloem/v1/admin/organization/book-requests/{id}/approve` | `approveBloemBookRequest` | Approve an audiobook request; keep it awaiting fulfillment. |
-| `POST /api/bloem/v1/admin/organization/book-requests/{id}/approve-candidate` | `approveBloemAudiobookCandidate` | Approve a held audiobook candidate for a new acquisition attempt. |
-| `POST /api/bloem/v1/admin/organization/book-requests/{id}/decline` | `declineBloemBookRequest` | Decline a pending audiobook request and refund its quota slot. |
-| `POST /api/bloem/v1/admin/organization/book-requests/{id}/fulfil` | `fulfilBloemBookRequest` | Manually mark an audiobook request fulfilled. |
-| `POST /api/bloem/v1/admin/organization/book-requests/{id}/retry` | `retryBloemAudiobookAcquisition` | Retry or recover an audiobook acquisition. |
-| `GET /api/bloem/v1/admin/organization/ebook-request-integrations` | `getBloemEbookRequestSetup` | Read ebook policy, connections and eligible libraries/installations. |
-| `POST /api/bloem/v1/admin/organization/ebook-request-integrations` | `createBloemEbookRequestIntegration` | Create an explicit Bookwarehouse ebook fulfillment connection. |
-| `PUT /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/library` | `setBloemEbookRequestIntegrationLibrary` | Bind a connection to an eligible native Bookwarehouse ebook library. |
-| `POST /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/test` | `testBloemEbookRequestIntegration` | Run the Bookwarehouse plugin's connection test for a saved connection. |
-| `PUT /api/bloem/v1/admin/organization/ebook-request-policy` | `setBloemEbookRequestPolicy` | Explicitly enable or disable ebook request admission and dispatch. |
-| `GET /api/bloem/v1/admin/organization/ebook-requests` | `listBloemAdminEbookRequests` | List ebook requests in the selected default organization. |
-| `POST /api/bloem/v1/admin/organization/ebook-requests/{id}/approve` | `approveBloemEbookRequest` | Approve a pending ebook request. |
-| `POST /api/bloem/v1/admin/organization/ebook-requests/{id}/decline` | `declineBloemEbookRequest` | Decline a pending ebook request and refund its quota slot. |
-| `POST /api/bloem/v1/admin/organization/ebook-requests/{id}/retry` | `retryBloemEbookRequest` | Recover uncertain provider state or retry a safely failed ebook dispatch. |
-| `GET /api/bloem/v1/admin/organization/entitlement-cohorts` | `listBloemOrganizationEntitlementCohorts` | List safe entitlement cohort projections. |
-| `GET /api/bloem/v1/admin/organization/entitlement-cohorts/{cohort_id}` | `getBloemOrganizationEntitlementCohort` | Read a safe organization cohort projection. |
-| `DELETE /api/bloem/v1/admin/organization/entitlements/{folder_id}` | `deleteBloemOrganizationLibraryEntitlement` | Remove an organization library entitlement. |
-| `PUT /api/bloem/v1/admin/organization/entitlements/{folder_id}` | `updateBloemOrganizationLibraryEntitlement` | Set an organization library entitlement status. |
-| `GET /api/bloem/v1/admin/organization/groups/` | `listBloemOrganizationGroups` | List access groups in the selected organization. |
-| `POST /api/bloem/v1/admin/organization/groups/` | `createBloemOrganizationGroup` | Create an organization access group. |
-| `DELETE /api/bloem/v1/admin/organization/groups/{id}` | `deleteBloemOrganizationGroup` | Delete an organization access group and report its impact. |
-| `GET /api/bloem/v1/admin/organization/groups/{id}` | `getBloemOrganizationGroup` | Read one organization access group. |
-| `PUT /api/bloem/v1/admin/organization/groups/{id}` | `updateBloemOrganizationGroup` | Update an organization access group. |
-| `GET /api/bloem/v1/admin/organization/invitations` | `listBloemOrganizationInvitations` | List invitation metadata without claim tokens. |
-| `POST /api/bloem/v1/admin/organization/invitations` | `createBloemOrganizationInvitation` | Create a user invitation and disclose its claim token once. |
-| `DELETE /api/bloem/v1/admin/organization/invitations/{id}` | `revokeBloemOrganizationInvitation` | Revoke an unaccepted, unrevoked user invitation in the selected organization. |
-| `POST /api/bloem/v1/admin/organization/invitations/{id}/resend` | `resendBloemOrganizationInvitation` | Rotate an unaccepted, unrevoked user invitation and return its new claim token once. |
-| `GET /api/bloem/v1/admin/organization/libraries` | `listBloemOrganizationLibraries` | List the organization library entitlement projection. |
-| `POST /api/bloem/v1/admin/organization/library-locations` | `createBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
-| `GET /api/bloem/v1/admin/organization/library-locations/{library_id}` | `getBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
-| `PUT /api/bloem/v1/admin/organization/library-locations/{library_id}` | `replaceBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
-| `GET /api/bloem/v1/admin/organization/native-storage/artifacts` | `listArtifactsBloemOrganizationNativeStorage` | List automatically verified catalog releases and any optional manual artifacts. |
-| `GET /api/bloem/v1/admin/organization/native-storage/capabilities` | `getCapabilitiesBloemOrganizationNativeStorage` | Read composition-dependent flags; backend verification remains false. |
-| `POST /api/bloem/v1/admin/organization/native-storage/catalog/installations` | `catalogInstallBloemOrganizationNativeStorage` | Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload. |
-| `POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/discover` | `catalogDiscoverInstallBloemOrganizationNativeStorage` | Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download. |
-| `POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade` | `catalogUpgradeBloemOrganizationNativeStorage` | Download and verify a catalog upgrade, retaining configuration and library. |
-| `POST /api/bloem/v1/admin/organization/native-storage/installations` | `installBloemOrganizationNativeStorage` | Install an approved artifact and source without creating a library or scan. |
-| `POST /api/bloem/v1/admin/organization/native-storage/installations/discover` | `discoverInstallBloemOrganizationNativeStorage` | Discover the root of a new approved S3 installation and publish it atomically without a library or scan. |
-| `DELETE /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}` | `uninstallBloemOrganizationNativeStorage` | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
-| `POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/disable` | `disableBloemOrganizationNativeStorage` | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
-| `POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/upgrade` | `upgradeBloemOrganizationNativeStorage` | Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept. |
-| `POST /api/bloem/v1/admin/organization/native-storage/s3/buckets` | `listS3BucketsBloemOrganizationNativeStorage` | List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses. |
-| `POST /api/bloem/v1/admin/organization/native-storage/s3/folders` | `listS3FoldersBloemOrganizationNativeStorage` | List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing. |
-| `GET /api/bloem/v1/admin/organization/native-storage/sources` | `listSourcesBloemOrganizationNativeStorage` | List visible sources and their current configuration revisions. |
-| `DELETE /api/bloem/v1/admin/organization/native-storage/sources/{source_key}` | `deleteRemovedSourceBloemOrganizationNativeStorage` | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
-| `GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}` | `getSourceBloemOrganizationNativeStorage` | Read a visible source without configuration secrets. |
-| `GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/browse` | `browseBloemOrganizationNativeStorage` | Browse authorized directories without starting discovery or opening files. |
-| `PUT /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/configuration` | `replaceConfigurationBloemOrganizationNativeStorage` | Replace complete configuration only while the source namespace is empty. |
-| `POST /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/credentials` | `rotateCredentialsBloemOrganizationNativeStorage` | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
-| `GET /api/bloem/v1/admin/organization/overview` | `getBloemOrganizationOverview` | Read the selected organization overview. |
-| `GET /api/bloem/v1/admin/organization/people/` | `listBloemOrganizationPeople` | Page organization people and their profiles. |
-| `POST /api/bloem/v1/admin/organization/people/bulk-jobs` | `createBloemOrganizationPeopleBulkJob` | Enqueue a people bulk mutation. |
-| `GET /api/bloem/v1/admin/organization/people/bulk-jobs/{job_id}` | `getBloemOrganizationPeopleBulkJob` | Read progress and per-record results of a people job. |
-| `POST /api/bloem/v1/admin/organization/people/policy-jobs` | `createBloemOrganizationPeoplePolicyJob` | Enqueue a confirmed people policy command. |
-| `GET /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}` | `getBloemOrganizationPeoplePolicyJob` | Read progress and per-record results of a people job. |
-| `POST /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}/cancel` | `cancelBloemOrganizationPeoplePolicyJob` | Cancel an eligible people policy job. |
-| `POST /api/bloem/v1/admin/organization/people/policy-previews` | `previewBloemOrganizationPeoplePolicy` | Preview a policy command and obtain a bound confirmation token. |
-| `POST /api/bloem/v1/admin/organization/people/selections` | `createBloemOrganizationPeopleSelection` | Create an immutable expiring selection from people filters. |
-| `GET /api/bloem/v1/admin/organization/people/{account_id}/` | `getBloemOrganizationPerson` | Read an organization person and profile summary. |
-| `PATCH /api/bloem/v1/admin/organization/people/{account_id}/memberships/current` | `updateBloemOrganizationPersonMembership` | Change an organization person membership status. |
-| `PATCH /api/bloem/v1/admin/organization/people/{account_id}/profiles/{profile_id}` | `updateBloemOrganizationPersonProfile` | Assign an organization person profile to an access group. |
-| `GET /api/bloem/v1/admin/organization/policy-decisions` | `listBloemOrganizationPolicyDecisions` | Page sanitized organization policy decision explanations. |
-| `GET /api/bloem/v1/admin/organization/policy-decisions/{id}` | `getBloemOrganizationPolicyDecision` | Read a sanitized organization policy decision explanation. |
-| `POST /api/bloem/v1/admin/platform/accounts` | `createBloemPlatformAccount` | Create an account, optionally on a plan. |
-| `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs` | `createBloemPlatformDirectPolicyJob` | Enqueue a confirmed bulk entitlement policy job. |
-| `GET /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}` | `getBloemPlatformDirectPolicyJob` | Read a bulk entitlement policy job. |
-| `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel` | `cancelBloemPlatformDirectPolicyJob` | Cancel an eligible bulk entitlement policy job. |
-| `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews` | `previewBloemPlatformDirectPolicy` | Create a selection and preview a bulk policy command. |
-| `POST /api/bloem/v1/admin/platform/accounts/entitlement-snapshots` | `readBloemDirectAccountPolicySnapshots` | Read bounded account policy snapshots in one observation. |
-| `PUT /api/bloem/v1/admin/platform/accounts/{account_id}` | `updateBloemPlatformAccount` | Update an account, optionally moving it to a plan. |
-| `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions` | `revokeAllBloemPlatformAccountAuthSessions` | End every sign-in session of an account. |
-| `GET /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions` | `listBloemPlatformAccountAuthSessions` | List an account's sign-in sessions. |
-| `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions/{session_id}` | `revokeBloemPlatformAccountAuthSession` | End one of an account's sign-in sessions. |
-| `GET /api/bloem/v1/admin/platform/accounts/{account_id}/devices` | `listBloemPlatformAccountDevices` | List an account's devices. |
-| `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/devices/{device_id}` | `deleteBloemPlatformAccountDevice` | Remove an account's device. |
-| `GET /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement` | `getBloemDirectAccountPolicy` | Read authoritative account and profile entitlement policies. |
-| `POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/apply` | `applyBloemAccountEntitlement` | Apply a pinned entitlement template. |
-| `POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run` | `previewBloemAccountEntitlement` | Preview a pinned entitlement template. |
-| `GET /api/bloem/v1/admin/platform/accounts/{account_id}/profiles` | `listBloemPlatformAccountProfiles` | List an account's profiles. |
-| `POST /api/bloem/v1/admin/platform/accounts/{account_id}/profiles` | `createBloemPlatformAccountProfile` | Create a profile for an account. |
-| `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/profiles/{profile_id}` | `deleteBloemPlatformAccountProfile` | Delete an account's profile. |
-| `PUT /api/bloem/v1/admin/platform/accounts/{account_id}/profiles/{profile_id}` | `updateBloemPlatformAccountProfile` | Change an account's profile. |
-| `GET /api/bloem/v1/admin/platform/ambience/` | `listBloemPlatformAmbience` | List ambience packs and authoring capabilities. |
-| `POST /api/bloem/v1/admin/platform/ambience/` | `createBloemPlatformAmbience` | Create a registry entry. |
-| `POST /api/bloem/v1/admin/platform/ambience/assets` | `uploadBloemPlatformAmbienceAsset` | Upload a standalone authoring asset without attaching it to a pack. |
-| `DELETE /api/bloem/v1/admin/platform/ambience/{id}` | `deleteBloemPlatformAmbience` | Delete a registry entry. |
-| `PUT /api/bloem/v1/admin/platform/ambience/{id}` | `updateBloemPlatformAmbience` | Replace every editable field of a registry entry. |
-| `POST /api/bloem/v1/admin/platform/ambience/{id}/assets` | `attachBloemPlatformAmbienceAsset` | Upload artwork and attach it to an ambience pack. |
-| `GET /api/bloem/v1/admin/platform/announcements` | `listBloemPlatformAnnouncements` | List published announcements, including withdrawn ones. |
-| `POST /api/bloem/v1/admin/platform/announcements` | `createBloemPlatformAnnouncement` | Publish an announcement to its audience's inboxes. |
-| `DELETE /api/bloem/v1/admin/platform/announcements/{id}` | `withdrawBloemPlatformAnnouncement` | Withdraw an announcement. |
-| `GET /api/bloem/v1/admin/platform/entitlement-templates` | `listBloemEntitlementTemplates` | List the entitlement template catalog. |
-| `POST /api/bloem/v1/admin/platform/entitlement-templates` | `createBloemEntitlementTemplate` | Create a versioned entitlement template. |
-| `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}` | `getBloemEntitlementTemplate` | Read the latest or a selected entitlement template revision. |
-| `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/archive` | `archiveBloemEntitlementTemplate` | Archive a template using its current revision. |
-| `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/clone` | `cloneBloemEntitlementTemplate` | Clone a template revision into a disabled new template. |
-| `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/history` | `listBloemEntitlementTemplateHistory` | List immutable template revisions (history alias). |
-| `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions` | `listBloemEntitlementTemplateRevisions` | List immutable template revisions. |
-| `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions` | `reviseBloemEntitlementTemplate` | Create a new revision or copy a historical policy into a new revision. |
-| `GET /api/bloem/v1/admin/platform/library-figures` | `getBloemLibraryFigures` | Read item counts for every library. |
-| `POST /api/bloem/v1/admin/platform/library-locations` | `createBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
-| `GET /api/bloem/v1/admin/platform/library-locations/{library_id}` | `getBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
-| `PUT /api/bloem/v1/admin/platform/library-locations/{library_id}` | `replaceBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
-| `GET /api/bloem/v1/admin/platform/native-storage/artifacts` | `listArtifactsBloemPlatformNativeStorage` | List automatically verified catalog releases and any optional manual artifacts. |
-| `GET /api/bloem/v1/admin/platform/native-storage/capabilities` | `getCapabilitiesBloemPlatformNativeStorage` | Read composition-dependent flags; backend verification remains false. |
-| `POST /api/bloem/v1/admin/platform/native-storage/catalog/installations` | `catalogInstallBloemPlatformNativeStorage` | Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload. |
-| `POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/discover` | `catalogDiscoverInstallBloemPlatformNativeStorage` | Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download. |
-| `POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade` | `catalogUpgradeBloemPlatformNativeStorage` | Download and verify a catalog upgrade, retaining configuration and library. |
-| `POST /api/bloem/v1/admin/platform/native-storage/installations` | `installBloemPlatformNativeStorage` | Install an approved artifact and source without creating a library or scan. |
-| `POST /api/bloem/v1/admin/platform/native-storage/installations/discover` | `discoverInstallBloemPlatformNativeStorage` | Discover the root of a new approved S3 installation and publish it atomically without a library or scan. |
-| `DELETE /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}` | `uninstallBloemPlatformNativeStorage` | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
-| `POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/disable` | `disableBloemPlatformNativeStorage` | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
-| `POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/upgrade` | `upgradeBloemPlatformNativeStorage` | Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept. |
-| `POST /api/bloem/v1/admin/platform/native-storage/s3/buckets` | `listS3BucketsBloemPlatformNativeStorage` | List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses. |
-| `POST /api/bloem/v1/admin/platform/native-storage/s3/folders` | `listS3FoldersBloemPlatformNativeStorage` | List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing. |
-| `GET /api/bloem/v1/admin/platform/native-storage/sources` | `listSourcesBloemPlatformNativeStorage` | List visible sources and their current configuration revisions. |
-| `DELETE /api/bloem/v1/admin/platform/native-storage/sources/{source_key}` | `deleteRemovedSourceBloemPlatformNativeStorage` | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
-| `GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}` | `getSourceBloemPlatformNativeStorage` | Read a visible source without configuration secrets. |
-| `GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse` | `browseBloemPlatformNativeStorage` | Browse authorized directories without starting discovery or opening files. |
-| `PUT /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration` | `replaceConfigurationBloemPlatformNativeStorage` | Replace complete configuration only while the source namespace is empty. |
-| `POST /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/credentials` | `rotateCredentialsBloemPlatformNativeStorage` | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
-| `GET /api/bloem/v1/admin/platform/new-arrivals` | `getBloemNewArrivals` | List recent additions to libraries. |
-| `GET /api/bloem/v1/admin/platform/organizations/` | `listBloemPlatformOrganizations` | Page organizations with current summary counts. |
-| `POST /api/bloem/v1/admin/platform/organizations/` | `createBloemPlatformOrganization` | Create an organization for an existing owner account. |
-| `GET /api/bloem/v1/admin/platform/organizations/{id}/` | `getBloemPlatformOrganization` | Read an organization summary. |
-| `PATCH /api/bloem/v1/admin/platform/organizations/{id}/` | `updateBloemPlatformOrganization` | Change organization name or slug. |
-| `GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement` | `getBloemPlatformOrganizationEntitlement` | Read the managed organization entitlement. |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/apply` | `applyBloemOrganizationEntitlement` | Apply a pinned entitlement template. |
-| `GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement/audit` | `listBloemPlatformOrganizationEntitlementAudit` | Read organization entitlement audit history. |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/dry-run` | `previewBloemOrganizationEntitlement` | Preview a pinned entitlement template. |
-| `GET /api/bloem/v1/admin/platform/organizations/{id}/memberships` | `listBloemPlatformOrganizationMemberships` | Page an organization membership directory. |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/memberships` | `createBloemPlatformOrganizationMembership` | Create an organization membership for an existing account. |
-| `PATCH /api/bloem/v1/admin/platform/organizations/{id}/memberships/{membership_id}` | `updateBloemPlatformOrganizationMembership` | Change a membership role or status. |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/reactivate` | `reactivateBloemPlatformOrganization` | Reactivate an organization. |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/suspend` | `suspendBloemPlatformOrganization` | Suspend an organization. |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/transfer-ownership` | `transferBloemPlatformOrganizationOwnership` | Transfer ownership after explicit confirmation and reauthentication. |
-| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement` | `getBloemOrganizationAccountPolicy` | Read authoritative account and profile entitlement policies. |
-| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs` | `createBloemPlatformOrganizationPolicyJob` | Enqueue a confirmed bulk entitlement policy job. |
-| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}` | `getBloemPlatformOrganizationPolicyJob` | Read a bulk entitlement policy job. |
-| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel` | `cancelBloemPlatformOrganizationPolicyJob` | Cancel an eligible bulk entitlement policy job. |
-| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews` | `previewBloemPlatformOrganizationPolicy` | Create a selection and preview a bulk policy command. |
-| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts` | `listBloemPlatformOrganizationEntitlementCohorts` | List organization entitlement cohorts. |
-| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}` | `getBloemPlatformOrganizationEntitlementCohort` | Read one organization entitlement cohort. |
-| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots` | `readBloemOrganizationAccountPolicySnapshots` | Read bounded account policy snapshots in one observation. |
-| `POST /api/bloem/v1/admin/platform/preview/account` | `ensureBloemPreviewAccount` | Ensure the issuer's shared preview account and primary profile. |
-| `PUT /api/bloem/v1/admin/platform/preview/accounts/{account_id}/presentation` | `setBloemPreviewPersonalPresentation` | Set the personal preview end date for display. |
-| `GET /api/bloem/v1/admin/platform/preview/capacity` | `getBloemPreviewCapacity` | Read private guest capacity and account readiness. |
-| `GET /api/bloem/v1/admin/platform/preview/catalog` | `searchBloemPreviewCatalog` | Find metadata visible to the preview for a showcase picker. |
-| `PUT /api/bloem/v1/admin/platform/preview/keys` | `rotateBloemPreviewKeys` | Replace the Ed25519 launch-key allowlist. |
-| `PUT /api/bloem/v1/admin/platform/preview/libraries` | `setBloemPreviewLibraries` | Revise the preview library selection and reapply it atomically. |
-| `DELETE /api/bloem/v1/admin/platform/preview/sessions` | `revokeBloemPreviewSessions` | Revoke all guest sessions without disabling the preview. |
-| `GET /api/bloem/v1/admin/platform/preview/settings` | `getBloemPreviewSettings` | Read preview settings and public launch keys. |
-| `PUT /api/bloem/v1/admin/platform/preview/settings` | `updateBloemPreviewSettings` | Merge explicitly supplied preview settings. |
-| `POST /api/bloem/v1/admin/platform/preview/verify` | `verifyBloemPreviewTicket` | Verify a freshly signed launch ticket without consuming it. |
-| `GET /api/bloem/v1/admin/platform/promotions/` | `listBloemPlatformPromotions` | List platform-managed campaigns and supported delivery surfaces. |
-| `POST /api/bloem/v1/admin/platform/promotions/` | `createBloemPlatformPromotion` | Create a registry entry. |
-| `DELETE /api/bloem/v1/admin/platform/promotions/{id}` | `deleteBloemPlatformPromotion` | Delete a registry entry. |
-| `PUT /api/bloem/v1/admin/platform/promotions/{id}` | `updateBloemPlatformPromotion` | Replace every editable field of a registry entry. |
-| `GET /api/bloem/v1/admin/platform/tenants` | `listBloemPlatformTenants` | List reseller organizations with live usage. |
-| `POST /api/bloem/v1/admin/platform/tenants` | `createBloemPlatformTenant` | Create a reseller organization. |
-| `DELETE /api/bloem/v1/admin/platform/tenants/{id}` | `retireBloemPlatformTenant` | Retire a reseller organization. |
-| `GET /api/bloem/v1/admin/platform/tenants/{id}` | `getBloemPlatformTenant` | Read one reseller organization. |
-| `GET /api/bloem/v1/admin/platform/tenants/{id}/branding` | `getBloemPlatformTenantBranding` | Read an organization's branding. |
-| `PUT /api/bloem/v1/admin/platform/tenants/{id}/branding` | `updateBloemPlatformTenantBranding` | Change an organization's branding. |
-| `DELETE /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}` | `deleteBloemPlatformTenantBrandingAsset` | Remove an organization's branding image. |
-| `PUT /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}` | `uploadBloemPlatformTenantBrandingAsset` | Upload an organization's branding image. |
-| `GET /api/bloem/v1/admin/platform/tenants/{id}/domains` | `listBloemPlatformTenantDomains` | List an organization's domains. |
-| `POST /api/bloem/v1/admin/platform/tenants/{id}/domains` | `addBloemPlatformTenantDomain` | Register a domain to an organization. |
-| `DELETE /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}` | `removeBloemPlatformTenantDomain` | Unregister a domain. |
-| `PUT /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}/primary` | `setBloemPlatformTenantPrimaryDomain` | Make a domain the organization's primary. |
-| `POST /api/bloem/v1/admin/platform/tenants/{id}/freeze` | `freezeBloemPlatformTenant` | Suspend a reseller organization. |
-| `PATCH /api/bloem/v1/admin/platform/tenants/{id}/limits` | `updateBloemPlatformTenantLimits` | Change seats and shared conversions. |
-| `POST /api/bloem/v1/admin/platform/tenants/{id}/thaw` | `thawBloemPlatformTenant` | Lift an administrative suspension. |
-| `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members` | `listBloemPlatformTenantMembers` | List a reseller organization's members. |
-| `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members` | `createBloemPlatformTenantMember` | Add a member account to a reseller organization. |
-| `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}` | `deleteBloemPlatformTenantMember` | Remove a member. |
-| `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}` | `getBloemPlatformTenantMember` | Read one member. |
-| `PUT /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}` | `updateBloemPlatformTenantMember` | Change a member's username or email. |
-| `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions` | `revokeAllBloemPlatformTenantMemberAuthSessions` | End every sign-in session of a member. |
-| `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions` | `listBloemPlatformTenantMemberAuthSessions` | List a member's sign-in sessions. |
-| `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}` | `revokeBloemPlatformTenantMemberAuthSession` | End one of a member's sign-in sessions. |
-| `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/devices` | `listBloemPlatformTenantMemberDevices` | List a member's devices. |
-| `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/devices/{device_id}` | `deleteBloemPlatformTenantMemberDevice` | Remove a member's device. |
-| `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles` | `listBloemPlatformTenantMemberProfiles` | List a member's profiles. |
-| `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles` | `createBloemPlatformTenantMemberProfile` | Create a profile for a member. |
-| `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}` | `deleteBloemPlatformTenantMemberProfile` | Delete a member's profile. |
-| `PUT /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}` | `updateBloemPlatformTenantMemberProfile` | Change a member's profile. |
-| `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/reset-password` | `resetBloemPlatformTenantMemberPassword` | Set a member's password. |
-| `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/resume` | `resumeBloemPlatformTenantMember` | Resume a suspended member's account. |
-| `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/suspend` | `suspendBloemPlatformTenantMember` | Suspend a member's account. |
-| `GET /api/bloem/v1/admin/platform/upgrade-prompt` | `getBloemUpgradePrompt` | Read the upgrade prompt. |
-| `PUT /api/bloem/v1/admin/platform/upgrade-prompt` | `putBloemUpgradePrompt` | Replace the upgrade prompt. |
-| `GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement` | `getBloemLegacyAccountEntitlement` | Read the legacy managed account entitlement projection. |
-| `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply` | `applyBloemLegacyAccountEntitlement` | Apply a pinned entitlement template. |
-| `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run` | `previewBloemLegacyAccountEntitlement` | Preview a pinned entitlement template. |
-| `GET /api/bloem/v1/admin/search/mirror` | `getBloemSearchMirrorStatus` | Read the search mirror's status. |
-| `POST /api/bloem/v1/admin/session` | `createBloemAdminSession` | Exchange a login session for a scoped administrative context. |
-| `GET /api/bloem/v1/ambience` | `getBloemSeasonalViewer` | Read seasonal presentation for the current verified tenant viewer. |
-| `GET /api/bloem/v1/ambience/assets/{ref}` | `getBloemAmbienceAsset` | Serve uploaded seasonal and campaign artwork. |
-| `GET /api/bloem/v1/ambience/public` | `getBloemPublicAmbience` | List the active deployment-wide seasonal packs. |
-| `POST /api/bloem/v1/book-requests` | `createBloemBookRequest` | File an audiobook request. |
-| `GET /api/bloem/v1/book-requests/capability` | `getBloemBookRequestCapability` | Read audiobook request capability and current viewer policy. |
-| `GET /api/bloem/v1/book-requests/mine` | `listBloemBookRequests` | List this profile's audiobook requests in the current organization. |
-| `GET /api/bloem/v1/book-requests/{id}` | `getBloemBookRequest` | Read this profile's audiobook request. |
-| `POST /api/bloem/v1/book-requests/{id}/cancel` | `cancelBloemBookRequest` | Withdraw a pending or approved audiobook request. |
-| `GET /api/bloem/v1/capabilities` | `getBloemCapabilities` | What this build supports, for a client deciding which surfaces to use. |
-| `GET /api/bloem/v1/catalog/items/{content_id}/collections` | `listBloemItemCollections` | The visible server collections that contain one item. Visibility matches the server collection list; smart collections are evaluated lazily and are not included. An item the viewer may not see answers 404. |
-| `POST /api/bloem/v1/ebook-requests` | `createBloemEbookRequest` | File an ISBN ebook request. |
-| `GET /api/bloem/v1/ebook-requests/capability` | `getBloemEbookRequestCapability` | Read ebook request capability and current viewer policy. |
-| `GET /api/bloem/v1/ebook-requests/mine` | `listBloemEbookRequests` | List this profile's ebook request history. |
-| `GET /api/bloem/v1/ebook-requests/{id}` | `getBloemEbookRequest` | Read an ebook request owned by this profile. |
-| `POST /api/bloem/v1/ebook-requests/{id}/cancel` | `cancelBloemEbookRequest` | Withdraw a pending or approved ebook request locally. |
-| `GET /api/bloem/v1/livetv/capability` | `getBloemLiveTVCapability` | Whether this build and viewer support Live TV and a channel is available. |
-| `GET /api/bloem/v1/livetv/channels` | `listBloemLiveTVChannels` | The channel lineup this viewer may watch. |
-| `PATCH /api/bloem/v1/livetv/channels/{channelId}` | `patchBloemLiveTVChannel` | Change channel enablement, number override or guide mapping. |
-| `POST /api/bloem/v1/livetv/channels/{channelId}/session` | `startBloemLiveTVSession` | Tune a channel and take a tuner lease. |
-| `GET /api/bloem/v1/livetv/guide` | `getBloemLiveTVGuide` | Program guide for a window. |
-| `GET /api/bloem/v1/livetv/guide-sources` | `listBloemLiveTVGuideSources` | List configured guide sources. |
-| `POST /api/bloem/v1/livetv/guide-sources` | `createBloemLiveTVGuideSource` | Create a guide source. |
-| `POST /api/bloem/v1/livetv/guide-sources/schedules-direct/lineups` | `lookupBloemLiveTVSchedulesDirectLineups` | Look up Schedules Direct lineups by postal code. |
-| `POST /api/bloem/v1/livetv/guide-sources/xml-sync/lineups` | `lookupBloemLiveTVXMLSyncLineups` | Look up Gracenote providers by postal code. |
-| `DELETE /api/bloem/v1/livetv/guide-sources/{sourceId}` | `deleteBloemLiveTVGuideSource` | Delete a guide source. |
-| `PATCH /api/bloem/v1/livetv/guide-sources/{sourceId}` | `updateBloemLiveTVGuideSource` | Merge supplied guide-source fields with current configuration. |
-| `POST /api/bloem/v1/livetv/guide-sources/{sourceId}/sync` | `syncBloemLiveTVGuideSource` | Synchronize a saved guide source. |
-| `GET /api/bloem/v1/livetv/live-hls/{playbackId}/{name}` | `getBloemLiveTVHLSMedia` | Fetch a session-bound HLS playlist or MPEG-TS segment. |
-| `GET /api/bloem/v1/livetv/programs/{programId}` | `getBloemLiveTVProgram` | Read a guide program. |
-| `GET /api/bloem/v1/livetv/recordings` | `listBloemLiveTVRecordings` | List recordings visible to this viewer. |
-| `POST /api/bloem/v1/livetv/recordings` | `scheduleBloemLiveTVRecording` | Schedule a guide-program or manual recording. |
-| `DELETE /api/bloem/v1/livetv/recordings/{recordingId}` | `cancelBloemLiveTVRecording` | Cancel an owned recording and return its updated record. |
-| `GET /api/bloem/v1/livetv/series-rules` | `listBloemLiveTVSeriesRules` | List viewer-owned DVR series rules. |
-| `POST /api/bloem/v1/livetv/series-rules` | `createBloemLiveTVSeriesRule` | Create a viewer-owned DVR series rule. |
-| `DELETE /api/bloem/v1/livetv/series-rules/{ruleId}` | `deleteBloemLiveTVSeriesRule` | Delete an owned DVR series rule. |
-| `DELETE /api/bloem/v1/livetv/sessions/{sessionId}` | `releaseBloemLiveTVSession` | Release an owned tuner lease and return the session record. |
-| `POST /api/bloem/v1/livetv/sessions/{sessionId}/heartbeat` | `heartbeatBloemLiveTVSession` | Renew an owned active tuner session. |
-| `GET /api/bloem/v1/livetv/sessions/{sessionId}/stream` | `streamBloemLiveTVSession` | Stream MPEG-TS media. |
-| `HEAD /api/bloem/v1/livetv/sessions/{sessionId}/stream` | `probeBloemLiveTVSession` | Check MPEG-TS stream headers. |
-| `GET /api/bloem/v1/livetv/tuners` | `listBloemLiveTVTuners` | List configured tuner metadata. |
-| `POST /api/bloem/v1/livetv/tuners` | `addBloemLiveTVTuner` | Add an HDHomeRun-compatible tuner. |
-| `POST /api/bloem/v1/livetv/tuners/discover` | `discoverBloemLiveTVTuners` | Discover local HDHomeRun-compatible tuner candidates. |
-| `POST /api/bloem/v1/livetv/tuners/xtream` | `createBloemXtreamProvider` | Authenticate and import an encrypted Xtream live-TV provider. |
-| `DELETE /api/bloem/v1/livetv/tuners/{tunerId}` | `deleteBloemLiveTVTuner` | Delete a tuner. |
-| `POST /api/bloem/v1/livetv/tuners/{tunerId}/scan` | `scanBloemLiveTVTuner` | Scan a saved tuner and refresh its channel lineup. |
-| `GET /api/bloem/v1/notifications` | `listBloemNotifications` | The acting profile's inbox, newest first, with the alert fields a row needs to render. |
-| `GET /api/bloem/v1/notifications/sync` | `syncBloemNotifications` | Rows newer than a cursor, for a client waking from a push or reconnecting across a gap. |
-| `GET /api/bloem/v1/notifications/{id}` | `getBloemNotification` | One inbox row. Another profile's row is absent, not forbidden. |
-| `GET /api/bloem/v1/organizations` | `listBloemOrganizations` | The organizations this account belongs to. |
-| `GET /api/bloem/v1/persons/{person_id}` | `getBloemPersonDetail` | One person and their credits, filtered to what this viewer may see. |
-| `POST /api/bloem/v1/preview/events` | `recordBloemPreviewEvent` | Increment a daily aggregate preview counter. |
-| `POST /api/bloem/v1/preview/sessions` | `createBloemPreviewGuestSession` | Exchange a signed launch ticket for a bounded guest session. |
-| `GET /api/bloem/v1/preview/status` | `getBloemPreviewPublicStatus` | Discover preview availability and host-specific presentation. |
-| `DELETE /api/bloem/v1/profile-credentials/{id}` | `clearBloemProfileCredentials` | Clear direct-profile login credentials. |
-| `GET /api/bloem/v1/profile-credentials/{id}` | `getBloemProfileCredentials` | Read direct-profile credential status without exposing a password or hash. |
-| `PUT /api/bloem/v1/profile-credentials/{id}` | `setBloemProfileCredentials` | Set or replace direct-profile login credentials. |
-| `GET /api/bloem/v1/promotions` | `listBloemPromotions` | List the campaign cards a profile sees on a surface. |
-| `PUT /api/bloem/v1/promotions/{id}/dismissals/{surface}` | `dismissBloemPromotion` | Stop showing a campaign to a profile on a surface. |
-| `POST /api/bloem/v1/promotions/{id}/save` | `saveBloemPromotion` | Save an in-playback campaign to the profile's inbox. |
-| `GET /api/bloem/v1/server/identity` | `getBloemServerIdentity` | Which server this is, which surfaces it serves, and whether it has been set up. |
-| `GET /api/bloem/v1/watch/home` | `getBloemWatchHome` | The composed home document for this viewer. |
-| `GET /api/bloem/v1/watch/items/{content_id}` | `getBloemWatchItem` | The composed document for one item. |
-| `GET /api/bloem/v1/watch/search` | `searchBloemWatch` | A composed document for a search query. |
+| `GET /api/bloem/v2/admin/organization/activity` | `listBloemOrganizationActivity` | Page the selected organization's sanitized activity and entitlement audit. |
+| `GET /api/bloem/v2/admin/organization/audiobook-request-integrations` | `getBloemAudiobookRequestSetup` | Read audiobook acquisition connections and eligible libraries/installations. |
+| `POST /api/bloem/v2/admin/organization/audiobook-request-integrations` | `createBloemAudiobookRequestIntegration` | Create an audiobook acquisition connection. |
+| `PUT /api/bloem/v2/admin/organization/audiobook-request-integrations/{id}` | `updateBloemAudiobookRequestIntegration` | Edit an audiobook acquisition connection and rotate its credentials. |
+| `PUT /api/bloem/v2/admin/organization/audiobook-request-integrations/{id}/library` | `setBloemAudiobookRequestIntegrationLibrary` | Bind an acquisition connection to a local audiobook library and download directories. |
+| `POST /api/bloem/v2/admin/organization/audiobook-request-integrations/{id}/test` | `testBloemAudiobookRequestIntegration` | Run the audiobook plugin's connection checks for a saved connection. |
+| `GET /api/bloem/v2/admin/organization/book-requests` | `listBloemAdminBookRequests` | List audiobook requests in the selected administrative organization. |
+| `GET /api/bloem/v2/admin/organization/book-requests/acquisitions` | `listBloemAudiobookAcquisitions` | List audiobook acquisitions by state in the selected organization. |
+| `POST /api/bloem/v2/admin/organization/book-requests/{id}/accept-download` | `acceptBloemAudiobookDownload` | Accept the selected audiobook download for import. |
+| `GET /api/bloem/v2/admin/organization/book-requests/{id}/acquisition` | `getBloemAudiobookAcquisition` | Read an audiobook acquisition and its recent decisions. |
+| `POST /api/bloem/v2/admin/organization/book-requests/{id}/approve` | `approveBloemBookRequest` | Approve an audiobook request; keep it awaiting fulfillment. |
+| `POST /api/bloem/v2/admin/organization/book-requests/{id}/approve-candidate` | `approveBloemAudiobookCandidate` | Approve a held audiobook candidate for a new acquisition attempt. |
+| `POST /api/bloem/v2/admin/organization/book-requests/{id}/decline` | `declineBloemBookRequest` | Decline a pending audiobook request and refund its quota slot. |
+| `POST /api/bloem/v2/admin/organization/book-requests/{id}/fulfil` | `fulfilBloemBookRequest` | Manually mark an audiobook request fulfilled. |
+| `POST /api/bloem/v2/admin/organization/book-requests/{id}/retry` | `retryBloemAudiobookAcquisition` | Retry or recover an audiobook acquisition. |
+| `GET /api/bloem/v2/admin/organization/ebook-request-integrations` | `getBloemEbookRequestSetup` | Read ebook policy, connections and eligible libraries/installations. |
+| `POST /api/bloem/v2/admin/organization/ebook-request-integrations` | `createBloemEbookRequestIntegration` | Create an explicit Bookwarehouse ebook fulfillment connection. |
+| `PUT /api/bloem/v2/admin/organization/ebook-request-integrations/{id}/library` | `setBloemEbookRequestIntegrationLibrary` | Bind a connection to an eligible native Bookwarehouse ebook library. |
+| `POST /api/bloem/v2/admin/organization/ebook-request-integrations/{id}/test` | `testBloemEbookRequestIntegration` | Run the Bookwarehouse plugin's connection test for a saved connection. |
+| `PUT /api/bloem/v2/admin/organization/ebook-request-policy` | `setBloemEbookRequestPolicy` | Explicitly enable or disable ebook request admission and dispatch. |
+| `GET /api/bloem/v2/admin/organization/ebook-requests` | `listBloemAdminEbookRequests` | List ebook requests in the selected default organization. |
+| `POST /api/bloem/v2/admin/organization/ebook-requests/{id}/approve` | `approveBloemEbookRequest` | Approve a pending ebook request. |
+| `POST /api/bloem/v2/admin/organization/ebook-requests/{id}/decline` | `declineBloemEbookRequest` | Decline a pending ebook request and refund its quota slot. |
+| `POST /api/bloem/v2/admin/organization/ebook-requests/{id}/retry` | `retryBloemEbookRequest` | Recover uncertain provider state or retry a safely failed ebook dispatch. |
+| `GET /api/bloem/v2/admin/organization/entitlement-cohorts` | `listBloemOrganizationEntitlementCohorts` | List safe entitlement cohort projections. |
+| `GET /api/bloem/v2/admin/organization/entitlement-cohorts/{cohort_id}` | `getBloemOrganizationEntitlementCohort` | Read a safe organization cohort projection. |
+| `DELETE /api/bloem/v2/admin/organization/entitlements/{folder_id}` | `deleteBloemOrganizationLibraryEntitlement` | Remove an organization library entitlement. |
+| `PUT /api/bloem/v2/admin/organization/entitlements/{folder_id}` | `updateBloemOrganizationLibraryEntitlement` | Set an organization library entitlement status. |
+| `GET /api/bloem/v2/admin/organization/groups/` | `listBloemOrganizationGroups` | List access groups in the selected organization. |
+| `POST /api/bloem/v2/admin/organization/groups/` | `createBloemOrganizationGroup` | Create an organization access group. |
+| `DELETE /api/bloem/v2/admin/organization/groups/{id}` | `deleteBloemOrganizationGroup` | Delete an organization access group and report its impact. |
+| `GET /api/bloem/v2/admin/organization/groups/{id}` | `getBloemOrganizationGroup` | Read one organization access group. |
+| `PUT /api/bloem/v2/admin/organization/groups/{id}` | `updateBloemOrganizationGroup` | Update an organization access group. |
+| `GET /api/bloem/v2/admin/organization/invitations` | `listBloemOrganizationInvitations` | List invitation metadata without claim tokens. |
+| `POST /api/bloem/v2/admin/organization/invitations` | `createBloemOrganizationInvitation` | Create a user invitation and disclose its claim token once. |
+| `DELETE /api/bloem/v2/admin/organization/invitations/{id}` | `revokeBloemOrganizationInvitation` | Revoke an unaccepted, unrevoked user invitation in the selected organization. |
+| `POST /api/bloem/v2/admin/organization/invitations/{id}/resend` | `resendBloemOrganizationInvitation` | Rotate an unaccepted, unrevoked user invitation and return its new claim token once. |
+| `GET /api/bloem/v2/admin/organization/libraries` | `listBloemOrganizationLibraries` | List the organization library entitlement projection. |
+| `POST /api/bloem/v2/admin/organization/library-locations` | `createBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
+| `GET /api/bloem/v2/admin/organization/library-locations/{library_id}` | `getBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
+| `PUT /api/bloem/v2/admin/organization/library-locations/{library_id}` | `replaceBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
+| `GET /api/bloem/v2/admin/organization/native-storage/artifacts` | `listArtifactsBloemOrganizationNativeStorage` | List automatically verified catalog releases and any optional manual artifacts. |
+| `GET /api/bloem/v2/admin/organization/native-storage/capabilities` | `getCapabilitiesBloemOrganizationNativeStorage` | Read composition-dependent flags; backend verification remains false. |
+| `POST /api/bloem/v2/admin/organization/native-storage/catalog/installations` | `catalogInstallBloemOrganizationNativeStorage` | Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload. |
+| `POST /api/bloem/v2/admin/organization/native-storage/catalog/installations/discover` | `catalogDiscoverInstallBloemOrganizationNativeStorage` | Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download. |
+| `POST /api/bloem/v2/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade` | `catalogUpgradeBloemOrganizationNativeStorage` | Download and verify a catalog upgrade, retaining configuration and library. |
+| `POST /api/bloem/v2/admin/organization/native-storage/installations` | `installBloemOrganizationNativeStorage` | Install an approved artifact and source without creating a library or scan. |
+| `POST /api/bloem/v2/admin/organization/native-storage/installations/discover` | `discoverInstallBloemOrganizationNativeStorage` | Discover the root of a new approved S3 installation and publish it atomically without a library or scan. |
+| `DELETE /api/bloem/v2/admin/organization/native-storage/installations/{installation_id}` | `uninstallBloemOrganizationNativeStorage` | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
+| `POST /api/bloem/v2/admin/organization/native-storage/installations/{installation_id}/disable` | `disableBloemOrganizationNativeStorage` | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
+| `POST /api/bloem/v2/admin/organization/native-storage/installations/{installation_id}/upgrade` | `upgradeBloemOrganizationNativeStorage` | Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept. |
+| `POST /api/bloem/v2/admin/organization/native-storage/s3/buckets` | `listS3BucketsBloemOrganizationNativeStorage` | List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses. |
+| `POST /api/bloem/v2/admin/organization/native-storage/s3/folders` | `listS3FoldersBloemOrganizationNativeStorage` | List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing. |
+| `GET /api/bloem/v2/admin/organization/native-storage/sources` | `listSourcesBloemOrganizationNativeStorage` | List visible sources and their current configuration revisions. |
+| `DELETE /api/bloem/v2/admin/organization/native-storage/sources/{source_key}` | `deleteRemovedSourceBloemOrganizationNativeStorage` | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
+| `GET /api/bloem/v2/admin/organization/native-storage/sources/{source_key}` | `getSourceBloemOrganizationNativeStorage` | Read a visible source without configuration secrets. |
+| `GET /api/bloem/v2/admin/organization/native-storage/sources/{source_key}/browse` | `browseBloemOrganizationNativeStorage` | Browse authorized directories without starting discovery or opening files. |
+| `PUT /api/bloem/v2/admin/organization/native-storage/sources/{source_key}/configuration` | `replaceConfigurationBloemOrganizationNativeStorage` | Replace complete configuration only while the source namespace is empty. |
+| `POST /api/bloem/v2/admin/organization/native-storage/sources/{source_key}/credentials` | `rotateCredentialsBloemOrganizationNativeStorage` | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
+| `GET /api/bloem/v2/admin/organization/overview` | `getBloemOrganizationOverview` | Read the selected organization overview. |
+| `GET /api/bloem/v2/admin/organization/people/` | `listBloemOrganizationPeople` | Page organization people and their profiles. |
+| `POST /api/bloem/v2/admin/organization/people/bulk-jobs` | `createBloemOrganizationPeopleBulkJob` | Enqueue a people bulk mutation. |
+| `GET /api/bloem/v2/admin/organization/people/bulk-jobs/{job_id}` | `getBloemOrganizationPeopleBulkJob` | Read progress and per-record results of a people job. |
+| `POST /api/bloem/v2/admin/organization/people/policy-jobs` | `createBloemOrganizationPeoplePolicyJob` | Enqueue a confirmed people policy command. |
+| `GET /api/bloem/v2/admin/organization/people/policy-jobs/{job_id}` | `getBloemOrganizationPeoplePolicyJob` | Read progress and per-record results of a people job. |
+| `POST /api/bloem/v2/admin/organization/people/policy-jobs/{job_id}/cancel` | `cancelBloemOrganizationPeoplePolicyJob` | Cancel an eligible people policy job. |
+| `POST /api/bloem/v2/admin/organization/people/policy-previews` | `previewBloemOrganizationPeoplePolicy` | Preview a policy command and obtain a bound confirmation token. |
+| `POST /api/bloem/v2/admin/organization/people/selections` | `createBloemOrganizationPeopleSelection` | Create an immutable expiring selection from people filters. |
+| `GET /api/bloem/v2/admin/organization/people/{account_id}/` | `getBloemOrganizationPerson` | Read an organization person and profile summary. |
+| `PATCH /api/bloem/v2/admin/organization/people/{account_id}/memberships/current` | `updateBloemOrganizationPersonMembership` | Change an organization person membership status. |
+| `PATCH /api/bloem/v2/admin/organization/people/{account_id}/profiles/{profile_id}` | `updateBloemOrganizationPersonProfile` | Assign an organization person profile to an access group. |
+| `GET /api/bloem/v2/admin/organization/policy-decisions` | `listBloemOrganizationPolicyDecisions` | Page sanitized organization policy decision explanations. |
+| `GET /api/bloem/v2/admin/organization/policy-decisions/{id}` | `getBloemOrganizationPolicyDecision` | Read a sanitized organization policy decision explanation. |
+| `POST /api/bloem/v2/admin/platform/accounts` | `createBloemPlatformAccount` | Create an account, optionally on a plan. |
+| `POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs` | `createBloemPlatformDirectPolicyJob` | Enqueue a confirmed bulk entitlement policy job. |
+| `GET /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}` | `getBloemPlatformDirectPolicyJob` | Read a bulk entitlement policy job. |
+| `POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel` | `cancelBloemPlatformDirectPolicyJob` | Cancel an eligible bulk entitlement policy job. |
+| `POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-previews` | `previewBloemPlatformDirectPolicy` | Create a selection and preview a bulk policy command. |
+| `POST /api/bloem/v2/admin/platform/accounts/entitlement-snapshots` | `readBloemDirectAccountPolicySnapshots` | Read bounded account policy snapshots in one observation. |
+| `PUT /api/bloem/v2/admin/platform/accounts/{account_id}` | `updateBloemPlatformAccount` | Update an account, optionally moving it to a plan. |
+| `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions` | `revokeAllBloemPlatformAccountAuthSessions` | End every sign-in session of an account. |
+| `GET /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions` | `listBloemPlatformAccountAuthSessions` | List an account's sign-in sessions. |
+| `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions/{session_id}` | `revokeBloemPlatformAccountAuthSession` | End one of an account's sign-in sessions. |
+| `GET /api/bloem/v2/admin/platform/accounts/{account_id}/devices` | `listBloemPlatformAccountDevices` | List an account's devices. |
+| `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/devices/{device_id}` | `deleteBloemPlatformAccountDevice` | Remove an account's device. |
+| `GET /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement` | `getBloemDirectAccountPolicy` | Read authoritative account and profile entitlement policies. |
+| `POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/apply` | `applyBloemAccountEntitlement` | Apply a pinned entitlement template. |
+| `POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/dry-run` | `previewBloemAccountEntitlement` | Preview a pinned entitlement template. |
+| `GET /api/bloem/v2/admin/platform/accounts/{account_id}/profiles` | `listBloemPlatformAccountProfiles` | List an account's profiles. |
+| `POST /api/bloem/v2/admin/platform/accounts/{account_id}/profiles` | `createBloemPlatformAccountProfile` | Create a profile for an account. |
+| `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/profiles/{profile_id}` | `deleteBloemPlatformAccountProfile` | Delete an account's profile. |
+| `PUT /api/bloem/v2/admin/platform/accounts/{account_id}/profiles/{profile_id}` | `updateBloemPlatformAccountProfile` | Change an account's profile. |
+| `GET /api/bloem/v2/admin/platform/ambience/` | `listBloemPlatformAmbience` | List ambience packs and authoring capabilities. |
+| `POST /api/bloem/v2/admin/platform/ambience/` | `createBloemPlatformAmbience` | Create a registry entry. |
+| `POST /api/bloem/v2/admin/platform/ambience/assets` | `uploadBloemPlatformAmbienceAsset` | Upload a standalone authoring asset without attaching it to a pack. |
+| `DELETE /api/bloem/v2/admin/platform/ambience/{id}` | `deleteBloemPlatformAmbience` | Delete a registry entry. |
+| `PUT /api/bloem/v2/admin/platform/ambience/{id}` | `updateBloemPlatformAmbience` | Replace every editable field of a registry entry. |
+| `POST /api/bloem/v2/admin/platform/ambience/{id}/assets` | `attachBloemPlatformAmbienceAsset` | Upload artwork and attach it to an ambience pack. |
+| `GET /api/bloem/v2/admin/platform/announcements` | `listBloemPlatformAnnouncements` | List published announcements, including withdrawn ones. |
+| `POST /api/bloem/v2/admin/platform/announcements` | `createBloemPlatformAnnouncement` | Publish an announcement to its audience's inboxes. |
+| `DELETE /api/bloem/v2/admin/platform/announcements/{id}` | `withdrawBloemPlatformAnnouncement` | Withdraw an announcement. |
+| `GET /api/bloem/v2/admin/platform/entitlement-templates` | `listBloemEntitlementTemplates` | List the entitlement template catalog. |
+| `POST /api/bloem/v2/admin/platform/entitlement-templates` | `createBloemEntitlementTemplate` | Create a versioned entitlement template. |
+| `GET /api/bloem/v2/admin/platform/entitlement-templates/{key}` | `getBloemEntitlementTemplate` | Read the latest or a selected entitlement template revision. |
+| `POST /api/bloem/v2/admin/platform/entitlement-templates/{key}/archive` | `archiveBloemEntitlementTemplate` | Archive a template using its current revision. |
+| `POST /api/bloem/v2/admin/platform/entitlement-templates/{key}/clone` | `cloneBloemEntitlementTemplate` | Clone a template revision into a disabled new template. |
+| `GET /api/bloem/v2/admin/platform/entitlement-templates/{key}/history` | `listBloemEntitlementTemplateHistory` | List immutable template revisions (history alias). |
+| `GET /api/bloem/v2/admin/platform/entitlement-templates/{key}/revisions` | `listBloemEntitlementTemplateRevisions` | List immutable template revisions. |
+| `POST /api/bloem/v2/admin/platform/entitlement-templates/{key}/revisions` | `reviseBloemEntitlementTemplate` | Create a new revision or copy a historical policy into a new revision. |
+| `GET /api/bloem/v2/admin/platform/library-figures` | `getBloemLibraryFigures` | Read item counts for every library. |
+| `POST /api/bloem/v2/admin/platform/library-locations` | `createBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
+| `GET /api/bloem/v2/admin/platform/library-locations/{library_id}` | `getBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
+| `PUT /api/bloem/v2/admin/platform/library-locations/{library_id}` | `replaceBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
+| `GET /api/bloem/v2/admin/platform/native-storage/artifacts` | `listArtifactsBloemPlatformNativeStorage` | List automatically verified catalog releases and any optional manual artifacts. |
+| `GET /api/bloem/v2/admin/platform/native-storage/capabilities` | `getCapabilitiesBloemPlatformNativeStorage` | Read composition-dependent flags; backend verification remains false. |
+| `POST /api/bloem/v2/admin/platform/native-storage/catalog/installations` | `catalogInstallBloemPlatformNativeStorage` | Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload. |
+| `POST /api/bloem/v2/admin/platform/native-storage/catalog/installations/discover` | `catalogDiscoverInstallBloemPlatformNativeStorage` | Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download. |
+| `POST /api/bloem/v2/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade` | `catalogUpgradeBloemPlatformNativeStorage` | Download and verify a catalog upgrade, retaining configuration and library. |
+| `POST /api/bloem/v2/admin/platform/native-storage/installations` | `installBloemPlatformNativeStorage` | Install an approved artifact and source without creating a library or scan. |
+| `POST /api/bloem/v2/admin/platform/native-storage/installations/discover` | `discoverInstallBloemPlatformNativeStorage` | Discover the root of a new approved S3 installation and publish it atomically without a library or scan. |
+| `DELETE /api/bloem/v2/admin/platform/native-storage/installations/{installation_id}` | `uninstallBloemPlatformNativeStorage` | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
+| `POST /api/bloem/v2/admin/platform/native-storage/installations/{installation_id}/disable` | `disableBloemPlatformNativeStorage` | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
+| `POST /api/bloem/v2/admin/platform/native-storage/installations/{installation_id}/upgrade` | `upgradeBloemPlatformNativeStorage` | Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept. |
+| `POST /api/bloem/v2/admin/platform/native-storage/s3/buckets` | `listS3BucketsBloemPlatformNativeStorage` | List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses. |
+| `POST /api/bloem/v2/admin/platform/native-storage/s3/folders` | `listS3FoldersBloemPlatformNativeStorage` | List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing. |
+| `GET /api/bloem/v2/admin/platform/native-storage/sources` | `listSourcesBloemPlatformNativeStorage` | List visible sources and their current configuration revisions. |
+| `DELETE /api/bloem/v2/admin/platform/native-storage/sources/{source_key}` | `deleteRemovedSourceBloemPlatformNativeStorage` | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
+| `GET /api/bloem/v2/admin/platform/native-storage/sources/{source_key}` | `getSourceBloemPlatformNativeStorage` | Read a visible source without configuration secrets. |
+| `GET /api/bloem/v2/admin/platform/native-storage/sources/{source_key}/browse` | `browseBloemPlatformNativeStorage` | Browse authorized directories without starting discovery or opening files. |
+| `PUT /api/bloem/v2/admin/platform/native-storage/sources/{source_key}/configuration` | `replaceConfigurationBloemPlatformNativeStorage` | Replace complete configuration only while the source namespace is empty. |
+| `POST /api/bloem/v2/admin/platform/native-storage/sources/{source_key}/credentials` | `rotateCredentialsBloemPlatformNativeStorage` | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
+| `GET /api/bloem/v2/admin/platform/new-arrivals` | `getBloemNewArrivals` | List recent additions to libraries. |
+| `GET /api/bloem/v2/admin/platform/organizations/` | `listBloemPlatformOrganizations` | Page organizations with current summary counts. |
+| `POST /api/bloem/v2/admin/platform/organizations/` | `createBloemPlatformOrganization` | Create an organization for an existing owner account. |
+| `GET /api/bloem/v2/admin/platform/organizations/{id}/` | `getBloemPlatformOrganization` | Read an organization summary. |
+| `PATCH /api/bloem/v2/admin/platform/organizations/{id}/` | `updateBloemPlatformOrganization` | Change organization name or slug. |
+| `GET /api/bloem/v2/admin/platform/organizations/{id}/entitlement` | `getBloemPlatformOrganizationEntitlement` | Read the managed organization entitlement. |
+| `POST /api/bloem/v2/admin/platform/organizations/{id}/entitlement/apply` | `applyBloemOrganizationEntitlement` | Apply a pinned entitlement template. |
+| `GET /api/bloem/v2/admin/platform/organizations/{id}/entitlement/audit` | `listBloemPlatformOrganizationEntitlementAudit` | Read organization entitlement audit history. |
+| `POST /api/bloem/v2/admin/platform/organizations/{id}/entitlement/dry-run` | `previewBloemOrganizationEntitlement` | Preview a pinned entitlement template. |
+| `GET /api/bloem/v2/admin/platform/organizations/{id}/memberships` | `listBloemPlatformOrganizationMemberships` | Page an organization membership directory. |
+| `POST /api/bloem/v2/admin/platform/organizations/{id}/memberships` | `createBloemPlatformOrganizationMembership` | Create an organization membership for an existing account. |
+| `PATCH /api/bloem/v2/admin/platform/organizations/{id}/memberships/{membership_id}` | `updateBloemPlatformOrganizationMembership` | Change a membership role or status. |
+| `POST /api/bloem/v2/admin/platform/organizations/{id}/reactivate` | `reactivateBloemPlatformOrganization` | Reactivate an organization. |
+| `POST /api/bloem/v2/admin/platform/organizations/{id}/suspend` | `suspendBloemPlatformOrganization` | Suspend an organization. |
+| `POST /api/bloem/v2/admin/platform/organizations/{id}/transfer-ownership` | `transferBloemPlatformOrganizationOwnership` | Transfer ownership after explicit confirmation and reauthentication. |
+| `GET /api/bloem/v2/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement` | `getBloemOrganizationAccountPolicy` | Read authoritative account and profile entitlement policies. |
+| `POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs` | `createBloemPlatformOrganizationPolicyJob` | Enqueue a confirmed bulk entitlement policy job. |
+| `GET /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}` | `getBloemPlatformOrganizationPolicyJob` | Read a bulk entitlement policy job. |
+| `POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel` | `cancelBloemPlatformOrganizationPolicyJob` | Cancel an eligible bulk entitlement policy job. |
+| `POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews` | `previewBloemPlatformOrganizationPolicy` | Create a selection and preview a bulk policy command. |
+| `GET /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts` | `listBloemPlatformOrganizationEntitlementCohorts` | List organization entitlement cohorts. |
+| `GET /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}` | `getBloemPlatformOrganizationEntitlementCohort` | Read one organization entitlement cohort. |
+| `POST /api/bloem/v2/admin/platform/organizations/{organization_id}/entitlement-snapshots` | `readBloemOrganizationAccountPolicySnapshots` | Read bounded account policy snapshots in one observation. |
+| `POST /api/bloem/v2/admin/platform/preview/account` | `ensureBloemPreviewAccount` | Ensure the issuer's shared preview account and primary profile. |
+| `PUT /api/bloem/v2/admin/platform/preview/accounts/{account_id}/presentation` | `setBloemPreviewPersonalPresentation` | Set the personal preview end date for display. |
+| `GET /api/bloem/v2/admin/platform/preview/capacity` | `getBloemPreviewCapacity` | Read private guest capacity and account readiness. |
+| `GET /api/bloem/v2/admin/platform/preview/catalog` | `searchBloemPreviewCatalog` | Find metadata visible to the preview for a showcase picker. |
+| `PUT /api/bloem/v2/admin/platform/preview/keys` | `rotateBloemPreviewKeys` | Replace the Ed25519 launch-key allowlist. |
+| `PUT /api/bloem/v2/admin/platform/preview/libraries` | `setBloemPreviewLibraries` | Revise the preview library selection and reapply it atomically. |
+| `DELETE /api/bloem/v2/admin/platform/preview/sessions` | `revokeBloemPreviewSessions` | Revoke all guest sessions without disabling the preview. |
+| `GET /api/bloem/v2/admin/platform/preview/settings` | `getBloemPreviewSettings` | Read preview settings and public launch keys. |
+| `PUT /api/bloem/v2/admin/platform/preview/settings` | `updateBloemPreviewSettings` | Merge explicitly supplied preview settings. |
+| `POST /api/bloem/v2/admin/platform/preview/verify` | `verifyBloemPreviewTicket` | Verify a freshly signed launch ticket without consuming it. |
+| `GET /api/bloem/v2/admin/platform/promotions/` | `listBloemPlatformPromotions` | List platform-managed campaigns and supported delivery surfaces. |
+| `POST /api/bloem/v2/admin/platform/promotions/` | `createBloemPlatformPromotion` | Create a registry entry. |
+| `DELETE /api/bloem/v2/admin/platform/promotions/{id}` | `deleteBloemPlatformPromotion` | Delete a registry entry. |
+| `PUT /api/bloem/v2/admin/platform/promotions/{id}` | `updateBloemPlatformPromotion` | Replace every editable field of a registry entry. |
+| `GET /api/bloem/v2/admin/platform/tenants` | `listBloemPlatformTenants` | List reseller organizations with live usage. |
+| `POST /api/bloem/v2/admin/platform/tenants` | `createBloemPlatformTenant` | Create a reseller organization. |
+| `DELETE /api/bloem/v2/admin/platform/tenants/{id}` | `retireBloemPlatformTenant` | Retire a reseller organization. |
+| `GET /api/bloem/v2/admin/platform/tenants/{id}` | `getBloemPlatformTenant` | Read one reseller organization. |
+| `GET /api/bloem/v2/admin/platform/tenants/{id}/branding` | `getBloemPlatformTenantBranding` | Read an organization's branding. |
+| `PUT /api/bloem/v2/admin/platform/tenants/{id}/branding` | `updateBloemPlatformTenantBranding` | Change an organization's branding. |
+| `DELETE /api/bloem/v2/admin/platform/tenants/{id}/branding/assets/{kind}` | `deleteBloemPlatformTenantBrandingAsset` | Remove an organization's branding image. |
+| `PUT /api/bloem/v2/admin/platform/tenants/{id}/branding/assets/{kind}` | `uploadBloemPlatformTenantBrandingAsset` | Upload an organization's branding image. |
+| `GET /api/bloem/v2/admin/platform/tenants/{id}/domains` | `listBloemPlatformTenantDomains` | List an organization's domains. |
+| `POST /api/bloem/v2/admin/platform/tenants/{id}/domains` | `addBloemPlatformTenantDomain` | Register a domain to an organization. |
+| `DELETE /api/bloem/v2/admin/platform/tenants/{id}/domains/{host}` | `removeBloemPlatformTenantDomain` | Unregister a domain. |
+| `PUT /api/bloem/v2/admin/platform/tenants/{id}/domains/{host}/primary` | `setBloemPlatformTenantPrimaryDomain` | Make a domain the organization's primary. |
+| `POST /api/bloem/v2/admin/platform/tenants/{id}/freeze` | `freezeBloemPlatformTenant` | Suspend a reseller organization. |
+| `PATCH /api/bloem/v2/admin/platform/tenants/{id}/limits` | `updateBloemPlatformTenantLimits` | Change seats and shared conversions. |
+| `POST /api/bloem/v2/admin/platform/tenants/{id}/thaw` | `thawBloemPlatformTenant` | Lift an administrative suspension. |
+| `GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members` | `listBloemPlatformTenantMembers` | List a reseller organization's members. |
+| `POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members` | `createBloemPlatformTenantMember` | Add a member account to a reseller organization. |
+| `DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}` | `deleteBloemPlatformTenantMember` | Remove a member. |
+| `GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}` | `getBloemPlatformTenantMember` | Read one member. |
+| `PUT /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}` | `updateBloemPlatformTenantMember` | Change a member's username or email. |
+| `DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions` | `revokeAllBloemPlatformTenantMemberAuthSessions` | End every sign-in session of a member. |
+| `GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions` | `listBloemPlatformTenantMemberAuthSessions` | List a member's sign-in sessions. |
+| `DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}` | `revokeBloemPlatformTenantMemberAuthSession` | End one of a member's sign-in sessions. |
+| `GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/devices` | `listBloemPlatformTenantMemberDevices` | List a member's devices. |
+| `DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/devices/{device_id}` | `deleteBloemPlatformTenantMemberDevice` | Remove a member's device. |
+| `GET /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles` | `listBloemPlatformTenantMemberProfiles` | List a member's profiles. |
+| `POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles` | `createBloemPlatformTenantMemberProfile` | Create a profile for a member. |
+| `DELETE /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}` | `deleteBloemPlatformTenantMemberProfile` | Delete a member's profile. |
+| `PUT /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}` | `updateBloemPlatformTenantMemberProfile` | Change a member's profile. |
+| `POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/reset-password` | `resetBloemPlatformTenantMemberPassword` | Set a member's password. |
+| `POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/resume` | `resumeBloemPlatformTenantMember` | Resume a suspended member's account. |
+| `POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/suspend` | `suspendBloemPlatformTenantMember` | Suspend a member's account. |
+| `GET /api/bloem/v2/admin/platform/upgrade-prompt` | `getBloemUpgradePrompt` | Read the upgrade prompt. |
+| `PUT /api/bloem/v2/admin/platform/upgrade-prompt` | `putBloemUpgradePrompt` | Replace the upgrade prompt. |
+| `GET /api/bloem/v2/admin/platform/users/{user_id}/entitlement` | `getBloemLegacyAccountEntitlement` | Read the legacy managed account entitlement projection. |
+| `POST /api/bloem/v2/admin/platform/users/{user_id}/entitlement/apply` | `applyBloemLegacyAccountEntitlement` | Apply a pinned entitlement template. |
+| `POST /api/bloem/v2/admin/platform/users/{user_id}/entitlement/dry-run` | `previewBloemLegacyAccountEntitlement` | Preview a pinned entitlement template. |
+| `GET /api/bloem/v2/admin/search/mirror` | `getBloemSearchMirrorStatus` | Read the search mirror's status. |
+| `POST /api/bloem/v2/admin/session` | `createBloemAdminSession` | Exchange a login session for a scoped administrative context. |
+| `GET /api/bloem/v2/ambience` | `getBloemSeasonalViewer` | Read seasonal presentation for the current verified tenant viewer. |
+| `GET /api/bloem/v2/ambience/assets/{ref}` | `getBloemAmbienceAsset` | Serve uploaded seasonal and campaign artwork. |
+| `GET /api/bloem/v2/ambience/public` | `getBloemPublicAmbience` | List the active deployment-wide seasonal packs. |
+| `POST /api/bloem/v2/book-requests` | `createBloemBookRequest` | File an audiobook request. |
+| `GET /api/bloem/v2/book-requests/capability` | `getBloemBookRequestCapability` | Read audiobook request capability and current viewer policy. |
+| `GET /api/bloem/v2/book-requests/mine` | `listBloemBookRequests` | List this profile's audiobook requests in the current organization. |
+| `GET /api/bloem/v2/book-requests/{id}` | `getBloemBookRequest` | Read this profile's audiobook request. |
+| `POST /api/bloem/v2/book-requests/{id}/cancel` | `cancelBloemBookRequest` | Withdraw a pending or approved audiobook request. |
+| `GET /api/bloem/v2/capabilities` | `getBloemCapabilities` | What this build supports, for a client deciding which surfaces to use. |
+| `GET /api/bloem/v2/catalog/items/{content_id}/collections` | `listBloemItemCollections` | The visible server collections that contain one item. Visibility matches the server collection list; smart collections are evaluated lazily and are not included. An item the viewer may not see answers 404. |
+| `POST /api/bloem/v2/ebook-requests` | `createBloemEbookRequest` | File an ISBN ebook request. |
+| `GET /api/bloem/v2/ebook-requests/capability` | `getBloemEbookRequestCapability` | Read ebook request capability and current viewer policy. |
+| `GET /api/bloem/v2/ebook-requests/mine` | `listBloemEbookRequests` | List this profile's ebook request history. |
+| `GET /api/bloem/v2/ebook-requests/{id}` | `getBloemEbookRequest` | Read an ebook request owned by this profile. |
+| `POST /api/bloem/v2/ebook-requests/{id}/cancel` | `cancelBloemEbookRequest` | Withdraw a pending or approved ebook request locally. |
+| `GET /api/bloem/v2/livetv/capability` | `getBloemLiveTVCapability` | Whether this build and viewer support Live TV and a channel is available. |
+| `GET /api/bloem/v2/livetv/channels` | `listBloemLiveTVChannels` | The channel lineup this viewer may watch. |
+| `PATCH /api/bloem/v2/livetv/channels/{channelId}` | `patchBloemLiveTVChannel` | Change channel enablement, number override or guide mapping. |
+| `POST /api/bloem/v2/livetv/channels/{channelId}/session` | `startBloemLiveTVSession` | Tune a channel and take a tuner lease. |
+| `GET /api/bloem/v2/livetv/guide` | `getBloemLiveTVGuide` | Program guide for a window. |
+| `GET /api/bloem/v2/livetv/guide-sources` | `listBloemLiveTVGuideSources` | List configured guide sources. |
+| `POST /api/bloem/v2/livetv/guide-sources` | `createBloemLiveTVGuideSource` | Create a guide source. |
+| `POST /api/bloem/v2/livetv/guide-sources/schedules-direct/lineups` | `lookupBloemLiveTVSchedulesDirectLineups` | Look up Schedules Direct lineups by postal code. |
+| `POST /api/bloem/v2/livetv/guide-sources/xml-sync/lineups` | `lookupBloemLiveTVXMLSyncLineups` | Look up Gracenote providers by postal code. |
+| `DELETE /api/bloem/v2/livetv/guide-sources/{sourceId}` | `deleteBloemLiveTVGuideSource` | Delete a guide source. |
+| `PATCH /api/bloem/v2/livetv/guide-sources/{sourceId}` | `updateBloemLiveTVGuideSource` | Merge supplied guide-source fields with current configuration. |
+| `POST /api/bloem/v2/livetv/guide-sources/{sourceId}/sync` | `syncBloemLiveTVGuideSource` | Synchronize a saved guide source. |
+| `GET /api/bloem/v2/livetv/live-hls/{playbackId}/{name}` | `getBloemLiveTVHLSMedia` | Fetch a session-bound HLS playlist or MPEG-TS segment. |
+| `GET /api/bloem/v2/livetv/programs/{programId}` | `getBloemLiveTVProgram` | Read a guide program. |
+| `GET /api/bloem/v2/livetv/recordings` | `listBloemLiveTVRecordings` | List recordings visible to this viewer. |
+| `POST /api/bloem/v2/livetv/recordings` | `scheduleBloemLiveTVRecording` | Schedule a guide-program or manual recording. |
+| `DELETE /api/bloem/v2/livetv/recordings/{recordingId}` | `cancelBloemLiveTVRecording` | Cancel an owned recording and return its updated record. |
+| `GET /api/bloem/v2/livetv/series-rules` | `listBloemLiveTVSeriesRules` | List viewer-owned DVR series rules. |
+| `POST /api/bloem/v2/livetv/series-rules` | `createBloemLiveTVSeriesRule` | Create a viewer-owned DVR series rule. |
+| `DELETE /api/bloem/v2/livetv/series-rules/{ruleId}` | `deleteBloemLiveTVSeriesRule` | Delete an owned DVR series rule. |
+| `DELETE /api/bloem/v2/livetv/sessions/{sessionId}` | `releaseBloemLiveTVSession` | Release an owned tuner lease and return the session record. |
+| `POST /api/bloem/v2/livetv/sessions/{sessionId}/heartbeat` | `heartbeatBloemLiveTVSession` | Renew an owned active tuner session. |
+| `GET /api/bloem/v2/livetv/sessions/{sessionId}/stream` | `streamBloemLiveTVSession` | Stream MPEG-TS media. |
+| `HEAD /api/bloem/v2/livetv/sessions/{sessionId}/stream` | `probeBloemLiveTVSession` | Check MPEG-TS stream headers. |
+| `GET /api/bloem/v2/livetv/tuners` | `listBloemLiveTVTuners` | List configured tuner metadata. |
+| `POST /api/bloem/v2/livetv/tuners` | `addBloemLiveTVTuner` | Add an HDHomeRun-compatible tuner. |
+| `POST /api/bloem/v2/livetv/tuners/discover` | `discoverBloemLiveTVTuners` | Discover local HDHomeRun-compatible tuner candidates. |
+| `POST /api/bloem/v2/livetv/tuners/xtream` | `createBloemXtreamProvider` | Authenticate and import an encrypted Xtream live-TV provider. |
+| `DELETE /api/bloem/v2/livetv/tuners/{tunerId}` | `deleteBloemLiveTVTuner` | Delete a tuner. |
+| `POST /api/bloem/v2/livetv/tuners/{tunerId}/scan` | `scanBloemLiveTVTuner` | Scan a saved tuner and refresh its channel lineup. |
+| `GET /api/bloem/v2/notifications` | `listBloemNotifications` | The acting profile's inbox, newest first, with the alert fields a row needs to render. |
+| `GET /api/bloem/v2/notifications/sync` | `syncBloemNotifications` | Rows newer than a cursor, for a client waking from a push or reconnecting across a gap. |
+| `GET /api/bloem/v2/notifications/{id}` | `getBloemNotification` | One inbox row. Another profile's row is absent, not forbidden. |
+| `GET /api/bloem/v2/organizations` | `listBloemOrganizations` | The organizations this account belongs to. |
+| `GET /api/bloem/v2/persons/{person_id}` | `getBloemPersonDetail` | One person and their credits, filtered to what this viewer may see. |
+| `POST /api/bloem/v2/preview/events` | `recordBloemPreviewEvent` | Increment a daily aggregate preview counter. |
+| `POST /api/bloem/v2/preview/sessions` | `createBloemPreviewGuestSession` | Exchange a signed launch ticket for a bounded guest session. |
+| `GET /api/bloem/v2/preview/status` | `getBloemPreviewPublicStatus` | Discover preview availability and host-specific presentation. |
+| `DELETE /api/bloem/v2/profile-credentials/{id}` | `clearBloemProfileCredentials` | Clear direct-profile login credentials. |
+| `GET /api/bloem/v2/profile-credentials/{id}` | `getBloemProfileCredentials` | Read direct-profile credential status without exposing a password or hash. |
+| `PUT /api/bloem/v2/profile-credentials/{id}` | `setBloemProfileCredentials` | Set or replace direct-profile login credentials. |
+| `GET /api/bloem/v2/promotions` | `listBloemPromotions` | List the campaign cards a profile sees on a surface. |
+| `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}` | `dismissBloemPromotion` | Stop showing a campaign to a profile on a surface. |
+| `POST /api/bloem/v2/promotions/{id}/save` | `saveBloemPromotion` | Save an in-playback campaign to the profile's inbox. |
+| `GET /api/bloem/v2/server/identity` | `getBloemServerIdentity` | Which server this is, which surfaces it serves, and whether it has been set up. |
+| `GET /api/bloem/v2/watch/home` | `getBloemWatchHome` | The composed home document for this viewer. |
+| `GET /api/bloem/v2/watch/items/{content_id}` | `getBloemWatchItem` | The composed document for one item. |
+| `GET /api/bloem/v2/watch/search` | `searchBloemWatch` | A composed document for a search query. |
 
 ## Inventory entries without typed OpenAPI
 
@@ -313,7 +313,7 @@ unauthenticated callers. Optional groups absent from this inventory can add furt
 Not a callable-operation promise: these entries delegate to another router or handler.
 Resolve their registrar and allowed methods before assigning an operation or a schema.
 
-- `DISPATCH /api/bloem/v1/admin/*`
+- `DISPATCH /api/bloem/v2/admin/*`
 
 ## Keeping this current
 

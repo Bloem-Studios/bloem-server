@@ -25,8 +25,8 @@ def doors():
         s.rect(474, y, 252, h, DOOR["fill"], DOOR["stroke"], rx=12, sw=1.6)
         s.text(600, y + 34, title, size=16.5, weight="700", anchor="middle")
         s.lines(600, y + 60, rows, size=14, fill=MUTED, anchor="middle")
-    s.text(600, 330, "/api/v1  /api/v2", size=13, fill=SOFT, anchor="middle")
-    s.text(600, 350, "/api/bloem/v1", size=13, fill=SOFT, anchor="middle")
+    s.text(600, 330, "/api/v2", size=13, fill=SOFT, anchor="middle")
+    s.text(600, 350, "/api/bloem/v2", size=13, fill=SOFT, anchor="middle")
     s.text(600, 376, "Port 8090 in Bloem's Docker setup", size=12.5, fill=SOFT, anchor="middle")
 
     # Left: apps on the main address.

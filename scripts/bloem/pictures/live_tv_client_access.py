@@ -20,7 +20,7 @@ def tune_in_flow():
             "a browser-friendly playlist with a signed ticket or as a raw stream with its normal sign-in; checks in "
             "every 30 seconds; and releases the session when the viewer leaves.")
     s.header("How an app tunes in to a channel",
-             "Every route is under /api/bloem/v1/livetv. The server checks the viewer again at each step.")
+             "Every route is under /api/bloem/v2/livetv. The server checks the viewer again at each step.")
     a, f, g, st = TIERS["account"], TIERS["profile"], TIERS["grey"], TIERS["stop"]
 
     left, right = 170, 1030

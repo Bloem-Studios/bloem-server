@@ -1,5 +1,5 @@
-GET /api/bloem/v1/ambience/public
-GET /api/bloem/v1/capabilities
-GET /api/bloem/v1/organizations
-GET /api/bloem/v1/server/identity
-POST /api/bloem/v1/admin/session
+GET /api/bloem/v2/ambience/public
+GET /api/bloem/v2/capabilities
+GET /api/bloem/v2/organizations
+GET /api/bloem/v2/server/identity
+POST /api/bloem/v2/admin/session

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">What the web app has, and what it calls</title>
-<desc id="d">The web app built into Bloem Server, in three parts: what viewers use, what an organization administrator uses, and what a platform administrator uses. Silo's screens are kept; Bloem adds its own. Below, the two APIs it calls: Silo's /api/v2 for everything Silo has and Bloem's /api/bloem/v1 for Bloem's features. It calls none of Silo's /api/v1.</desc>
+<desc id="d">The web app built into Bloem Server, in three parts: what viewers use, what an organization administrator uses, and what a platform administrator uses. Silo's screens are kept; Bloem adds its own. Below, the two APIs it calls: Silo's /api/v2 for everything Silo has and Bloem's /api/bloem/v2 for Bloem's features. It calls none of Silo's /api/v1.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="799" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What the web app has, and what it calls</text>
@@ -54,11 +54,11 @@
 <text x="60" y="630" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Everything Silo has: accounts, libraries, the catalog, playback,</text>
 <text x="60" y="650" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">settings. Through Silo's own web code.</text>
 <rect x="620" y="568" width="540" height="120" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
-<text x="640" y="602" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's /api/bloem/v1</text>
+<text x="640" y="602" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's /api/bloem/v2</text>
 <text x="640" y="630" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's features: organizations, plans, Live TV, campaigns, seasonal</text>
 <text x="640" y="650" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">packs, announcements, profile sign-ins.</text>
 <circle cx="64" cy="726" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
 <path d="M58.6,720.6 L69.4,731.4 M69.4,720.6 L58.6,731.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
-<text x="86" y="731" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Silo's /api/v1: not called at all since 2026-11-01. Bloem's phone apps still use some of it.</text>
+<text x="86" y="731" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Silo's old v1 API: not called since 2026-11-01, and retired by Silo on 2026-11-11.</text>
 <text x="40" y="770" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each feature's status, evidence and limits are in the tables on this page.</text>
 </svg>

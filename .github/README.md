@@ -13,7 +13,8 @@
 > Bloem-owned files indexed in [docs/bloem/README.md](../docs/bloem/README.md).
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
-> and checked against `main` at `f12b3c75f`, with Silo merged through `07f0ae21c`.
+> and checked against `main` at `f12b3c75f`, with Silo merged through `07f0ae21c`; its
+> API paths were checked again on 2026-11-11, after Silo retired its v1 API.
 > This page says what Bloem is, where it comes from and how to run it, in plain
 > language; the technical parts for people changing the code are in the
 > [For developers](#for-developers) section.
@@ -74,7 +75,7 @@ Checked on November 11, 2026, against `main` at `bed636a92`.
 
 | | |
 | --- | --- |
-| Bloem `main` | `449834e52`: the merge of Silo through `2ee1b7248`, the catalog letter index built in one pass, the home hero without its eyebrow and slide number, Silo's rule that only the household manager disconnects a sign-in identity or manages webhook sync connections, an administrator stop or terminate that now ends a Jellyfin play, the playback route chosen from a candidate list with one alternate-version fallback for start and replan, `nosniff` on every API response and auto-tuned database memory capped; Bloem's native-storage check for alternate versions stays in the playback start path and one Silo file Bloem no longer changes goes back to Silo's, on top of `667f11040`: remote control and profile sign-in parked while they have no native routes, on top of `26cf9b3e4`: the merge of Silo through `7bb66f9ad`, Silo's retirement of `/api/v1` behind a 410 tombstone; Bloem's own routes there go with it, its native routes now serve Silo's `/api/v2` shapes, and its v1 migration harness checks follow Silo's out, on top of `ddeb091c1`: the merge of Silo through `a9c75803d`, Silo's hiding of account-level downloads of titles a profile may not open, Jellyfin episode details read in one query and expired catalog cache entries dropped, with only a Bloem test fake updated, on top of `c67242d09`: the merge of Silo through `48748d9f9`, Silo's busy answer (503 with Retry-After) for a collection artwork upload, plugin processes stopped after 30 minutes without use and capped at four CPUs, with no Bloem change needed, on top of `4b14c731c`: episode lists paged through `episode_catalog_entries` and preview guests shown what a subscriber sees |
+| Bloem `main` | `449834e52`: the merge of Silo through `2ee1b7248`, the catalog letter index built in one pass, the home hero without its eyebrow and slide number, Silo's rule that only the household manager disconnects a sign-in identity or manages webhook sync connections, an administrator stop or terminate that now ends a Jellyfin play, the playback route chosen from a candidate list with one alternate-version fallback for start and replan, `nosniff` on every API response and auto-tuned database memory capped; Bloem's native-storage check for alternate versions stays in the playback start path and one Silo file Bloem no longer changes goes back to Silo's, on top of `667f11040`: remote control and profile sign-in parked while they have no native routes, on top of `26cf9b3e4`: the merge of Silo through `7bb66f9ad`, Silo's retirement of its v1 API behind a 410 tombstone; Bloem's own routes there go with it, its native routes now serve Silo's `/api/v2` shapes, and its v1 migration harness checks follow Silo's out, on top of `ddeb091c1`: the merge of Silo through `a9c75803d`, Silo's hiding of account-level downloads of titles a profile may not open, Jellyfin episode details read in one query and expired catalog cache entries dropped, with only a Bloem test fake updated, on top of `c67242d09`: the merge of Silo through `48748d9f9`, Silo's busy answer (503 with Retry-After) for a collection artwork upload, plugin processes stopped after 30 minutes without use and capped at four CPUs, with no Bloem change needed, on top of `4b14c731c`: episode lists paged through `episode_catalog_entries` and preview guests shown what a subscriber sees |
 | Silo integrated | all of Silo `main` through `2ee1b7248` (November 11, 2026, 21:07 UTC), merged in `449834e52` |
 | Silo merges | the merge bot, since November 2, 2026: each Silo batch is merged with Silo winning, checked, pushed to `main` and deployed once Bloem CI passes it ([how](../docs/architecture/bloem-following-silo.md)) |
 | Seam ledger | 319 Silo-owned files that Bloem differs in, one a Silo web push test that needs an active tenant profile on its private schema (since the merge of Silo through `fcd546a04`), nine for Silo's backup: two test-only hooks, three that restore accounts into their organization and four that keep backups to user data ([How backups work in Bloem](../docs/architecture/bloem-backup.md)), seven temporary web fixes added in `74e207aca` and `0edcd6e49` that go when Silo merges its own versions (the library grid from `d690b98a5` matches Silo again since Silo #3501, merged in `73cbf3b3a`, and the library header tabs since `8699054a7`, which moved their phone layout into a Bloem adapter), five temporary search seams from November 10: two for `gemini-embedding-2` task labels and three for `frequency` matching, and two from November 11: one that keeps title matches first in hybrid search and one that forgives one typo from three letters ([How search finds titles by words and by meaning](../docs/architecture/bloem-search-and-embeddings.md)), declared in [`contracts/seams.txt`](../contracts/seams.txt) |
@@ -127,7 +128,7 @@ for films, series, audiobooks, ebooks, podcasts and manga, licensed
 AGPL-3.0-or-later, with its trademarks held by Silo Media L.L.C. It is pre-release
 and changes daily: its 1.0 scope is movies and series, with books and
 Audiobookshelf compatibility labelled beta. Silo ships the web app, the
-`/api/v2` native API, a frozen alpha `/api/v1`, Jellyfin- and
+`/api/v2` native API (its alpha v1 API is retired), Jellyfin- and
 Audiobookshelf-compatible servers on their own ports, plugin-driven metadata and
 distributed proxy and transcode roles. Its user manual is
 [siloserver.org](https://siloserver.org/docs).
@@ -289,10 +290,10 @@ integration points through [owned integration adapters](../docs/architecture/blo
 - **One organization per account:** an account's policy lives on Silo's own
   `users` columns, and its membership links it to exactly one organization
   (since `c60b7008e`, October 26, 2026). Tenant-aware enforcement covers
-  browsing, playback, downloads and administration. The Silo-compatible
-  `/api/v1` projection remains available alongside `/api/bloem/v1`; reviewed
-  differences are documented in the
-  [v1 compatibility policy](../docs/bloem/overlays/architecture/v1-scope.md).
+  browsing, playback, downloads and administration. Silo's `/api/v2` serves
+  Silo's apps alongside `/api/bloem/v2`; Silo's alpha v1 API is retired, and the
+  [v1 scope overlay](../docs/bloem/overlays/architecture/v1-scope.md) records what
+  Bloem had there.
 - **Silo backend switching:** because account policy is where Silo keeps it, a
   database limited to one organization can be served by upstream Silo or Bloem,
   one at a time; `silo silo-switching enable` turns it on. See
@@ -489,7 +490,7 @@ stays in the database.
   back onto `users`, its three-phase rollout and the `silo membership-policy`
   command went, and Silo switching became one flag.
 - **Music** (`f9e1447f3`, October 26). Silo has no music library type, and
-  production had no music libraries. The four `/api/bloem/v1/music/*` routes and
+  production had no music libraries. The four `/api/bloem/v2/music/*` routes and
   three music tables are gone.
 - **Presentation worker processes** (`310c545f9`, October 26). The two bundled
   workers ran only Bloem's own code, without an operating-system sandbox or
@@ -551,7 +552,7 @@ below is described in more depth in the
 **Compatibility and clients**
 
 - **Web app included** — a full-featured web client and admin interface ship with the server.
-- **Native API integrations** — the Silo native `/api/v2` surface and Bloem-specific `/api/bloem/v1` extensions support clients with matching contracts. Jellyfin-compatible apps connect on the Jellyfin port (default 8096) and Audiobookshelf apps on 13378 when enabled.
+- **Native API integrations** — the Silo native `/api/v2` surface and Bloem-specific `/api/bloem/v2` extensions support clients with matching contracts. Jellyfin-compatible apps connect on the Jellyfin port (default 8096) and Audiobookshelf apps on 13378 when enabled.
 - **Bloem's native apps** for phone, tablet and TV (`bloem-apple`, `bloem-android`) are developed separately against the native APIs above and are not yet released.
 - **Watch sync** to and from outside services, and optional **AI-assisted features** such as description translation. AI providers are connected once under AI Services and each job chooses one (Silo #3106).
 - **Presentation and accessibility** — operator-managed campaign and seasonal artwork, profile ambience, larger text, reduced motion and high contrast. Silo has one theme and removed its administrator color, font and custom-CSS overrides (Silo #2413).
@@ -724,8 +725,8 @@ transcode nodes and the integrated/API-local fallback, so mount the configured p
 that prepares downloads. Changing either artifact-path setting requires a restart. Downloads with a
 configured server-wide or per-user bandwidth limit remain API-local so those aggregate limits stay exact.
 Clients discover distributed delivery through `proxy_delivery` on the download capability response.
-When it is true, they may opt into `GET` or `HEAD /api/v1/downloads/{id}/file-proxy` and
-`/api/v1/direct-download-proxy`; those routes may return a temporary redirect to a proxy node. The
+When it is true, they may opt into `GET` or `HEAD /api/v2/downloads/{id}/file-proxy` and
+`/api/v2/direct-download-proxy`; those routes may return a temporary redirect to a proxy node. The
 established `/file` and `/direct-download` routes keep serving bytes directly with their existing
 status-code contract; for a node-local prepared artifact, the API itself performs the authenticated
 relay on that fallback route.
@@ -841,7 +842,7 @@ move fully to a custom `postgresql.conf`.
 - [SDK compatibility](../docs/architecture/bloem-sdk-compatibility.md) — plugin protocol versions, generated Kotlin/Swift contracts and client adoption.
 - [Xtream live providers](../docs/architecture/xtream-live-tv.md) — encrypted setup, XMLTV, connection limits, delivery boundaries and removal; [operator steps](../docs/wiki/admin-guide.md#210-live-tv).
 - [Embedded-web coverage](../docs/architecture/bloem-web-feature-coverage.md) — implemented screens, authority boundaries, verification and remaining product limits.
-- [Bloem native API](../docs/bloem-api-reference.md) — `/api/bloem/v1` extensions, distinct from upstream `/api/v2`; [client surface](../docs/architecture/bloem-client-surface.md) and [security foundation](../docs/architecture/bloem-security-foundation.md).
+- [Bloem native API](../docs/bloem-api-reference.md) — `/api/bloem/v2` extensions, distinct from upstream `/api/v2`; [client surface](../docs/architecture/bloem-client-surface.md) and [security foundation](../docs/architecture/bloem-security-foundation.md).
 - [Bloem development guide](../docs/bloem/overlays/DEVELOPMENT.md) — building from source, tests, migrations and project layout; [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations.
 - `docs/architecture/` and `docs/operations/` — design notes and operator runbooks, including the [Bloem v1 compatibility policy](../docs/bloem/overlays/architecture/v1-scope.md), [entitlement-template operations](../docs/operations/entitlement-templates.md), [bulk policy cohorts](../docs/operations/bulk-policy-cohorts.md), [protocol compatibility](../docs/architecture/bloem-compatibility-removal.md) and the [Canonical Settings API guide](../docs/settings-api.md).
 - [Apple Push Display Token](../docs/notifications-push-api.md) — notification enrichment contract.
@@ -913,7 +914,7 @@ permitted — including referential use like "compatible with Silo."
 | Seam | a Silo-owned file Bloem changes, listed in [`contracts/seams.txt`](../contracts/seams.txt) and checked by `make verify-seams` |
 | Overlay | a Bloem page beside a Silo document, under `docs/bloem/overlays/`, listing what Bloem changes in it |
 | Bloem-owned file | a file that does not exist in Silo's `main`, often named `bloem_*` or under `internal/<bloem package>` |
-| Native API | Bloem's own routes, under `/api/bloem/v1`; Silo's are `/api/v1` and `/api/v2` |
+| Native API | Bloem's own routes, under `/api/bloem/v2`; Silo's are `/api/v2` |
 | Compatibility names | the Silo names Bloem keeps so merges stay clean: module path, `cmd/silo`, `SILO_*` variables, `X-Silo-*` headers |
 | Organization | `organizations` and `organization_memberships` (`internal/tenancy`); see [How organizations work](../docs/architecture/bloem-organizations.md) |
 
@@ -1035,5 +1036,5 @@ directly, where it benefits every downstream project, not just this one. Silo
 currently accepts pull requests only from contributors who have had one merged
 in a Silo repository or when a maintainer asks, so a clear issue is usually the
 better route; see Silo's root `README.md`.
-Contributions to Bloem-specific areas — the `/api/bloem/v1` tenant foundation, the
+Contributions to Bloem-specific areas — the `/api/bloem/v2` tenant foundation, the
 plugin SDK/catalog, or the client-contract test suites — belong here.

@@ -28,7 +28,6 @@ type previewTokenValidator interface {
 // previewHostAuthRoutes are the only auth routes served on the preview host:
 // a guest refreshes and exits, it never signs in any other way.
 var previewHostAuthRoutes = map[string]bool{
-	"/api/v1/auth/refresh": true, "/api/v1/auth/logout": true,
 	"/api/v2/auth/refresh": true, "/api/v2/auth/logout": true,
 }
 
@@ -37,9 +36,8 @@ func previewHostRefusesPath(path string) bool {
 	switch {
 	case previewHostAuthRoutes[trimmed]:
 		return false
-	case strings.HasPrefix(path, "/api/v1/auth/"), strings.HasPrefix(path, "/api/v2/auth/"),
+	case strings.HasPrefix(path, "/api/v2/auth/"),
 		strings.HasPrefix(path, "/api/v2/password-resets"), trimmed == "/api/v2/capabilities/password-reset",
-		strings.HasPrefix(path, "/api/v1/plugins/"), strings.HasPrefix(path, "/api/v1/plugin-assets/"),
 		strings.HasPrefix(path, plugins.ContentPrefix+"/"):
 		return true
 	}
@@ -64,7 +62,7 @@ func previewHostGuard(settings auth.PreviewGuestSettingsSource, tokens previewTo
 			r = r.WithContext(auth.WithRequestHost(r.Context(), host))
 			current, err := settings.PreviewGuestSettings(r.Context())
 			carriesGuest := previewRequestCarriesGuest(r, tokens)
-			guestRequest := (current.Host != "" && host == current.Host) || strings.HasPrefix(r.URL.Path, "/api/bloem/v1/preview/") || carriesGuest
+			guestRequest := (current.Host != "" && host == current.Host) || strings.HasPrefix(r.URL.Path, "/api/bloem/v2/preview/") || carriesGuest
 			if guestRequest && !previewTrafficExempt(r) && !traffic.AllowGlobal() {
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Retry-After", "1")
@@ -188,7 +186,7 @@ func previewRequestCarriesGuest(r *http.Request, tokens previewTokenValidator) b
 	if isGuest(previewHostCredential(r)) {
 		return true
 	}
-	if r.Method != http.MethodPost || (r.URL.Path != "/api/v1/auth/refresh" && r.URL.Path != "/api/v2/auth/refresh") || r.Body == nil {
+	if r.Method != http.MethodPost || r.URL.Path != "/api/v2/auth/refresh" || r.Body == nil {
 		return false
 	}
 	original := r.Body

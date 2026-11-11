@@ -10,16 +10,16 @@ import (
 )
 
 func TestPublicSessionStreamPathAndSafePlayURL(t *testing.T) {
-	if got := PublicSessionStreamPath("abc"); got != "/api/v1/livetv/sessions/abc/stream" {
+	if got := PublicSessionStreamPath("abc"); got != "/api/bloem/v2/livetv/sessions/abc/stream" {
 		t.Fatalf("PublicSessionStreamPath = %q", got)
 	}
 	cases := map[string]bool{
-		"":                                 false,
-		"   ":                              false,
-		"/api/v1/livetv/sessions/x/stream": true,
-		"//evil.example/x":                 false,
-		"https://tuner.lan/stream":         false,
-		"http://169.254.169.254/":          false,
+		"":                                       false,
+		"   ":                                    false,
+		"/api/bloem/v2/livetv/sessions/x/stream": true,
+		"//evil.example/x":                       false,
+		"https://tuner.lan/stream":               false,
+		"http://169.254.169.254/":                false,
 	}
 	for raw, want := range cases {
 		if got := IsClientSafePlayURL(raw); got != want {

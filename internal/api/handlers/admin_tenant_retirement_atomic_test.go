@@ -57,8 +57,8 @@ func TestTenantRetirementFailureRollsBackAllMembersAndOrganization(t *testing.T)
 	accounts.blockedID = ids[1]
 	handler := handlers.NewAdminTenantsHandler(store, members)
 	router := chi.NewRouter()
-	router.Delete("/api/v1/admin/tenants/{id}", handler.HandleDelete)
-	got := tenantAdminRequest(t, router, http.MethodDelete, "/api/v1/admin/tenants/"+tenant.ID.String(), nil)
+	router.Delete("/api/bloem/v2/admin/platform/tenants/{id}", handler.HandleDelete)
+	got := tenantAdminRequest(t, router, http.MethodDelete, "/api/bloem/v2/admin/platform/tenants/"+tenant.ID.String(), nil)
 	if got.Code != http.StatusInternalServerError {
 		t.Fatalf("retirement status=%d, want500", got.Code)
 	}

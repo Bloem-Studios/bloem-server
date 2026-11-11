@@ -49,7 +49,7 @@ func runTenantMiddleware(t *testing.T, middleware func(http.Handler) http.Handle
 		gotClaims = GetClaims(r.Context())
 		w.WriteHeader(http.StatusNoContent)
 	})
-	req := httptest.NewRequest(http.MethodGet, "/api/bloem/v1/organizations", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/bloem/v2/organizations", nil)
 	for name, value := range headers {
 		req.Header.Set(name, value)
 	}

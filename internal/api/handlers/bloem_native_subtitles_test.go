@@ -74,7 +74,7 @@ func TestNativeSubtitleHandlerReadsPinnedTrackAndExplicitWindow(t *testing.T) {
 		late, early bool
 	}{{"", true, true}, {"?position=9&duration=3", true, false}} {
 		response := httptest.NewRecorder()
-		request := playbackTestRequest(http.MethodGet, "/api/v1/stream/"+session.ID+"/subtitles/0.vtt"+item.query, nil, map[string]string{"session_id": session.ID, "track": "0.vtt"})
+		request := playbackTestRequest(http.MethodGet, "/api/v2/stream/"+session.ID+"/subtitles/0.vtt"+item.query, nil, map[string]string{"session_id": session.ID, "track": "0.vtt"})
 		handler.HandleSubtitle(response, request)
 		if response.Code != http.StatusOK || !strings.HasPrefix(response.Body.String(), "WEBVTT") || strings.Contains(response.Body.String(), "Late native caption") != item.late || strings.Contains(response.Body.String(), "Early native caption") != item.early {
 			t.Fatalf("native subtitle window: %d %s", response.Code, response.Body.String())
@@ -84,7 +84,7 @@ func TestNativeSubtitleHandlerReadsPinnedTrackAndExplicitWindow(t *testing.T) {
 		}
 	}
 	response := httptest.NewRecorder()
-	handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v1/stream/"+session.ID+"/subtitles/0.vtt", nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
+	handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v2/stream/"+session.ID+"/subtitles/0.vtt", nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
 	if response.Code != http.StatusOK || response.Body.Len() != 0 {
 		t.Fatalf("native HEAD: %d %s", response.Code, response.Body.String())
 	}
@@ -106,7 +106,7 @@ func TestNativeSubtitleRefusesExternalSidecarsAndReplacement(t *testing.T) {
 	handler, file, session, _ := nativeSubtitleHandlerFixture(t)
 	file.ExternalSubtitles = []models.ExternalSubtitle{{Path: filepath.Join(t.TempDir(), "private.srt"), Format: "srt", Language: "eng"}}
 	response := httptest.NewRecorder()
-	handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v1/stream/"+session.ID+"/subtitles/0.vtt", nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
+	handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v2/stream/"+session.ID+"/subtitles/0.vtt", nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
 	if response.Code == http.StatusOK {
 		t.Fatal("native external sidecar admitted")
 	}
@@ -114,7 +114,7 @@ func TestNativeSubtitleRefusesExternalSidecarsAndReplacement(t *testing.T) {
 		return nil, storagesource.ErrReferenceConflict
 	}
 	response = httptest.NewRecorder()
-	handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v1/stream/"+session.ID+"/subtitles/1.vtt", nil, map[string]string{"session_id": session.ID, "track": "1.vtt"}))
+	handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v2/stream/"+session.ID+"/subtitles/1.vtt", nil, map[string]string{"session_id": session.ID, "track": "1.vtt"}))
 	if response.Code == http.StatusOK {
 		t.Fatal("stale native subtitle source admitted")
 	}
@@ -137,7 +137,7 @@ func TestNativeSubtitleSignedRecoveryChecksSourceBeforeRegistration(t *testing.T
 		t.Fatal(err)
 	}
 	response := httptest.NewRecorder()
-	handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v1/stream/"+session.ID+"/subtitles/0.vtt?st="+url.QueryEscape(token), nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
+	handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v2/stream/"+session.ID+"/subtitles/0.vtt?st="+url.QueryEscape(token), nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
 	if response.Code != http.StatusOK || response.Body.Len() != 0 {
 		t.Fatalf("signed native recovery: %d %s", response.Code, response.Body.String())
 	}
@@ -150,13 +150,13 @@ func TestNativeSubtitleStableStreamIdentitySurvivesExternalInsertion(t *testing.
 	handler, file, session, _ := nativeSubtitleHandlerFixture(t)
 	file.ExternalSubtitles = []models.ExternalSubtitle{{Path: "unread-native-sidecar.srt", Format: "srt"}}
 	response := httptest.NewRecorder()
-	handler.HandleSubtitle(response, playbackTestRequest(http.MethodGet, "/api/v1/stream/"+session.ID+"/subtitles/0.vtt?embedded_stream_index=1", nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
+	handler.HandleSubtitle(response, playbackTestRequest(http.MethodGet, "/api/v2/stream/"+session.ID+"/subtitles/0.vtt?embedded_stream_index=1", nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Late native caption") {
 		t.Fatalf("stable native identity: %d %s", response.Code, response.Body.String())
 	}
 	for _, query := range []string{"embedded_stream_index=1&embedded_stream_index=2", "embedded_stream_index=99"} {
 		response := httptest.NewRecorder()
-		handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v1/stream/"+session.ID+"/subtitles/0.vtt?"+query, nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
+		handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v2/stream/"+session.ID+"/subtitles/0.vtt?"+query, nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
 		if response.Code == http.StatusOK {
 			t.Fatalf("invalid stream identity admitted: %s", query)
 		}
@@ -189,7 +189,7 @@ func TestNativeSubtitleLateSourceFailureDiscardsAllOutput(t *testing.T) {
 		return &nativeSubtitleRevokingFile{NativeVideoFile: opened}, nil
 	}
 	response := httptest.NewRecorder()
-	handler.HandleSubtitle(response, playbackTestRequest(http.MethodGet, "/api/v1/stream/"+session.ID+"/subtitles/0.vtt", nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
+	handler.HandleSubtitle(response, playbackTestRequest(http.MethodGet, "/api/v2/stream/"+session.ID+"/subtitles/0.vtt", nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
 	if response.Code == http.StatusOK || strings.Contains(response.Body.String(), "WEBVTT") || strings.Contains(response.Body.String(), "native caption") {
 		t.Fatalf("failed source exposed partial subtitle: %d %s", response.Code, response.Body.String())
 	}
@@ -216,7 +216,7 @@ func TestNativeSubtitleTextHEADValidatesWithoutReadingBytes(t *testing.T) {
 		return &nativeSubtitleNoReadFile{NativeVideoFile: opened, reads: reads}, nil
 	}
 	response := httptest.NewRecorder()
-	handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v1/stream/"+session.ID+"/subtitles/0.vtt", nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
+	handler.HandleSubtitle(response, playbackTestRequest(http.MethodHead, "/api/v2/stream/"+session.ID+"/subtitles/0.vtt", nil, map[string]string{"session_id": session.ID, "track": "0.vtt"}))
 	if response.Code != http.StatusOK || response.Body.Len() != 0 || reads.Load() != 0 {
 		t.Fatalf("HEAD read source bytes: %d reads=%d", response.Code, reads.Load())
 	}

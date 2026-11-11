@@ -10,7 +10,7 @@ import (
 
 func TestRequireLiveTVAccess(t *testing.T) {
 	for _, allowed := range []bool{false, true} {
-		req := httptest.NewRequest("GET", "/api/v1/livetv/channels", nil)
+		req := httptest.NewRequest("GET", "/api/bloem/v2/livetv/channels", nil)
 		req = req.WithContext(access.SetScope(req.Context(), access.Scope{LiveTVAllowed: allowed, PlaybackAllowed: true}))
 		rec := httptest.NewRecorder()
 		RequireLiveTVAccess(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) })).ServeHTTP(rec, req)
@@ -22,7 +22,7 @@ func TestRequireLiveTVAccess(t *testing.T) {
 			t.Fatalf("allowed=%v status=%d", allowed, rec.Code)
 		}
 	}
-	req := httptest.NewRequest("GET", "/api/v1/livetv/channels", nil)
+	req := httptest.NewRequest("GET", "/api/bloem/v2/livetv/channels", nil)
 	rec := httptest.NewRecorder()
 	RequireLiveTVAccess(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) })).ServeHTTP(rec, req)
 	if rec.Code != 403 {

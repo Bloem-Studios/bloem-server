@@ -13,7 +13,7 @@ import (
 )
 
 // RequireBloemPlatformAdmin admits the platform administration a storefront
-// performs under /api/bloem/v1/admin/platform: a Platform administrative
+// performs under /api/bloem/v2/admin/platform: a Platform administrative
 // context, or an administrator's unscoped API key. It runs after the
 // credential itself was validated (bloemEitherPlatformCredential), and checks
 // again that the account is still an enabled administrator, as the upgrade
@@ -62,9 +62,9 @@ func bloemPlatformAdminActor(r *http.Request) (int, bool) {
 
 // BloemPlatformAccountResource serves an account's profiles, devices and
 // sign-in sessions at /admin/platform/accounts/{account_id}/..., through the
-// same handlers as the legacy /api/v1/admin/users/{user_id}/... routes. Those
-// read the account from {user_id}, so the native {account_id} is passed on
-// under that name. Platform scope sees the whole account; no organization
+// same handlers as the admin users/{user_id}/... routes of Silo's retired
+// alpha v1 API. Those read the account from {user_id}, so the native
+// {account_id} is passed on under that name. Platform scope sees the whole account; no organization
 // filter applies (an account belongs to one organization).
 func BloemPlatformAccountResource(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

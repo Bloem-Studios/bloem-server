@@ -86,7 +86,7 @@ offline use, and covers built into S3 files.
 
 - **API:** stored audiobooks use Silo's playback routes and protocol v3; there is no
   separate route. Readiness is the `native_audiobook_presentations_v1` feature token
-  on `GET /api/bloem/v1/capabilities` and the native-storage capability document on
+  on `GET /api/bloem/v2/capabilities` and the native-storage capability document on
   the [storage sources API page](../bloem/api/storage.md).
 
 ### Composition

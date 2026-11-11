@@ -13,16 +13,16 @@ def _part_mark(s, cx, cy, r=12):
 
 
 def callers():
-    s = Svg(1200, 640, "Who still calls Silo's /api/v1",
+    s = Svg(1200, 640, "Who called Silo's /api/v1",
             "A grid. Rows are the apps that talk to a Bloem server: the storefront, the web app, Bloem's phone and "
-            "TV apps, and Silo's own apps. Columns are Silo's /api/v1, Silo's /api/v2 and Bloem's /api/bloem/v1. "
-            "The storefront and the web app left /api/v1 on 31 October and 1 November 2026; Bloem's phone and TV "
-            "apps still call part of it.")
-    s.header("Who still calls Silo's /api/v1",
-             "Silo will retire /api/v1. Each caller moves to Silo's /api/v2 or to Bloem's own API.")
+            "TV apps, and Silo's own apps. Columns are Silo's /api/v1, Silo's /api/v2 and Bloem's /api/bloem/v2. "
+            "The storefront and the web app left /api/v1 on 31 October and 1 November 2026. Silo retired it on "
+            "11 November 2026, so the phone and TV apps' remaining calls there now answer 410 Gone.")
+    s.header("Who called Silo's /api/v1",
+             "Silo retired /api/v1 on 11 November 2026. Every caller uses Silo's /api/v2 or Bloem's own API.")
     st = TIERS["stop"]
-    cols = [(st, "Silo's /api/v1", "Frozen; to be retired"), (SILO, "Silo's /api/v2", "Silo's stable API"),
-            (BLOEM, "Bloem's /api/bloem/v1", "Bloem's own features")]
+    cols = [(st, "Silo's /api/v1", "Retired: 410 Gone"), (SILO, "Silo's /api/v2", "Silo's stable API"),
+            (BLOEM, "Bloem's /api/bloem/v2", "Bloem's own features")]
     col_x, col_w = 330, 276
     for i, (c, title, sub) in enumerate(cols):
         x = col_x + i * col_w
@@ -38,10 +38,10 @@ def callers():
          [("no", "Left on 1 November 2026"), ("yes", "Through Silo's own web code"),
           ("yes", "Live TV, campaigns, seasons")]),
         ("Bloem's phone and TV apps", "Android and Apple",
-         [("part", "Campaigns, remote control, profile sign-in"), ("yes", "Most screens"),
+         [("part", "Old calls answer 410 since 11 November"), ("yes", "Most screens"),
           ("yes", "Watch, people, server identity")]),
         ("Silo's own apps", "Built for Silo",
-         [("part", "At most a health check"), ("yes", "Everything they use"),
+         [("part", "At most a health check, which stays"), ("yes", "Everything they use"),
           ("no", "They know nothing of it")]),
     ]
     y, h = 198, 88
@@ -57,16 +57,16 @@ def callers():
             rows_n = 1 if len(note) * 6.75 < col_w - 70 else 2
             para(s, x + 52, cy + 5 - (rows_n - 1) * 9, note, col_w - 70, size=13.5, gap=18, fill=INK)
         y += h
-    footer(s, "When Silo answers /api/v1 with 410 Gone, the routes Bloem still keeps there go with it. Each one "
-              "already has a replacement, or gets one when the phone apps move.", y=600, fill=INK)
+    footer(s, "Bloem's routes on /api/v1 went with it. Campaigns and seasonal packs have replacements; remote "
+              "control and profile sign-in wait for native routes.", y=600, fill=INK)
     return s
 
 
 def new_feature():
     s = Svg(1200, 560, "Where a new route goes",
             "A decision. If Silo's /api/v2 already has what Bloem needs, Bloem's apps call it. If not, Bloem adds "
-            "a typed route under /api/bloem/v1, declared in OpenAPI and detected through a feature token. Nothing "
-            "new is ever added to Silo's /api/v1, and no Silo file is changed.")
+            "a typed route under /api/bloem/v2, declared in OpenAPI and detected through a feature token. Nothing "
+            "new is ever added to Silo's retired /api/v1, and no Silo file is changed.")
     s.header("Where a new route goes",
              "Bloem sits on top of Silo: it uses Silo's API where it can and adds its own beside it.")
     a, st = TIERS["account"], TIERS["stop"]
@@ -86,16 +86,16 @@ def new_feature():
 
     s.path("M500,284 L500,330")
     s.text(512, 314, "No", size=13, weight="700", fill=st["label"])
-    box(s, 300, 334, 860, 120, BLOEM, "Add a route under /api/bloem/v1",
+    box(s, 300, 334, 860, 120, BLOEM, "Add a route under /api/bloem/v2",
         "Typed and declared in OpenAPI, so it appears in the API by topic. Clients find it through a feature "
-        "token in /api/bloem/v1/capabilities. It reuses only what Silo's own /api/v2 uses.", size=14)
+        "token in /api/bloem/v2/capabilities. It reuses only what Silo's own /api/v2 uses.", size=14)
 
     s.rect(40, 334, 236, 120, st["fill"], st["stroke"], rx=14, sw=1.8)
     no_mark(s, 70, 368)
     s.text(92, 374, "Never", size=17, weight="700", fill=st["label"])
     para(s, 60, 404, "A new route on Silo's /api/v1, or an edit to a Silo file.", 200, size=14, gap=19, fill=INK)
-    footer(s, "Bloem's own API stays at v1. Its number is Bloem's, not Silo's: it grows by adding fields and routes.",
-           y=510, fill=INK)
+    footer(s, "Bloem's own API is v2 since 11 November 2026. Its number is Bloem's: it grows by adding fields "
+              "and routes.", y=510, fill=INK)
     return s
 
 

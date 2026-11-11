@@ -39,7 +39,7 @@ func TestNativeOnboardingHTTPRequiresRetainedContextBeforeBody(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodPost, "/api/bloem/v1/admin/platform/native-storage/installations", nil)
+			r := httptest.NewRequest(http.MethodPost, "/api/bloem/v2/admin/platform/native-storage/installations", nil)
 			r.Body = nativeUnreadBody{t}
 			w := httptest.NewRecorder()
 			tt.call(w, r)

@@ -73,7 +73,7 @@ type itemCollectionEntry struct {
 }
 
 // HandleListItemCollections handles
-// GET /api/bloem/v1/catalog/items/{content_id}/collections.
+// GET /api/bloem/v2/catalog/items/{content_id}/collections.
 //
 // An item the viewer may not see answers 404, exactly as its detail page does,
 // so the endpoint cannot be used to probe for hidden titles.

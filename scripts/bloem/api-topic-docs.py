@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Write docs/bloem/api/: the native /api/bloem/v1 API, one page per topic.
+"""Write docs/bloem/api/: the native /api/bloem/v2 API, one page per topic.
 
-The pages are generated from contracts/api/bloem/v1/openapi.json (make
+The pages are generated from contracts/api/bloem/v2/openapi.json (make
 bloem-openapi), so they list every typed operation with its credentials,
 parameters, request and response fields and error codes. Edit the handler's
 OpenAPI declaration, not the pages. Each operation goes to the first topic in
@@ -17,9 +17,9 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SPEC = os.path.join(ROOT, "contracts", "api", "bloem", "v1", "openapi.json")
+SPEC = os.path.join(ROOT, "contracts", "api", "bloem", "v2", "openapi.json")
 OUT = os.path.join(ROOT, "docs", "bloem", "api")
-PREFIX = "/api/bloem/v1"
+PREFIX = "/api/bloem/v2"
 METHODS = ["get", "head", "post", "put", "patch", "delete"]
 SHARED = {"BloemNativeError"}
 
@@ -262,7 +262,7 @@ def render_topic(spec, topic, ops):
         f"# {title} API",
         "",
         "> **Generated** by `scripts/bloem/api-topic-docs.py` from",
-        "> [`contracts/api/bloem/v1/openapi.json`](../../../contracts/api/bloem/v1/openapi.json).",
+        "> [`contracts/api/bloem/v2/openapi.json`](../../../contracts/api/bloem/v2/openapi.json).",
         "> Do not edit by hand: change the handler's OpenAPI declaration, run `make bloem-openapi`, then",
         "> the script. Shared conventions, credentials and the error body are on the [index](README.md).",
         "",
@@ -295,11 +295,11 @@ def render_index(spec, counts):
         "# Bloem native API by topic",
         "",
         "> **Generated** by `scripts/bloem/api-topic-docs.py` from",
-        "> [`contracts/api/bloem/v1/openapi.json`](../../../contracts/api/bloem/v1/openapi.json); do not edit",
-        "> by hand. Bloem's routes on Silo's `/api/v1`, which no OpenAPI document describes, are on the",
-        "> hand-written [/api/v1 routes](v1-routes.md) page.",
+        "> [`contracts/api/bloem/v2/openapi.json`](../../../contracts/api/bloem/v2/openapi.json); do not edit",
+        "> by hand. The routes Bloem once added to Silo's retired alpha v1 API, which now answer `410 Gone`,",
+        "> are recorded on the hand-written [retired v1 routes](v1-routes.md) page.",
         "",
-        "Every typed operation under `/api/bloem/v1`, grouped by the topics of Bloem's explainer pages. The",
+        "Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's explainer pages. The",
         "[wire reference](../../bloem-api-reference.md) adds behavior that does not fit a schema, and the",
         "[API catalogue](../api-catalogue.md) checks the contract against the mounted routes.",
         "",
@@ -308,17 +308,17 @@ def render_index(spec, counts):
     ]
     for t in TOPICS:
         lines.append(f"| [{t[1]}]({t[0]}.md) | {counts[t[0]]} | [{t[2]}](../../architecture/{t[2]}) |")
-    lines.append(f"| [/api/v1 routes](v1-routes.md) | hand-written | |")
+    lines.append("| [Retired v1 routes](v1-routes.md) | hand-written | |")
     lines += [
         "",
         "## Conventions",
         "",
-        "- **Base path.** Every path on these pages is absolute, starting at `/api/bloem/v1`, on the server's",
+        "- **Base path.** Every path on these pages is absolute, starting at `/api/bloem/v2`, on the server's",
         "  main address.",
         "- **Profile headers.** Viewer operations act for one household profile: `X-Profile-Id` names it, and",
         "  `X-Profile-Token` carries the proof for a PIN-locked profile. API keys skip PIN verification.",
         "- **Administrative contexts.** Organization and platform administration use a separate token from",
-        "  `POST /api/bloem/v1/admin/session` (see [organizations](organizations.md)); an ordinary account",
+        "  `POST /api/bloem/v2/admin/session` (see [organizations](organizations.md)); an ordinary account",
         "  token does not replace it, and the two contexts are never mixed.",
         "- **Revisions.** Many mutations take the revision the caller last read (for example",
         "  `expected_revision`) and answer `409` when it moved; each operation says so. Read again and review",

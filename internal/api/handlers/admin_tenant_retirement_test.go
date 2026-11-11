@@ -49,7 +49,7 @@ func TestTenantOrganizationDeletePreservesOtherOrganizations(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,'Surviving profile',$3,$4)`, profile, kept, b.ID, group); err != nil {
 		t.Fatal(err)
 	}
-	got := tenantAdminRequest(t, router, http.MethodDelete, "/api/v1/admin/tenants/"+a.ID.String(), nil)
+	got := tenantAdminRequest(t, router, http.MethodDelete, "/api/bloem/v2/admin/platform/tenants/"+a.ID.String(), nil)
 	if got.Code != http.StatusNoContent {
 		t.Fatalf("tenant delete = %d: %s", got.Code, got.Body.String())
 	}

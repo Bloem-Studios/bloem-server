@@ -27,8 +27,8 @@ state is on the [front page](../../.github/README.md#current-state).
 - [Integration changelog](CHANGELOG.md) — every Silo integration and Bloem change, newest first, with commits and seam counts.
 - [Writing Bloem documentation](documentation-workflow.md) — Silo's manual/reference model, where each kind of Bloem change is documented, regeneration and verification commands.
 - [How Bloem CI works](ci.md) — the Bloem CI jobs, the merge bot's CI wait and deploy, the switched-off daily upstream sync, the published image's gate, runner placement and tool pins.
-- [API catalogue](api-catalogue.md) — generated list of typed `/api/v2` and `/api/bloem/v1` operations and native documentation gaps.
-- [API by topic](api/README.md) — every typed `/api/bloem/v1` operation, generated from the OpenAPI contract, one page per topic, with credentials, fields and error codes; plus the hand-written page for Bloem's remaining [`/api/v1` routes](api/v1-routes.md).
+- [API catalogue](api-catalogue.md) — generated list of typed `/api/v2` and `/api/bloem/v2` operations and native documentation gaps.
+- [API by topic](api/README.md) — every typed `/api/bloem/v2` operation, generated from the OpenAPI contract, one page per topic, with credentials, fields and error codes; plus the hand-written record of Bloem's [retired v1 routes](api/v1-routes.md).
 
 ## How Bloem works: start here
 
@@ -90,7 +90,7 @@ A receipt is not native-client or playback acceptance.
 - [November 1 deployment: provider sign-out on its domain](../operations/2026-11-01-provider-sign-out-deployment.md) — `59616c4af` (a provider sign-out returns to the organization domain it started on, seams stay at 304, no migrations, 18 s restart, an image built locally before CI finished).
 - [November 1 deployment: organization domains](../operations/2026-11-01-organization-domains-deployment.md) — `8a721cff2` (organization domains and branding, provider sign-in kept on its domain, the 304th seam, one migration adding two tables, 18 s restart, the server's address registered to the default organization, Garden `d9f77cc2`, an image built locally before CI finished).
 - [November 1 deployment: Silo through `63ef34b23`](../operations/2026-11-01-silo-sync-63ef34b23-deployment.md) — `f14332386` (Silo through `63ef34b23`, and a sign-in its organization revoked is told to sign in again; no migrations, 105 s restart, an image built locally before CI finished).
-- [November 1 deployment: off Silo's `/api/v1`](../operations/2026-11-01-off-silo-v1-deployment.md) — `e5cd1eb6a` (the storefront and the web app off Silo's `/api/v1`, native platform and viewer campaign routes, one migration that changed no rows, 46 s restart, an image built locally before CI finished).
+- [November 1 deployment: off Silo's v1 API](../operations/2026-11-01-off-silo-v1-deployment.md) — `e5cd1eb6a` (the storefront and the web app off Silo's v1 API, native platform and viewer campaign routes, one migration that changed no rows, 46 s restart, an image built locally before CI finished).
 - [October 31 Silo sync deployment through `32a2f63e1`](../operations/2026-10-31-silo-sync-32a2f63e1-deployment.md) — historical: `4edbee99d` (Silo through `32a2f63e1`, Silo's lines verbatim in the session-revoked hook and household check, 303 seams, one migration, 48 s restart, an image built locally before CI finished).
 - [October 31 Silo sync deployment through `288f58200`](../operations/2026-10-31-silo-sync-288f58200-deployment.md) — historical: `29c23fc2c` (Silo through `288f58200`: password changes that can sign out other devices, PIN revocation checked on household writes, no migrations, 46 s restart, an image built locally before CI finished).
 - [October 31 Silo sync deployment](../operations/2026-10-31-silo-sync-deployment.md) — historical: `8065e5746` (Silo through `07c05cad6`, seven additive migrations applied online beside the live server in 126 s, 52 s restart, an image built locally before CI finished).
@@ -169,7 +169,7 @@ same path. Read the upstream document together with its overlay.
 - [How Silo backend switching works](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the flag, its invariants, the all-in-one procedure, and `make silo-switch-check` and `make silo-switch-check-all-in-one`.
 - [How request rules apply to organizations and profiles](../architecture/bloem-request-policy.md) — verified profile quotas, scoped administrative usage and group limits on Silo's request service.
 - [How retiring an organization and deleting a library stay safe](../architecture/bloem-lifecycle-safety.md) — atomic tenant retirement and library deletion.
-- [How Bloem's security foundation works](../architecture/bloem-security-foundation.md) — the `/api/bloem/v1` discovery and administration boundary beside Silo's `/api/v1` login.
+- [How Bloem's security foundation works](../architecture/bloem-security-foundation.md) — the `/api/bloem/v2` discovery and administration boundary beside Silo's `/api/v2` login.
 - [How Bloem's contract adjudications work](../architecture/bloem-contract-adjudications.md) — retired on 2026-11-11 with Silo's scenario catalogs; a historical record of the pinned replacements for Silo scenario expectations.
 - [How Bloem's adapters over Silo work](../architecture/bloem-upstream-adapters.md) — migration filesystem, profile-aware interfaces and embedded-web boundaries over Silo's code.
 
@@ -213,8 +213,8 @@ same path. Read the upstream document together with its overlay.
 
 ### Clients, protocols and compatibility
 
-- [Leaving Silo's `/api/v1`](../architecture/bloem-leaving-silo-v1.md) — the rule that Bloem adds nothing to Silo's `/api/v1`, what moved off it, and what still calls it.
-- [How Bloem's native API is organized](../architecture/bloem-client-surface.md) — why Bloem-only features live under `/api/bloem/v1`, and the native document set.
+- [Leaving Silo's v1 API](../architecture/bloem-leaving-silo-v1.md) — how Bloem left Silo's v1 API before Silo retired it on 2026-11-11, and where each route moved.
+- [How Bloem's native API is organized](../architecture/bloem-client-surface.md) — why Bloem-only features live under `/api/bloem/v2`, and the native document set.
 - [How Bloem's SDKs and generated contracts fit together](../architecture/bloem-sdk-compatibility.md) — plugin SDK pins, generated client DTOs and consumer synchronization.
 - [How the client contract generator works](../architecture/bloem-client-contract-generator.md) — the registry, the Kotlin and Swift files the apps copy, the contract digest, and the rules that keep older apps working.
 - [How Bloem runs Silo's Jellyfin and Audiobookshelf servers](../architecture/bloem-compatibility-removal.md) — Silo's Jellyfin and Audiobookshelf servers, their tenant wiring, and the removed companion gateway.

@@ -26,7 +26,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
 )
 
-// LiveTVHandler exposes Live TV / OTA / DVR APIs under /api/v1/livetv.
+// LiveTVHandler exposes Live TV / OTA / DVR APIs under /api/bloem/v2/livetv.
 type LiveTVHandler struct {
 	service               *livetv.Service
 	PrimaryProfileChecker apimw.PrimaryProfileChecker

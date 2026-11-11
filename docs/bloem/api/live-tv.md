@@ -1,7 +1,7 @@
 # Live TV API
 
 > **Generated** by `scripts/bloem/api-topic-docs.py` from
-> [`contracts/api/bloem/v1/openapi.json`](../../../contracts/api/bloem/v1/openapi.json).
+> [`contracts/api/bloem/v2/openapi.json`](../../../contracts/api/bloem/v2/openapi.json).
 > Do not edit by hand: change the handler's OpenAPI declaration, run `make bloem-openapi`, then
 > the script. Shared conventions, credentials and the error body are on the [index](README.md).
 
@@ -18,40 +18,40 @@ For the plain-language picture, read the [Live TV explainer](../../architecture/
 
 | Method and path | Summary |
 | --- | --- |
-| [`GET /api/bloem/v1/livetv/capability`](#get-apibloemv1livetvcapability) | Whether this build and viewer support Live TV and a channel is available. |
-| [`GET /api/bloem/v1/livetv/channels`](#get-apibloemv1livetvchannels) | The channel lineup this viewer may watch. |
-| [`PATCH /api/bloem/v1/livetv/channels/{channelId}`](#patch-apibloemv1livetvchannelschannelid) | Change channel enablement, number override or guide mapping. |
-| [`POST /api/bloem/v1/livetv/channels/{channelId}/session`](#post-apibloemv1livetvchannelschannelidsession) | Tune a channel and take a tuner lease. |
-| [`GET /api/bloem/v1/livetv/guide`](#get-apibloemv1livetvguide) | Program guide for a window. |
-| [`GET /api/bloem/v1/livetv/guide-sources`](#get-apibloemv1livetvguide-sources) | List configured guide sources. |
-| [`POST /api/bloem/v1/livetv/guide-sources`](#post-apibloemv1livetvguide-sources) | Create a guide source. |
-| [`POST /api/bloem/v1/livetv/guide-sources/schedules-direct/lineups`](#post-apibloemv1livetvguide-sourcesschedules-directlineups) | Look up Schedules Direct lineups by postal code. |
-| [`POST /api/bloem/v1/livetv/guide-sources/xml-sync/lineups`](#post-apibloemv1livetvguide-sourcesxml-synclineups) | Look up Gracenote providers by postal code. |
-| [`PATCH /api/bloem/v1/livetv/guide-sources/{sourceId}`](#patch-apibloemv1livetvguide-sourcessourceid) | Merge supplied guide-source fields with current configuration. |
-| [`DELETE /api/bloem/v1/livetv/guide-sources/{sourceId}`](#delete-apibloemv1livetvguide-sourcessourceid) | Delete a guide source. |
-| [`POST /api/bloem/v1/livetv/guide-sources/{sourceId}/sync`](#post-apibloemv1livetvguide-sourcessourceidsync) | Synchronize a saved guide source. |
-| [`GET /api/bloem/v1/livetv/live-hls/{playbackId}/{name}`](#get-apibloemv1livetvlive-hlsplaybackidname) | Fetch a session-bound HLS playlist or MPEG-TS segment. |
-| [`GET /api/bloem/v1/livetv/programs/{programId}`](#get-apibloemv1livetvprogramsprogramid) | Read a guide program. |
-| [`GET /api/bloem/v1/livetv/recordings`](#get-apibloemv1livetvrecordings) | List recordings visible to this viewer. |
-| [`POST /api/bloem/v1/livetv/recordings`](#post-apibloemv1livetvrecordings) | Schedule a guide-program or manual recording. |
-| [`DELETE /api/bloem/v1/livetv/recordings/{recordingId}`](#delete-apibloemv1livetvrecordingsrecordingid) | Cancel an owned recording and return its updated record. |
-| [`GET /api/bloem/v1/livetv/series-rules`](#get-apibloemv1livetvseries-rules) | List viewer-owned DVR series rules. |
-| [`POST /api/bloem/v1/livetv/series-rules`](#post-apibloemv1livetvseries-rules) | Create a viewer-owned DVR series rule. |
-| [`DELETE /api/bloem/v1/livetv/series-rules/{ruleId}`](#delete-apibloemv1livetvseries-rulesruleid) | Delete an owned DVR series rule. |
-| [`DELETE /api/bloem/v1/livetv/sessions/{sessionId}`](#delete-apibloemv1livetvsessionssessionid) | Release an owned tuner lease and return the session record. |
-| [`POST /api/bloem/v1/livetv/sessions/{sessionId}/heartbeat`](#post-apibloemv1livetvsessionssessionidheartbeat) | Renew an owned active tuner session. |
-| [`GET /api/bloem/v1/livetv/sessions/{sessionId}/stream`](#get-apibloemv1livetvsessionssessionidstream) | Stream MPEG-TS media. |
-| [`HEAD /api/bloem/v1/livetv/sessions/{sessionId}/stream`](#head-apibloemv1livetvsessionssessionidstream) | Check MPEG-TS stream headers. |
-| [`GET /api/bloem/v1/livetv/tuners`](#get-apibloemv1livetvtuners) | List configured tuner metadata. |
-| [`POST /api/bloem/v1/livetv/tuners`](#post-apibloemv1livetvtuners) | Add an HDHomeRun-compatible tuner. |
-| [`POST /api/bloem/v1/livetv/tuners/discover`](#post-apibloemv1livetvtunersdiscover) | Discover local HDHomeRun-compatible tuner candidates. |
-| [`POST /api/bloem/v1/livetv/tuners/xtream`](#post-apibloemv1livetvtunersxtream) | Authenticate and import an encrypted Xtream live-TV provider. |
-| [`DELETE /api/bloem/v1/livetv/tuners/{tunerId}`](#delete-apibloemv1livetvtunerstunerid) | Delete a tuner. |
-| [`POST /api/bloem/v1/livetv/tuners/{tunerId}/scan`](#post-apibloemv1livetvtunerstuneridscan) | Scan a saved tuner and refresh its channel lineup. |
+| [`GET /api/bloem/v2/livetv/capability`](#get-apibloemv2livetvcapability) | Whether this build and viewer support Live TV and a channel is available. |
+| [`GET /api/bloem/v2/livetv/channels`](#get-apibloemv2livetvchannels) | The channel lineup this viewer may watch. |
+| [`PATCH /api/bloem/v2/livetv/channels/{channelId}`](#patch-apibloemv2livetvchannelschannelid) | Change channel enablement, number override or guide mapping. |
+| [`POST /api/bloem/v2/livetv/channels/{channelId}/session`](#post-apibloemv2livetvchannelschannelidsession) | Tune a channel and take a tuner lease. |
+| [`GET /api/bloem/v2/livetv/guide`](#get-apibloemv2livetvguide) | Program guide for a window. |
+| [`GET /api/bloem/v2/livetv/guide-sources`](#get-apibloemv2livetvguide-sources) | List configured guide sources. |
+| [`POST /api/bloem/v2/livetv/guide-sources`](#post-apibloemv2livetvguide-sources) | Create a guide source. |
+| [`POST /api/bloem/v2/livetv/guide-sources/schedules-direct/lineups`](#post-apibloemv2livetvguide-sourcesschedules-directlineups) | Look up Schedules Direct lineups by postal code. |
+| [`POST /api/bloem/v2/livetv/guide-sources/xml-sync/lineups`](#post-apibloemv2livetvguide-sourcesxml-synclineups) | Look up Gracenote providers by postal code. |
+| [`PATCH /api/bloem/v2/livetv/guide-sources/{sourceId}`](#patch-apibloemv2livetvguide-sourcessourceid) | Merge supplied guide-source fields with current configuration. |
+| [`DELETE /api/bloem/v2/livetv/guide-sources/{sourceId}`](#delete-apibloemv2livetvguide-sourcessourceid) | Delete a guide source. |
+| [`POST /api/bloem/v2/livetv/guide-sources/{sourceId}/sync`](#post-apibloemv2livetvguide-sourcessourceidsync) | Synchronize a saved guide source. |
+| [`GET /api/bloem/v2/livetv/live-hls/{playbackId}/{name}`](#get-apibloemv2livetvlive-hlsplaybackidname) | Fetch a session-bound HLS playlist or MPEG-TS segment. |
+| [`GET /api/bloem/v2/livetv/programs/{programId}`](#get-apibloemv2livetvprogramsprogramid) | Read a guide program. |
+| [`GET /api/bloem/v2/livetv/recordings`](#get-apibloemv2livetvrecordings) | List recordings visible to this viewer. |
+| [`POST /api/bloem/v2/livetv/recordings`](#post-apibloemv2livetvrecordings) | Schedule a guide-program or manual recording. |
+| [`DELETE /api/bloem/v2/livetv/recordings/{recordingId}`](#delete-apibloemv2livetvrecordingsrecordingid) | Cancel an owned recording and return its updated record. |
+| [`GET /api/bloem/v2/livetv/series-rules`](#get-apibloemv2livetvseries-rules) | List viewer-owned DVR series rules. |
+| [`POST /api/bloem/v2/livetv/series-rules`](#post-apibloemv2livetvseries-rules) | Create a viewer-owned DVR series rule. |
+| [`DELETE /api/bloem/v2/livetv/series-rules/{ruleId}`](#delete-apibloemv2livetvseries-rulesruleid) | Delete an owned DVR series rule. |
+| [`DELETE /api/bloem/v2/livetv/sessions/{sessionId}`](#delete-apibloemv2livetvsessionssessionid) | Release an owned tuner lease and return the session record. |
+| [`POST /api/bloem/v2/livetv/sessions/{sessionId}/heartbeat`](#post-apibloemv2livetvsessionssessionidheartbeat) | Renew an owned active tuner session. |
+| [`GET /api/bloem/v2/livetv/sessions/{sessionId}/stream`](#get-apibloemv2livetvsessionssessionidstream) | Stream MPEG-TS media. |
+| [`HEAD /api/bloem/v2/livetv/sessions/{sessionId}/stream`](#head-apibloemv2livetvsessionssessionidstream) | Check MPEG-TS stream headers. |
+| [`GET /api/bloem/v2/livetv/tuners`](#get-apibloemv2livetvtuners) | List configured tuner metadata. |
+| [`POST /api/bloem/v2/livetv/tuners`](#post-apibloemv2livetvtuners) | Add an HDHomeRun-compatible tuner. |
+| [`POST /api/bloem/v2/livetv/tuners/discover`](#post-apibloemv2livetvtunersdiscover) | Discover local HDHomeRun-compatible tuner candidates. |
+| [`POST /api/bloem/v2/livetv/tuners/xtream`](#post-apibloemv2livetvtunersxtream) | Authenticate and import an encrypted Xtream live-TV provider. |
+| [`DELETE /api/bloem/v2/livetv/tuners/{tunerId}`](#delete-apibloemv2livetvtunerstunerid) | Delete a tuner. |
+| [`POST /api/bloem/v2/livetv/tuners/{tunerId}/scan`](#post-apibloemv2livetvtunerstuneridscan) | Scan a saved tuner and refresh its channel lineup. |
 
 ## Reference
 
-### `GET /api/bloem/v1/livetv/capability`
+### `GET /api/bloem/v2/livetv/capability`
 
 Whether this build and viewer support Live TV and a channel is available.
 
@@ -76,7 +76,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/livetv/channels`
+### `GET /api/bloem/v2/livetv/channels`
 
 The channel lineup this viewer may watch.
 
@@ -102,7 +102,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `PATCH /api/bloem/v1/livetv/channels/{channelId}`
+### `PATCH /api/bloem/v2/livetv/channels/{channelId}`
 
 Change channel enablement, number override or guide mapping.
 
@@ -130,7 +130,7 @@ Request body (required, `application/json`): [`BloemLiveTVChannelPatch`](#bloeml
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `POST /api/bloem/v1/livetv/channels/{channelId}/session`
+### `POST /api/bloem/v2/livetv/channels/{channelId}/session`
 
 Tune a channel and take a tuner lease.
 
@@ -159,7 +159,7 @@ Request body (optional, `application/json`): [`BloemLiveTVClientCapabilities`](#
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. unavailable: Live TV delivery signing is not configured. |
 
-### `GET /api/bloem/v1/livetv/guide`
+### `GET /api/bloem/v2/livetv/guide`
 
 Program guide for a window.
 
@@ -187,7 +187,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/livetv/guide-sources`
+### `GET /api/bloem/v2/livetv/guide-sources`
 
 List configured guide sources.
 
@@ -212,7 +212,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `POST /api/bloem/v1/livetv/guide-sources`
+### `POST /api/bloem/v2/livetv/guide-sources`
 
 Create a guide source.
 
@@ -240,7 +240,7 @@ Request body (required, `application/json`): [`BloemLiveTVGuideSourceCreate`](#b
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, Schedules Direct could not be reached, or saving failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable. |
 
-### `POST /api/bloem/v1/livetv/guide-sources/schedules-direct/lineups`
+### `POST /api/bloem/v2/livetv/guide-sources/schedules-direct/lineups`
 
 Look up Schedules Direct lineups by postal code.
 
@@ -267,7 +267,7 @@ Request body (required, `application/json`): [`BloemLiveTVSchedulesDirectLineups
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or Schedules Direct could not be reached; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `POST /api/bloem/v1/livetv/guide-sources/xml-sync/lineups`
+### `POST /api/bloem/v2/livetv/guide-sources/xml-sync/lineups`
 
 Look up Gracenote providers by postal code.
 
@@ -294,7 +294,7 @@ Request body (required, `application/json`): [`BloemLiveTVXMLSyncLineupsRequest`
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the provider lookup failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `PATCH /api/bloem/v1/livetv/guide-sources/{sourceId}`
+### `PATCH /api/bloem/v2/livetv/guide-sources/{sourceId}`
 
 Merge supplied guide-source fields with current configuration.
 
@@ -323,7 +323,7 @@ Request body (required, `application/json`): [`BloemLiveTVGuideSourcePatch`](#bl
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, Schedules Direct could not be reached, or saving failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable. |
 
-### `DELETE /api/bloem/v1/livetv/guide-sources/{sourceId}`
+### `DELETE /api/bloem/v2/livetv/guide-sources/{sourceId}`
 
 Delete a guide source.
 
@@ -349,7 +349,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `POST /api/bloem/v1/livetv/guide-sources/{sourceId}/sync`
+### `POST /api/bloem/v2/livetv/guide-sources/{sourceId}/sync`
 
 Synchronize a saved guide source.
 
@@ -376,7 +376,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, the guide provider could not be reached, or saving failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable. |
 
-### `GET /api/bloem/v1/livetv/live-hls/{playbackId}/{name}`
+### `GET /api/bloem/v2/livetv/live-hls/{playbackId}/{name}`
 
 Fetch a session-bound HLS playlist or MPEG-TS segment.
 
@@ -404,7 +404,7 @@ Requires the signed st query delivery ticket from the session-start URL; an acco
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | dependency_unavailable: the API process that owns this session is temporarily unreachable; retry after Retry-After. |
 
-### `GET /api/bloem/v1/livetv/programs/{programId}`
+### `GET /api/bloem/v2/livetv/programs/{programId}`
 
 Read a guide program.
 
@@ -430,7 +430,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/livetv/recordings`
+### `GET /api/bloem/v2/livetv/recordings`
 
 List recordings visible to this viewer.
 
@@ -456,7 +456,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `POST /api/bloem/v1/livetv/recordings`
+### `POST /api/bloem/v2/livetv/recordings`
 
 Schedule a guide-program or manual recording.
 
@@ -483,7 +483,7 @@ Request body (required, `application/json`): [`BloemLiveTVScheduleRecordingReque
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `DELETE /api/bloem/v1/livetv/recordings/{recordingId}`
+### `DELETE /api/bloem/v2/livetv/recordings/{recordingId}`
 
 Cancel an owned recording and return its updated record.
 
@@ -509,7 +509,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/livetv/series-rules`
+### `GET /api/bloem/v2/livetv/series-rules`
 
 List viewer-owned DVR series rules.
 
@@ -534,7 +534,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `POST /api/bloem/v1/livetv/series-rules`
+### `POST /api/bloem/v2/livetv/series-rules`
 
 Create a viewer-owned DVR series rule.
 
@@ -561,7 +561,7 @@ Request body (required, `application/json`): [`BloemLiveTVCreateSeriesRuleReques
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `DELETE /api/bloem/v1/livetv/series-rules/{ruleId}`
+### `DELETE /api/bloem/v2/livetv/series-rules/{ruleId}`
 
 Delete an owned DVR series rule.
 
@@ -587,7 +587,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `DELETE /api/bloem/v1/livetv/sessions/{sessionId}`
+### `DELETE /api/bloem/v2/livetv/sessions/{sessionId}`
 
 Release an owned tuner lease and return the session record.
 
@@ -613,7 +613,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `POST /api/bloem/v1/livetv/sessions/{sessionId}/heartbeat`
+### `POST /api/bloem/v2/livetv/sessions/{sessionId}/heartbeat`
 
 Renew an owned active tuner session.
 
@@ -639,7 +639,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/livetv/sessions/{sessionId}/stream`
+### `GET /api/bloem/v2/livetv/sessions/{sessionId}/stream`
 
 Stream MPEG-TS media.
 
@@ -667,7 +667,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 502 | [`BloemNativeError`](README.md#bloemnativeerror) | upstream_error: the tuner stream could not be opened or answered a non-success status. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable. |
 
-### `HEAD /api/bloem/v1/livetv/sessions/{sessionId}/stream`
+### `HEAD /api/bloem/v2/livetv/sessions/{sessionId}/stream`
 
 Check MPEG-TS stream headers.
 
@@ -693,7 +693,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable. |
 
-### `GET /api/bloem/v1/livetv/tuners`
+### `GET /api/bloem/v2/livetv/tuners`
 
 List configured tuner metadata.
 
@@ -718,7 +718,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `POST /api/bloem/v1/livetv/tuners`
+### `POST /api/bloem/v2/livetv/tuners`
 
 Add an HDHomeRun-compatible tuner.
 
@@ -745,7 +745,7 @@ Request body (required, `application/json`): [`BloemLiveTVAddTunerRequest`](#blo
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, the device could not be discovered, or saving the tuner or its channels failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `POST /api/bloem/v1/livetv/tuners/discover`
+### `POST /api/bloem/v2/livetv/tuners/discover`
 
 Discover local HDHomeRun-compatible tuner candidates.
 
@@ -772,14 +772,14 @@ Request body (optional, `application/json`): [`BloemLiveTVDiscoverRequest`](#blo
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the Live TV request failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `POST /api/bloem/v1/livetv/tuners/xtream`
+### `POST /api/bloem/v2/livetv/tuners/xtream`
 
 Authenticate and import an encrypted Xtream live-TV provider.
 
 Operation ID: `createBloemXtreamProvider`.
 Credentials: `bearerAuth`.
 
-Feature detection: GET /api/bloem/v1/livetv/capability advertises xtream_supported. Uses the same authenticated viewer, selected primary profile/PIN and acting-administrator gates as other Live TV administration. Administrative-context tokens do not replace those gates, and direct-profile sessions are not admitted. JSON body limit 32 KiB. Imports live channels only, not VOD or series; playback requires direct MPEG-TS. A configured SECRET_KEY cipher and PostgreSQL store are required. Credentials are write-only. Creation is not replay-safe: after an uncertain response, read /livetv/tuners and review the saved providers before trying again. An account at the same canonical base URL cannot be configured twice, and at most 64 providers can be configured. Upgrade the full API/worker fleet before enabling providers.
+Feature detection: GET /api/bloem/v2/livetv/capability advertises xtream_supported. Uses the same authenticated viewer, selected primary profile/PIN and acting-administrator gates as other Live TV administration. Administrative-context tokens do not replace those gates, and direct-profile sessions are not admitted. JSON body limit 32 KiB. Imports live channels only, not VOD or series; playback requires direct MPEG-TS. A configured SECRET_KEY cipher and PostgreSQL store are required. Credentials are write-only. Creation is not replay-safe: after an uncertain response, read /livetv/tuners and review the saved providers before trying again. An account at the same canonical base URL cannot be configured twice, and at most 64 providers can be configured. Upgrade the full API/worker fleet before enabling providers.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -800,7 +800,7 @@ Request body (required, `application/json`): [`BloemXtreamProviderBody`](#bloemx
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, the provider's channel list could not be read, the provider did not answer in time, or persistence failed; no raw provider response is returned. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable. |
 
-### `DELETE /api/bloem/v1/livetv/tuners/{tunerId}`
+### `DELETE /api/bloem/v2/livetv/tuners/{tunerId}`
 
 Delete a tuner.
 
@@ -827,7 +827,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the deletion failed; internal details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable. |
 
-### `POST /api/bloem/v1/livetv/tuners/{tunerId}/scan`
+### `POST /api/bloem/v2/livetv/tuners/{tunerId}/scan`
 
 Scan a saved tuner and refresh its channel lineup.
 

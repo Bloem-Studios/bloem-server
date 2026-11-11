@@ -10,7 +10,7 @@ import (
 )
 
 func streamTokenRequest(scope *access.Scope) *http.Request {
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/livetv/live-hls/p1/index.m3u8", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/bloem/v2/livetv/live-hls/p1/index.m3u8", nil)
 	ctx := context.WithValue(req.Context(), streamTokenAuthorizedKey, true)
 	if scope != nil {
 		ctx = access.SetScope(ctx, *scope)

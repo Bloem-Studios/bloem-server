@@ -54,7 +54,7 @@ func (h *PromotionsHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	h.list(w, r, false)
 }
 
-// list serves both campaign lists. The /api/v1 route (native false) leaves
+// list serves both campaign lists. The plain list (native false) leaves
 // home cards to the `promoted` home section; the native route also serves
 // the home surface, with the row position.
 func (h *PromotionsHandler) list(w http.ResponseWriter, r *http.Request, native bool) {

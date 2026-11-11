@@ -26,7 +26,7 @@ def finding_a_server():
     s.rect(430, 304, 340, 250, "#FFFFFF", p["stroke"], rx=14, sw=1.6)
     s.text(450, 336, "The card (TXT record)", size=16, weight="700")
     rows = [("txtvers", "1"), ("id", "the server's ID"), ("name", "its display name"), ("scheme", "http"),
-            ("api", "1"), ("bloem", "v1")]
+            ("api", "1"), ("bloem", "v2")]
     y = 368
     for key, value in rows:
         s.text(450, y, key, size=14, weight="700", fill=p["label"])
@@ -36,7 +36,7 @@ def finding_a_server():
     # Identity check.
     s.rect(820, 304, 340, 250, a["fill"], a["stroke"], rx=14, sw=1.6)
     s.text(840, 336, "The identity check decides", size=16, weight="700")
-    para(s, 840, 364, "The app asks /api/bloem/v1/server/identity at the address it found. Only that answer "
+    para(s, 840, 364, "The app asks /api/bloem/v2/server/identity at the address it found. Only that answer "
          "decides whether to connect.", 300, size=14, fill=INK, gap=20)
     para(s, 840, 454, "The card can only make an app skip a server, for example one that speaks no Bloem "
          "API the app knows. It never makes a server trusted.", 300, size=14, gap=20)

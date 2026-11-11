@@ -4,19 +4,20 @@
 > `26cf9b3e4`), and every route on this page now answers `410 Gone` with
 > `client_upgrade_required`. The page records what they were and where each one moved.
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against `main`
-> at `b6039036d`. These routes are Bloem additions to Silo's frozen `/api/v1`; no OpenAPI
-> document describes them, so this page is maintained by hand from the handlers. They are
-> deprecated, and the technical reference is in the [For developers](#for-developers)
-> section. The typed `/api/bloem/v1` operations are on the [generated topic pages](README.md).
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 from the handlers at
+> `b6039036d`, and brought up to date on 2026-11-11, when these routes were retired. They
+> were Bloem additions to Silo's `/api/v1`; no OpenAPI document described them, so this page
+> is written by hand and names the retired paths as history. The technical record is in the
+> [For developers](#for-developers) section. The typed `/api/bloem/v2` operations are on the
+> [generated topic pages](README.md).
 
-Before Bloem had its own API, it added some routes to Silo's `/api/v1`. Silo will retire
-`/api/v1`, and these routes go with it. This page says what they are, where each one moved,
-and who still calls them.
+Before Bloem had its own API, it added some routes to Silo's `/api/v1`. Silo retired
+`/api/v1` on 2026-11-11, and these routes went with it. This page says what they were, where
+each one moved, and who still called them at the end.
 
-## What these routes are and where they went
+## What these routes were and where they went
 
-![Six areas Bloem added to Silo's /api/v1, each with its old path and its replacement under /api/bloem/v1; remote control has none yet](../../architecture/images/v1-routes/replacements.svg)
+![Six areas Bloem added to Silo's /api/v1, each with its old path and its replacement under /api/bloem/v2; remote control has none, as it is dormant](../../architecture/images/v1-routes/replacements.svg)
 
 Bloem added six groups of routes to `/api/v1`:
 
@@ -27,20 +28,20 @@ Bloem added six groups of routes to `/api/v1`:
 - **Seasonal packs**: the seasonal look of the apps, with uploaded artwork.
 - **Remote control**: sending a command, such as pause, to a playing device.
 
-Each group except remote control already has a replacement on Bloem's own API,
-`/api/bloem/v1`. The old routes stay mounted, unchanged, until their last callers move.
-**Bloem adds nothing new here.**
+Each group except remote control has a replacement on Bloem's own API, `/api/bloem/v2`.
+Remote control is dormant until it has native routes. **Nothing is added here, and nothing in
+Bloem calls these paths.**
 
-## Who still calls them
+## Who called them at the end
 
-- **The storefront (Bloem Garden)** and **the web app** call none of them.
-- **Bloem's phone and TV apps** still call the viewer's campaign routes, remote control, and
-  (on Apple) profile sign-in.
-- Uploaded artwork may still be fetched at its old `/api/v1/ambience/assets/...` path, for
-  example from a campaign card someone saved to their inbox earlier.
+- **The storefront (Bloem Garden)** and **the web app** had left them by 2026-11-01.
+- **Bloem's phone and TV apps** still called the viewer's campaign routes, remote control, and
+  (on Apple) profile sign-in. Those calls now answer `410 Gone`.
+- A copy of an old `/api/v1/ambience/assets/...` artwork path kept outside Bloem's tables,
+  such as a campaign card someone saved to their inbox earlier, no longer loads.
 
 See [leaving Silo's `/api/v1`](../../architecture/bloem-leaving-silo-v1.md) for the plan and
-its progress.
+how it ended.
 
 ## Example: retiring a reseller organization
 
@@ -48,16 +49,16 @@ This example is made up.
 
 Riverside Club cancels on the storefront. Before 2026-10-31 the storefront retired it with
 `DELETE /api/v1/admin/tenants/{id}`. Now it sends `DELETE
-/api/bloem/v1/admin/platform/tenants/{id}`: same handler, same result. Riverside Club stays on
+/api/bloem/v2/admin/platform/tenants/{id}`: same handler, same result. Riverside Club stays on
 record, suspended; its members are removed; and accounts with no other organization are
-deleted. The old route still works for one more release, but nothing calls it.
+deleted. Since 2026-11-11 the old route answers `410 Gone`.
 
 ## Who can change what
 
 | Who | What they manage |
 | --- | --- |
-| Platform administrator | Everything under `/api/v1/admin/...` here, with an account that has the `admin` role, acting as itself. |
-| The storefront | Tenants, members and their accounts, now through `/api/bloem/v1/admin/platform/...`. |
+| Platform administrator | Everything that was under `/api/v1/admin/...` here, with an account that had the `admin` role, acting as itself; today through `/api/bloem/v2/admin/platform/...`. |
+| The storefront | Tenants, members and their accounts, now through `/api/bloem/v2/admin/platform/...`. |
 | Viewers | Their own campaign cards and inbox saves, through the apps. |
 | An account's main profile | Remote control of the household's own sessions. |
 
@@ -65,7 +66,7 @@ deleted. The old route still works for one more release, but nothing calls it.
 
 | On this page | In the code |
 | --- | --- |
-| These routes | `mountBloemLegacyAdminV1`, `mountBloemPromotionsV1` and `mountBloemPublicV1` in `internal/api/router_bloem_wiring.go`; the household and device routes in `internal/api/router.go` |
+| These routes | `mountBloemLegacyAdminV1`, `mountBloemPromotionsV1` and `mountBloemPublicV1` in `internal/api/router_bloem_wiring.go`, and the household and device routes in `internal/api/router.go`, all removed on 2026-11-11 |
 | Tenant | an organization, from the storefront's side (`internal/api/handlers/admin_tenants.go`) |
 | Seats, shared video conversions | `limits.slots`, `limits.transcodes` |
 | Suspended | `frozen`, with `frozen_reason` `quota` or `admin` |
@@ -78,45 +79,47 @@ deleted. The old route still works for one more release, but nothing calls it.
 - **API:** the replacements are on the generated pages:
   [organizations](organizations.md) (tenants, members, accounts, domains and branding) and
   [messages](messages.md) (announcements, campaigns, seasonal packs, `GET
-  /api/bloem/v1/ambience/public`). The plan and status are on
+  /api/bloem/v2/ambience/public`). The plan and how it ended are on
   [leaving Silo's `/api/v1`](../../architecture/bloem-leaving-silo-v1.md).
 
-> **Deprecated.** Silo will retire `/api/v1`, and these routes go with it. Bloem adds nothing
-> new here, and each section names its replacement. The storefront (Bloem Garden) and the web
-> app no longer call any of them; the phone apps still call some.
+> **Retired.** Silo retired `/api/v1` on 2026-11-11, and these routes went with it: each
+> answers `410 Gone` with `client_upgrade_required`. Each section names its replacement.
+> The sections below record the contract as it was.
 
-The handlers named in each section are the source of truth. The routes are registered by
-`mountBloemLegacyAdminV1`, `mountBloemPromotionsV1` and `mountBloemPublicV1` in
-`internal/api/router_bloem_wiring.go`, and the household and device routes in
-`internal/api/router.go`. Each block exists only when its service is wired.
+The routes were registered by `mountBloemLegacyAdminV1`, `mountBloemPromotionsV1` and
+`mountBloemPublicV1` in `internal/api/router_bloem_wiring.go`, and the household and device
+routes in `internal/api/router.go`; each block existed only when its service was wired. The
+named handlers stay where native routes reuse them.
 
 ### Conventions
 
-- **Base path.** Every path below starts at `/api/v1` on the server's main address.
+- **Base path.** Every path below started at `/api/v1` on the server's main address.
 - **Administrative routes** (`/api/v1/admin/...`) sit behind Silo's acting-administrator gate:
   a bearer session or API key of an account with the `admin` role, acting as itself (see
   Silo's [admin API](../../admin-api.md)). These are platform-administrator routes;
-  organization administrators use `/api/bloem/v1/admin/organization/...`.
+  organization administrators use `/api/bloem/v2/admin/organization/...`.
 - **Errors** use Silo's v1 body, `{"error": "<code>", "message": "<text>"}`. The codes for each
   route are listed with it.
 
 | Area | Routes | Replacement |
 | --- | --- | --- |
-| [Tenants](#tenants-reseller-organizations) | 7 | `/api/bloem/v1/admin/platform/tenants` ([organizations API](organizations.md)) |
-| [Tenant members](#tenant-members) | 17 | `/api/bloem/v1/admin/platform/tenants/{tenant_id}/members` ([organizations API](organizations.md)) |
-| [Announcements](#announcements) | 3 | `/api/bloem/v1/admin/platform/announcements` ([messages API](messages.md)) |
-| [Campaigns](#campaigns) | 6 | authoring: `/api/bloem/v1/admin/platform/promotions`; viewer cards: `/api/bloem/v1/promotions` ([messages API](messages.md)) |
-| [Seasonal packs](#seasonal-packs) | 7 | `/api/bloem/v1/admin/platform/ambience` and the public `/api/bloem/v1/ambience/assets/{ref}` ([messages API](messages.md)) |
-| [Remote control](#remote-control) | 6 | none yet |
+| [Tenants](#tenants-reseller-organizations) | 7 | `/api/bloem/v2/admin/platform/tenants` ([organizations API](organizations.md)) |
+| [Tenant members](#tenant-members) | 17 | `/api/bloem/v2/admin/platform/tenants/{tenant_id}/members` ([organizations API](organizations.md)) |
+| [Announcements](#announcements) | 3 | `/api/bloem/v2/admin/platform/announcements` ([messages API](messages.md)) |
+| [Campaigns](#campaigns) | 6 | authoring: `/api/bloem/v2/admin/platform/promotions`; viewer cards: `/api/bloem/v2/promotions` ([messages API](messages.md)) |
+| [Seasonal packs](#seasonal-packs) | 7 | `/api/bloem/v2/admin/platform/ambience` and the public `/api/bloem/v2/ambience/assets/{ref}` ([messages API](messages.md)) |
+| [Remote control](#remote-control) | 6 | none: dormant ([admin remote control](../../architecture/admin-remote-control.md)) |
 
 Bloem's other additions to `/api/v1/admin/users/{user_id}` (profiles, devices, sign-in
 sessions) and account create and update with a plan are replaced by
-`/api/bloem/v1/admin/platform/accounts` ([organizations API](organizations.md)); the rest of
-the account routes are Silo's, whose replacement is Silo's `/api/v2/admin/users`. The
-`ambience` block Bloem adds to Silo's `GET /api/v1/theme/branding`, which the phone apps still
-read on signed-out pages, is replaced by the public `GET /api/bloem/v1/ambience/public`. An
+`/api/bloem/v2/admin/platform/accounts` ([organizations API](organizations.md)); the rest of
+the account routes were Silo's, whose replacement is Silo's `/api/v2/admin/users`. The
+`ambience` block Bloem added to Silo's `GET /api/v1/theme/branding`, which the phone apps read
+on signed-out pages, is replaced by the public `GET /api/bloem/v2/ambience/public`. Bloem's
+`GET /api/v1/admin/host-stats` server-load reading has no replacement; Silo's
+`GET /api/v2/admin/system/resources` reports the same measurements. An
 organization's domains and branding exist only on the native routes
-(`/api/bloem/v1/admin/platform/tenants/{id}/domains` and `.../branding`).
+(`/api/bloem/v2/admin/platform/tenants/{id}/domains` and `.../branding`).
 
 ### Tenants (reseller organizations)
 
@@ -292,9 +295,9 @@ the same JSON as the typed platform routes, so their schemas are on the
 
 Authoring errors: `400 bad_request`; `404 not_found`; `503 unavailable`; `500 internal_error`.
 
-The viewer routes below are replaced by `GET` and `POST /api/bloem/v1/promotions...`, which
+The viewer routes below are replaced by `GET` and `POST /api/bloem/v2/promotions...`, which
 also serve Home cards with the row they go in, and by
-`PUT /api/bloem/v1/promotions/{id}/dismissals/{surface}`. That last one replaces hiding a card
+`PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}`. That last one replaces hiding a card
 through Silo's `PUT /api/v1/home/dismissals/promo:<surface>/<id>`, which accepts the `promo:`
 surfaces only on `/api/v1` (Silo's `/api/v2` dismissals take `continue_watching` and
 `next_up`). The native viewer routes are advertised as `promotions_viewer_v1`.
@@ -329,7 +332,7 @@ platform routes ([messages API page](messages.md): `BloemAmbienceBody` in, `Pack
 | `DELETE /api/v1/admin/ambience/{id}` | `204`. |
 | `POST /api/v1/admin/ambience/assets` | Multipart `file` (PNG, WebP, JPEG or GIF); `201 {"url", "asset"}`. |
 | `POST /api/v1/admin/ambience/{id}/assets` | Multipart upload attached to a pack's `banner` or `sprite` slot; `201 {"url", "slot", "pack"}`. |
-| `GET /api/v1/ambience/assets/{ref}` | Public: serves an uploaded artwork file, for the sign-in page. |
+| `GET /api/v1/ambience/assets/{ref}` | Public: served an uploaded artwork file, for the sign-in page. Replaced by `GET /api/bloem/v2/ambience/assets/{ref}`. |
 
 Errors: `400 bad_request` (invalid body, bad slot, checksum mismatch); `404 not_found`;
 `413 too_large`; `415 unsupported_image`; `503 unavailable` (no ambience, or no asset
@@ -338,7 +341,7 @@ storage); `500 internal_error`. Scheduling rules:
 
 ### Remote control
 
-Handler: `internal/api/handlers/remote_control.go`; rules in
+Handler: `internal/api/handlers/remote_control.go`, removed on 2026-11-11 (the file keeps only the inert playback hooks); rules in
 [admin remote control](../../architecture/admin-remote-control.md).
 
 #### `PUT /api/v1/devices/{device_id}/remote-control`

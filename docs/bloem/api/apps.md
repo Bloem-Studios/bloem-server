@@ -1,7 +1,7 @@
 # Apps and clients API
 
 > **Generated** by `scripts/bloem/api-topic-docs.py` from
-> [`contracts/api/bloem/v1/openapi.json`](../../../contracts/api/bloem/v1/openapi.json).
+> [`contracts/api/bloem/v2/openapi.json`](../../../contracts/api/bloem/v2/openapi.json).
 > Do not edit by hand: change the handler's OpenAPI declaration, run `make bloem-openapi`, then
 > the script. Shared conventions, credentials and the error body are on the [index](README.md).
 
@@ -17,20 +17,20 @@ For the plain-language picture, read the [Apps and clients explainer](../../arch
 
 | Method and path | Summary |
 | --- | --- |
-| [`GET /api/bloem/v1/capabilities`](#get-apibloemv1capabilities) | What this build supports, for a client deciding which surfaces to use. |
-| [`GET /api/bloem/v1/catalog/items/{content_id}/collections`](#get-apibloemv1catalogitemscontent_idcollections) | The visible server collections that contain one item. Visibility matches the server collection list; smart collections are evaluated lazily and are not included. An item the viewer may not see answers 404. |
-| [`GET /api/bloem/v1/persons/{person_id}`](#get-apibloemv1personsperson_id) | One person and their credits, filtered to what this viewer may see. |
-| [`GET /api/bloem/v1/profile-credentials/{id}`](#get-apibloemv1profile-credentialsid) | Read direct-profile credential status without exposing a password or hash. |
-| [`PUT /api/bloem/v1/profile-credentials/{id}`](#put-apibloemv1profile-credentialsid) | Set or replace direct-profile login credentials. |
-| [`DELETE /api/bloem/v1/profile-credentials/{id}`](#delete-apibloemv1profile-credentialsid) | Clear direct-profile login credentials. |
-| [`GET /api/bloem/v1/server/identity`](#get-apibloemv1serveridentity) | Which server this is, which surfaces it serves, and whether it has been set up. |
-| [`GET /api/bloem/v1/watch/home`](#get-apibloemv1watchhome) | The composed home document for this viewer. |
-| [`GET /api/bloem/v1/watch/items/{content_id}`](#get-apibloemv1watchitemscontent_id) | The composed document for one item. |
-| [`GET /api/bloem/v1/watch/search`](#get-apibloemv1watchsearch) | A composed document for a search query. |
+| [`GET /api/bloem/v2/capabilities`](#get-apibloemv2capabilities) | What this build supports, for a client deciding which surfaces to use. |
+| [`GET /api/bloem/v2/catalog/items/{content_id}/collections`](#get-apibloemv2catalogitemscontent_idcollections) | The visible server collections that contain one item. Visibility matches the server collection list; smart collections are evaluated lazily and are not included. An item the viewer may not see answers 404. |
+| [`GET /api/bloem/v2/persons/{person_id}`](#get-apibloemv2personsperson_id) | One person and their credits, filtered to what this viewer may see. |
+| [`GET /api/bloem/v2/profile-credentials/{id}`](#get-apibloemv2profile-credentialsid) | Read direct-profile credential status without exposing a password or hash. |
+| [`PUT /api/bloem/v2/profile-credentials/{id}`](#put-apibloemv2profile-credentialsid) | Set or replace direct-profile login credentials. |
+| [`DELETE /api/bloem/v2/profile-credentials/{id}`](#delete-apibloemv2profile-credentialsid) | Clear direct-profile login credentials. |
+| [`GET /api/bloem/v2/server/identity`](#get-apibloemv2serveridentity) | Which server this is, which surfaces it serves, and whether it has been set up. |
+| [`GET /api/bloem/v2/watch/home`](#get-apibloemv2watchhome) | The composed home document for this viewer. |
+| [`GET /api/bloem/v2/watch/items/{content_id}`](#get-apibloemv2watchitemscontent_id) | The composed document for one item. |
+| [`GET /api/bloem/v2/watch/search`](#get-apibloemv2watchsearch) | A composed document for a search query. |
 
 ## Reference
 
-### `GET /api/bloem/v1/capabilities`
+### `GET /api/bloem/v2/capabilities`
 
 What this build supports, for a client deciding which surfaces to use.
 
@@ -43,7 +43,7 @@ Public and always answers 200; no authentication, rate limit or tenant gate runs
 | --- | --- | --- |
 | 200 | [`BloemCapabilities`](#bloemcapabilities) | OK |
 
-### `GET /api/bloem/v1/catalog/items/{content_id}/collections`
+### `GET /api/bloem/v2/catalog/items/{content_id}/collections`
 
 The visible server collections that contain one item. Visibility matches the server collection list; smart collections are evaluated lazily and are not included. An item the viewer may not see answers 404.
 
@@ -67,7 +67,7 @@ Credentials: `bearerAuth`.
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or item access or the collections could not be read. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/persons/{person_id}`
+### `GET /api/bloem/v2/persons/{person_id}`
 
 One person and their credits, filtered to what this viewer may see.
 
@@ -93,14 +93,14 @@ The person's own details are not profile-scoped; the filmography is filtered by 
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the person or filmography could not be loaded. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/profile-credentials/{id}`
+### `GET /api/bloem/v2/profile-credentials/{id}`
 
 Read direct-profile credential status without exposing a password or hash.
 
 Operation ID: `getBloemProfileCredentials`.
 Credentials: `bloemAccountSession`.
 
-Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (Silo retired /api/v1, where it lived). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused.
+Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (it lived on Silo's alpha v1 API, which Silo retired). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -117,14 +117,14 @@ Dormant: not mounted, and profile_credential_management_v1 is not advertised, wh
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: household management permissions could not be checked. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: profile credential management is unavailable; service_unavailable: the session could not be checked, retry after Retry-After. |
 
-### `PUT /api/bloem/v1/profile-credentials/{id}`
+### `PUT /api/bloem/v2/profile-credentials/{id}`
 
 Set or replace direct-profile login credentials.
 
 Operation ID: `setBloemProfileCredentials`.
 Credentials: `bloemAccountSession`.
 
-Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (Silo retired /api/v1, where it lived). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.
+Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (it lived on Silo's alpha v1 API, which Silo retired). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -147,14 +147,14 @@ Request body (required, `application/json`): [`BloemProfileCredentialSetBody`](#
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: household management permissions could not be checked. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: profile credential management, the change or the account password check is unavailable; service_unavailable: the session could not be checked or password hashing is busy (PUT), retry after Retry-After. |
 
-### `DELETE /api/bloem/v1/profile-credentials/{id}`
+### `DELETE /api/bloem/v2/profile-credentials/{id}`
 
 Clear direct-profile login credentials.
 
 Operation ID: `clearBloemProfileCredentials`.
 Credentials: `bloemAccountSession`.
 
-Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (Silo retired /api/v1, where it lived). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.
+Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (it lived on Silo's alpha v1 API, which Silo retired). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -177,7 +177,7 @@ Request body (required, `application/json`): [`BloemProfileCredentialClearBody`]
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: household management permissions could not be checked. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: profile credential management, the change or the account password check is unavailable; service_unavailable: the session could not be checked or password hashing is busy (PUT), retry after Retry-After. |
 
-### `GET /api/bloem/v1/server/identity`
+### `GET /api/bloem/v2/server/identity`
 
 Which server this is, which surfaces it serves, and whether it has been set up.
 
@@ -191,7 +191,7 @@ Public. Mounted even without a database, so a 503 means this server has the endp
 | 200 | [`BloemServerIdentity`](#bloemserveridentity) | OK |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the installation identity or the setup state could not be read. The body never carries a provisional identifier. |
 
-### `GET /api/bloem/v1/watch/home`
+### `GET /api/bloem/v2/watch/home`
 
 The composed home document for this viewer.
 
@@ -216,7 +216,7 @@ Composes up to 100 of the most recently added movies and series the selected pro
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the document could not be composed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/watch/items/{content_id}`
+### `GET /api/bloem/v2/watch/items/{content_id}`
 
 The composed document for one item.
 
@@ -242,7 +242,7 @@ An item the selected profile may not see answers 404 exactly like an item that d
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the document could not be composed. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
-### `GET /api/bloem/v1/watch/search`
+### `GET /api/bloem/v2/watch/search`
 
 A composed document for a search query.
 
@@ -286,7 +286,7 @@ Searches the movies and series the selected profile may see and composes at most
 | --- | --- | --- | --- |
 | `delegated_admin_roles` | boolean | yes | Administration can be delegated below the server owner. |
 | `direct_profile_login` | boolean | yes | A profile can hold its own credentials rather than logging in through its account. |
-| `legacy_silo_v1` | boolean | yes | This build still answers Silo's frozen /api/v1 surface. |
+| `legacy_silo_v1` | boolean | yes | This build still answers Silo's retired alpha v1 API. Always false: Silo retired it. |
 | `organization_memberships` | boolean | yes | Accounts can belong to organizations. |
 | `shared_device_pairing` | boolean | yes | A device can be paired to a household rather than to one account. |
 | `tenant_bounded_media_scope` | boolean | yes | Media visibility is bounded by the viewer's organization. |

@@ -44,8 +44,8 @@
 <text x="800" y="378" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Apps fetch the picture from the public artwork</text>
 <text x="800" y="398" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">route, with no sign-in, because seasonal artwork</text>
 <text x="800" y="418" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">can appear on the sign-in page.</text>
-<text x="800" y="466" font-size="13" font-weight="600" fill="#C2410C" text-anchor="start">/api/bloem/v1/ambience/assets/{ref}</text>
-<text x="800" y="488" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="start">/api/v1/ambience/assets/{ref} (older links)</text>
+<text x="800" y="466" font-size="13" font-weight="600" fill="#C2410C" text-anchor="start">/api/bloem/v2/ambience/assets/{ref}</text>
+<text x="800" y="488" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="start">the only artwork route</text>
 <text x="800" y="522" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The name never changes for the same bytes, so</text>
 <text x="800" y="542" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">browsers keep a copy for a year.</text>
 <text x="40" y="680" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A campaign or pack can be saved without an upload: saving one never proves its picture was uploaded.</text>

@@ -9,7 +9,7 @@ import (
 
 func TestDecodeLiveTVClientCapabilities(t *testing.T) {
 	body := `{"codecs_video":["h264","vp9"],"codecs_audio":["aac"],"max_audio_channels":2,"max_resolution":"1080p"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/livetv/channels/ch1/session", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/bloem/v2/livetv/channels/ch1/session", strings.NewReader(body))
 
 	caps, err := decodeLiveTVClientCapabilities(req)
 	if err != nil {
@@ -35,7 +35,7 @@ func TestDecodeLiveTVClientCapabilitiesOptional(t *testing.T) {
 		"whitespace":   "  \n",
 	} {
 		t.Run(name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/api/v1/livetv/channels/ch1/session", strings.NewReader(body))
+			req := httptest.NewRequest(http.MethodPost, "/api/bloem/v2/livetv/channels/ch1/session", strings.NewReader(body))
 			caps, err := decodeLiveTVClientCapabilities(req)
 			if err != nil {
 				t.Fatalf("decode: %v", err)
@@ -46,7 +46,7 @@ func TestDecodeLiveTVClientCapabilitiesOptional(t *testing.T) {
 		})
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/livetv/channels/ch1/session", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/bloem/v2/livetv/channels/ch1/session", nil)
 	req.Body = nil
 	if _, err := decodeLiveTVClientCapabilities(req); err != nil {
 		t.Fatalf("nil body decode: %v", err)
@@ -54,7 +54,7 @@ func TestDecodeLiveTVClientCapabilitiesOptional(t *testing.T) {
 }
 
 func TestDecodeLiveTVClientCapabilitiesRejectsGarbage(t *testing.T) {
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/livetv/channels/ch1/session", strings.NewReader("not json"))
+	req := httptest.NewRequest(http.MethodPost, "/api/bloem/v2/livetv/channels/ch1/session", strings.NewReader("not json"))
 	if _, err := decodeLiveTVClientCapabilities(req); err == nil {
 		t.Fatal("expected a decode error")
 	}

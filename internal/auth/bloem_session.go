@@ -286,7 +286,7 @@ func normalizeSessionAuthMethod(session *models.AuthSession) error {
 func (r *SessionRepository) Begin(ctx context.Context) (pgx.Tx, error) { return r.pool.Begin(ctx) }
 
 // ListByUser returns all sessions for a given user, ordered by created_at
-// descending (newest first). Silo deleted it with /api/v1 (Silo #3200);
+// descending (newest first). Silo deleted it with its v1 API (Silo #3200);
 // Bloem's platform account routes still list every sign-in session with it.
 func (r *SessionRepository) ListByUser(ctx context.Context, userID int) ([]*models.AuthSession, error) {
 	query := `SELECT ` + sessionColumns + ` FROM auth_sessions WHERE user_id = $1 ORDER BY created_at DESC`

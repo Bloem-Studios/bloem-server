@@ -285,7 +285,7 @@ func (a *nativeAcceptance) start(t *testing.T, delivery string, encode bool) pla
 }
 func (a *nativeAcceptance) getStream(id, method string) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	r := playbackTestRequest(method, "/api/v1/stream/"+id, nil, map[string]string{"session_id": id})
+	r := playbackTestRequest(method, "/api/v2/stream/"+id, nil, map[string]string{"session_id": id})
 	r.Header.Set("Range", "bytes=2-31")
 	a.stream.HandleStream(w, r)
 	return w
@@ -357,7 +357,7 @@ func TestNativeVideoAcceptanceProgressive(t *testing.T) {
 		t.Fatal(result.PlaybackPlan.Delivery)
 	}
 	w := httptest.NewRecorder()
-	a.stream.HandleStream(w, playbackTestRequest(http.MethodGet, "/api/v1"+result.PlaybackPlan.Stream.URL, nil, map[string]string{"session_id": result.SessionID}))
+	a.stream.HandleStream(w, playbackTestRequest(http.MethodGet, "/api/v2"+result.PlaybackPlan.Stream.URL, nil, map[string]string{"session_id": result.SessionID}))
 	if w.Code != 200 || !bytes.Contains(w.Body.Bytes(), []byte("ftyp")) {
 		t.Fatalf("remux %d %s", w.Code, w.Body.String())
 	}
@@ -461,7 +461,7 @@ func TestNativeVideoAcceptanceHLS(t *testing.T) {
 				t.Fatal("restart reused an open input")
 			}
 			a.h.tm.CloseTranscodeSession(result.SessionID, "")
-			recoveryRequest := playbackTestRequest(http.MethodGet, "/api/v1"+result.PlaybackPlan.Stream.URL, nil, map[string]string{"session_id": result.SessionID})
+			recoveryRequest := playbackTestRequest(http.MethodGet, "/api/v2"+result.PlaybackPlan.Stream.URL, nil, map[string]string{"session_id": result.SessionID})
 			recoveryResponse := httptest.NewRecorder()
 			a.h.HandleGetTranscodeManifest(recoveryResponse, recoveryRequest)
 			if recoveryResponse.Code != 200 || !strings.Contains(recoveryResponse.Body.String(), "#EXTM3U") {

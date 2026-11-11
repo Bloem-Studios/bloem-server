@@ -80,14 +80,16 @@ func TestDirectProfileCapabilityMatchesRouteWiring(t *testing.T) {
 				if requestStatus.Code != http.StatusServiceUnavailable {
 					t.Fatalf("router without authentication exposed native request policy: %d %s", requestStatus.Code, requestStatus.Body)
 				}
-				legacyStatus := performJSONRequest(t, router, http.MethodGet, "/api/v1/requests/status", "", "", nil)
-				// Silo retired /api/v1 (Silo #3200): its tombstone answers 410.
+				legacyStatus := performJSONRequest(t, router, http.MethodGet, "/api/v1/requests/status", "", "", nil) // v1-guard: allow
+				// Silo retired its v1 API (Silo #3200): its tombstone answers 410.
 				if legacyStatus.Code != http.StatusGone {
 					t.Fatalf("router without authentication mounted legacy request policy: %d %s", legacyStatus.Code, legacyStatus.Body)
 				}
 			}
 
-			login := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/profile-login",
+			// Profile login lived only on Silo's retired v1 API, so the route is
+			// never mounted and the capability must stay off.
+			login := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/profile-login", // v1-guard: allow
 				`{"email":"probe@example.test","password":"probe","device_id":"probe"}`, "", nil)
 			routeMounted := login.Code != http.StatusNotFound && login.Code != http.StatusGone
 

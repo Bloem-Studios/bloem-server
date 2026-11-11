@@ -7,7 +7,7 @@ def web_app_map():
             "The web app built into Bloem Server, in three parts: what viewers use, what an organization "
             "administrator uses, and what a platform administrator uses. Silo's screens are kept; Bloem adds "
             "its own. Below, the two APIs it calls: Silo's /api/v2 for everything Silo has and Bloem's "
-            "/api/bloem/v1 for Bloem's features. It calls none of Silo's /api/v1.")
+            "/api/bloem/v2 for Bloem's features. It calls none of Silo's /api/v1.")
     s.header("What the web app has, and what it calls",
              "Silo's web app with Bloem's screens added. Grey items are Silo's, kept as Silo ships them.")
     p, o, a, g, st = TIERS["platform"], TIERS["org"], TIERS["account"], TIERS["grey"], TIERS["stop"]
@@ -49,12 +49,12 @@ def web_app_map():
     para(s, 60, ay + 62, "Everything Silo has: accounts, libraries, the catalog, playback, settings. Through "
          "Silo's own web code.", 500, size=14, gap=20)
     s.rect(620, ay, 540, 120, "#FFFFFF", "#E5E7EB", rx=14)
-    s.text(640, ay + 34, "Bloem's /api/bloem/v1", size=17, weight="700")
+    s.text(640, ay + 34, "Bloem's /api/bloem/v2", size=17, weight="700")
     para(s, 640, ay + 62, "Bloem's features: organizations, plans, Live TV, campaigns, seasonal packs, "
          "announcements, profile sign-ins.", 500, size=14, gap=20)
     no_mark(s, 64, ay + 158, r=12)
-    s.text(86, ay + 163, "Silo's /api/v1: not called at all since 2026-11-01. Bloem's phone apps still use "
-           "some of it.", size=14, fill=INK)
+    s.text(86, ay + 163, "Silo's old v1 API: not called since 2026-11-01, and retired by Silo on 2026-11-11.",
+           size=14, fill=INK)
     footer(s, "Each feature's status, evidence and limits are in the tables on this page.", y=770, fill=MUTED)
     return s
 

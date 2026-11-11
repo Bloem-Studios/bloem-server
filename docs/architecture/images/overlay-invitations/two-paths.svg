@@ -7,7 +7,7 @@
 <text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Every invitation belongs to one organization. Which routes made it decides which one.</text>
 <rect x="40" y="120" width="545" height="360" rx="16" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
 <text x="64" y="156" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Silo's administrator routes</text>
-<text x="64" y="182" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#6B7280" text-anchor="start">/api/v2/admin/invitations (and /api/v1)</text>
+<text x="64" y="182" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#6B7280" text-anchor="start">/api/v2/admin/invitations</text>
 <rect x="64" y="198" width="210" height="26" rx="13.0" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.2"/>
 <text x="169.0" y="215.68" font-size="13" font-weight="600" fill="#075985" text-anchor="middle">Default organization only</text>
 <circle cx="76" cy="257" r="10" fill="#10B981"/>
@@ -25,7 +25,7 @@
 <text x="96" y="384" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Does not see invitations made in an organization's console.</text>
 <rect x="615" y="120" width="545" height="360" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
 <text x="639" y="156" font-size="19" font-weight="700" fill="#101827" text-anchor="start">The organization console</text>
-<text x="639" y="182" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#6B7280" text-anchor="start">/api/bloem/v1/admin/organization/invitations</text>
+<text x="639" y="182" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#6B7280" text-anchor="start">/api/bloem/v2/admin/organization/invitations</text>
 <rect x="639" y="198" width="173" height="26" rx="13.0" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.2"/>
 <text x="725.5" y="215.68" font-size="13" font-weight="600" fill="#4338CA" text-anchor="middle">Its own organization</text>
 <circle cx="651" cy="257" r="10" fill="#10B981"/>

@@ -17,17 +17,17 @@ import (
 )
 
 // Creating and updating an account on a Bloem plan, for a storefront
-// (POST and PUT /api/bloem/v1/admin/platform/accounts). Silo's
+// (POST and PUT /api/bloem/v2/admin/platform/accounts). Silo's
 // /api/v2/admin/users takes no plan, so these routes sit on top of the same
 // Silo account service that route uses (CreateAdminAccount, UpdateAdminAccount,
 // GetAdminAccount and DeleteAdminAccount in admin_users_service.go) and add one
 // Bloem step: putting the account on an exact plan revision. Nothing here is
-// Silo's /api/v1 code, so the routes keep working when Silo retires /api/v1.
+// Silo's retired alpha v1 API code, so nothing here depends on it.
 
 const bloemPlatformAccountBodyLimit = 64 << 10
 
 // BloemPlatformAccountCreateRequest is the create body. Unknown fields are
-// ignored, so a storefront that still sends the old /api/v1 body is accepted.
+// ignored, so a storefront that still sends the old alpha v1 body is accepted.
 type BloemPlatformAccountCreateRequest struct {
 	Username                    string   `json:"username" doc:"Sign-in name."`
 	Email                       string   `json:"email" doc:"Email address."`
@@ -95,7 +95,7 @@ func (o *bloemOptionalField[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// HandleBloemPlatformAccountCreate serves POST /api/bloem/v1/admin/platform/accounts.
+// HandleBloemPlatformAccountCreate serves POST /api/bloem/v2/admin/platform/accounts.
 func (h *AdminHandler) HandleBloemPlatformAccountCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req BloemPlatformAccountCreateRequest
@@ -167,7 +167,7 @@ func (h *AdminHandler) putNewBloemPlatformAccountOnPlan(w http.ResponseWriter, r
 	return result.TemplateRevision, true
 }
 
-// HandleBloemPlatformAccountUpdate serves PUT /api/bloem/v1/admin/platform/accounts/{account_id}.
+// HandleBloemPlatformAccountUpdate serves PUT /api/bloem/v2/admin/platform/accounts/{account_id}.
 func (h *AdminHandler) HandleBloemPlatformAccountUpdate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, err := strconv.Atoi(strings.TrimSpace(chi.URLParam(r, "account_id")))
@@ -194,8 +194,8 @@ func (h *AdminHandler) HandleBloemPlatformAccountUpdate(w http.ResponseWriter, r
 		DownloadAllowed: req.DownloadAllowed.Optional, DownloadTranscodeAllowed: req.DownloadTranscodeAllowed.Optional,
 		RequestsAllowed: req.RequestsAllowed.Optional,
 	}
-	// Revision -1: the storefront states the account it wants, as /api/v1
-	// let it, rather than holding Silo's optimistic-concurrency token.
+	// Revision -1: the storefront states the account it wants, as Silo's
+	// alpha v1 API let it, rather than holding Silo's optimistic-concurrency token.
 	if _, err := h.UpdateAdminAccount(ctx, id, -1, 0, input); err != nil {
 		writeBloemPlatformAccountError(w, err)
 		return

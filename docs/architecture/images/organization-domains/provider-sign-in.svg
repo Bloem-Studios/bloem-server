@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="870" viewBox="0 0 1200 870" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="846" viewBox="0 0 1200 846" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">Signing in with the provider stays on the address</title>
-<desc id="d">A sequence between the browser on Riverside Club's address, the Bloem server and the sign-in provider (Authentik). Bloem asks the provider to return to that address's callback; the provider returns there; the sign-in finishes on that address where the browser's cookies are; a sign-out returns to that address's login page. A box lists the three addresses to register at the provider for each domain.</desc>
+<desc id="d">A sequence between the browser on Riverside Club's address, the Bloem server and the sign-in provider (Authentik). Bloem asks the provider to return to that address's callback; the provider returns there; the sign-in finishes on that address where the browser's cookies are; a sign-out returns to that address's login page. A box lists the two addresses to register at the provider for each domain.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
-<rect x="0.5" y="0.5" width="1199" height="869" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<rect x="0.5" y="0.5" width="1199" height="845" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Signing in with the provider stays on the address</text>
 <text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A sign-in or sign-out through Authentik ends on the address where it started.</text>
 <rect x="60" y="120" width="300" height="62" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
@@ -44,11 +44,10 @@
 <text x="240" y="597" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
 <text x="805" y="597" font-size="14.5" font-weight="600" fill="#101827" text-anchor="middle">Signing out: Authentik sends the browser back to</text>
 <text x="805" y="631" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">watch.riverside.example/login</text>
-<rect x="40" y="670" width="1120" height="168" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
-<rect x="40" y="670" width="8" height="168" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<rect x="40" y="670" width="1120" height="144" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="670" width="8" height="144" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
 <text x="66" y="702" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Register these at the provider for each address</text>
-<text x="66" y="732" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">https://&lt;address&gt;/api/v1/auth/oauth/&lt;installation&gt;/callback</text>
-<text x="66" y="756" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">https://&lt;address&gt;/api/v2/auth/oauth/&lt;installation&gt;/callback</text>
-<text x="66" y="780" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">https://&lt;address&gt;/login   (post-logout redirect, when provider sign-out is on)</text>
-<text x="66" y="820" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Apps on phones and TVs, and any address no organization registered, keep using the server's public address.</text>
+<text x="66" y="732" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">https://&lt;address&gt;/api/v2/auth/oauth/&lt;installation&gt;/callback</text>
+<text x="66" y="756" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">https://&lt;address&gt;/login   (post-logout redirect, when provider sign-out is on)</text>
+<text x="66" y="796" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Apps on phones and TVs, and any address no organization registered, keep using the server's public address.</text>
 </svg>

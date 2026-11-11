@@ -155,7 +155,7 @@ describe("adminV2 client", () => {
     activateAdminV2Context("expired-admin", "organization:org-a");
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url === "/api/bloem/v1/admin/session") {
+      if (url === "/api/bloem/v2/admin/session") {
         return jsonResponse({
           access_token: "fresh-admin",
           expires_at: "2026-08-13T12:15:00Z",
@@ -184,7 +184,7 @@ describe("adminV2 client", () => {
       ),
     ).resolves.toEqual({ ok: true });
     const mutationCalls = fetchMock.mock.calls.filter(
-      ([input]) => String(input) !== "/api/bloem/v1/admin/session",
+      ([input]) => String(input) !== "/api/bloem/v2/admin/session",
     );
     expect(mutationCalls).toHaveLength(2);
     expect((mutationCalls[1]?.[1]?.headers as Record<string, string>).authorization).toBe(
@@ -208,7 +208,7 @@ describe("adminV2 client", () => {
     await adminV2Api("/organization/overview");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/bloem/v1/admin/organization/overview",
+      "/api/bloem/v2/admin/organization/overview",
       expect.objectContaining({
         headers: expect.objectContaining({ authorization: "Bearer short-lived-admin-token" }),
       }),
@@ -325,7 +325,7 @@ describe("adminV2 client", () => {
     const result = await mintAdminContextSession("organization:org-a", "account-token");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/bloem/v1/admin/session",
+      "/api/bloem/v2/admin/session",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({ authorization: "Bearer account-token" }),

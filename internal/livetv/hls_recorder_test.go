@@ -58,7 +58,7 @@ func TestHLSBridgeStartStopAndAuthorize(t *testing.T) {
 	if bridge == nil {
 		t.Fatal("expected bridge")
 	}
-	if PublicLiveHLSPath("abc") != "/api/v1/livetv/live-hls/abc/index.m3u8" {
+	if PublicLiveHLSPath("abc") != "/api/bloem/v2/livetv/live-hls/abc/index.m3u8" {
 		t.Fatalf("path = %s", PublicLiveHLSPath("abc"))
 	}
 

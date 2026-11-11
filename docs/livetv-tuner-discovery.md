@@ -69,9 +69,9 @@ override. See [how Xtream providers work](architecture/xtream-live-tv.md).
 
 | On this page | In the code and repository |
 | --- | --- |
-| Search my network | `POST /api/bloem/v1/livetv/tuners/discover` with `include_udp`; UDP port `65001` (`internal/livetv/hdhomerun/lan_discover.go`) |
+| Search my network | `POST /api/bloem/v2/livetv/tuners/discover` with `include_udp`; UDP port `65001` (`internal/livetv/hdhomerun/lan_discover.go`) |
 | Tuner address | the same route with `probe_urls`; candidates from `ProbeCandidateURLs` (`internal/livetv/hdhomerun/probe.go`) |
-| Tuner URL | `POST /api/bloem/v1/livetv/tuners` with `url` |
+| Tuner URL | `POST /api/bloem/v2/livetv/tuners` with `url` |
 | The Live TV override | `docker-compose.livetv.yml` |
 | Address checks | `internal/livetv/fetch_url.go` |
 | The Tuners tab | `web/src/pages/AdminLiveTV.tsx` |
@@ -88,7 +88,7 @@ at commit `095ecd22fbea3384a905eb9049386015db3ff4d8` (AGPL-3.0) in `ef2d38171`
 lists every imported file with its source blob; it classifies this page and
 `docker-compose.livetv.yml` as `adapted` (product copy changed from Prairie to Bloem).
 See [FORK.md](../FORK.md#prairie-server-live-tv). Later Bloem changes: the operational
-routes moved to the native `/api/bloem/v1` prefix in `9cc9d9326` (2026-09-14), and Xtream
+routes moved to the native `/api/bloem/v2` prefix in `9cc9d9326` (2026-09-14), and Xtream
 providers were added in `23ee4c1ac` (2026-09-19), which is Bloem's own addition, not
 Prairie's. Checked on 2026-11-01 by source review of `internal/livetv/hdhomerun/`,
 `internal/livetv/fetch_url.go`, `internal/livetv/service.go`,
@@ -208,7 +208,7 @@ behind the acting-administrator gate; viewer routes such as channels, guide and
 recordings are separate and described in
 [Live TV client access](architecture/live-tv-client-access.md).
 
-`POST /api/bloem/v1/livetv/tuners` accepts:
+`POST /api/bloem/v2/livetv/tuners` accepts:
 
 ```json
 { "url": "http://192.0.2.50" }
@@ -219,9 +219,9 @@ address. Provider credentials (`username`, `password`, `max_connections`) are re
 this route. The SiliconDust hardware id is read from `discover.json` and stored as
 `device_id` on the tuner; clients do not supply it. A body with `"type": "xtream"` is
 refused with `400 invalid_argument`; Xtream providers use
-`POST /api/bloem/v1/livetv/tuners/xtream`. Both bodies are limited to 32 KiB.
+`POST /api/bloem/v2/livetv/tuners/xtream`. Both bodies are limited to 32 KiB.
 
-`POST /api/bloem/v1/livetv/tuners/discover` takes an optional body
+`POST /api/bloem/v2/livetv/tuners/discover` takes an optional body
 `{ "timeout_ms": 2000, "include_udp": true, "probe_urls": ["http://dispatcharr.local:9191"] }`.
 `timeout_ms` bounds the UDP listen window (default 2000, maximum 10000).
 

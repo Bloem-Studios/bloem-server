@@ -235,9 +235,8 @@ func wireBloemAdmin(
 }
 
 // newBloemTenantAdminHandlers builds the tenant and tenant-member handlers
-// over one member service. The legacy /api/v1/admin/tenants routes and the
-// native /api/bloem/v1/admin/platform/tenants routes each build their own,
-// from the same pieces, so both behave alike.
+// over one member service for the native /api/bloem/v2/admin/platform/tenants
+// routes.
 func newBloemTenantAdminHandlers(
 	deps Dependencies,
 	userRepo *auth.UserRepository,
@@ -258,8 +257,8 @@ func newBloemTenantAdminHandlers(
 	return adminTenantsHandler, adminTenantMembersHandler
 }
 
-// newBloemTenantMiddleware builds the tenant middleware the legacy /api/v1
-// chains and the Bloem surfaces use (nil without a database).
+// newBloemTenantMiddleware builds the tenant middleware the Bloem surfaces
+// use (nil without a database).
 func newBloemTenantMiddleware(deps Dependencies) *apimw.TenantMiddleware {
 	if deps.DB == nil {
 		return nil
@@ -269,7 +268,7 @@ func newBloemTenantMiddleware(deps Dependencies) *apimw.TenantMiddleware {
 
 // wireBloemRouter runs Bloem's router-level wiring at the point Silo's router
 // has built every legacy handler: request group limits and policy, the
-// Bloem-native /api/bloem/v1 surface and the private compatibility API.
+// Bloem-native /api/bloem/v2 surface and the private compatibility API.
 func wireBloemRouter(
 	r chi.Router,
 	deps Dependencies,

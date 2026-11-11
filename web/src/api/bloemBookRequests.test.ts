@@ -55,7 +55,7 @@ describe("ebook request authority", () => {
     vi.stubGlobal("fetch", fetchMock);
     await expect(ebookRequestsApi.setPolicy(true, context)).resolves.toEqual({ enabled: true });
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      "/api/bloem/v1/admin/organization/ebook-request-policy",
+      "/api/bloem/v2/admin/organization/ebook-request-policy",
     );
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("PUT");
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ enabled: true });
@@ -86,7 +86,7 @@ describe("ebook request authority", () => {
     });
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      "/api/bloem/v1/admin/organization/ebook-request-integrations",
+      "/api/bloem/v2/admin/organization/ebook-request-integrations",
     );
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual(connection);
   });
@@ -103,7 +103,7 @@ describe("ebook request authority", () => {
     ).resolves.toEqual(ebook);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     for (const [url, init] of fetchMock.mock.calls) {
-      expect(url).toBe("/api/bloem/v1/ebook-requests");
+      expect(url).toBe("/api/bloem/v2/ebook-requests");
       expect(JSON.parse(String(init?.body))).toEqual(filing);
       expect(new Headers(init?.headers).get("Idempotency-Key")).toBe("stable-ebook-key-123");
       expect(new Headers(init?.headers).get("X-Profile-Id")).toBe("viewer");
@@ -118,10 +118,10 @@ describe("ebook request authority", () => {
     await ebookRequestsApi.get(row.id, context);
     await ebookRequestsApi.cancel(row, context);
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-      "/api/bloem/v1/ebook-requests/capability",
-      "/api/bloem/v1/ebook-requests/mine?limit=100&offset=100",
-      "/api/bloem/v1/ebook-requests/request-id",
-      "/api/bloem/v1/ebook-requests/request-id/cancel",
+      "/api/bloem/v2/ebook-requests/capability",
+      "/api/bloem/v2/ebook-requests/mine?limit=100&offset=100",
+      "/api/bloem/v2/ebook-requests/request-id",
+      "/api/bloem/v2/ebook-requests/request-id/cancel",
     ]);
     expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
       expected_revision: 4,
@@ -137,10 +137,10 @@ describe("ebook request authority", () => {
     await ebookRequestsApi.integrations(context);
     await ebookRequestsApi.setLibrary("connection-a", 12, context);
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-      "/api/bloem/v1/admin/organization/ebook-requests?limit=100&offset=100",
-      "/api/bloem/v1/admin/organization/ebook-requests/request-id/retry",
-      "/api/bloem/v1/admin/organization/ebook-request-integrations",
-      "/api/bloem/v1/admin/organization/ebook-request-integrations/connection-a/library",
+      "/api/bloem/v2/admin/organization/ebook-requests?limit=100&offset=100",
+      "/api/bloem/v2/admin/organization/ebook-requests/request-id/retry",
+      "/api/bloem/v2/admin/organization/ebook-request-integrations",
+      "/api/bloem/v2/admin/organization/ebook-request-integrations/connection-a/library",
     ]);
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
       expected_revision: 4,
@@ -200,7 +200,7 @@ describe("audiobook request authority", () => {
     ).resolves.toEqual(row);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     for (const [url, init] of fetchMock.mock.calls) {
-      expect(url).toBe("/api/bloem/v1/book-requests");
+      expect(url).toBe("/api/bloem/v2/book-requests");
       expect(init?.body).toBe(JSON.stringify(input));
       expect(new Headers(init?.headers).get("Idempotency-Key")).toBe("stable-book-key-123");
       expect(new Headers(init?.headers).get("X-Profile-Id")).toBe("viewer");
@@ -243,10 +243,10 @@ describe("audiobook request authority", () => {
     await bookRequestsApi.adminList(authority, 100);
     await bookRequestsApi.adminAction(row, "fulfil", "Handled manually", authority);
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      "/api/bloem/v1/admin/organization/book-requests?limit=100&offset=100",
+      "/api/bloem/v2/admin/organization/book-requests?limit=100&offset=100",
     );
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      "/api/bloem/v1/admin/organization/book-requests/request-id/fulfil",
+      "/api/bloem/v2/admin/organization/book-requests/request-id/fulfil",
     );
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
       expected_revision: 4,

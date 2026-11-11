@@ -155,8 +155,8 @@ func (h *NotificationsHandler) bloemDecorateCapabilities(ctx context.Context, re
 	resp.Dismiss = true
 	resp.Ambience = ambienceBlock
 	resp.Promotions = promotionsBlock
-	// Remote control is dormant: its routes lived only on Silo's /api/v1,
-	// which Silo retired (Silo #3200), so nothing can send a command.
+	// Remote control is dormant: its routes lived only on Silo's alpha v1
+	// API, which Silo retired (Silo #3200), so nothing can send a command.
 	// docs/architecture/admin-remote-control.md says what brings it back.
 	resp.RemoteControl = capabilityRemoteControl{}
 }

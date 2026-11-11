@@ -1,7 +1,8 @@
 # How stored movies play
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Native video is a Bloem addition: it plays movies kept in
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against
+> `main` at `b6039036d` and checked again on 2026-11-11, after Silo retired its v1 API.
+> Native video is a Bloem addition: it plays movies kept in
 > [native storage](bloem-native-storage.md) (S3 buckets, for example) through
 > Silo's playback planner and delivery handlers, using Silo's
 > [playback protocol v3](playback-protocol-v3.md). It is current for movies;
@@ -16,7 +17,7 @@ not work yet.
 
 ## What the app sees
 
-The app gets Silo's usual playback plan, on `/api/v1` and `/api/v2` alike. The
+The app gets Silo's usual playback plan, on Silo's `/api/v2`. The
 addresses in it point at Bloem. The storage service's address, its keys, its
 headers and Bloem's private tool addresses never appear in a plan, the catalog, a
 saved recipe or a grant to a worker. The web app and Bloem's apps need nothing
@@ -95,7 +96,8 @@ changes, but cannot prove the bytes stayed the same between checks.
 ### Contract
 
 Native video uses Silo's ordinary playback plan (protocol v3) and HTTP delivery
-contract, on `/api/v1` and `/api/v2` alike. Its catalog identity is an opaque
+contract, on Silo's `/api/v2` (the token path accepts only `/api/v2` since Silo retired its
+v1 API). Its catalog identity is an opaque
 `bloem-storage:` reference. Provider URLs, headers, credentials and private tool
 inputs never become client stream URLs, catalog paths, durable recipes or worker
 grants.

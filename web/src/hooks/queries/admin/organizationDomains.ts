@@ -3,7 +3,7 @@ import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
 import { bloemT, type BloemMessageKey } from "@/bloem/i18n";
 
 // Bloem: an organization's domains and branding, on the platform routes under
-// /api/bloem/v1/admin/platform/tenants/{id}.
+// /api/bloem/v2/admin/platform/tenants/{id}.
 
 export interface OrganizationDomain {
   host: string;

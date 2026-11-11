@@ -1,15 +1,16 @@
 # How remote control works
 
-> **Dormant since 2026-11-11.** Remote control's routes (`/api/v1/admin/remote/...`,
-> the household command route and `PUT /api/v1/devices/{id}/remote-control`) lived
-> only on Silo's `/api/v1`, which Silo retired (Silo #3200, merged into Bloem in
+> **Dormant since 2026-11-11.** Remote control's routes (`/admin/remote/...`, the
+> household command route and `PUT /devices/{id}/remote-control`) lived only on Silo's
+> alpha v1 API, which Silo retired (Silo #3200, merged into Bloem in
 > `26cf9b3e4`). It is parked: the HTTP handler went with the routes, no remote
 > observer is wired, and the notification capability reports `remote_control` as off.
 > The service, its store and the playback hooks stay, and it comes back with native
-> routes under `/api/bloem/v1`. The rest of this page describes how it worked.
+> routes under `/api/bloem/v2`. The rest of this page describes how it worked.
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Remote control is a Bloem addition: Silo's playback connection
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against
+> `main` at `b6039036d` and checked again on 2026-11-11, when its routes were retired.
+> Remote control is a Bloem addition: Silo's playback connection
 > carries the commands, and Bloem adds who may send them, the app's list of accepted
 > commands, and the record of each one. This page explains it in plain language; the
 > invariants are in the [For developers](#for-developers) section.
@@ -89,19 +90,17 @@ that cap, and keeps it until the session ends.
 
 ## For developers
 
-- **API:** the routes are still on Silo's `/api/v1`:
-  [Bloem's routes on Silo's `/api/v1`](../bloem/api/v1-routes.md#remote-control) lists
-  `PUT /api/v1/devices/{device_id}/remote-control`,
-  `GET /api/v1/admin/remote/sessions`,
-  `POST /api/v1/admin/remote/sessions/{session_id}/commands`,
-  `POST /api/v1/profiles/household/sessions/{session_id}/commands`,
-  `GET /api/v1/admin/remote/commands/{command_id}` and `GET /api/v1/admin/remote/audit`,
-  with bodies and error codes. Only Bloem's phone apps use them; the web app uses Silo's
-  `/api/v2` session commands. Native routes, and remote-control discovery in
-  `/api/bloem/v1/capabilities`, are added when the apps move
-  ([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)). Until then the phone apps
-  discover it through the `remote_control` block (`admin`, `household`) of
-  `GET /api/v1/notifications/capability`.
+- **API:** none today. The routes were retired with Silo's v1 API on 2026-11-11 and
+  answer `410 Gone`; [Bloem's retired v1 routes](../bloem/api/v1-routes.md#remote-control)
+  records `PUT /devices/{device_id}/remote-control`, `GET /admin/remote/sessions`,
+  `POST /admin/remote/sessions/{session_id}/commands`,
+  `POST /profiles/household/sessions/{session_id}/commands`,
+  `GET /admin/remote/commands/{command_id}` and `GET /admin/remote/audit`, with their
+  bodies and error codes. The web app uses Silo's `/api/v2` session commands. Native
+  routes, and remote-control discovery in `/api/bloem/v2/capabilities`, come back with the
+  feature ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)). The `remote_control` block
+  (`admin`, `household`) was part of the v1 notification capability and went with it;
+  Silo's `GET /api/v2/notifications/capabilities` has no such block.
 
 ### History
 
@@ -125,15 +124,15 @@ not implemented; a device may already advertise its command names.
 Server-issued commands to client apps: the sender side lives in `internal/remote`,
 delivery rides the per-session playback control socket
 (`internal/api/handlers/session_ws.go`), and the admin and household endpoints are in
-`internal/api/handlers/remote_control.go`. The admin routes are mounted by
-`mountBloemLegacyAdminV1` (`internal/api/router_bloem_wiring.go`); the household and
-device routes sit in Silo's router (`internal/api/router.go`).
+`internal/api/handlers/remote_control.go`, which since 2026-11-11 keeps only the
+inert playback hooks. The admin routes were mounted by `mountBloemLegacyAdminV1` and the
+household and device routes sat in Silo's router; both went with Silo's v1 API.
 
 ### Rules
 
 - **No capability row, not controllable.** A device receives a command only if it
   advertised that command's name, either through
-  `PUT /api/v1/devices/{device_id}/remote-control` (the device must be registered to the
+  the former `PUT /devices/{device_id}/remote-control` (the device must be registered to the
   calling profile) or through the control socket's `hello.capabilities.commands`. The
   advertisement is stored in `remote_device_capabilities` keyed by
   `(user_id, profile_id, device_id)`; forgetting the device deletes it. A command the
@@ -229,8 +228,8 @@ invalid payload.
 
 ### Command contract
 
-`POST /api/v1/admin/remote/sessions/{session_id}/commands` (and the household route)
-takes `{"name": "seek", "payload": {"position_ms": 90000}, "reason": "skip recap"}` and
+The former `POST /admin/remote/sessions/{session_id}/commands` (and the household route)
+took `{"name": "seek", "payload": {"position_ms": 90000}, "reason": "skip recap"}` and
 answers `201` with the command row, the same shape `GET /admin/remote/commands/{id}`
 and each audit row return:
 
@@ -253,7 +252,7 @@ Errors: `400 invalid_payload | unknown_command | reason_required | bad_request`,
 `403 forbidden | command_not_allowed`, `404 not_found`, `409 session_not_connected |
 replan_unavailable`, `429 rate_limited`.
 
-`PUT /api/v1/devices/{device_id}/remote-control` takes `{"version": 1, "commands":
+The former `PUT /devices/{device_id}/remote-control` took `{"version": 1, "commands":
 [...]}` and answers `200 {"device_id", "version", "commands"}` with the names sorted.
 Names must be ones the server knows, the device-rail names included, so an app can
 announce its full list today. The session's device is `X-Silo-Device-Id` at

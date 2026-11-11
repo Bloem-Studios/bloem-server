@@ -4,7 +4,7 @@
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="780" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">The parts of Bloem's native API</text>
-<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Everything under /api/bloem/v1, grouped by what a caller must show to use it.</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Everything under /api/bloem/v2, grouped by what a caller must show to use it.</text>
 <rect x="40" y="120" width="1120" height="120" rx="16" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6"/>
 <text x="64" y="158" font-size="19" font-weight="700" fill="#374151" text-anchor="start">Public</text>
 <text x="64" y="184" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Nothing: a client asks before it signs</text>
@@ -31,10 +31,8 @@
 <text x="555.5" y="296.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/watch/items/{id}</text>
 <rect x="643" y="278" width="124" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
 <text x="705.0" y="296.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/watch/search</text>
-<rect x="777" y="278" width="132" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
-<text x="843.0" y="296.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/sync/progress</text>
-<rect x="919" y="278" width="124" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
-<text x="981.0" y="296.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/persons/{id}</text>
+<rect x="777" y="278" width="124" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="839.0" y="296.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/persons/{id}</text>
 <rect x="360" y="314.5" width="265" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
 <text x="492.5" y="332.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/catalog/items/{id}/collections</text>
 <rect x="635" y="314.5" width="132" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>

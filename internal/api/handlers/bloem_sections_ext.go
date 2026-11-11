@@ -169,8 +169,9 @@ type sectionItemResponse struct {
 	Networks      []string `json:"networks,omitempty"`
 	ContentRating string   `json:"content_rating,omitempty"`
 	// AdvisoryAge and AdvisorySource carry the item's advisory to the
-	// v2 card renderer. json:"-" because /api/v1 is frozen: the fields exist on
-	// the Go struct only, and apiv2 emits them under its own names.
+	// v2 card renderer. json:"-" keeps this struct's wire shape as Silo's: the
+	// fields exist on the Go struct only, and apiv2 emits them under its own
+	// names.
 	AdvisoryAge            *int                   `json:"-"`
 	AdvisorySource         string                 `json:"-"`
 	Status                 string                 `json:"status"`

@@ -98,7 +98,7 @@ func performJSONRequest(t *testing.T, handler http.Handler, method, path string)
 }
 
 // routerWith mounts the public identity route the way the real router does:
-// inside /api/bloem/v1, with no auth middleware. That the REAL router mounts it that
+// inside /api/bloem/v2, with no auth middleware. That the REAL router mounts it that
 // way is asserted separately, in internal/api.
 func routerWith(t *testing.T, settings *fakeIdentitySettings, setup fakeSetupState) http.Handler {
 	t.Helper()
@@ -209,8 +209,8 @@ func TestServerIdentityReportsAPIVersionsAndSetupState(t *testing.T) {
 				}
 				named = append(named, text)
 			}
-			if !slices.Equal(named, []string{"v1"}) {
-				t.Errorf("bloem_api = %v, want [v1]", named)
+			if !slices.Equal(named, []string{"v2"}) {
+				t.Errorf("bloem_api = %v, want [v2]", named)
 			}
 			if response.Body["setup_complete"] != tc.setupComplete {
 				t.Fatalf("setup_complete = %v, want %v", response.Body["setup_complete"], tc.setupComplete)

@@ -26,7 +26,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
-// AdminTenantsHandler serves /api/v1/admin/tenants.
+// AdminTenantsHandler serves /api/bloem/v2/admin/platform/tenants.
 type AdminTenantsHandler struct {
 	store   *tenancy.Store
 	members *tenancy.MemberService

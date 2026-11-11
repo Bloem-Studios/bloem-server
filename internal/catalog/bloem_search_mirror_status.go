@@ -34,7 +34,7 @@ type SearchMirrorCopyStatus struct {
 	StartedAt *time.Time `json:"started_at" nullable:"true" doc:"When the copy began (UTC); null when unknown."`
 }
 
-// SearchMirrorStatus is what GET /api/bloem/v1/admin/search/mirror returns: the mirror's
+// SearchMirrorStatus is what GET /api/bloem/v2/admin/search/mirror returns: the mirror's
 // configuration (never its key), its state and how far behind it is. The web type is
 // web/src/api/bloemSearchMirror.ts; change both together.
 type SearchMirrorStatus struct {

@@ -61,7 +61,7 @@ def passes():
         y += h
 
     s.rect(40, 612, 1120, 72, "#F9FAFB", "#E5E7EB", rx=12)
-    para(s, 60, 640, "An account sign-in is swapped for a pass at POST /api/bloem/v1/admin/session. The pass ends with "
+    para(s, 60, 640, "An account sign-in is swapped for a pass at POST /api/bloem/v2/admin/session. The pass ends with "
          "the sign-in it came from. A platform administrator's API key opens the storefront's platform routes "
          "too, never an organization's.", 1080, size=14, fill=INK, gap=20)
     return s

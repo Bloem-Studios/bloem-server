@@ -27,7 +27,7 @@ func TestLiveTVCapabilityViewerAvailability(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := NewLiveTVHandler(livetv.NewServiceWithStore(&discoveryTVStore{channels: []livetv.Channel{{Enabled: tc.enabled}}}))
-			req := httptest.NewRequest("GET", "/api/v1/livetv/capability", nil)
+			req := httptest.NewRequest("GET", "/api/bloem/v2/livetv/capability", nil)
 			req = req.WithContext(access.SetScope(req.Context(), access.Scope{LiveTVAllowed: tc.allowed}))
 			rec := httptest.NewRecorder()
 			h.HandleCapability(rec, req)

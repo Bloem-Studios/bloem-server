@@ -1,5 +1,5 @@
 {
-  "api": "bloem/v1",
+  "api": "bloem/v2",
   "identity_schema": 1,
   "features": {
     "legacy_silo_v1": true,

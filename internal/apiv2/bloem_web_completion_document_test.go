@@ -189,7 +189,7 @@ func TestBloemWebCompletionDocumentArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	committed, err := os.ReadFile("../../contracts/api/bloem/v1/openapi.json")
+	committed, err := os.ReadFile("../../contracts/api/bloem/v2/openapi.json")
 	if err != nil {
 		t.Fatal(err)
 	}

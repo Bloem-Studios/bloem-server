@@ -46,13 +46,13 @@ func tenantTestServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	members := tenancy.NewMemberService(pool, auth.NewAccountProvisioner(users, nil), users, auth.NewSessionRepository(pool))
 	handler := handlers.NewAdminTenantsHandler(tenancy.NewStore(pool), members)
 	r := chi.NewRouter()
-	r.Post("/api/v1/admin/tenants", handler.HandleCreate)
-	r.Get("/api/v1/admin/tenants", handler.HandleList)
-	r.Get("/api/v1/admin/tenants/{id}", handler.HandleGet)
-	r.Patch("/api/v1/admin/tenants/{id}/limits", handler.HandleUpdateLimits)
-	r.Post("/api/v1/admin/tenants/{id}/freeze", handler.HandleFreeze)
-	r.Post("/api/v1/admin/tenants/{id}/thaw", handler.HandleThaw)
-	r.Delete("/api/v1/admin/tenants/{id}", handler.HandleDelete)
+	r.Post("/api/bloem/v2/admin/platform/tenants", handler.HandleCreate)
+	r.Get("/api/bloem/v2/admin/platform/tenants", handler.HandleList)
+	r.Get("/api/bloem/v2/admin/platform/tenants/{id}", handler.HandleGet)
+	r.Patch("/api/bloem/v2/admin/platform/tenants/{id}/limits", handler.HandleUpdateLimits)
+	r.Post("/api/bloem/v2/admin/platform/tenants/{id}/freeze", handler.HandleFreeze)
+	r.Post("/api/bloem/v2/admin/platform/tenants/{id}/thaw", handler.HandleThaw)
+	r.Delete("/api/bloem/v2/admin/platform/tenants/{id}", handler.HandleDelete)
 	server := httptest.NewServer(r)
 	t.Cleanup(server.Close)
 	return server, pool
@@ -95,7 +95,7 @@ func TestTenantAdminAPIWireContract(t *testing.T) {
 	}
 
 	// Create: the park adapter's exact request shape; tenant_id comes back.
-	status, body := tenantCall(t, server, http.MethodPost, "/api/v1/admin/tenants", map[string]any{
+	status, body := tenantCall(t, server, http.MethodPost, "/api/bloem/v2/admin/platform/tenants", map[string]any{
 		"name":                          "acme@example.test",
 		"external_ref":                  map[string]string{"operator_id": "op-1", "service_id": "order-" + t.Name()},
 		"limits":                        map[string]int{"slots": 10, "transcodes": 4},
@@ -120,7 +120,7 @@ func TestTenantAdminAPIWireContract(t *testing.T) {
 	}
 
 	// Idempotent on the park claim: a replayed create returns the SAME tenant.
-	status, body = tenantCall(t, server, http.MethodPost, "/api/v1/admin/tenants", map[string]any{
+	status, body = tenantCall(t, server, http.MethodPost, "/api/bloem/v2/admin/platform/tenants", map[string]any{
 		"name":                          "acme replay",
 		"external_ref":                  map[string]string{"operator_id": "op-1", "service_id": "order-" + t.Name()},
 		"limits":                        map[string]int{"slots": 99, "transcodes": 99},
@@ -140,7 +140,7 @@ func TestTenantAdminAPIWireContract(t *testing.T) {
 	}
 
 	// List answers a BARE array (the adapter decodes []tenantBody).
-	status, body = tenantCall(t, server, http.MethodGet, "/api/v1/admin/tenants", nil)
+	status, body = tenantCall(t, server, http.MethodGet, "/api/bloem/v2/admin/platform/tenants", nil)
 	var listed []struct {
 		TenantID string `json:"tenant_id"`
 		Frozen   bool   `json:"frozen"`
@@ -160,10 +160,10 @@ func TestTenantAdminAPIWireContract(t *testing.T) {
 
 	// Freeze -> listed frozen; thaw -> back.
 	if status, body = tenantCall(t, server, http.MethodPost,
-		"/api/v1/admin/tenants/"+created.TenantID+"/freeze", nil); status != http.StatusNoContent {
+		"/api/bloem/v2/admin/platform/tenants/"+created.TenantID+"/freeze", nil); status != http.StatusNoContent {
 		t.Fatalf("freeze = %d %s", status, body)
 	}
-	_, body = tenantCall(t, server, http.MethodGet, "/api/v1/admin/tenants/"+created.TenantID, nil)
+	_, body = tenantCall(t, server, http.MethodGet, "/api/bloem/v2/admin/platform/tenants/"+created.TenantID, nil)
 	var got struct {
 		Frozen bool `json:"frozen"`
 	}
@@ -171,30 +171,30 @@ func TestTenantAdminAPIWireContract(t *testing.T) {
 		t.Fatalf("get after freeze = %s", body)
 	}
 	if status, _ = tenantCall(t, server, http.MethodPost,
-		"/api/v1/admin/tenants/"+created.TenantID+"/thaw", nil); status != http.StatusNoContent {
+		"/api/bloem/v2/admin/platform/tenants/"+created.TenantID+"/thaw", nil); status != http.StatusNoContent {
 		t.Fatalf("thaw = %d", status)
 	}
 
 	// Limits in place.
 	status, body = tenantCall(t, server, http.MethodPatch,
-		"/api/v1/admin/tenants/"+created.TenantID+"/limits", map[string]int{"slots": 20, "transcodes": 8})
+		"/api/bloem/v2/admin/platform/tenants/"+created.TenantID+"/limits", map[string]int{"slots": 20, "transcodes": 8})
 	if status != http.StatusOK {
 		t.Fatalf("limits = %d %s", status, body)
 	}
 
 	// Unknown id -> 404 (park maps this to its sentinel).
 	if status, _ = tenantCall(t, server, http.MethodGet,
-		"/api/v1/admin/tenants/00000000-0000-0000-0000-000000000000", nil); status != http.StatusNotFound {
+		"/api/bloem/v2/admin/platform/tenants/00000000-0000-0000-0000-000000000000", nil); status != http.StatusNotFound {
 		t.Fatalf("get unknown = %d, want 404", status)
 	}
 
 	// Delete; a second delete is the 404 the adapter maps to its sentinel.
 	if status, _ = tenantCall(t, server, http.MethodDelete,
-		"/api/v1/admin/tenants/"+created.TenantID, nil); status != http.StatusNoContent {
+		"/api/bloem/v2/admin/platform/tenants/"+created.TenantID, nil); status != http.StatusNoContent {
 		t.Fatalf("delete = %d", status)
 	}
 	if status, _ = tenantCall(t, server, http.MethodDelete,
-		"/api/v1/admin/tenants/"+created.TenantID, nil); status != http.StatusNotFound {
+		"/api/bloem/v2/admin/platform/tenants/"+created.TenantID, nil); status != http.StatusNotFound {
 		t.Fatalf("double delete = %d, want 404", status)
 	}
 }

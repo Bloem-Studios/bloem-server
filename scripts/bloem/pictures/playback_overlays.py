@@ -66,8 +66,8 @@ def who_calls_what():
     s = Svg(1200, 676, "Who calls what for playback cards",
             "Left: the storefront and the web admin console write campaigns into one registry on the Bloem "
             "server through the native platform routes. Right: the web app reads the cards from Bloem's native "
-            "routes and the Android apps from the old Silo /api/v1 routes; Bloem's Apple apps and Jellyfin apps "
-            "show no playback cards.")
+            "routes; the Android apps' old routes on Silo's v1 API are retired; Bloem's Apple apps and Jellyfin "
+            "apps show no playback cards.")
     s.header("Who calls what for playback cards",
              "Two ways to write a campaign, one registry, and the routes a viewer's app reads.")
     p, o, a, g = TIERS["platform"], TIERS["org"], TIERS["account"], TIERS["grey"]
@@ -81,7 +81,7 @@ def who_calls_what():
 
     s.rect(440, 132, 320, 400, p["fill"], p["stroke"], rx=18, sw=2)
     s.text(600, 166, "Bloem server", size=19, weight="700", anchor="middle")
-    s.text(600, 196, "writes: /api/bloem/v1/admin/platform/promotions", size=11.5, fill=SOFT, anchor="middle")
+    s.text(600, 196, "writes: /api/bloem/v2/admin/platform/promotions", size=11.5, fill=SOFT, anchor="middle")
     s.rect(466, 210, 268, 112, "#FFFFFF", PROMO["stroke"], rx=12, sw=1.6)
     s.text(600, 240, "Campaign registry", size=16, weight="700", anchor="middle")
     para(s, 600, 266, "One store for every surface. A later save overwrites an earlier one.", 236, size=13.5,
@@ -90,24 +90,24 @@ def who_calls_what():
     s.text(600, 366, "Checks per request", size=15, weight="700", anchor="middle")
     s.lines(600, 392, ["signed in, profile chosen,", "PIN checked if it has one,", "adult profile only,",
                        "audience and dates match"], size=13.5, anchor="middle", gap=19)
-    s.text(600, 506, "reads: /api/bloem/v1/promotions", size=11.5, fill=SOFT, anchor="middle")
+    s.text(600, 506, "reads: /api/bloem/v2/promotions", size=11.5, fill=SOFT, anchor="middle")
 
     box(s, 840, 132, 320, 104, a, "The web app",
         "Native routes: list the cards for the title, save one to the inbox.", size=14)
     s.arrow(764, 214, 836, 190)
     box(s, 840, 252, 320, 104, a, "Android TV and phones",
-        "Still on Silo's /api/v1 routes for the same cards, until they move.", size=14)
+        "Their old routes on Silo's v1 API are retired; no cards until they move.", size=14)
     s.arrow(764, 300, 836, 304)
     box(s, 840, 372, 320, 72, g, "Bloem's Apple apps", None, size=14)
     s.text(858, 428, "Never ask for playback cards yet.", size=14, fill=MUTED)
     box(s, 840, 460, 320, 72, g, "Jellyfin apps", None, size=14)
     s.text(858, 516, "Have no playback cards.", size=14, fill=MUTED)
 
-    para(s, 40, 580, "The phone apps read GET /api/v1/promotions and POST /api/v1/promotions/{id}/save, which "
-         "stay mounted for them. The web app and the storefront call none of Silo's /api/v1.", 1120,
+    para(s, 40, 580, "The phone apps read the cards from Bloem's old routes on Silo's v1 API, which Silo retired "
+         "on 2026-11-11; they now answer 410 Gone. The web app and the storefront call only native routes.", 1120,
          size=14.5, fill=INK)
     footer(s, "An app learns that the server has playback cards from playback_overlays_v1 in "
-              "/api/bloem/v1/capabilities.", y=638, fill=MUTED)
+              "/api/bloem/v2/capabilities.", y=638, fill=MUTED)
     return s
 
 

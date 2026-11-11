@@ -93,7 +93,7 @@ func (h *BloemSystemHandler) SetSeasonalViewerAvailable(available bool) {
 // ignore the rest, so adding one here is additive by construction.
 const (
 	// featureWatchDocumentV1 covers the versioned Watch documents served at
-	// GET /api/bloem/v1/watch/home and GET /api/bloem/v1/watch/items/{content_id}.
+	// GET /api/bloem/v2/watch/home and GET /api/bloem/v2/watch/items/{content_id}.
 	featureWatchDocumentV1 = "watch_document_v1"
 	// featureDevicePairingV1 covers pairing a television against an account
 	// without typing a password on it. Protocol details live on
@@ -152,7 +152,7 @@ func buildBloemCapabilityTokens() []string {
 // nativeAPIIdentifier names the surface this document describes. It matches the
 // segment the surface is mounted at, so it moves with the path rather than
 // standing as a second, independently drifting version number.
-const nativeAPIIdentifier = "bloem/v1"
+const nativeAPIIdentifier = "bloem/v2"
 
 type bloemCapabilitiesResponse struct {
 	API            string                  `json:"api"`
@@ -218,7 +218,7 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 		API:            nativeAPIIdentifier,
 		IdentitySchema: 1,
 		Features: bloemCapabilityFeatures{
-			LegacySiloV1:            false, // Silo retired /api/v1 (Silo #3200)
+			LegacySiloV1:            false, // Silo retired its alpha v1 API (Silo #3200)
 			OrganizationMemberships: true,
 			TenantBoundedMediaScope: true,
 			DirectProfileLogin:      h.directProfileLogin && profilePasswords,

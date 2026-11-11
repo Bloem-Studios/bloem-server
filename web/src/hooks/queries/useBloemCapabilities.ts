@@ -16,7 +16,7 @@ export function useBloemCapabilities(enabled = true) {
     queryKey: ["bloem-capabilities", window.location.origin],
     enabled,
     queryFn: async ({ signal }): Promise<BloemCapabilities> => {
-      const response = await fetch("/api/bloem/v1/capabilities", {
+      const response = await fetch("/api/bloem/v2/capabilities", {
         signal,
         headers: { Accept: "application/json" },
       });

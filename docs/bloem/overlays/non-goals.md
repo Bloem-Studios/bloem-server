@@ -83,9 +83,9 @@ Bloem's own features stay inside that rule:
 
 | On this page | In the code and settings |
 | --- | --- |
-| Live TV | `internal/livetv`, routes under `/api/bloem/v1/livetv` (`internal/api/router_livetv.go`) |
+| Live TV | `internal/livetv`, routes under `/api/bloem/v2/livetv` (`internal/api/router_livetv.go`) |
 | Tuner on the network | a tuner of type `hdhomerun` |
-| Xtream provider | a tuner of type `xtream`, created with `POST /api/bloem/v1/livetv/tuners/xtream` |
+| Xtream provider | a tuner of type `xtream`, created with `POST /api/bloem/v2/livetv/tuners/xtream` |
 | Programme guide source | `schedules_direct`, `xml_sync` or `xtream` (at most 3) |
 | Recording rule | a series rule, `livetv_series_rules`, with `keep_last` |
 | Recordings folder | the `livetv.dvr_path` setting (default `/var/lib/bloem/dvr`) |
@@ -94,7 +94,7 @@ Bloem's own features stay inside that rule:
 
 ## For developers
 
-- **API:** [Live TV](../api/live-tv.md): every route under `/api/bloem/v1/livetv`.
+- **API:** [Live TV](../api/live-tv.md): every route under `/api/bloem/v2/livetv`.
 
 ### Where this edition came from
 
@@ -102,7 +102,7 @@ Bloem's edition moved out of the Silo file in `47ea7c889` (2026-09-23), so Silo'
 stays exactly as Silo wrote it and Silo merges stay clean; see the
 [documentation workflow](../documentation-workflow.md). Live TV has been in Bloem since
 `ef2d38171` (2026-08-13, an attributed adaptation of Prairie Server's tuner and DVR
-code); its routes later moved under `/api/bloem/v1/livetv`. Xtream providers followed on
+code); its routes later moved under `/api/bloem/v2/livetv`. Xtream providers followed on
 2026-09-19. This edition took Silo's media-file-management non-goal at Silo `6de6d5e5e`.
 It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `e852f92bf`, and on
 2026-11-01 against `b6039036d`; Silo has not changed `docs/non-goals.md` from

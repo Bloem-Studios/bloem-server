@@ -121,7 +121,7 @@ func bloemEngagementDocumentOp(reg *Registry, method, path, id, summary string, 
 		registry = "ambience"
 	}
 	if registry == "promotion" {
-		op.Description += " In-playback cards (surface in_playback) are available when /api/bloem/v1/capabilities lists playback_overlays_v1."
+		op.Description += " In-playback cards (surface in_playback) are available when /api/bloem/v2/capabilities lists playback_overlays_v1."
 	}
 	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
 		403: "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator.",
@@ -176,7 +176,7 @@ func registerBloemEngagementDocument(reg *Registry) {
 			invalid = "bad_request: invalid multipart form, missing file part, a slot other than banner or sprite, or a sprite for a pack that already has 32."
 		}
 		op := bloemEngagementDocumentOp(reg, "POST", path, id, summary, 201)
-		op.Description += " Requires configured asset upload storage, reported as storage_available by the ambience list. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. Stored artwork is content-addressed; url is its public server path under /api/bloem/v1/ambience/assets/. Paths under /api/v1/ambience/assets/ from earlier uploads stay valid in pack and campaign bodies."
+		op.Description += " Requires configured asset upload storage, reported as storage_available by the ambience list. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. Stored artwork is content-addressed; url is its public server path under /api/bloem/v2/ambience/assets/."
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
 			400: invalid,
 			413: "too_large: artwork or the multipart body exceeds its limit.",

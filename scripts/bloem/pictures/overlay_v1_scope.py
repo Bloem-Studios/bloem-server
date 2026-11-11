@@ -15,23 +15,23 @@ def _mono(s, x, y, text, size=17, fill=INK, anchor="start", weight="700"):
 
 def three_apis():
     s = Svg(1200, 650, "Bloem's three APIs, and who calls them",
-            "Three columns. Silo's /api/v1 is frozen and Silo will retire it; Bloem keeps a few reviewed additions "
-            "there, such as a profile's own sign-in, and adds nothing new. Silo's /api/v2 is Silo's stable API. "
-            "/api/bloem/v1 is Bloem's own API for organizations, plans, Live TV and more, with its own version. "
-            "Below, who calls what: since November 1, 2026 the web app and the storefront call only /api/v2 and "
-            "/api/bloem/v1; the phone apps still call some /api/v1 routes; Silo's own apps use Silo's APIs.")
+            "Three columns. Silo retired /api/v1 on November 11, 2026: every route there answers 410 Gone except "
+            "the health probes, and Bloem's routes there went with it. Silo's /api/v2 is Silo's stable API. "
+            "/api/bloem/v2 is Bloem's own API for organizations, plans, Live TV and more, with its own version. "
+            "Below, who calls what: the web app and the storefront call only /api/v2 and /api/bloem/v2; the phone "
+            "apps' remaining /api/v1 calls now answer 410; Silo's own apps use Silo's APIs.")
     s.header("Bloem's three APIs, and who calls them",
-             "Silo's two, and Bloem's own. New Bloem features go only in Bloem's own.")
+             "Silo's retired one, its stable one, and Bloem's own. New Bloem features go only in Bloem's own.")
     g, st, a = TIERS["grey"], TIERS["stop"], TIERS["account"]
 
     cols = [
-        (g, "/api/v1", "Silo's frozen API",
-         "Silo will retire it. Bloem keeps a few routes it added earlier, such as a profile's own sign-in, "
-         "and never drops one of Silo's. Nothing new goes here.", "Being retired"),
+        (g, "/api/v1", "Silo's retired API",
+         "Every route answers 410 Gone, except the health probes. The routes Bloem had added, such as a "
+         "profile's own sign-in, went with it.", "Retired"),
         (SILO, "/api/v2", "Silo's stable API",
          "Everything Silo has: libraries, playback, accounts, settings. Bloem's apps use it for all of that.",
          "Silo's"),
-        (BLOEM, "/api/bloem/v1", "Bloem's own API",
+        (BLOEM, "/api/bloem/v2", "Bloem's own API",
          "Organizations, plans, the storefront, Live TV, messages and more. Its version is Bloem's; it grows by "
          "adding fields and routes.", "Bloem's"),
     ]
@@ -46,8 +46,8 @@ def three_apis():
 
     s.text(40, 364, "Who calls what", size=17, weight="700")
     callers = [
-        ("The web app and the storefront", "Only /api/v2 and /api/bloem/v1, since November 1, 2026.", a),
-        ("Bloem's phone apps", "/api/v2 and /api/bloem/v1, and still some /api/v1 routes.", TIERS["warn"]),
+        ("The web app and the storefront", "Only /api/v2 and /api/bloem/v2, since November 1, 2026.", a),
+        ("Bloem's phone apps", "/api/v2 and /api/bloem/v2; their old /api/v1 calls answer 410.", TIERS["warn"]),
         ("Silo's own apps", "Silo's APIs, as they do with Silo. None of Bloem's own API.", g),
     ]
     y = 382

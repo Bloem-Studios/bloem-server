@@ -321,7 +321,7 @@ func setupFixtureAccount(t *testing.T, baseURL string) {
 func setupFixtureAccountResponse(t *testing.T, baseURL string) (int, string) {
 	t.Helper()
 	body := `{"username":"fixture.viewer","email":"fixture.viewer@example.invalid","password":"invented-password-for-local-conformance","create_default_profile":true,"default_profile_name":"Fixture Viewer"}`
-	req, err := http.NewRequest(http.MethodPost, baseURL+"/api/v1/auth/setup", strings.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/api/v2/auth/setup", strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}

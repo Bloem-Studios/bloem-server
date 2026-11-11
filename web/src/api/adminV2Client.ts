@@ -10,11 +10,11 @@ import type {
 } from "./bloemTypes";
 
 // The native API surface. It was /api/v2 until upstream Silo claimed that
-// namespace for its own major 2; this fork's native surface is /api/bloem/v1,
+// namespace for its own major 2; this fork's native surface is /api/bloem/v2,
 // and the server mounts every route below under it. Declared once here so a
 // future move cannot leave one fetch behind on a dead prefix, which is exactly
 // how /api/v2/organizations survived the rename and 404'd.
-const NATIVE_API_PREFIX = "/api/bloem/v1";
+const NATIVE_API_PREFIX = "/api/bloem/v2";
 
 interface AdminRequestAuthority {
   token: string;

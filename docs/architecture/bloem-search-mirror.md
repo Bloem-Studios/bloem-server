@@ -6,6 +6,7 @@
 > Meilisearch and no second copy of its index. The mirror is off unless an operator
 > turns it on. The technical rules are in the [For developers](#for-developers)
 > section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 Bloem can keep a second Meilisearch, the **mirror**, up to date with the catalog
 search index. Every change that reaches the main search index reaches the mirror a
@@ -493,7 +494,7 @@ panel. It shows nothing unless the mirror is configured or mirror state exists, 
 there is no new navigation entry. It has no inputs, and it links to the two mirror
 tasks on the existing tasks page: `sync_catalog_search_mirror` and
 `rebuild_catalog_search_mirror`, the manual full copy. It reads one route,
-`GET /api/bloem/v1/admin/search/mirror`, which returns:
+`GET /api/bloem/v2/admin/search/mirror`, which returns:
 
 - whether the mirror is configured, and where from (the environment);
 - the mirror's address with any password part removed, and whether a key is set and
@@ -554,13 +555,13 @@ tasks on the existing tasks page: `sync_catalog_search_mirror` and
 | The lease | `bloem_search_mirror_processes`, one row per Silo process with the mirror configured: when it started, when it last touched the row, and `main_target`, the id of the identity marker of the main server it talks to |
 | Mirror-aware cleanup | `SearchMirrorAwarePruner` in `internal/catalog/bloem_search_mirror_prune.go`, wired by `bloemWireSearchMirror` in `cmd/silo/bloem_main.go` |
 | The metrics | `internal/catalog/bloem_search_mirror_metrics.go`, prefix `silo_search_mirror_` |
-| The admin route | `GET /api/bloem/v1/admin/search/mirror` |
+| The admin route | `GET /api/bloem/v2/admin/search/mirror` |
 | Silo switching | the `bloem_silo_switching` flag |
 
 ## For developers
 
 **API:** the route's contract is in the [native reference](../bloem-api-reference.md)
-and in `internal/apiv2/bloem_search_mirror_document.go`. Nothing is added to `/api/v1`
+and in `internal/apiv2/bloem_search_mirror_document.go`. Nothing is added to Silo's API
 or to Silo's search status call.
 
 ### Where the code lives

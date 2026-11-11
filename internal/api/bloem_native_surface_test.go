@@ -30,14 +30,14 @@ func TestNativeEbookReadSkipsCompressionLikeV1(t *testing.T) {
 
 // Nothing on the native surface is compression-excluded: that switch matches
 // stream, playback/transcode, downloads/file, direct-download and ebooks/read,
-// and /api/bloem/v1 serves none of them. A prefix normalisation once existed
+// and /api/bloem/v2 serves none of them. A prefix normalisation once existed
 // here for a native ebook mount that turned out to be unnecessary -- ebooks was
 // already on /api/v2 -- and this pins the surface's actual behavior so the
 // normalisation is not reintroduced without a route that needs it.
 func TestNativeNonMediaRoutesStillCompress(t *testing.T) {
 	for _, path := range []string{
-		"/api/bloem/v1/capabilities",
-		"/api/bloem/v1/organizations",
+		"/api/bloem/v2/capabilities",
+		"/api/bloem/v2/organizations",
 		"/api/v2/ebooks/c1/progress",
 	} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)

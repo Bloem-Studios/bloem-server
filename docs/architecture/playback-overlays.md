@@ -5,6 +5,7 @@
 > Silo counterpart. This page explains them in plain language; the technical rules,
 > including the client lifetime rules every app must follow, are in the
 > [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 A **playback card** is a short campaign message that floats over a film or episode
 for a few seconds while it plays, such as "New season, Friday". This page walks
@@ -91,17 +92,18 @@ sees it.
 | Playback card | a promotion on `in_playback` with `placement.playback_style` `card` or `pip` |
 | Card, picture-in-picture | `playback_style` `card`, `pip`; the clip is `placement.video_url` |
 | Display time | `placement.duration_seconds`, projected as `duration_seconds` |
-| Saving to the inbox | `POST /api/bloem/v1/promotions/{id}/save` |
-| "Does this server have playback cards?" | `playback_overlays_v1` in `/api/bloem/v1/capabilities` |
+| Saving to the inbox | `POST /api/bloem/v2/promotions/{id}/save` |
+| "Does this server have playback cards?" | `playback_overlays_v1` in `/api/bloem/v2/capabilities` |
 | The web component | `web/src/components/engagement/PlaybackEngagement.tsx`, with `ChapterGate` in `playback-policy.ts` |
 
 ## For developers
 
 - **API:** [messages and promotions](../bloem/api/messages.md): campaign authoring
-  under `/api/bloem/v1/admin/platform/promotions`, and the viewer routes
-  `GET /api/bloem/v1/promotions`, `POST /api/bloem/v1/promotions/{id}/save` and
-  `PUT /api/bloem/v1/promotions/{id}/dismissals/{surface}` (`promotions_viewer_v1`).
-  The phone apps still use the [old `/api/v1` routes](../bloem/api/v1-routes.md#campaigns).
+  under `/api/bloem/v2/admin/platform/promotions`, and the viewer routes
+  `GET /api/bloem/v2/promotions`, `POST /api/bloem/v2/promotions/{id}/save` and
+  `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}` (`promotions_viewer_v1`).
+  The [old v1 routes](../bloem/api/v1-routes.md#campaigns) went with Silo's v1 API on
+  2026-11-11.
   The [playback overlays API](../playback-overlays-api.md) page summarises who calls
   which route.
 
@@ -125,7 +127,7 @@ rendering and verification notes below date from September 2026.
 - The storefront and the web console's platform **Campaigns & seasonal packs** page
   (`web/src/pages/admin-platform/EngagementPage.tsx`, route `/admin/platform/engagement`)
   write the same promotions registry through
-  `/api/bloem/v1/admin/platform/promotions`. The routes take a Platform administrative
+  `/api/bloem/v2/admin/platform/promotions`. The routes take a Platform administrative
   context or an enabled administrator's unscoped API key (`RequireBloemPlatformAdmin`).
   There is no organization-admin publication authority and no revision locking: a
   later save overwrites an earlier one.
@@ -161,12 +163,11 @@ lifecycle below.
 
 ### Delivery
 
-- `/api/bloem/v1/capabilities` lists `playback_overlays_v1` when the campaign registry
-  is wired (`SetPlaybackOverlaysAvailable`, `internal/api/router_bloem.go`). For the
-  phone apps, `GET /api/v1/notifications/capability` still advertises
-  `promotions.playback_overlay` (`internal/api/handlers/bloem_notifications_ext.go`).
-- `GET /api/bloem/v1/promotions?surface=in_playback&content_id=…` (and, for the phone
-  apps, `GET /api/v1/promotions?surface=in_playback&content_id=…`) returns the card
+- `/api/bloem/v2/capabilities` lists `playback_overlays_v1` when the campaign registry
+  is wired (`SetPlaybackOverlaysAvailable`, `internal/api/router_bloem.go`). The
+  `promotions.playback_overlay` field of the v1 notification capability
+  (`internal/api/handlers/bloem_notifications_ext.go`) went with Silo's v1 API.
+- `GET /api/bloem/v2/promotions?surface=in_playback&content_id=…` returns the card
   projection with `playback_style`, `video_url`, `duration_seconds` and an exclusive
   `expires_at`. `content_id` is required for `in_playback`.
 - The native routes require authentication, native tenant resolution, the rate limit,
@@ -255,23 +256,23 @@ treats nothing as dismissed and logs it.
 
 ### Dismissals and discovery
 
-- Legacy viewer routes: `GET /api/v1/promotions?surface=detail|pre_playback|in_playback&content_id=…`
-  answers `{"surface": "…", "promotions": [<card>, …]}` (`[]` when nothing applies);
+- Legacy viewer routes, retired with Silo's v1 API on 2026-11-11: v1
+  `GET /promotions?surface=detail|pre_playback|in_playback&content_id=…` answered `{"surface": "…", "promotions": [<card>, …]}` (`[]` when nothing applies);
   `surface=home` and unknown surfaces are `400 bad_request`, since Home rides on the
   section; no service is `503 unavailable`. A dismissal is
   `PUT /home/dismissals/promo:<surface>/<promotion id>` with `{}`, undone with `DELETE`
   on the same path (`validHomeSurface` accepts the `promo:` surfaces); dismissals are
   per profile and per surface. The native equivalents are listed under the API link
   above.
-- `GET /api/v1/notifications/capability` carries `"promotions": {"surfaces": ["home",
-  "detail", "pre_playback"]}`, plus `playback_overlay` for in-playback cards; a missing
-  key means the feature is off. An app that sees it opts in to the Home row with
-  `promoted=1`.
+- The v1 notification capability carried `"promotions": {"surfaces": ["home",
+  "detail", "pre_playback"]}`, plus `playback_overlay` for in-playback cards. Today an app
+  reads `promotions_viewer_v1` and `playback_overlays_v1` on
+  `GET /api/bloem/v2/capabilities`, and opts in to the Home row with `promoted=1`.
 
 ### Admin routes
 
-The registry routes (native under `/api/bloem/v1/admin/platform/promotions`, legacy
-under `/api/v1/admin/promotions`) share `handlers.AdminPromotionsHandler`:
+The registry routes (native under `/api/bloem/v2/admin/platform/promotions`; the legacy v1 routes went with
+Silo's v1 API) use `handlers.AdminPromotionsHandler`:
 `GET` lists `{"promotions": [...], "surfaces": [...]}`, highest priority first; `POST`
 answers `201`; `PUT /{id}` is a full replacement (`200`); `DELETE /{id}` answers `204`
 or `404 not_found`. An `organization_id` naming no organization is `400 bad_request`
@@ -287,7 +288,7 @@ size, `deeplink`, `cta`, `priority`, `targeting`, `dismissible` and `organizatio
 may be left out.
 
 ```json
-POST /api/bloem/v1/admin/platform/promotions
+POST /api/bloem/v2/admin/platform/promotions
 {"surfaces": ["home", "detail", "pre_playback"],
  "placement": {"home_position": 1, "detail_slot": "below_hero", "content_ids": ["movie-1"]},
  "kicker": "New this week", "headline": "The Bloem Winter Collection",
@@ -337,8 +338,7 @@ Every app that renders playback cards follows these:
 
 ### Saving to the inbox
 
-- `POST /api/bloem/v1/promotions/{id}/save?content_id=…` (or
-  `POST /api/v1/promotions/{id}/save?content_id=…` for the phone apps) re-evaluates the
+- `POST /api/bloem/v2/promotions/{id}/save?content_id=…` re-evaluates the
   authenticated profile's eligibility before saving that campaign to the same
   profile's inbox. Only a current `in_playback` card with a call to action for that
   `content_id` can be saved; otherwise `404 not_found`.

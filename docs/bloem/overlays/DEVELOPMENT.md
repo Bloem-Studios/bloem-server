@@ -155,7 +155,7 @@ published `bloem-plugin-sdk` module pinned in `internal/bloemtestsdk`
 SDK checkout only to test unreleased SDK changes; the host and SDK storage protos
 must match.
 
-Silo's scenario catalogs and their executor were deleted with `/api/v1` (Silo #3200),
+Silo's scenario catalogs and their executor were deleted with its v1 API (Silo #3200),
 and Bloem's [contract adjudications](../../architecture/bloem-contract-adjudications.md)
 and `make test-scenarios` went with them.
 

@@ -6,6 +6,7 @@
 > “Email invitation API” until Silo's `4a0cff41f`), which stays exactly as Silo
 > wrote it. Bloem replaces nothing there. The additions are in the
 > [For developers](#for-developers) section.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 An **invitation** lets someone create an account by following a link. Silo's page
 explains the administrator routes that create, resend and revoke invitations.
@@ -29,8 +30,8 @@ and the separate routes an organization administrator uses.
 
 | On this page | In the code and API |
 | --- | --- |
-| Silo's invitation routes | `/api/v2/admin/invitations` and their `/api/v1` counterparts |
-| The organization console's routes | `/api/bloem/v1/admin/organization/invitations` |
+| Silo's invitation routes | `/api/v2/admin/invitations` |
+| The organization console's routes | `/api/bloem/v2/admin/organization/invitations` |
 | The one-time link | `claim_token` in the create and resend responses |
 | Which organization an invitation belongs to | `invitations.organization_id` |
 
@@ -66,7 +67,7 @@ POST operations are **non-retryable**, including authentication-refresh…”.
 
 #### Scope of the v2 administrator routes on Bloem
 
-Silo's `/api/v2/admin/invitations` routes, and their `/api/v1` counterparts, list,
+Silo's `/api/v2/admin/invitations` routes list,
 read, create, resend, revoke and delete only invitations of Bloem's default
 organization (`public.bloem_default_organization_id()` in
 `internal/invitations/repository.go`). An invitation they create belongs to that
@@ -83,7 +84,7 @@ organization. See
 #### Bloem organization invitation links
 
 The embedded organization console uses
-`/api/bloem/v1/admin/organization/invitations`: GET lists invitation metadata
+`/api/bloem/v2/admin/organization/invitations`: GET lists invitation metadata
 without claim tokens, POST creates, POST `/{id}/resend` regenerates the link
 after confirmation, and DELETE `/{id}` revokes it after confirmation. This
 native flow:

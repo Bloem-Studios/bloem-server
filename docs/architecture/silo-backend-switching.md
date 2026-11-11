@@ -6,6 +6,7 @@
 > unmodified Silo image. The commands, database rules and checks are in the
 > [For developers](#for-developers) section; the plain-language tour is
 > [switching between Silo and Bloem](bloem-silo-switching-explained.md).
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
 
 A database can be served by Silo or by Bloem, one at a time, and the person running
 the server can switch between them in either direction without losing or corrupting
@@ -246,7 +247,7 @@ it from the Bloem image you deploy.
 all-in-one layer takes it over.
 
 The steps talk to both servers through Silo's `/api/v2` (`cmd/bloem-silo-switch-check`),
-so the check keeps working after Silo retires `/api/v1`. The scripts still wait on
+so Silo's retirement of its v1 API on 2026-11-11 did not affect the check. The scripts still wait on
 `/api/v1/ready`, the operational probe Silo keeps.
 
 Run both whenever a change touches a table that both servers write. Run them too after

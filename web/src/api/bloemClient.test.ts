@@ -303,7 +303,7 @@ describe("api", () => {
           ? nativeApi("/livetv/series-rules", options)
           : nativeApiWithProfileRequestContext("/livetv/series-rules", snapshot!, options, "none");
       await expect(request).rejects.toBeInstanceOf(Error);
-      expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/bloem/v1/livetv/series-rules");
+      expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/bloem/v2/livetv/series-rules");
       expect(fetchMock).toHaveBeenCalledOnce();
       expect(fetchMock.mock.calls[0]?.[1]?.headers).toMatchObject({
         Authorization: "Bearer account-token",
@@ -664,9 +664,9 @@ describe("native profile requests", () => {
       nativeApiWithProfileRequestContext("/livetv/capability", snapshot),
     ).resolves.toEqual({ allowed: true });
     expect(calls.map((call) => call.url)).toEqual([
-      "/api/bloem/v1/livetv/capability",
+      "/api/bloem/v2/livetv/capability",
       "/api/v2/auth/refresh",
-      "/api/bloem/v1/livetv/capability",
+      "/api/bloem/v2/livetv/capability",
     ]);
     expect(calls[2]!.headers["X-Profile-Id"]).toBe("viewer-a");
     expect(calls[2]!.headers["X-Profile-Token"]).toBe("pin-a");
