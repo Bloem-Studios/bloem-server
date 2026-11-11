@@ -1,10 +1,15 @@
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router";
-import { expect, it } from "vitest";
+import { MemoryRouter } from "react-router";
+import { expect, it, vi } from "vitest";
 import { PreviewModeContext } from "./usePreviewMode";
 import BloemLibraryRecommended from "./adapters/BloemLibraryRecommended";
-// No mock of the original pages: the preview plugin redirects that import to
-// the adapter under test. A preview visitor never reaches them anyway.
+
+// The audiobook library's own opening page has a personal continue-listening
+// hero; a preview gets Silo's library rows instead.
+vi.mock("@/pages/LibraryRecommended", () => ({
+  default: ({ libraryId }: { libraryId: number }) => <p>Library rows {libraryId}</p>,
+}));
+
 const presentation = {
   kind: "guest" as const,
   ends_at: null,
@@ -17,37 +22,14 @@ const presentation = {
   storefront_url: "",
   launch_url: "",
 };
-function Location() {
-  const location = useLocation();
-  return <output aria-label="location">{location.pathname + location.search}</output>;
-}
-it.each([["audiobook", BloemLibraryRecommended]] as const)(
-  "opens the %s library tab instead of the personal deck",
-  (_, Tab) => {
-    render(
-      <MemoryRouter initialEntries={["/library/1?type=series"]}>
-        <PreviewModeContext.Provider value={presentation}>
-          <Routes>
-            <Route
-              path="/library/:id"
-              element={
-                <>
-                  <Tab libraryId={1} />
-                  <Location />
-                </>
-              }
-            />
-          </Routes>
-        </PreviewModeContext.Provider>
-      </MemoryRouter>,
-    );
-    expect(screen.getByRole("status", { name: "location" })).toHaveTextContent(
-      "/library/1?type=series&tab=library",
-    );
-    expect(
-      screen.queryByRole("heading", {
-        name: "Recommendations aren't available to preview members",
-      }),
-    ).not.toBeInTheDocument();
-  },
-);
+
+it("opens an audiobook library on its rows for a preview", () => {
+  render(
+    <MemoryRouter initialEntries={["/library/28"]}>
+      <PreviewModeContext.Provider value={presentation}>
+        <BloemLibraryRecommended libraryId={28} libraryType="audiobooks" />
+      </PreviewModeContext.Provider>
+    </MemoryRouter>,
+  );
+  expect(screen.getByText("Library rows 28")).toBeInTheDocument();
+});

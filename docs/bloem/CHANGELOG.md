@@ -3,6 +3,21 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 11, 2026 — "Explore all" on episode rows fills, and book cover errors are logged
+
+"Explore all" on a home row of episodes sorted by air date ran the general
+episode query: every matching episode built row by row, then sorted. For the
+Latest English TV Episodes row that was 815,240 episodes and 9 to 10 seconds a
+page, so the page often stopped at the search timeout and never filled. The
+catalog's cursor pages now answer such lists from `episode_catalog_entries` and
+its indexes, as the offset pages already did (`bloem_episode_cursor_page.go`, one
+hook line in Silo's `query_cursor.go`, a temporary seam). The order and the cursor
+keys are the general query's, so either path continues the other's cursor, and the
+total is exact up to 10,000 and reported as inexact beyond, which the web app
+already estimates. An uncached book cover that its storage source failed to read
+answered 503 with nothing in the log; the failure is now logged with its cause.
+A preview's audiobook library opens on its rows like the other libraries.
+
 ## November 11, 2026 — the preview shows what a subscriber sees
 
 A side-by-side crawl of 32 kinds of page as a guest and as a subscriber found the

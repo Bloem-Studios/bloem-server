@@ -1,12 +1,10 @@
 import type { ComponentProps } from "react";
 import Original from "../../../components/LibraryHeader";
 import { usePreviewMode } from "../usePreviewMode";
-type LibraryTabs = NonNullable<ComponentProps<typeof Original>["availableTabs"]>;
-const ALL_TABS: LibraryTabs = ["recommended", "library", "collections"];
-// A library's Recommended tab is its row layout, which the server serves a
-// preview without the personal rows (Continue Watching, For You and the like).
-// The audiobook library's opening deck is built from the personal feed, so an
-// audiobook library keeps only its library and collections.
+// A library's Recommended tab (an audiobook library's Home) is its row layout,
+// which the server serves a preview without the personal rows (Continue
+// Watching, For You and the like), so a preview keeps every tab. Shuffle
+// starts playback, which a preview cannot.
 //
 // At phone width, with large text, three tabs can outgrow the row: they
 // tighten there, and the bar scrolls rather than running off the screen's edge.
@@ -17,15 +15,7 @@ export default function LibraryHeader(props: ComponentProps<typeof Original>) {
   const preview = usePreviewMode().active;
   return (
     <div className={PHONE_TABS}>
-      <Original
-        {...props}
-        availableTabs={
-          preview && props.libraryType === "audiobooks"
-            ? (props.availableTabs ?? ALL_TABS).filter((tab) => tab !== "recommended")
-            : props.availableTabs
-        }
-        onShuffle={preview ? undefined : props.onShuffle}
-      />
+      <Original {...props} onShuffle={preview ? undefined : props.onShuffle} />
     </div>
   );
 }

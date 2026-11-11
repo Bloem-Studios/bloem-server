@@ -119,6 +119,10 @@ func (reg *Registry) serveStorageCover(w http.ResponseWriter, r *http.Request, k
 			notFound()
 			return
 		}
+		// Anything else is a failure worth seeing: until 2026-11-11 every
+		// uncached book cover answered 503 here with nothing in the log.
+		slog.WarnContext(r.Context(), "storage cover read failed", "component", "apiv2",
+			"content_id", contentID, "grpc_code", status.Code(err).String(), "error", err)
 		w.Header().Del("ETag")
 		w.Header().Del("Cache-Control")
 		writeProblem(w, r, unavailable("storage cover"))

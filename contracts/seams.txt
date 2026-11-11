@@ -137,6 +137,7 @@ internal/catalog/collection_sync_scheduler.go
 internal/catalog/filesplit/filesplit.go  # native selected-target authorization boundary
 internal/catalog/folder_repo.go
 internal/catalog/library_repo.go
+internal/catalog/query_cursor.go  # one hook line: episode lists sorted by air date page through episode_catalog_entries (bloem_episode_cursor_page.go); temporary, "Explore all" on a home row of 815k English TV episodes took 9-10 s a page and often timed out, now milliseconds, 2026-11-11, drop when Silo's cursor page has the projection path
 internal/catalog/search_indexer.go  # one hook line: index settings forgive one typo from three letters (bloem_search_typo_tolerance.go); temporary, typos in 3-4 letter words in the top 10: 60.5% -> 86.8% on a scratch copy of the live index, 2026-11-11, drop when Silo has an equivalent
 internal/catalog/search_meilisearch_client.go  # two hook lines: hybrid searches also query the title fields so title matches stay first (bloem_search_title_boost.go); temporary, lets the semantic ratio go to 0.6 without losing typed titles (one-typo titles in the top 10: 78% -> 93% at 0.6 on the live index, 2026-11-11), drop when Silo has an equivalent
 internal/catalog/search_meilisearch_provider.go  # two-word searches stay strict under frequency as under last; temporary, frequency matching (descriptive searches in the top 50: 16.5% -> 36.5% on the live index, titles unchanged, 2026-11-10), drop when Silo's version merges

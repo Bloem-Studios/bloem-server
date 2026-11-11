@@ -201,6 +201,9 @@ func (e *QueryExecutor) PreviewCursorPage(ctx context.Context, def QueryDefiniti
 		}
 		limit = min(limit, *def.Limit-consumed)
 	}
+	if page, ok, err := e.bloemEpisodeCursorPage(ctx, def, access, limit, after, includeTotal); ok || err != nil { // Bloem: bloem_episode_cursor_page.go
+		return page, err
+	}
 	plan, err := e.buildPreviewPagePlan(def, access, limit, 0)
 	if err != nil {
 		return QueryCursorPage{}, err

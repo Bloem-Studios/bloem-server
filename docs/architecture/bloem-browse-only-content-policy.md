@@ -99,10 +99,10 @@ sessions.
 - A banner that names the preview and shows any free time left, with buttons that
   lead back to the storefront.
 - The chosen libraries and their titles, with search. A library opens on its
-  Recommended rows without the personal ones (the audiobook library's opening deck
-  is personal, so it opens on its Library tab), collections show their posters, box
-  sets appear in search and on their movies, posters carry their rating badges, and
-  the calendar opens on All because a guest follows no shows.
+  Recommended rows without the personal ones (an audiobook library gets Silo's
+  version of that page, without Bloem's continue-listening hero), collections show
+  their posters, box sets appear in search and on their movies, posters carry their
+  rating badges, and the calendar opens on All because a guest follows no shows.
 - No personal pages: no Continue Watching, favourites, watchlist, requests,
   settings, notifications or profile pages. Trying to open one leads to the
   title or home page with a sign-up button.
