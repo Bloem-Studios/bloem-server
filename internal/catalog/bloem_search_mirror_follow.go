@@ -80,17 +80,22 @@ func takeSearchMirrorSnapshot(ctx context.Context, q pgxQuerier) (string, time.T
 // searchMirrorWindowPage returns up to limit events of the transactions that finished after
 // bookmark and by upto, after the resume point (afterTx, afterID), in (tx_id, id) order. Rows
 // with a NULL tx_id (written before the mirror existed) never match.
+//
+// The order and the resume point name the table's columns, never the text the query selects: a
+// bare ORDER BY tx_id would sort the text output column, so 10000000 would come before 9999995
+// and the resume point (compared as xid8) would skip rows. On the xid8 columns the index on
+// (tx_id, id) serves both and the page stops at the limit.
 func searchMirrorWindowPage(ctx context.Context, q pgxQuerier, bookmark, upto string, afterTx uint64, afterID int64, limit int) ([]searchMirrorEvent, error) {
 	rows, err := q.Query(ctx, `
-		SELECT tx_id::text, id, action, content_id, previous_content_id
-		FROM catalog_search_index_events
-		WHERE provider = 'meilisearch'
-		  AND tx_id >= pg_snapshot_xmin($1::pg_snapshot)
-		  AND tx_id <  pg_snapshot_xmax($2::pg_snapshot)
-		  AND pg_visible_in_snapshot(tx_id, $2::pg_snapshot)
-		  AND NOT pg_visible_in_snapshot(tx_id, $1::pg_snapshot)
-		  AND (tx_id, id) > ($3::text::xid8, $4)
-		ORDER BY tx_id, id
+		SELECT ev.tx_id::text AS tx_text, ev.id, ev.action, ev.content_id, ev.previous_content_id
+		FROM catalog_search_index_events AS ev
+		WHERE ev.provider = 'meilisearch'
+		  AND ev.tx_id >= pg_snapshot_xmin($1::pg_snapshot)
+		  AND ev.tx_id <  pg_snapshot_xmax($2::pg_snapshot)
+		  AND pg_visible_in_snapshot(ev.tx_id, $2::pg_snapshot)
+		  AND NOT pg_visible_in_snapshot(ev.tx_id, $1::pg_snapshot)
+		  AND (ev.tx_id, ev.id) > ($3::text::xid8, $4::bigint)
+		ORDER BY ev.tx_id, ev.id
 		LIMIT $5`,
 		bookmark, upto, strconv.FormatUint(afterTx, 10), afterID, limit)
 	if err != nil {
