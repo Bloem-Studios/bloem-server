@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 951 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v1` | 270 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v1` | 271 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -231,6 +231,7 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement` | `getBloemLegacyAccountEntitlement` | Read the legacy managed account entitlement projection. |
 | `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply` | `applyBloemLegacyAccountEntitlement` | Apply a pinned entitlement template. |
 | `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run` | `previewBloemLegacyAccountEntitlement` | Preview a pinned entitlement template. |
+| `GET /api/bloem/v1/admin/search/mirror` | `getBloemSearchMirrorStatus` | Read the search mirror's status. |
 | `POST /api/bloem/v1/admin/session` | `createBloemAdminSession` | Exchange a login session for a scoped administrative context. |
 | `GET /api/bloem/v1/ambience` | `getBloemSeasonalViewer` | Read seasonal presentation for the current verified tenant viewer. |
 | `GET /api/bloem/v1/ambience/assets/{ref}` | `getBloemAmbienceAsset` | Serve uploaded seasonal and campaign artwork. |

@@ -10089,6 +10089,204 @@
         ],
         "type": "object"
       },
+      "SearchMirrorCopyStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "done": {
+            "description": "Documents copied so far.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ratio": {
+            "description": "done / total, 0 to 1.",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "started_at": {
+            "description": "When the copy began (UTC); null when unknown.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "description": "Documents the copy will hold; shown for progress only, so it may be 0 or approximate.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "done",
+          "total",
+          "ratio",
+          "started_at"
+        ],
+        "type": "object"
+      },
+      "SearchMirrorStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "description": "True when this server has the mirror address set.",
+            "type": "boolean"
+          },
+          "copy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SearchMirrorCopyStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The full copy in progress; null when none."
+          },
+          "dead_letters": {
+            "description": "Items the mirror could not index and set aside.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "error_since": {
+            "description": "When the current run of failures began (UTC); null when there is none.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key_source": {
+            "description": "Where the mirror's API key comes from: file, environment or none; an empty string when not configured. The key itself is never returned.",
+            "type": "string"
+          },
+          "lag_seconds": {
+            "description": "Seconds between now and the moment the mirror is up to date as of; null when the mirror holds no bookmark yet.",
+            "format": "double",
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "last_error": {
+            "description": "The last failure, in English; omitted when there is none.",
+            "type": "string"
+          },
+          "last_full_copy_at": {
+            "description": "When the mirror last finished a full copy (UTC); null when never.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "main_index": {
+            "description": "The index the main Meilisearch has published; empty when none.",
+            "type": "string"
+          },
+          "max_lag_seconds": {
+            "description": "The longest lag, in seconds, before the mirror stops catching up and copies everything again; 0 until the mirror has run.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "mirror_index": {
+            "description": "The index the mirror has published; empty before the first copy.",
+            "type": "string"
+          },
+          "pending_events": {
+            "description": "Outbox rows the mirror has not applied; null when the mirror holds nothing yet or the count was unavailable.",
+            "format": "int64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "pending_events_capped": {
+            "description": "True when pending_events stopped counting at its limit of 1,000,000.",
+            "type": "boolean"
+          },
+          "reason": {
+            "description": "An English code saying why, such as past_cap or key_file_unreadable; omitted when there is none.",
+            "type": "string"
+          },
+          "role_swaps": {
+            "description": "Failovers the mirror has handled.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "settling": {
+            "description": "True while a role swap is settling: the new main index is being brought up to date.",
+            "type": "boolean"
+          },
+          "settling_overdue": {
+            "description": "True when a swap has been settling for more than 30 minutes.",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "Where the settings came from: environment, or an empty string when not configured.",
+            "type": "string"
+          },
+          "state": {
+            "description": "One of off, following, copying, waiting, unreachable, needs_full_copy, misconfigured, failing or settling. A newer server may send more.",
+            "type": "string"
+          },
+          "state_exists": {
+            "description": "True when this database holds mirror state, whether or not this server is configured.",
+            "type": "boolean"
+          },
+          "up_to_date_as_of": {
+            "description": "Every change committed before this time (UTC) is on the mirror; null when the mirror holds no bookmark yet.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "description": "The mirror's address with any user name and password removed; empty when not configured.",
+            "type": "string"
+          },
+          "warnings": {
+            "description": "Warning codes: configured_on_one_copy_only, settling_overdue and stood_down today; a newer server may send more.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "configured",
+          "source",
+          "url",
+          "key_source",
+          "state",
+          "settling",
+          "settling_overdue",
+          "lag_seconds",
+          "up_to_date_as_of",
+          "pending_events",
+          "pending_events_capped",
+          "mirror_index",
+          "main_index",
+          "copy",
+          "last_full_copy_at",
+          "error_since",
+          "dead_letters",
+          "max_lag_seconds",
+          "role_swaps",
+          "state_exists",
+          "warnings"
+        ],
+        "type": "object"
+      },
       "Selection": {
         "additionalProperties": false,
         "properties": {
@@ -36548,6 +36746,76 @@
         "summary": "Preview a pinned entitlement template.",
         "tags": [
           "administration"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/search/mirror": {
+      "get": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys and organization contexts are refused. The search mirror is an optional second Meilisearch that holds a copy of the catalog index, switched on by SILO_MEILISEARCH_MIRROR_URL. Reports whether this server has it configured (its address without any password, and where its key comes from, never the key), its state (off, following, copying, waiting, unreachable, needs_full_copy, misconfigured, failing or settling), how far behind it is, the rows waiting, the published index next to the main index, the last full copy, the last error, the dead-letter count and the lag cap. state_exists is true when this database holds mirror state even though this server has no mirror configured; warnings then carries configured_on_one_copy_only. The route is read-only. Responses are not cacheable.",
+        "operationId": "getBloemSearchMirrorStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchMirrorStatus"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key; forbidden: the API key's scopes exclude this route."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "search_mirror_status_unavailable: the database is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read the search mirror's status.",
+        "tags": [
+          "system"
         ]
       }
     },

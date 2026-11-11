@@ -3522,6 +3522,39 @@ large catalog takes about a second, so callers cache it; a timeout or database
 failure is `503 library_figures_unavailable`. Responses use
 `Cache-Control: no-store`.
 
+#### Search mirror status
+
+`GET /api/bloem/v1/admin/search/mirror` shows the optional search mirror, a second
+Meilisearch that holds a copy of the catalog index and is switched on by
+`SILO_MEILISEARCH_MIRROR_URL`. It is read-only and changes nothing:
+`200 {configured, source, url, key_source, state, reason?, settling,
+settling_overdue, lag_seconds, up_to_date_as_of, pending_events,
+pending_events_capped, mirror_index, main_index, copy, last_full_copy_at,
+last_error?, error_since, dead_letters, max_lag_seconds, role_swaps,
+state_exists, warnings}`. `configured` and `source` (`environment`, or empty)
+describe this server. `url` is the mirror's address with any user name and
+password removed, and `key_source` is `file`, `environment` or `none`; the key
+itself is never returned. `state` is `off` (no mirror here and none in the
+database), `following`, `copying`, `waiting`, `unreachable`, `needs_full_copy`,
+`misconfigured`, `failing` or `settling`; `reason` is an English code such as
+`past_cap` or `key_file_unreadable`. `lag_seconds` and `up_to_date_as_of` are
+null until the mirror holds a bookmark; `pending_events` counts outbox rows the
+mirror has not applied, stops at 1,000,000 with `pending_events_capped:true`,
+and is null when the mirror holds nothing yet. `copy` is
+`{done, total, ratio, started_at}` while a full copy runs and null otherwise.
+`max_lag_seconds` is the lag after which the mirror copies everything again.
+`state_exists` is true when the database holds mirror state, whether or not this
+server has the mirror configured. `warnings` is a list of codes:
+`configured_on_one_copy_only` (the database holds mirror state but this server
+has no mirror configured, so nobody here would run a failover swap),
+`settling_overdue` (a swap has been settling for more than 30 minutes) and
+`stood_down` (another Silo copy took over search and this process stopped
+mirroring); a newer server may send more. Authentication is a Platform
+administrative context or an enabled administrator's unscoped API key; scoped
+keys and organization contexts are refused (`403 insufficient_platform_authority`).
+A database failure is `503 search_mirror_status_unavailable`. Responses use
+`Cache-Control: no-store`.
+
 #### Platform new arrivals
 
 `GET /api/bloem/v1/admin/platform/new-arrivals` lists recent additions for a

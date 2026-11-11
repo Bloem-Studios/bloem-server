@@ -14,7 +14,7 @@ For the plain-language picture, read the [Organizations and administration expla
 - [OPA tenant authorization](../../architecture/opa-tenant-authorization.md)
 - [Lifecycle safety](../../architecture/bloem-lifecycle-safety.md)
 
-## Operations (96)
+## Operations (97)
 
 | Method and path | Summary |
 | --- | --- |
@@ -112,6 +112,7 @@ For the plain-language picture, read the [Organizations and administration expla
 | [`POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/reset-password`](#post-apibloemv1adminplatformtenantstenant_idmembersuser_idreset-password) | Set a member's password. |
 | [`POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/resume`](#post-apibloemv1adminplatformtenantstenant_idmembersuser_idresume) | Resume a suspended member's account. |
 | [`POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/suspend`](#post-apibloemv1adminplatformtenantstenant_idmembersuser_idsuspend) | Suspend a member's account. |
+| [`GET /api/bloem/v1/admin/search/mirror`](#get-apibloemv1adminsearchmirror) | Read the search mirror's status. |
 | [`POST /api/bloem/v1/admin/session`](#post-apibloemv1adminsession) | Exchange a login session for a scoped administrative context. |
 | [`GET /api/bloem/v1/organizations`](#get-apibloemv1organizations) | The organizations this account belongs to. |
 
@@ -2373,6 +2374,22 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
+### `GET /api/bloem/v1/admin/search/mirror`
+
+Read the search mirror's status.
+
+Operation ID: `getBloemSearchMirrorStatus`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys and organization contexts are refused. The search mirror is an optional second Meilisearch that holds a copy of the catalog index, switched on by SILO_MEILISEARCH_MIRROR_URL. Reports whether this server has it configured (its address without any password, and where its key comes from, never the key), its state (off, following, copying, waiting, unreachable, needs_full_copy, misconfigured, failing or settling), how far behind it is, the rows waiting, the published index next to the main index, the last full copy, the last error, the dead-letter count and the lag cap. state_exists is true when this database holds mirror state even though this server has no mirror configured; warnings then carries configured_on_one_copy_only. The route is read-only. Responses are not cacheable.
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`SearchMirrorStatus`](#searchmirrorstatus) | OK |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key; forbidden: the API key's scopes exclude this route. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | search_mirror_status_unavailable: the database is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
+
 ### `POST /api/bloem/v1/admin/session`
 
 Exchange a login session for a scoped administrative context.
@@ -3669,6 +3686,43 @@ Type: object.
 | --- | --- | --- | --- |
 | `account_id` | integer (int64) | yes |  |
 | `reason` | string | yes |  |
+
+### SearchMirrorCopyStatus
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `done` | integer (int64) | yes | Documents copied so far. |
+| `ratio` | number (double) | yes | done / total, 0 to 1. |
+| `started_at` | string or null (date-time) | yes | When the copy began (UTC); null when unknown. |
+| `total` | integer (int64) | yes | Documents the copy will hold; shown for progress only, so it may be 0 or approximate. |
+
+### SearchMirrorStatus
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `configured` | boolean | yes | True when this server has the mirror address set. |
+| `copy` | [`SearchMirrorCopyStatus`](#searchmirrorcopystatus) or null | yes | The full copy in progress; null when none. |
+| `dead_letters` | integer (int64) | yes | Items the mirror could not index and set aside. |
+| `error_since` | string or null (date-time) | yes | When the current run of failures began (UTC); null when there is none. |
+| `key_source` | string | yes | Where the mirror's API key comes from: file, environment or none; an empty string when not configured. The key itself is never returned. |
+| `lag_seconds` | number or null (double) | yes | Seconds between now and the moment the mirror is up to date as of; null when the mirror holds no bookmark yet. |
+| `last_error` | string |  | The last failure, in English; omitted when there is none. |
+| `last_full_copy_at` | string or null (date-time) | yes | When the mirror last finished a full copy (UTC); null when never. |
+| `main_index` | string | yes | The index the main Meilisearch has published; empty when none. |
+| `max_lag_seconds` | integer (int64) | yes | The longest lag, in seconds, before the mirror stops catching up and copies everything again; 0 until the mirror has run. |
+| `mirror_index` | string | yes | The index the mirror has published; empty before the first copy. |
+| `pending_events` | integer or null (int64) | yes | Outbox rows the mirror has not applied; null when the mirror holds nothing yet or the count was unavailable. |
+| `pending_events_capped` | boolean | yes | True when pending_events stopped counting at its limit of 1,000,000. |
+| `reason` | string |  | An English code saying why, such as past_cap or key_file_unreadable; omitted when there is none. |
+| `role_swaps` | integer (int64) | yes | Failovers the mirror has handled. |
+| `settling` | boolean | yes | True while a role swap is settling: the new main index is being brought up to date. |
+| `settling_overdue` | boolean | yes | True when a swap has been settling for more than 30 minutes. |
+| `source` | string | yes | Where the settings came from: environment, or an empty string when not configured. |
+| `state` | string | yes | One of off, following, copying, waiting, unreachable, needs_full_copy, misconfigured, failing or settling. A newer server may send more. |
+| `state_exists` | boolean | yes | True when this database holds mirror state, whether or not this server is configured. |
+| `up_to_date_as_of` | string or null (date-time) | yes | Every change committed before this time (UTC) is on the mirror; null when the mirror holds no bookmark yet. |
+| `url` | string | yes | The mirror's address with any user name and password removed; empty when not configured. |
+| `warnings` | array of string | yes | Warning codes: configured_on_one_copy_only, settling_overdue and stood_down today; a newer server may send more. |
 
 ### Selection
 

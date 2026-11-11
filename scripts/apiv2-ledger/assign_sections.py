@@ -123,7 +123,7 @@ BLOEM_PLATFORM = {
 }
 
 # /api/bloem/v1/<a>[/admin/<b>] -> section
-BLOEM_ADMIN = {"organization": "bloem-admin-organization"}
+BLOEM_ADMIN = {"organization": "bloem-admin-organization", "search": "bloem-admin-core"}
 # Book request lane administration under /admin/organization/<a>.
 BLOEM_BOOK_REQUEST_ADMIN = (
     "book-requests", "ebook-requests", "ebook-request-integrations",

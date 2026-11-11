@@ -1318,6 +1318,7 @@ PUT /api/bloem/v1/admin/platform/upgrade-prompt	non-media
 GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement	non-media
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply	non-media
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run	non-media
+GET /api/bloem/v1/admin/search/mirror	non-media
 POST /api/bloem/v1/admin/session	non-media
 GET /api/bloem/v1/ambience/public	non-media
 GET /api/bloem/v1/capabilities	non-media

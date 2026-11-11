@@ -134,6 +134,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			Preview:        bloemPreviewHandler(deps),
 			PreviewAdmin:   bloemPreviewAdminHandler(deps),
 			LibraryFigures: bloemLibraryFiguresHandler(deps),
+			SearchMirror:   bloemSearchMirrorHandler(deps),
 			UpgradePrompt:  bloemUpgradePromptHandler(deps),
 			NewArrivals:    bloemNewArrivalsHandler(deps),
 			Client:         newBloemClientSurface(deps, authMW, tenantMW, searchProvider, liveTVAdmin),
@@ -158,6 +159,7 @@ type bloemRouteSurfaces struct {
 	Preview                *handlers.BloemPreviewHandler
 	PreviewAdmin           *handlers.BloemPreviewAdminHandler
 	LibraryFigures         *handlers.BloemLibraryFiguresHandler
+	SearchMirror           *handlers.BloemSearchMirrorHandler
 	UpgradePrompt          *handlers.BloemUpgradePromptHandler
 	NewArrivals            *handlers.BloemNewArrivalsHandler
 	BookRequests           *handlers.BloemBookRequestsHandler
@@ -189,6 +191,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 		r.Get("/capabilities", system.HandleCapabilities)
 		mountBloemPreviewAdmin(r, surfaces.PreviewAdmin, authMW, adminMW)
 		mountBloemLibraryFigures(r, surfaces.LibraryFigures, authMW, adminMW)
+		mountBloemSearchMirror(r, surfaces.SearchMirror, authMW, adminMW)
 		mountBloemUpgradePrompt(r, surfaces.UpgradePrompt, authMW, adminMW)
 		mountBloemNewArrivals(r, surfaces.NewArrivals, authMW, adminMW)
 		if surfaces.Preview != nil {

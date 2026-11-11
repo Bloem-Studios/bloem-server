@@ -40,7 +40,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1173
+      "route_count": 1174
     },
     {
       "id": "api_v2",
@@ -62,7 +62,7 @@
     }
   ],
   "totals": {
-    "routes": 1358,
+    "routes": 1359,
     "conditional_routes": 931,
     "streaming_routes": 45,
     "websocket_routes": 4
@@ -14240,6 +14240,35 @@
       "success_statuses": null,
       "error_codes": null,
       "source_file": "internal/api/router_bloem.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/admin/search/mirror",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemSearchMirrorHandler).HandleGet",
+      "handler_expr": "h.HandleGet",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 39,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_search_mirror.go"
     },
     {
       "listener": "api",

@@ -77,7 +77,8 @@ TOPICS = [
       ("Resource tenancy foundation", "resource-tenancy-foundation.md"),
       ("OPA tenant authorization", "opa-tenant-authorization.md"), ("Lifecycle safety", "bloem-lifecycle-safety.md")],
      [r"^/admin/session(/|$)", r"^/organizations(/|$)", r"^/admin/organization/",
-      r"^/admin/platform/(organizations|tenants|accounts|library-figures|new-arrivals)(/|$)"],
+      r"^/admin/platform/(organizations|tenants|accounts|library-figures|new-arrivals)(/|$)",
+      r"^/admin/search/"],
      "Administrative contexts, organization administration (people, groups, invitations, libraries, grants, "
      "audit and policy decisions), the platform's organization lifecycle and reports, the storefront's reseller "
      "organizations (tenants) and their members, and an account's profiles, devices and sign-in sessions."),
