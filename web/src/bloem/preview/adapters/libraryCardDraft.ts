@@ -1,4 +1,4 @@
-import { LIVE_TV_ROW } from "@/bloem/admin/LiveTvPermissionRows";
+import { LIVE_TV_ROW } from "@/pages/admin-users/detail/access/BloemLiveTvPermissionRows";
 import { PERMISSION_WATCH_LIVE_TV } from "@/lib/bloemPermissions";
 import { hasAssignedPermission, setAssignedPermission } from "@/lib/permissions";
 import {

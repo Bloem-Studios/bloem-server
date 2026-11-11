@@ -1,4 +1,7 @@
-import { LiveTvPermissionEditRow, LiveTvPermissionRow } from "@/bloem/admin/LiveTvPermissionRows";
+import {
+  LiveTvPermissionEditRow,
+  LiveTvPermissionRow,
+} from "@/pages/admin-users/detail/access/BloemLiveTvPermissionRows";
 import { useId } from "react";
 import { Link } from "react-router";
 import { ArrowUpRight, Lock } from "lucide-react";
