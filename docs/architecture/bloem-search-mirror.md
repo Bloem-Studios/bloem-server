@@ -1,7 +1,8 @@
 # How the search mirror works
 
-> **Provenance and status.** Bloem page, written on 2026-11-11 and checked against
-> `main` at `9b86a8e40`. The search mirror is a Bloem addition: Silo has one
+> **Provenance and status.** Bloem page, rewritten on 2026-11-11 and checked against
+> `main` at `691b148e2` with the search mirror's own commits on top, which land
+> together with this page. The search mirror is a Bloem addition: Silo has one
 > Meilisearch and no second copy of its index. The mirror is off unless an operator
 > turns it on. The technical rules are in the [For developers](#for-developers)
 > section.
@@ -93,7 +94,7 @@ transactions had finished at one moment.
 
 1. Each run takes a new snapshot.
 2. It applies exactly the rows from transactions that finished between the bookmark
-   and the new snapshot.
+   and the new snapshot, in the order of their numeric transaction id.
 3. It stores the new snapshot as the bookmark.
 
 A long-running transaction elsewhere does not hold the mirror up. Its rows are picked
@@ -172,8 +173,15 @@ it got after each acknowledged batch, so it carries on after a Silo restart. Whi
 copy runs, the mirror applies no small changes: the final catch-up from the starting
 snapshot covers them.
 
+A batch the mirror refuses is split, as a page is (see
+[when something fails](#when-something-fails)). The documents Meilisearch itself
+refuses are dead-lettered and the copy goes on. Only a batch of two or more documents
+with none accepted stops the copy, and then the mirror is `failing`.
+
 After publishing, the bookmark becomes the snapshot from step 1, so everything that
-changed during the copy is applied next. The mirror's dead-letters are cleared.
+changed during the copy is applied next. The dead-letters from before the copy are
+cleared, because the copy holds those items as they are now. The ones the copy itself
+refused stay.
 Superseded indexes **on the mirror only** are deleted: this prefix's `_rebuild_*` and
 `_mirrorcopy_*` names and the previously published index. The identity marker index
 and every index outside the prefix are never touched.
@@ -213,10 +221,17 @@ nothing more.
 | Both carry the same id | The mirror server is a clone of the main | New id on the mirror, then a full copy |
 | The mirror has an unknown id or none | The mirror server is new or was replaced | Writes an id, then a full copy |
 | The main has an unknown id or none | The main server was replaced | Writes an id. The main index rebuilds by itself, because its index is missing. The mirror carries on |
-| A marker cannot be read | That server is down | Applies nothing if its own marker cannot be confirmed |
+| The mirror's marker cannot be read, and the main is the remembered **mirror** | A failover while the old main is down | The swap step, below. It needs only the database and the main server |
+| The mirror's marker cannot be read, otherwise | The mirror server is down | Applies nothing to the mirror |
+| The main's marker cannot be read | The main server is down | Records the error and applies nothing |
 
-The last row matters. The bookmark always describes the server whose marker matches,
-so a change applied to the wrong server cannot move it on.
+The mirror's marker matters. The bookmark always describes the server whose marker
+matches, so a change applied to the wrong server cannot move it on.
+
+The swap is decided from the main's marker alone, so a crash failover works with the
+old node still down. The swap step, the settle replay and a main rebuild a swap left
+owed run whatever the mirror's own marker shows, because none of them needs the mirror
+server.
 
 ### The swap step
 
@@ -225,22 +240,38 @@ moment, the main index's lock, so it cannot race the main index's sync or rebuil
 This is the only time the mirror takes the main index's lock.
 
 1. **If the old mirror was following the current index:**
-   - It notes the oldest row the old main had not finished.
    - It reopens every main-index row the old mirror's bookmark had not covered:
      `processed_at` is cleared and the tries are reset. The main index re-sends those
      changes to the new main within a minute or two.
    - It adds fresh upsert rows for the old mirror's dead-lettered items.
-   - The new mirror, the old main, gets a bookmark from that oldest unfinished row, so
-     it receives everything the old main had not finished.
 2. **If the old mirror was mid-copy or hopelessly behind:**
    - With no index under the current name, the main index's own code rebuilds it.
      Search falls back to Postgres meanwhile, as it does whenever an index is
      missing.
    - With a stale index under that name, the mirror starts the normal main rebuild
-     task. Search keeps using the stale index until the new one is published.
-3. **It swaps the remembered identities.** It also records when the swap happened
+     task. It does so only when that index is the one the old mirror itself
+     published. Silo's rebuild publishes every index under a fresh name, so an index
+     under a name the mirror never published was built on that server after the
+     failover, and is fresh. The rebuild is recorded in the mirror's row and started
+     after the swap has released the main index's lock, which the rebuild takes
+     itself. Every later run starts it again until the main state names another
+     index, so a start that fails is not lost. Search keeps using the stale index
+     until the new one is published.
+3. **The new mirror, the old main, gets a bookmark** from the oldest main-index row it
+   may lack. That is the oldest unfinished row, or else the oldest row processed since
+   the earliest lease start of the processes that began after the previous swap, less
+   5 minutes. Those processes include the new copy's, whose main sync may have sent
+   rows only to the new main before this swap. Leases silent for longer than the cap
+   are left out. A wider replay is harmless, because every item is rebuilt from
+   Postgres.
+4. **It swaps the remembered identities.** It also records when the swap happened
    (database time), which process did it, and that the swap is **settling**. All of
    this is one transaction: a crash leaves the old state or the new one, never half.
+
+The mirror's row is saved by compare-and-set on a generation counter. Every save
+requires the generation the run loaded. A run that lost the row, because another run
+saved it, or lost its lock, because a database failover dropped it, stops quietly and
+records nothing. A stale process therefore cannot undo a swap.
 
 ### Two Silo copies run together for a while
 
@@ -320,10 +351,17 @@ Bloem puts a **mirror-aware wrapper** around that step.
 **The cap** is `SILO_MEILISEARCH_MIRROR_MAX_LAG`, 72 hours by default, which covers a
 weekend outage of the other node. It cannot be 24 hours, because cleanup already keeps
 rows that long. It is stored in the mirror's row so cleanup reads the same value the
-mirror does. Past the cap, measured from the time of the bookmark's snapshot, cleanup
-stops holding rows and the mirror marks itself `needs_full_copy`. When the mirror
-server answers again, the mirror makes the copy by itself. Both sides use the same
-rule on the same row, so they always agree.
+mirror does. Both sides measure the cap from the same time in the same row:
+
+- while a copy runs, the copy's last progress. A copy that keeps making progress is
+  never past the cap, however long it takes. A copy that made no progress for longer
+  than the cap starts again;
+- otherwise, the later of the bookmark's snapshot and the last published copy.
+
+Past the cap, the mirror marks itself `needs_full_copy`. When the mirror server answers
+again, the mirror makes the copy by itself. Cleanup stops holding rows 15 minutes after
+the cap. A run decides "past the cap" when it starts and works for at most 5 minutes,
+so the margin lets a run that started under the cap finish, and covers clock skew.
 
 **While Silo switching is enabled, the cap is at most 20 hours.** Upstream Silo, when
 it serves the database, holds nothing for the mirror and deletes rows processed more
@@ -345,8 +383,10 @@ The mirror tells three kinds of trouble apart.
    lag grows, and the state is `unreachable` since a time. Cleanup holds rows up to the
    cap. This matches the main index, whose outages do not use up tries either.
 2. **The key is rejected** (HTTP 401 or 403). The state is `misconfigured`, reason
-   "key rejected". No tries are used. Meilisearch also answers 403 when the key's
-   indexes do not cover the index asked for.
+   "key rejected". No tries are used, and the process stops trying until Silo
+   restarts. Meilisearch also answers 403 when the key's indexes do not cover the index
+   asked for. The finding clears after a page succeeds, for example once the key is
+   fixed and Silo restarted.
 3. **The mirror rejects a page,** because a Meilisearch task fails or another 4xx
    comes back, or Postgres fails while building the page.
    1. The page is retried with the main index's timing: 30 seconds times the number
@@ -359,17 +399,21 @@ The mirror tells three kinds of trouble apart.
       content id, the first and last failure, the tries and the last error.
    4. The mirror moves on.
 
-**Only what the split proves bad is dead-lettered.** If no half of a page is accepted,
-for example with a full disk or a broken index, the mirror server itself is failing.
-Then nothing is dead-lettered, the bookmark stays put, and the state is `failing`
-with the error. A broken mirror cannot dead-letter the whole catalog.
+**Only what the split proves bad is dead-lettered.** If a page of two or more items
+has nothing accepted, for example with a full disk or a broken index, the mirror
+server itself is failing. Then nothing is dead-lettered, the bookmark stays put, and
+the state is `failing` with the error. A broken mirror cannot dead-letter the whole
+catalog. A refused page of one item is dead-lettered, because nothing tells a refusing
+server from a bad item.
 
 Once an hour the mirror retries its dead-lettered items by id. A success removes the
 entry, and so does any later change to the same item. A full copy clears them all.
 
-After a page succeeds, a mirror that was `unreachable` or `failing` goes back to
-`following`, and its last error and retry timing are cleared. A shutdown in the middle
-of a page never counts as an error and never saves a failure state.
+A mirror that was `unreachable` goes back to `following` as soon as the mirror server
+answers again. A mirror that was `failing`, or whose key was rejected, goes back to
+`following` after a page succeeds. Either way its last error and retry timing are
+cleared. A shutdown in the middle of a page never counts as an error and never saves a
+failure state.
 
 ## Watching the mirror
 
@@ -382,7 +426,7 @@ this list wins.
 | --- | --- |
 | `misconfigured` | A configuration fault, a rejected key, or an address that reaches the main server |
 | `unreachable` | The mirror server cannot be reached |
-| `failing` | The mirror server refuses every part of a page |
+| `failing` | The mirror server accepts nothing of a page or copy batch of two or more items, or another step (a copy, a publish, a marker write) fails on a rejection or a database error |
 | `needs_full_copy` | The mirror fell behind past the cap, or is otherwise due a full copy that has not started |
 | `copying` | A full copy is running |
 | `waiting` | The main index is not current yet |
@@ -398,11 +442,11 @@ same values. Aggregate them with `max`. A sample older than 90 seconds is left o
 | Metric | Meaning |
 | --- | --- |
 | `silo_search_mirror_state{state}` | 1 for the current state: `following`, `copying`, `waiting`, `unreachable`, `needs_full_copy`, `misconfigured`, `failing`, `settling` |
-| `silo_search_mirror_lag_seconds` | Now minus the time of the bookmark's snapshot |
-| `silo_search_mirror_pending_events` | Outbox rows the mirror has not applied |
+| `silo_search_mirror_lag_seconds` | Now minus the time of the snapshot the mirror holds: the copy's start while a copy runs, the bookmark otherwise |
+| `silo_search_mirror_pending_events` | Outbox rows the mirror has not applied, counted up to 1,000,000. Absent when the count fails; the other series are still exported |
 | `silo_search_mirror_dead_letters` | Items the mirror could not index |
-| `silo_search_mirror_last_success_timestamp_seconds` | Last page or copy batch that succeeded |
-| `silo_search_mirror_copy_progress_ratio` | Progress of a running full copy, from 0 to 1 |
+| `silo_search_mirror_last_success_timestamp_seconds` | Last page or copy batch that succeeded. It stays still in a quiet catalog, so do not alert on it alone |
+| `silo_search_mirror_copy_progress_ratio` | Progress of a full copy, from 0 to 1, also while it waits out an outage; 0 when none is under way |
 | `silo_search_mirror_errors_total{kind}` | `unreachable`, `rejected` or `database`. A rejected key counts as `rejected` |
 | `silo_search_mirror_role_swaps_total` | Failovers the mirror handled |
 
@@ -426,7 +470,7 @@ tasks on the existing tasks page: `sync_catalog_search_mirror` and
 - the mirror's address with any password part removed, and whether a key is set and
   from where;
 - the state, with progress while it is copying;
-- the lag and "up to date as of";
+- the lag and "up to date as of", measured from the same snapshot as the lag metric;
 - the rows waiting;
 - the published index name next to the main index's name;
 - the last full copy;
@@ -458,6 +502,16 @@ tasks on the existing tasks page: `sync_catalog_search_mirror` and
   and the new index side by side until the copy is published. Run it off-peak.
 - **Meilisearch upgrades are the operator's job.** The mirror does not carry the
   Meilisearch binary, so upgrade both servers and keep their versions equal.
+- **The settle replay waits on every older process with the mirror configured,** not
+  only on the old copy. A copy that runs two or more such processes can therefore stay
+  settling after a move, and the admin section shows `settling_overdue` after 30
+  minutes.
+- **A copy interrupted by a failover leaves its side index behind.** Its
+  `<prefix>_mirrorcopy_*` index stays on the server that is now the main. The mirror
+  writes nothing to the main server except its marker, so it never deletes that index.
+  Remove it by hand.
+- **No test pins the copy of Silo's cleanup query yet.** When Silo changes
+  `PruneProcessed`, compare it with `searchMirrorSiloPruneSQL` by hand.
 
 ## Who can change what
 
@@ -555,8 +609,10 @@ Every new line is in a `bloem_*` file, a Bloem-owned file or an existing seam.
   visible in the new snapshot (`pg_visible_in_snapshot()`) but not in the bookmark. The
   index range runs from the bookmark's oldest running transaction
   (`pg_snapshot_xmin()`) to the new snapshot's next transaction (`pg_snapshot_xmax()`).
-- A large window is paged inside by `(tx_id, id)`. The resume point `(tx_id, id)` is
-  saved with the page. The bookmark moves only when the window is drained, so a restart
+- A large window is paged inside by `(tx_id, id)`, ordered by the numeric `xid8`
+  column and never by its text, so `idx_catalog_search_index_events_tx` serves each
+  page and the page stops at its size. The resume point `(tx_id, id)` is saved with
+  the page. The bookmark moves only when the window is drained, so a restart
   in the middle of a catch-up, such as the daily deploy while the mirror is hours behind,
   continues exactly where it stopped and skips no row.
 - The page size is the live sync batch size. Documents go in payload batches
@@ -574,7 +630,7 @@ Every new line is in a `bloem_*` file, a Bloem-owned file or an existing seam.
 | Dead-letter retry | Hourly |
 | Settle quiet time | 2 min; a warning after 30 min |
 | Process lease | Touched every 15 s |
-| Metrics | Sampled every 30 s; samples older than 90 s are left out |
+| Metrics | Sampled every 30 s; samples older than 90 s are left out; the pending count has its own 10 s budget |
 | Lag cap | `SILO_MEILISEARCH_MIRROR_MAX_LAG`, 72 h by default, at most 20 h while Silo switching is enabled |
 
 ### Publishing a copy on Meilisearch 1.56
@@ -655,8 +711,10 @@ index.
   keep it apart from the main sync.
 - A mirror never changes the main index's sync: with the mirror down or slow, the main
   sync's runs, timings and results are unchanged.
-- The cleanup wrapper's copy of Silo's query is pinned by a test, so a change upstream
-  gets looked at instead of drifting.
+- The cleanup wrapper's copy of Silo's query must stay identical to Silo's
+  `PruneProcessed`. No test pins it yet (see [known limits](#known-limits)).
+- The mirror's row is saved by compare-and-set on its generation counter, so a run
+  that no longer owns the mirror never overwrites a newer row.
 - The wrapper is always installed, even without a variable. With no mirror row it calls
   Silo's own `PruneProcessed`. A process without the variables therefore still holds
   rows that another, configured process needs.
@@ -674,15 +732,30 @@ index.
 - The Meilisearch tests use in-process fake servers. The contract tests above run the
   same cases against the fake and, when configured, a real server, which keeps the fake
   true to 1.56.
-- The tests cover: a late commit is not skipped; a long transaction does
-  not stall the mirror; order and repeats do not matter; cleanup keeps what the mirror
-  needs and releases it past the cap; a main rebuild is followed and the half-built
-  copy is never visible; a copy resumes after a restart; a failover with swapped
-  addresses, including the overlap; the same-server refusal and a clone getting a new
-  id; each failure kind; a restore resetting the mirror; no footprint without the
-  mirror, and Silo starting with every kind of bad configuration; the main index
-  unaffected; and old rows without `tx_id` ignored while `make silo-switch-check`
-  still passes.
+- The tests that exist cover:
+  - the settings (`bloem_search_mirror_config_test.go`): off when the address is unset
+    or blank, the key file trimmed, an empty key file meaning no key, each problem and
+    only the first one reported, addresses compared after normalising, the lag cap
+    parsed, the address redacted, and no fallback to the main key;
+  - the database changes (`bloem_search_mirror_schema_db_test.go`): `tx_id` is the
+    writing transaction and separates transactions, the column is nullable with its
+    default, the index is valid, and the state column and both new tables exist;
+  - the state and its harness (`bloem_search_mirror_state_db_test.go`): the row's
+    round trip, an absent row, a restore deleting it, the held snapshot, snapshot
+    parsing, the process lease keeping its start time, finding an older live process,
+    the lag cap while Silo switching is enabled, the default options, and the test
+    environment's isolated schemas, main sync and fake documents;
+  - Meilisearch (`bloem_search_mirror_meili_test.go`): the contract tests above, how
+    errors are sorted, the fake's helpers, and a publish that keeps the side index
+    when the swap fails;
+  - the web: `web/src/bloem/admin/SearchMirrorStatus.test.tsx` (what the section shows
+    in each state, the warnings, the copy progress, the capped count, the last error
+    and the dead-letters, and nothing outside a Platform context) and
+    `web/src/hooks/queries/admin/searchMirror.test.tsx` (the query runs only in a
+    Platform context, bound to its authority).
+- Following, full copies, failover, settle, cleanup, failure handling, the metrics,
+  the status route and the wiring have no tests yet. That was a deliberate decision
+  for this release, not an oversight.
 
 ### Related pages
 
