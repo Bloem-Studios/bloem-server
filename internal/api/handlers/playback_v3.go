@@ -1985,6 +1985,7 @@ func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt
 	if h.NativeVideo != nil {
 		r = r.WithContext(withNativeVideoSnapshots(r.Context()))
 	}
+	r = h.withNativePreflight(r)
 	r = r.WithContext(withPlaybackRoutingPolicySnapshotV3(r.Context(), h.playbackRoutingPolicyV3()))
 	timings := newPlaybackStartTimingsV3()
 	var req playback.StartRequestV3
