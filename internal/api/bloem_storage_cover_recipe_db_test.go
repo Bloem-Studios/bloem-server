@@ -345,6 +345,12 @@ func TestStorageCoverRecipeChoosesViewersPublicationDB(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The account's first profile is its primary one, which inherits the
+	// account's libraries and ignores a limit (Silo #3915), so the restricted
+	// viewer is a second profile.
+	if err = store.CreateProfile(t.Context(), userstore.Profile{ID: uuid.NewString(), Name: "Household"}); err != nil {
+		t.Fatal(err)
+	}
 	pid := uuid.NewString()
 	if err = store.CreateProfile(t.Context(), userstore.Profile{ID: pid, Name: "Second library only", PINHash: "synthetic-pin-hash", LibraryRestrictionsEnabled: true, AllowedLibraryIDs: []int{folders[1]}}); err != nil {
 		t.Fatal(err)
