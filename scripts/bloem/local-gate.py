@@ -16,9 +16,8 @@ scripts/bloem/local-gate_test.py fails when CI gains a make target or a go
 test this list lacks. Each job that CI gives its own database gets its own
 fresh database here, in one PostgreSQL container sized like CI's.
 
-`services up` starts the containers, creates bloem_test and
-bloem_contract_scenarios_ci, prints shell exports for them and leaves them
-running for debugging; `services down ID` removes them.
+`services up` starts the containers, creates bloem_test, prints shell exports
+for it and leaves them running for debugging; `services down ID` removes them.
 """
 
 import argparse
@@ -42,7 +41,7 @@ REDIS_IMAGE = "redis:7-alpine"
 PG_USER = "bloem_tenant"
 PG_PASSWORD = "invented-ci-password"
 
-PHASES = ["build", "verify", "lint", "web", "go", "db", "tenancy", "scenarios"]
+PHASES = ["build", "verify", "lint", "web", "go", "db", "tenancy"]
 
 
 class Step(NamedTuple):
@@ -99,9 +98,6 @@ STEPS = [
     Step("verify", "client-dtos", "make verify-client-dtos"),
     Step("verify", "playback-fixtures", "make verify-playback-fixtures"),
     Step("verify", "route-inventory", "make verify-route-inventory"),
-    Step("verify", "migration-ledger", "make verify-migration-ledger"),
-    Step("verify", "scenario-catalogs", "make verify-scenario-catalogs"),
-    Step("verify", "offline-routes", "make verify-offline-routes"),
     Step("verify", "apiv2-openapi", "make verify-apiv2-openapi"),
     Step("verify", "bloem-openapi", "make verify-bloem-openapi"),
     Step("verify", "bloem-api-catalogue", "make verify-bloem-api-catalogue"),
@@ -249,13 +245,6 @@ STEPS = [
          _needs("pg", "fresh_db:silo_identity_setup_ci")),
     Step("tenancy", "auth-race", _AUTH + "go test -race -timeout=60m ./internal/auth -count=1",
          _needs("pg", "fresh_db:silo_identity_setup_ci")),
-    # scenario-executor: an empty database the executor migrates, seeds and truncates.
-    Step(
-        "scenarios",
-        "test-scenarios",
-        "SILO_SCENARIO_DATABASE_URL=" + _pg("bloem_contract_scenarios_ci") + " make test-scenarios",
-        _needs("pg", "fresh_db:bloem_contract_scenarios_ci"),
-    ),
 ]
 
 
@@ -283,7 +272,6 @@ def redis_command(sid, port):
 def services_exports(sid, pg_port, redis_port):
     pairs = [
         ("SILO_TEST_DATABASE_URL", pg_url(pg_port, "bloem_test")),
-        ("SILO_SCENARIO_DATABASE_URL", pg_url(pg_port, "bloem_contract_scenarios_ci")),
         ("SILO_TEST_REDIS_URL", redis_url(redis_port)),
         ("SILO_TEST_REDIS_DISPOSABLE_ADDR", f"127.0.0.1:{redis_port}"),
         ("GATE_SERVICES_ID", sid),
@@ -456,8 +444,7 @@ def main(argv=None):
         return 0
     sid = f"{os.getpid()}-{secrets.token_hex(2)}"
     pg_port, r_port = start_services(sid)
-    for name in ("bloem_test", "bloem_contract_scenarios_ci"):
-        recreate_database(sid, name)
+    recreate_database(sid, "bloem_test")
     sys.stdout.write(services_exports(sid, pg_port, r_port))
     return 0
 

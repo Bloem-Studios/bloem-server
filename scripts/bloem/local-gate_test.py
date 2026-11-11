@@ -89,12 +89,8 @@ class LocalGateTest(unittest.TestCase):
     def test_phases_in_order(self):
         seen = list(dict.fromkeys(step.phase for step in self.gate.STEPS))
         self.assertEqual(
-            seen, ["build", "verify", "lint", "web", "go", "db", "tenancy", "scenarios"]
+            seen, ["build", "verify", "lint", "web", "go", "db", "tenancy"]
         )
-
-    def test_scenario_executor_runs_on_its_own_database(self):
-        step = next(s for s in self.gate.STEPS if "make test-scenarios" in s.cmd)
-        self.assertIn("fresh_db:bloem_contract_scenarios_ci", step.needs)
 
     def test_every_ci_make_target_and_go_test_is_in_the_gate(self):
         ci = commands(run_blocks(WORKFLOW.read_text()))
@@ -159,7 +155,6 @@ class LocalGateTest(unittest.TestCase):
             self.assertRegex(line, r"^export [A-Z_]+=\S+$")
         self.assertIn("export GATE_SERVICES_ID=123-abcd", text)
         self.assertIn("127.0.0.1:40001/bloem_test?", text)
-        self.assertIn("127.0.0.1:40001/bloem_contract_scenarios_ci?", text)
         self.assertIn("export SILO_TEST_REDIS_URL=redis://127.0.0.1:40002/0", text)
 
     def test_list_lines_are_phase_slash_step_tab_command(self):

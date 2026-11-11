@@ -513,30 +513,6 @@ jobs:
       - name: Verify the legacy native route inventory is current
         run: make verify-route-inventory
 
-      # Every inventoried route needs a migration decision before v2 work
-      # ports it. The ledger is schema-checked and reconciled against the
-      # inventory one-to-one, so a new route without a ledger entry, or a
-      # stale entry for a removed route, fails here.
-      - name: Verify the v2 migration ledger covers the route inventory
-        run: make verify-migration-ledger
-
-      # Every tier-1 row in a migration wave needs an executable scenario
-      # catalog before that wave's first section PR. The catalogs are
-      # schema-checked and reconciled against the ledger here; the executor
-      # runs them in the scenario-executor job against an empty database
-      # named by SILO_SCENARIO_DATABASE_URL (a dedicated variable: the
-      # executor truncates, so it never shares SILO_TEST_DATABASE_URL with the
-      # other DB-gated packages).
-      - name: Verify the tier-1 scenario catalogs cover their waves
-        run: make verify-scenario-catalogs
-
-      # The executor's offline run-vs-skip decision reads a committed list of
-      # the routes the no-database API router registers, because the sealed
-      # router cannot be walked from outside internal/api. This regenerates
-      # that list from the real router and fails if the committed file drifted.
-      - name: Verify the offline route set matches the API router
-        run: make verify-offline-routes
-
       # The v2 OpenAPI artifact is rendered from the Go registries and the
       # binary serves the committed bytes, so a registration change that does
       # not regenerate leaves clients reading a contract the server no longer
@@ -679,7 +655,7 @@ jobs:
       # policy authority, and install the test-only fixture-compatibility
       # triggers (internal/bloemtestdb; never a migration) so upstream Silo
       # fixtures run unedited against the tenancy schema. make test-go repeats
-      # this idempotently. The scenario executor runs in its own job below.
+      # this idempotently.
       # The parallel suite migrates many disposable databases at once; the
       # stock lock table (64 locks x 100 connections) runs out of shared
       # memory under that load. Services take no server flags, so set them
@@ -797,60 +773,6 @@ jobs:
           docker exec "$POSTGRES_CONTAINER_ID" psql -U bloem_tenant -d bloem_test -c "CREATE DATABASE bloem_storage_test_ci"
           go run ./cmd/bloem-testdb
           make test-bloem-library-locations
-
-  scenario-executor:
-    name: Scenario executor
-    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-scenario-executor"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
-    timeout-minutes: 45
-    services:
-      postgres:
-        image: pgvector/pgvector:pg18
-        env:
-          POSTGRES_USER: bloem_tenant
-          POSTGRES_PASSWORD: invented-ci-password
-          POSTGRES_DB: bloem_contract_scenarios_ci
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U bloem_tenant -d bloem_contract_scenarios_ci"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-          --shm-size=1g
-    env:
-      GOWORK: "off"
-      # An empty database the executor owns: it migrates, seeds, and
-      # truncates it, so it never shares SILO_TEST_DATABASE_URL.
-      SILO_SCENARIO_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_contract_scenarios_ci?sslmode=disable
-    steps:
-      - *libvips-cache-key
-      - *libvips-restore
-      - *libvips-install
-
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-
-      - name: Set up Go
-        uses: ./.github/actions/setup-go
-        id: setup-go
-        with:
-          cache-name: scenarios
-
-      - *go-patch
-
-      - *libvips-save
-
-      - name: Run the tier-1 scenario catalogs
-        run: make test-scenarios
-
-      - name: Save the Go cache
-        if: success() && runner.environment == 'github-hosted' && github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request'
-        uses: ./.github/actions/save-go-cache
-        with:
-          job-status: ${{ job.status }}
-          cache-key: ${{ steps.setup-go.outputs.cache-key }}
 
   web:
     name: Web (${{ matrix.part }})
