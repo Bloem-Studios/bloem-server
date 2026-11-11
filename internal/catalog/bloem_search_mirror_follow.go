@@ -40,9 +40,9 @@ func (e *searchMirrorApplyError) Error() string { return e.err.Error() }
 
 func (e *searchMirrorApplyError) Unwrap() error { return e.err }
 
-// Kind is the kind the error was tagged with. Read it with
-// errors.AsType[interface{ Kind() searchMirrorErrorKind }]: classifySearchMirrorError alone
-// cannot tell a Postgres error (database) from a Meilisearch rejection.
+// Kind is the kind the error was tagged with. searchMirrorFailureKind reads it with errors.As on
+// interface{ Kind() searchMirrorErrorKind }: classifySearchMirrorError alone cannot tell a
+// Postgres error (database) from a Meilisearch rejection.
 func (e *searchMirrorApplyError) Kind() searchMirrorErrorKind { return e.kind }
 
 // searchMirrorMeilisearchError tags an error from a mirror call with its classified kind.
@@ -215,14 +215,30 @@ func (m *SearchMirror) follow(ctx context.Context, row *searchMirrorRow, deadlin
 	}
 	state := &row.State
 	// RunOnce follows only while the main index is current and no copy is due, so a mirror
-	// that was waiting for the main index is following now. Unreachable and failing stay until
-	// a page succeeds.
-	if state.State == "" || state.State == SearchMirrorWaiting {
+	// that was waiting for the main index is following now. It follows only after the mirror's
+	// marker was read, so a mirror that was unreachable answers again. Failing stays until a
+	// page succeeds.
+	entered := false
+	switch state.State {
+	case "", SearchMirrorWaiting:
 		state.State = SearchMirrorFollowing
 		state.Reason = ""
+		entered = true
+	case SearchMirrorUnreachable:
+		state.State = SearchMirrorFollowing
+		state.Reason = ""
+		state.LastError = ""
+		state.ErrorSince = nil
+		entered = true
 	}
 	if usable, err := m.followBookmarkUsable(ctx, row); !usable || err != nil {
 		return err
+	}
+	// Saved now, because a retry that is waiting or a spent deadline returns before any page.
+	if entered {
+		if err := m.followSave(ctx, row); err != nil {
+			return err
+		}
 	}
 
 	// fresh is true while the current window was started by this call and nothing in it has
@@ -307,12 +323,7 @@ func (m *SearchMirror) followPage(ctx context.Context, row *searchMirrorRow, lim
 	window.AfterTx, window.AfterID = last.TxID, last.ID
 	state.LastSuccessAt = &now
 	row.LastSyncAt = &now
-	if state.State == SearchMirrorUnreachable || state.State == SearchMirrorFailing {
-		state.State = SearchMirrorFollowing
-		state.LastError = ""
-		state.ErrorSince = nil
-	}
-	state.Retry = nil
+	searchMirrorPageSucceeded(state)
 	return true, m.followSave(ctx, row)
 }
 

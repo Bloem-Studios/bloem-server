@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -92,7 +93,7 @@ func (m *SearchMirror) startCopy(ctx context.Context, row *searchMirrorRow, main
 
 	snapshot, at, err := takeSearchMirrorSnapshot(ctx, m.pool)
 	if err != nil {
-		return fmt.Errorf("start a search mirror copy: %w", err)
+		return searchMirrorDatabaseError(ctx, fmt.Errorf("start a search mirror copy: %w", err))
 	}
 
 	if previous := row.State.Copy; previous != nil && previous.SideUID != "" {
@@ -155,7 +156,7 @@ func (m *SearchMirror) startCopy(ctx context.Context, row *searchMirrorRow, main
 	row.State.Reason = reason
 	row.State.Window = nil
 	if err := saveSearchMirrorRow(ctx, m.pool, *row); err != nil {
-		return err
+		return searchMirrorDatabaseError(ctx, err)
 	}
 	slog.InfoContext(ctx, "search mirror: full copy started",
 		"component", "catalog", "index", side, "target", main.ActiveIndexUID, "reason", reason, "documents", total)
@@ -178,7 +179,8 @@ type searchMirrorCopyBatch struct {
 //     sets LastSuccessAt, and saves. Tasks finish in the order they were sent, so everything up to
 //     AfterContentID is in the side index.
 //  4. When the pages run out it waits for every task and publishes the side index under
-//     TargetUID.
+//     TargetUID. A side index publishIndex refuses as stale (errSearchMirrorSideStale: an
+//     earlier publish swapped it already) starts the copy again.
 //  5. The row then names TargetUID, its schema version and document count, and LastRebuildAt.
 //  6. The copy's start snapshot becomes the bookmark, so the next follow applies what changed
 //     during the copy; Copy, Window, Retry and ForceCopy are cleared.
@@ -215,7 +217,7 @@ func (m *SearchMirror) continueCopy(ctx context.Context, row *searchMirrorRow, d
 
 	live, err := LoadCatalogSearchSettings(ctx, m.settings)
 	if err != nil {
-		return false, fmt.Errorf("continue the search mirror copy: read the batch size: %w", err)
+		return false, searchMirrorDatabaseError(ctx, fmt.Errorf("continue the search mirror copy: read the batch size: %w", err))
 	}
 	batchSize := live.RebuildBatchSize
 	if batchSize <= 0 {
@@ -240,7 +242,10 @@ func (m *SearchMirror) continueCopy(ctx context.Context, row *searchMirrorRow, d
 		row.State.State = SearchMirrorCopying
 		row.State.LastError = ""
 		row.State.ErrorSince = nil
-		return saveSearchMirrorRow(ctx, m.pool, *row)
+		if err := saveSearchMirrorRow(ctx, m.pool, *row); err != nil {
+			return searchMirrorDatabaseError(ctx, err)
+		}
+		return nil
 	}
 	drain := func() error {
 		for len(queue) > 0 {
@@ -258,7 +263,7 @@ func (m *SearchMirror) continueCopy(ctx context.Context, row *searchMirrorRow, d
 		}
 		docs, err := m.docs.LoadDocumentsAfter(ctx, cursor, batchSize, m.startup.IndexTypes, m.startup.Embedder, m.startup.SemanticEnabled, m.startup.BinaryQuantized)
 		if err != nil {
-			return false, fmt.Errorf("continue the search mirror copy: load documents: %w", err)
+			return false, searchMirrorDatabaseError(ctx, fmt.Errorf("continue the search mirror copy: load documents: %w", err))
 		}
 		if len(docs) == 0 {
 			break
@@ -282,18 +287,15 @@ func (m *SearchMirror) continueCopy(ctx context.Context, row *searchMirrorRow, d
 	}
 
 	// A publish that failed after its swap leaves the side index holding the target's old
-	// contents; publishing it again would bring them back. Such a side index is not newer than
-	// the target, so the copy starts again instead.
-	stale, err := searchMirrorCopySideIsStale(ctx, client, c.SideUID, c.TargetUID)
-	if err != nil {
-		return false, fmt.Errorf("continue the search mirror copy: %w", err)
-	}
-	if stale {
-		slog.WarnContext(ctx, "search mirror: the copy's side index is not newer than its target; starting the copy again",
-			"component", "catalog", "index", c.SideUID, "target", c.TargetUID)
-		return false, m.restartCopy(ctx, row)
-	}
+	// contents; publishing it again would bring them back. publishIndex refuses such a side
+	// index, which is not newer than the target (errSearchMirrorSideStale), and the copy starts
+	// again instead.
 	if err := client.publishIndex(ctx, c.SideUID, c.TargetUID); err != nil {
+		if errors.Is(err, errSearchMirrorSideStale) {
+			slog.WarnContext(ctx, "search mirror: the copy's side index is not newer than its target; starting the copy again",
+				"component", "catalog", "index", c.SideUID, "target", c.TargetUID)
+			return false, m.restartCopy(ctx, row)
+		}
 		return false, fmt.Errorf("continue the search mirror copy: %w", err)
 	}
 
@@ -331,7 +333,7 @@ func (m *SearchMirror) continueCopy(ctx context.Context, row *searchMirrorRow, d
 		return saveSearchMirrorRow(ctx, tx, *row)
 	})
 	if err != nil {
-		return false, fmt.Errorf("record the published search mirror copy: %w", err)
+		return false, searchMirrorDatabaseError(ctx, fmt.Errorf("record the published search mirror copy: %w", err))
 	}
 	slog.InfoContext(ctx, "search mirror: full copy published",
 		"component", "catalog", "index", row.ActiveIndexUID, "documents", documents)
@@ -414,42 +416,4 @@ func dropSearchMirrorCopyIndex(ctx context.Context, client *meilisearchClient, u
 		return err
 	}
 	return nil
-}
-
-// searchMirrorCopySideIsStale reports whether side is not newer (createdAt) than an existing
-// target. A swap moves createdAt with the contents, so a side index that a failed publish has
-// already swapped holds the target's older contents and fails this test. With no target, side is
-// never stale.
-func searchMirrorCopySideIsStale(ctx context.Context, client *meilisearchClient, side, target string) (bool, error) {
-	sideInfo, err := client.indexInfo(ctx, side)
-	if err != nil {
-		return false, fmt.Errorf("read %s: %w", side, err)
-	}
-	targetInfo, err := client.indexInfo(ctx, target)
-	if err != nil {
-		if isMeilisearchIndexNotFound(err) {
-			return false, nil
-		}
-		return false, fmt.Errorf("read %s: %w", target, err)
-	}
-	sideAt, err := parseSearchMirrorCopyCreatedAt(side, sideInfo.CreatedAt)
-	if err != nil {
-		return false, err
-	}
-	targetAt, err := parseSearchMirrorCopyCreatedAt(target, targetInfo.CreatedAt)
-	if err != nil {
-		return false, err
-	}
-	return !sideAt.After(targetAt), nil
-}
-
-func parseSearchMirrorCopyCreatedAt(uid, raw string) (time.Time, error) {
-	if strings.TrimSpace(raw) == "" {
-		return time.Time{}, fmt.Errorf("no createdAt for %s from Meilisearch", uid)
-	}
-	at, err := time.Parse(time.RFC3339Nano, raw)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("read the createdAt of %s: %w", uid, err)
-	}
-	return at, nil
 }

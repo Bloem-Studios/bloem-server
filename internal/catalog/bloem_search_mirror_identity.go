@@ -166,7 +166,7 @@ func (m *SearchMirror) settleTargets(ctx context.Context, row *searchMirrorRow) 
 		row.State.State, row.State.Reason = "", ""
 	}
 	if err := saveSearchMirrorRow(ctx, m.pool, *row); err != nil {
-		return "", err
+		return "", searchMirrorDatabaseError(ctx, err)
 	}
 	return verdict, nil
 }

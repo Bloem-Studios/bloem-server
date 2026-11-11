@@ -5,11 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"reflect"
 	"slices"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // The search mirror's failure handling (spec §9). Three kinds of trouble are told apart:
@@ -40,83 +37,20 @@ func searchMirrorRetryDelay(attempts int, base, max time.Duration) time.Duration
 	return base * time.Duration(attempts)
 }
 
-// searchMirrorFailureKind is the kind of a failed mirror step. An error that carries its own
-// kind (applyItems tags database errors) keeps it; a Postgres error is database; everything
-// else is sorted by classifySearchMirrorError.
+// searchMirrorFailureKind is the kind of a failed mirror step. An error tagged with its own kind
+// (searchMirrorApplyError: applyItems, follow and the copy tag theirs, Postgres errors as
+// database) keeps it; anything else is a Meilisearch error, sorted by classifySearchMirrorError.
+// classifySearchMirrorError cannot tell a Postgres error from a rejection, so every database
+// step whose error reaches here is tagged with searchMirrorDatabaseError.
 func searchMirrorFailureKind(err error) searchMirrorErrorKind {
 	if err == nil {
 		return searchMirrorErrNone
 	}
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return searchMirrorErrUnreachable
-	}
-	if kind, ok := searchMirrorTaggedKind(err); ok {
-		return kind
-	}
-	if searchMirrorIsDatabaseError(err) {
-		return searchMirrorErrDatabase
+	var tagged interface{ Kind() searchMirrorErrorKind }
+	if errors.As(err, &tagged) && tagged.Kind() != searchMirrorErrNone {
+		return tagged.Kind()
 	}
 	return classifySearchMirrorError(err)
-}
-
-// searchMirrorTaggedKind finds the kind an error in err's chain carries: as a Kind method, as a
-// field of type searchMirrorErrorKind, or as the error value itself. The outermost tag wins.
-func searchMirrorTaggedKind(err error) (searchMirrorErrorKind, bool) {
-	kindType := reflect.TypeFor[searchMirrorErrorKind]()
-	stack := []error{err}
-	for len(stack) > 0 {
-		e := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		if e == nil {
-			continue
-		}
-		if tagged, ok := e.(interface{ Kind() searchMirrorErrorKind }); ok && tagged.Kind() != searchMirrorErrNone {
-			return tagged.Kind(), true
-		}
-		v := reflect.ValueOf(e)
-		for v.Kind() == reflect.Pointer && !v.IsNil() {
-			v = v.Elem()
-		}
-		switch {
-		case v.Type() == kindType && v.String() != "":
-			return searchMirrorErrorKind(v.String()), true
-		case v.Kind() == reflect.Struct:
-			for i := range v.NumField() {
-				if f := v.Field(i); f.Type() == kindType && f.String() != "" {
-					return searchMirrorErrorKind(f.String()), true
-				}
-			}
-		}
-		switch u := e.(type) {
-		case interface{ Unwrap() error }:
-			stack = append(stack, u.Unwrap())
-		case interface{ Unwrap() []error }:
-			wrapped := u.Unwrap()
-			for i := len(wrapped) - 1; i >= 0; i-- {
-				stack = append(stack, wrapped[i])
-			}
-		}
-	}
-	return searchMirrorErrNone, false
-}
-
-// searchMirrorIsDatabaseError reports whether err came from Postgres: a server error, a failed
-// connection or statement, or one of pgconn's own errors (they all report SafeToRetry).
-func searchMirrorIsDatabaseError(err error) bool {
-	if _, ok := errors.AsType[*pgconn.PgError](err); ok {
-		return true
-	}
-	if _, ok := errors.AsType[*pgconn.ConnectError](err); ok {
-		return true
-	}
-	if _, ok := errors.AsType[*pgconn.PrepareError](err); ok {
-		return true
-	}
-	_, ok := errors.AsType[interface {
-		error
-		SafeToRetry() bool
-	}](err)
-	return ok
 }
 
 // searchMirrorErrorMetricKind is the errors_total kind for a failure kind: a rejected key counts
@@ -264,9 +198,11 @@ func (m *SearchMirror) handleRunError(ctx context.Context, row *searchMirrorRow,
 //   - A rejection or a database error counts a try, and the next waits
 //     searchMirrorRetryDelay(tries).
 //   - On the MaxAttempts-th try the page is split (splitApply). An unreachable or database error
-//     during the split stops it, and that kind's path takes over. When no item is accepted the
-//     mirror is failing: nothing is dead-lettered, the cursor stays, and the next try comes after
-//     RetryMax. Otherwise the refused items are dead-lettered and the cursor moves on.
+//     during the split stops it, and that kind's path takes over. When a page of two or more
+//     items has none accepted the mirror is failing: nothing is dead-lettered, the cursor stays,
+//     and the next try comes after RetryMax. Otherwise (a page of one item counts here, since
+//     nothing tells its refusal from a bad item) the refused items are dead-lettered and the
+//     cursor moves on.
 func (m *SearchMirror) pageFailed(ctx context.Context, row *searchMirrorRow, ids []string, err error) (bool, error) {
 	if err == nil {
 		return false, nil
@@ -314,8 +250,8 @@ func (m *SearchMirror) pageFailed(ctx context.Context, row *searchMirrorRow, ids
 		}
 	}
 
-	if len(accepted) == 0 {
-		// No part of the page was accepted: the mirror server itself is failing.
+	if len(accepted) == 0 && len(ids) > 1 {
+		// No part of a page of several items was accepted: the mirror server itself is failing.
 		if n := len(refusals); n > 0 {
 			s.LastError = searchMirrorErrorText(refusals[n-1].Err)
 			s.Retry.LastError = s.LastError
@@ -337,14 +273,23 @@ func (m *SearchMirror) pageFailed(ctx context.Context, row *searchMirrorRow, ids
 		slog.WarnContext(ctx, "search mirror dead-lettered refused items", "component", "catalog",
 			"refused", len(refusals), "accepted", len(accepted), "err", searchMirrorErrorText(refusals[len(refusals)-1].Err))
 	}
+	searchMirrorPageSucceeded(s)
+	return true, nil
+}
+
+// searchMirrorPageSucceeded records a follow page the mirror took (all of it, or all but the
+// dead-lettered items): the retry timing and the last error are cleared, and a mirror that was
+// unreachable, failing or had its key refused is following again.
+func searchMirrorPageSucceeded(s *searchMirrorState) {
 	s.Retry = nil
 	s.LastError = ""
 	s.ErrorSince = nil
-	if s.State == SearchMirrorUnreachable || s.State == SearchMirrorFailing {
+	switch {
+	case s.State == SearchMirrorUnreachable, s.State == SearchMirrorFailing,
+		s.State == SearchMirrorMisconfigured && s.Reason == string(SearchMirrorProblemKeyRejected):
 		s.State = SearchMirrorFollowing
 		s.Reason = ""
 	}
-	return true, nil
 }
 
 // noteSearchMirrorTry counts a page's try number attempts and schedules the next.
@@ -504,7 +449,7 @@ func (m *SearchMirror) retryDeadLetters(ctx context.Context, row *searchMirrorRo
 	for after := ""; ; {
 		ids, err := searchMirrorDeadLetterIDs(ctx, m.pool, after, size)
 		if err != nil {
-			failure = err
+			failure = searchMirrorDatabaseError(ctx, err)
 			break
 		}
 		if len(ids) == 0 {
@@ -517,12 +462,12 @@ func (m *SearchMirror) retryDeadLetters(ctx context.Context, row *searchMirrorRo
 		}
 		retried += len(accepted) + len(refusals)
 		if err := deleteSearchMirrorDeadLetters(ctx, m.pool, accepted); err != nil {
-			failure = err
+			failure = searchMirrorDatabaseError(ctx, err)
 			break
 		}
 		cleared += len(accepted)
 		if err := writeSearchMirrorDeadLetters(ctx, m.pool, refusals); err != nil {
-			failure = err
+			failure = searchMirrorDatabaseError(ctx, err)
 			break
 		}
 		if abort != nil {
