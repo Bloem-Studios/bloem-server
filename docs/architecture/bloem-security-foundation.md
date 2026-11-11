@@ -6,7 +6,8 @@
 > ownership, administrator passes and the native `/api/bloem/v2` namespace) is a Bloem
 > addition: Silo has one set of accounts, profiles and sign-ins per server. The technical
 > rules are in the [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API, and its
+> technical pages the same day.
 
 Bloem keeps each organization's people, libraries and settings apart, on one server. This
 page walks through the kinds of sign-in and what each may do, what Bloem checks on every
@@ -618,8 +619,8 @@ Technical pages:
 - [Organization domains and branding](bloem-organization-domains.md).
 - [How organizations work](bloem-organizations.md) and
   [how Bloem's native API is organized](bloem-client-surface.md).
-- [Household authority acceptance](household-authority-acceptance.md) and
-  [API key authority acceptance](api-key-authority-acceptance.md).
+- Silo's household and API key authority acceptance pages were deleted with its v1 API
+  (Silo #3200, 2026-11-11).
 
 The pictures are SVG files under `images/security-foundation/`, drawn by
 `scripts/bloem/draw-pictures.py`. Redraw them there, not by hand.

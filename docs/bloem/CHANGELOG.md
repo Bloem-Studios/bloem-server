@@ -1426,8 +1426,9 @@ the older branch's stale measurement.
 
 ## October 15, 2026 — native OpenAPI coverage
 
-The [native OpenAPI artifact](../../contracts/api/bloem/v1/openapi.json) now
-describes 196 operations, adding the 92 previously missing administration and
+The native OpenAPI artifact (then `contracts/api/bloem/v1/openapi.json`, since
+2026-11-11 [`contracts/api/bloem/v2/openapi.json`](../../contracts/api/bloem/v2/openapi.json))
+now describes 196 operations, adding the 92 previously missing administration and
 Live TV operations. The [catalogue](api-catalogue.md) reports zero explicit
 inventory gaps; the wildcard router mount remains a dispatcher.
 

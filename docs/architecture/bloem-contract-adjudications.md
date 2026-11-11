@@ -12,7 +12,8 @@
 > reviewed, pinned decision replaces that expectation. Silo's files are unchanged. The
 > technical rules are in the [For developers](#for-developers) section; the dated results
 > there are history.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API; the same
+> day its links to the deleted adjudication files became plain file names.
 
 Silo describes how its API must behave in **scenario files**: a request, who sends it, and the
 answer Silo expects. Bloem runs those same files against its own server. This page explains
@@ -149,10 +150,11 @@ unchanged. The ordinary Bloem scenario gate applies an explicit, source-pinned d
 expectation layer. This is a deliberate contract decision, not a claim that the original Silo
 expectations passed unchanged.
 
-The implementation is
-[`bloem_adjudications.go`](../../internal/scenariocatalog/bloem_adjudications.go), with all 49
+The implementation was
+`internal/scenariocatalog/bloem_adjudications.go`, with all 49
 transport decisions and their reasons in
-[`bloem_adjudications.json`](../../internal/scenariocatalog/bloem_adjudications.json). The
+`internal/scenariocatalog/bloem_adjudications.json`; both were deleted with the
+scenario catalogs on 2026-11-11. The
 loader checks SHA-256 pins for all six affected baseline catalogs (`api/api-v1-admin-invitations.json`,
 `api/api-v1-admin-system.json`, `api/api-v1-api-keys.json`, `api/api-v1-auth.json`,
 `api/api-v1-onboarding.json` and `api/api-v1-profiles.json`) and compares each supplied
@@ -199,8 +201,8 @@ from the ordinary gate.
 
 ### Route decisions
 
-[`bloem_v1_adjudication_test.go`](../../internal/api/bloem_v1_adjudication_test.go) pins the
-unchanged route snapshots and lists every affected method and path:
+`internal/api/bloem_v1_adjudication_test.go` (deleted with Silo's v1 API on 2026-11-11)
+pinned the unchanged route snapshots and listed every affected method and path:
 
 - Three OAuth routes are existing upstream Silo routes, verified in the tracked upstream
   router, under its v1 prefix: `POST /auth/oauth/complete`, `POST /auth/oauth/{install_id}/init`,
