@@ -352,29 +352,20 @@ func fakeMeiliInvalidKey() *fakeMeiliError {
 }
 
 func (f *fakeMeili) routeLocked(method string, parts []string, query map[string][]string, body []byte, key fakeMeiliKey) (int, any, *fakeMeiliError) {
-	notAllowed := func() (int, any, *fakeMeiliError) { return http.StatusMethodNotAllowed, nil, nil }
-	indexRoute := func(uid string) *fakeMeiliError {
-		if !key.covers(uid) {
-			return &fakeMeiliError{status: http.StatusForbidden, code: "invalid_api_key", typ: "auth",
-				message: fmt.Sprintf("The API key cannot acces the index `%s`, authorized indexes are %q.", uid, key.indexes)}
-		}
-		return nil
-	}
-
 	switch {
 	case len(parts) == 1 && parts[0] == "keys":
 		if method != http.MethodPost {
-			return notAllowed()
+			return fakeMeiliNotAllowed()
 		}
 		return f.createKeyLocked(body, key)
 	case len(parts) == 1 && parts[0] == "swap-indexes":
 		if method != http.MethodPost {
-			return notAllowed()
+			return fakeMeiliNotAllowed()
 		}
 		return f.swapLocked(body, key)
 	case len(parts) == 2 && parts[0] == "tasks":
 		if method != http.MethodGet {
-			return notAllowed()
+			return fakeMeiliNotAllowed()
 		}
 		return f.getTaskLocked(parts[1], key)
 	case len(parts) == 1 && parts[0] == "indexes":
@@ -384,73 +375,95 @@ func (f *fakeMeili) routeLocked(method string, parts []string, query map[string]
 		case http.MethodPost:
 			return f.createIndexLocked(body, key)
 		}
-		return notAllowed()
+		return fakeMeiliNotAllowed()
 	case len(parts) >= 2 && parts[0] == "indexes":
 		uid := parts[1]
-		if err := indexRoute(uid); err != nil {
+		if !key.covers(uid) {
+			return 0, nil, &fakeMeiliError{status: http.StatusForbidden, code: "invalid_api_key", typ: "auth",
+				message: fmt.Sprintf("The API key cannot acces the index `%s`, authorized indexes are %q.", uid, key.indexes)}
+		}
+		return f.routeIndexLocked(method, uid, parts[2:], body)
+	}
+	return 0, nil, fakeMeiliNotFound()
+}
+
+func fakeMeiliNotAllowed() (int, any, *fakeMeiliError) { return http.StatusMethodNotAllowed, nil, nil }
+
+func fakeMeiliNotFound() *fakeMeiliError {
+	return &fakeMeiliError{status: http.StatusNotFound, code: "not_found", message: "Not found."}
+}
+
+// routeIndexLocked serves /indexes/{uid}/rest.
+func (f *fakeMeili) routeIndexLocked(method, uid string, rest []string, body []byte) (int, any, *fakeMeiliError) {
+	switch {
+	case len(rest) == 0:
+		switch method {
+		case http.MethodGet:
+			index, err := f.indexLocked(uid)
+			if err != nil {
+				return 0, nil, err
+			}
+			return http.StatusOK, fakeMeiliIndexView(uid, index), nil
+		case http.MethodDelete:
+			return f.enqueueLocked(uid, "indexDeletion", nil, f.deleteIndexTask(uid))
+		}
+		return fakeMeiliNotAllowed()
+	case len(rest) == 1 && rest[0] == "stats":
+		if method != http.MethodGet {
+			return fakeMeiliNotAllowed()
+		}
+		index, err := f.indexLocked(uid)
+		if err != nil {
 			return 0, nil, err
 		}
-		switch {
-		case len(parts) == 2:
-			switch method {
-			case http.MethodGet:
-				index, err := f.indexLocked(uid)
-				if err != nil {
-					return 0, nil, err
-				}
-				return http.StatusOK, fakeMeiliIndexView(uid, index), nil
-			case http.MethodDelete:
-				return f.enqueueLocked(uid, "indexDeletion", nil, f.deleteIndexTask(uid))
-			}
-			return notAllowed()
-		case len(parts) == 3 && parts[2] == "stats":
-			if method != http.MethodGet {
-				return notAllowed()
-			}
+		return http.StatusOK, map[string]any{"numberOfDocuments": len(index.docs), "isIndexing": false}, nil
+	case len(rest) == 1 && rest[0] == "settings":
+		switch method {
+		case http.MethodGet:
 			index, err := f.indexLocked(uid)
 			if err != nil {
 				return 0, nil, err
 			}
-			return http.StatusOK, map[string]any{"numberOfDocuments": len(index.docs), "isIndexing": false}, nil
-		case len(parts) == 3 && parts[2] == "settings":
-			switch method {
-			case http.MethodGet:
-				index, err := f.indexLocked(uid)
-				if err != nil {
-					return 0, nil, err
-				}
-				return http.StatusOK, index.settings, nil
-			case http.MethodPatch:
-				return f.updateSettingsLocked(uid, body)
-			}
-			return notAllowed()
-		case len(parts) == 3 && parts[2] == "documents":
-			if method != http.MethodPost {
-				return notAllowed()
-			}
-			return f.addDocumentsLocked(uid, body)
-		case len(parts) == 4 && parts[2] == "documents" && parts[3] == "delete-batch":
-			if method != http.MethodPost {
-				return notAllowed()
-			}
-			return f.deleteDocumentsLocked(uid, body)
-		case len(parts) == 4 && parts[2] == "documents":
-			if method != http.MethodGet {
-				return notAllowed()
-			}
-			index, err := f.indexLocked(uid)
-			if err != nil {
-				return 0, nil, err
-			}
-			doc, ok := index.docs[parts[3]]
-			if !ok {
-				return 0, nil, &fakeMeiliError{status: http.StatusNotFound, code: "document_not_found",
-					message: fmt.Sprintf("Document `%s` not found.", parts[3])}
-			}
-			return http.StatusOK, doc, nil
+			return http.StatusOK, index.settings, nil
+		case http.MethodPatch:
+			return f.updateSettingsLocked(uid, body)
 		}
+		return fakeMeiliNotAllowed()
+	case len(rest) >= 1 && rest[0] == "documents":
+		return f.routeDocumentsLocked(method, uid, rest[1:], body)
 	}
-	return 0, nil, &fakeMeiliError{status: http.StatusNotFound, code: "not_found", message: "Not found."}
+	return 0, nil, fakeMeiliNotFound()
+}
+
+// routeDocumentsLocked serves /indexes/{uid}/documents/rest.
+func (f *fakeMeili) routeDocumentsLocked(method, uid string, rest []string, body []byte) (int, any, *fakeMeiliError) {
+	switch {
+	case len(rest) == 0:
+		if method != http.MethodPost {
+			return fakeMeiliNotAllowed()
+		}
+		return f.addDocumentsLocked(uid, body)
+	case len(rest) == 1 && rest[0] == "delete-batch":
+		if method != http.MethodPost {
+			return fakeMeiliNotAllowed()
+		}
+		return f.deleteDocumentsLocked(uid, body)
+	case len(rest) == 1:
+		if method != http.MethodGet {
+			return fakeMeiliNotAllowed()
+		}
+		index, err := f.indexLocked(uid)
+		if err != nil {
+			return 0, nil, err
+		}
+		doc, ok := index.docs[rest[0]]
+		if !ok {
+			return 0, nil, &fakeMeiliError{status: http.StatusNotFound, code: "document_not_found",
+				message: fmt.Sprintf("Document `%s` not found.", rest[0])}
+		}
+		return http.StatusOK, doc, nil
+	}
+	return 0, nil, fakeMeiliNotFound()
 }
 
 func (f *fakeMeili) indexLocked(uid string) (*fakeMeiliIndex, *fakeMeiliError) {

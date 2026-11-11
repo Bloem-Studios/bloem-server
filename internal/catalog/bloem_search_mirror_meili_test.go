@@ -52,19 +52,19 @@ func searchMirrorContractServers(t *testing.T) []searchMirrorContractServer {
 	fake.RequireKey(searchMirrorFakeMasterKey)
 	servers := []searchMirrorContractServer{{name: "fake", url: fake.URL(), masterKey: searchMirrorFakeMasterKey, fake: fake}}
 
-	real := searchMirrorContractServer{name: "meilisearch"}
+	realServer := searchMirrorContractServer{name: "meilisearch"}
 	rawURL := strings.TrimSpace(os.Getenv(searchMirrorTestURLEnv))
 	masterKey := strings.TrimSpace(os.Getenv(searchMirrorTestMasterKeyEnv))
 	switch {
 	case rawURL == "":
-		real.skip = searchMirrorTestURLEnv + " not set"
+		realServer.skip = searchMirrorTestURLEnv + " not set"
 	case masterKey == "":
 		t.Fatalf("%s is set but %s is not: the contract cases need the master key to create a limited key", searchMirrorTestURLEnv, searchMirrorTestMasterKeyEnv)
 	default:
-		real.url = rawURL
-		real.masterKey = masterKey
+		realServer.url = rawURL
+		realServer.masterKey = masterKey
 	}
-	return append(servers, real)
+	return append(servers, realServer)
 }
 
 // searchMirrorContractCase is one case's view of one server.
@@ -264,7 +264,7 @@ func assertSearchMirrorContractIndexExists(t *testing.T, client *meilisearchClie
 	}
 }
 
-// assertSearchMirrorContractMaxTotalHits checks a setting travelled with the index. Reading
+// assertSearchMirrorContractMaxTotalHits checks a setting moved with the index. Reading
 // settings needs settings.get, which the mirror's key lacks, so it uses the master key.
 func assertSearchMirrorContractMaxTotalHits(t *testing.T, c searchMirrorContractCase, uid string, want int) {
 	t.Helper()
@@ -621,7 +621,7 @@ func TestSearchMirrorFakeMeiliTestHelpers(t *testing.T) {
 		_, err := keyed.indexExists(ctx, "p_direct")
 		done <- err
 	}()
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond) //nolint:forbidigo // gives the request time to reach the hang; one that has not is refused by Stop, also unreachable
 	fake.Stop()
 	assertSearchMirrorErrorKind(t, "a hung request when the server stops", <-done, searchMirrorErrUnreachable)
 	_, err = fake.Client(t).indexExists(ctx, "p_direct")

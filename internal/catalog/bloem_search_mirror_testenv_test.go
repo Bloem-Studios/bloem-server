@@ -13,10 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/database/pglock"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 // The search mirror's test harness. Every mirror database test runs in its own schema that
@@ -291,14 +292,14 @@ func (e *searchMirrorTestEnv) differencesFromDatabase(server *fakeMeili, uid str
 		doc, ok := got[id]
 		switch {
 		case !ok:
-			diffs = append(diffs, fmt.Sprintf("%s: missing", id))
+			diffs = append(diffs, id+": missing")
 		case !reflect.DeepEqual(doc, want[id]):
 			diffs = append(diffs, fmt.Sprintf("%s: got %+v, want %+v", id, doc, want[id]))
 		}
 	}
 	for _, id := range slices.Sorted(maps.Keys(got)) {
 		if _, ok := want[id]; !ok {
-			diffs = append(diffs, fmt.Sprintf("%s: not in the database", id))
+			diffs = append(diffs, id+": not in the database")
 		}
 	}
 	return diffs

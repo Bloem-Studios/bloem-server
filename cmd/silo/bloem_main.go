@@ -519,7 +519,8 @@ func bloemWireSearchMirror(ctx context.Context, taskMgr *taskmanager.TaskManager
 		return steps
 	}
 	if cfg.Problem != "" {
-		slog.ErrorContext(ctx, cfg.LogMessage(), "component", "catalog")
+		slog.ErrorContext(ctx, "search mirror misconfigured; it stays off until Silo restarts", "component", "catalog",
+			"problem", string(cfg.Problem), "detail", cfg.LogMessage())
 		bloemStartSearchMirrorMetrics(ctx, pool, cfg)
 		return steps
 	}
