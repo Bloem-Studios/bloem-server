@@ -784,6 +784,13 @@ jobs:
       - name: Test history import cancellation against Postgres
         run: go test -race -count=1 -run '^(TestHistoryImportCancellation.*|TestQueue.*|TestHistoryImportV1ProfileAuthorization)$' ./migrations/ ./internal/historyimport/ ./internal/api/handlers/
 
+      # Bloem: native video grants and the native cover cache need Redis and
+      # skip without SILO_TEST_REDIS_URL, which the Go test shards do not set.
+      - name: Native video grants and cover cache against Redis
+        env:
+          SILO_TEST_REDIS_URL: redis://127.0.0.1:65421/0
+        run: go test -race -count=1 -run '^(TestNativeVideoWorker.*|TestNativeVideoBindingSurvivesRedisRoundTrip|TestRedisCoverCacheRoundTrip)$' ./internal/api/handlers/ ./internal/nativestorage/
+
       # Bloem: mixed library location and native audiobook regressions. The
       # tagged tests only accept a database named bloem_storage_test_*, which
       # they clone as a template, so they get their own on the same server.

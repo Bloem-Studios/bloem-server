@@ -181,6 +181,15 @@ STEPS = [
     ),
     Step(
         "db",
+        "native-video-redis",
+        "SILO_TEST_DATABASE_URL=" + _pg("bloem_regress_test")
+        + " SILO_TEST_REDIS_URL=@REDIS@ SILO_TEST_REDIS_DISPOSABLE_ADDR=@REDIS_ADDR@ go test -race -count=1"
+        " -run '^(TestNativeVideoWorker.*|TestNativeVideoBindingSurvivesRedisRoundTrip|TestRedisCoverCacheRoundTrip)$'"
+        " ./internal/api/handlers/ ./internal/nativestorage/",
+        _needs("pg", "redis"),
+    ),
+    Step(
+        "db",
         "library-locations",
         "export SILO_TEST_DATABASE_URL=" + _pg("bloem_storage_test_ci") + " SILO_TEST_REDIS_URL=@REDIS@ SILO_TEST_REDIS_DISPOSABLE_ADDR=@REDIS_ADDR@"
         + " && go run ./cmd/bloem-testdb && make test-bloem-library-locations",
