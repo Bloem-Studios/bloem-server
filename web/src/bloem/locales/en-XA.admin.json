@@ -15251,6 +15251,588 @@
       "value": "⟦Đŕöþ ţĥé ɱöšţ çöɱɱöñ ŵöŕđš ûñţîļ šöɱéţĥîñĝ ɱåţçĥéš~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
     }
   ],
+  "bloem.admin.searchMirror.copy.items": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 2,
+      "value": "done",
+      "style": null
+    },
+    {
+      "type": 0,
+      "value": " öƒ "
+    },
+    {
+      "type": 6,
+      "value": "total",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " îţéɱ~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " îţéɱš~~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.copy.percent": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 2,
+      "value": "ratio",
+      "style": "percent"
+    },
+    {
+      "type": 0,
+      "value": "⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.days": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " đåý~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " đåýš~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.hours": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ĥöûŕ~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ĥöûŕš~~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.minutes": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ɱîñûţé~~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ɱîñûţéš~~~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.seconds": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " šéçöñđ~~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " šéçöñđš~~~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.errorSince": [
+    {
+      "type": 0,
+      "value": "⟦šîñçé "
+    },
+    {
+      "type": 1,
+      "value": "when"
+    },
+    {
+      "type": 0,
+      "value": "~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.heading": [
+    {
+      "type": 0,
+      "value": "⟦Šéåŕçĥ ɱîŕŕöŕ~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.lagBehind": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "duration"
+    },
+    {
+      "type": 0,
+      "value": " ƀéĥîñđ~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.link.fullCopy": [
+    {
+      "type": 0,
+      "value": "⟦Ŕûñ å ƒûļļ çöþý~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.link.sync": [
+    {
+      "type": 0,
+      "value": "⟦Åûţöɱåţîç ɱîŕŕöŕ šýñç~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.row.copyProgress": [
+    {
+      "type": 0,
+      "value": "⟦Çöþý þŕöĝŕéšš~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.row.deadLetters": [
+    {
+      "type": 0,
+      "value": "⟦Đéåđ-ļéţţéŕéđ îţéɱš~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lagCap": [
+    {
+      "type": 0,
+      "value": "⟦Ļåĝ çåþ~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lastError": [
+    {
+      "type": 0,
+      "value": "⟦Ļåšţ éŕŕöŕ~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lastFullCopy": [
+    {
+      "type": 0,
+      "value": "⟦Ļåšţ ƒûļļ çöþý~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.row.mainIndex": [
+    {
+      "type": 0,
+      "value": "⟦Ṁåîñ îñđéẋ~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.row.mirrorIndex": [
+    {
+      "type": 0,
+      "value": "⟦Ṁîŕŕöŕ îñđéẋ~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.row.rowsWaiting": [
+    {
+      "type": 0,
+      "value": "⟦Ŕöŵš ŵåîţîñĝ~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.row.state": [
+    {
+      "type": 0,
+      "value": "⟦Šţåţé~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.row.upToDateAsOf": [
+    {
+      "type": 0,
+      "value": "⟦Ûþ ţö đåţé åš öƒ~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.rowsWaiting.capped": [
+    {
+      "type": 0,
+      "value": "⟦Ṁöŕé ţĥåñ "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ŕöŵ~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ŕöŵš~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.rowsWaiting.count": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ŕöŵ~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ŕöŵš~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.state.copying": [
+    {
+      "type": 0,
+      "value": "⟦Çöþýîñĝ~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.state.failing": [
+    {
+      "type": 0,
+      "value": "⟦Ƒåîļîñĝ~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.state.following": [
+    {
+      "type": 0,
+      "value": "⟦Ƒöļļöŵîñĝ~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.state.misconfigured": [
+    {
+      "type": 0,
+      "value": "⟦Ṁîšçöñƒîĝûŕéđ~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.state.needsFullCopy": [
+    {
+      "type": 0,
+      "value": "⟦Ñééđš å ƒûļļ çöþý~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.state.off": [
+    {
+      "type": 0,
+      "value": "⟦Öƒƒ~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.state.settling": [
+    {
+      "type": 0,
+      "value": "⟦Šéţţļîñĝ~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.state.unreachable": [
+    {
+      "type": 0,
+      "value": "⟦Ûñŕéåçĥåƀļé~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.state.waiting": [
+    {
+      "type": 0,
+      "value": "⟦Ŵåîţîñĝ~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.value.never": [
+    {
+      "type": 0,
+      "value": "⟦Ñéṽéŕ~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.value.none": [
+    {
+      "type": 0,
+      "value": "⟦Ñöñé~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.value.notBuilt": [
+    {
+      "type": 0,
+      "value": "⟦Ñöţ ƀûîļţ ýéţ~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.value.notYet": [
+    {
+      "type": 0,
+      "value": "⟦Ñöţ ýéţ~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.value.unknown": [
+    {
+      "type": 0,
+      "value": "⟦Ûñķñöŵñ~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.warning.configuredOnOneCopyOnly": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš đåţåƀåšé ĥåš šéåŕçĥ ɱîŕŕöŕ šţåţé, ƀûţ ţĥîš šéŕṽéŕ ĥåš ñö ɱîŕŕöŕ çöñƒîĝûŕéđ. Šéţ ŠÎĻÖ_ṀÉÎĻÎŠÉÅŔÇĤ_ṀÎŔŔÖŔ_ÛŔĻ öñ éṽéŕý Ɓļöéɱ çöþý; å çöþý ŵîţĥöûţ îţ çåññöţ ƀŕîñĝ ţĥé ñéŵ ɱåîñ îñđéẋ ûþ ţö đåţé åƒţéŕ å ƒåîļöṽéŕ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.warning.settlingOverdue": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥé ɱîŕŕöŕ ĥåš ƀééñ šéţţļîñĝ åƒţéŕ å ƒåîļöṽéŕ ƒöŕ ɱöŕé ţĥåñ 30 ɱîñûţéš. Å Ɓļöéɱ çöþý ţĥåţ šţåŕţéđ ƀéƒöŕé ţĥé ƒåîļöṽéŕ ɱåý šţîļļ ƀé ŕûññîñĝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.warning.stoodDown": [
+    {
+      "type": 0,
+      "value": "⟦Åñöţĥéŕ Ɓļöéɱ çöþý ţööķ öṽéŕ šéåŕçĥ, šö ţĥîš çöþý ĥåš šţöþþéđ ɱîŕŕöŕîñĝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.searchMirror.warning.unknown": [
+    {
+      "type": 0,
+      "value": "⟦Ŵåŕñîñĝ: "
+    },
+    {
+      "type": 1,
+      "value": "code"
+    },
+    {
+      "type": 0,
+      "value": "~~~~⟧"
+    }
+  ],
   "bloem.admin.storage.addDialog.addStorageSource": [
     {
       "type": 0,

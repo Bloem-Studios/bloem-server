@@ -13281,6 +13281,387 @@
       "value": "一致する結果が出るまで、最もよく使われる単語を除外"
     }
   ],
+  "bloem.admin.searchMirror.copy.items": [
+    {
+      "type": 6,
+      "value": "total",
+      "options": {
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "件"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "中"
+    },
+    {
+      "type": 2,
+      "value": "done",
+      "style": null
+    },
+    {
+      "type": 0,
+      "value": "件"
+    }
+  ],
+  "bloem.admin.searchMirror.copy.percent": [
+    {
+      "type": 2,
+      "value": "ratio",
+      "style": "percent"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.days": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "日"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.hours": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "時間"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.minutes": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "分"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.seconds": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "秒"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.errorSince": [
+    {
+      "type": 1,
+      "value": "when"
+    },
+    {
+      "type": 0,
+      "value": "から"
+    }
+  ],
+  "bloem.admin.searchMirror.heading": [
+    {
+      "type": 0,
+      "value": "検索ミラー"
+    }
+  ],
+  "bloem.admin.searchMirror.lagBehind": [
+    {
+      "type": 1,
+      "value": "duration"
+    },
+    {
+      "type": 0,
+      "value": "遅れ"
+    }
+  ],
+  "bloem.admin.searchMirror.link.fullCopy": [
+    {
+      "type": 0,
+      "value": "フルコピーを実行"
+    }
+  ],
+  "bloem.admin.searchMirror.link.sync": [
+    {
+      "type": 0,
+      "value": "ミラーの自動同期"
+    }
+  ],
+  "bloem.admin.searchMirror.row.copyProgress": [
+    {
+      "type": 0,
+      "value": "コピーの進捗"
+    }
+  ],
+  "bloem.admin.searchMirror.row.deadLetters": [
+    {
+      "type": 0,
+      "value": "デッドレター項目"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lagCap": [
+    {
+      "type": 0,
+      "value": "遅延の上限"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lastError": [
+    {
+      "type": 0,
+      "value": "直近のエラー"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lastFullCopy": [
+    {
+      "type": 0,
+      "value": "前回のフルコピー"
+    }
+  ],
+  "bloem.admin.searchMirror.row.mainIndex": [
+    {
+      "type": 0,
+      "value": "メインインデックス"
+    }
+  ],
+  "bloem.admin.searchMirror.row.mirrorIndex": [
+    {
+      "type": 0,
+      "value": "ミラーインデックス"
+    }
+  ],
+  "bloem.admin.searchMirror.row.rowsWaiting": [
+    {
+      "type": 0,
+      "value": "待機中の行"
+    }
+  ],
+  "bloem.admin.searchMirror.row.state": [
+    {
+      "type": 0,
+      "value": "状態"
+    }
+  ],
+  "bloem.admin.searchMirror.row.upToDateAsOf": [
+    {
+      "type": 0,
+      "value": "最新状態の時刻"
+    }
+  ],
+  "bloem.admin.searchMirror.rowsWaiting.capped": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "行"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "超"
+    }
+  ],
+  "bloem.admin.searchMirror.rowsWaiting.count": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": "行"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.state.copying": [
+    {
+      "type": 0,
+      "value": "コピー中"
+    }
+  ],
+  "bloem.admin.searchMirror.state.failing": [
+    {
+      "type": 0,
+      "value": "失敗中"
+    }
+  ],
+  "bloem.admin.searchMirror.state.following": [
+    {
+      "type": 0,
+      "value": "追従中"
+    }
+  ],
+  "bloem.admin.searchMirror.state.misconfigured": [
+    {
+      "type": 0,
+      "value": "設定に誤り"
+    }
+  ],
+  "bloem.admin.searchMirror.state.needsFullCopy": [
+    {
+      "type": 0,
+      "value": "フルコピーが必要"
+    }
+  ],
+  "bloem.admin.searchMirror.state.off": [
+    {
+      "type": 0,
+      "value": "オフ"
+    }
+  ],
+  "bloem.admin.searchMirror.state.settling": [
+    {
+      "type": 0,
+      "value": "安定化中"
+    }
+  ],
+  "bloem.admin.searchMirror.state.unreachable": [
+    {
+      "type": 0,
+      "value": "接続不可"
+    }
+  ],
+  "bloem.admin.searchMirror.state.waiting": [
+    {
+      "type": 0,
+      "value": "待機中"
+    }
+  ],
+  "bloem.admin.searchMirror.value.never": [
+    {
+      "type": 0,
+      "value": "未実施"
+    }
+  ],
+  "bloem.admin.searchMirror.value.none": [
+    {
+      "type": 0,
+      "value": "なし"
+    }
+  ],
+  "bloem.admin.searchMirror.value.notBuilt": [
+    {
+      "type": 0,
+      "value": "未作成"
+    }
+  ],
+  "bloem.admin.searchMirror.value.notYet": [
+    {
+      "type": 0,
+      "value": "まだありません"
+    }
+  ],
+  "bloem.admin.searchMirror.value.unknown": [
+    {
+      "type": 0,
+      "value": "不明"
+    }
+  ],
+  "bloem.admin.searchMirror.warning.configuredOnOneCopyOnly": [
+    {
+      "type": 0,
+      "value": "このデータベースには検索ミラーの状態がありますが、このサーバーにはミラーが設定されていません。すべてのBloemコピーにSILO_MEILISEARCH_MIRROR_URLを設定してください。設定のないコピーは、フェイルオーバー後に新しいメインインデックスを最新の状態にできません。"
+    }
+  ],
+  "bloem.admin.searchMirror.warning.settlingOverdue": [
+    {
+      "type": 0,
+      "value": "フェイルオーバー後、ミラーが30分以上安定化中です。フェイルオーバー前に起動したBloemコピーがまだ動いている可能性があります。"
+    }
+  ],
+  "bloem.admin.searchMirror.warning.stoodDown": [
+    {
+      "type": 0,
+      "value": "別のBloemコピーが検索を引き継いだため、このコピーはミラーリングを停止しました。"
+    }
+  ],
+  "bloem.admin.searchMirror.warning.unknown": [
+    {
+      "type": 0,
+      "value": "警告: "
+    },
+    {
+      "type": 1,
+      "value": "code"
+    }
+  ],
   "bloem.admin.storage.addDialog.addStorageSource": [
     {
       "type": 0,

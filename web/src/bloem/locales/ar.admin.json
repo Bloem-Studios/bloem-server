@@ -15337,6 +15337,726 @@
       "value": "إسقاط الكلمات الأكثر شيوعًا حتى يتطابق شيء ما"
     }
   ],
+  "bloem.admin.searchMirror.copy.items": [
+    {
+      "type": 2,
+      "value": "done",
+      "style": null
+    },
+    {
+      "type": 0,
+      "value": " من "
+    },
+    {
+      "type": 6,
+      "value": "total",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " عنصر"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "عنصر واحد"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "عنصرين"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " عناصر"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " عنصرًا"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " عنصر"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.copy.percent": [
+    {
+      "type": 2,
+      "value": "ratio",
+      "style": "percent"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.days": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " يوم"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "يوم واحد"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "يومان"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " أيام"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " يومًا"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " يوم"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.hours": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ساعة"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ساعة واحدة"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ساعتان"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ساعات"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ساعة"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ساعة"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.minutes": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " دقيقة"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "دقيقة واحدة"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "دقيقتان"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " دقائق"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " دقيقة"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " دقيقة"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.seconds": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ثانية"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ثانية واحدة"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ثانيتان"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ثوانٍ"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ثانية"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ثانية"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.errorSince": [
+    {
+      "type": 0,
+      "value": "منذ "
+    },
+    {
+      "type": 1,
+      "value": "when"
+    }
+  ],
+  "bloem.admin.searchMirror.heading": [
+    {
+      "type": 0,
+      "value": "مرآة البحث"
+    }
+  ],
+  "bloem.admin.searchMirror.lagBehind": [
+    {
+      "type": 0,
+      "value": "تأخر قدره "
+    },
+    {
+      "type": 1,
+      "value": "duration"
+    }
+  ],
+  "bloem.admin.searchMirror.link.fullCopy": [
+    {
+      "type": 0,
+      "value": "تشغيل نسخة كاملة"
+    }
+  ],
+  "bloem.admin.searchMirror.link.sync": [
+    {
+      "type": 0,
+      "value": "المزامنة التلقائية للمرآة"
+    }
+  ],
+  "bloem.admin.searchMirror.row.copyProgress": [
+    {
+      "type": 0,
+      "value": "تقدم النسخ"
+    }
+  ],
+  "bloem.admin.searchMirror.row.deadLetters": [
+    {
+      "type": 0,
+      "value": "العناصر المتروكة"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lagCap": [
+    {
+      "type": 0,
+      "value": "حد التأخر"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lastError": [
+    {
+      "type": 0,
+      "value": "آخر خطأ"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lastFullCopy": [
+    {
+      "type": 0,
+      "value": "آخر نسخة كاملة"
+    }
+  ],
+  "bloem.admin.searchMirror.row.mainIndex": [
+    {
+      "type": 0,
+      "value": "الفهرس الرئيسي"
+    }
+  ],
+  "bloem.admin.searchMirror.row.mirrorIndex": [
+    {
+      "type": 0,
+      "value": "فهرس المرآة"
+    }
+  ],
+  "bloem.admin.searchMirror.row.rowsWaiting": [
+    {
+      "type": 0,
+      "value": "الصفوف المنتظرة"
+    }
+  ],
+  "bloem.admin.searchMirror.row.state": [
+    {
+      "type": 0,
+      "value": "الحالة"
+    }
+  ],
+  "bloem.admin.searchMirror.row.upToDateAsOf": [
+    {
+      "type": 0,
+      "value": "محدّثة حتى"
+    }
+  ],
+  "bloem.admin.searchMirror.rowsWaiting.capped": [
+    {
+      "type": 0,
+      "value": "أكثر من "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " صف"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "صف واحد"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "صفين"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " صفوف"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " صفًا"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " صف"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.rowsWaiting.count": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "zero": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " صف"
+            }
+          ]
+        },
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "صف واحد"
+            }
+          ]
+        },
+        "two": {
+          "value": [
+            {
+              "type": 0,
+              "value": "صفان"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " صفوف"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " صفًا"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " صف"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.state.copying": [
+    {
+      "type": 0,
+      "value": "قيد النسخ"
+    }
+  ],
+  "bloem.admin.searchMirror.state.failing": [
+    {
+      "type": 0,
+      "value": "متعثرة"
+    }
+  ],
+  "bloem.admin.searchMirror.state.following": [
+    {
+      "type": 0,
+      "value": "متابعة"
+    }
+  ],
+  "bloem.admin.searchMirror.state.misconfigured": [
+    {
+      "type": 0,
+      "value": "إعداد خاطئ"
+    }
+  ],
+  "bloem.admin.searchMirror.state.needsFullCopy": [
+    {
+      "type": 0,
+      "value": "تحتاج إلى نسخة كاملة"
+    }
+  ],
+  "bloem.admin.searchMirror.state.off": [
+    {
+      "type": 0,
+      "value": "متوقفة"
+    }
+  ],
+  "bloem.admin.searchMirror.state.settling": [
+    {
+      "type": 0,
+      "value": "قيد الاستقرار"
+    }
+  ],
+  "bloem.admin.searchMirror.state.unreachable": [
+    {
+      "type": 0,
+      "value": "يتعذر الوصول إليها"
+    }
+  ],
+  "bloem.admin.searchMirror.state.waiting": [
+    {
+      "type": 0,
+      "value": "في الانتظار"
+    }
+  ],
+  "bloem.admin.searchMirror.value.never": [
+    {
+      "type": 0,
+      "value": "أبدًا"
+    }
+  ],
+  "bloem.admin.searchMirror.value.none": [
+    {
+      "type": 0,
+      "value": "لا يوجد"
+    }
+  ],
+  "bloem.admin.searchMirror.value.notBuilt": [
+    {
+      "type": 0,
+      "value": "لم يُنشأ بعد"
+    }
+  ],
+  "bloem.admin.searchMirror.value.notYet": [
+    {
+      "type": 0,
+      "value": "ليس بعد"
+    }
+  ],
+  "bloem.admin.searchMirror.value.unknown": [
+    {
+      "type": 0,
+      "value": "غير معروف"
+    }
+  ],
+  "bloem.admin.searchMirror.warning.configuredOnOneCopyOnly": [
+    {
+      "type": 0,
+      "value": "تحتوي قاعدة البيانات هذه على حالة لمرآة البحث، لكن لم تُضبط أي مرآة على هذا الخادم. اضبط SILO_MEILISEARCH_MIRROR_URL على كل نسخة من Bloem؛ فالنسخة التي تفتقر إلى هذا المتغير لا تستطيع تحديث الفهرس الرئيسي الجديد بعد تجاوز الفشل."
+    }
+  ],
+  "bloem.admin.searchMirror.warning.settlingOverdue": [
+    {
+      "type": 0,
+      "value": "تستقر المرآة بعد تجاوز الفشل منذ أكثر من 30 دقيقة. قد تكون نسخة من Bloem بدأت قبل تجاوز الفشل ما زالت تعمل."
+    }
+  ],
+  "bloem.admin.searchMirror.warning.stoodDown": [
+    {
+      "type": 0,
+      "value": "تولّت نسخة أخرى من Bloem البحث، لذا توقفت هذه النسخة عن عكس الفهرس."
+    }
+  ],
+  "bloem.admin.searchMirror.warning.unknown": [
+    {
+      "type": 0,
+      "value": "تحذير: "
+    },
+    {
+      "type": 1,
+      "value": "code"
+    }
+  ],
   "bloem.admin.storage.addDialog.addStorageSource": [
     {
       "type": 0,

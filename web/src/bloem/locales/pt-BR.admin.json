@@ -14199,6 +14199,493 @@
       "value": "Remover as palavras mais comuns até encontrar uma correspondência"
     }
   ],
+  "bloem.admin.searchMirror.copy.items": [
+    {
+      "type": 2,
+      "value": "done",
+      "style": null
+    },
+    {
+      "type": 0,
+      "value": " de "
+    },
+    {
+      "type": 6,
+      "value": "total",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " item"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " de itens"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " itens"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.copy.percent": [
+    {
+      "type": 2,
+      "value": "ratio",
+      "style": "percent"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.days": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dia"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dias"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.hours": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " hora"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " horas"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.minutes": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " minuto"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " minutos"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.duration.seconds": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " segundo"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " segundos"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.errorSince": [
+    {
+      "type": 0,
+      "value": "desde "
+    },
+    {
+      "type": 1,
+      "value": "when"
+    }
+  ],
+  "bloem.admin.searchMirror.heading": [
+    {
+      "type": 0,
+      "value": "Espelho de busca"
+    }
+  ],
+  "bloem.admin.searchMirror.lagBehind": [
+    {
+      "type": 1,
+      "value": "duration"
+    },
+    {
+      "type": 0,
+      "value": " de atraso"
+    }
+  ],
+  "bloem.admin.searchMirror.link.fullCopy": [
+    {
+      "type": 0,
+      "value": "Executar uma cópia completa"
+    }
+  ],
+  "bloem.admin.searchMirror.link.sync": [
+    {
+      "type": 0,
+      "value": "Sincronização automática do espelho"
+    }
+  ],
+  "bloem.admin.searchMirror.row.copyProgress": [
+    {
+      "type": 0,
+      "value": "Progresso da cópia"
+    }
+  ],
+  "bloem.admin.searchMirror.row.deadLetters": [
+    {
+      "type": 0,
+      "value": "Itens descartados"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lagCap": [
+    {
+      "type": 0,
+      "value": "Limite de atraso"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lastError": [
+    {
+      "type": 0,
+      "value": "Último erro"
+    }
+  ],
+  "bloem.admin.searchMirror.row.lastFullCopy": [
+    {
+      "type": 0,
+      "value": "Última cópia completa"
+    }
+  ],
+  "bloem.admin.searchMirror.row.mainIndex": [
+    {
+      "type": 0,
+      "value": "Índice principal"
+    }
+  ],
+  "bloem.admin.searchMirror.row.mirrorIndex": [
+    {
+      "type": 0,
+      "value": "Índice espelho"
+    }
+  ],
+  "bloem.admin.searchMirror.row.rowsWaiting": [
+    {
+      "type": 0,
+      "value": "Linhas em espera"
+    }
+  ],
+  "bloem.admin.searchMirror.row.state": [
+    {
+      "type": 0,
+      "value": "Estado"
+    }
+  ],
+  "bloem.admin.searchMirror.row.upToDateAsOf": [
+    {
+      "type": 0,
+      "value": "Atualizado até"
+    }
+  ],
+  "bloem.admin.searchMirror.rowsWaiting.capped": [
+    {
+      "type": 0,
+      "value": "Mais de "
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " linha"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " de linhas"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " linhas"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.rowsWaiting.count": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " linha"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " de linhas"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " linhas"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.admin.searchMirror.state.copying": [
+    {
+      "type": 0,
+      "value": "Copiando"
+    }
+  ],
+  "bloem.admin.searchMirror.state.failing": [
+    {
+      "type": 0,
+      "value": "Com falhas"
+    }
+  ],
+  "bloem.admin.searchMirror.state.following": [
+    {
+      "type": 0,
+      "value": "Acompanhando"
+    }
+  ],
+  "bloem.admin.searchMirror.state.misconfigured": [
+    {
+      "type": 0,
+      "value": "Configuração incorreta"
+    }
+  ],
+  "bloem.admin.searchMirror.state.needsFullCopy": [
+    {
+      "type": 0,
+      "value": "Precisa de uma cópia completa"
+    }
+  ],
+  "bloem.admin.searchMirror.state.off": [
+    {
+      "type": 0,
+      "value": "Desativado"
+    }
+  ],
+  "bloem.admin.searchMirror.state.settling": [
+    {
+      "type": 0,
+      "value": "Estabilizando"
+    }
+  ],
+  "bloem.admin.searchMirror.state.unreachable": [
+    {
+      "type": 0,
+      "value": "Inacessível"
+    }
+  ],
+  "bloem.admin.searchMirror.state.waiting": [
+    {
+      "type": 0,
+      "value": "Aguardando"
+    }
+  ],
+  "bloem.admin.searchMirror.value.never": [
+    {
+      "type": 0,
+      "value": "Nunca"
+    }
+  ],
+  "bloem.admin.searchMirror.value.none": [
+    {
+      "type": 0,
+      "value": "Nenhum"
+    }
+  ],
+  "bloem.admin.searchMirror.value.notBuilt": [
+    {
+      "type": 0,
+      "value": "Ainda não criado"
+    }
+  ],
+  "bloem.admin.searchMirror.value.notYet": [
+    {
+      "type": 0,
+      "value": "Ainda não"
+    }
+  ],
+  "bloem.admin.searchMirror.value.unknown": [
+    {
+      "type": 0,
+      "value": "Desconhecido"
+    }
+  ],
+  "bloem.admin.searchMirror.warning.configuredOnOneCopyOnly": [
+    {
+      "type": 0,
+      "value": "Este banco de dados tem o estado de um espelho de busca, mas este servidor não tem nenhum espelho configurado. Defina SILO_MEILISEARCH_MIRROR_URL em cada cópia do Bloem; uma cópia sem essa variável não consegue atualizar o novo índice principal após um failover."
+    }
+  ],
+  "bloem.admin.searchMirror.warning.settlingOverdue": [
+    {
+      "type": 0,
+      "value": "O espelho está se estabilizando após um failover há mais de 30 minutos. Uma cópia do Bloem iniciada antes do failover pode ainda estar em execução."
+    }
+  ],
+  "bloem.admin.searchMirror.warning.stoodDown": [
+    {
+      "type": 0,
+      "value": "Outra cópia do Bloem assumiu a busca, por isso esta cópia parou de espelhar."
+    }
+  ],
+  "bloem.admin.searchMirror.warning.unknown": [
+    {
+      "type": 0,
+      "value": "Aviso: "
+    },
+    {
+      "type": 1,
+      "value": "code"
+    }
+  ],
   "bloem.admin.storage.addDialog.addStorageSource": [
     {
       "type": 0,

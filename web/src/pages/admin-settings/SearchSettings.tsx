@@ -1,4 +1,5 @@
 import { bloemSearchMatchingOptions } from "@/bloem/admin/searchMatching";
+import { SearchMirrorStatus } from "@/bloem/admin/SearchMirrorStatus";
 import { useState } from "react";
 import { Link } from "react-router";
 
@@ -311,6 +312,7 @@ export default function SearchSettings() {
 
             <SettingsSubheading>{t("web.admin.settings.search.status.heading")}</SettingsSubheading>
             <SearchStatusPanel />
+            <SearchMirrorStatus />
           </AdvancedSection>
         </FieldGroup>
       </div>
