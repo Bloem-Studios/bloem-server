@@ -222,7 +222,7 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 		API:            nativeAPIIdentifier,
 		IdentitySchema: 1,
 		Features: bloemCapabilityFeatures{
-			LegacySiloV1:            true,
+			LegacySiloV1:            false, // Silo retired /api/v1 (Silo #3200)
 			OrganizationMemberships: true,
 			TenantBoundedMediaScope: true,
 			DirectProfileLogin:      h.directProfileLogin && profilePasswords,

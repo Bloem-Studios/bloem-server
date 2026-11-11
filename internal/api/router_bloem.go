@@ -109,11 +109,9 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			system.SetNativeAudioReadiness(audio.NativeAudioReady)
 		}
 	}
-	// Advertise from the condition that actually mounts /auth/profile-login:
-	// the auth stack builds only with both a database and a config, and a
-	// capability that disagrees with the route table is worse than no
-	// capability at all.
-	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
+	// Direct profile login stays unadvertised: /auth/profile-login lived only
+	// on Silo's /api/v1, which Silo retired (Silo #3200), and a capability
+	// that disagrees with the route table is worse than no capability at all.
 	if deps.DB != nil {
 		system.SetProfilePasswordsEnabled(auth.NewProfileCredentialService(deps.DB).ProfilePasswordsEnabled)
 	}

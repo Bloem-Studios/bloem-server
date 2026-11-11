@@ -124,7 +124,7 @@ func TestBloemCapabilitiesExactContract(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	want := `{"api":"bloem/v1","identity_schema":1,` +
-		`"features":{"legacy_silo_v1":true,"organization_memberships":true,"tenant_bounded_media_scope":true,` +
+		`"features":{"legacy_silo_v1":false,"organization_memberships":true,"tenant_bounded_media_scope":true,` +
 		`"direct_profile_login":true,"shared_device_pairing":false,"delegated_admin_roles":false},` +
 		`"media_types":["movie","series","episode","audiobook","ebook","manga"],` +
 		`"feature_tokens":["playback_plan_v3","server_remote_stream_bitrate_policy_v1","server_local_stream_bitrate_policy_v1","neutral_playback_v3_contract_v1","embedded_subtitles_v1","layout_aware_passthrough",` +
@@ -161,7 +161,7 @@ func TestBloemCapabilitiesGrewAdditively(t *testing.T) {
 		t.Fatalf("api/identity_schema = %q/%d, want bloem/v1 and 1", body.API, body.IdentitySchema)
 	}
 	for name, want := range map[string]bool{
-		"legacy_silo_v1": true, "organization_memberships": true, "tenant_bounded_media_scope": true,
+		"legacy_silo_v1": false, "organization_memberships": true, "tenant_bounded_media_scope": true,
 		"direct_profile_login": false, "shared_device_pairing": false, "delegated_admin_roles": false,
 	} {
 		got, present := body.Features[name]
