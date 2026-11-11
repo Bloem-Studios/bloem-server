@@ -3,6 +3,29 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 11, 2026 — search can keep a second Meilisearch up to date
+
+An operator who runs a second Meilisearch can now name it the search **mirror**
+(`SILO_MEILISEARCH_MIRROR_URL`, with a key from `SILO_MEILISEARCH_MIRROR_API_KEY_FILE`
+or `SILO_MEILISEARCH_MIRROR_API_KEY`). Bloem then keeps the catalog index there
+current by itself, a minute or so behind the main one, and after a failover it
+replays the changes the new main index had not received, with no one running SQL.
+It is off unless the address is set, and a mirror that is down or set up wrongly
+never slows the main index or stops Silo from starting. The mirror follows the search
+outbox with a Postgres transaction snapshot instead of a row number, so a slow
+transaction's rows are never skipped. It makes full copies from Postgres and
+publishes them in one step, tells the two servers apart with identity markers, and
+retries or splits a refused page and dead-letters only the documents Meilisearch
+really refuses. Cleanup keeps the outbox rows the mirror still needs, up to
+`SILO_MEILISEARCH_MIRROR_MAX_LAG` (72 hours, at most 20 while Silo switching is
+enabled). Its state, lag and `silo_search_mirror_*` metrics are shown only when it is
+configured, in a read-only section of the Search settings page and at
+`GET /api/bloem/v1/admin/search/mirror`. The migrations
+`20261111083319_bloem_search_mirror.sql` and
+`20261111083321_bloem_search_mirror_tx_index.sql` add `catalog_search_index_events.tx_id`
+and its index, which are the only footprint for an operator with no mirror. See
+[how the search mirror works](../architecture/bloem-search-mirror.md).
+
 ## November 10, 2026 — new libraries join the starting set, and deleting one takes it out
 
 Deleting a library that the platform's starting set named was refused with

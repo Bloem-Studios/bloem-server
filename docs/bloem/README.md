@@ -194,6 +194,7 @@ same path. Read the upstream document together with its overlay.
 ### Search and recommendations
 
 - [How search finds titles by words and by meaning](../architecture/bloem-search-and-embeddings.md) — start here: the words and meaning halves of a search, matching strategies, task labels, changing the embedding model, with two pictures.
+- [How the search mirror works](../architecture/bloem-search-mirror.md) — an optional second Meilisearch that Bloem keeps current and swaps roles with after a failover: the four variables, the bookmark, full copies, the swap step, cleanup, failures, metrics and known limits.
 - [Recommendations overlay](overlays/architecture/recommendations.md) — what Bloem adds to Silo's recommendations page: task labels for `gemini-embedding-2`.
 
 ### Announcements, promotions and seasonal presentation
