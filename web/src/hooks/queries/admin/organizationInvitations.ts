@@ -149,7 +149,7 @@ export function useResendInvitation(context?: AdminContextSummary | null) {
   return useInvitationHandoff(
     context,
     authority,
-    async (id: number) => {
+    async (id: string) => {
       if (context?.scope === "organization") {
         const data = await adminV2Api<{ invitation: Invitation; claim_token: string }>(
           `/organization/invitations/${id}/resend`,
@@ -175,7 +175,7 @@ export function useRevokeInvitation(context?: AdminContextSummary | null) {
   return useMutation({
     networkMode: "always",
     retry: false,
-    mutationFn: (id: number) =>
+    mutationFn: (id: string) =>
       context?.scope === "organization"
         ? adminV2Api(
             `/organization/invitations/${id}`,

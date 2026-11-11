@@ -1,23 +1,9 @@
-// Organization invitation wire types for the Bloem administration API.
-export type InvitationStatus = "pending" | "accepted" | "expired" | "revoked";
+import type { components } from "@/api/v2/schema";
 
-export interface Invitation {
-  id: number;
-  email: string;
-  role: string;
-  access_group_id?: number;
-  library_ids?: number[];
-  create_profile: boolean;
-  show_tour: boolean;
-  note?: string;
-  invited_by: number;
-  invited_by_name?: string;
-  status: InvitationStatus;
-  expires_at: string;
-  accepted_at?: string;
-  accepted_user_id?: number;
-  created_at: string;
-}
+// Organization invitation wire types for the Bloem administration API. The
+// organization routes answer with Silo's /api/v2 AdminInvitation.
+export type Invitation = components["schemas"]["AdminInvitation"];
+export type InvitationStatus = Invitation["status"];
 
 export interface CreateInvitationRequest {
   email: string;

@@ -48,7 +48,7 @@ func TestBrowseOnlyPluginRouterPostgres(t *testing.T) {
 		}
 	}
 	router := NewRouter(Dependencies{DB: pool, Config: &config.Config{Auth: config.AuthConfig{JWTSecret: "browse-plugin-test-secret", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour}}, UserStoreProvider: pgstore.NewPostgresProvider(pool), PluginHTTPProxy: plugins.NewHTTPProxyWithTypedResolver(fixture, nil)})
-	paths := []string{"/api/v1/plugins/1/", "/api/v1/plugin-assets/1/app.js", plugins.ContentPrefix + "/plugins/1/", plugins.ContentPrefix + "/plugin-assets/1/app.js"}
+	paths := []string{plugins.ContentPrefix + "/plugins/1/", plugins.ContentPrefix + "/plugin-assets/1/app.js"}
 	setPlayback := func(allowed bool) {
 		t.Helper()
 		if _, err := pool.Exec(t.Context(), "UPDATE access_groups SET playback_allowed=$1 WHERE is_default", allowed); err != nil {

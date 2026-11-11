@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -409,55 +410,38 @@ func (h *AdminHandler) HandleDeleteUserProfile(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// HandleListUserDevices handles GET /admin/users/{user_id}/devices.
+// HandleListUserDevices handles GET /admin/users/{user_id}/devices with
+// Silo's /api/v2 account device list. Under an organization only its profiles
+// are listed, and a device none of them used is left out.
 func (h *AdminHandler) HandleListUserDevices(w http.ResponseWriter, r *http.Request) {
 	resources, ok := h.loadAdminUserResources(w, r)
-	if !ok {
+	if !ok || !bloemV2Available(w) {
 		return
 	}
-	registry, ok := resources.store.(userstore.DeviceRegistry)
-	if !ok {
-		writeJSON(w, http.StatusOK, []deviceResponse{})
-		return
-	}
-	devices, err := registry.ListDevices(r.Context())
+	devices, err := h.ReadAdminUserDevices(r.Context(), resources.user.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list devices")
 		return
 	}
-	counts, err := deviceOverrideCounts(r, resources.store)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to read device settings")
-		return
-	}
-	profileNames, err := listProfileNamesByID(r.Context(), resources.store)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list profiles")
-		return
-	}
-	response := make([]deviceResponse, 0, len(devices))
-	organizationProfiles, err := adminResourceOrganizationProfiles(r.Context(), resources.store)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list profiles")
-		return
-	}
-	for _, device := range devices {
-		if adminResourceOrganization(r.Context()) != uuid.Nil {
-			if _, ok := organizationProfiles[device.ProfileID]; !ok {
-				continue
+	if adminResourceOrganization(r.Context()) != uuid.Nil {
+		organizationProfiles, err := adminResourceOrganizationProfiles(r.Context(), resources.store)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list profiles")
+			return
+		}
+		kept := devices[:0]
+		for _, device := range devices {
+			device.Profiles = slices.DeleteFunc(device.Profiles, func(profile adminDeviceProfileSummary) bool {
+				_, ok := organizationProfiles[profile.ProfileID]
+				return !ok
+			})
+			if len(device.Profiles) > 0 {
+				kept = append(kept, device)
 			}
 		}
-		response = append(response, deviceResponse{
-			DeviceID:       device.DeviceID,
-			DeviceName:     device.DeviceName,
-			DevicePlatform: device.DevicePlatform,
-			LastSeenAt:     device.LastSeenAt,
-			ProfileID:      device.ProfileID,
-			ProfileName:    profileNames[device.ProfileID],
-			ChangedCount:   counts[deviceKey{profileID: device.ProfileID, deviceID: device.DeviceID}],
-		})
+		devices = kept
 	}
-	writeJSON(w, http.StatusOK, response)
+	writeJSON(w, http.StatusOK, bloemV2.UserDevices(devices))
 }
 
 func adminDeviceProfileIDs(ctx context.Context, store userstore.UserStore, deviceID string) ([]string, []adminDeviceSettingChange, error) {

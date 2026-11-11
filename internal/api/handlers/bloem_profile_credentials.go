@@ -47,9 +47,20 @@ func (h *BloemProfileCredentialsHandler) authorize(w http.ResponseWriter, r *htt
 		writeError(w, 503, "unavailable", "Profile management is unavailable")
 		return 0, false
 	}
-	allowed, err := h.profiles.canManageHouseholdProfiles(r, store)
+	// Silo's /api/v2 household rule: the acting profile is the household
+	// primary, verified by the viewer scope the viewer gate resolved.
+	allowed, err := canManageHouseholdAs(r.Context(), store, apimw.GetProfileID(r.Context()), func(profile *userstore.Profile) error {
+		if scope, ok := access.GetScope(r.Context()); ok {
+			return scope.CheckProfileVerification(profile)
+		}
+		return access.ErrProfileUnverified
+	})
+	if errors.Is(err, access.ErrProfileUnverified) {
+		writeError(w, 403, "forbidden", "Profile management requires verifying the primary profile PIN")
+		return 0, false
+	}
 	if err != nil {
-		writeProfileManagementPermissionError(w, err)
+		writeError(w, 500, "internal_error", "Failed to check profile permissions")
 		return 0, false
 	}
 	if !allowed {

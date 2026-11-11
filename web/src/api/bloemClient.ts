@@ -1,7 +1,6 @@
 // Bloem's JSON API client. Bloem screens call Silo's /api/v2 through v2() and
-// Bloem's native /api/bloem/v1 through nativeApi(); nothing in Bloem calls
-// Silo's /api/v1 (docs/architecture/bloem-leaving-silo-v1.md). api() keeps the
-// shared transport that bloemClient.test.ts exercises.
+// Bloem's native /api/bloem/v1 through nativeApi(); Silo retired /api/v1 and
+// nothing in Bloem calls it (docs/architecture/bloem-leaving-silo-v1.md).
 // Built on the Silo-owned session transport in client.ts so that file stays
 // close to upstream.
 import type { ApiError } from "./types";
@@ -13,7 +12,7 @@ import {
   reportProfileUnverified,
   type ProfileRequestContextSnapshot,
 } from "./client";
-import { resolveRequestPolicy, type RequestPolicy } from "./bloemRequestPolicy";
+import type { RequestPolicy } from "./bloemRequestPolicy";
 import { storage } from "../utils/storage";
 
 export type { RequestPolicy } from "./bloemRequestPolicy";
@@ -114,14 +113,6 @@ async function readApiResponse<T>(res: Response): Promise<T> {
   return JSON.parse(text) as T;
 }
 
-export async function api<T>(
-  path: string,
-  options: RequestInit = {},
-  policy?: RequestPolicy,
-): Promise<T> {
-  return readApiResponse<T>(await apiResponse(path, options, policy));
-}
-
 /** Native operational routes share the account client, but never replay writes by default. */
 export async function nativeApi<T>(
   path: string,
@@ -147,16 +138,6 @@ export async function nativeApi<T>(
  * rejected before fetch. Non-idempotent mutations pass policy "none" to avoid
  * replaying an operation whose response was lost; existing callers retain "safe".
  */
-export function apiWithProfileRequestContext<T>(
-  path: string,
-  snapshot: ProfileRequestContextSnapshot,
-  options: RequestInit = {},
-  policy: RequestPolicy = "safe",
-): Promise<T> {
-  return apiForProfile<T>(path, snapshot, options, "/api/v1", policy);
-}
-
-/** Native viewer routes use the same authentication, profile binding and refresh flow. */
 export function nativeApiWithProfileRequestContext<T>(
   path: string,
   snapshot: ProfileRequestContextSnapshot,
@@ -170,7 +151,7 @@ async function apiForProfile<T>(
   path: string,
   snapshot: ProfileRequestContextSnapshot,
   options: RequestInit,
-  prefix: "/api/v1" | "/api/bloem/v1",
+  prefix: "/api/bloem/v1",
   policy: RequestPolicy = "safe",
 ): Promise<T> {
   if (!isProfileRequestContextCurrent(snapshot)) {
@@ -193,21 +174,12 @@ async function apiForProfile<T>(
   return readApiResponse<T>(response);
 }
 
-/** Performs an authenticated API request while leaving the successful body unread. */
-export async function apiResponse(
-  path: string,
-  options: RequestInit = {},
-  policy?: RequestPolicy,
-): Promise<Response> {
-  return apiResponseInternal(path, options, resolveRequestPolicy(options, policy));
-}
-
 async function apiResponseInternal(
   path: string,
   options: RequestInit,
   policy: RequestPolicy,
   snapshot?: ProfileRequestContextSnapshot,
-  prefix: "/api/v1" | "/api/bloem/v1" = "/api/v1",
+  prefix: "/api/bloem/v1" = "/api/bloem/v1",
 ): Promise<Response> {
   const { res, requestProfileId, requestProfileToken } = await fetchWithSession(
     `${prefix}${path}`,

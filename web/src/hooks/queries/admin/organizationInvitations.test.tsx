@@ -25,7 +25,7 @@ const context: AdminContextSummary = {
   securityRevision: 2,
 };
 const invitation = {
-  id: 3,
+  id: "3",
   email: "new@example.test",
   role: "user",
   status: "pending",
@@ -116,7 +116,7 @@ describe.each(["create", "resend"] as const)("%s direct invitation request", (ac
       const send = () =>
         action === "create"
           ? view.result.current.create.send(body)
-          : view.result.current.resend.send(3);
+          : view.result.current.resend.send("3");
       let operation!: ReturnType<typeof send>;
       let settled = false;
       act(() => {
@@ -177,7 +177,7 @@ describe.each(["create", "resend"] as const)("%s direct invitation request", (ac
       const send =
         action === "create"
           ? () => view.result.current.create.send(body)
-          : () => view.result.current.resend.send(3);
+          : () => view.result.current.resend.send("3");
       let operation!: ReturnType<typeof send>;
       if (phase === "before request") activateAdminV2Context("replacement", context.key);
       act(() => {
@@ -209,7 +209,7 @@ describe.each(["create", "resend"] as const)("%s direct invitation request", (ac
     await act(async () => {
       const handoff = await (action === "create"
         ? view.result.current.create.send(body)
-        : view.result.current.resend.send(3));
+        : view.result.current.resend.send("3"));
       expect(handoff).toBeUndefined();
     });
     expect(fetchMock).not.toHaveBeenCalled();

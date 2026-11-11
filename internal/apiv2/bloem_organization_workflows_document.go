@@ -1,8 +1,6 @@
 package apiv2
 
 import (
-	"time"
-
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
@@ -23,29 +21,9 @@ type BloemOrganizationInvitationLifecycleInput struct {
 	Body BloemOrganizationInvitationRevision
 }
 
-// BloemOrganizationInvitation restates handlers.invitationResponse, which is
-// unexported. The token is deliberately separate from this reusable record.
-type BloemOrganizationInvitation struct {
-	ID            int64     `json:"id"`
-	Email         string    `json:"email"`
-	Role          string    `json:"role"`
-	AccessGroupID *int64    `json:"access_group_id,omitempty"`
-	LibraryIDs    []int     `json:"library_ids,omitempty"`
-	CreateProfile bool      `json:"create_profile"`
-	ShowTour      bool      `json:"show_tour"`
-	Note          string    `json:"note,omitempty"`
-	InvitedBy     int64     `json:"invited_by"`
-	InvitedByName string    `json:"invited_by_name,omitempty"`
-	Status        string    `json:"status" enum:"pending,accepted,expired,revoked"`
-	ExpiresAt     time.Time `json:"expires_at"`
-	AcceptedAt    *string   `json:"accepted_at,omitempty" format:"date-time"`
-	AcceptedUser  *int64    `json:"accepted_user_id,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
-}
-
 type BloemOrganizationInvitationResendResponse struct {
-	Invitation BloemOrganizationInvitation `json:"invitation"`
-	ClaimToken string                      `json:"claim_token" readOnly:"true" doc:"Single-use claim token returned only by this rotation response. The server retains only its hash; later reads cannot recover it. Treat it as a secret and deliver it directly to the invitee."`
+	Invitation AdminInvitation `json:"invitation"`
+	ClaimToken string          `json:"claim_token" readOnly:"true" doc:"Single-use claim token returned only by this rotation response. The server retains only its hash; later reads cannot recover it. Treat it as a secret and deliver it directly to the invitee."`
 }
 
 type BloemOrganizationInvitationResendOutput struct {

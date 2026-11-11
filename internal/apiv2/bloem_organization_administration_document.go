@@ -28,58 +28,12 @@ const (
 
 // Private handler wire records are mirrored here; exported records are reused.
 
-type BloemOrganizationGroup struct {
-	ID                       int64     `json:"id"`
-	Name                     string    `json:"name"`
-	Description              string    `json:"description"`
-	LibraryIDs               []int     `json:"library_ids" nullable:"true"`
-	MaxPlaybackQuality       string    `json:"max_playback_quality"`
-	DownloadAllowed          bool      `json:"download_allowed"`
-	DownloadTranscodeAllowed bool      `json:"download_transcode_allowed"`
-	TranscodeAllowed         bool      `json:"transcode_allowed"`
-	AudioTranscodeAllowed    bool      `json:"audio_transcode_allowed"`
-	MaxStreams               int       `json:"max_streams"`
-	MaxTranscodes            int       `json:"max_transcodes"`
-	AllowedPermissions       []string  `json:"allowed_permissions" nullable:"true"`
-	RequestsAllowed          bool      `json:"requests_allowed"`
-	IsDefault                bool      `json:"is_default"`
-	MemberCount              int       `json:"member_count"`
-	CreatedAt                time.Time `json:"created_at"`
-	UpdatedAt                time.Time `json:"updated_at"`
-}
-
-type BloemOrganizationGroupCreate struct {
-	Name                     string   `json:"name"`
-	Description              string   `json:"description,omitempty"`
-	LibraryIDs               []int    `json:"library_ids,omitempty" nullable:"true" doc:"Omit for the default policy; null adds no library restriction. Empty arrays are collapsed to null in group responses."`
-	MaxPlaybackQuality       string   `json:"max_playback_quality,omitempty"`
-	DownloadAllowed          *bool    `json:"download_allowed,omitempty"`
-	DownloadTranscodeAllowed *bool    `json:"download_transcode_allowed,omitempty"`
-	TranscodeAllowed         *bool    `json:"transcode_allowed,omitempty"`
-	AudioTranscodeAllowed    *bool    `json:"audio_transcode_allowed,omitempty"`
-	MaxStreams               *int     `json:"max_streams,omitempty"`
-	MaxTranscodes            *int     `json:"max_transcodes,omitempty"`
-	AllowedPermissions       []string `json:"allowed_permissions,omitempty" nullable:"true" doc:"Null or omission uses the default permission policy. Group responses collapse empty permission arrays to null."`
-	RequestsAllowed          *bool    `json:"requests_allowed,omitempty"`
-	IsDefault                bool     `json:"is_default,omitempty"`
-	ExpectedRevision         int64    `json:"expected_revision" minimum:"1"`
-}
-
-type BloemOrganizationGroupUpdate struct {
-	Name                     *string  `json:"name,omitempty"`
-	Description              *string  `json:"description,omitempty"`
-	LibraryIDs               []int    `json:"library_ids,omitempty" nullable:"true"`
-	MaxPlaybackQuality       *string  `json:"max_playback_quality,omitempty"`
-	DownloadAllowed          *bool    `json:"download_allowed,omitempty"`
-	DownloadTranscodeAllowed *bool    `json:"download_transcode_allowed,omitempty"`
-	TranscodeAllowed         *bool    `json:"transcode_allowed,omitempty"`
-	AudioTranscodeAllowed    *bool    `json:"audio_transcode_allowed,omitempty"`
-	MaxStreams               *int     `json:"max_streams,omitempty"`
-	MaxTranscodes            *int     `json:"max_transcodes,omitempty"`
-	AllowedPermissions       []string `json:"allowed_permissions,omitempty" nullable:"true"`
-	RequestsAllowed          *bool    `json:"requests_allowed,omitempty"`
-	IsDefault                *bool    `json:"is_default,omitempty"`
-	ExpectedRevision         int64    `json:"expected_revision" minimum:"1"`
+// BloemOrganizationGroupWrite is Silo's /api/v2 AdminAccessGroupBody with the
+// organization policy revision the write is checked against. Groups are
+// answered as Silo's /api/v2 AdminAccessGroup.
+type BloemOrganizationGroupWrite struct {
+	AdminAccessGroupBody
+	ExpectedRevision int64 `json:"expected_revision" minimum:"1"`
 }
 
 type BloemRevisionRequest struct {
@@ -158,16 +112,16 @@ type BloemOrganizationSummaryResponse struct {
 }
 
 type BloemOrganizationGroupsResponse struct {
-	Groups []BloemOrganizationGroup `json:"groups"`
+	Groups []AdminAccessGroupListItem `json:"groups"`
 }
 
 type BloemOrganizationGroupResponse struct {
-	Group BloemOrganizationGroup `json:"group"`
+	Group AdminAccessGroup `json:"group"`
 }
 
 type BloemOrganizationGroupMutationResponse struct {
-	Group          BloemOrganizationGroup `json:"group"`
-	PolicyRevision int64                  `json:"policy_revision"`
+	Group          AdminAccessGroup `json:"group"`
+	PolicyRevision int64            `json:"policy_revision"`
 }
 
 type BloemOrganizationLibrariesResponse struct {
@@ -179,7 +133,7 @@ type BloemOrganizationEntitlementResponse struct {
 }
 
 type BloemOrganizationInvitationsResponse struct {
-	Invitations []BloemOrganizationInvitation `json:"invitations"`
+	Invitations []AdminInvitation `json:"invitations"`
 }
 
 type BloemEntitlementCohortsResponse struct {
@@ -254,7 +208,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 			409: bloemOrganizationPolicyConflict + " conflict: the group name already exists, or is_default would replace a default group managed by entitlement policy.",
 			422: bloemOrganizationRevisionInvalid,
 		})
-		registerBloemChiDocument[bloemJSONInput[BloemOrganizationGroupCreate], bloemJSONOutput[BloemOrganizationGroupMutationResponse]](reg, op)
+		registerBloemChiDocument[bloemJSONInput[BloemOrganizationGroupWrite], bloemJSONOutput[BloemOrganizationGroupMutationResponse]](reg, op)
 	}
 
 	{
@@ -267,7 +221,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 			409: bloemOrganizationPolicyConflict + " conflict: the group name already exists, is_default=false was sent for the current default group, or the group, or a default group it would replace, is managed by entitlement policy.",
 			422: bloemOrganizationRevisionInvalid,
 		})
-		registerBloemChiDocument[bloemJSONInput[BloemOrganizationGroupUpdate], bloemJSONOutput[BloemOrganizationGroupMutationResponse]](reg, op)
+		registerBloemChiDocument[bloemJSONInput[BloemOrganizationGroupWrite], bloemJSONOutput[BloemOrganizationGroupMutationResponse]](reg, op)
 	}
 
 	{

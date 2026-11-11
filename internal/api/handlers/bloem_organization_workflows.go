@@ -99,7 +99,7 @@ func (h *BloemAdminOrganizationHandler) HandleResendInvitation(w http.ResponseWr
 		return
 	}
 	writeJSON(w, http.StatusCreated, struct {
-		Invitation invitationResponse `json:"invitation"`
-		ClaimToken string             `json:"claim_token"`
-	}{toInvitationResponse(item, time.Now()), token})
+		Invitation any    `json:"invitation"`
+		ClaimToken string `json:"claim_token"`
+	}{bloemV2.Invitation(item), token})
 }

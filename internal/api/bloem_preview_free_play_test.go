@@ -180,7 +180,7 @@ func TestFreePlayStreamTokensGuardBothRouters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/api/v2/stream/" + sid, "/api/v1/stream/" + sid} {
+	for _, path := range []string{"/api/v2/stream/" + sid} {
 		r := httptest.NewRequest(http.MethodGet, path+"?st="+token, nil)
 		r.Host = "browse.example.test"
 		w := httptest.NewRecorder()

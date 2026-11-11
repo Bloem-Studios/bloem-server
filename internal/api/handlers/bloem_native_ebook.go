@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"path"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -18,7 +17,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
-	"github.com/go-chi/chi/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -189,30 +187,4 @@ func (s *nativeEbookStream) Seek(offset int64, whence int) (int64, error) {
 		s.failure = err
 	}
 	return result, err
-}
-
-// HandleReadFile supplies the existing v1 authentication, route and policy
-// checks. Reader progress/config/annotations stay with the ordinary handler.
-func (h *NativeEbookFileService) HandleReadFile(w http.ResponseWriter, r *http.Request) {
-	if apimw.GetUserID(r.Context()) == 0 {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return
-	}
-	contentID := strings.TrimSpace(chi.URLParam(r, "content_id"))
-	fileID, err := strconv.Atoi(chi.URLParam(r, "file_id"))
-	if contentID == "" || err != nil || fileID <= 0 {
-		writeError(w, http.StatusBadRequest, "bad_request", "content_id and file_id are required")
-		return
-	}
-	file, err := h.ResolveReaderFile(r.Context(), contentID, fileID, requestAccessFilter(r))
-	if err == nil {
-		err = h.ServeReaderFile(w, r, file)
-	}
-	if err != nil {
-		if h == nil || h.Local == nil {
-			writeError(w, http.StatusServiceUnavailable, "unavailable", "Ebook reader is not configured")
-			return
-		}
-		h.Local.writeReadError(w, err)
-	}
 }

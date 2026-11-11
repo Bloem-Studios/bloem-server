@@ -36,9 +36,9 @@ func TestNativeReaderBrowseOnly(t *testing.T) {
 							r.Header.Set("If-None-Match", "*")
 						}
 						w := httptest.NewRecorder()
-						h.HandleReadFile(w, r)
-						if w.Code != 403 || opener.calls != 0 || w.Header().Get("Content-Range") != "" || w.Header().Get("ETag") != "" || w.Header().Get("Content-Disposition") != "" {
-							t.Fatalf("denied reader: %d headers=%v opens=%d body=%s", w.Code, w.Header(), opener.calls, w.Body)
+						err := readNativeEbookV2(h, w, r)
+						if nativeEbookErrStatus(err) != 403 || opener.calls != 0 || w.Header().Get("Content-Range") != "" || w.Header().Get("ETag") != "" || w.Header().Get("Content-Disposition") != "" {
+							t.Fatalf("denied reader: %v headers=%v opens=%d body=%s", err, w.Header(), opener.calls, w.Body)
 						}
 					}
 				})

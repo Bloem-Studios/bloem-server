@@ -252,7 +252,7 @@ func TestBloemWebCompletionDocumentInputsAndTokens(t *testing.T) {
 		t.Error("resend must distinguish rotation from email delivery and receipt replay")
 	}
 	invitation := bloemDocSchema(t, doc, bloemDocObject(t, response, "properties", "invitation"))
-	bloemDocFields(t, invitation, "id", "email", "role", "access_group_id", "library_ids", "create_profile", "show_tour", "note", "invited_by", "invited_by_name", "status", "expires_at", "accepted_at", "accepted_user_id", "created_at")
+	bloemDocFields(t, invitation, "id", "email", "delivery", "role", "access_group_id", "library_ids", "create_profile", "show_tour", "note", "invited_by", "invited_by_name", "status", "expires_at", "accepted_at", "accepted_user_id", "created_at")
 	for _, method := range []string{"put", "delete"} {
 		op := bloemDocObject(t, doc, "paths", BloemPrefix+"/profile-credentials/{id}", method)
 		schema := bloemDocSchema(t, doc, bloemDocObject(t, op, "requestBody", "content", "application/json", "schema"))

@@ -147,7 +147,7 @@ type BloemPlatformAccountSessionInput struct {
 type BloemAccountProfileOutput struct{ Body handlers.ProfileView }
 type BloemAccountProfileListOutput struct{ Body []handlers.ProfileView }
 type BloemAccountDeviceListOutput struct {
-	Body []handlers.BloemAdminDeviceWire
+	Body []AdminUserDevice
 }
 type BloemAccountSessionListOutput struct {
 	Body []handlers.BloemAdminAuthSessionWire

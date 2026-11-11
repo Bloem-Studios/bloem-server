@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"testing"
@@ -112,29 +111,6 @@ func TestTenantAccessGroupAdapterReusesActiveOrganizationDB(t *testing.T) {
 		view := toAdminUserResponse(&models.User{ID: 1, Role: models.RoleUser, AccessGroupID: &current.ID, MaxProfiles: new(5)}, &policy)
 		if view.EffectivePolicy.PlaybackAllowed || view.EffectivePolicy.MaxProfiles != 5 {
 			t.Fatalf("account effective policy lost tenant fields: %+v", view.EffectivePolicy)
-		}
-	}
-}
-
-// Silo's v1 projection keeps null (no restriction) apart from an empty list
-// (no libraries); the tenant adapter must not blur the two.
-func TestTenantAccessGroupLegacyProjectionKeepsNullAndEmptyArrays(t *testing.T) {
-	for _, group := range []access.Group{{ID: 1, LibraryIDs: nil, AllowedPermissions: nil}, {ID: 1, LibraryIDs: []int{}, AllowedPermissions: []string{}}} {
-		wire, err := json.Marshal(toAccessGroupResponse(group))
-		if err != nil {
-			t.Fatal(err)
-		}
-		var fields map[string]any
-		if err := json.Unmarshal(wire, &fields); err != nil {
-			t.Fatal(err)
-		}
-		if len(fields) != 17 || (fields["library_ids"] == nil) != (group.LibraryIDs == nil) || (fields["allowed_permissions"] == nil) != (group.AllowedPermissions == nil) {
-			t.Fatalf("legacy projection changed: %s", wire)
-		}
-		for _, key := range []string{"organization_id", "playback_allowed", "max_profiles", "managed_template_key"} {
-			if _, ok := fields[key]; ok {
-				t.Fatalf("storage field %s reached group wire", key)
-			}
 		}
 	}
 }

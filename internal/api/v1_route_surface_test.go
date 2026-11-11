@@ -18,27 +18,12 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
 
-// The Silo-compatible projection at /api/v1 is frozen against upstream Silo:
-// this repository's native surface is /api/bloem/v1, and a route added, removed or
-// renamed under /api/v1 breaks clients this project does not ship. The golden
-// files below were generated from origin/main. The exact, fingerprinted Bloem
-// namespace adjudications live in bloem_v1_adjudication_test.go; all other drift
-// in either direction still fails here with the exact route named.
-//
-// Deliberate, reviewed exceptions are pinned in the golden files: direct
-// profile login, direct profile lookup, the nine account-administration
-// profile/device/session methods in adminUserResourceRouteContract, and the
-// 17 tenant-member lifecycle/resource methods in
-// adminTenantMemberRouteContract. Regenerate deliberately, never merely to
-// make a failure go away.
-//
-// The 2026-09-03 upstream sync added three routes that upstream Silo itself
-// serves under /api/v1 — GET /admin/playback-routing/capabilities (silo#858)
-// and GET /auth/account/capability with POST /auth/account/password
-// (silo#877). Adopting them is what keeps the projection faithful: a Silo
-// client calls them, so omitting them would be the drift this guard exists to
-// catch, in the direction the guard cannot see. Regenerating for a route this
-// fork invented is still forbidden — that route belongs on /api/bloem/v1:
+// Silo retired /api/v1 (Silo #3200): the main listener mounts only its
+// tombstone, which answers 410 client_upgrade_required, and the health and
+// readiness probes. Bloem adds nothing under /api/v1 -- its routes belong on
+// /api/bloem/v1 -- so the golden files below hold exactly what Silo's
+// tombstone mounts, and any other /api/v1 route fails here. Regenerate only
+// when Silo changes the tombstone:
 //
 //	BLOEM_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
 const (
@@ -102,7 +87,7 @@ func assertV1RouteSurface(t *testing.T, golden string, router chi.Router) {
 	if err != nil {
 		t.Fatalf("read %s: %v", golden, err)
 	}
-	want := bloemAdjudicatedV1Baseline(t, golden, raw, router)
+	want := strings.Split(strings.TrimSpace(string(raw)), "\n")
 
 	added, removed := routeDifference(routes, want)
 	for _, route := range added {

@@ -133,7 +133,7 @@ func TestBloemCapabilitiesExactContract(t *testing.T) {
 		`"direct_stream_resume_v1","header_authenticated_media_v1","authorized_media_origins_v1",` +
 		`"software_video_decode_v1","plan_invalidated_v1","plan_source_duration_v1","declared_event_channels","live_tv_access_v1",` +
 		`"organization_activity_v1","organization_invitation_lifecycle_v1","platform_engagement_authoring_v1",` +
-		`"watch_document_v1","device_pairing_v1","progress_sync_v1"]}`
+		`"watch_document_v1","device_pairing_v1"]}`
 	if strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("body = %s, want %s", rec.Body.String(), want)
 	}
@@ -175,7 +175,7 @@ func TestBloemCapabilitiesGrewAdditively(t *testing.T) {
 
 	// The tokens the TV clients feature-detect on. A client that cannot find
 	// one of these disables the feature entirely, so their absence is silent.
-	for _, token := range []string{"watch_document_v1", "device_pairing_v1", "progress_sync_v1"} {
+	for _, token := range []string{"watch_document_v1", "device_pairing_v1"} {
 		if !slices.Contains(body.FeatureTokens, token) {
 			t.Errorf("feature_tokens is missing %q: %v", token, body.FeatureTokens)
 		}

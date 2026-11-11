@@ -112,7 +112,6 @@ func TestBloemAdministrationDocumentedStatusesMatchHandlers(t *testing.T) {
 func TestBloemAdministrationMirrorsPrivateWireRecords(t *testing.T) {
 	doc := bloemWebDocument(t)
 	for _, tc := range []struct{ file, handlerType, schema string }{
-		{"access_groups.go", "accessGroupResponse", "BloemOrganizationGroup"},
 		{"bloem_admin_session.go", "adminContextSessionRequest", "BloemAdminSessionRequest"},
 		{"bloem_admin_session.go", "adminContextSessionResponse", "BloemAdminSessionResponse"},
 		{"bloem_admin_session.go", "adminContextSummary", "BloemAdminContextSummary"},
@@ -239,7 +238,6 @@ func TestBloemAdministrationPolicyNullability(t *testing.T) {
 		schema string
 		body   any
 	}{
-		{"BloemOrganizationGroup", BloemOrganizationGroup{}},
 		{"BloemEntitlementPolicy", BloemEntitlementPolicy{}},
 		{"BloemOrganizationEntitlementRead", BloemOrganizationEntitlementRead{}},
 		{"BloemLegacyAccountEntitlementRead", BloemLegacyAccountEntitlementRead{}},

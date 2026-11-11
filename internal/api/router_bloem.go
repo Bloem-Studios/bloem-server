@@ -208,6 +208,11 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 		if authMW != nil && surfaces.ProfileCredentials != nil {
 			r.Group(func(r chi.Router) {
 				r.Use(authMW.RequireAuth)
+				if client.viewer != nil {
+					// Resolves the viewer scope whose PIN verification the
+					// household check reads, as on Silo's /api/v2.
+					r.Use(client.viewer.RequireViewerAccess)
+				}
 				r.Get("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleGet)
 				// Only the writes check the account password, so only they
 				// spend the password-change budget.

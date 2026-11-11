@@ -35,7 +35,7 @@ func TestServerIdentityAndCapabilitiesAreMountedPublicly(t *testing.T) {
 	// The capability document is a property of the build, so a router with no
 	// dependencies at all still advertises the whole client surface. A client
 	// that cannot find these tokens turns the features off.
-	for _, token := range []string{"watch_document_v1", "device_pairing_v1", "progress_sync_v1"} {
+	for _, token := range []string{"watch_document_v1", "device_pairing_v1"} {
 		if !slices.Contains(advertised.FeatureTokens, token) {
 			t.Errorf("feature_tokens = %v, want it to contain %q", advertised.FeatureTokens, token)
 		}

@@ -75,44 +75,6 @@ type BloemWatchSearchInput struct {
 	Query string `query:"q" doc:"Search terms; surrounding whitespace is ignored and a blank value answers 400." required:"true"`
 }
 
-// BloemSyncProgressItem is one playback position a client recorded, possibly
-// while offline.
-type BloemSyncProgressItem struct {
-	MediaItemID    string  `json:"media_item_id" doc:"Item this position belongs to. An empty value is rejected for this item only."`
-	Position       float64 `json:"position" doc:"Playback position in seconds."`
-	Duration       float64 `json:"duration" doc:"Total runtime in seconds, as the client observed it."`
-	ForceOverwrite bool    `json:"force_overwrite" required:"false" doc:"Replace the stored position unconditionally. Ignored when updated_at is present. Defaults to false."`
-	// UpdatedAt is the client's EVENT time, not the time of the request. An
-	// offline queue replays hours later, so without it every replayed item
-	// would look newer than the server's state and win a last-write-wins
-	// comparison it should lose. The server clamps it to now plus a skew
-	// allowance and uses it only as the comparison key.
-	UpdatedAt *string `json:"updated_at,omitempty" doc:"RFC 3339 time the client recorded this position; the newer of it and the stored event wins. Future times are clamped. Omit for a live update. An unparsable value is rejected for this item only." required:"false"`
-}
-
-// BloemSyncProgressInput is a batch of recorded positions.
-type BloemSyncProgressInput struct {
-	Body struct {
-		Items []BloemSyncProgressItem `json:"items" minItems:"1" maxItems:"100" doc:"Positions to reconcile, at most 100."`
-	}
-}
-
-// BloemSyncProgressResult is one item's outcome. Results are per item because a
-// batch must not fail wholesale on one bad entry: a client replaying an offline
-// queue would otherwise have no way to make progress past it.
-type BloemSyncProgressResult struct {
-	MediaItemID string `json:"media_item_id" doc:"Item this result belongs to."`
-	Status      string `json:"status" enum:"updated,ignored,error" doc:"updated: the position was written. ignored: accepted but not written, because it fell below the minimum resume threshold or a newer stored event won; do not retry it. error: rejected; see error."`
-	Error       string `json:"error,omitempty" doc:"Why this item was rejected: media_item_id is required, updated_at must be RFC3339, catalog item not found (absent or hidden from this profile) or failed to update progress."`
-}
-
-// BloemSyncProgressOutput carries one result per submitted item.
-type BloemSyncProgressOutput struct {
-	Body struct {
-		Results []BloemSyncProgressResult `json:"results" doc:"One result per submitted item, in request order."`
-	}
-}
-
 func registerBloemWatch(reg *Registry) {
 	// Watch and progress sync are mounted only when the deployment has a
 	// catalog, media-file repository and profile store; a deployment without
@@ -150,22 +112,4 @@ func registerBloemWatch(reg *Registry) {
 		registerBloemChiDocument[BloemWatchSearchInput, BloemWatchDocumentOutput](reg, op)
 	}
 
-	{
-		op := bloemClientDocumentOp(reg, "POST", "/sync/progress", "syncBloemProgress", "watch",
-			"Reconcile playback positions, including ones recorded offline.", http.StatusOK)
-		op.Description = "Accepts a JSON body of at most 1 MiB with 1 to 100 items. Item visibility is checked against the selected profile's libraries and rating limits before anything is written. A bad item does not fail the batch: it is reported per item, and the request still answers 200. Replaying the same batch converges on the same state, so an offline queue may retry it after an uncertain response."
-		// Replaying the same batch converges on the same state: positions are
-		// reconciled last-write-wins against UpdatedAt, not accumulated.
-		op.Extensions = map[string]any{"x-silo-retry-safety": string(RetrySafetyNaturalIdempotent)}
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
-			400: "bad_request: X-Profile-Id is missing, the body is not valid JSON, or it has no items or more than 100.",
-			413: "payload_too_large: the body exceeds 1 MiB.",
-			500: "internal_error: the viewer's access could not be resolved, or the profile's progress store could not be opened.",
-			503: bloemClientGate503 + " unavailable: item visibility could not be resolved; nothing was written.",
-		})
-		op.Responses["503"].Headers = map[string]*huma.Header{
-			"Retry-After": {Schema: &huma.Schema{Type: "integer"}, Description: "Seconds before retrying; sent with service_unavailable."},
-		}
-		registerBloemChiDocument[BloemSyncProgressInput, BloemSyncProgressOutput](reg, op)
-	}
 }

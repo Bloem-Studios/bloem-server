@@ -363,10 +363,8 @@ func TestNativeAudioPlaybackStartSeekNextTrackResumeDB(t *testing.T) {
 	}
 	progress := handlers.NewProgressHandler(f.deps.UserStoreProvider)
 	progress.LibraryLookup = catalog.NewLibraryItemRepository(f.pool)
-	w := httptest.NewRecorder()
-	progress.HandleBloemSyncProgress(w, httptest.NewRequest("POST", "/api/bloem/v1/sync/progress", strings.NewReader(`{"items":[{"media_item_id":"native-audio-book","position":3.25,"duration":4}]}`)).WithContext(f.ctx))
-	if w.Code != 200 {
-		t.Fatalf("progress=%d %s", w.Code, w.Body.String())
+	if _, err := progress.SyncProgress(f.ctx, middleware.GetUserID(f.ctx), f.profile, []handlers.ProgressSyncUpdate{{CheckAccess: true, MediaItemID: "native-audio-book", Position: 3.25, Duration: 4}}); err != nil {
+		t.Fatalf("progress: %v", err)
 	}
 	store, err := f.deps.UserStoreProvider.ForUser(f.ctx, middleware.GetUserID(f.ctx))
 	if err != nil {

@@ -61,7 +61,6 @@ func TestPreviewHostGuard(t *testing.T) {
 		want                       int
 	}{
 		{"browse.example.test", "POST", "/api/v2/auth/login", "", http.StatusForbidden},
-		{"browse.example.test", "POST", "/api/v1/auth/login", "", http.StatusForbidden},
 		{"browse.example.test", "GET", "/api/v2/auth/oauth/x/start", "", http.StatusForbidden},
 		{"browse.example.test", "POST", "/api/v2/auth/device/start", "", http.StatusForbidden},
 		{"browse.example.test", "POST", "/api/v2/password-resets", "", http.StatusForbidden},
@@ -113,7 +112,7 @@ func TestPreviewHostGuardWithoutSettings(t *testing.T) {
 		// Every auth route stays refused: a GET there can start a sign-in.
 		{"GET", "/api/v1/auth/device/capability", "", http.StatusServiceUnavailable},
 		{"GET", "/api/v2/auth/oauth/x/start", "", http.StatusServiceUnavailable},
-		{"POST", "/api/v1/auth/login", "", http.StatusServiceUnavailable},
+		{"POST", "/api/v2/auth/login", "", http.StatusServiceUnavailable},
 		{"POST", "/api/v2/auth/refresh", "", http.StatusServiceUnavailable},
 		{"POST", "/api/v2/password-resets", "", http.StatusServiceUnavailable},
 		{"GET", "/api/v2/catalog/items/x", "member", http.StatusServiceUnavailable},

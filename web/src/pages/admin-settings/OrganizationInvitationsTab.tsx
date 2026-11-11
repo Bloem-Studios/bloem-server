@@ -140,7 +140,7 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
     );
   }
 
-  async function handleResend(id: number) {
+  async function handleResend(id: string) {
     const data = await resend.send(id);
     if (data?.email_sent)
       toast.success(bloemT("bloem.admin.orgInvitations.invitationResentTheOldLink"));

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -79,7 +80,7 @@ func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 	}
 
 	outcomes := bloemRunConcurrentProvisioningPair(t, func(ctx context.Context, i int) bloemProvisioningOutcome {
-		request := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/invitations/"+tokens[i]+"/accept",
+		request := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v2/invitations/"+tokens[i]+"/accept",
 			bytes.NewBufferString(`{"password":"concurrent-invitation-password"}`))
 		request.Header.Set("Content-Type", "application/json")
 		request.Header.Set("User-Agent", "BloemProvisioningConcurrency/1")
@@ -88,16 +89,19 @@ func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 		outcome := bloemProvisioningOutcome{index: i, status: recorder.Code}
 		if recorder.Code == http.StatusCreated {
 			var reply struct {
-				AccessToken  string           `json:"access_token"`
-				RefreshToken string           `json:"refresh_token"`
-				User         struct{ ID int } `json:"user"`
+				Tokens *struct {
+					AccessToken  string              `json:"access_token"`
+					RefreshToken string              `json:"refresh_token"`
+					User         struct{ ID string } `json:"user"`
+				} `json:"tokens"`
 			}
 			if err := json.Unmarshal(recorder.Body.Bytes(), &reply); err != nil {
 				outcome.err = errors.New("decode invitation response failed")
-			} else if reply.AccessToken == "" || reply.RefreshToken == "" || reply.User.ID <= 0 {
-				outcome.err = errors.New("invitation response lacks account or session tokens")
+			} else if reply.Tokens == nil || reply.Tokens.AccessToken == "" || reply.Tokens.RefreshToken == "" {
+				outcome.err = errors.New("invitation response lacks session tokens")
+			} else if outcome.accountID, err = strconv.Atoi(reply.Tokens.User.ID); err != nil || outcome.accountID <= 0 {
+				outcome.err = errors.New("invitation response lacks the account")
 			}
-			outcome.accountID = reply.User.ID
 		}
 		return outcome
 	})

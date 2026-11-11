@@ -35,7 +35,6 @@ type bloemClientSurface struct {
 	identity     *handlers.ServerIdentityHandler
 	watch        *handlers.WatchHandler
 	previewWatch *handlers.WatchHandler
-	progress     *handlers.ProgressHandler
 	persons      *handlers.PersonDetailHandler
 	liveTV       *handlers.LiveTVHandler
 
@@ -65,11 +64,9 @@ type bloemClientSurface struct {
 func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, liveTVAdmin func(http.Handler) http.Handler) bloemClientSurface {
 	surface := bloemClientSurface{auth: authMW, tenant: tenantMW, rateLimit: deps.RateLimitMW, liveTVAdmin: liveTVAdmin}
 
-	var settings *catalog.EncryptedSettingsRepo
 	var setup handlers.SetupStateReporter
 	var users *auth.UserRepository
 	if deps.DB != nil {
-		settings = catalog.NewEncryptedSettingsRepo(catalog.NewServerSettingsRepo(deps.DB), deps.SecretCipher)
 		users = auth.NewUserRepository(deps.DB)
 		setup = auth.NewSetupState(users)
 	}
@@ -160,18 +157,6 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 		surface.notifications = handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub)
 	}
 
-	progress := handlers.NewProgressHandler(deps.UserStoreProvider)
-	progress.EventsHub = deps.EventsHub
-	progress.SettingsRepo = settings
-	progress.LibraryLookup = catalog.NewLibraryItemRepository(deps.DB)
-	// Watching changes the profile's recommendation signals, so a Bloem sync
-	// notifies the worker exactly as a v1 sync does. Without a worker
-	// (recommendations off) nothing is notified.
-	if deps.RecWorker != nil {
-		progress.SetSignalsChangedNotifier(deps.RecWorker)
-	}
-	surface.progress = progress
-
 	if deps.Config != nil {
 		profileTokens := access.NewProfileTokenService(deps.Config.Auth.JWTSecret, 0)
 		groups := access.NewTenantGroupStore(deps.DB)
@@ -210,7 +195,7 @@ func (s bloemClientSurface) mount(r chi.Router) {
 	if s.identity != nil {
 		r.Get("/server/identity", s.identity.HandleGetServerIdentity)
 	}
-	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.itemCollections == nil && s.liveTV == nil && s.notifications == nil) {
+	if s.auth == nil || (s.watch == nil && s.persons == nil && s.itemCollections == nil && s.liveTV == nil && s.notifications == nil) {
 		return
 	}
 
@@ -288,9 +273,6 @@ func (s bloemClientSurface) mount(r chi.Router) {
 				r.Get("/items/{content_id}", bloemPreviewWatchDocument(s.watch.HandleWatchItem, s.previewWatch.HandleWatchItem))
 				r.Get("/search", bloemPreviewWatchDocument(s.watch.HandleWatchSearch, s.previewWatch.HandleWatchSearch))
 			})
-		}
-		if s.progress != nil {
-			r.Post("/sync/progress", s.progress.HandleBloemSyncProgress)
 		}
 		if s.persons != nil {
 			r.Get("/persons/{person_id}", s.persons.HandleGetPersonDetail)

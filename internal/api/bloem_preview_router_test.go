@@ -127,34 +127,13 @@ func TestPreviewPrincipalRouterBoundary(t *testing.T) {
 	for _, tc := range []struct{ method, path string }{
 		{"POST", "/api/v2/playback/start"},
 		{"GET", "/api/v2/watch/movie:missing"},
-		{"GET", "/api/v1/catalog/items/movie:missing"},
 		{"GET", "/api/v2/recommendations/for-you/main"},
 		{"GET", "/api/v2/recommendations/discover"},
 		{"POST", "/api/v2/recommendations/taste-seed"},
 		{"PUT", "/api/v2/profile/sections"},
 		{"POST", "/api/v2/collections"},
 		{"GET", "/api/v2/markers/items/movie:missing"},
-		{"POST", "/api/bloem/v1/sync/progress"},
 		{"GET", "/api/bloem/v1/livetv/capability"},
-		{"GET", "/api/v1/direct-download?token=x"},
-		{"HEAD", "/api/v1/direct-download?token=x"},
-		{"GET", "/api/v1/direct-download-proxy?token=x"},
-		{"HEAD", "/api/v1/direct-download-proxy?token=x"},
-		{"GET", "/api/v1/downloads/1/file"},
-		{"HEAD", "/api/v1/downloads/1/file"},
-		{"GET", "/api/v1/downloads/1/file-proxy"},
-		{"HEAD", "/api/v1/downloads/1/file-proxy"},
-		{"GET", "/api/v1/downloads/1/subtitles/1"},
-		{"GET", "/api/v1/playback/transcode/missing/master.m3u8"},
-		{"GET", "/api/v1/playback/transcode/missing/segment/1"},
-		{"GET", "/api/v1/stream/missing"},
-		{"HEAD", "/api/v1/stream/missing"},
-		{"GET", "/api/v1/stream/missing/subtitles/1"},
-		{"HEAD", "/api/v1/stream/missing/subtitles/1"},
-		{"GET", "/api/v1/stream/missing/subtitles/1/fonts"},
-		{"HEAD", "/api/v1/ebooks/book/files/1/read"},
-		{"GET", "/api/v1/ebooks/book/files/1/read"},
-		{"PUT", "/api/v1/ebooks/book/progress"},
 	} {
 		w := serve(tc.method, tc.path, "bearer")
 		if w.Code != http.StatusForbidden || w.Header().Get("X-Bloem-Denial") != "preview_only" {
@@ -167,12 +146,12 @@ func TestPreviewPrincipalRouterBoundary(t *testing.T) {
 	}
 	// Plugin content treats every preview credential as anonymous.
 	for _, credential := range []string{"bearer", "query", "cookie", "api-key"} {
-		for _, path := range []string{"/api/v1/plugins/1/", "/api/v1/plugin-assets/1/app.js", plugins.ContentPrefix + "/plugins/1/", plugins.ContentPrefix + "/plugin-assets/1/app.js"} {
+		for _, path := range []string{plugins.ContentPrefix + "/plugins/1/", plugins.ContentPrefix + "/plugin-assets/1/app.js"} {
 			if w := serve("GET", path, credential); w.Code == http.StatusOK || w.Code == http.StatusPartialContent {
 				t.Errorf("plugin %s via %s served bytes to a preview principal: %d", path, credential, w.Code)
 			}
 		}
-		r := httptest.NewRequest("GET", "/api/v1/plugins/1/", nil)
+		r := httptest.NewRequest("GET", plugins.ContentPrefix+"/plugins/1/", nil)
 		switch credential {
 		case "bearer":
 			r.Header.Set("Authorization", "Bearer "+bearer)

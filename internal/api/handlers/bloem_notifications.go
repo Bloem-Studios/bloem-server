@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -97,10 +98,28 @@ func decodeBloemInboxCursor(raw string) (bloemInboxCursor, bool) {
 	return bloemInboxCursor{Before: b, Through: t}, true
 }
 
+// Page sizes the native inbox documents (BloemNotificationListInput and
+// BloemNotificationSyncInput).
+const (
+	bloemNotificationListDefault = 25
+	bloemNotificationSyncDefault = 50
+	bloemNotificationMaxLimit    = 100
+)
+
+// bloemNotificationLimit reads the limit query: values above the maximum are
+// the maximum, and a missing, non-numeric or non-positive value is fallback.
+func bloemNotificationLimit(r *http.Request, fallback int) int {
+	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	if err != nil || limit <= 0 {
+		return fallback
+	}
+	return min(limit, bloemNotificationMaxLimit)
+}
+
 // HandleBloemNotificationList handles GET /api/bloem/v1/notifications.
 func (h *NotificationsHandler) HandleBloemNotificationList(w http.ResponseWriter, r *http.Request) {
 	profileID := apimw.GetProfileID(r.Context())
-	limit := parseNotificationsLimit(r, notificationsDefaultLimit)
+	limit := bloemNotificationLimit(r, bloemNotificationListDefault)
 
 	var before, through *notifications.Cursor
 	if raw := r.URL.Query().Get("cursor"); raw != "" {
@@ -150,7 +169,7 @@ func bloemInboxPageOf(view NotificationInboxPageView) bloemNotificationPage {
 // reconnecting across a gap.
 func (h *NotificationsHandler) HandleBloemNotificationSync(w http.ResponseWriter, r *http.Request) {
 	profileID := apimw.GetProfileID(r.Context())
-	limit := parseNotificationsLimit(r, notificationsSyncLimit)
+	limit := bloemNotificationLimit(r, bloemNotificationSyncDefault)
 
 	var since *notifications.Cursor
 	if raw := r.URL.Query().Get("cursor"); raw != "" {

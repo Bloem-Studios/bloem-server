@@ -99,10 +99,6 @@ const (
 	// without typing a password on it. Protocol details live on
 	// /auth/device/capability.
 	featureDevicePairingV1 = "device_pairing_v1"
-	// featureProgressSyncV1 covers reading and writing playback progress,
-	// including POST /api/bloem/v1/sync/progress and its updated/ignored/error
-	// per-item results.
-	featureProgressSyncV1 = "progress_sync_v1"
 	// featureDeclaredEventChannels is the aggregate name for the events
 	// websocket's declared-channel handshake, reported in detail as
 	// declared_channels on /events/capability.
@@ -145,7 +141,7 @@ func buildBloemCapabilityTokens() []string {
 	}
 	add(playbackFeatures...)
 	add(featureDeclaredEventChannels, "live_tv_access_v1", "organization_activity_v1", "organization_invitation_lifecycle_v1", "platform_engagement_authoring_v1")
-	add(featureWatchDocumentV1, featureDevicePairingV1, featureProgressSyncV1)
+	add(featureWatchDocumentV1, featureDevicePairingV1)
 	return tokens
 }
 

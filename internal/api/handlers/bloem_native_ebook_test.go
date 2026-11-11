@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/go-chi/chi/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -59,6 +61,37 @@ func nativeReaderTestSetup(t *testing.T) (*NativeEbookFileService, *nativeReader
 	local := NewEbookReaderHandler(&MediaFileAuthorizer{FileResolver: stubMediaFileResolver{file: f}, ItemAccess: stubItemAccessChecker{}})
 	return NewNativeEbookFileService(local, opener), opener, f
 }
+
+// readNativeEbookV2 makes the two service calls /api/v2's readEbookFile makes
+// (internal/apiv2/ebook_file.go) and returns the error that operation renders
+// as its problem response. Nothing is written to w for a failed resolve.
+func readNativeEbookV2(h *NativeEbookFileService, w http.ResponseWriter, r *http.Request) error {
+	fileID, err := strconv.Atoi(chi.URLParam(r, "file_id"))
+	if err != nil {
+		return err
+	}
+	file, err := h.ResolveReaderFile(r.Context(), chi.URLParam(r, "content_id"), fileID, AccessFilterFromContext(r.Context(), ""))
+	if err != nil {
+		return err
+	}
+	return h.ServeReaderFile(w, r, file)
+}
+
+// nativeEbookErrStatus is the status a typed service error carries, 404 for
+// the catalog's not-found errors, and 0 for no error.
+func nativeEbookErrStatus(err error) int {
+	if err == nil {
+		return 0
+	}
+	if errors.Is(err, catalog.ErrItemNotFound) || errors.Is(err, catalog.ErrEpisodeNotFound) {
+		return http.StatusNotFound
+	}
+	if apiErr, ok := errors.AsType[*APIError](err); ok {
+		return apiErr.Status
+	}
+	return http.StatusInternalServerError
+}
+
 func nativeReadRequest(method string) *http.Request {
 	return withEbookReaderRouteParams(newEbookReaderAuthRequest(method, "/ebooks/ebook-1/files/42/read"), "ebook-1", "42")
 }
@@ -75,7 +108,9 @@ func TestNativeEbookReaderGetHeadRangeAndConditional(t *testing.T) {
 			r := nativeReadRequest(tc.method)
 			r.Header.Set("Range", tc.rangeValue)
 			w := httptest.NewRecorder()
-			h.HandleReadFile(w, r)
+			if err := readNativeEbookV2(h, w, r); err != nil {
+				t.Fatalf("read: %v", err)
+			}
 			if w.Code != tc.status {
 				t.Fatalf("status %d, body %s", w.Code, w.Body.String())
 			}
@@ -95,7 +130,9 @@ func TestNativeEbookReaderGetHeadRangeAndConditional(t *testing.T) {
 	}
 	h, _, _ := nativeReaderTestSetup(t)
 	first := httptest.NewRecorder()
-	h.HandleReadFile(first, nativeReadRequest("HEAD"))
+	if err := readNativeEbookV2(h, first, nativeReadRequest("HEAD")); err != nil {
+		t.Fatal(err)
+	}
 	tag := first.Header().Get("ETag")
 	for _, tc := range []struct {
 		header, value string
@@ -108,7 +145,9 @@ func TestNativeEbookReaderGetHeadRangeAndConditional(t *testing.T) {
 			r.Header.Set("Range", "bytes=2-5")
 		}
 		w := httptest.NewRecorder()
-		h.HandleReadFile(w, r)
+		if err := readNativeEbookV2(h, w, r); err != nil {
+			t.Fatalf("%s: %v", tc.header, err)
+		}
 		if w.Code != tc.status {
 			t.Fatalf("%s status %d, want %d", tc.header, w.Code, tc.status)
 		}
@@ -119,7 +158,9 @@ func TestNativeEbookReaderMultipartRange(t *testing.T) {
 	r := nativeReadRequest("GET")
 	r.Header.Set("Range", "bytes=0-1,8-9")
 	w := httptest.NewRecorder()
-	h.HandleReadFile(w, r)
+	if err := readNativeEbookV2(h, w, r); err != nil {
+		t.Fatal(err)
+	}
 	if w.Code != 206 {
 		t.Fatalf("status %d", w.Code)
 	}
@@ -144,34 +185,30 @@ func TestNativeEbookReaderMultipartRange(t *testing.T) {
 func TestNativeEbookReaderAuthorizationBeforeOpening(t *testing.T) {
 	h, opener, file := nativeReaderTestSetup(t)
 	h.Local.FileAuthorizer.ItemAccess = stubItemAccessChecker{err: catalog.ErrItemNotFound}
-	w := httptest.NewRecorder()
-	h.HandleReadFile(w, nativeReadRequest("GET"))
-	if w.Code != 404 || opener.calls != 0 {
-		t.Fatalf("status %d opens %d", w.Code, opener.calls)
+	err := readNativeEbookV2(h, httptest.NewRecorder(), nativeReadRequest("GET"))
+	if nativeEbookErrStatus(err) != 404 || opener.calls != 0 {
+		t.Fatalf("error %v opens %d", err, opener.calls)
 	}
 	h.Local.FileAuthorizer.ItemAccess = stubItemAccessChecker{}
 	file.ContentID = "different"
-	w = httptest.NewRecorder()
-	h.HandleReadFile(w, nativeReadRequest("GET"))
-	if w.Code != 404 || opener.calls != 0 {
-		t.Fatalf("mismatch status %d opens %d", w.Code, opener.calls)
+	err = readNativeEbookV2(h, httptest.NewRecorder(), nativeReadRequest("GET"))
+	if nativeEbookErrStatus(err) != 404 || opener.calls != 0 {
+		t.Fatalf("mismatch error %v opens %d", err, opener.calls)
 	}
 }
 func TestNativeEbookReaderUnavailableAndUnsupportedNeverFallBack(t *testing.T) {
 	h, opener, file := nativeReaderTestSetup(t)
 	opener.err = errors.New("provider down")
-	w := httptest.NewRecorder()
-	h.HandleReadFile(w, nativeReadRequest("GET"))
-	if w.Code != 503 {
-		t.Fatalf("status %d body %s", w.Code, w.Body.String())
+	err := readNativeEbookV2(h, httptest.NewRecorder(), nativeReadRequest("GET"))
+	if nativeEbookErrStatus(err) != 503 {
+		t.Fatalf("error %v", err)
 	}
 	file.Container = "mobi"
 	opener.err = nil
 	opener.calls = 0
-	w = httptest.NewRecorder()
-	h.HandleReadFile(w, nativeReadRequest("GET"))
-	if w.Code != 415 || opener.calls != 0 {
-		t.Fatalf("unsupported status %d opens %d", w.Code, opener.calls)
+	err = readNativeEbookV2(h, httptest.NewRecorder(), nativeReadRequest("GET"))
+	if nativeEbookErrStatus(err) != 415 || opener.calls != 0 {
+		t.Fatalf("unsupported error %v opens %d", err, opener.calls)
 	}
 }
 
@@ -201,9 +238,10 @@ func TestNativeEbookReaderFirstReadFailureIsAnHTTPError(t *testing.T) {
 			r := nativeReadRequest("GET")
 			r.Header.Set("Range", tc.rangeValue)
 			w := httptest.NewRecorder()
-			h.HandleReadFile(w, r)
-			if w.Code != tc.status || !strings.Contains(w.Header().Get("Content-Type"), "json") {
-				t.Fatalf("status %d type %q body %s", w.Code, w.Header().Get("Content-Type"), w.Body.String())
+			// Nothing has reached the client yet, so the error comes back for
+			// the v2 operation to answer with a problem response.
+			if err := readNativeEbookV2(h, w, r); nativeEbookErrStatus(err) != tc.status || w.Body.Len() != 0 {
+				t.Fatalf("error %v (status %d), body %q", err, nativeEbookErrStatus(err), w.Body.String())
 			}
 			for _, header := range []string{"Accept-Ranges", "Content-Disposition", "Content-Length", "Content-Range", "ETag", "Last-Modified"} {
 				if value := w.Header().Get(header); value != "" {
@@ -220,7 +258,9 @@ func TestNativeEbookReaderLocalUnchanged(t *testing.T) {
 	h, opener, file := nativeReaderTestSetup(t)
 	file.FilePath = writePlaybackTestMediaFile(t, "book.epub")
 	w := httptest.NewRecorder()
-	h.HandleReadFile(w, nativeReadRequest("GET"))
+	if err := readNativeEbookV2(h, w, nativeReadRequest("GET")); err != nil {
+		t.Fatal(err)
+	}
 	if w.Code != 200 || opener.calls != 0 {
 		t.Fatalf("local status %d opens %d", w.Code, opener.calls)
 	}
@@ -258,7 +298,7 @@ func TestNativeEbookReaderPartialBinaryNeverAppendsError(t *testing.T) {
 			t.Fatalf("partial body %q", w.Body.String())
 		}
 	}()
-	h.HandleReadFile(w, nativeReadRequest("GET"))
+	_ = readNativeEbookV2(h, w, nativeReadRequest("GET"))
 }
 
 type nativeReaderBlockingSource struct {
@@ -284,7 +324,7 @@ func TestNativeEbookReaderDisconnectCancelsSource(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := apimw.SetClaims(r.Context(), &auth.Claims{UserID: 1, Role: "user", TokenType: auth.TokenTypeAccess})
 		ctx = apimw.SetProfileID(ctx, "profile-1")
-		h.HandleReadFile(w, withEbookReaderRouteParams(r.WithContext(ctx), "ebook-1", "42"))
+		_ = readNativeEbookV2(h, w, withEbookReaderRouteParams(r.WithContext(ctx), "ebook-1", "42"))
 	}))
 	defer server.Close()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -329,8 +369,8 @@ func TestNativeEbookReaderFirstReadFailureOverHTTP(t *testing.T) {
 		body    string
 	}{
 		{"complete", nil, 200, "0123456789"},
-		{"missing", status.Error(codes.NotFound, "book file absent"), 404, `"not_found"`},
-		{"unavailable", errors.New("backend down"), 503, `"unavailable"`},
+		{"missing", status.Error(codes.NotFound, "book file absent"), 404, ""},
+		{"unavailable", errors.New("backend down"), 503, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h, opener, _ := nativeReaderTestSetup(t)
@@ -338,7 +378,10 @@ func TestNativeEbookReaderFirstReadFailureOverHTTP(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				ctx := apimw.SetClaims(r.Context(), &auth.Claims{UserID: 1, Role: "user", TokenType: auth.TokenTypeAccess})
 				ctx = apimw.SetProfileID(ctx, "profile-1")
-				h.HandleReadFile(w, withEbookReaderRouteParams(r.WithContext(ctx), "ebook-1", "42"))
+				if err := readNativeEbookV2(h, w, withEbookReaderRouteParams(r.WithContext(ctx), "ebook-1", "42")); err != nil {
+					// The v2 operation answers with a problem response.
+					w.WriteHeader(nativeEbookErrStatus(err))
+				}
 			}))
 			defer server.Close()
 			response, err := server.Client().Get(server.URL)

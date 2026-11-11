@@ -28,48 +28,13 @@ import (
 //     new write is refused until it appears below, which forces someone to
 //     decide whether a single profile may perform it.
 //
-// Entries are exact chi route patterns and methods rather than path prefixes.
-// A prefix cannot separate "/api/v1/profiles/{id}" from
-// "/api/v1/profiles/household/sessions", and a path alone cannot separate
-// editing your own profile from deleting it.
+// Entries are exact chi route patterns and methods rather than path prefixes:
+// a path alone cannot separate editing your own profile from deleting it.
 
-// readOnlySubtrees admit GET and HEAD on every route beneath them.
-var readOnlySubtrees = []string{
-	"/api/v1/items",
-	"/api/v1/library",
-	"/api/v1/catalog",
-	"/api/v1/works",
-	"/api/v1/metadata",
-	"/api/v1/home",
-	"/api/v1/sections",
-	"/api/v1/recommendations",
-	"/api/v1/calendar",
-	"/api/v1/watch",
-	"/api/v1/watched",
-	"/api/v1/watchlist",
-	"/api/v1/favorites",
-	"/api/v1/history",
-	"/api/v1/progress",
-	"/api/v1/ratings",
-	"/api/v1/downloads",
-	"/api/v1/direct-download",
-	"/api/v1/ebooks",
-	"/api/v1/audio-prefs",
-	"/api/v1/subtitle-prefs",
-	"/api/v1/library-playback-prefs",
-	"/api/v1/user",
-	"/api/v1/health",
-	"/api/v1/ready",
-}
-
-// Route patterns named in more than one place: here and in the tests that
-// prove a bound profile can still reach them.
-const (
-	settingsValuesRoute     = "/api/v1/settings/values"
-	playbackCapabilityRoute = "/api/v1/playback/capability"
-	playbackStartRoute      = "/api/v1/playback/start"
-	userLibrariesRoute      = "/api/v1/user/libraries"
-)
+// readOnlySubtrees admit GET and HEAD on every route beneath them. Empty
+// since Silo retired /api/v1 (Silo #3200), where every subtree lived; a
+// direct-profile session reads nothing on /api/v2.
+var readOnlySubtrees []string
 
 // directProfileAllowedRoutes admits exact routes: every mutation, plus the
 // reads that sit outside a read-only subtree.
@@ -88,109 +53,6 @@ var directProfileAllowedRoutes = map[string][]string{
 	"/api/bloem/v1/ebook-requests":             {http.MethodPost},
 	"/api/bloem/v1/ebook-requests/{id}":        {http.MethodGet},
 	"/api/bloem/v1/ebook-requests/{id}/cancel": {http.MethodPost},
-	// Ending the session.
-	"/api/v1/auth/logout": {http.MethodPost},
-
-	// The session's own profile record. Per-profile routes additionally hold
-	// the session to its own profile id (RequireOwnDirectProfile), so these
-	// admit the route, not a sibling. Deleting a profile is household
-	// management and is absent; so is verify-pin, which mints a profile token
-	// and would let a PIN be exercised by a credential that is not the PIN.
-	"/api/v1/profiles/{id}":             {http.MethodGet, http.MethodPut},
-	"/api/v1/profiles/{id}/avatar":      {http.MethodPut, http.MethodDelete},
-	"/api/v1/profile/sections/":         {http.MethodGet, http.MethodPut},
-	"/api/v1/profile/sections/flags":    {http.MethodGet},
-	"/api/v1/profile/sections/reset":    {http.MethodDelete},
-	"/api/v1/profile/sections/settings": {http.MethodGet},
-
-	// Profile-scoped settings: the contract API and the device and effective
-	// views. The account-wide "/api/v1/settings/" list and
-	// "/api/v1/settings/{key}" are deliberately absent.
-	"/api/v1/settings/capability":                    {http.MethodGet},
-	"/api/v1/settings/contract":                      {http.MethodGet},
-	"/api/v1/settings/contract/capabilities":         {http.MethodGet},
-	"/api/v1/settings/manifest":                      {http.MethodGet},
-	"/api/v1/settings/overlay-config":                {http.MethodGet},
-	"/api/v1/settings/effective":                     {http.MethodGet},
-	"/api/v1/settings/subtitle_appearance/effective": {http.MethodGet},
-	"/api/v1/settings/device/{key}":                  {http.MethodGet, http.MethodPut, http.MethodDelete},
-	"/api/v1/settings/device/subtitle_appearance":    {http.MethodPut, http.MethodDelete},
-	settingsValuesRoute:                              {http.MethodGet},
-	"/api/v1/settings/values/{key}":                  {http.MethodGet, http.MethodPut, http.MethodDelete},
-	"/api/v1/settings/values/effective":              {http.MethodGet, http.MethodPost},
-	"/api/v1/settings/values/nav.shortcuts/item":     {http.MethodPut},
-
-	// The viewer's own device registry.
-	"/api/v1/devices/":                     {http.MethodGet},
-	"/api/v1/devices/{device_id}":          {http.MethodDelete},
-	"/api/v1/devices/{device_id}/settings": {http.MethodDelete},
-
-	// Playback: negotiate, start, replan, report progress, stop. Transcode and
-	// stream delivery authorize on the session id, and the handlers hold a
-	// direct-profile bearer to the session its own profile started.
-	playbackCapabilityRoute:                                  {http.MethodGet},
-	playbackStartRoute:                                       {http.MethodPost},
-	"/api/v1/playback/route-events":                          {http.MethodPost},
-	"/api/v1/playback/{session_id}":                          {http.MethodDelete},
-	"/api/v1/playback/{session_id}/replan":                   {http.MethodPost},
-	"/api/v1/playback/{session_id}/progress":                 {http.MethodPost},
-	"/api/v1/playback/sessions/{session_id}/control/ws":      {http.MethodGet},
-	"/api/v1/playback/transcode/{session_id}/master.m3u8":    {http.MethodGet},
-	"/api/v1/playback/transcode/{session_id}/segment/{name}": {http.MethodGet},
-	"/api/v1/stream/{session_id}":                            {http.MethodGet, http.MethodHead},
-	"/api/v1/stream/{session_id}/subtitles/{track}":          {http.MethodGet, http.MethodHead},
-	"/api/v1/stream/{session_id}/subtitles/{track}/fonts":    {http.MethodGet},
-	"/api/v1/sync/progress":                                  {http.MethodPost},
-
-	// Proxy-served direct downloads authorize exactly as the tokened
-	// direct-download route does — same profile id, same access filter — so a
-	// proxy-aware client is entitled to the same bytes. HEAD is how players
-	// probe before they fetch.
-	"/api/v1/direct-download-proxy": {http.MethodGet, http.MethodHead},
-
-	// The client's library bootstrap.
-	userLibrariesRoute: {http.MethodGet},
-
-	// Searching the catalog is a read that happens to be a POST.
-	"/api/v1/catalog/query":          {http.MethodPost},
-	"/api/v1/catalog/filters/search": {http.MethodGet, http.MethodPost},
-
-	// The profile's own library state.
-	"/api/v1/favorites/{item_id}":                             {http.MethodPut, http.MethodDelete},
-	"/api/v1/watchlist/{item_id}":                             {http.MethodPut, http.MethodDelete},
-	"/api/v1/watched/{id}":                                    {http.MethodPost, http.MethodDelete},
-	"/api/v1/ratings/{item_id}":                               {http.MethodPut, http.MethodDelete},
-	"/api/v1/history/remove":                                  {http.MethodPost},
-	"/api/v1/home/dismissals/{surface}/{item_id}":             {http.MethodPut, http.MethodDelete},
-	"/api/v1/recommendations/taste-seed":                      {http.MethodPost},
-	"/api/v1/audio-prefs/{series_id}":                         {http.MethodPut, http.MethodDelete},
-	"/api/v1/subtitle-prefs/{series_id}":                      {http.MethodPut, http.MethodDelete},
-	"/api/v1/library-playback-prefs/{library_id}":             {http.MethodPut, http.MethodDelete},
-	"/api/v1/ebooks/{content_id}/progress":                    {http.MethodPut},
-	"/api/v1/ebooks/{content_id}/reader-config":               {http.MethodPut},
-	"/api/v1/ebooks/{content_id}/annotations":                 {http.MethodPost},
-	"/api/v1/ebooks/{content_id}/annotations/{annotation_id}": {http.MethodPatch, http.MethodDelete},
-
-	// The profile's own downloads.
-	"/api/v1/downloads/":                   {http.MethodPost},
-	"/api/v1/downloads/{id}":               {http.MethodPatch, http.MethodDelete},
-	"/api/v1/downloads/subscriptions":      {http.MethodPost},
-	"/api/v1/downloads/subscriptions/{id}": {http.MethodPatch, http.MethodDelete},
-	"/api/v1/downloads/subscriptions/sync": {http.MethodPost},
-
-	// Personal collections are off this surface entirely, reads included.
-	// Their handlers and store scope by account alone, so neither a read nor
-	// a mutation can tell two profiles of one household apart; they return
-	// when collection ownership is profile-aware. The server-wide collection
-	// views carry no household state and stay.
-	"/api/v1/collections/server":       {http.MethodGet},
-	"/api/v1/collections/capabilities": {http.MethodGet},
-
-	// Unlike the personal-collection routes above, the sort preference a
-	// profile sets for a collection view is stored keyed by profileID, not
-	// account alone (see CollectionHandler.HandleSetCollectionSortPreference),
-	// so a bound profile changing it cannot reach another profile's state.
-	"/api/v1/collections/sort-preference": {http.MethodPut, http.MethodDelete},
 }
 
 // directProfileDeniedRoutes are routes inside an admitted read subtree that
@@ -202,7 +64,7 @@ var directProfileDeniedRoutes = map[string]bool{}
 
 // directProfileRouteAllowed reports whether a resolved route is part of the
 // direct-profile surface. Method and pattern are both significant: a path can
-// be profile-scoped for one verb and not another, and /api/v1/profiles/{id} is
+// be profile-scoped for one verb and not another, and a profile record is
 // exactly that — a bound profile reads and edits itself, and does not delete
 // itself.
 func directProfileRouteAllowed(method, pattern string) bool {

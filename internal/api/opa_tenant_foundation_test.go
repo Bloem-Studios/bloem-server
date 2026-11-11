@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -291,57 +292,71 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 		OwnershipBootstrapper: bootstrap,
 	})
 
-	login := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/login", `{"username":"`+username+`","password":"`+password+`"}`, "", nil)
+	login := performJSONRequest(t, router, http.MethodPost, "/api/v2/auth/login", `{"username":"`+username+`","password":"`+password+`"}`, "", nil)
 	if login.Code != http.StatusOK {
-		t.Fatalf("v1 login = %d %s", login.Code, login.Body.String())
+		t.Fatalf("login = %d %s", login.Code, login.Body.String())
 	}
 	loginTokens := decodeLogin(t, login)
 	assertLegacyToken(t, cfg, loginTokens.AccessToken)
-	assertOPAAcceptanceV1Login(t, login, accountID, username)
-	profiles := performJSONRequest(t, router, http.MethodGet, "/api/v1/profiles/", "", loginTokens.AccessToken, nil)
-	assertOPAAcceptanceV1Profiles(t, profiles, map[string]string{
-		legacyProfileID: "OPA Legacy Profile",
-		bloemProfileID:  "OPA V2 Profile",
-	}, legacyProfileID, foreignProfile)
-	verifyPIN := performJSONRequest(t, router, http.MethodPost, "/api/v1/profiles/"+legacyProfileID+"/verify-pin", `{"pin":"2468"}`, loginTokens.AccessToken, nil)
+
+	// The default organization's account sees its own two profiles and never
+	// the foreign organization's.
+	profiles := performJSONRequest(t, router, http.MethodGet, "/api/v2/profiles", "", loginTokens.AccessToken, nil)
+	if profiles.Code != http.StatusOK ||
+		!strings.Contains(profiles.Body.String(), legacyProfileID) || !strings.Contains(profiles.Body.String(), "OPA Legacy Profile") ||
+		!strings.Contains(profiles.Body.String(), bloemProfileID) || !strings.Contains(profiles.Body.String(), "OPA V2 Profile") ||
+		strings.Contains(profiles.Body.String(), foreignProfile) || strings.Contains(profiles.Body.String(), "OPA Foreign Profile") {
+		t.Fatalf("profiles = %d %s, want exactly this organization's profiles", profiles.Code, profiles.Body.String())
+	}
+	verifyPIN := performJSONRequest(t, router, http.MethodPost, "/api/v2/profiles/"+legacyProfileID+"/verify-pin", `{"pin":"2468"}`, loginTokens.AccessToken, nil)
+	if verifyPIN.Code != http.StatusOK {
+		t.Fatalf("verify-pin = %d %s", verifyPIN.Code, verifyPIN.Body.String())
+	}
 	profileToken := decodePIN(t, verifyPIN).ProfileToken
-	profileSelection := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/values/effective?keys=ui.time_format", "", loginTokens.AccessToken, map[string]string{
-		"X-Profile-Id":    legacyProfileID,
-		"X-Profile-Token": profileToken,
-	})
-	switchedProfileSettings := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/values/effective?keys=ui.time_format", "", loginTokens.AccessToken, map[string]string{
-		"X-Profile-Id": bloemProfileID,
-	})
-	foreignProfileSettings := performJSONRequest(t, router, http.MethodGet, "/api/v1/settings/values/effective?keys=ui.time_format", "", loginTokens.AccessToken, map[string]string{
-		"X-Profile-Id": foreignProfile,
-	})
-	if foreignProfileSettings.Code != http.StatusNotFound ||
+	settingsFor := func(headers map[string]string) *httptest.ResponseRecorder {
+		return performJSONRequest(t, router, http.MethodGet, "/api/v2/settings/values/effective?keys=ui.time_format", "", loginTokens.AccessToken, headers)
+	}
+	profileSelection := settingsFor(map[string]string{"X-Profile-Id": legacyProfileID, "X-Profile-Token": profileToken})
+	switchedProfileSettings := settingsFor(map[string]string{"X-Profile-Id": bloemProfileID})
+	foreignProfileSettings := settingsFor(map[string]string{"X-Profile-Id": foreignProfile})
+	if foreignProfileSettings.Code < http.StatusBadRequest ||
 		strings.Contains(foreignProfileSettings.Body.String(), foreignProfile) ||
 		strings.Contains(foreignProfileSettings.Body.String(), "OPA Foreign Profile") ||
 		strings.Contains(foreignProfileSettings.Body.String(), "foreign-only") {
-		t.Fatalf("foreign profile default-organization v1 response = %d %s, want non-disclosing 404", foreignProfileSettings.Code, foreignProfileSettings.Body.String())
+		t.Fatalf("foreign profile settings = %d %s, want a non-disclosing refusal", foreignProfileSettings.Code, foreignProfileSettings.Body.String())
 	}
-	assertV1Responses(t, profiles, verifyPIN, profileSelection, switchedProfileSettings)
-	assertOPAAcceptanceV1ProfileSetting(t, profileSelection, legacyProfileID, "24h")
-	assertOPAAcceptanceV1ProfileSetting(t, switchedProfileSettings, bloemProfileID, "12h")
+	for _, check := range []struct {
+		response *httptest.ResponseRecorder
+		want     string
+	}{{profileSelection, `"24h"`}, {switchedProfileSettings, `"12h"`}} {
+		if check.response.Code != http.StatusOK || !strings.Contains(check.response.Body.String(), check.want) {
+			t.Fatalf("selected-profile setting = %d %s, want %s", check.response.Code, check.response.Body.String(), check.want)
+		}
+	}
 	assertNoTenantFields(t, login, profiles, verifyPIN, profileSelection, switchedProfileSettings, foreignProfileSettings)
 
-	visibleLibraries := performJSONRequest(t, router, http.MethodGet, "/api/v1/user/libraries", "", loginTokens.AccessToken, map[string]string{
+	visibleLibraries := performJSONRequest(t, router, http.MethodGet, "/api/v2/user/libraries", "", loginTokens.AccessToken, map[string]string{
 		"X-Profile-Id":    legacyProfileID,
 		"X-Profile-Token": profileToken,
 	})
 	if visibleLibraries.Code != http.StatusOK {
-		t.Fatalf("v1 tenant-bounded libraries = %d %s", visibleLibraries.Code, visibleLibraries.Body.String())
+		t.Fatalf("tenant-bounded libraries = %d %s", visibleLibraries.Code, visibleLibraries.Body.String())
 	}
-	var libraryResponse []struct {
-		ID int `json:"id"`
+	var libraryResponse struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
 	}
 	if err := json.Unmarshal(visibleLibraries.Body.Bytes(), &libraryResponse); err != nil {
 		t.Fatalf("decode tenant-bounded libraries: %v", err)
 	}
-	gotVisibleFolderIDs := make([]int, 0, len(libraryResponse))
-	for _, folder := range libraryResponse {
-		gotVisibleFolderIDs = append(gotVisibleFolderIDs, folder.ID)
+	gotVisibleFolderIDs := make([]int, 0, len(libraryResponse.Items))
+	for _, folder := range libraryResponse.Items {
+		id, err := strconv.Atoi(folder.ID)
+		if err != nil {
+			t.Fatalf("library id %q: %v", folder.ID, err)
+		}
+		gotVisibleFolderIDs = append(gotVisibleFolderIDs, id)
 	}
 	slices.Sort(gotVisibleFolderIDs)
 	if !slices.Equal(gotVisibleFolderIDs, wantVisibleFolderIDs) {
@@ -366,8 +381,8 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 		t.Fatalf("decode v2 capabilities %s: %v", capabilities.Body.String(), err)
 	}
 	wantFeatures := map[string]bool{
-		"legacy_silo_v1": true, "organization_memberships": true, "tenant_bounded_media_scope": true,
-		"direct_profile_login": true, "shared_device_pairing": false, "delegated_admin_roles": false,
+		"legacy_silo_v1": false, "organization_memberships": true, "tenant_bounded_media_scope": true,
+		"direct_profile_login": false, "shared_device_pairing": false, "delegated_admin_roles": false,
 	}
 	featuresMatch := advertised.API == "bloem/v1" && advertised.IdentitySchema == 1 && len(advertised.Features) == len(wantFeatures)
 	for name, want := range wantFeatures {
@@ -605,206 +620,6 @@ func assertOPAAcceptanceStaleBloem(t *testing.T, handler http.Handler, claims *a
 	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusUnauthorized || !strings.Contains(response.Body.String(), `"error":"authorization_state_stale"`) {
 		t.Fatalf("stale %s response = %d %s, want authorization_state_stale", revision, response.Code, response.Body.String())
-	}
-}
-
-func assertOPAAcceptanceV1Login(t *testing.T, response *httptest.ResponseRecorder, accountID int, username string) {
-	t.Helper()
-	var rawContract map[string]json.RawMessage
-	if err := json.Unmarshal(response.Body.Bytes(), &rawContract); err != nil {
-		t.Fatalf("decode v1 login field contract: %v", err)
-	}
-	assertOPAAcceptanceJSONFields(t, "v1 login", rawContract, "access_token", "expires_in", "refresh_token", "user")
-	var rawUser map[string]json.RawMessage
-	if err := json.Unmarshal(rawContract["user"], &rawUser); err != nil {
-		t.Fatalf("decode v1 login user field contract: %v", err)
-	}
-	assertOPAAcceptanceJSONFields(t, "v1 login user", rawUser,
-		"download_allowed", "email", "id", "permissions", "role", "username")
-
-	var contract struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-		ExpiresIn    int    `json:"expires_in"`
-		User         struct {
-			ID              int      `json:"id"`
-			Username        string   `json:"username"`
-			Email           string   `json:"email"`
-			Role            string   `json:"role"`
-			Permissions     []string `json:"permissions"`
-			DownloadAllowed bool     `json:"download_allowed"`
-		} `json:"user"`
-	}
-	decoder := json.NewDecoder(strings.NewReader(response.Body.String()))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&contract); err != nil {
-		t.Fatalf("decode exact v1 login contract: %v; body=%s", err, response.Body.String())
-	}
-	if contract.AccessToken == "" || contract.RefreshToken == "" || contract.ExpiresIn != 3600 {
-		t.Fatalf("v1 login token contract = %#v, want non-empty tokens expiring in 3600 seconds", contract)
-	}
-	if contract.User.ID != accountID || contract.User.Username != username ||
-		contract.User.Email != "opa-foundation-owner@example.test" || contract.User.Role != "admin" ||
-		!contract.User.DownloadAllowed || !slices.Equal(contract.User.Permissions, []string{"marker_edit", "metadata_curation", "watch_live_tv"}) {
-		t.Fatalf("v1 login user = %#v, want migrated admin account %d/%q", contract.User, accountID, username)
-	}
-}
-
-func assertOPAAcceptanceV1Profiles(
-	t *testing.T,
-	response *httptest.ResponseRecorder,
-	wantNames map[string]string,
-	protectedPrimaryID string,
-	forbiddenProfileIDs ...string,
-) {
-	t.Helper()
-	var rawContract map[string]json.RawMessage
-	if err := json.Unmarshal(response.Body.Bytes(), &rawContract); err != nil {
-		t.Fatalf("decode v1 profile-list field contract: %v", err)
-	}
-	assertOPAAcceptanceJSONFields(t, "v1 profile list", rawContract, "avatar_upload_enabled", "profiles")
-	var rawProfiles []map[string]json.RawMessage
-	if err := json.Unmarshal(rawContract["profiles"], &rawProfiles); err != nil {
-		t.Fatalf("decode v1 profile field contracts: %v", err)
-	}
-	for _, rawProfile := range rawProfiles {
-		fields := []string{
-			"allowed_library_ids", "auto_play_next_preview", "auto_skip_credits", "auto_skip_intro",
-			"auto_skip_recap", "avatar_source", "created_at", "has_pin", "id", "is_child", "is_primary",
-			"library_restrictions_enabled", "max_playback_quality", "name",
-			"show_forced_subtitles", "subtitle_mode", "updated_at",
-		}
-		var profileID string
-		if err := json.Unmarshal(rawProfile["id"], &profileID); err != nil {
-			t.Fatalf("decode v1 profile id: %v", err)
-		}
-		if profileID == protectedPrimaryID {
-			fields = append(fields, "quality_preference")
-		}
-		assertOPAAcceptanceJSONFields(t, "v1 profile "+profileID, rawProfile, fields...)
-	}
-
-	type profileContract struct {
-		ID                         string `json:"id"`
-		Name                       string `json:"name"`
-		Avatar                     string `json:"avatar,omitempty"`
-		AvatarURL                  string `json:"avatar_url,omitempty"`
-		AvatarSource               string `json:"avatar_source,omitempty"`
-		HasPIN                     bool   `json:"has_pin"`
-		IsChild                    bool   `json:"is_child"`
-		IsPrimary                  bool   `json:"is_primary"`
-		MaxContentRating           string `json:"max_content_rating,omitempty"`
-		QualityPreference          string `json:"quality_preference,omitempty"`
-		Language                   string `json:"language,omitempty"`
-		PreferredMetadataLanguage  string `json:"preferred_metadata_language,omitempty"`
-		SubtitleLanguage           string `json:"subtitle_language,omitempty"`
-		SubtitleMode               string `json:"subtitle_mode,omitempty"`
-		AutoSkipIntro              bool   `json:"auto_skip_intro"`
-		AutoSkipCredits            bool   `json:"auto_skip_credits"`
-		AutoSkipRecap              bool   `json:"auto_skip_recap"`
-		AutoPlayNextPreview        bool   `json:"auto_play_next_preview"`
-		ShowForcedSubtitles        bool   `json:"show_forced_subtitles"`
-		LibraryRestrictionsEnabled bool   `json:"library_restrictions_enabled"`
-		AllowedLibraryIDs          []int  `json:"allowed_library_ids"`
-		MaxPlaybackQuality         string `json:"max_playback_quality"`
-		CreatedAt                  string `json:"created_at"`
-		UpdatedAt                  string `json:"updated_at"`
-	}
-	var contract struct {
-		Profiles            []profileContract `json:"profiles"`
-		AvatarUploadEnabled bool              `json:"avatar_upload_enabled"`
-	}
-	decoder := json.NewDecoder(strings.NewReader(response.Body.String()))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&contract); err != nil {
-		t.Fatalf("decode exact v1 profile-list contract: %v; body=%s", err, response.Body.String())
-	}
-	if len(contract.Profiles) != len(wantNames) {
-		t.Fatalf("v1 profiles = %#v, want exactly %d migrated/native profiles", contract.Profiles, len(wantNames))
-	}
-	seen := make(map[string]bool, len(contract.Profiles))
-	for _, profile := range contract.Profiles {
-		wantName, ok := wantNames[profile.ID]
-		if !ok || profile.Name != wantName || profile.CreatedAt == "" || profile.UpdatedAt == "" {
-			t.Fatalf("v1 profile = %#v, want one of %#v with timestamps", profile, wantNames)
-		}
-		if profile.ID == protectedPrimaryID && (!profile.HasPIN || !profile.IsPrimary) {
-			t.Fatalf("migrated protected primary profile = %#v, want PIN-protected primary", profile)
-		}
-		seen[profile.ID] = true
-	}
-	for profileID := range wantNames {
-		if !seen[profileID] {
-			t.Fatalf("v1 profile list omitted %q: %#v", profileID, contract.Profiles)
-		}
-	}
-	for _, profileID := range forbiddenProfileIDs {
-		if seen[profileID] {
-			t.Fatalf("v1 profile list disclosed foreign profile %q: %#v", profileID, contract.Profiles)
-		}
-	}
-}
-
-func assertOPAAcceptanceV1ProfileSetting(
-	t *testing.T,
-	response *httptest.ResponseRecorder,
-	profileID string,
-	wantValue string,
-) {
-	t.Helper()
-	var rawContract map[string]json.RawMessage
-	if err := json.Unmarshal(response.Body.Bytes(), &rawContract); err != nil {
-		t.Fatalf("decode v1 selected-profile settings field contract: %v", err)
-	}
-	assertOPAAcceptanceJSONFields(t, "v1 selected-profile settings", rawContract, "revision", "settings")
-	var rawSettings []map[string]json.RawMessage
-	if err := json.Unmarshal(rawContract["settings"], &rawSettings); err != nil {
-		t.Fatalf("decode v1 selected-profile setting fields: %v", err)
-	}
-	if len(rawSettings) != 1 {
-		t.Fatalf("v1 selected-profile setting field rows = %d, want 1", len(rawSettings))
-	}
-	assertOPAAcceptanceJSONFields(t, "v1 selected-profile setting", rawSettings[0],
-		"definition_revision", "key", "profile_id", "scope", "source", "source_context", "updated_at", "value")
-	var rawSourceContext map[string]json.RawMessage
-	if err := json.Unmarshal(rawSettings[0]["source_context"], &rawSourceContext); err != nil {
-		t.Fatalf("decode v1 selected-profile source-context fields: %v", err)
-	}
-	assertOPAAcceptanceJSONFields(t, "v1 selected-profile source context", rawSourceContext, "profile_id")
-
-	var contract struct {
-		Settings []struct {
-			Key                string          `json:"key"`
-			Value              json.RawMessage `json:"value"`
-			Source             string          `json:"source"`
-			DefinitionRevision int             `json:"definition_revision"`
-			UpdatedAt          string          `json:"updated_at"`
-			SourceContext      struct {
-				ProfileID string `json:"profile_id"`
-			} `json:"source_context"`
-			Scope     string `json:"scope"`
-			ProfileID string `json:"profile_id"`
-		} `json:"settings"`
-		Revision int `json:"revision"`
-	}
-	decoder := json.NewDecoder(strings.NewReader(response.Body.String()))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&contract); err != nil {
-		t.Fatalf("decode exact v1 selected-profile settings contract: %v; body=%s", err, response.Body.String())
-	}
-	manifest, err := settingscontract.Load()
-	if err != nil {
-		t.Fatalf("load settings contract: %v", err)
-	}
-	if contract.Revision != manifest.Revision || len(contract.Settings) != 1 {
-		t.Fatalf("v1 selected-profile settings = %#v, want revision %d (the live contract's) with one setting", contract, manifest.Revision)
-	}
-	setting := contract.Settings[0]
-	if setting.Key != "ui.time_format" || string(setting.Value) != `"`+wantValue+`"` ||
-		setting.Source != "profile" || setting.Scope != "profile" ||
-		setting.ProfileID != profileID || setting.SourceContext.ProfileID != profileID ||
-		setting.DefinitionRevision != contract.Revision || setting.UpdatedAt == "" {
-		t.Fatalf("v1 selected profile setting = %#v, want profile %q value %q", setting, profileID, wantValue)
 	}
 }
 

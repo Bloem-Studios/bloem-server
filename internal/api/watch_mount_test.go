@@ -76,7 +76,7 @@ func newClientSurfaceFixture(t *testing.T) clientSurfaceFixture {
 		OwnershipBootstrapper: bootstrap,
 	})
 
-	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{
+	setup := performJSONRequest(t, router, http.MethodPost, "/api/v2/auth/setup", `{
 		"username":"watch.viewer","email":"watch.viewer@example.invalid",
 		"password":"invented password for a disposable database",
 		"create_default_profile":true,"default_profile_name":"Watch Viewer"
@@ -219,27 +219,6 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 		response := performJSONRequest(t, router, http.MethodGet, NativeAPIPrefix+"/watch/items/6003", "", token, profileHeaders)
 		if response.Code != http.StatusNotFound {
 			t.Fatalf("unknown item = %d %s", response.Code, response.Body.String())
-		}
-	})
-
-	// The Silo-compatible projection keeps exactly the watch route it had. Its
-	// GET /api/v1/watch/{id} still serves catalog item detail — "home" is just
-	// an identifier to it — and it has grown no items route at all.
-	t.Run("the v1 projection is untouched", func(t *testing.T) {
-		detail := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/"+watchMovieContentID, "", token, profileHeaders)
-		if detail.Code != http.StatusOK {
-			t.Fatalf("v1 watch detail = %d %s", detail.Code, detail.Body.String())
-		}
-		var body map[string]any
-		if err := json.Unmarshal(detail.Body.Bytes(), &body); err != nil {
-			t.Fatalf("decode v1 watch detail: %v", err)
-		}
-		if _, isDocument := body["progress"]; isDocument {
-			t.Errorf("GET /api/v1/watch/{id} answered with a watch document: %v", body)
-		}
-		items := performJSONRequest(t, router, http.MethodGet, "/api/v1/watch/items/"+watchMovieContentID, "", token, profileHeaders)
-		if items.Code != http.StatusNotFound {
-			t.Errorf("GET /api/v1/watch/items/{id} = %d, want 404: the Watch documents live on the native surface", items.Code)
 		}
 	})
 

@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  api,
-  apiWithProfileRequestContext,
-  nativeApi,
-  nativeApiWithProfileRequestContext,
-} from "./bloemClient";
+import { nativeApi, nativeApiWithProfileRequestContext } from "./bloemClient";
 import {
   captureProfileRequestContext,
   getAccessToken,
@@ -33,7 +28,9 @@ describe("api", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(api("/unsafe", { method: "POST", body: "fixed" }, "none")).rejects.toMatchObject({
+    await expect(
+      nativeApi("/unsafe", { method: "POST", body: "fixed" }, "none"),
+    ).rejects.toMatchObject({
       status: 401,
     });
     expect(fetchMock).toHaveBeenCalledOnce();
@@ -57,7 +54,7 @@ describe("api", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      api("/admin/users", { method: "POST", body: '{"name":"Ada"}' }, "idempotentLifecycle"),
+      nativeApi("/admin/users", { method: "POST", body: '{"name":"Ada"}' }, "idempotentLifecycle"),
     ).resolves.toEqual({ ok: true });
 
     const requests = calls.filter(({ url }) => url !== "/api/v2/auth/refresh");
@@ -77,7 +74,7 @@ describe("api", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      api("/admin/users/7", { method: "DELETE", body: "fixed" }, "idempotentLifecycle"),
+      nativeApi("/admin/users/7", { method: "DELETE", body: "fixed" }, "idempotentLifecycle"),
     ).resolves.toEqual({ ok: true });
     const first = fetchMock.mock.calls[0]?.[1];
     const second = fetchMock.mock.calls[1]?.[1];
@@ -96,7 +93,7 @@ describe("api", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      api("/admin/users/7", { method: "PUT", body: "fixed" }, "idempotentLifecycle"),
+      nativeApi("/admin/users/7", { method: "PUT", body: "fixed" }, "idempotentLifecycle"),
     ).resolves.toEqual({ ok: true });
     expect(fetchMock).toHaveBeenCalledTimes(3);
     const keys = fetchMock.mock.calls.map(
@@ -113,7 +110,7 @@ describe("api", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      api("/admin/users/7", { method: "DELETE" }, "idempotentLifecycle"),
+      nativeApi("/admin/users/7", { method: "DELETE" }, "idempotentLifecycle"),
     ).rejects.toMatchObject({ status: 503 });
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
@@ -185,7 +182,7 @@ describe("api", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      api(
+      nativeApi(
         "/settings/values/ui.library_page_state?scope=profile_device",
         {
           method: "PUT",
@@ -237,7 +234,7 @@ describe("api", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await api("/test", { headers: { "X-Profile-Id": "profile-old" } });
+    await nativeApi("/test", { headers: { "X-Profile-Id": "profile-old" } });
 
     const headers = fetchMock.mock.calls[0]![1]!.headers as Record<string, string>;
     expect(headers["X-Profile-Id"]).toBe("profile-old");
@@ -265,7 +262,7 @@ describe("api", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     try {
-      await api("/test", {
+      await nativeApi("/test", {
         headers: {
           "X-Profile-Id": "profile-old",
           "X-Profile-Token": "fake",
@@ -282,7 +279,7 @@ describe("api", () => {
 
   it.each(
     ["transport", "unauthorized", "unavailable"].flatMap((failure) =>
-      ["legacy", "native-profile", "native-operational"].map((client) => ({ failure, client })),
+      ["native-profile", "native-operational"].map((client) => ({ failure, client })),
     ),
   )("does not replay $client mutation after $failure failure", async ({ failure, client }) => {
     setAccessToken("account-token");
@@ -304,13 +301,9 @@ describe("api", () => {
       const request =
         client === "native-operational"
           ? nativeApi("/livetv/series-rules", options)
-          : (client === "native-profile"
-              ? nativeApiWithProfileRequestContext
-              : apiWithProfileRequestContext)("/livetv/series-rules", snapshot!, options, "none");
+          : nativeApiWithProfileRequestContext("/livetv/series-rules", snapshot!, options, "none");
       await expect(request).rejects.toBeInstanceOf(Error);
-      expect(fetchMock.mock.calls[0]?.[0]).toBe(
-        `${client === "legacy" ? "/api/v1" : "/api/bloem/v1"}/livetv/series-rules`,
-      );
+      expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/bloem/v1/livetv/series-rules");
       expect(fetchMock).toHaveBeenCalledOnce();
       expect(fetchMock.mock.calls[0]?.[1]?.headers).toMatchObject({
         Authorization: "Bearer account-token",
@@ -361,7 +354,7 @@ describe("api", () => {
 
     try {
       await expect(
-        apiWithProfileRequestContext("/test", snapshot!, { method: "PUT" }),
+        nativeApiWithProfileRequestContext("/test", snapshot!, { method: "PUT" }),
       ).resolves.toEqual({ ok: true });
 
       expect(fetchMock).toHaveBeenCalledTimes(3);
@@ -390,7 +383,7 @@ describe("api", () => {
     );
 
     try {
-      await expect(apiWithProfileRequestContext("/test", snapshot!)).rejects.toMatchObject({
+      await expect(nativeApiWithProfileRequestContext("/test", snapshot!)).rejects.toMatchObject({
         status: 403,
         code: "profile_unverified",
       });
@@ -436,7 +429,7 @@ describe("api", () => {
       vi.stubGlobal("fetch", fetchMock);
 
       try {
-        const request = apiWithProfileRequestContext("/test", snapshot!);
+        const request = nativeApiWithProfileRequestContext("/test", snapshot!);
         await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
         changeAuthority();
         resolveResponse(
@@ -495,7 +488,7 @@ describe("api", () => {
       vi.stubGlobal("fetch", fetchMock);
 
       try {
-        const request = apiWithProfileRequestContext("/test", snapshot!, { method: "PUT" });
+        const request = nativeApiWithProfileRequestContext("/test", snapshot!, { method: "PUT" });
         await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
         if (changedContext === "account") {
           setAccessToken("sample");
@@ -556,7 +549,7 @@ describe("api", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     try {
-      await expect(apiWithProfileRequestContext("/test", snapshot!)).rejects.toMatchObject({
+      await expect(nativeApiWithProfileRequestContext("/test", snapshot!)).rejects.toMatchObject({
         name: "StaleApiRequestContextError",
       });
       expect(fetchMock).not.toHaveBeenCalled();
@@ -584,7 +577,7 @@ describe("api", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await api("/test", { headers: { "x-silo-client-family": "tv" } });
+    await nativeApi("/test", { headers: { "x-silo-client-family": "tv" } });
 
     const headers = fetchMock.mock.calls[0]![1]!.headers as Record<string, string>;
     expect(headers["X-Silo-Client-Family"]).toBe("web");
@@ -613,7 +606,7 @@ describe("api", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const controller = new AbortController();
-    await api("/test", { signal: controller.signal });
+    await nativeApi("/test", { signal: controller.signal });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const call = fetchMock.mock.calls[0]!;
@@ -636,7 +629,7 @@ describe("api", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      api("/webhook-sync/connections/abc/webhook/rotate", { method: "POST" }),
+      nativeApi("/webhook-sync/connections/abc/webhook/rotate", { method: "POST" }),
     ).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

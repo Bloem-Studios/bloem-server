@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	netmail "net/mail"
@@ -83,12 +84,12 @@ func (h *BloemAdminOrganizationHandler) HandleListGroups(w http.ResponseWriter, 
 		writeBloemOrganizationError(w, r, err)
 		return
 	}
-	items := make([]accessGroupResponse, 0, len(groups))
+	items := make([]any, 0, len(groups))
 	for _, group := range groups {
-		items = append(items, toAccessGroupResponse(group.Group))
+		items = append(items, bloemV2.AccessGroupListItem(group.Group))
 	}
 	writeJSON(w, http.StatusOK, struct {
-		Groups []accessGroupResponse `json:"groups"`
+		Groups []any `json:"groups"`
 	}{items})
 }
 
@@ -107,8 +108,8 @@ func (h *BloemAdminOrganizationHandler) HandleGetGroup(w http.ResponseWriter, r 
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
-		Group accessGroupResponse `json:"group"`
-	}{toAccessGroupResponse(group.Group)})
+		Group any `json:"group"`
+	}{bloemV2.AccessGroup(group.Group)})
 }
 
 func (h *BloemAdminOrganizationHandler) HandleCreateGroup(w http.ResponseWriter, r *http.Request) {
@@ -116,18 +117,13 @@ func (h *BloemAdminOrganizationHandler) HandleCreateGroup(w http.ResponseWriter,
 	if !ok {
 		return
 	}
-	var request struct {
-		accessGroupCreateRequest
-		ExpectedRevision int64 `json:"expected_revision"`
-	}
-	if !decodeAdminPlatformJSON(w, r, &request) {
+	raw, revision, ok := decodeBloemV2GroupBody(w, r)
+	if !ok || !requireOrganizationRevision(w, tenant, revision) {
 		return
 	}
-	if !requireOrganizationRevision(w, tenant, request.ExpectedRevision) {
-		return
-	}
-	input, ok := request.toInput(w)
-	if !ok {
+	input, err := bloemV2.AccessGroupCreate(raw)
+	if err != nil {
+		writeAPIError(w, err)
 		return
 	}
 	group, err := h.groups.Create(r.Context(), tenant.OrganizationID, input)
@@ -136,9 +132,9 @@ func (h *BloemAdminOrganizationHandler) HandleCreateGroup(w http.ResponseWriter,
 		return
 	}
 	writeJSON(w, http.StatusCreated, struct {
-		Group          accessGroupResponse `json:"group"`
-		PolicyRevision int64               `json:"policy_revision"`
-	}{toAccessGroupResponse(group.Group), tenant.PolicyRevision})
+		Group          any   `json:"group"`
+		PolicyRevision int64 `json:"policy_revision"`
+	}{bloemV2.AccessGroup(group.Group), tenant.PolicyRevision})
 }
 
 func (h *BloemAdminOrganizationHandler) HandleUpdateGroup(w http.ResponseWriter, r *http.Request) {
@@ -150,18 +146,13 @@ func (h *BloemAdminOrganizationHandler) HandleUpdateGroup(w http.ResponseWriter,
 	if !ok {
 		return
 	}
-	var request struct {
-		accessGroupUpdateRequest
-		ExpectedRevision int64 `json:"expected_revision"`
-	}
-	if !decodeAdminPlatformJSON(w, r, &request) {
+	raw, revision, ok := decodeBloemV2GroupBody(w, r)
+	if !ok || !requireOrganizationRevision(w, tenant, revision) {
 		return
 	}
-	if !requireOrganizationRevision(w, tenant, request.ExpectedRevision) {
-		return
-	}
-	input, ok := request.toInput(w)
-	if !ok {
+	input, err := bloemV2.AccessGroupUpdate(raw)
+	if err != nil {
+		writeAPIError(w, err)
 		return
 	}
 	group, err := h.groups.Update(r.Context(), tenant.OrganizationID, id, input)
@@ -170,9 +161,9 @@ func (h *BloemAdminOrganizationHandler) HandleUpdateGroup(w http.ResponseWriter,
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
-		Group          accessGroupResponse `json:"group"`
-		PolicyRevision int64               `json:"policy_revision"`
-	}{toAccessGroupResponse(group.Group), tenant.PolicyRevision})
+		Group          any   `json:"group"`
+		PolicyRevision int64 `json:"policy_revision"`
+	}{bloemV2.AccessGroup(group.Group), tenant.PolicyRevision})
 }
 
 func (h *BloemAdminOrganizationHandler) HandleDeleteGroup(w http.ResponseWriter, r *http.Request) {
@@ -282,13 +273,12 @@ func (h *BloemAdminOrganizationHandler) HandleListInvitations(w http.ResponseWri
 		writeBloemOrganizationError(w, r, err)
 		return
 	}
-	now := time.Now()
-	response := make([]invitationResponse, 0, len(items))
+	response := make([]any, 0, len(items))
 	for _, item := range items {
-		response = append(response, toInvitationResponse(item, now))
+		response = append(response, bloemV2.Invitation(item))
 	}
 	writeJSON(w, http.StatusOK, struct {
-		Invitations []invitationResponse `json:"invitations"`
+		Invitations []any `json:"invitations"`
 	}{response})
 }
 
@@ -338,9 +328,9 @@ func (h *BloemAdminOrganizationHandler) HandleCreateInvitation(w http.ResponseWr
 		return
 	}
 	writeJSON(w, http.StatusCreated, struct {
-		Invitation invitationResponse `json:"invitation"`
-		ClaimToken string             `json:"claim_token"`
-	}{toInvitationResponse(item, time.Now()), token})
+		Invitation any    `json:"invitation"`
+		ClaimToken string `json:"claim_token"`
+	}{bloemV2.Invitation(item), token})
 }
 
 // invitationAccessIsTheOrganizations refuses an access group or library the
@@ -391,6 +381,9 @@ func (h *BloemAdminOrganizationHandler) requireGroups(w http.ResponseWriter, r *
 		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
 		return tenancy.Context{}, false
 	}
+	if !bloemV2Available(w) {
+		return tenancy.Context{}, false
+	}
 	return tenant, true
 }
 func (h *BloemAdminOrganizationHandler) requireResources(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {
@@ -411,6 +404,9 @@ func (h *BloemAdminOrganizationHandler) requireInvitations(w http.ResponseWriter
 	}
 	if h == nil || h.invitations == nil {
 		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
+		return tenancy.Context{}, false
+	}
+	if !bloemV2Available(w) {
 		return tenancy.Context{}, false
 	}
 	return tenant, true
@@ -471,4 +467,30 @@ func writeBloemOrganizationError(w http.ResponseWriter, r *http.Request, err err
 	default:
 		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
 	}
+}
+
+// decodeBloemV2GroupBody reads a group write: Silo's v2 AdminAccessGroupBody
+// plus expected_revision, which it removes before the v2 decoder sees the body.
+func decodeBloemV2GroupBody(w http.ResponseWriter, r *http.Request) ([]byte, int64, bool) {
+	if !bloemV2Available(w) {
+		return nil, 0, false
+	}
+	var fields map[string]json.RawMessage
+	if !decodeAdminPlatformJSON(w, r, &fields) {
+		return nil, 0, false
+	}
+	var revision int64
+	if value, ok := fields["expected_revision"]; ok {
+		if err := json.Unmarshal(value, &revision); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_request", "Invalid administrative request")
+			return nil, 0, false
+		}
+		delete(fields, "expected_revision")
+	}
+	raw, err := json.Marshal(fields)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", "Invalid administrative request")
+		return nil, 0, false
+	}
+	return raw, revision, true
 }

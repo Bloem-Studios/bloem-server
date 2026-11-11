@@ -146,7 +146,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organ
 		OwnershipBootstrapper: bootstrap,
 	})
 	for index, organizationID := range fixture.organizationIDs {
-		login := performJSONRequest(t, fixture.router, http.MethodPost, "/api/v1/auth/login", `{"username":"`+adminUsernames[index]+`","password":"`+password+`"}`, "", nil)
+		login := performJSONRequest(t, fixture.router, http.MethodPost, "/api/v2/auth/login", `{"username":"`+adminUsernames[index]+`","password":"`+password+`"}`, "", nil)
 		if login.Code != http.StatusOK {
 			t.Fatalf("login administrator %d = %d %s", index, login.Code, login.Body.String())
 		}

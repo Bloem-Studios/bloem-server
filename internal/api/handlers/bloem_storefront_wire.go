@@ -8,6 +8,5 @@ package handlers
 type (
 	BloemTenantWire           = tenantResponse
 	BloemTenantMemberWire     = tenantMemberResponse
-	BloemAdminDeviceWire      = deviceResponse
 	BloemAdminAuthSessionWire = adminUserAuthSessionResponse
 )
