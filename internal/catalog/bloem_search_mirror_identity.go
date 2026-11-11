@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"sync"
 
 	"github.com/google/uuid"
@@ -52,7 +51,10 @@ const (
 
 // judgeSearchMirrorTargets compares the markers seen with the remembered ids (§7's table). The
 // rules apply in order, and a remembered or seen id of "" never equals anything:
-//  1. The mirror's marker can't be read: mirror_down. Nothing is applied.
+//  1. The mirror's marker can't be read: swapped when the main shows the remembered mirror's id
+//     and not the remembered main's (a failover onto the old mirror while the old main is
+//     down: the swap step needs only the database and the main server), mirror_down
+//     otherwise. Nothing is applied to the mirror.
 //  2. Nothing remembered: fresh.
 //  3. Both markers set and equal: clone.
 //  4. The main shows the remembered mirror's id, or the mirror shows the remembered main's, and
@@ -64,13 +66,16 @@ const (
 // A main whose marker can't be read is not a main with no marker, and says nothing about the
 // rules that need it (3, 4, 6): it does not block a mirror whose own marker matches.
 func judgeSearchMirrorTargets(rememberedMain, rememberedMirror string, seen searchMirrorTargets) searchMirrorVerdict {
+	mainRead := seen.MainErr == nil
 	if seen.MirrorErr != nil {
+		if mainRead && rememberedMirror != "" && seen.Main == rememberedMirror && seen.Main != rememberedMain {
+			return verdictSwapped
+		}
 		return verdictMirrorDown
 	}
 	if rememberedMain == "" && rememberedMirror == "" {
 		return verdictFresh
 	}
-	mainRead := seen.MainErr == nil
 	if mainRead && seen.Main != "" && seen.Main == seen.Mirror {
 		return verdictClone
 	}
@@ -100,7 +105,8 @@ func judgeSearchMirrorTargets(rememberedMain, rememberedMirror string, seen sear
 //   - new_main: writes a new id to the main, once. The main index rebuilds by itself and the
 //     mirror carries on.
 //   - normal: nothing.
-//   - swapped: nothing here. The caller runs the swap step.
+//   - swapped: nothing here. The caller runs the swap step, even when the mirror's marker
+//     can't be read.
 //   - mirror_down: nothing is written anywhere. The error is the mirror's marker error.
 //
 // Every id written to a server is saved in row at once, with ForceCopy where it is set, so a
@@ -119,15 +125,15 @@ func (m *SearchMirror) settleTargets(ctx context.Context, row *searchMirrorRow) 
 	prefix := m.startup.MeilisearchIndex
 	var seen searchMirrorTargets
 	seen.Mirror, seen.MirrorErr = m.mirror.readTargetMarker(ctx, prefix)
-	if seen.MirrorErr != nil {
-		// The mirror's own marker can't be confirmed, so nothing may be applied to it. The
-		// main's marker would not change that.
-		return verdictMirrorDown, fmt.Errorf("read the mirror's identity marker: %w", seen.MirrorErr)
-	}
+	// The main's marker is read even when the mirror's can't be: a main showing the remembered
+	// mirror's id is a failover, which the swap step handles without the mirror.
 	seen.Main, seen.MainErr = m.main.readTargetMarker(ctx, prefix)
 
 	verdict := judgeSearchMirrorTargets(row.State.MainTarget, row.State.MirrorTarget, seen)
 	switch verdict {
+	case verdictMirrorDown:
+		// The mirror's own marker can't be confirmed, so nothing may be applied to it.
+		return verdictMirrorDown, fmt.Errorf("read the mirror's identity marker: %w", seen.MirrorErr)
 	case verdictNormal, verdictSwapped:
 		return verdict, nil
 	case verdictFresh, verdictNewMirror:
@@ -165,7 +171,7 @@ func (m *SearchMirror) settleTargets(ctx context.Context, row *searchMirrorRow) 
 	if row.State.State == SearchMirrorMisconfigured && row.State.Reason == string(SearchMirrorProblemSameServer) {
 		row.State.State, row.State.Reason = "", ""
 	}
-	if err := saveSearchMirrorRow(ctx, m.pool, *row); err != nil {
+	if err := saveSearchMirrorRow(ctx, m.pool, row); err != nil {
 		return "", searchMirrorDatabaseError(ctx, err)
 	}
 	return verdict, nil
@@ -184,6 +190,9 @@ func (m *SearchMirror) writeNewTargets(ctx context.Context, row *searchMirrorRow
 func (m *SearchMirror) writeNewMirrorTarget(ctx context.Context, row *searchMirrorRow) error {
 	prefix := m.startup.MeilisearchIndex
 	id := uuid.NewString()
+	if err := m.checkOwner(ctx); err != nil {
+		return err
+	}
 	if err := m.mirror.writeTargetMarker(ctx, prefix, id); err != nil {
 		return fmt.Errorf("write the mirror's identity marker: %w", err)
 	}
@@ -203,6 +212,9 @@ func (m *SearchMirror) writeNewMirrorTarget(ctx context.Context, row *searchMirr
 func (m *SearchMirror) writeNewMainTarget(ctx context.Context, row *searchMirrorRow) error {
 	prefix := m.startup.MeilisearchIndex
 	id := uuid.NewString()
+	if err := m.checkOwner(ctx); err != nil {
+		return err
+	}
 	if err := m.main.writeTargetMarker(ctx, prefix, id); err != nil {
 		return fmt.Errorf("write the main's identity marker: %w", err)
 	}
@@ -217,13 +229,11 @@ func (m *SearchMirror) writeNewMainTarget(ctx context.Context, row *searchMirror
 	return nil
 }
 
-// refuseSameServer latches the finding for this process, logs it once, and saves
-// misconfigured/same_server. The ids written to find it are not remembered: they describe one
-// server, not two.
+// refuseSameServer latches the finding for this process and saves misconfigured/same_server.
+// The run's latchMisconfigured logs it, once. The ids written to find it are not remembered:
+// they describe one server, not two.
 func (m *SearchMirror) refuseSameServer(ctx context.Context, row *searchMirrorRow) error {
-	if _, loaded := searchMirrorSameServerLatch.LoadOrStore(m, struct{}{}); !loaded {
-		slog.Error("search mirror: the mirror address reaches the main search server; mirroring is off until this process restarts")
-	}
+	searchMirrorSameServerLatch.LoadOrStore(m, struct{}{})
 	return m.keepSameServerState(ctx, row)
 }
 
@@ -236,8 +246,8 @@ func (m *SearchMirror) keepSameServerState(ctx context.Context, row *searchMirro
 	}
 	row.State.State = SearchMirrorMisconfigured
 	row.State.Reason = reason
-	if err := saveSearchMirrorRow(ctx, m.pool, *row); err != nil {
-		return errors.Join(errSearchMirrorSameServer, err)
+	if err := saveSearchMirrorRow(ctx, m.pool, row); err != nil {
+		return errors.Join(errSearchMirrorSameServer, searchMirrorDatabaseError(ctx, err))
 	}
 	return errSearchMirrorSameServer
 }

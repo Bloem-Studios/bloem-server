@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // SearchProviderMeilisearchMirror is the provider of the search mirror's row in
@@ -44,20 +43,23 @@ var SearchMirrorStateNames = []SearchMirrorStateName{
 }
 
 // pgxQuerier, pgxExecer and pgxExecQuerier are what the mirror's SQL needs from a database
-// handle. *pgxpool.Pool, pgx.Tx and *pgxpool.Conn satisfy all three.
-type pgxQuerier interface {
-	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
-	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
-}
-
-type pgxExecer interface {
-	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
-}
+// handle. *pgxpool.Pool, pgx.Tx and *pgxpool.Conn satisfy all three. The first two are the
+// package's existing interfaces of the same methods under the names the mirror's code reads
+// by; they are aliases, not new types.
+type (
+	pgxQuerier = searchQuerier
+	pgxExecer  = itemExecer
+)
 
 type pgxExecQuerier interface {
 	pgxExecer
 	pgxQuerier
 }
+
+// errSearchMirrorNotOwner stops a run that no longer owns the mirror: its row changed since the
+// run loaded it (another run saved it), or its lock's session closed (a database failover drops
+// advisory locks). The run stops quietly and records nothing; the run that took over carries on.
+var errSearchMirrorNotOwner = errors.New("search mirror: another run took over the mirror")
 
 // pgSnapshot is a Postgres pg_snapshot: transactions below Xmin had finished, transactions from
 // Xmax on had not started, and those in Xip were still running.
@@ -140,6 +142,10 @@ type searchMirrorCopy struct {
 	Done           int       `json:"done"`
 	Total          int       `json:"total"`
 	StartedAt      time.Time `json:"started_at"`
+	// ProgressAt is when the copy last made progress: its start, then each acknowledged batch.
+	// The lag cap is measured from it while the copy runs, so a copy that keeps moving keeps
+	// the rows it needs however long it takes.
+	ProgressAt time.Time `json:"progress_at"`
 }
 
 // searchMirrorRetry is the page that failed: how often, and when it is tried next.
@@ -184,6 +190,14 @@ type searchMirrorState struct {
 	Errors            map[string]int64 `json:"errors,omitempty"`
 	RoleSwaps         int64            `json:"role_swaps,omitempty"`
 	ForceCopy         bool             `json:"force_copy,omitempty"`
+
+	// RebuildMain is the main index a failover found stale on the new main server: the main
+	// rebuild is owed until the main state names another index. Each run starts it again.
+	RebuildMain string `json:"rebuild_main,omitempty"`
+
+	// Gen is the row's generation: every save requires the generation it loaded and stores the
+	// next one, so a run that lost the mirror never overwrites a newer row.
+	Gen int64 `json:"gen,omitempty"`
 }
 
 // hold is the snapshot the mirror still needs outbox rows after, and when it was taken: a
@@ -200,6 +214,33 @@ func (s searchMirrorState) hold() (snapshot string, at time.Time, ok bool) {
 		at = *s.BookmarkAt
 	}
 	return s.Bookmark, at, true
+}
+
+// holdSince is hold's snapshot with the time the lag cap is measured from, which the worker and
+// the cleanup share:
+//   - while a copy is under way, its last progress (a copy that keeps moving is never past
+//     the cap, and keeps the rows since its start);
+//   - otherwise the later of the bookmark's time and the last published copy: the cleanup kept
+//     every row since the copy's start until the copy was published.
+//
+// since is zero when no time is recorded.
+func (r searchMirrorRow) holdSince() (snapshot string, since time.Time, ok bool) {
+	s := r.State
+	if c := s.Copy; c != nil && c.Start != "" {
+		return c.Start, latestTime(c.StartAt, c.ProgressAt), true
+	}
+	snapshot, since, ok = s.hold()
+	if ok && r.LastRebuildAt != nil {
+		since = latestTime(since, *r.LastRebuildAt)
+	}
+	return snapshot, since, ok
+}
+
+func latestTime(a, b time.Time) time.Time {
+	if b.After(a) {
+		return b
+	}
+	return a
 }
 
 // searchMirrorRow is the mirror's catalog_search_index_state row. The columns mean what they
@@ -240,31 +281,48 @@ func loadSearchMirrorRow(ctx context.Context, q pgxQuerier) (searchMirrorRow, bo
 	return row, true, nil
 }
 
-// saveSearchMirrorRow writes the mirror's row, replacing what was there.
-func saveSearchMirrorRow(ctx context.Context, q pgxExecer, row searchMirrorRow) error {
-	state, err := json.Marshal(row.State)
+// saveSearchMirrorRow writes the mirror's row, replacing what was there, only if the stored
+// generation is still the one row was loaded with (0 for no row). On success row.State.Gen is
+// the stored generation. When another run saved the row in between, or it was deleted (a
+// restore), nothing is written and the error is errSearchMirrorNotOwner.
+func saveSearchMirrorRow(ctx context.Context, q pgxExecer, row *searchMirrorRow) error {
+	loaded := row.State.Gen
+	next := *row
+	next.State.Gen = loaded + 1
+	state, err := json.Marshal(next.State)
 	if err != nil {
 		return fmt.Errorf("encode search mirror state: %w", err)
 	}
-	_, err = q.Exec(ctx, `
-		INSERT INTO catalog_search_index_state (
-			provider, active_index_uid, schema_version, document_count,
-			last_rebuild_at, last_sync_at, bloem_mirror, updated_at
-		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
-		ON CONFLICT (provider) DO UPDATE SET
-			active_index_uid = EXCLUDED.active_index_uid,
-			schema_version = EXCLUDED.schema_version,
-			document_count = EXCLUDED.document_count,
-			last_rebuild_at = EXCLUDED.last_rebuild_at,
-			last_sync_at = EXCLUDED.last_sync_at,
-			bloem_mirror = EXCLUDED.bloem_mirror,
-			updated_at = now()`,
-		SearchProviderMeilisearchMirror, row.ActiveIndexUID, row.SchemaVersion, row.DocumentCount,
-		row.LastRebuildAt, row.LastSyncAt, string(state))
+	args := []any{SearchProviderMeilisearchMirror, next.ActiveIndexUID, next.SchemaVersion, next.DocumentCount,
+		next.LastRebuildAt, next.LastSyncAt, string(state), loaded}
+	tag, err := q.Exec(ctx, `
+		UPDATE catalog_search_index_state SET
+			active_index_uid = $2,
+			schema_version = $3,
+			document_count = $4,
+			last_rebuild_at = $5,
+			last_sync_at = $6,
+			bloem_mirror = $7::jsonb,
+			updated_at = now()
+		WHERE provider = $1
+		  AND COALESCE((bloem_mirror->>'gen')::bigint, 0) = $8::bigint`, args...)
+	if err == nil && tag.RowsAffected() == 0 && loaded == 0 {
+		// No row yet: the first save inserts it. One that appeared meanwhile is another run's.
+		tag, err = q.Exec(ctx, `
+			INSERT INTO catalog_search_index_state (
+				provider, active_index_uid, schema_version, document_count,
+				last_rebuild_at, last_sync_at, bloem_mirror, updated_at
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+			ON CONFLICT (provider) DO NOTHING`, args[:7]...)
+	}
 	if err != nil {
 		return fmt.Errorf("save search mirror state: %w", err)
 	}
+	if tag.RowsAffected() == 0 {
+		return errSearchMirrorNotOwner
+	}
+	row.State.Gen = next.State.Gen
 	return nil
 }
 

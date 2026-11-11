@@ -12,9 +12,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/Silo-Server/silo-server/internal/database/pglock"
 	"github.com/Silo-Server/silo-server/internal/nodeidentity"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // The search mirror's production timings and identities. SearchMirrorOptions' zero values
@@ -118,6 +119,8 @@ type SearchMirror struct {
 	startedOnce      sync.Once   // sets startedAt once, from a run's first successful lease touch
 	forceCopyPending atomic.Bool // ForceFullCopy asked for a copy that no run has recorded in the row yet
 	offForProcess    atomic.Bool // a run found the mirror misconfigured; it stays off until Silo restarts
+
+	runLock atomic.Pointer[pglock.Lock] // the mirror's lock while a run of this process holds it
 }
 
 // newSearchMirror builds a mirror; opts' zero fields take their production values.
@@ -201,13 +204,17 @@ func (r searchMirrorRunResult) message(forcePending bool) string {
 // RunOnce makes one mirror run (§2): it checks both servers' identities, compares the mirror with
 // the main index's state row, then makes or continues a full copy, or applies the changes since
 // the bookmark for up to RunBudget. It never takes the main index's lock, except inside the swap
-// step after a failover.
+// step after a failover. A run that finds another run took over the mirror stops quietly.
 func (m *SearchMirror) RunOnce(ctx context.Context, progress SearchIndexProgressReporter) error {
 	if m == nil {
 		reportSearchIndexProgress(progress, 100, "The search mirror is not configured")
 		return nil
 	}
 	result, err := m.run(ctx)
+	if errors.Is(err, errSearchMirrorNotOwner) && ctx.Err() == nil {
+		slog.InfoContext(ctx, "search mirror: another run took over the mirror; this run stopped", "component", "catalog")
+		result, err = searchMirrorRunResult{Skipped: "another_run"}, nil
+	}
 	if err != nil {
 		return err
 	}
@@ -250,12 +257,18 @@ func (m *SearchMirror) run(ctx context.Context) (searchMirrorRunResult, error) {
 	if !locked {
 		return searchMirrorRunResult{Skipped: "another_run"}, nil
 	}
+	m.runLock.Store(lock)
 	defer func() {
+		m.runLock.Store(nil)
 		if err := lock.Release(ctx); err != nil {
 			slog.WarnContext(ctx, "releasing the search mirror lock", "component", "catalog", "error", err)
 		}
 	}()
+	return m.runLocked(ctx)
+}
 
+// runLocked is a run once it holds the mirror's lock.
+func (m *SearchMirror) runLocked(ctx context.Context) (searchMirrorRunResult, error) {
 	// 3. The lease. Its first insert, by StartProcessLease or here, fixes this process's start.
 	startedAt, err := touchSearchMirrorProcess(ctx, m.pool, m.opts.InstanceID, m.opts.Host)
 	if err != nil {
@@ -277,23 +290,9 @@ func (m *SearchMirror) run(ctx context.Context) (searchMirrorRunResult, error) {
 		return searchMirrorRunResult{}, err
 	}
 	defer func() { m.latchMisconfigured(ctx, row) }()
-
-	// A misconfigured state that this process did not find was left by an earlier start: the
-	// configuration is read once per start, so a restart is how an operator fixes it. Try afresh;
-	// the problem is found again if it is still there.
-	dirty := false
-	if row.State.State == SearchMirrorMisconfigured {
-		row.State.State, row.State.Reason = searchMirrorResumedState(row), ""
-		row.State.LastError, row.State.ErrorSince = "", nil
-		dirty = true
-	}
-	if m.forceCopyPending.Swap(false) {
-		row.State.ForceCopy = true
-		if err := saveSearchMirrorRow(ctx, m.pool, row); err != nil {
-			m.forceCopyPending.Store(true)
-			return searchMirrorRunResult{}, err
-		}
-		dirty = false
+	dirty, err := m.beginRun(ctx, &row)
+	if err != nil {
+		return searchMirrorRunResult{}, err
 	}
 	// Without a main Meilisearch there are no markers to read. Both the live provider and the
 	// one this process started with must be Meilisearch: the main index follows the latter until
@@ -302,35 +301,9 @@ func (m *SearchMirror) run(ctx context.Context) (searchMirrorRunResult, error) {
 		return m.wait(ctx, &row, "provider_not_meilisearch")
 	}
 
-	// 5. Both servers' identities. An unreadable mirror marker comes back as mirror_down with the
-	// marker's error; an unreadable main marker, with nothing written, as an error to record.
-	verdict, err := m.settleTargets(ctx, &row)
-	if verdict == verdictMirrorDown {
-		err = m.mirrorDown(ctx, &row, err)
+	// 5. Both servers' identities, and the failover steps that need no mirror server.
+	if stop, err := m.identities(ctx, &row, main); stop || err != nil {
 		return searchMirrorRunResultOf(row), err
-	}
-	// The same-server proof failed: settleTargets saved misconfigured/same_server and returned
-	// errSearchMirrorSameServer. That is a finding, not a failure to record, so it never reaches
-	// handleRunError; latchMisconfigured turns the mirror off. The state reset above makes this
-	// check equivalent to the sentinel's.
-	// TODO(integration): errors.Is(err, errSearchMirrorSameServer) once Task 7's identity file is
-	// merged; that sentinel is not declared in this clone.
-	if row.State.State == SearchMirrorMisconfigured && row.State.Reason == string(SearchMirrorProblemSameServer) {
-		return searchMirrorRunResultOf(row), nil
-	}
-	if err != nil {
-		err = m.runFailed(ctx, &row, err)
-		return searchMirrorRunResultOf(row), err
-	}
-	if verdict == verdictSwapped {
-		err = m.swap(ctx, &row, main)
-		return searchMirrorRunResultOf(row), err
-	}
-	if verdict != verdictNormal { // markers adopted or written, perhaps ForceCopy: remember them
-		if err := saveSearchMirrorRow(ctx, m.pool, row); err != nil {
-			return searchMirrorRunResult{}, err
-		}
-		dirty = false
 	}
 
 	// 6. Documents built for one schema must not go into an index made for another: wait while
@@ -347,12 +320,7 @@ func (m *SearchMirror) run(ctx context.Context) (searchMirrorRunResult, error) {
 		dirty = true
 	}
 
-	// 7. The settle replay after a role swap.
-	if err := m.settle(ctx, &row); err != nil {
-		return searchMirrorRunResultOf(row), err
-	}
-
-	// 8. The lag after which the mirror makes a full copy.
+	// 7. The lag after which the mirror makes a full copy.
 	maxLag, err := searchMirrorEffectiveMaxLag(ctx, m.pool, m.cfg.MaxLag)
 	if err != nil {
 		return searchMirrorRunResultOf(row), fmt.Errorf("search mirror: %w", err)
@@ -362,45 +330,114 @@ func (m *SearchMirror) run(ctx context.Context) (searchMirrorRunResult, error) {
 		dirty = true
 	}
 	if dirty {
-		if err := saveSearchMirrorRow(ctx, m.pool, row); err != nil {
+		if err := saveSearchMirrorRow(ctx, m.pool, &row); err != nil {
 			return searchMirrorRunResultOf(row), err
 		}
 	}
 
-	// 9. A full copy, started or continued, or else the changes since the bookmark. A copy under
-	// way is always continued, never restarted, a forced one included.
+	// 8. A full copy, started or continued, or else the changes since the bookmark.
+	err = m.copyOrFollow(ctx, &row, main, maxLag)
+	return searchMirrorRunResultOf(row), err
+}
+
+// beginRun prepares the row a run loaded. A misconfigured state that this process did not find
+// was left by an earlier start: the configuration is read once per start, so a restart is how
+// an operator fixes it. It is tried afresh; the problem is found again if it is still there. A
+// ForceFullCopy request is recorded in the row. dirty says the row changed and is not saved.
+func (m *SearchMirror) beginRun(ctx context.Context, row *searchMirrorRow) (dirty bool, err error) {
+	if row.State.State == SearchMirrorMisconfigured {
+		row.State.State, row.State.Reason = searchMirrorResumedState(*row), ""
+		row.State.LastError, row.State.ErrorSince = "", nil
+		dirty = true
+	}
+	if m.forceCopyPending.Swap(false) {
+		row.State.ForceCopy = true
+		if err := saveSearchMirrorRow(ctx, m.pool, row); err != nil {
+			m.forceCopyPending.Store(true)
+			return false, err
+		}
+		dirty = false
+	}
+	return dirty, nil
+}
+
+// identities is step 5: it reads both servers' identity markers and acts on the verdict. The
+// failover steps need no mirror server, so they run whatever the mirror's marker said: the swap
+// (a main showing the remembered mirror's id is enough), the settle replay after a swap, and a
+// main rebuild a swap left owed. stop says the run ends here.
+func (m *SearchMirror) identities(ctx context.Context, row *searchMirrorRow, main SearchIndexState) (stop bool, err error) {
+	verdict, err := m.settleTargets(ctx, row)
+	if errors.Is(err, errSearchMirrorSameServer) {
+		// The same-server proof failed: settleTargets saved misconfigured/same_server. That is a
+		// finding, not a failure to record, so it never reaches handleRunError;
+		// latchMisconfigured turns the mirror off.
+		return true, nil
+	}
+	if verdict == verdictSwapped {
+		return true, m.swap(ctx, row)
+	}
+	if err := m.settle(ctx, row); err != nil {
+		return true, err
+	}
+	if err := m.startOwedMainRebuild(ctx, row, main); err != nil {
+		return true, err
+	}
+	switch {
+	case verdict == verdictMirrorDown:
+		// An unreadable mirror marker comes back with the marker's error: nothing is applied.
+		return true, m.mirrorDown(ctx, row, err)
+	case err != nil:
+		// An unreadable main marker, with nothing written: an error to record.
+		return true, m.runFailed(ctx, row, err)
+	}
+	// Markers adopted or written (and ForceCopy perhaps set) were saved by settleTargets.
+	return false, nil
+}
+
+// copyOrFollow is the run's last steps:
+//   - a full copy is started when one is needed (searchMirrorNeedsCopy), and a copy under way is
+//     continued; no small changes go anywhere meanwhile (§5), and publishing clears the dead
+//     letters from before it;
+//   - otherwise the changes since the bookmark are applied, and then, on a mirror that is
+//     following, the dead letters are retried once an hour.
+func (m *SearchMirror) copyOrFollow(ctx context.Context, row *searchMirrorRow, main SearchIndexState, maxLag time.Duration) error {
 	now := time.Now()
 	deadline := now.Add(m.opts.RunBudget)
-	copying := row.State.Copy != nil
-	if !copying {
-		if reason, needed := searchMirrorNeedsCopy(row, main, now, maxLag); needed {
-			if err := m.startCopy(ctx, &row, main, reason); err != nil {
-				err = m.runFailed(ctx, &row, err)
-				return searchMirrorRunResultOf(row), err
-			}
-			copying = true
+	if reason, needed := searchMirrorNeedsCopy(*row, main, now, maxLag); needed {
+		if err := m.startCopy(ctx, row, main, reason); err != nil {
+			return m.runFailed(ctx, row, err)
 		}
 	}
-	if copying {
-		// No small changes go anywhere while a copy is under way (§5); publishing clears the
-		// dead letters.
-		if _, err := m.continueCopy(ctx, &row, deadline); err != nil {
-			err = m.runFailed(ctx, &row, err)
-			return searchMirrorRunResultOf(row), err
+	if row.State.Copy != nil {
+		if _, err := m.continueCopy(ctx, row, deadline); err != nil {
+			return m.runFailed(ctx, row, err)
 		}
-		return searchMirrorRunResultOf(row), nil
+		return nil
 	}
-	if err := m.follow(ctx, &row, deadline); err != nil {
-		return searchMirrorRunResultOf(row), err
+	if err := m.follow(ctx, row, deadline); err != nil {
+		return err
 	}
-
-	// 10. The hourly dead-letter retry, on a mirror that is following.
 	if row.State.State == SearchMirrorFollowing {
-		if err := m.retryDeadLetters(ctx, &row); err != nil {
-			return searchMirrorRunResultOf(row), err
-		}
+		return m.retryDeadLetters(ctx, row)
 	}
-	return searchMirrorRunResultOf(row), nil
+	return nil
+}
+
+// checkOwner confirms, before a write to a Meilisearch server, that this run still holds the
+// mirror's lock: a database failover closes the lock's session, which drops the lock, and the
+// run that takes it next must not race this one. Outside a run it does nothing.
+func (m *SearchMirror) checkOwner(ctx context.Context) error {
+	lock := m.runLock.Load()
+	if lock == nil {
+		return nil
+	}
+	if err := lock.Check(ctx); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return fmt.Errorf("%w: %w", errSearchMirrorNotOwner, err)
+	}
+	return nil
 }
 
 // searchMirrorResumedState is the state a mirror goes back to once nothing parks it: copying
@@ -415,15 +452,18 @@ func searchMirrorResumedState(row searchMirrorRow) SearchMirrorStateName {
 // wait parks the mirror while the main index is not current, applying nothing (§2).
 func (m *SearchMirror) wait(ctx context.Context, row *searchMirrorRow, reason string) (searchMirrorRunResult, error) {
 	row.State.State, row.State.Reason = SearchMirrorWaiting, reason
-	if err := saveSearchMirrorRow(ctx, m.pool, *row); err != nil {
+	if err := saveSearchMirrorRow(ctx, m.pool, row); err != nil {
 		return searchMirrorRunResult{}, err
 	}
 	return searchMirrorRunResultOf(*row), nil
 }
 
-// runFailed records a failure of the identity check or of a copy. A shutdown records nothing.
+// runFailed records a failure of the identity check or of a copy. Every Postgres error that
+// reaches it is tagged database by the step that met it (searchMirrorDatabaseError), so
+// handleRunError never mistakes one for a Meilisearch rejection. A shutdown, or a run that lost
+// the mirror, records nothing.
 func (m *SearchMirror) runFailed(ctx context.Context, row *searchMirrorRow, err error) error {
-	if ctx.Err() != nil {
+	if searchMirrorNotRecorded(ctx, err) {
 		return err
 	}
 	return m.handleRunError(ctx, row, err)
@@ -456,7 +496,8 @@ func (m *SearchMirror) latchMisconfigured(ctx context.Context, row searchMirrorR
 	}
 	cfg := m.cfg
 	cfg.Problem = SearchMirrorProblem(row.State.Reason)
-	slog.ErrorContext(ctx, cfg.LogMessage(), "component", "catalog")
+	slog.ErrorContext(ctx, "search mirror misconfigured; it stays off until Silo restarts", "component", "catalog",
+		"problem", string(cfg.Problem), "detail", cfg.LogMessage())
 }
 
 // StartProcessLease writes this process's lease now, then every LeaseEvery until ctx ends. The

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"slices"
 	"time"
 )
@@ -26,13 +27,13 @@ const searchMirrorPastCapReason = "past_cap"
 const searchMirrorMaxErrorText = 1024
 
 // searchMirrorRetryDelay is how long a page that failed attempts times waits before its next
-// try: base × attempts, at most max.
-func searchMirrorRetryDelay(attempts int, base, max time.Duration) time.Duration {
+// try: base × attempts, at most maxDelay.
+func searchMirrorRetryDelay(attempts int, base, maxDelay time.Duration) time.Duration {
 	if attempts <= 0 || base <= 0 {
 		return 0
 	}
-	if max > 0 && base > max/time.Duration(attempts) {
-		return max
+	if maxDelay > 0 && base > maxDelay/time.Duration(attempts) {
+		return maxDelay
 	}
 	return base * time.Duration(attempts)
 }
@@ -64,12 +65,18 @@ func searchMirrorErrorMetricKind(kind searchMirrorErrorKind) string {
 	}
 }
 
-// searchMirrorErrorText is err's text, cut to searchMirrorMaxErrorText bytes on a rune boundary.
+// searchMirrorURLUserinfo matches the user name and password of a URL quoted in an error text.
+// net/http masks only the password, so a URL's user name would otherwise reach the state row.
+var searchMirrorURLUserinfo = regexp.MustCompile(`([A-Za-z][A-Za-z0-9+.-]*://)[^/?#@\s"'<>]+@`)
+
+// searchMirrorErrorText is err's text without any URL user name or password, cut to
+// searchMirrorMaxErrorText bytes on a rune boundary. It is the only form of an error the mirror
+// stores (the state row, the dead-letter table) or logs.
 func searchMirrorErrorText(err error) string {
 	if err == nil {
 		return ""
 	}
-	text := err.Error()
+	text := searchMirrorURLUserinfo.ReplaceAllString(err.Error(), "$1")
 	if len(text) <= searchMirrorMaxErrorText {
 		return text
 	}
@@ -80,20 +87,25 @@ func searchMirrorErrorText(err error) string {
 	return text[:cut] + "…"
 }
 
+// errorText is searchMirrorErrorText with this process's mirror key hidden as well.
+func (m *SearchMirror) errorText(err error) string {
+	return redactSearchMirrorKey(searchMirrorErrorText(err), m.cfg.APIKey)
+}
+
 // searchMirrorStateLatched reports whether the state is the same-server latch, which no later
 // failure replaces: the mirror address reaches the main server.
 func searchMirrorStateLatched(s *searchMirrorState) bool {
 	return s.State == SearchMirrorMisconfigured && s.Reason == string(SearchMirrorProblemSameServer)
 }
 
-// noteSearchMirrorFailure counts one failure of kind and records it as the last error.
-func noteSearchMirrorFailure(s *searchMirrorState, kind searchMirrorErrorKind, err error, now time.Time) {
+// noteSearchMirrorFailure counts one failure of kind and records text as the last error.
+func noteSearchMirrorFailure(s *searchMirrorState, kind searchMirrorErrorKind, text string, now time.Time) {
 	if s.Errors == nil {
 		s.Errors = map[string]int64{}
 	}
 	s.Errors[searchMirrorErrorMetricKind(kind)]++
-	if err != nil {
-		s.LastError = searchMirrorErrorText(err)
+	if text != "" {
+		s.LastError = text
 	}
 	if s.ErrorSince == nil {
 		since := now
@@ -116,19 +128,25 @@ func setSearchMirrorFailureState(ctx context.Context, s *searchMirrorState, name
 }
 
 func (m *SearchMirror) saveFailureRow(ctx context.Context, row *searchMirrorRow) error {
-	return saveSearchMirrorRow(ctx, m.pool, *row)
+	return saveSearchMirrorRow(ctx, m.pool, row)
+}
+
+// searchMirrorNotRecorded reports whether a failure must not be recorded: the run is shutting
+// down, or it no longer owns the mirror.
+func searchMirrorNotRecorded(ctx context.Context, err error) bool {
+	return ctx.Err() != nil || errors.Is(err, errSearchMirrorNotOwner)
 }
 
 // unreachable records that the mirror could not be reached. No try is counted and the bookmark
 // and window stay put. Once the snapshot the mirror holds is older than the lag cap, the mirror
 // needs a full copy (needs_full_copy, past_cap) and cleanup stops holding rows for it.
 func (m *SearchMirror) unreachable(ctx context.Context, row *searchMirrorRow, err error) error {
-	if ctx.Err() != nil {
+	if searchMirrorNotRecorded(ctx, err) {
 		return searchMirrorShutdownError(ctx, err)
 	}
 	now := time.Now().UTC()
 	s := &row.State
-	noteSearchMirrorFailure(s, searchMirrorErrUnreachable, err, now)
+	noteSearchMirrorFailure(s, searchMirrorErrUnreachable, m.errorText(err), now)
 
 	// On a database error the configured cap is returned; the save below reports the database.
 	maxLag, _ := searchMirrorEffectiveMaxLag(ctx, m.pool, m.cfg.MaxLag)
@@ -138,7 +156,7 @@ func (m *SearchMirror) unreachable(ctx context.Context, row *searchMirrorRow, er
 	s.MaxLagSeconds = int64(maxLag / time.Second)
 
 	state, reason := SearchMirrorUnreachable, ""
-	if _, at, ok := s.hold(); ok && !at.IsZero() && now.Sub(at) > maxLag {
+	if _, since, ok := row.holdSince(); ok && !since.IsZero() && now.Sub(since) > maxLag {
 		state, reason = SearchMirrorNeedsFullCopy, searchMirrorPastCapReason
 	}
 	setSearchMirrorFailureState(ctx, s, state, reason)
@@ -148,17 +166,18 @@ func (m *SearchMirror) unreachable(ctx context.Context, row *searchMirrorRow, er
 // keyRejected records that the mirror refused the key (401 or 403): misconfigured, key_rejected.
 // No try is counted.
 func (m *SearchMirror) keyRejected(ctx context.Context, row *searchMirrorRow, err error) error {
-	if ctx.Err() != nil {
+	if searchMirrorNotRecorded(ctx, err) {
 		return searchMirrorShutdownError(ctx, err)
 	}
 	s := &row.State
-	noteSearchMirrorFailure(s, searchMirrorErrKeyRejected, err, time.Now().UTC())
+	noteSearchMirrorFailure(s, searchMirrorErrKeyRejected, m.errorText(err), time.Now().UTC())
 	setSearchMirrorFailureState(ctx, s, SearchMirrorMisconfigured, string(SearchMirrorProblemKeyRejected))
 	return m.saveFailureRow(ctx, row)
 }
 
-// searchMirrorShutdownError is what a failure handler returns when the run is shutting down:
-// the failure itself, or the context's error when there is none.
+// searchMirrorShutdownError is what a failure handler returns when it records nothing (a
+// shutdown, or a run that lost the mirror): the failure itself, or the context's error when
+// there is none.
 func searchMirrorShutdownError(ctx context.Context, err error) error {
 	if err != nil {
 		return err
@@ -173,7 +192,7 @@ func (m *SearchMirror) handleRunError(ctx context.Context, row *searchMirrorRow,
 	if err == nil {
 		return nil
 	}
-	if ctx.Err() != nil {
+	if searchMirrorNotRecorded(ctx, err) {
 		return searchMirrorShutdownError(ctx, err)
 	}
 	switch kind := searchMirrorFailureKind(err); kind {
@@ -183,7 +202,7 @@ func (m *SearchMirror) handleRunError(ctx context.Context, row *searchMirrorRow,
 		return m.keyRejected(ctx, row, err)
 	default:
 		s := &row.State
-		noteSearchMirrorFailure(s, kind, err, time.Now().UTC())
+		noteSearchMirrorFailure(s, kind, m.errorText(err), time.Now().UTC())
 		setSearchMirrorFailureState(ctx, s, SearchMirrorFailing, "")
 		return m.saveFailureRow(ctx, row)
 	}
@@ -207,7 +226,7 @@ func (m *SearchMirror) pageFailed(ctx context.Context, row *searchMirrorRow, ids
 	if err == nil {
 		return false, nil
 	}
-	if ctx.Err() != nil {
+	if searchMirrorNotRecorded(ctx, err) {
 		return false, searchMirrorShutdownError(ctx, err)
 	}
 	kind := searchMirrorFailureKind(err)
@@ -230,8 +249,8 @@ func (m *SearchMirror) pageFailed(ctx context.Context, row *searchMirrorRow, ids
 
 	// The last try: split the page. Nothing is recorded until it ends, so a shutdown during the
 	// split leaves the state as it was.
-	accepted, refusals, abort := m.splitApplyRefusals(ctx, m.mirror, row.ActiveIndexUID, ids)
-	if ctx.Err() != nil {
+	accepted, refusals, abort := m.splitApply(ctx, m.mirror, row.ActiveIndexUID, ids)
+	if searchMirrorNotRecorded(ctx, abort) {
 		return false, searchMirrorShutdownError(ctx, errors.Join(err, abort))
 	}
 	now := time.Now().UTC()
@@ -244,8 +263,8 @@ func (m *SearchMirror) pageFailed(ctx context.Context, row *searchMirrorRow, ids
 		case searchMirrorErrKeyRejected:
 			return false, m.keyRejected(ctx, row, abort)
 		default:
-			noteSearchMirrorFailure(s, abortKind, abort, now)
-			s.Retry.LastError = searchMirrorErrorText(abort)
+			noteSearchMirrorFailure(s, abortKind, m.errorText(abort), now)
+			s.Retry.LastError = m.errorText(abort)
 			return false, m.saveFailureRow(ctx, row)
 		}
 	}
@@ -253,7 +272,7 @@ func (m *SearchMirror) pageFailed(ctx context.Context, row *searchMirrorRow, ids
 	if len(accepted) == 0 && len(ids) > 1 {
 		// No part of a page of several items was accepted: the mirror server itself is failing.
 		if n := len(refusals); n > 0 {
-			s.LastError = searchMirrorErrorText(refusals[n-1].Err)
+			s.LastError = m.errorText(refusals[n-1].Err)
 			s.Retry.LastError = s.LastError
 		}
 		s.Retry.NextAt = now.Add(m.opts.RetryMax)
@@ -261,20 +280,26 @@ func (m *SearchMirror) pageFailed(ctx context.Context, row *searchMirrorRow, ids
 		return false, m.saveFailureRow(ctx, row)
 	}
 
-	if err := writeSearchMirrorDeadLetters(ctx, m.pool, refusals); err != nil {
+	if err := m.writeDeadLetters(ctx, refusals); err != nil {
 		if ctx.Err() != nil {
 			return false, searchMirrorShutdownError(ctx, err)
 		}
-		noteSearchMirrorFailure(s, searchMirrorErrDatabase, err, now)
-		s.Retry.LastError = searchMirrorErrorText(err)
+		noteSearchMirrorFailure(s, searchMirrorErrDatabase, m.errorText(err), now)
+		s.Retry.LastError = m.errorText(err)
 		return false, m.saveFailureRow(ctx, row)
 	}
-	if len(refusals) > 0 {
-		slog.WarnContext(ctx, "search mirror dead-lettered refused items", "component", "catalog",
-			"refused", len(refusals), "accepted", len(accepted), "err", searchMirrorErrorText(refusals[len(refusals)-1].Err))
-	}
+	m.logDeadLettered(ctx, accepted, refusals)
 	searchMirrorPageSucceeded(s)
 	return true, nil
+}
+
+// logDeadLettered logs, once per page or batch, that refused items were dead-lettered.
+func (m *SearchMirror) logDeadLettered(ctx context.Context, accepted []string, refusals []searchMirrorRefusal) {
+	if len(refusals) == 0 {
+		return
+	}
+	slog.WarnContext(ctx, "search mirror dead-lettered refused items", "component", "catalog",
+		"refused", len(refusals), "accepted", len(accepted), "err", m.errorText(refusals[len(refusals)-1].Err))
 }
 
 // searchMirrorPageSucceeded records a follow page the mirror took (all of it, or all but the
@@ -299,8 +324,8 @@ func (m *SearchMirror) noteSearchMirrorTry(s *searchMirrorState, kind searchMirr
 	}
 	s.Retry.Attempts = attempts
 	s.Retry.NextAt = now.Add(searchMirrorRetryDelay(attempts, m.opts.RetryBase, m.opts.RetryMax))
-	s.Retry.LastError = searchMirrorErrorText(err)
-	noteSearchMirrorFailure(s, kind, err, now)
+	s.Retry.LastError = m.errorText(err)
+	noteSearchMirrorFailure(s, kind, s.Retry.LastError, now)
 }
 
 // searchMirrorRefusal is an item Meilisearch refused on its own, with the refusal.
@@ -310,19 +335,11 @@ type searchMirrorRefusal struct {
 }
 
 // splitApply applies ids to uid on client, halving recursively down to single ids so that only
-// the items Meilisearch itself refuses are left in refused. Only a Meilisearch rejection splits
-// further: any other error stops the split and is returned as abort, with what was settled so
-// far.
-func (m *SearchMirror) splitApply(ctx context.Context, client *meilisearchClient, uid string, ids []string) (accepted, refused []string, abort error) {
-	accepted, refusals, abort := m.splitApplyRefusals(ctx, client, uid, ids)
-	for _, refusal := range refusals {
-		refused = append(refused, refusal.ID)
-	}
-	return accepted, refused, abort
-}
-
-// splitApplyRefusals is splitApply, keeping each refused item's error.
-func (m *SearchMirror) splitApplyRefusals(ctx context.Context, client *meilisearchClient, uid string, ids []string) (accepted []string, refused []searchMirrorRefusal, abort error) {
+// the items Meilisearch itself refuses are left in refused, each with its refusal. Only a
+// Meilisearch rejection splits further: any other error stops the split and is returned as
+// abort, with what was settled so far. pageFailed splits a page on its last try, the copy splits
+// a refused batch, and the hourly retry splits each page of dead letters.
+func (m *SearchMirror) splitApply(ctx context.Context, client *meilisearchClient, uid string, ids []string) (accepted []string, refused []searchMirrorRefusal, abort error) {
 	var apply func(part []string) error
 	apply = func(part []string) error {
 		if len(part) == 0 {
@@ -333,7 +350,7 @@ func (m *SearchMirror) splitApplyRefusals(ctx context.Context, client *meilisear
 			accepted = append(accepted, part...)
 			return nil
 		}
-		if ctx.Err() != nil || searchMirrorFailureKind(err) != searchMirrorErrRejected {
+		if searchMirrorNotRecorded(ctx, err) || searchMirrorFailureKind(err) != searchMirrorErrRejected {
 			return err
 		}
 		if len(part) == 1 {
@@ -350,9 +367,13 @@ func (m *SearchMirror) splitApplyRefusals(ctx context.Context, client *meilisear
 	return accepted, refused, abort
 }
 
-// writeSearchMirrorDeadLetters records refused items: a new entry, or one more failure of an
-// existing one.
-func writeSearchMirrorDeadLetters(ctx context.Context, q pgxExecer, refusals []searchMirrorRefusal) error {
+// writeDeadLetters records refused items: a new entry, or one more failure of an existing one.
+func (m *SearchMirror) writeDeadLetters(ctx context.Context, refusals []searchMirrorRefusal) error {
+	return writeSearchMirrorDeadLetters(ctx, m.pool, refusals, m.errorText)
+}
+
+// writeSearchMirrorDeadLetters records refused items, each with text of its refusal.
+func writeSearchMirrorDeadLetters(ctx context.Context, q pgxExecer, refusals []searchMirrorRefusal, text func(error) string) error {
 	if len(refusals) == 0 {
 		return nil
 	}
@@ -365,7 +386,7 @@ func writeSearchMirrorDeadLetters(ctx context.Context, q pgxExecer, refusals []s
 		}
 		seen[refusal.ID] = true
 		ids = append(ids, refusal.ID)
-		texts = append(texts, searchMirrorErrorText(refusal.Err))
+		texts = append(texts, text(refusal.Err))
 	}
 	_, err := q.Exec(ctx, `
 		INSERT INTO bloem_search_mirror_dead_letters (content_id, last_error)
@@ -425,8 +446,8 @@ func searchMirrorDeadLetterIDs(ctx context.Context, q pgxQuerier, after string, 
 // later: unreachable and a rejected key take their own paths; a database error is counted and
 // returned, and the state is left as it is.
 func (m *SearchMirror) retryDeadLetters(ctx context.Context, row *searchMirrorRow) error {
-	if ctx.Err() != nil {
-		return nil
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	s := &row.State
 	now := time.Now().UTC()
@@ -456,8 +477,8 @@ func (m *SearchMirror) retryDeadLetters(ctx context.Context, row *searchMirrorRo
 			break
 		}
 		after = ids[len(ids)-1]
-		accepted, refusals, abort := m.splitApplyRefusals(ctx, m.mirror, row.ActiveIndexUID, ids)
-		if ctx.Err() != nil {
+		accepted, refusals, abort := m.splitApply(ctx, m.mirror, row.ActiveIndexUID, ids)
+		if searchMirrorNotRecorded(ctx, abort) {
 			return searchMirrorShutdownError(ctx, abort)
 		}
 		retried += len(accepted) + len(refusals)
@@ -466,7 +487,7 @@ func (m *SearchMirror) retryDeadLetters(ctx context.Context, row *searchMirrorRo
 			break
 		}
 		cleared += len(accepted)
-		if err := writeSearchMirrorDeadLetters(ctx, m.pool, refusals); err != nil {
+		if err := m.writeDeadLetters(ctx, refusals); err != nil {
 			failure = searchMirrorDatabaseError(ctx, err)
 			break
 		}

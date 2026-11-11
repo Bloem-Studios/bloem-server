@@ -150,10 +150,14 @@ func searchMirrorItemIDs(events []searchMirrorEvent) []string {
 // for; deletes the ids that no longer have a document; adds the rest in payload batches, so a
 // page too big for one request is never mistaken for a rejected one; and then clears the ids'
 // dead-letters, since any later change to an item supersedes its failure. Every error it returns
-// is a *searchMirrorApplyError.
+// is a *searchMirrorApplyError, except errSearchMirrorNotOwner: it first checks that the run
+// still holds the mirror's lock.
 func (m *SearchMirror) applyItems(ctx context.Context, client *meilisearchClient, indexUID string, ids []string) error {
 	if len(ids) == 0 {
 		return nil
+	}
+	if err := m.checkOwner(ctx); err != nil {
+		return err
 	}
 	docs, err := m.docs.LoadDocumentsByIDs(ctx, ids, m.startup.IndexTypes, m.startup.Embedder,
 		m.startup.SemanticEnabled, m.startup.BinaryQuantized)
@@ -344,7 +348,7 @@ func (m *SearchMirror) followPageFailed(ctx context.Context, row *searchMirrorRo
 
 // followSave saves the mirror's row, tagging a failure as a database error.
 func (m *SearchMirror) followSave(ctx context.Context, row *searchMirrorRow) error {
-	if err := saveSearchMirrorRow(ctx, m.pool, *row); err != nil {
+	if err := saveSearchMirrorRow(ctx, m.pool, row); err != nil {
 		return searchMirrorDatabaseError(ctx, err)
 	}
 	return nil

@@ -37,23 +37,25 @@ const searchMirrorCopySideInfix = "_mirrorcopy_"
 // searchMirrorNeedsCopy reports whether the mirror must start a full copy, and why:
 //   - "first_copy": the mirror has published nothing yet;
 //   - "main_rebuilt": the main state row names another index or schema version;
-//   - "past_cap": what the mirror holds (hold()) is older than maxLag, so the event cleanup no
-//     longer keeps the rows it would need;
+//   - "past_cap": what the mirror holds is older than maxLag, measured as the cleanup measures it
+//     (holdSince), so the cleanup no longer keeps the rows it would need;
 //   - "forced": ForceCopy is set (the manual task, a new or cloned mirror server, a restore);
 //   - "needs_full_copy": the state says so.
 //
 // While a copy for the main's current index and schema is under way, ok is false: RunOnce
-// continues that copy instead. The one exception is a copy that has itself gone past the cap,
-// because the rows since its start may be pruned and publishing it would lose them; it starts
-// again with "past_cap". A forced copy does not restart a copy already under way, which is as
-// fresh. With no main index there is nothing to copy.
+// continues that copy instead. The one exception is a copy that made no progress for longer
+// than the cap, because the rows since its start may be pruned and publishing it would lose
+// them; it starts again with "past_cap". A copy that keeps making progress is never past the
+// cap, however long it takes. A forced copy does not restart a copy already under way, which is
+// as fresh. A copy for an index the main no longer names is replaced. With no main index there
+// is nothing to copy.
 func searchMirrorNeedsCopy(row searchMirrorRow, main SearchIndexState, now time.Time, maxLag time.Duration) (string, bool) {
 	if main.ActiveIndexUID == "" {
 		return "", false
 	}
 	state := row.State
 	pastCap := false
-	if _, at, ok := state.hold(); ok && !at.IsZero() && maxLag > 0 && now.Sub(at) > maxLag {
+	if _, since, ok := row.holdSince(); ok && !since.IsZero() && maxLag > 0 && now.Sub(since) > maxLag {
 		pastCap = true
 	}
 	if c := state.Copy; c != nil && c.TargetUID == main.ActiveIndexUID && c.SchemaVersion == main.SchemaVersion {
@@ -96,6 +98,9 @@ func (m *SearchMirror) startCopy(ctx context.Context, row *searchMirrorRow, main
 		return searchMirrorDatabaseError(ctx, fmt.Errorf("start a search mirror copy: %w", err))
 	}
 
+	if err := m.checkOwner(ctx); err != nil {
+		return err
+	}
 	if previous := row.State.Copy; previous != nil && previous.SideUID != "" {
 		if err := dropSearchMirrorCopyIndex(ctx, client, previous.SideUID); err != nil {
 			return fmt.Errorf("start a search mirror copy: delete the earlier copy %s: %w", previous.SideUID, err)
@@ -138,7 +143,7 @@ func (m *SearchMirror) startCopy(ctx context.Context, row *searchMirrorRow, main
 				return ctx.Err()
 			}
 			slog.WarnContext(ctx, "search mirror: could not count the documents for the copy's progress",
-				"component", "catalog", "index", side, "err", err)
+				"component", "catalog", "index", side, "err", m.errorText(err))
 			total = 0
 		}
 	}
@@ -151,11 +156,12 @@ func (m *SearchMirror) startCopy(ctx context.Context, row *searchMirrorRow, main
 		StartAt:       at,
 		Total:         total,
 		StartedAt:     at,
+		ProgressAt:    at,
 	}
 	row.State.State = SearchMirrorCopying
 	row.State.Reason = reason
 	row.State.Window = nil
-	if err := saveSearchMirrorRow(ctx, m.pool, *row); err != nil {
+	if err := saveSearchMirrorRow(ctx, m.pool, row); err != nil {
 		return searchMirrorDatabaseError(ctx, err)
 	}
 	slog.InfoContext(ctx, "search mirror: full copy started",
@@ -166,8 +172,8 @@ func (m *SearchMirror) startCopy(ctx context.Context, row *searchMirrorRow, main
 // searchMirrorCopyBatch is one document batch sent to the side index and not yet acknowledged.
 type searchMirrorCopyBatch struct {
 	task   meilisearchTaskRef
+	ids    []string
 	lastID string
-	docs   int
 }
 
 // continueCopy carries the copy under way on until it is published or the deadline passes:
@@ -176,120 +182,204 @@ type searchMirrorCopyBatch struct {
 //  2. It pages through the catalog after Copy.AfterContentID with the live RebuildBatchSize,
 //     sending payload-sized batches with at most CopyQueueDepth tasks in flight.
 //  3. After each acknowledged batch it moves AfterContentID to that batch's last id, adds to Done,
-//     sets LastSuccessAt, and saves. Tasks finish in the order they were sent, so everything up to
-//     AfterContentID is in the side index.
+//     sets LastSuccessAt and Copy.ProgressAt, and saves. Tasks finish in the order they were sent,
+//     so everything up to AfterContentID is in the side index. A batch Meilisearch refuses is
+//     split (splitApply) against the side index: the refused documents are dead-lettered and the
+//     copy goes on; only a batch of two or more with nothing accepted fails the copy.
 //  4. When the pages run out it waits for every task and publishes the side index under
-//     TargetUID. A side index publishIndex refuses as stale (errSearchMirrorSideStale: an
-//     earlier publish swapped it already) starts the copy again.
-//  5. The row then names TargetUID, its schema version and document count, and LastRebuildAt.
-//  6. The copy's start snapshot becomes the bookmark, so the next follow applies what changed
-//     during the copy; Copy, Window, Retry and ForceCopy are cleared.
-//  7. The mirror's dead-letters are deleted: the copy holds those items as they are now.
-//  8. Superseded indexes on the mirror are deleted (staleSearchMirrorIndexUIDs). A failure there
-//     is only logged.
-//  9. State becomes following.
+//     TargetUID (publishCopy).
 //
-// Steps 5 to 7 and 9 are saved in one transaction before step 8, so a published copy is recorded
-// even when the cleanup is slow or the process stops during it. At the deadline it waits for the
-// tasks in flight, records them, and returns; the next run carries on from there.
+// At the deadline it waits for the tasks in flight, records them, and returns; the next run
+// carries on from there. Before every write to the mirror it checks that the run still holds
+// the mirror's lock.
 func (m *SearchMirror) continueCopy(ctx context.Context, row *searchMirrorRow, deadline time.Time) (bool, error) {
 	if row.State.Copy == nil {
 		return false, nil
 	}
-	client := m.mirror
+	if err := m.ensureCopySide(ctx, row); err != nil {
+		return false, err
+	}
+	run, err := m.newSearchMirrorCopyRun(ctx, row)
+	if err != nil {
+		return false, err
+	}
+	finished, err := run.sendAll(ctx, deadline)
+	if err != nil || !finished {
+		return false, err
+	}
+	return m.publishCopy(ctx, row)
+}
 
-	sideExists := false
-	if side := row.State.Copy.SideUID; side != "" {
-		exists, err := client.indexExists(ctx, side)
+// ensureCopySide starts the copy again when its side index is gone.
+func (m *SearchMirror) ensureCopySide(ctx context.Context, row *searchMirrorRow) error {
+	side := row.State.Copy.SideUID
+	if side != "" {
+		exists, err := m.mirror.indexExists(ctx, side)
 		if err != nil {
-			return false, fmt.Errorf("continue the search mirror copy: check %s: %w", side, err)
+			return fmt.Errorf("continue the search mirror copy: check %s: %w", side, err)
 		}
-		sideExists = exists
-	}
-	if !sideExists {
-		slog.WarnContext(ctx, "search mirror: the copy's side index is gone; starting the copy again",
-			"component", "catalog", "index", row.State.Copy.SideUID, "target", row.State.Copy.TargetUID)
-		if err := m.restartCopy(ctx, row); err != nil {
-			return false, err
+		if exists {
+			return nil
 		}
 	}
-	c := row.State.Copy
+	slog.WarnContext(ctx, "search mirror: the copy's side index is gone; starting the copy again",
+		"component", "catalog", "index", side, "target", row.State.Copy.TargetUID)
+	return m.restartCopy(ctx, row)
+}
 
+// searchMirrorCopyRun is one run's part of a copy: the batches in flight and where they end.
+type searchMirrorCopyRun struct {
+	m         *SearchMirror
+	row       *searchMirrorRow
+	batchSize int
+	depth     int
+	queue     []searchMirrorCopyBatch
+}
+
+func (m *SearchMirror) newSearchMirrorCopyRun(ctx context.Context, row *searchMirrorRow) (*searchMirrorCopyRun, error) {
 	live, err := LoadCatalogSearchSettings(ctx, m.settings)
 	if err != nil {
-		return false, searchMirrorDatabaseError(ctx, fmt.Errorf("continue the search mirror copy: read the batch size: %w", err))
+		return nil, searchMirrorDatabaseError(ctx, fmt.Errorf("continue the search mirror copy: read the batch size: %w", err))
 	}
-	batchSize := live.RebuildBatchSize
-	if batchSize <= 0 {
-		batchSize = DefaultMeilisearchRebuildBatchSize
+	run := &searchMirrorCopyRun{m: m, row: row, batchSize: live.RebuildBatchSize, depth: m.opts.CopyQueueDepth}
+	if run.batchSize <= 0 {
+		run.batchSize = DefaultMeilisearchRebuildBatchSize
 	}
-	depth := m.opts.CopyQueueDepth
-	if depth <= 0 {
-		depth = searchMirrorCopyQueueDepth
+	if run.depth <= 0 {
+		run.depth = searchMirrorCopyQueueDepth
 	}
+	return run, nil
+}
 
-	queue := make([]searchMirrorCopyBatch, 0, depth)
-	acknowledge := func() error {
-		next := queue[0]
-		queue = queue[1:]
-		if err := client.WaitTask(ctx, next.task); err != nil {
-			return fmt.Errorf("continue the search mirror copy: add documents to %s: %w", c.SideUID, err)
-		}
-		now := time.Now().UTC()
-		c.AfterContentID = next.lastID
-		c.Done += next.docs
-		row.State.LastSuccessAt = &now
-		row.State.State = SearchMirrorCopying
-		row.State.LastError = ""
-		row.State.ErrorSince = nil
-		if err := saveSearchMirrorRow(ctx, m.pool, *row); err != nil {
-			return searchMirrorDatabaseError(ctx, err)
-		}
-		return nil
-	}
-	drain := func() error {
-		for len(queue) > 0 {
-			if err := acknowledge(); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
+// sendAll sends the catalog after the copy's cursor until it runs out (finished) or the
+// deadline passes, then waits for every batch in flight.
+func (r *searchMirrorCopyRun) sendAll(ctx context.Context, deadline time.Time) (finished bool, err error) {
+	m, c := r.m, r.row.State.Copy
 	cursor := c.AfterContentID
 	for {
 		if !time.Now().Before(deadline) {
-			return false, drain()
+			return false, r.drain(ctx)
 		}
-		docs, err := m.docs.LoadDocumentsAfter(ctx, cursor, batchSize, m.startup.IndexTypes, m.startup.Embedder, m.startup.SemanticEnabled, m.startup.BinaryQuantized)
+		docs, err := m.docs.LoadDocumentsAfter(ctx, cursor, r.batchSize, m.startup.IndexTypes, m.startup.Embedder, m.startup.SemanticEnabled, m.startup.BinaryQuantized)
 		if err != nil {
 			return false, searchMirrorDatabaseError(ctx, fmt.Errorf("continue the search mirror copy: load documents: %w", err))
 		}
 		if len(docs) == 0 {
-			break
+			return true, r.drain(ctx)
 		}
 		for _, batch := range catalogSearchDocumentPayloadBatches(docs, m.opts.MaxPayloadBytes) {
-			ref, err := client.AddDocuments(ctx, c.SideUID, batch)
-			if err != nil {
-				return false, fmt.Errorf("continue the search mirror copy: add documents to %s: %w", c.SideUID, err)
-			}
-			queue = append(queue, searchMirrorCopyBatch{task: ref, lastID: batch[len(batch)-1].ContentID, docs: len(batch)})
-			for len(queue) >= depth {
-				if err := acknowledge(); err != nil {
-					return false, err
-				}
+			if err := r.send(ctx, batch); err != nil {
+				return false, err
 			}
 		}
 		cursor = docs[len(docs)-1].ContentID
 	}
-	if err := drain(); err != nil {
-		return false, err
-	}
+}
 
+// send adds one batch to the side index, then acknowledges batches until fewer than depth are
+// in flight.
+func (r *searchMirrorCopyRun) send(ctx context.Context, batch []catalogSearchDocument) error {
+	side := r.row.State.Copy.SideUID
+	if err := r.m.checkOwner(ctx); err != nil {
+		return err
+	}
+	ref, err := r.m.mirror.AddDocuments(ctx, side, batch)
+	if err != nil {
+		return fmt.Errorf("continue the search mirror copy: add documents to %s: %w", side, err)
+	}
+	ids := make([]string, len(batch))
+	for i, doc := range batch {
+		ids[i] = doc.ContentID
+	}
+	r.queue = append(r.queue, searchMirrorCopyBatch{task: ref, ids: ids, lastID: ids[len(ids)-1]})
+	for len(r.queue) >= r.depth {
+		if err := r.acknowledge(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *searchMirrorCopyRun) drain(ctx context.Context) error {
+	for len(r.queue) > 0 {
+		if err := r.acknowledge(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// acknowledge waits for the oldest batch in flight and records it. A batch Meilisearch refused
+// is split first (splitCopyBatch).
+func (r *searchMirrorCopyRun) acknowledge(ctx context.Context) error {
+	m, row, c := r.m, r.row, r.row.State.Copy
+	next := r.queue[0]
+	r.queue = r.queue[1:]
+	if err := m.mirror.WaitTask(ctx, next.task); err != nil {
+		if searchMirrorNotRecorded(ctx, err) || classifySearchMirrorError(err) != searchMirrorErrRejected {
+			return fmt.Errorf("continue the search mirror copy: add documents to %s: %w", c.SideUID, err)
+		}
+		if err := m.splitCopyBatch(ctx, c.SideUID, next.ids, err); err != nil {
+			return err
+		}
+	}
+	now := time.Now().UTC()
+	c.AfterContentID = next.lastID
+	c.Done += len(next.ids)
+	c.ProgressAt = now
+	row.State.LastSuccessAt = &now
+	row.State.State = SearchMirrorCopying
+	row.State.LastError = ""
+	row.State.ErrorSince = nil
+	if err := saveSearchMirrorRow(ctx, m.pool, row); err != nil {
+		return searchMirrorDatabaseError(ctx, err)
+	}
+	return nil
+}
+
+// splitCopyBatch handles a copy batch the side index refused (refusal), as pageFailed handles a
+// page on its last try: the batch is split down to the documents Meilisearch itself refuses,
+// which are dead-lettered, and the copy goes on. They stay dead-lettered when the copy is
+// published. A split stopped by another kind of error returns it; a batch of two or more with
+// nothing accepted returns the refusal, and the mirror is failing.
+func (m *SearchMirror) splitCopyBatch(ctx context.Context, side string, ids []string, refusal error) error {
+	accepted, refusals, abort := m.splitApply(ctx, m.mirror, side, ids)
+	if abort != nil {
+		return abort
+	}
+	if len(accepted) == 0 && len(ids) > 1 {
+		return fmt.Errorf("continue the search mirror copy: %s refused every document of a batch: %w", side, refusal)
+	}
+	if err := m.writeDeadLetters(ctx, refusals); err != nil {
+		return searchMirrorDatabaseError(ctx, err)
+	}
+	m.logDeadLettered(ctx, accepted, refusals)
+	return nil
+}
+
+// publishCopy publishes the finished side index under TargetUID and records it:
+//  1. A side index publishIndex refuses as stale (errSearchMirrorSideStale: an earlier publish
+//     swapped it already) starts the copy again.
+//  2. The row then names TargetUID, its schema version and document count, and LastRebuildAt.
+//  3. The copy's start snapshot becomes the bookmark, so the next follow applies what changed
+//     during the copy; Copy, Window, Retry and ForceCopy are cleared.
+//  4. The dead letters from before the copy are deleted: the copy holds those items as they are
+//     now. Those the copy itself refused stay.
+//  5. State becomes following.
+//  6. Superseded indexes on the mirror are deleted (staleSearchMirrorIndexUIDs). A failure there
+//     is only logged.
+//
+// Steps 2 to 5 are saved in one transaction before step 6, so a published copy is recorded even
+// when the cleanup is slow or the process stops during it.
+func (m *SearchMirror) publishCopy(ctx context.Context, row *searchMirrorRow) (bool, error) {
+	client, c := m.mirror, row.State.Copy
 	// A publish that failed after its swap leaves the side index holding the target's old
 	// contents; publishing it again would bring them back. publishIndex refuses such a side
 	// index, which is not newer than the target (errSearchMirrorSideStale), and the copy starts
 	// again instead.
+	if err := m.checkOwner(ctx); err != nil {
+		return false, err
+	}
 	if err := client.publishIndex(ctx, c.SideUID, c.TargetUID); err != nil {
 		if errors.Is(err, errSearchMirrorSideStale) {
 			slog.WarnContext(ctx, "search mirror: the copy's side index is not newer than its target; starting the copy again",
@@ -306,35 +396,37 @@ func (m *SearchMirror) continueCopy(ctx context.Context, row *searchMirrorRow, d
 			return false, ctx.Err()
 		}
 		slog.WarnContext(ctx, "search mirror: published the copy, but could not read its document count",
-			"component", "catalog", "index", c.TargetUID, "err", err)
+			"component", "catalog", "index", c.TargetUID, "err", m.errorText(err))
 		documents = c.Done
 	}
 	now := time.Now().UTC()
 	startAt := c.StartAt
-	row.ActiveIndexUID = c.TargetUID
-	row.SchemaVersion = c.SchemaVersion
-	row.DocumentCount = documents
-	row.LastRebuildAt = &now
-	row.State.Bookmark = c.Start
-	row.State.BookmarkAt = &startAt
-	row.State.Copy = nil
-	row.State.Window = nil
-	row.State.Retry = nil
-	row.State.ForceCopy = false
-	row.State.State = SearchMirrorFollowing
-	row.State.Reason = ""
-	row.State.LastSuccessAt = &now
-	row.State.LastError = ""
-	row.State.ErrorSince = nil
+	next := *row
+	next.ActiveIndexUID = c.TargetUID
+	next.SchemaVersion = c.SchemaVersion
+	next.DocumentCount = documents
+	next.LastRebuildAt = &now
+	next.State.Bookmark = c.Start
+	next.State.BookmarkAt = &startAt
+	next.State.Copy = nil
+	next.State.Window = nil
+	next.State.Retry = nil
+	next.State.ForceCopy = false
+	next.State.State = SearchMirrorFollowing
+	next.State.Reason = ""
+	next.State.LastSuccessAt = &now
+	next.State.LastError = ""
+	next.State.ErrorSince = nil
 	err = pgx.BeginFunc(ctx, m.pool, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, `DELETE FROM bloem_search_mirror_dead_letters`); err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM bloem_search_mirror_dead_letters WHERE last_failed_at < $1`, startAt); err != nil {
 			return fmt.Errorf("clear the search mirror dead-letters: %w", err)
 		}
-		return saveSearchMirrorRow(ctx, tx, *row)
+		return saveSearchMirrorRow(ctx, tx, &next)
 	})
 	if err != nil {
 		return false, searchMirrorDatabaseError(ctx, fmt.Errorf("record the published search mirror copy: %w", err))
 	}
+	*row = next
 	slog.InfoContext(ctx, "search mirror: full copy published",
 		"component", "catalog", "index", row.ActiveIndexUID, "documents", documents)
 
@@ -362,14 +454,14 @@ func (m *SearchMirror) removeSupersededCopyIndexes(ctx context.Context, activeUI
 	uids, err := client.ListIndexUIDs(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "search mirror: could not list the mirror's indexes to remove superseded ones",
-			"component", "catalog", "err", err)
+			"component", "catalog", "err", m.errorText(err))
 		return
 	}
 	removed := 0
 	for _, uid := range staleSearchMirrorIndexUIDs(uids, m.startup.MeilisearchIndex, activeUID, previousUID) {
 		if err := dropSearchMirrorCopyIndex(ctx, client, uid); err != nil {
 			slog.WarnContext(ctx, "search mirror: could not remove a superseded index",
-				"component", "catalog", "index", uid, "removed", removed, "err", err)
+				"component", "catalog", "index", uid, "removed", removed, "err", m.errorText(err))
 			return
 		}
 		removed++

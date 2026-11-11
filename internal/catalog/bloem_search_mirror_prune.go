@@ -59,6 +59,12 @@ const searchMirrorSiloPruneSQL = `
 		FROM deleted
 `
 
+// searchMirrorPruneCapMargin is how long past the cap the cleanup still holds rows. The worker
+// decides "past the cap" at the start of a run, by its own clock, then works for up to the run
+// budget (5 minutes); the margin covers that and clock skew, so the cleanup never deletes a row
+// a run that started under the cap is still applying.
+const searchMirrorPruneCapMargin = 15 * time.Minute
+
 // searchMirrorHoldPredicate keeps an outbox row until the transaction that wrote it is visible
 // in the hold snapshot, that is, until the mirror has applied it. A row with no tx_id predates
 // the mirror and is not held: the first full copy covers it. $6 is the hold snapshot.
@@ -95,10 +101,11 @@ func (p *SearchMirrorAwarePruner) PruneProcessed(ctx context.Context, provider s
 }
 
 // holdSnapshot is the snapshot whose later outbox rows the mirror still needs; held is false
-// when it needs none: there is no mirror row, nothing is held, or the hold is past the cap
-// (database clock). A cap the mirror has not recorded yet is DefaultSearchMirrorMaxLag, so rows
-// are never held forever; a hold time it has not recorded keeps the hold, the side that loses
-// no rows.
+// when it needs none: there is no mirror row, nothing is held, or the hold is past the cap plus
+// searchMirrorPruneCapMargin (database clock). The cap is measured from the same time the worker
+// measures it from (holdSince): a copy's last progress, or the bookmark or last publish. A cap
+// the mirror has not recorded yet is DefaultSearchMirrorMaxLag, so rows are never held forever;
+// a hold time it has not recorded keeps the hold, the side that loses no rows.
 func (p *SearchMirrorAwarePruner) holdSnapshot(ctx context.Context) (snapshot string, held bool, err error) {
 	row, ok, err := loadSearchMirrorRow(ctx, p.pool)
 	if isSearchIndexSchemaUnavailable(err) || (err == nil && !ok) {
@@ -107,7 +114,7 @@ func (p *SearchMirrorAwarePruner) holdSnapshot(ctx context.Context) (snapshot st
 	if err != nil {
 		return "", false, err
 	}
-	snapshot, at, ok := row.State.hold()
+	snapshot, at, ok := row.holdSince()
 	if !ok {
 		return "", false, nil
 	}
@@ -119,8 +126,8 @@ func (p *SearchMirrorAwarePruner) holdSnapshot(ctx context.Context) (snapshot st
 		maxLagSeconds = int64(DefaultSearchMirrorMaxLag / time.Second)
 	}
 	var pastCap bool
-	if err := p.pool.QueryRow(ctx, `SELECT now() - $1::timestamptz > $2::bigint * interval '1 second'`,
-		at, maxLagSeconds).Scan(&pastCap); err != nil {
+	if err := p.pool.QueryRow(ctx, `SELECT now() - $1::timestamptz > $2::bigint * interval '1 second' + $3::bigint * interval '1 second'`,
+		at, maxLagSeconds, int64(searchMirrorPruneCapMargin/time.Second)).Scan(&pastCap); err != nil {
 		return "", false, fmt.Errorf("compare search mirror hold with its cap: %w", err)
 	}
 	if pastCap {

@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/database/pglock"
 	"github.com/google/uuid"
+
+	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
 // fullSearchMirrorRow is a mirror row with every field set. Column times are whole
@@ -29,7 +30,7 @@ func fullSearchMirrorRow() searchMirrorRow {
 			Copy: &searchMirrorCopy{
 				SideUID: "silo_media_items_mirrorcopy_1794390000", TargetUID: "silo_media_items",
 				SchemaVersion: 3000123, Start: "130:131:", StartAt: *at(3), AfterContentID: "m0042",
-				Done: 42, Total: 100, StartedAt: *at(4),
+				Done: 42, Total: 100, StartedAt: *at(4), ProgressAt: *at(12),
 			},
 			Retry:             &searchMirrorRetry{Attempts: 3, NextAt: *at(5), LastError: "refused"},
 			Swap:              &searchMirrorSwap{At: *at(6), By: "8a6e0804-2bd0-4672-b79f-d3e1d3f1a1a1", Settling: true},
@@ -43,6 +44,8 @@ func fullSearchMirrorRow() searchMirrorRow {
 			Errors:            map[string]int64{"unreachable": 2, "rejected": 1, "database": 4},
 			RoleSwaps:         1,
 			ForceCopy:         true,
+			RebuildMain:       "silo_media_items_rebuild_1",
+			Gen:               7,
 		},
 		ActiveIndexUID: "silo_media_items",
 		SchemaVersion:  3000123,
@@ -79,7 +82,9 @@ func TestSearchMirrorStateRoundTrip(t *testing.T) {
 	row := fullSearchMirrorRow()
 	requireEveryFieldSet(t, reflect.ValueOf(row), "row")
 
-	if err := saveSearchMirrorRow(t.Context(), e.Pool, row); err != nil {
+	// The first save of a row that does not exist is from generation 0; each save moves it on.
+	row.State.Gen = 0
+	if err := saveSearchMirrorRow(t.Context(), e.Pool, &row); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 	got, ok, err := loadSearchMirrorRow(t.Context(), e.Pool)
@@ -91,8 +96,8 @@ func TestSearchMirrorStateRoundTrip(t *testing.T) {
 	}
 
 	// A second save replaces the row; nothing of the first survives.
-	next := searchMirrorRow{State: searchMirrorState{State: SearchMirrorFollowing, Bookmark: "140:140:"}, ActiveIndexUID: "silo_media_items_rebuild_2"}
-	if err := saveSearchMirrorRow(t.Context(), e.Pool, next); err != nil {
+	next := searchMirrorRow{State: searchMirrorState{State: SearchMirrorFollowing, Bookmark: "140:140:", Gen: row.State.Gen}, ActiveIndexUID: "silo_media_items_rebuild_2"}
+	if err := saveSearchMirrorRow(t.Context(), e.Pool, &next); err != nil {
 		t.Fatalf("save again: %v", err)
 	}
 	got, ok, err = loadSearchMirrorRow(t.Context(), e.Pool)
@@ -127,7 +132,9 @@ func TestSearchMirrorStateAbsentRow(t *testing.T) {
 
 func TestSearchMirrorStateRestoreDeletesIt(t *testing.T) {
 	e := newSearchMirrorTestEnv(t)
-	if err := saveSearchMirrorRow(t.Context(), e.Pool, fullSearchMirrorRow()); err != nil {
+	row := fullSearchMirrorRow()
+	row.State.Gen = 0
+	if err := saveSearchMirrorRow(t.Context(), e.Pool, &row); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 	// internal/backup/interrupt.go's statement for this table, run by every restore.
