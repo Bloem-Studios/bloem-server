@@ -158,6 +158,18 @@ jobs:
           SILO_REQUIRE_TEST_DATABASE: "1"
         run: go test ./internal/api -run 'TestV1TenancyCompatibility|TestOPATenantFoundationWithDisposablePostgres' -count=1 -v -timeout=30m
 
+      # The first-setup atomicity tests create one database per case beside
+      # the one SILO_INITIAL_SETUP_ATOMIC_DSN names, and skip without it.
+      - name: Prepare disposable initial setup database
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+        run: docker exec "$POSTGRES_CONTAINER_ID" createdb -U bloem_tenant silo_identity_setup_ci
+
+      - name: Initial setup atomicity
+        env:
+          SILO_INITIAL_SETUP_ATOMIC_DSN: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/silo_identity_setup_ci?sslmode=disable
+        run: go test ./internal/api -run '^TestInitialSetup(CompetingCallers|ProfileFailureRollsBack|NoProfile)DB$' -count=1 -v -timeout=30m
+
       - name: Multitenant administration release gate
         env:
           SILO_REQUIRE_TEST_DATABASE: "1"

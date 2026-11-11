@@ -224,6 +224,13 @@ STEPS = [
     ),
     Step(
         "tenancy",
+        "initial-setup-atomic",
+        "SILO_INITIAL_SETUP_ATOMIC_DSN=" + _pg("silo_identity_setup_ci") + " go test ./internal/api"
+        " -run '^TestInitialSetup(CompetingCallers|ProfileFailureRollsBack|NoProfile)DB$' -count=1 -v -timeout=30m",
+        _needs("pg", "fresh_db:silo_identity_setup_ci"),
+    ),
+    Step(
+        "tenancy",
         "multitenant-admin",
         _TENANT + "go test ./internal/api ./internal/tenancy ./internal/adminpeople ./internal/database"
         " -run 'TestMultitenantAdmin|TestAdminStore|TestService|TestAdminPeopleMigrations"
