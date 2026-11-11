@@ -1,10 +1,10 @@
 # How search finds titles by words and by meaning
 
-> **Provenance and status.** Bloem page, written on 2026-11-10 and checked against `main`
-> at `7acd2c7e0`, which includes Silo through `df9f55019`. Search and embeddings are
-> Silo's. Bloem adds two things, carried until Silo has them: task labels for the
-> `gemini-embedding-2` model, and a choice to drop the most common words of a search
-> first. The technical rules are in the [For developers](#for-developers) section.
+> **Provenance and status.** Bloem page, written on 2026-11-10 and updated on 2026-11-11
+> against `main` at `e2806cad4`. Search and embeddings are Silo's. Bloem adds three
+> things, carried until Silo has them: task labels for the `gemini-embedding-2` model, a
+> choice to drop the most common words of a search first, and a names-first query in
+> every hybrid search. The technical rules are in the [For developers](#for-developers) section.
 
 When someone types into the search box, Bloem looks for titles in two ways at once: by
 the words typed and by what they mean. This page walks through the two halves of a
@@ -29,6 +29,11 @@ With **Meilisearch** as the search engine, a search runs like this:
    lie close to it.
 3. **Mixing.** Bloem merges the two lists. The **meaning-based share** sets how much
    each counts: 0 ranks by words only, 1 by meaning only, and the default is 0.5.
+   Bloem's production uses 0.6.
+4. **Names first.** Bloem also looks for the search's words in the titles' names alone,
+   every word required, and ranks a title whose name has all of them above the mixed
+   list. Someone typing a title, even with a typing mistake, still gets it first while
+   meaning decides everything else.
 
 The words half answers alone when the meaning half cannot help: a one-word search, a
 search for episodes, and any kind of title that is still getting its vectors (see
@@ -145,6 +150,14 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   query embed puts the node in a cooldown during which searches run keyword-only. A search
   that mixes episodes and other types is a federated search whose episode query has no
   vector.
+- Every hybrid query of two or more terms goes to Meilisearch as a federated
+  multi-search with one more query (`bloem_search_title_boost.go`, hooked into
+  `meilisearchClient.Search` and `FederatedSearch`): keyword only, `matchingStrategy`
+  `all`, on `title`, `original_title`, `sort_title` and `title_variants`, with the same
+  filter and 1.2 times the hybrid query's weight. Meilisearch returns each document once.
+  In a search that mixes episodes and other types the title query joins the media
+  query. If Meilisearch refuses the federated request with a 4xx, the original request
+  runs unchanged; a timeout or 5xx is returned as it is.
 - `timeout_ms` (default 800) bounds the search call. A search that fails or runs out of
   time is answered by the PostgreSQL provider. Indexing has its own two-minute limit
   (`meilisearchIndexingTimeout`), so the setting does not affect it.
@@ -198,6 +211,30 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   live index of 2.79 million documents, episodes excluded. Target in the top 50: `last`
   16.5%, `frequency` 36.5%, `all` 1.0%. Exact titles found first 73.5% under every
   strategy; titles with one typo 62.5% under `last` and 63.0% under `frequency`.
+- **Meaning-based share and names first, November 11.** After the re-embed, the same
+  searches against the live index, limited to the 163 targets still in the catalog (37
+  books were in libraries deleted on November 10). Meilisearch's mix behaves like a
+  switch: up to a share of 0.57 a strong keyword hit wins, and from 0.6 the list is the
+  meaning-only list. Target in the top 10:
+
+  | | Words only | 0.5 | 0.6 | 0.6 and names first |
+  |---|---|---|---|---|
+  | Descriptions | 28.8% | 62.0% | 63.8% | 63.8% |
+  | Exact titles | 98.2% | 98.2% | 95.1% | 98.2% |
+  | Titles with one typo | 93.3% | 93.3% | 78.0% | 93.3% |
+
+  Of 22 everyday searches such as "funny movie about a dog" and "show about a chef
+  running a restaurant", 20 returned word matches in unrelated ebooks up to 0.57 and the
+  intended movies and shows at 0.6. A minimum ranking score on the title query (0.75 to
+  0.9) cost typed titles and left two-word genre searches such as "zombie comedy" on books
+  with those words in their names. The title query adds about 15 ms; embedding a new
+  search takes about 200 ms, cached for 15 minutes.
+- **Compressed vectors, November 11.** The index stores binary-quantized vectors. For
+  the 163 descriptions, re-ranking Meilisearch's 500 nearest titles by the full 3,072
+  numbers put the target first in 46.6% of searches instead of 40.5%, and in the top 10
+  in 74.8% instead of 70.6%. The first 768 numbers, normalized, did nearly as well
+  (45.4%, 73.6%). Full vectors would take about 15.6 GB in Meilisearch against about
+  0.5 GB, so the index stays compressed for now.
 - **Search time.** Meilisearch's request logs for November 3 to 9: 613 searches, median
   23 ms, 90th percentile 634 ms, slowest 1.53 s (Meilisearch's default search cutoff is
   1.5 s). Production's query timeout is 3,000 ms; the 800 ms default would have sent 56
@@ -209,12 +246,14 @@ Listed in `contracts/seams.txt`, to drop when Silo has the change:
 `internal/recommendations/embeddings/client.go` and
 `internal/recommendations/search_query_vector.go` (labels, `9df39cadb`);
 `internal/catalog/search_meilisearch_provider.go`, `internal/catalog/search_provider.go`
-and `web/src/pages/admin-settings/SearchSettings.tsx` (`frequency`, `7acd2c7e0`).
+and `web/src/pages/admin-settings/SearchSettings.tsx` (`frequency`, `7acd2c7e0`);
+`internal/catalog/search_meilisearch_client.go` (names first).
 `internal/config/admin_settings.go` was already a seam.
 
 Tests: `internal/recommendations/embeddings/bloem_task_labels_test.go`,
 `internal/recommendations/bloem_search_query_labels_test.go`,
 `internal/catalog/bloem_matching_strategy_test.go`,
+`internal/catalog/bloem_search_title_boost_test.go`,
 `internal/config/bloem_search_matching_test.go`,
 `web/src/pages/admin-settings/bloemSearchMatchingStrategy.test.tsx`.
 

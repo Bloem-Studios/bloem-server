@@ -3,6 +3,18 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 11, 2026 — search ranks by meaning and keeps names first
+
+Every hybrid search of two or more words now also looks for its words in the titles'
+names alone, every word required, and ranks those titles above the mixed list
+(`internal/catalog/bloem_search_title_boost.go`, two hook lines in
+`search_meilisearch_client.go`, a temporary seam). That lets production raise the
+meaning-based share from 0.5 to 0.6, where everyday searches such as "funny movie about
+a dog" find dog movies instead of ebooks that share a word, while typed titles keep
+their place: on the live index, titles with one typo stayed in the top 10 93.3% of the
+time instead of falling to 78.0% at 0.6 alone. Measurements and the reasoning are in
+[How search finds titles](../architecture/bloem-search-and-embeddings.md#measurements).
+
 ## November 11, 2026 — search can keep a second Meilisearch up to date
 
 An operator who runs a second Meilisearch can now name it the search **mirror**

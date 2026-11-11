@@ -316,12 +316,18 @@ func (c *meilisearchClient) GetSettings(ctx context.Context, uid string) (meilis
 }
 
 func (c *meilisearchClient) Search(ctx context.Context, uid string, req meilisearchSearchRequest) (meilisearchSearchResponse, error) {
+	if out, handled, err := c.bloemTitleBoostSearch(ctx, uid, req); handled { // Bloem: bloem_search_title_boost.go
+		return out, err
+	}
 	var out meilisearchSearchResponse
 	err := c.do(ctx, http.MethodPost, "/indexes/"+url.PathEscape(uid)+"/search", req, &out)
 	return out, err
 }
 
 func (c *meilisearchClient) FederatedSearch(ctx context.Context, req meilisearchFederatedSearchRequest) (meilisearchSearchResponse, error) {
+	if out, handled, err := c.bloemTitleBoostFederatedSearch(ctx, req); handled { // Bloem: bloem_search_title_boost.go
+		return out, err
+	}
 	var out meilisearchSearchResponse
 	err := c.do(ctx, http.MethodPost, "/multi-search", req, &out)
 	return out, err
