@@ -118,10 +118,11 @@ returned scope to catalog and playback reads.
 
 ### Shipped boundary
 
-`GET /api/bloem/v1/capabilities` advertises `legacy_silo_v1`,
-`organization_memberships`, and `tenant_bounded_media_scope` as `true`. It advertises
-direct-profile login (`direct_profile_login`) when its dependencies are wired. That
-capability does not admit direct sessions to the native namespace or the browser's
+`GET /api/bloem/v1/capabilities` advertises `organization_memberships` and
+`tenant_bounded_media_scope` as `true`. Since Silo retired `/api/v1` (merged in
+`26cf9b3e4`) it advertises `legacy_silo_v1` and direct-profile login
+(`direct_profile_login`) as `false`: the profile sign-in route lived only on
+`/api/v1`. That capability does not admit direct sessions to the native namespace or the browser's
 Silo v2 calls. Shared-device profile pairing (`shared_device_pairing`) and delegated
 administrative roles (`delegated_admin_roles`) remain `false`. Household credential
 management has its own capability and account/PIN/reauthentication boundary; see

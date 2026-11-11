@@ -22,9 +22,6 @@ contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/create_library_validation_failed.json  # generated: createLibrary accepts storage_source instead of paths, so paths is no longer required
 contracts/api/v2/fixtures/get_device_login_bound.json  # upstream device approval now includes the Bloem server brand
 contracts/api/v2/fixtures/get_device_login_ok.json  # upstream device approval now includes the Bloem server brand
-contracts/api/v2/migration.json
-contracts/api/v2/migration.schema.json  # section and auth-trait enums Bloem's own namespaces and middleware add
-contracts/api/v2/offline-routes.txt  # generated: Bloem registers more routes than Silo, so this artifact necessarily differs
 contracts/api/v2/openapi.json
 contracts/api/v2/route-inventory.json  # generated: Bloem registers about 400 more routes, and its global middleware (preview guards, tenancy, native-video capture) changes the chain of almost every Silo route, so a separate Bloem file would not restore Silo's bytes; regenerate with `make route-inventory`, never hand-edit
 docs/design/schemas/playback-v3/v3/capability-response.schema.json
@@ -54,22 +51,17 @@ internal/api/handlers/access_groups_test.go
 internal/api/handlers/admin.go
 internal/api/handlers/admin_access_group_delete_test.go  # Run upstream group-delete callback tests through organization-aware interface
 internal/api/handlers/admin_sections_service.go
-internal/api/handlers/admin_session_revocation_test.go  # exercise upstream session policy against organization-aware group fixture
 internal/api/handlers/admin_users_service.go
 internal/api/handlers/auth.go
 internal/api/handlers/branding.go
 internal/api/handlers/catalog_seed.go
 internal/api/handlers/catalog_transfer_service.go
-internal/api/handlers/collection_artwork.go
 internal/api/handlers/collections_service.go
-internal/api/handlers/devices.go
 internal/api/handlers/downloads_test.go
-internal/api/handlers/home_dismissals.go
 internal/api/handlers/home_views_service.go
 internal/api/handlers/household.go
 internal/api/handlers/libraries.go  # native selected-target authorization boundary
 internal/api/handlers/libraries_service.go  # native selected-target authorization boundary
-internal/api/handlers/markers_test.go
 internal/api/handlers/notifications.go
 internal/api/handlers/playback.go
 internal/api/handlers/playback_connection.go  # the buffering version switch preflights through Bloem's native-storage-aware check
@@ -80,7 +72,6 @@ internal/api/handlers/playback_v3.go
 internal/api/handlers/playback_v3_test.go
 internal/api/handlers/plugins.go  # installation store becomes an interface so native storage installations can be hidden (bloem_plugins_native_storage.go)
 internal/api/handlers/profiles.go
-internal/api/handlers/requests.go
 internal/api/handlers/sections.go
 internal/api/handlers/session_ws.go
 internal/api/handlers/settings_values_seam.go
@@ -147,7 +138,6 @@ internal/config/admin_settings.go
 internal/config/config.go
 internal/config/db_loader.go
 internal/config/yaml_import.go
-internal/contractledger/ledger_test.go  # upstreamable: the copied-field drift case must pick an api_v1 row on a fork with its own namespace
 internal/downloads/artifact_repo.go  # route quota-scoped artifact operations through the admission connection to prevent pool starvation
 internal/downloads/artifact_test.go
 internal/downloads/offline.go
@@ -246,9 +236,6 @@ internal/scanner/ebook_skip.go  # skip-state preload also reads ebook_cover_retr
 internal/scanner/file_repo.go  # native selected-target authorization boundary
 internal/scanner/file_repo_chapter_lock_db_test.go  # waits for a closed dedicated session to leave pg_stat_activity instead of racing its backend exit (flaked in CI; same race upstream)
 internal/scanner/scanner.go
-internal/scenariocatalog/catalog.go  # Load reads Silo's catalogs with Bloem's rows (internal/scenariocatalog/bloem_catalogs) spliced in, so Silo's catalog files stay Silo's bytes
-internal/scenariocatalog/executor/env.go  # restore canonical fixture authority; bind router maintenance to test lifetime without canceling SQL cleanup
-internal/scenariocatalog/executor/run.go  # row-scoped prerequisites/lifecycle readiness; avoid duplicate FreshState reseeds; apply explicit SHA-pinned Bloem adjudications while retaining frozen Silo catalogs
 internal/sections/fetcher.go
 internal/sections/types.go
 internal/subtitles/ai/transcriber.go  # Chinese and Japanese cues: words joined without spaces, width counted in columns, 16-character lines, splits at clause marks; cues held 0.6 s after speech (holdCueEnds); candidate for a Silo upstream PR
@@ -261,8 +248,6 @@ internal/watchsync/types.go  # RemoteWatch.Removed; temporary, Pastime watched r
 internal/worker/cleanup.go
 internal/worker/heartbeat.go
 internal/worker/reconciler.go
-scripts/apiv2-ledger/assign_sections.py  # sections for Bloem's own /api/bloem/v1 and compat namespaces
-scripts/apiv2-ledger/build_ledger.py  # release_flow matched through the Bloem namespace, which the intent rules already cover
 web/package.json
 web/pnpm-lock.yaml
 web/public/NOTICE

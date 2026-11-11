@@ -1,5 +1,13 @@
 # Leaving Silo's `/api/v1`
 
+> **Silo retired `/api/v1` on 2026-11-11** (Silo #3200, merged into Bloem in
+> `26cf9b3e4`). Every route there now answers `410 Gone` with
+> `client_upgrade_required`, Bloem's own routes there included; only the health and
+> readiness probes stay. The routes listed under "Still on `/api/v1`" below are gone:
+> campaigns and seasonal packs keep their `/api/bloem/v1` replacements, while remote
+> control and direct-profile sign-in have none yet. Bloem's native routes now serve
+> Silo's `/api/v2` shapes for organization groups, invitations and account devices.
+
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against `main`
 > at `b6039036d`. It records the owner's decision of 2026-10-31 that Bloem should not depend
 > on Silo's `/api/v1` and should be ready for Silo to remove it, and how far Bloem has got.
@@ -165,7 +173,7 @@ limit, viewer and PIN check, a selected profile) and are advertised as
 
 ### Still on `/api/v1`
 
-The old routes stay mounted, unchanged, for these callers. Each needs a native or `/api/v2`
+Until 2026-11-11 the old routes stayed mounted, unchanged, for these callers. Each needed a native or `/api/v2`
 home before Silo retires `/api/v1`.
 
 | Route | Who calls it | Home to move to |

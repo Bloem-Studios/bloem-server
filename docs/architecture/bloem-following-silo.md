@@ -1,7 +1,7 @@
 # How Bloem keeps up with Silo
 
 > **Provenance and status.** Bloem page, written on 2026-10-31, updated on 2026-11-11
-> and checked against `main` at `ddeb091c1`. Bloem is a tracking fork of Silo Server.
+> and checked against `main` at `26cf9b3e4`. Bloem is a tracking fork of Silo Server.
 > This page explains in plain language how Bloem takes in Silo's work and keeps its
 > own apart. The policy itself is in [how Bloem forks Silo](../../FORK.md), the
 > automation in [Bloem CI](../bloem/ci.md), and the technical rules in the
@@ -35,8 +35,8 @@ Silo's `main` when the bot starts work on it.
    Bloem pages and migrations. The bot reads each one, regenerates the contracts and
    brings the pages the merge affects up to date.
 5. **Does Bloem still work?** The **fast local checks** run on the build machine
-   before anything is pushed: the build, the contract and verify checks, changed-line
-   lint, the scenario executor and the scenario catalog tests.
+   before anything is pushed: the build, the contract and verify checks and
+   changed-line lint.
 6. **Pushed to `main`,** the merge goes through Bloem CI like any other push, and
    Bloem CI runs the full suite. The bot waits for CI on that exact commit.
 7. **Deployed.** The bot deploys only a commit Bloem CI passed: the deploy refuses any
@@ -48,8 +48,8 @@ Until 2 November 2026 a daily GitHub job made clean merges by itself, and mainta
 merged the rest by hand. The job could not resolve a conflict or adapt Bloem's code,
 so it is switched off ([Bloem CI](../bloem/ci.md#how-silos-work-comes-in)).
 
-On 11 November 2026 Bloem's `main` had all of Silo's work through `a9c75803d`, merged
-in `ddeb091c1`, and production ran `4b14c731c`: Silo through `34e2b7bd1`, deployed by
+On 11 November 2026 Bloem's `main` had all of Silo's work through `7bb66f9ad`, merged
+in `26cf9b3e4`, and production ran `4b14c731c`: Silo through `34e2b7bd1`, deployed by
 hand on 11 November 2026.
 
 ## Deploying a batch
@@ -139,7 +139,7 @@ This example is made up.
 | The merge bot | runs outside this repository and GitHub Actions; its configuration, scripts and prompts live in Bloem's private infrastructure repository |
 | A batch, a Silo merge | one Silo commit and everything before it; its merge commit on `main` is titled "Merge Silo upstream through <sha>", from a `merge/upstream-<sha9>` branch |
 | The review | `scripts/bloem/silo-merge-review.py` |
-| The fast local checks | the `build`, `verify`, `lint` and `scenarios` phases of `scripts/bloem/local-gate.py`, and `go test ./internal/scenariocatalog/` |
+| The fast local checks | the `build`, `verify` and `lint` phases of `scripts/bloem/local-gate.py` |
 | The daily sync (switched off) | `.github/workflows/upstream-sync.yml`, merged by `upstream-sync-merge.yml`; both run only when the repository variable `BLOEM_UPSTREAM_SYNC` is `true` |
 | Bloem CI | `.github/workflows/bloem-ci.yml` |
 | The image | built from exactly the commit Bloem CI passed |

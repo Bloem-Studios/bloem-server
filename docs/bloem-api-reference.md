@@ -210,8 +210,8 @@ Direct-profile sessions are admitted to `/api/bloem/v1` only for
 the audiobook and ebook request viewer routes (capability, history, filing,
 read and withdrawal). Authentication rejects them on every other native route
 before `RequireProfile` runs. The
-`direct_profile_login` capability field reports whether `POST /api/v1/auth/profile-login`
-is wired; it does not advertise a native direct-profile session mode.
+`direct_profile_login` capability field is `false`: `POST /api/v1/auth/profile-login` went
+with Silo's `/api/v1`, and there is no native direct-profile sign-in.
 
 Client handlers other than identity are conditionally assembled. A handler
 that is absent from the router returns `404`; this is not inferred from a
@@ -344,10 +344,10 @@ removed its receipt system on 2026-10-26 (`b017bfe84`); see [Retrying mutations]
   "api": "bloem/v1",
   "identity_schema": 1,
   "features": {
-    "legacy_silo_v1": true,
+    "legacy_silo_v1": false,
     "organization_memberships": true,
     "tenant_bounded_media_scope": true,
-    "direct_profile_login": true,
+    "direct_profile_login": false,
     "shared_device_pairing": false,
     "delegated_admin_roles": false
   },
@@ -397,8 +397,8 @@ Field notes:
   [campaign viewer routes](#campaign-viewer-routes) and their resolvers are wired) and
   `organization_domains_v1` (the [domain and branding routes](#organization-domains-and-branding)
   are mounted with both credential gates).
-- `features.direct_profile_login` follows the wiring of `POST /api/v1/auth/profile-login`;
-  `shared_device_pairing` and `delegated_admin_roles` are always `false`.
+- `features.legacy_silo_v1` and `features.direct_profile_login` are `false` since Silo
+  retired `/api/v1`; `shared_device_pairing` and `delegated_admin_roles` are always `false`.
 - `media_types`: the fixed vocabulary of `mediaTypesServed` — the item types *this build* can
   serve at all (a property of the software, not of what an operator's libraries happen to
   contain). A type absent from the list means the build cannot serve it; a client should not infer

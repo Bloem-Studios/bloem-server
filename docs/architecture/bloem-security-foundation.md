@@ -194,10 +194,10 @@ not an exhaustive token list; consult the runtime response and the
   "api": "bloem/v1",
   "identity_schema": 1,
   "features": {
-    "legacy_silo_v1": true,
+    "legacy_silo_v1": false,
     "organization_memberships": true,
     "tenant_bounded_media_scope": true,
-    "direct_profile_login": true,
+    "direct_profile_login": false,
     "shared_device_pairing": false,
     "delegated_admin_roles": false
   },

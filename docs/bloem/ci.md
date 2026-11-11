@@ -70,8 +70,8 @@ batch, outside GitHub Actions:
    change goes on its own lines or in its own file, with a test where Silo's version
    would break Bloem. A review list names the seams, Bloem files, overlays, pages and
    migrations to read. Then the **fast local checks** run on the build machine: the
-   build, the contract and verify checks, changed-line lint, the scenario executor and
-   the scenario catalog tests ([local gate](#local-gate)).
+   build, the contract and verify checks and changed-line lint
+   ([local gate](#local-gate)).
 4. **Push and wait.** The bot pushes the merge to `main` and waits for Bloem CI, which
    runs the full suite, on that exact commit.
 5. **Deploy.** Only a commit Bloem CI passed is deployed; the deploy refuses any other.
@@ -305,11 +305,10 @@ runners on October 26, 2026 (`52369dbad`, `5e6f9e407`):
 | Tenant stores race (1-4/4, disposable PostgreSQL) | `internal/tenancy` under the race detector, its tests split four ways. |
 | Native authentication (1-3/3, disposable PostgreSQL) | `internal/auth` with and without the race detector, its tests split three ways, and its vet (shard 1). |
 | Go lint | gofmt, `go vet ./...`, govulncheck, changed-line lint (`scripts/bloem-lint-changed-ci.sh`) and the full-tree router recovery lint (`make lint-router-recovery`). |
-| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, migration ledger, scenario catalogs, offline routes, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, the seam ledger, the local gate's coverage of this workflow (`make verify-local-gate`), and the Go test shards' database-list skip (`make verify-db-list-skip`). |
+| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, the seam ledger, the local gate's coverage of this workflow (`make verify-local-gate`), and the Go test shards' database-list skip (`make verify-db-list-skip`). |
 | Go test (1-4/4) | `make test-go` on a database `cmd/bloem-testdb` prepared, its packages split four ways, four at a time per database. Silo's database-list tests are left to Go database pins (below). |
 | Go database pins | The database pins (`make test-db-pins`) and the upstream database regression gates. |
 | Go database regressions | Watch Party and history-import race tests and the mixed library location pins. |
-| Scenario executor | `make test-scenarios`, with a 45-minute job timeout. |
 | Web (build, checks) | ESLint and format, typecheck and build, the launch bundle budget, the web settings binding and v2 types, and `make verify-local-paths`, which first runs the upstream sync merge helper's tests. On a push to `main` or `apiv2`, the build part uploads `frontend-dist-<sha>`, which Bloem Image publishes. |
 | Web test (1-4/4) | Vitest in four shards. |
 
@@ -360,8 +359,8 @@ OpenAPI artifacts without failing anything, and on that date it had.
 machine, in this order of phases: `build` (gofmt, build, vet), `verify` (the Go
 contract checks, client coverage, local paths), `lint`, `web` (the web checks
 and the four Vitest shards), `go` (the four Go test shards), `db` (the database
-pins and regressions), `tenancy` (Tenant identity, Tenant stores and Native
-authentication) and `scenarios` (the scenario executor). Commands assume the
+pins and regressions) and `tenancy` (Tenant identity, Tenant stores and Native
+authentication). Commands assume the
 repository root is the cwd:
 
 ```sh
@@ -387,8 +386,8 @@ python3 scripts/bloem/local-gate.py services down "$GATE_SERVICES_ID"
 - `make verify-local-gate`, a Go contract check, fails when this workflow
   gains a `make` target or a `go test` the gate does not run.
 - The merge bot runs only its fast phases on each batch,
-  `--only build,verify,lint,scenarios` with `--base` set to the `main` the batch
-  started from, plus `go test ./internal/scenariocatalog/`. Bloem CI runs the full
+  `--only build,verify,lint` with `--base` set to the `main` the batch
+  started from. Bloem CI runs the full
   suite on the pushed commit. After a fix the bot reruns, with `--only`, the failed
   phases and every phase the fix can reach.
 
@@ -608,9 +607,9 @@ this repository starts it. It uses two scripts from this repository:
    catalogue, coverage reasons in `contracts/client/v1/coverage.json` with
    `make client-digest`; then the overlays and Bloem pages the merge affects, with
    pictures redrawn, and the status rows that say which Silo commit Bloem includes.
-6. **Fast checks.** `python3 scripts/bloem/local-gate.py run --base <old main> --only build,verify,lint,scenarios`
-   (the build, gofmt, vet, every contract and verify target, changed-line lint and the
-   scenario executor) and `go test ./internal/scenariocatalog/`. Bloem CI runs the
+6. **Fast checks.** `python3 scripts/bloem/local-gate.py run --base <old main> --only build,verify,lint`
+   (the build, gofmt, vet, every contract and verify target and changed-line lint).
+   Bloem CI runs the
    full suite on the pushed commit, and the deploy refuses any commit Bloem CI has not
    passed. A failed test is rerun alone once; a real failure gets at most three fix
    attempts. If `main` moved meanwhile, it is merged in and the fast checks run again;

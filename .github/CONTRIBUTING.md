@@ -114,9 +114,6 @@ make verify-bloem-openapi
 make verify-seams
 make verify-playback-fixtures
 make verify-route-inventory
-make verify-migration-ledger
-make verify-scenario-catalogs
-make verify-offline-routes
 make verify-apiv2-openapi
 make verify-apiv2-contract          # BASE_REF=origin/<pr-base> when not main
 make verify-apiv2-fixtures

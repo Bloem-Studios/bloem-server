@@ -155,14 +155,9 @@ published `bloem-plugin-sdk` module pinned in `internal/bloemtestsdk`
 SDK checkout only to test unreleased SDK changes; the host and SDK storage protos
 must match.
 
-Scenario execution uses a separate `SILO_SCENARIO_DATABASE_URL` pointing to an owned
-scratch database and `SILO_SCENARIO_REQUIRED=1` for required runs; `make test-scenarios`
-runs the whole executor with a 45-minute timeout, as Bloem CI's scenario job does.
-See [scenario execution](../../architecture/scenario-acceptance.md) and its
-[Bloem overlay](architecture/scenario-acceptance.md) for reset guards, Bloem fixture
-prerequisites and per-transport reporting. The ordinary
-Bloem gate applies [explicit downstream adjudications](../../architecture/bloem-contract-adjudications.md);
-historical Silo selectors keep their original expectations.
+Silo's scenario catalogs and their executor were deleted with `/api/v1` (Silo #3200),
+and Bloem's [contract adjudications](../../architecture/bloem-contract-adjudications.md)
+and `make test-scenarios` went with them.
 
 `make test-go` sets a 20-minute per-package timeout. The
 [October 7 deployment record](../../operations/2026-10-07-native-storage-deployment.md#outstanding-validation)

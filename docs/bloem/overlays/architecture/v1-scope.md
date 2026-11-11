@@ -1,27 +1,27 @@
 # Bloem overlay: Silo v1 Scope
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and updated on
+> 2026-11-11 against `main` at `26cf9b3e4`, which includes Silo through `7bb66f9ad`. It lists what Bloem
 > adds to Silo's [`docs/architecture/v1-scope.md`](../../../architecture/v1-scope.md),
 > which stays exactly as Silo wrote it, including its table of removals. The
 > section-by-section changes are in the [For developers](#for-developers) section.
 
 Silo's page decides what Silo 1.0 includes and records the old features Silo
-removed before 1.0. Bloem serves three APIs. Silo's older `/api/v1` is frozen and
-Silo will retire it; Silo's `/api/v2` is its stable API; and `/api/bloem/v1` is
-Bloem's own API for the features Silo does not have. This overlay records how
-Bloem's `/api/v1` differs from Silo's, and the Bloem-only features Bloem retired.
+removed before 1.0. On 11 November 2026 Silo retired its older `/api/v1`: every
+route there answers `410 Gone`, and Bloem's routes there went with it. Bloem now
+serves Silo's `/api/v2`, its stable API, and `/api/bloem/v1`, Bloem's own API for
+the features Silo does not have. This overlay records the Bloem-only features Bloem
+retired.
 
 ![Bloem's three APIs side by side: Silo's frozen /api/v1, which Silo will retire and where Bloem keeps a few reviewed additions and adds nothing new; Silo's stable /api/v2; and Bloem's own /api/bloem/v1 for organizations, plans, Live TV and more. Below, who calls what: the web app and the storefront call /api/v2 and /api/bloem/v1 only, the phone apps still call some /api/v1, and Silo's own apps use Silo's APIs](../../../architecture/images/overlay-v1-scope/three-apis.svg)
 
 ## What Bloem changes
 
-- **Bloem's `/api/v1` is Silo's, plus a few additions.** Bloem keeps a few routes
-  it added there earlier, such as a profile's own sign-in. It may never drop one of
-  Silo's routes, and a test checks that.
-- **Nothing new goes into `/api/v1`.** Silo will retire it, and Bloem routes mounted
-  beside it would go with it. New Bloem features go under `/api/bloem/v1`. Since
-  November 1, 2026 the web app and the storefront call none of Silo's `/api/v1`.
+- **`/api/v1` is Silo's tombstone.** Since Silo retired it, Bloem mounts nothing
+  there; the routes Bloem had added, such as a profile's own sign-in, answer `410`
+  like the rest. A test fails if any other `/api/v1` route appears.
+- **New Bloem features go under `/api/bloem/v1`.** The web app and the storefront
+  stopped calling `/api/v1` on November 1, 2026.
 - **Bloem's retired features are listed here, not in Silo's table.** Silo's table
   of removals stays exactly as Silo wrote it.
 
@@ -29,7 +29,7 @@ Bloem's `/api/v1` differs from Silo's, and the Bloem-only features Bloem retired
 
 | On this page | In the code and repository |
 | --- | --- |
-| Silo's routes Bloem must keep | `internal/api/testdata/v1_routes_silo_contract.txt`, checked by `TestV1SiloRouteContractIsNeverNarrowed` |
+| The `/api/v1` tombstone | `internal/api/testdata/v1_routes_*.txt`, checked by `TestV1RouteSurfaceIsUnchanged` |
 | Bloem's own API | routes under `/api/bloem/v1` |
 | The apps' contract fingerprint | `contracts/client/v1/digest.txt`, read by `cmd/clientdtogen` |
 
@@ -69,24 +69,22 @@ rewrite added the note on leaving Silo's `/api/v1`.
 **Location:** section “Silo v1 Scope”, after the paragraph beginning “This file
 governs v1 **capability** scope: which user-facing capabilities Silo…”. **Bloem adds:**
 
-`/api/v1` is Bloem's Silo-compatible projection, not an unmodified upstream
-surface. Bloem keeps a few reviewed v1 routes it added, among them direct-profile
-login (`POST /api/v1/auth/profile-login`) and tenant-member administration under
-`/api/v1/admin/tenants/{tenant_id}/members`. It must never drop a Silo one:
-`TestV1SiloRouteContractIsNeverNarrowed` (Bloem's, since `4f5a8af62`,
-2026-08-30) fails if any route in `internal/api/testdata/v1_routes_silo_contract.txt`
-disappears from the router. Additions need no change to that file, and a
-removal needs a deliberate deletion plus a removal entry. Native Bloem client
-features belong under `/api/bloem/v1`.
+Silo retired `/api/v1` (Silo #3200, merged into Bloem in `26cf9b3e4`): the main
+listener answers every route there with `410 Gone` and `client_upgrade_required`,
+except the health and readiness probes. The routes Bloem had added there, among them
+direct-profile login (`POST /api/v1/auth/profile-login`) and tenant-member
+administration under `/api/v1/admin/tenants/{tenant_id}/members`, went with it; the
+tenant routes live on under `/api/bloem/v1/admin/platform/tenants`, and direct-profile
+login has no replacement. `TestV1RouteSurfaceIsUnchanged` holds `/api/v1` to exactly
+Silo's tombstone.
 
-Bloem adds nothing new to Silo's `/api/v1`. Silo will retire it (Silo issue #886),
-and every Bloem route mounted beside it would go too. A Bloem feature gets a typed
+Bloem adds nothing to Silo's `/api/v1`. A Bloem feature gets a typed
 route under `/api/bloem/v1` with an OpenAPI declaration; where Silo's `/api/v2`
 lacks something Bloem needs, Bloem adds a native route rather than calling
 `/api/v1`. The storefront moved off `/api/v1` on 2026-10-31 and the web app on
 2026-11-01; its signed-out seasonal layer, for example, reads
 `GET /api/bloem/v1/ambience/public` instead of the `ambience` block of
-`/api/v1/theme/branding`. The phone apps still call some `/api/v1` routes. See
+`/api/v1/theme/branding`. See
 [leaving Silo's `/api/v1`](../../../architecture/bloem-leaving-silo-v1.md).
 
 ---

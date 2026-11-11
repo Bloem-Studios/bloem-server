@@ -1,5 +1,11 @@
 # How Bloem's contract adjudications work
 
+> **Retired on 2026-11-11.** Silo retired `/api/v1` and deleted its scenario catalogs,
+> their executor and the v1/v2 pairing model (Silo #3200, merged into Bloem in
+> `26cf9b3e4`). The adjudications, Bloem's extra catalogs and executor hooks went with
+> them, as did the gate's `scenarios` phase and Bloem CI's scenario executor job. This
+> page is a historical record of how they worked.
+
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against `main`
 > at `b6039036d`; the account capability row updated on 2026-11-02 and the profile listing row on 2026-11-09. Adjudications are a Bloem test layer over Silo's frozen API scenario
 > catalogs: where Bloem deliberately answers differently from what a Silo test expects, a
@@ -79,8 +85,8 @@ key's prefix, owner, scope and order. A negative test fails if a secret ever app
 
 ## For developers
 
-- **API:** the frozen catalogs and their v1/v2 pairing model are described in
-  [executable scenario pairing](scenario-acceptance.md). Silo's
+- **API:** the frozen catalogs and their v1/v2 pairing model were described in Silo's
+  `docs/architecture/scenario-acceptance.md`, deleted with them. Silo's
   [Problem Details](api-contract.md#problem-details) and the
   [pre-lock removals](v1-scope.md#breaking-removals-taken-before-lock) are the contracts
   several decisions cite.
@@ -236,8 +242,6 @@ rollout and narrowly approved timeout exception; it does not mark CI green.
 
 Technical pages:
 
-- [Executable scenario pairing](scenario-acceptance.md): Silo's catalog and v1/v2 pairing
-  model.
 - [API contract](api-contract.md) and [v1 scope](v1-scope.md).
 - [How Bloem follows Silo](bloem-following-silo.md): why Silo's files stay Silo's.
 

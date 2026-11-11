@@ -1,5 +1,11 @@
 # How remote control works
 
+> **Unreachable since 2026-11-11.** Remote control's routes (`/api/v1/admin/remote/...`,
+> the household command route and `PUT /api/v1/devices/{id}/remote-control`) lived
+> only on Silo's `/api/v1`, which Silo retired (Silo #3200, merged into Bloem in
+> `26cf9b3e4`). The HTTP handler went with them; it returns when native routes are
+> built. The rest of this page describes how it worked.
+
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
 > `main` at `b6039036d`. Remote control is a Bloem addition: Silo's playback connection
 > carries the commands, and Bloem adds who may send them, the app's list of accepted

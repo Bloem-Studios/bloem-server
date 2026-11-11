@@ -139,7 +139,6 @@ same path. Read the upstream document together with its overlay.
 - [docs/architecture/observability.md](overlays/architecture/observability.md) — overlay on [docs/architecture/observability.md](../architecture/observability.md)
 - [docs/architecture/playback-protocol-v3.md](overlays/architecture/playback-protocol-v3.md) — overlay on [docs/architecture/playback-protocol-v3.md](../architecture/playback-protocol-v3.md)
 - [docs/architecture/recommendations.md](overlays/architecture/recommendations.md) — overlay on [docs/architecture/recommendations.md](../architecture/recommendations.md)
-- [docs/architecture/scenario-acceptance.md](overlays/architecture/scenario-acceptance.md) — overlay on [docs/architecture/scenario-acceptance.md](../architecture/scenario-acceptance.md)
 - [docs/architecture/secret-encryption.md](overlays/architecture/secret-encryption.md) — overlay on [docs/architecture/secret-encryption.md](../architecture/secret-encryption.md)
 - [docs/architecture/settings-contract.md](overlays/architecture/settings-contract.md) — overlay on [docs/architecture/settings-contract.md](../architecture/settings-contract.md)
 - [docs/architecture/streaming-write-deadline.md](overlays/architecture/streaming-write-deadline.md) — overlay on [docs/architecture/streaming-write-deadline.md](../architecture/streaming-write-deadline.md)
@@ -171,7 +170,7 @@ same path. Read the upstream document together with its overlay.
 - [How request rules apply to organizations and profiles](../architecture/bloem-request-policy.md) — verified profile quotas, scoped administrative usage and group limits on Silo's request service.
 - [How retiring an organization and deleting a library stay safe](../architecture/bloem-lifecycle-safety.md) — atomic tenant retirement and library deletion.
 - [How Bloem's security foundation works](../architecture/bloem-security-foundation.md) — the `/api/bloem/v1` discovery and administration boundary beside Silo's `/api/v1` login.
-- [How Bloem's contract adjudications work](../architecture/bloem-contract-adjudications.md) — reviewed, pinned replacements for Silo scenario expectations Bloem deliberately differs from.
+- [How Bloem's contract adjudications work](../architecture/bloem-contract-adjudications.md) — retired on 2026-11-11 with Silo's scenario catalogs; a historical record of the pinned replacements for Silo scenario expectations.
 - [How Bloem's adapters over Silo work](../architecture/bloem-upstream-adapters.md) — migration filesystem, profile-aware interfaces and embedded-web boundaries over Silo's code.
 
 ### Native storage and media delivery

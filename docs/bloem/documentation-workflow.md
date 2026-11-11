@@ -328,7 +328,7 @@ python3 scripts/bloem-api-catalogue.py
 make bloem-docs
 GOWORK=off make verify-apiv2-openapi verify-bloem-openapi verify-apiv2-web-types
 GOWORK=off make verify-settings-bindings-all verify-client-digest verify-client-dtos verify-client-coverage
-GOWORK=off make verify-route-inventory verify-migration-ledger verify-apiv2-contract
+GOWORK=off make verify-route-inventory verify-apiv2-contract
 make verify-bloem-api-catalogue
 make verify-local-paths verify-seams
 ```
