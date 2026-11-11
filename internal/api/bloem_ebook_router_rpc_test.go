@@ -1,5 +1,3 @@
-//go:build bloem
-
 package api
 
 import (
@@ -41,6 +39,8 @@ func (ebookRPCValidator) ValidateEbookIntegration(context.Context, bookrequests.
 
 // This opt-in acceptance test crosses the real go-plugin process boundary using
 // the released Bloem SDK executable and host's Silo-compatible protobuf surface.
+// It runs when BLOEM_BOOKWAREHOUSE_ROUTER_TEST_BINARY names a build of the
+// bloem-plugin-requests-bookwarehouse repository's plugin, and skips otherwise.
 // The HTTP fixture contains only synthetic metadata and credentials.
 func TestBloemEbookRouterRealPluginRPC(t *testing.T) {
 	binary := os.Getenv("BLOEM_BOOKWAREHOUSE_ROUTER_TEST_BINARY")

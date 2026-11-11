@@ -240,10 +240,10 @@ verify-no-v1:
 	python3 scripts/bloem/verify-no-v1.py
 
 # Vet the tagged tests that go vet ./... skips: the database suites build with
-# -tags=integration, and a few Bloem tests with -tags=bloem.
+# -tags=integration.
 .PHONY: vet-tagged
 vet-tagged:
-	go vet -tags integration,bloem ./...
+	go vet -tags integration ./...
 
 # The local gate (scripts/bloem/local-gate.py) runs every Bloem CI job on a
 # developer machine. Its test fails when bloem-ci.yml gains a make target or a
