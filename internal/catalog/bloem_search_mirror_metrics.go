@@ -17,6 +17,10 @@ import (
 const (
 	searchMirrorSampleEvery   = 30 * time.Second
 	searchMirrorSampleTimeout = 2 * time.Second
+	// searchMirrorPendingTimeout is the pending count's own budget. The count scans the outbox
+	// and is the one figure that can be slow on a huge backlog, so it never spends the core
+	// reads' budget, and a sample without it is still served.
+	searchMirrorPendingTimeout = 10 * time.Second
 	// searchMirrorSampleMaxAge is how old a sample may be and still be exported.
 	searchMirrorSampleMaxAge = 90 * time.Second
 	// searchMirrorPendingCap bounds the pending-events count so a long outage stays cheap to read.
@@ -36,7 +40,7 @@ var (
 	searchMirrorLagDesc = prometheus.NewDesc("silo_search_mirror_lag_seconds",
 		"Seconds since the snapshot the mirror holds was taken; absent while the mirror holds none. "+searchMirrorMetricNote, nil, nil)
 	searchMirrorPendingDesc = prometheus.NewDesc("silo_search_mirror_pending_events",
-		"Outbox rows the mirror has not applied, counted up to 1000000; absent while the mirror holds no snapshot. "+searchMirrorMetricNote, nil, nil)
+		"Outbox rows the mirror has not applied, counted up to 1000000; absent while the mirror holds no snapshot or when the count fails. "+searchMirrorMetricNote, nil, nil)
 	searchMirrorDeadLettersDesc = prometheus.NewDesc("silo_search_mirror_dead_letters",
 		"Items the mirror could not index. "+searchMirrorMetricNote, nil, nil)
 	searchMirrorLastSuccessDesc = prometheus.NewDesc("silo_search_mirror_last_success_timestamp_seconds",
@@ -99,23 +103,37 @@ func StartSearchMirrorMetrics(ctx context.Context, pool *pgxpool.Pool, cfg Searc
 }
 
 // run samples now and then every c.every until ctx ends. A sampling failure is logged once per
-// run of failures; the last good sample keeps being served until it is too old.
+// run of failures; the last good sample keeps being served until it is too old. A failed
+// pending count is logged the same way, on its own: the sample is stored without it.
 func (c *searchMirrorCollector) run(ctx context.Context) {
 	defer prometheus.Unregister(c)
 	ticker := time.NewTicker(c.every)
 	defer ticker.Stop()
-	failing := false
+	failing, countFailing := false, false
 	for {
-		err := c.sampleOnce(ctx)
-		switch {
-		case ctx.Err() != nil:
+		countErr, err := c.sampleOnce(ctx)
+		if ctx.Err() != nil {
 			return
+		}
+		switch {
 		case err != nil && !failing:
 			failing = true
 			slog.WarnContext(ctx, "search mirror: metrics sampling failed", "component", "catalog", "error", err)
 		case err == nil && failing:
 			failing = false
 			slog.InfoContext(ctx, "search mirror: metrics sampling recovered", "component", "catalog")
+		}
+		// A failed core read says nothing about the count, so its state carries over.
+		if err == nil {
+			switch {
+			case countErr != nil && !countFailing:
+				countFailing = true
+				slog.WarnContext(ctx, "search mirror: pending events count failed; exporting the other metrics without it",
+					"component", "catalog", "error", countErr)
+			case countErr == nil && countFailing:
+				countFailing = false
+				slog.InfoContext(ctx, "search mirror: pending events count recovered", "component", "catalog")
+			}
 		}
 		select {
 		case <-ctx.Done():
@@ -125,15 +143,17 @@ func (c *searchMirrorCollector) run(ctx context.Context) {
 	}
 }
 
-// sampleOnce reads the mirror once, within one 2 s budget, and replaces the stored sample. On an
-// error the stored sample stays as it was.
-func (c *searchMirrorCollector) sampleOnce(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, searchMirrorSampleTimeout)
+// sampleOnce reads the mirror once and replaces the stored sample. The core reads share one 2 s
+// budget; on their error (err) the stored sample stays as it was. The pending count has its own
+// budget, and when it fails (countErr) the sample is stored without it, so the state, lag and
+// the rest are still exported.
+func (c *searchMirrorCollector) sampleOnce(parent context.Context) (countErr, err error) {
+	ctx, cancel := context.WithTimeout(parent, searchMirrorSampleTimeout)
 	defer cancel()
 
 	row, found, err := loadSearchMirrorRow(ctx, c.pool)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var state searchMirrorState
 	if found {
@@ -164,29 +184,37 @@ func (c *searchMirrorCollector) sampleOnce(ctx context.Context) error {
 		SELECT (SELECT count(*) FROM bloem_search_mirror_dead_letters),
 		       EXTRACT(EPOCH FROM now() - $1::timestamptz)::float8`, holdTime).
 		Scan(&sample.deadLetters, &lag); err != nil {
-		return fmt.Errorf("read search mirror counts: %w", err)
+		return nil, fmt.Errorf("read search mirror counts: %w", err)
 	}
 	if lag != nil {
 		seconds := max(0, *lag)
 		sample.lagSeconds = &seconds
 	}
-	// A stored snapshot that does not parse would fail the count every time and blind every
-	// other series, so it is left without a pending count; the worker deals with the bookmark.
 	if holding {
-		if _, parseErr := parsePgSnapshot(hold); parseErr == nil {
-			pending, _, err := searchMirrorPendingCount(ctx, c.pool, hold)
-			if err != nil {
-				return err
-			}
-			sample.pending = &pending
-		}
+		sample.pending, countErr = c.samplePending(parent, hold)
 	}
 
 	sample.at = c.now()
 	c.mu.Lock()
 	c.sample = &sample
 	c.mu.Unlock()
-	return nil
+	return countErr, nil
+}
+
+// samplePending counts the rows the hold snapshot does not cover, within its own budget. A stored
+// snapshot that does not parse would fail the count every time, so it is left without a count
+// and no error; the worker deals with the bookmark.
+func (c *searchMirrorCollector) samplePending(parent context.Context, hold string) (*int64, error) {
+	if _, err := parsePgSnapshot(hold); err != nil {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(parent, searchMirrorPendingTimeout)
+	defer cancel()
+	pending, _, err := searchMirrorPendingCount(ctx, c.pool, hold)
+	if err != nil {
+		return nil, err
+	}
+	return &pending, nil
 }
 
 // searchMirrorPendingCount counts the outbox rows the snapshot hold does not cover, which are the

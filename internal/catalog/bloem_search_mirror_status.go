@@ -119,8 +119,10 @@ func SearchMirrorStatusFor(ctx context.Context, pool *pgxpool.Pool) (SearchMirro
 	status.Settling = s.Swap != nil && s.Swap.Settling
 	status.SettlingOverdue = searchMirrorSettlingOverdue(s, now, SearchMirrorOptions{}.withDefaults().SettleWarnAfter)
 
-	if s.BookmarkAt != nil {
-		asOf := s.BookmarkAt.UTC()
+	// Lag is measured from the snapshot the mirror holds, as the lag metric measures it and as
+	// pending_events counts from: the copy's start while a copy runs, the bookmark otherwise.
+	if _, holdAt, holding := s.hold(); holding && !holdAt.IsZero() {
+		asOf := holdAt.UTC()
 		lag := max(now.Sub(asOf).Truncate(time.Millisecond).Seconds(), 0)
 		status.UpToDateAsOf = &asOf
 		status.LagSeconds = &lag
