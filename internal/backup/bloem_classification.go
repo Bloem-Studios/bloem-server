@@ -77,8 +77,9 @@ var bloemServerStateTables = strings.Fields(`
 `)
 
 // bloemLoggedTables are queues the dump leaves out: remote commands to
-// devices expire within minutes.
-var bloemLoggedTables = []string{"remote_commands"}
+// devices expire within minutes, and the search mirror's dead-letters and
+// process leases are rebuilt by the mirror.
+var bloemLoggedTables = []string{"remote_commands", "bloem_search_mirror_dead_letters", "bloem_search_mirror_processes"}
 
 // previewGuests is why the preview guest tables are left out.
 const previewGuests = "preview guest sign-ins and the playback they were granted"
