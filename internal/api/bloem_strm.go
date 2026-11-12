@@ -185,7 +185,7 @@ type strmVideoFile struct {
 	base     handlers.NativeVideoFile
 	identity nativestorage.PlaybackIdentity
 	info     mediasource.Info
-	ctx      context.Context
+	ctx      context.Context //nolint:containedctx // NativeVideoFile.Context reports the open file's lifetime
 	cancel   context.CancelFunc
 	check    func(context.Context) error
 	once     sync.Once

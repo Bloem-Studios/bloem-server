@@ -83,14 +83,14 @@ func newStrmFixture(t *testing.T, allowPrivate bool) strmFixture {
 	sources := &fakeStrmSources{rows: map[string]remotesource.Source{}}
 	guard := remotesource.NewGuard(remotesource.Options{AllowPrivate: func(context.Context) bool { return allowPrivate }})
 	s := &strmPlayback{sources: sources, guard: guard}
-	file := &models.MediaFile{ID: 41, MediaFolderID: 7, ContentID: "movie-harbour-lights", FilePath: "/media/movies/Harbour Lights (2019)/Harbour Lights (2019).strm", Container: "mkv", CodecVideo: "h264", VideoTracks: []models.VideoTrack{{Codec: "h264"}}}
+	file := &models.MediaFile{ID: 41, MediaFolderID: 7, ContentID: "movie-harbor-lights", FilePath: "/media/movies/Harbor Lights (2019)/Harbor Lights (2019).strm", Container: "mkv", CodecVideo: "h264", VideoTracks: []models.VideoTrack{{Codec: "h264"}}}
 	allowed := true
 	authority := nativestorage.PlaybackAuthority{AuthorizeFile: func(_ context.Context, requested *models.MediaFile) (*models.MediaFile, error) {
 		if !allowed {
 			return nil, catalog.ErrItemNotFound
 		}
-		copy := *file
-		return &copy, nil
+		current := *file
+		return &current, nil
 	}}
 	service := &handlers.NativeVideoService{Files: nil, Bindings: handlers.NewNativeVideoBindingStore(nil)}
 	service.Open = func(ctx context.Context, requested *models.MediaFile) (handlers.NativeVideoFile, error) {
@@ -120,9 +120,9 @@ func serveRange(t *testing.T, f strmFixture, rangeHeader string) *httptest.Respo
 // from range reads of the remote URL, and nothing in the response names it.
 func TestStrmDirectPlayProxiesRanges(t *testing.T) {
 	data := strmBlob(3<<20 + 4321)
-	server := strmMediaServer(t, map[string][]byte{"/films/harbour.mkv": data})
+	server := strmMediaServer(t, map[string][]byte{"/films/harbor.mkv": data})
 	f := newStrmFixture(t, true)
-	remoteURL := server.URL + "/films/harbour.mkv?token=secret"
+	remoteURL := server.URL + "/films/harbor.mkv?token=secret"
 	f.sources.put(f.file.FilePath, remoteURL, "")
 	if err := f.service.Bind(t.Context(), f.session, f.file); err != nil {
 		t.Fatalf("Bind = %v", err)
@@ -145,7 +145,7 @@ func TestStrmDirectPlayProxiesRanges(t *testing.T) {
 	}
 	for key, values := range rec.Header() {
 		for _, value := range values {
-			if strings.Contains(value, "token") || strings.Contains(value, "127.0.0.1") || strings.Contains(value, "harbour.mkv") {
+			if strings.Contains(value, "token") || strings.Contains(value, "127.0.0.1") || strings.Contains(value, "harbor.mkv") {
 				t.Fatalf("header %s leaks the remote address: %q", key, value)
 			}
 		}
@@ -224,7 +224,7 @@ func TestStrmOpenRefusesPrivateAddressesAndUnrecordedFiles(t *testing.T) {
 
 type fakeStoredStrm struct {
 	identity nativestorage.PlaybackIdentity
-	ctx      context.Context
+	ctx      context.Context //nolint:containedctx // stands in for an open storage file's lifetime
 	cancel   context.CancelFunc
 	closed   bool
 	reauth   error

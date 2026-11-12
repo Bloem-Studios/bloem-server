@@ -21,7 +21,7 @@ func TestLocalStrmScanRecordsRemoteSourceDB(t *testing.T) {
 	ctx := t.Context()
 	pool := newScannerTestPool(t)
 	ffprobe := requireFFprobe(t)
-	server := remoteMediaServer(t, map[string]string{"/films/harbour.mp4": "testdata/test.mp4", "/films/harbour-v2.mkv": "testdata/subtitles.mkv"})
+	server := remoteMediaServer(t, map[string]string{"/films/harbor.mp4": "testdata/test.mp4", "/films/harbor-v2.mkv": "testdata/subtitles.mkv"})
 
 	var allow atomic.Bool
 	allow.Store(true)
@@ -31,8 +31,8 @@ func TestLocalStrmScanRecordsRemoteSourceDB(t *testing.T) {
 	t.Cleanup(func() { strmRuntime = previous })
 
 	root := t.TempDir()
-	strmPath := filepath.Join(root, "Harbour Lights (2019)", "Harbour Lights (2019).strm")
-	firstURL := server.URL + "/films/harbour.mp4?token=one"
+	strmPath := filepath.Join(root, "Harbor Lights (2019)", "Harbor Lights (2019).strm")
+	firstURL := server.URL + "/films/harbor.mp4?token=one"
 	writeTestFile(t, strmPath, "\n"+firstURL+"\n")
 
 	var folderID int
@@ -78,7 +78,7 @@ func TestLocalStrmScanRecordsRemoteSourceDB(t *testing.T) {
 	if got.path != strmPath || got.container != "mp4" || got.codec == "" {
 		t.Fatalf("media file = %+v, want the .strm path with the remote MP4's probe", got)
 	}
-	if !strings.Contains(got.title, "Harbour Lights") {
+	if !strings.Contains(got.title, "Harbor Lights") {
 		t.Fatalf("title = %q, want the name from the .strm file", got.title)
 	}
 	source, ok, err := runtime.Store.Get(ctx, strmPath)
@@ -91,7 +91,7 @@ func TestLocalStrmScanRecordsRemoteSourceDB(t *testing.T) {
 	}
 
 	// A new URL in the same file is a new revision with the new media's probe.
-	secondURL := server.URL + "/films/harbour-v2.mkv"
+	secondURL := server.URL + "/films/harbor-v2.mkv"
 	writeTestFile(t, strmPath, secondURL)
 	later := time.Now().Add(time.Hour)
 	if err := os.Chtimes(strmPath, later, later); err != nil {
@@ -109,7 +109,7 @@ func TestLocalStrmScanRecordsRemoteSourceDB(t *testing.T) {
 	// With private addresses refused, the loopback URL is refused at the next
 	// scan and the source is forgotten.
 	allow.Store(false)
-	writeTestFile(t, strmPath, server.URL+"/films/harbour.mp4")
+	writeTestFile(t, strmPath, server.URL+"/films/harbor.mp4")
 	evenLater := later.Add(time.Hour)
 	if err := os.Chtimes(strmPath, evenLater, evenLater); err != nil {
 		t.Fatal(err)

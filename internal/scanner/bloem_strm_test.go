@@ -52,7 +52,7 @@ func requireFFprobe(t *testing.T) string {
 func TestLibraryWalkTakesStrmFiles(t *testing.T) {
 	root := t.TempDir()
 	for _, rel := range []string{
-		"Harbour Lights (2019)/Harbour Lights (2019).strm",
+		"Harbor Lights (2019)/Harbor Lights (2019).strm",
 		"Show/Season 01/Show - S01E01.STRM",
 		"Show/Season 01/Show - S01E02.mkv",
 		"Show/Season 01/notes.txt",
@@ -62,7 +62,7 @@ func TestLibraryWalkTakesStrmFiles(t *testing.T) {
 	for _, libraryType := range []string{"movies", "series"} {
 		got := collectTestFilePaths(t, root, libraryType)
 		assertFilePaths(t, got, root, []string{
-			"Harbour Lights (2019)/Harbour Lights (2019).strm",
+			"Harbor Lights (2019)/Harbor Lights (2019).strm",
 			"Show/Season 01/Show - S01E01.STRM",
 			"Show/Season 01/Show - S01E02.mkv",
 		})
@@ -76,9 +76,9 @@ func TestLibraryWalkTakesStrmFiles(t *testing.T) {
 // the probe describes the remote media, not the `.strm` text.
 func TestProbeRemoteReadsRemoteVideo(t *testing.T) {
 	ffprobe := requireFFprobe(t)
-	server := remoteMediaServer(t, map[string]string{"/films/harbour.mp4": "testdata/test.mp4", "/films/subs.mkv": "testdata/subtitles.mkv", "/films/no-extension": "testdata/subtitles.mkv"})
+	server := remoteMediaServer(t, map[string]string{"/films/harbor.mp4": "testdata/test.mp4", "/films/subs.mkv": "testdata/subtitles.mkv", "/films/no-extension": "testdata/subtitles.mkv"})
 	s := &Scanner{ffprobePath: ffprobe}
-	for path, container := range map[string]string{"/films/harbour.mp4": "mp4", "/films/subs.mkv": "mkv", "/films/no-extension": "mkv"} {
+	for path, container := range map[string]string{"/films/harbor.mp4": "mp4", "/films/subs.mkv": "mkv", "/films/no-extension": "mkv"} {
 		result, err := s.ProbeRemote(t.Context(), loopbackGuard(), server.URL+path, nil)
 		if err != nil {
 			t.Fatalf("ProbeRemote(%s) = %v", path, err)
@@ -91,7 +91,7 @@ func TestProbeRemoteReadsRemoteVideo(t *testing.T) {
 		t.Fatal("a missing remote file must fail the probe")
 	}
 	authorityGone := errors.New("authority gone")
-	if _, err := s.ProbeRemote(t.Context(), loopbackGuard(), server.URL+"/films/harbour.mp4", func(context.Context) error { return authorityGone }); !errors.Is(err, authorityGone) {
+	if _, err := s.ProbeRemote(t.Context(), loopbackGuard(), server.URL+"/films/harbor.mp4", func(context.Context) error { return authorityGone }); !errors.Is(err, authorityGone) {
 		t.Fatalf("a failed authority check must fail the probe, got %v", err)
 	}
 }
@@ -99,10 +99,10 @@ func TestProbeRemoteReadsRemoteVideo(t *testing.T) {
 // By default the guard refuses the loopback server before ffprobe starts.
 func TestProbeRemoteRefusesPrivateAddressesByDefault(t *testing.T) {
 	ffprobe := requireFFprobe(t)
-	server := remoteMediaServer(t, map[string]string{"/films/harbour.mp4": "testdata/test.mp4"})
+	server := remoteMediaServer(t, map[string]string{"/films/harbor.mp4": "testdata/test.mp4"})
 	s := &Scanner{ffprobePath: ffprobe}
 	guard := remotesource.NewGuard(remotesource.Options{})
-	if _, err := s.ProbeRemote(t.Context(), guard, server.URL+"/films/harbour.mp4", nil); !errors.Is(err, remotesource.ErrBlockedAddress) {
+	if _, err := s.ProbeRemote(t.Context(), guard, server.URL+"/films/harbor.mp4", nil); !errors.Is(err, remotesource.ErrBlockedAddress) {
 		t.Fatalf("ProbeRemote = %v, want ErrBlockedAddress", err)
 	}
 	if _, err := s.ProbeRemote(t.Context(), guard, "http://169.254.169.254/latest/meta-data/", nil); !errors.Is(err, remotesource.ErrBlockedAddress) {

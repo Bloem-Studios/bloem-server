@@ -132,10 +132,15 @@ func ForPool(pool *pgxpool.Pool) *Runtime {
 		return nil
 	}
 	if existing, ok := runtimes.Load(pool); ok {
-		return existing.(*Runtime)
+		if rt, ok := existing.(*Runtime); ok {
+			return rt
+		}
 	}
 	store := NewStore(pool)
 	created := &Runtime{Store: store, Guard: NewGuard(Options{AllowPrivate: cachedSetting(5*time.Second, store.AllowPrivate)})}
 	actual, _ := runtimes.LoadOrStore(pool, created)
-	return actual.(*Runtime)
+	if rt, ok := actual.(*Runtime); ok {
+		return rt
+	}
+	return created
 }

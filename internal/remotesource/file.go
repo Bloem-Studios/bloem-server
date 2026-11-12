@@ -41,7 +41,7 @@ func (e *HTTPStatusError) Error() string {
 // Cancel and Context methods Bloem's read-ahead and tool bridge use. Every
 // range checks the total size and the ETag seen at Open.
 type File struct {
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // io.ReaderAt has no context argument; the file owns its reads' lifetime until Close
 	cancel context.CancelFunc
 	client *http.Client
 	url    string

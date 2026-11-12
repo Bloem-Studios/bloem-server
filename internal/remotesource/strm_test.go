@@ -44,7 +44,7 @@ func TestAllowPrivateSettingKeyMatchesConfig(t *testing.T) {
 }
 
 func TestIsStrmPathAndRevision(t *testing.T) {
-	if !IsStrmPath("/movies/Harbour Lights (2019).STRM") || IsStrmPath("/movies/x.strm.mkv") || IsStrmPath("strm") {
+	if !IsStrmPath("/movies/Harbor Lights (2019).STRM") || IsStrmPath("/movies/x.strm.mkv") || IsStrmPath("strm") {
 		t.Fatal("IsStrmPath")
 	}
 	a, b := Revision("https://a.example/x"), Revision("https://a.example/y")
