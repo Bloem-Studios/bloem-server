@@ -70,11 +70,11 @@ changes, but cannot prove the bytes stayed the same between checks.
 - Downloads and converting for offline use, in Bloem's apps and Jellyfin apps.
 - Attached fonts and bitmap subtitles in Jellyfin apps.
 - Series from storage.
-
-`.strm` files, whose video lives at a web address, play through this same pipeline;
-see [how `.strm` files play](bloem-strm.md).
 - Switching to another file mid-play needs a fresh start.
 - Without Redis, a playback session cannot be picked up by another server.
+
+`.strm` files, whose video lives at a web address, play through this same pipeline,
+in Jellyfin apps too; see [how `.strm` files play](bloem-strm.md).
 
 ## Words used in the code
 
@@ -320,6 +320,12 @@ the Jellyfin server stores. `bloemCompatNativeRecipes`
 (`cmd/silo/bloem_compat_worker.go`) accepts that recipe into the grant before
 storing it, filling in the grant's worker when the route is not yet recorded.
 A recipe for another worker (a failover) is refused, so the move fails closed.
+
+`.strm` items take the same path: `Handles` takes every native location, and the
+host opens a `.strm` item's recorded URL as native API playback does. Subtitle
+files beside a local `.strm` file are local files, which Silo's subtitle route
+serves from disk once the guard has returned the file
+([`.strm` files in Jellyfin apps](bloem-strm.md#jellyfin-apps)).
 
 Not covered yet: attached fonts and bitmap (PGS) subtitle extraction for
 native files, Jellyfin's proxy-node direct play (a proxy refuses native sources, so

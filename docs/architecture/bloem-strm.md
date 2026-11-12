@@ -6,9 +6,9 @@
 > It covers scanning from library folders and storage sources, playback in the web
 > app and Bloem's apps on the API server and on transcoding workers, subtitle files
 > beside a `.strm` file, rescans that skip unchanged files, and the private-address
-> switch in the admin settings. Jellyfin apps play `.strm` items through the Jellyfin
-> media host for stored movies, which is not merged yet. The technical rules are in
-> the [For developers](#for-developers) section.
+> switch in the admin settings. Jellyfin apps play `.strm` items, with their subtitles,
+> through the Jellyfin media host for stored movies (checked on 2026-11-12). The
+> technical rules are in the [For developers](#for-developers) section.
 
 A **`.strm` file** is a small text file in a library whose content is the web address
 of a video somewhere else. This page covers how Bloem finds such a file, what it keeps,
@@ -34,7 +34,7 @@ how the video plays, the one security default, and what does not work yet.
    learned and asks the remote server for one byte only.
 6. **Subtitle files beside it are its subtitles.** `Harbour Lights (2019).en.srt` next to
    `Harbour Lights (2019).strm` is offered and served like a subtitle file next to any
-   video.
+   video, in the web app, Bloem's apps and Jellyfin apps.
 
 Bloem never filters what a `.strm` file points at.
 
@@ -46,6 +46,9 @@ The app gets an ordinary playback plan with Bloem's own addresses. Bloem then:
   request to the remote server;
 - **rewraps** the video as MP4 without converting it; or
 - **converts** it into short HLS segments.
+
+Jellyfin apps get the same three ways through Bloem's Jellyfin media host for
+stored movies, under the same checks.
 
 Converting runs on the API server or on a transcoding worker, as for any stored movie.
 A worker reads the remote address itself, from Bloem's record, and applies the same
@@ -84,14 +87,12 @@ and the library is scanned again.
 
 ## What does not work yet
 
-- **Jellyfin apps** list a `.strm` item but cannot play it until Bloem's Jellyfin media
-  host for stored movies is merged. With it, direct play, rewrapping and converting
-  (on the API server or a worker) work for `.strm` items too, under the same checks.
 - **Episodes from storage sources.** Storage sources only scan movies so far; `.strm`
   episodes work from library folders.
-- **Subtitle files next to a `.strm` object in a storage source**, and subtitle files
-  next to a `.strm` file for Jellyfin apps.
+- **Subtitle files next to a `.strm` object in a storage source**.
 - **Downloads** of `.strm` items, as for every stored video.
+- **Attached fonts and bitmap subtitles** of `.strm` items in Jellyfin apps, as for
+  stored movies.
 - The remote server must answer range requests for anything larger than 1 MiB.
 
 ## Who can change what
@@ -245,6 +246,28 @@ and the library is scanned again.
   rules at request time, after the native source preflight; it is then served by
   Silo's local sidecar code. Every other external subtitle of a native file stays 404.
 
+### Jellyfin apps
+
+- `.strm` items play through the Jellyfin media host for stored movies
+  ([Jellyfin clients](bloem-native-video-playback.md#jellyfin-clients)):
+  `NativeVideoCompat.Handles` takes every native location, `.strm` included, so
+  direct play, remux, local HLS, copy seek anchors, worker HLS and embedded text
+  subtitles read the host's pinned source, which `strmPlayback.open` opens as for
+  Bloem's apps. A refused address answers 403.
+- `bloemNativeStorageFiles` (`cmd/silo/bloem_compat.go`) hides a `.strm` file from
+  every Jellyfin handler except a stream request that carries the host (video,
+  HLS, subtitles, attachments).
+- Subtitle files: PlaybackInfo lists the `external_subtitles` Silo's scanner found
+  beside the local `.strm` file as external streams, and Silo's subtitle route
+  serves them from disk as for any local file. That read is not a source open, so
+  it does not run the native recheck the API route runs; the compatibility session
+  and the playback session authorize it, as for a local file.
+- Embedded text subtitles: Silo's subtitle cache keys a track by the `.strm` file's
+  size and modification time, which change with its URL. On a miss its batch demux
+  hands ffmpeg the `.strm` text file, which ffmpeg refuses as invalid data (a
+  warning in the log); the single-track extract then reads the host's source. The
+  text is cached under the `.strm` file like a local file's.
+
 ### Workers
 
 - The worker grant (`NativeVideoWorkerGrantStore.prepare`) binds a storage object's
@@ -279,6 +302,11 @@ and the library is scanned again.
   `TestStrmWorkerHLSRunsOnTheWorkerThroughItsOwnGuard` (Redis: an API host seals the
   grant, a separate worker host with its own guard resolves it and runs a real ffmpeg
   HLS encode, for a local and a storage `.strm`).
+- Jellyfin: `TestStrmJellyfinDirectPlay`, `TestStrmJellyfinRefusalsAnswer403`,
+  `TestStrmJellyfinRemuxAndTranscode`, `TestStrmJellyfinWorkerStartSealsTheGrant`
+  (`internal/api`) and `TestStrmSubtitlesServeForJellyfinApps`
+  (`internal/jellycompat`: a sidecar and an embedded track through Silo's subtitle
+  route, both 404 without the host).
 - `internal/api/handlers`: `TestNativeVideoWorkerGrantAdmitsLocalStrmItems`,
   `TestNativeVideoWorkerGrantRefusesLocationFreeStorageIdentities`,
   `TestStrmSidecarSubtitlesServeLikeLocalSidecars`, `TestStrmSidecarSubtitlesStayBesideTheirStrmFile`.
@@ -290,10 +318,8 @@ and the library is scanned again.
 
 ### Known limits
 
-- Jellyfin: `bloemNativeStorageFiles` (`cmd/silo/bloem_compat.go`) hides native files,
-  including `.strm`, from Jellyfin playback until the Jellyfin media host for stored
-  movies is merged; that host treats every native location, `.strm` included, the same
-  way.
+- Jellyfin: attached fonts are not listed for a `.strm` item: Silo's font probe reads
+  the `.strm` text file. Bitmap subtitles cannot be extracted, as for stored movies.
 - `media_files.file_size` of a local `.strm` is the text file's size; the remote size
   is in `remote_size`. Silo's OSHash logs that the file is too small.
 - Silo switching: Silo, serving the same database, treats a local `.strm` row as a plain
