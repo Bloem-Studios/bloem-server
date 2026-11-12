@@ -64,6 +64,7 @@ func (r DownloadQualityResolver) Resolve(
 	artifactsAvailable bool,
 	deviceID string,
 ) (QualityDecision, error) {
+	artifactsAvailable = bloemArtifactsAvailable(file, artifactsAvailable)
 	quality := normalizeQuality(requested)
 	if !ValidQuality(quality) {
 		return QualityDecision{}, ErrInvalidQuality

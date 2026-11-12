@@ -90,7 +90,8 @@ and the library is scanned again.
 
 - **Subtitle files next to a `.strm` object in a storage source for Jellyfin apps**,
   as for every stored video.
-- **Downloads** of `.strm` items, as for every stored video.
+- **Converting for offline use** of `.strm` items, as for every stored video. Downloads
+  of the original file work.
 - **Attached fonts and bitmap subtitles** of `.strm` items in Jellyfin apps, as for
   stored movies.
 - The remote server must answer range requests for anything larger than 1 MiB.

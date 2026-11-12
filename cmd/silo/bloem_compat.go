@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/downloads"
 	"github.com/Silo-Server/silo-server/internal/jellycompat"
@@ -59,6 +60,9 @@ func (s bloemCompatDownloadServer) ServeDirect(ctx context.Context, w http.Respo
 	if _, err := policy.TenantFactsFromContext(serveCtx, userID); err != nil {
 		return fmt.Errorf("%w: download tenant facts: %w", downloads.ErrDownloadNotAllowed, err)
 	}
+	// A native-storage or .strm original is read under this session's
+	// authority, rechecked around every read.
+	serveCtx = api.WithNativeVideoCompatDownload(serveCtx, session.Token, userID, session.ProfileID)
 	return s.service.ServeDirectForProfile(serveCtx, w, r, userID, session.ProfileID, fileID, format, filter)
 }
 

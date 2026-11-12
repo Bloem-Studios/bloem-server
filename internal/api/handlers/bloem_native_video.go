@@ -98,6 +98,9 @@ type NativeVideoService struct {
 	// WorkerReadiness remembers which workers can read native storage; nil
 	// sends native HLS to no worker.
 	WorkerReadiness *NativeVideoWorkerReadiness
+
+	// Downloads serves native videos as original downloads; nil serves none.
+	Downloads *NativeVideoDownloads
 }
 
 func nativeVideoUnavailable() error {

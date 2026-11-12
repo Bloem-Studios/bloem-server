@@ -309,7 +309,7 @@ func nativeVideoCompatDelegation(ctx context.Context, subject *nativeVideoSubjec
 // compatibility delegation: its login session is live and its compatibility
 // session is still stored.
 func verifyNativeVideoCompatActor(ctx context.Context, d handlers.NativeVideoAuthority, p nativeVideoPolicy) error {
-	if d.LoginSessionID == "" || d.PlaybackSessionID == "" || d.CompatSessionDigest == "" || p.loadLogin == nil || p.loginActive == nil {
+	if d.LoginSessionID == "" || d.PlaybackSessionID == "" && d.TokenType != nativeVideoCompatDownloadTokenType || d.CompatSessionDigest == "" || p.loadLogin == nil || p.loginActive == nil || p.compat == nil {
 		return middleware.ErrCurrentCredentialInvalid
 	}
 	sessions := p.compat.currentSessions()

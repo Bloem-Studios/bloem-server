@@ -123,8 +123,9 @@ uses any more.
 - **Audiobooks** play directly, track by track; see
   [how stored audiobooks play](bloem-native-audio-playback.md).
 
-Jellyfin apps play stored movies too, with embedded text subtitles. Not
-supported yet: downloads, converting for offline use and series. Every read checks again that the viewer may see the title and that the
+Jellyfin apps play stored movies too, with embedded text subtitles. Stored
+movies download as the original file, in Bloem's apps, the web app and Jellyfin
+apps. Not supported yet: converting for offline use, and series. Every read checks again that the viewer may see the title and that the
 source is still switched on.
 
 ## Who can change what
@@ -225,7 +226,8 @@ The whole `bloem-storage:` namespace is reserved, including malformed identities
 filesystem probing, missing-file marking or tool invocation. The native ebook
 reader and video service use separate authorized source resolvers. Alternate
 editions and multipart start may select supported native video only when that
-service is installed. Downloads still refuse the namespace; Jellyfin stream
+service is installed. Downloads reach a native video only through the native
+video service's download reader, and only as the original file; Jellyfin stream
 routes reach it only through the native video host.
 Nothing opens it as a local path. The
 [video execution contract](bloem-native-video-playback.md) describes native API
@@ -819,8 +821,9 @@ cancellation. GET/HEAD, ranges and conditional requests behave as for local
 files; ETags hash the opaque revision. A provider failure at open or before
 the first byte is sent is an ordinary HTTP error, such as 404 for a missing book
 or 503 for an unavailable provider; after bytes were sent the response is
-aborted without an error document. Downloads, conversion and offline delivery
-of storage files are not supported.
+aborted without an error document. Stored ebooks and audiobooks are not
+downloaded; stored movies download as the original file
+([how stored movies play](bloem-native-video-playback.md#downloads)).
 
 ### Protocol
 

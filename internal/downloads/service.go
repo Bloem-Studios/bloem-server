@@ -1223,6 +1223,9 @@ func (s *Service) ServeDirect(ctx context.Context, w http.ResponseWriter, r *htt
 		return err
 	}
 	notifyServeAuthorized(ctx, *target)
+	if handled, err := s.bloemServeNativeOriginal(ctx, w, r, target, userID); handled {
+		return err
+	}
 	return s.serveLocalFile(ctx, w, r, target.Path, s.AttachmentName(ctx, target), userID)
 }
 
@@ -1691,6 +1694,9 @@ func attachmentDisposition(path string) string {
 func (s *Service) serveFileTarget(ctx context.Context, w http.ResponseWriter, r *http.Request, target *FileTarget, userID int) error {
 	if target == nil {
 		return catalog.ErrItemNotFound
+	}
+	if handled, err := s.bloemServeNativeOriginal(ctx, w, r, target, userID); handled {
+		return err
 	}
 	if target.OriginArtifactID == "" {
 		return s.serveLocalFile(ctx, w, r, target.Path, s.AttachmentName(ctx, target), userID)

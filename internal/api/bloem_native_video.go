@@ -102,6 +102,9 @@ type nativeVideoSubject struct {
 	skipPIN   bool
 	tenant    *tenancy.Context
 	compat    *nativeVideoCompatSubject
+	// download marks a delegated original download: no playback session or
+	// binding backs it, so only its actor is rechecked.
+	download bool
 }
 
 func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinator, h *handlers.PlaybackHandler, sh *handlers.StreamHandler, authMiddleware *middleware.AuthMiddleware, viewer *middleware.ViewerAccessMiddleware) {
@@ -133,6 +136,7 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 		}
 		return strm.open(ctx, file, authority, storage)
 	}
+	service.Downloads = newNativeVideoDownloads(deps, service, p, strm, storage)
 	configureNativeVideoDelegates(deps, coordinator, service, p)
 	h.NativeVideo = service
 	sh.NativeVideo = service
@@ -265,7 +269,11 @@ func (s *nativeVideoSubject) refresh(ctx context.Context) (context.Context, erro
 	}
 	input := access.ResolveInput{UserID: s.userID, ProfileID: s.profileID, SkipPINVerification: s.skipPIN}
 	if s.delegated != nil {
-		if err := s.verifyDelegated(ctx); err != nil {
+		verify := s.verifyDelegated
+		if s.download {
+			verify = func(ctx context.Context) error { return verifyNativeVideoActor(ctx, *s.delegated, s.policy) }
+		}
+		if err := verify(ctx); err != nil {
 			return nil, err
 		}
 		input.SessionID = s.delegated.LoginSessionID
@@ -709,7 +717,7 @@ func verifyNativeVideoActor(ctx context.Context, d handlers.NativeVideoAuthority
 		if d.PlaybackSessionID == "" {
 			return middleware.ErrCurrentCredentialInvalid
 		}
-	case nativeVideoCompatTokenType:
+	case nativeVideoCompatTokenType, nativeVideoCompatDownloadTokenType:
 		if err := verifyNativeVideoCompatActor(ctx, d, p); err != nil {
 			return err
 		}

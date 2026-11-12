@@ -65,9 +65,17 @@ versions, an administrator can choose a **checked mode**: Bloem then compares th
 file's fingerprint and size before and after each read. That catches most
 changes, but cannot prove the bytes stayed the same between checks.
 
+## Downloading a stored movie
+
+A stored movie downloads as the original file, in Bloem's apps, the web app and
+Jellyfin apps, with the same checks as playback. The download resumes where it
+stopped, and stops within about a second when the viewer's access is withdrawn.
+The saved file is named after the title, never after where it is stored.
+
 ## What does not work yet
 
-- Downloads and converting for offline use, in Bloem's apps and Jellyfin apps.
+- Converting for offline use. Asking for a smaller copy of a stored movie is
+  refused with "quality unavailable"; the original downloads.
 - Attached fonts and bitmap subtitles in Jellyfin apps.
 - Series from storage.
 - Switching to another file mid-play needs a fresh start.
@@ -328,21 +336,68 @@ serves from disk once the guard has returned the file
 ([`.strm` files in Jellyfin apps](bloem-strm.md#jellyfin-apps)).
 
 Not covered yet: attached fonts and bitmap (PGS) subtitle extraction for
-native files, Jellyfin's proxy-node direct play (a proxy refuses native sources, so
-the redirect fails; an API-egress route works), and native downloads.
+native files, and Jellyfin's proxy-node direct play (a proxy refuses native sources, so
+the redirect fails; an API-egress route works). Jellyfin downloads
+(`/Items/{id}/Download`) are covered under [Downloads](#downloads).
+
+### Downloads
+
+Original downloads of native-storage and `.strm` videos go through Silo's
+download service unchanged: the same policy, quotas, bandwidth limits and rows,
+on every download route (`/api/v2/direct-download`, managed and ephemeral
+`/api/v2/downloads/{id}/file`, and Jellyfin's `/Items/{id}/Download`).
+
+- `downloads.GuardNativeStorageFiles` still hides every native row until
+  `Service.SetNativeOriginals` installs a reader (`attachNativeVideoDownloads`,
+  `internal/api/bloem_native_video_download.go`, after native playback is
+  composed). It then admits what `NativeVideoDownloads.DownloadFile`
+  (`internal/api/handlers/bloem_native_video_download.go`) accepts: native video
+  in an admitted container, not native audio or ebooks. The admitted copy carries
+  the served size; for a `.strm` item that is `bloem_remote_sources.remote_size`,
+  not the text file's size.
+- Serving a native target (`bloemServeNativeOriginal`,
+  `internal/downloads/bloem_native_download.go`) never opens the catalog path.
+  It opens the file through `strmPlayback.open`, so a storage object goes
+  through `Coordinator.OpenAuthorizedPlayback` and a `.strm` item through the
+  SSRF-guarded remote reader, and reads it through `nativestorage.ReadAhead` with
+  the direct-play configuration. `http.ServeContent` answers ranges, HEAD and
+  `If-Range` with the revision ETag direct play sends. A failure after the
+  first byte aborts the response (`ErrResponseCommitted`).
+- The authority (`nativeVideoDownloadAuthority`) is a delegation with no
+  playback session. It is taken from the request after viewer access: an access
+  token or a direct-download link (`dl`, which must name this file) is bound to
+  its login session, an unscoped API key to its revision, and a Jellyfin download
+  to its compatibility session (`WithNativeVideoCompatDownload`, set by
+  `bloemCompatDownloadServer`; `sa_` sessions are refused). Every open and read
+  rechecks it as delegated playback does (`verifyNativeVideoActor`): the
+  account, the login session, the profile's PIN and credential revisions, the
+  organization membership, the viewer's playback and library scope, the catalog
+  file and the source. It expires with the login session, and after
+  `playback.MaxTokenTTL` at the latest, so a download outlives its access token
+  but not its sign-in. Refusals map to the download errors (403 or 404), never
+  401.
+- Downloads offer only the original: `bloemArtifactsAvailable` reports no
+  prepared copies for a native file, so a bitrate preset, or a device that
+  cannot play the original, gets `ErrQualityUnavailable`. Download preparation
+  runs ffmpeg on the catalog path (`internal/downloads/artifacts.go`,
+  `internal/playback/prepare_file.go`), and a worker preparation has no native
+  grant; serving a converted copy needs those two Silo files to accept a native
+  input, which they do not.
+- A download proxy cannot read native sources: a proxy redirect is probed,
+  refused, and the API server serves the file itself.
 
 ### Supported surfaces and evidence limits
 
-The supported contract is native API video playback for admitted catalog
-files. Initial movie scanning accepts MOV/MP4 and Matroska/WebM containers.
-Offline/download conversion and native series ingestion remain unsupported.
+The supported contract is native API video playback and original downloads for
+admitted catalog files. Initial movie scanning accepts MOV/MP4 and Matroska/WebM
+containers. Offline conversion and native series ingestion remain unsupported.
 `.strm` items reuse this pipeline with a remote reader
 ([`.strm` files](bloem-strm.md#playback)).
 Native audiobooks have their own direct-play path; see
 [native audiobook presentations](bloem-native-audio-playback.md). Jellyfin
 clients are covered above. The capability document keeps
-`native_video_downloads` and `native_video_jellyfin` false until real Jellyfin
-clients have been checked.
+`native_video_jellyfin` false until real Jellyfin clients have been checked, and
+`native_video_downloads` false until converting for offline use works too.
 
 Sidecars belonging to a different original file after an alternate-file start
 need their own host-owned binding; an effective-file binding grants no access to

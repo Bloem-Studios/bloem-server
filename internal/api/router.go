@@ -2781,6 +2781,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			if playbackHandler.NativeVideo != nil {
 				playbackHandler.InstallNativeVideoRecovery()
 				attachNativeVideoReadiness(deps, playbackHandler, streamHandler, libraryHandler)
+				attachNativeVideoDownloads(downloadSvc, playbackHandler)
 			}
 		}
 		v2deps.EbookFiles = nativeEbookFiles
