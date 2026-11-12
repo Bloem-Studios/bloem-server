@@ -118,6 +118,7 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 		return authorizeNativeStorageSource(ctx, file, source, tenantResolver, resources)
 	}}
 	service := &handlers.NativeVideoService{Presentation: nativeAudioPresentation(deps), Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: h.StreamDeny}
+	strm, storage := newStrmPlayback(deps), coordinatorOpen(coordinator)
 	service.Open = func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
 		if file == nil {
 			return nil, catalog.ErrItemNotFound
@@ -126,11 +127,7 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 		if err != nil {
 			return nil, err
 		}
-		opened, err := coordinator.OpenAuthorizedPlayback(ctx, file, authority)
-		if err != nil {
-			return nil, err
-		}
-		return opened, nil
+		return strm.open(ctx, file, authority, storage)
 	}
 	configureNativeVideoDelegates(deps, coordinator, service, p)
 	h.NativeVideo = service
@@ -406,12 +403,13 @@ func configureNativeVideoDelegates(deps Dependencies, coordinator *nativestorage
 	p.loadBinding = service.Bindings.Get
 	configureNativeVideoBoundAuthority(service, p)
 	service.Delegation = func(ctx context.Context) (handlers.NativeVideoAuthority, error) { return nativeVideoDelegation(ctx, p) }
+	strm, storage := newStrmPlayback(deps), coordinatorOpen(coordinator)
 	service.OpenDelegated = func(ctx context.Context, file *models.MediaFile, binding handlers.NativeVideoBinding) (handlers.NativeVideoFile, error) {
 		authority, err := nativeVideoDelegatedAuthority(ctx, file, binding, p)
 		if err != nil {
 			return nil, err
 		}
-		opened, err := coordinator.OpenAuthorizedPlayback(ctx, file, authority)
+		opened, err := strm.open(ctx, file, authority, storage)
 		if err != nil {
 			return nil, err
 		}
