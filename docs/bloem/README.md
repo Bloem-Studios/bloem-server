@@ -120,7 +120,7 @@ All historical; the [changelog](CHANGELOG.md) carries every later integration.
 
 For these, Bloem's text differs throughout; read the Bloem edition instead of the upstream file.
 
-- [docs/non-goals.md](overlays/non-goals.md) (upstream: [docs/non-goals.md](../non-goals.md)) — Live TV in scope, remote-URL ingestion still out.
+- [docs/non-goals.md](overlays/non-goals.md) (upstream: [docs/non-goals.md](../non-goals.md)) — Live TV and `.strm` remote-URL items in scope, private addresses refused by default.
 - [Installing and running Bloem with Docker](overlays/wiki/deployment/docker.md) — maintained Bloem installation and operations guide; the former upstream wiki page was removed.
 - [Bloem guides for operators and viewers](overlays/wiki/index.md) — Bloem's guide index, alongside the current [Silo reference index](../README.md).
 

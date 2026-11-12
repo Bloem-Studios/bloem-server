@@ -323,6 +323,9 @@ overlay.
   physical-connection budgets and server-owned encoder input. This is Bloem's addition
   to the Prairie-derived subsystem, not a Silo feature or a general remote-URL player.
   See [Xtream scope](docs/architecture/xtream-live-tv.md).
+- `.strm` remote-URL items, which Silo refuses: a `.strm` file may point at any web
+  address, with private network addresses refused by default
+  ([Bloem's non-goals](docs/bloem/overlays/non-goals.md#strm-files-are-in-scope)).
 - Explicit [downstream contract adjudications](docs/architecture/bloem-contract-adjudications.md)
   that preserve SHA-pinned upstream scenario and route snapshots while testing reviewed
   Bloem behavior. They do not weaken production authorization or reintroduce credential

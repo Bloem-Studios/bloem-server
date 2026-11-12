@@ -1,17 +1,18 @@
 # What Bloem will not do
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which contains Silo through `63ef34b23`. This is Bloem's
-> complete edition of Silo's [`docs/non-goals.md`](../../non-goals.md): read it
-> *instead of* Silo's, not beside it. Bloem differs from Silo in one place: Live TV is
-> in scope. The technical rules are in the [For developers](#for-developers) section.
+> **Provenance and status.** Bloem page, rewritten on 2026-11-12 and checked against
+> `main` at `bf0fde82f`. This is Bloem's complete edition of Silo's
+> [`docs/non-goals.md`](../../non-goals.md): read it *instead of* Silo's, not beside
+> it. Bloem differs from Silo in two places: Live TV is in scope, and so are `.strm`
+> files that point anywhere. The technical rules are in the
+> [For developers](#for-developers) section.
 
 Silo keeps a short list of features it will never accept, however well they are built.
-This page walks through Bloem's version of that list: what Bloem adds back, the line it
-keeps around Live TV, and the rule about media files that Bloem keeps exactly as Silo
-wrote it.
+This page walks through Bloem's version of that list: the two things Bloem adds back,
+the one security default it keeps for `.strm` files, and the rule about media files
+that Bloem keeps exactly as Silo wrote it.
 
-![In scope: Live TV from sources an administrator set up, guides and recordings, media files read only. Never: .strm and other web-address shortcuts, other remote streams, deleting or moving media files](../../architecture/images/non-goals/boundary.svg)
+![In scope: Live TV from sources an administrator set up, guides and recordings, .strm files pointing at any web address with private addresses refused by default, and media files read only. Never: deleting, moving or renaming media files](../../architecture/images/non-goals/boundary.svg)
 
 ## Live TV is in scope
 
@@ -29,21 +30,10 @@ good. Bloem ships them, as a maintained feature
   provider's own guide.
 - **Recordings and recording rules** (DVR).
 
-### Where Live TV stops
+Live TV channels still come only from a source an administrator set up. Xtream stays
+live-only, as above.
 
-Bloem plays channels only from a source an administrator set up. These stay out of
-scope however they are built:
-
-- **`.strm` files** and any other library shortcut whose content is a web address of
-  some remote media.
-- **Fetching, passing on, redirecting or converting any other remote stream**, outside
-  the reviewed tuner and guide sources above. Nobody can paste an address and have
-  Bloem play it.
-
-That keeps Bloem a server for sources someone reviewed, not a service that takes in any
-stream from anywhere.
-
-### What is missing today, and is not a non-goal
+### What Live TV is missing today, and is not a non-goal
 
 These are current limits, not permanent decisions:
 
@@ -52,6 +42,44 @@ These are current limits, not permanent decisions:
 - A recording rule's "keep the last N" setting is stored but not applied: Bloem deletes
   no old recordings.
 - A recording rule cannot be edited; remove it and make a new one.
+
+## `.strm` files are in scope
+
+Silo refuses **`.strm` files**: a small text file in the library whose content is the
+web address of a video somewhere else. Bloem accepts them, wherever they point. Jim
+decided this on 2026-11-12: "That might be a Silo goal but not Bloem, anything goes on
+Bloem."
+
+1. **A `.strm` file is a video.** Bloem reads the first line that is not empty, and
+   treats the file as the movie or episode its name says, like any other video. It
+   works in a library folder on disk and in a storage source such as an S3 bucket.
+2. **Bloem looks inside the video** at the address, to learn its length, picture and
+   sound, the same way it does for a file on disk.
+3. **Bloem plays it through itself.** The app gets Bloem's own addresses; the remote
+   address never reaches it. Bloem passes the bytes on as they are, rewraps them, or
+   converts them, as it would for a file on disk.
+4. **A changed address is a new version.** The next scan reads the file again, and a
+   different address replaces the old one.
+
+Bloem never filters what a `.strm` file points at. It keeps one **security default**,
+which limits no content:
+
+- Only addresses that start with `http://` or `https://`.
+- By default, Bloem refuses an address that leads to the server's own private network:
+  the server itself, link-local, private and CGNAT ranges, and cloud metadata services.
+  Without this, a file in a library could make the server open its own internal
+  services.
+- Bloem checks this **every time it connects**, after it looks the name up and again
+  at every redirect, so a name that changes its answer or a redirect into the private
+  network is refused too.
+- A platform administrator can switch on **Allow private addresses** when the videos
+  really live on the private network.
+
+This example is made up. A library holds `Harbour Lights (2019).strm`, whose one line
+is `https://media.example.net/films/harbour-lights.mkv`. The film appears as "Harbour
+Lights (2019)" with its length and tracks, and plays in any app. A second file whose
+line is `http://10.0.0.5/admin` is refused at scan time, unless a platform
+administrator has allowed private addresses.
 
 ## Deleting or managing media files
 
@@ -76,8 +104,9 @@ Bloem's own features stay inside that rule:
 | Who | What they decide |
 | --- | --- |
 | Silo's maintainers | Silo's list in `docs/non-goals.md`, which Bloem never edits. |
-| Bloem's maintainers | This edition: which Silo non-goals Bloem opens (only Live TV) and where Live TV stops. |
-| Platform administrator | Which tuners, Xtream providers and guides a server uses, and which libraries it scans. |
+| Bloem's maintainers | This edition: which Silo non-goals Bloem opens (Live TV and `.strm` files) and the security default for `.strm`. |
+| Platform administrator | Which tuners, Xtream providers and guides a server uses, which libraries it scans, and whether `.strm` addresses may reach private addresses. |
+| Anyone who can write to a library folder or bucket | What a `.strm` file points at. |
 
 ## Words used in the code
 
@@ -89,6 +118,9 @@ Bloem's own features stay inside that rule:
 | Programme guide source | `schedules_direct`, `xml_sync` or `xtream` (at most 3) |
 | Recording rule | a series rule, `livetv_series_rules`, with `keep_last` |
 | Recordings folder | the `livetv.dvr_path` setting (default `/var/lib/bloem/dvr`) |
+| `.strm` file | a `media_files` row with container `strm`; its address is in `bloem_remote_sources`, never in a path |
+| Security default, the check | `internal/remotesource` (`Guard`, `Dialer`) |
+| Allow private addresses | the `bloem.strm.allow_private_addresses` setting (default `false`) |
 | Storage source | the storage provider protocol, `proto/bloem/plugin/v1/storage_provider.proto` |
 | Media folder | `MEDIA_ROOT`, mounted read-only |
 
@@ -97,6 +129,10 @@ Bloem's own features stay inside that rule:
 - **API:** [Live TV](../api/live-tv.md): every route under `/api/bloem/v2/livetv`.
 
 ### Where this edition came from
+
+`.strm` support was added on 2026-11-12, when Jim reversed the earlier rule that kept
+`.strm` files and other remote streams out of scope. Before then this edition listed
+them under "Where Live TV stops".
 
 Bloem's edition moved out of the Silo file in `47ea7c889` (2026-09-23), so Silo's file
 stays exactly as Silo wrote it and Silo merges stay clean; see the
@@ -121,12 +157,9 @@ Guide sources are `schedules_direct`, `xml_sync` (a native Zap2XML-style Graceno
 listings sync) and `xtream`; there is no generic XMLTV URL import and no M3U playlist
 ingestion (Dispatcharr can present M3U sources as an HDHomeRun tuner).
 
-The following remain out of scope regardless of implementation quality:
-
-- `.strm` files and equivalent library shortcuts whose contents are arbitrary remote
-  media URLs.
-- Generic remote-URL fetching, proxying, redirecting, or transcoding outside the
-  explicit Live TV tuner and guide integrations.
+Live TV itself takes no arbitrary stream addresses: channels come from the configured
+tuner and provider integrations only. Arbitrary remote media enters the catalog through
+`.strm` files instead (below).
 
 Current implementation limits are distinct from these permanent non-goals. DVR does not
 automatically import recordings into the catalog, enforce stored `keep_last`, or expose
@@ -135,6 +168,31 @@ recordings require an administrator to scan the recording folder through a libra
 [Live TV client access](../../architecture/live-tv-client-access.md) and
 [web coverage](../../architecture/bloem-web-feature-coverage.md) before promising those
 workflows.
+
+### `.strm` remote sources
+
+- **Parsing.** The content is UTF-8 text of at most 8 KiB. The URL is the first
+  non-empty line, trimmed. It must parse as an absolute `http` or `https` URL with a
+  host; anything else rejects the file at scan time.
+- **Storage.** The URL is stored in `bloem_remote_sources`, keyed by `media_file_id`,
+  with a SHA-256 revision of the URL. `media_files.file_path` keeps the `.strm` file's own
+  location; the URL never appears in a catalog path, a client stream URL, a playback
+  recipe, a log line or an API response.
+- **SSRF default.** `remotesource.Guard` resolves the host and refuses every resolved
+  address in `127.0.0.0/8`, `::1`, `0.0.0.0/8`, `::`, `169.254.0.0/16`, `fe80::/10`,
+  `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`, `100.64.0.0/10`,
+  multicast, broadcast, and IPv4-mapped forms of those, plus the metadata names
+  `metadata.google.internal` and `metadata`. The check runs in the dialer's `Control`
+  hook on the address actually dialled, so DNS rebinding between check and connect is
+  refused, and the redirect policy re-validates every hop's scheme (at most 10 hops).
+  `bloem.strm.allow_private_addresses` (platform admin settings, default `false`)
+  turns the address check off; the scheme check always stays.
+- **Probe and ffmpeg.** ffprobe and ffmpeg never receive the URL. They read through a
+  loopback bridge (`nativestorage.ToolInput`) whose reads are served by the guarded
+  HTTP client, so every connection, redirect and reconnect passes the check.
+- **Delivery.** Direct play proxies the remote bytes through Bloem's ordinary
+  `/stream/{session}` route with `Range` passthrough; remux and HLS run on the API
+  server.
 
 ### Media files
 

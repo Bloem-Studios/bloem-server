@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="580" viewBox="0 0 1200 580" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">What Bloem plays, and what it never will</title>
-<desc id="d">Left, in scope: Live TV from sources an administrator set up (a tuner on the network, Dispatcharr, an Xtream provider's live channels), with a programme guide and recordings, and media files that Bloem only reads. Right, permanently out of scope: .strm files and other shortcuts to web addresses, fetching or passing on any other remote stream, an Xtream provider's films and series or acting as an Xtream server, and deleting, moving or renaming media files.</desc>
+<desc id="d">Left, in scope: Live TV from sources an administrator set up (a tuner on the network, Dispatcharr, an Xtream provider's live channels), with a programme guide and recordings; .strm files that point at any web address, played through Bloem, with addresses on the server's private network refused unless a platform administrator allows them; and media files that Bloem only reads. Right, permanently out of scope: deleting, moving or renaming media files, and an Xtream provider's films and series or acting as an Xtream server.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
-<rect x="0.5" y="0.5" width="1199" height="499" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<rect x="0.5" y="0.5" width="1199" height="579" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What Bloem plays, and what it never will</text>
-<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem adds Live TV to Silo. Everything else on Silo's list of non-goals stays closed.</text>
-<rect x="40" y="120" width="540" height="314" rx="16" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem adds Live TV and .strm files to Silo. Silo's rule about media files stays closed.</text>
+<rect x="40" y="120" width="540" height="404" rx="16" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
 <text x="68" y="160" font-size="19" font-weight="700" fill="#047857" text-anchor="start">In scope</text>
 <circle cx="82" cy="199" r="12" fill="#10B981"/>
 <path d="M76.6,199.24 L80.8,203.56 L88.0,194.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -19,23 +19,24 @@
 <text x="106" y="327" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">recordings folder.</text>
 <circle cx="82" cy="359" r="12" fill="#10B981"/>
 <path d="M76.6,359.24 L80.8,363.56 L88.0,354.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="106" y="364" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Your media files, read only</text>
-<text x="106" y="388" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem lists and plays them. The next scan shows changes made</text>
-<text x="106" y="407" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">elsewhere.</text>
-<rect x="620" y="120" width="540" height="314" rx="16" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<text x="106" y="364" font-size="16" font-weight="700" fill="#101827" text-anchor="start">.strm files that point at any web address</text>
+<text x="106" y="388" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Played through Bloem. Private network addresses are refused</text>
+<text x="106" y="407" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">unless a platform administrator allows them.</text>
+<circle cx="82" cy="439" r="12" fill="#10B981"/>
+<path d="M76.6,439.24 L80.8,443.56 L88.0,434.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="106" y="444" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Your media files, read only</text>
+<text x="106" y="468" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem lists and plays them. The next scan shows changes made</text>
+<text x="106" y="487" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">elsewhere.</text>
+<rect x="620" y="120" width="540" height="404" rx="16" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
 <text x="648" y="160" font-size="19" font-weight="700" fill="#B91C1C" text-anchor="start">Never, however well built</text>
 <circle cx="662" cy="199" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
 <path d="M656.6,193.6 L667.4,204.4 M667.4,193.6 L656.6,204.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
-<text x="686" y="204" font-size="16" font-weight="700" fill="#101827" text-anchor="start">.strm files and other shortcuts to a web address</text>
-<text x="686" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A file whose content is a remote media address.</text>
+<text x="686" y="204" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Deleting, moving or renaming media files</text>
+<text x="686" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Not from any app, admin page, plugin or automatic clean-up.</text>
 <circle cx="662" cy="260" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
 <path d="M656.6,254.6 L667.4,265.4 M667.4,254.6 L656.6,265.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
-<text x="686" y="265" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Fetching or passing on any other remote stream</text>
-<text x="686" y="289" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">No pasted addresses, no Xtream films or series, no Xtream</text>
-<text x="686" y="308" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">server for other apps.</text>
-<circle cx="662" cy="340" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
-<path d="M656.6,334.6 L667.4,345.4 M667.4,334.6 L656.6,345.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
-<text x="686" y="345" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Deleting, moving or renaming media files</text>
-<text x="686" y="369" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Not from any app, admin page, plugin or automatic clean-up.</text>
-<text x="40" y="470" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The line keeps Bloem a media server for sources someone reviewed, not a fetcher for arbitrary streams or a file manager.</text>
+<text x="686" y="265" font-size="16" font-weight="700" fill="#101827" text-anchor="start">An Xtream provider's films and series</text>
+<text x="686" y="289" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Xtream stays live-only, and Bloem is no Xtream server for other</text>
+<text x="686" y="308" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">apps.</text>
+<text x="40" y="556" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Bloem plays what its libraries point at, and never filters it. It keeps the server's own network out of reach by default, and it never manages files.</text>
 </svg>
