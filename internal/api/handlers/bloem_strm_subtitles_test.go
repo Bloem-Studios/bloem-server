@@ -22,15 +22,15 @@ import (
 func strmSubtitleFixture(t *testing.T) (*StreamHandler, *models.MediaFile, *playback.Session, string) {
 	t.Helper()
 	service, file, session, identity, closed := nativeVideoFixture(t)
-	dir := filepath.Join(t.TempDir(), "Harbour Lights (2019)")
+	dir := filepath.Join(t.TempDir(), "Harbor Lights (2019)")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	file.FilePath, file.Container = filepath.Join(dir, "Harbour Lights (2019).strm"), "mkv"
-	if err := os.WriteFile(file.FilePath, []byte("https://media.example.net/harbour.mkv?token=secret\n"), 0o600); err != nil {
+	file.FilePath, file.Container = filepath.Join(dir, "Harbor Lights (2019).strm"), "mkv"
+	if err := os.WriteFile(file.FilePath, []byte("https://media.example.net/harbor.mkv?token=secret\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	sidecar := filepath.Join(dir, "Harbour Lights (2019).en.srt")
+	sidecar := filepath.Join(dir, "Harbor Lights (2019).en.srt")
 	if err := os.WriteFile(sidecar, []byte("1\n00:00:01,000 --> 00:00:02,500\nA sidecar beside the shortcut\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func strmSubtitleFixture(t *testing.T) (*StreamHandler, *models.MediaFile, *play
 	*identity = nativestorage.PlaybackIdentity{FileID: file.ID, MediaFolderID: file.MediaFolderID, ContentID: file.ContentID, FilePath: file.FilePath,
 		Reference: storagesource.PersistedRef{Revision: "url-sha256:one", LogicalPath: file.FilePath}}
 	service.Open = func(context.Context, *models.MediaFile) (NativeVideoFile, error) {
-		return &videoFileFixture{Reader: bytes.NewReader([]byte("0123456789")), id: *identity, info: mediasource.Info{Name: "Harbour Lights (2019).strm", LogicalPath: file.FilePath, Revision: identity.Reference.Revision, Size: 10}, closed: closed}, nil
+		return &videoFileFixture{Reader: bytes.NewReader([]byte("0123456789")), id: *identity, info: mediasource.Info{Name: "Harbor Lights (2019).strm", LogicalPath: file.FilePath, Revision: identity.Reference.Revision, Size: 10}, closed: closed}, nil
 	}
 	if err := service.Bind(t.Context(), session, file); err != nil {
 		t.Fatal(err)
@@ -82,7 +82,7 @@ func TestStrmSidecarSubtitlesServeLikeLocalSidecars(t *testing.T) {
 // served; the bound source is checked first, as for every native subtitle.
 func TestStrmSidecarSubtitlesStayBesideTheirStrmFile(t *testing.T) {
 	handler, file, session, sidecar := strmSubtitleFixture(t)
-	elsewhere := filepath.Join(t.TempDir(), "Harbour Lights (2019).en.srt")
+	elsewhere := filepath.Join(t.TempDir(), "Harbor Lights (2019).en.srt")
 	if err := os.WriteFile(elsewhere, []byte("1\n00:00:01,000 --> 00:00:02,000\nElsewhere\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}

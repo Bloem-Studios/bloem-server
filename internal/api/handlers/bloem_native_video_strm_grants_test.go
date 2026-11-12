@@ -6,13 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/transcodenode"
-	"github.com/google/uuid"
 )
 
 // localStrmGrantFixture binds a session to a local `.strm` item: its catalog
@@ -26,7 +27,7 @@ func localStrmGrantFixture(t *testing.T, path string) (*NativeVideoService, *pla
 	*identity = nativestorage.PlaybackIdentity{FileID: file.ID, MediaFolderID: file.MediaFolderID, ContentID: file.ContentID, FilePath: path,
 		Reference: storagesource.PersistedRef{Revision: "url-sha256:" + uuid.NewString(), LogicalPath: path}}
 	s.Open = func(context.Context, *models.MediaFile) (NativeVideoFile, error) {
-		return &videoFileFixture{Reader: bytes.NewReader([]byte("0123456789")), id: *identity, info: mediasource.Info{Name: "Harbour Lights (2019).strm", LogicalPath: path, Size: 10, Revision: identity.Reference.Revision}, closed: closed}, nil
+		return &videoFileFixture{Reader: bytes.NewReader([]byte("0123456789")), id: *identity, info: mediasource.Info{Name: "Harbor Lights (2019).strm", LogicalPath: path, Size: 10, Revision: identity.Reference.Revision}, closed: closed}, nil
 	}
 	s.Bindings = NewNativeVideoBindingStore(client)
 	s.Deny = playback.NewStreamDeny(client)
@@ -59,7 +60,7 @@ func localStrmGrantFixture(t *testing.T, path string) (*NativeVideoService, *pla
 // to its catalog path. The worker receives that path and the grant, never the
 // URL, and only the exact prepared start resolves.
 func TestNativeVideoWorkerGrantAdmitsLocalStrmItems(t *testing.T) {
-	const path = "/media/movies/Harbour Lights (2019)/Harbour Lights (2019).strm"
+	const path = "/media/movies/Harbor Lights (2019)/Harbor Lights (2019).strm"
 	s, session, start := localStrmGrantFixture(t, path)
 	store := NewNativeVideoWorkerGrantStore(nativeVideoGrantRedis(t))
 	if err := store.Prepare(t.Context(), 7, s, session, start); err != nil {

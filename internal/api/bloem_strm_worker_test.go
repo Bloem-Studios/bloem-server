@@ -175,23 +175,23 @@ func TestStrmWorkerHLSRunsOnTheWorkerThroughItsOwnGuard(t *testing.T) {
 	}
 	client := strmWorkerRedis(t)
 	data := strmSyntheticMKV(t, ffmpeg)
-	var remoteReads atomic.Int32
+	remoteReads := &atomic.Int32{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		remoteReads.Add(1)
 		http.ServeContent(w, r, "remote", time.Unix(1_700_000_000, 0), bytes.NewReader(data))
 	}))
 	t.Cleanup(server.Close)
-	remoteURL := server.URL + "/films/harbour.mkv?token=very-secret"
+	remoteURL := server.URL + "/films/harbor.mkv?token=very-secret"
 
 	location := uuid.New()
-	storedPath, _ := storagesource.CatalogLocation(location, "movies/harbour.strm")
+	storedPath, _ := storagesource.CatalogLocation(location, "movies/harbor.strm")
 	for _, tc := range []struct {
 		name           string
 		path           string
 		sourceRevision string
 		storage        func(*models.MediaFile) nativeStorageOpen
 	}{
-		{name: "local", path: "/media/movies/Harbour Lights (2019)/Harbour Lights (2019).strm", storage: func(*models.MediaFile) nativeStorageOpen {
+		{name: "local", path: "/media/movies/Harbor Lights (2019)/Harbor Lights (2019).strm", storage: func(*models.MediaFile) nativeStorageOpen {
 			return func(context.Context, *models.MediaFile, nativestorage.PlaybackAuthority) (handlers.NativeVideoFile, error) {
 				t.Error("a local .strm opened through a storage source")
 				return nil, storagesource.ErrSourceUnavailable
@@ -201,97 +201,102 @@ func TestStrmWorkerHLSRunsOnTheWorkerThroughItsOwnGuard(t *testing.T) {
 			return func(ctx context.Context, _ *models.MediaFile, _ nativestorage.PlaybackAuthority) (handlers.NativeVideoFile, error) {
 				lifetime, cancel := context.WithCancel(ctx)
 				return &storedStrmObject{fakeStoredStrm: &fakeStoredStrm{identity: nativestorage.PlaybackIdentity{FileID: file.ID, MediaFolderID: file.MediaFolderID, ContentID: file.ContentID, FilePath: file.FilePath,
-					Reference: storagesource.PersistedRef{LocationID: location, EntryID: "movies/harbour.strm", Revision: "object-version-3", LogicalPath: "movies/harbour.strm"}}, ctx: lifetime, cancel: cancel}}, nil
+					Reference: storagesource.PersistedRef{LocationID: location, EntryID: "movies/harbor.strm", Revision: "object-version-3", LogicalPath: "movies/harbor.strm"}}, ctx: lifetime, cancel: cancel}}, nil
 			}
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			file := &models.MediaFile{ID: 4100 + len(tc.name), MediaFolderID: 7, ContentID: "movie-harbour-" + tc.name, FilePath: tc.path, Container: "mkv", CodecVideo: "h264", VideoTracks: []models.VideoTrack{{Codec: "h264"}}, Duration: 3}
-			session := &playback.Session{ID: uuid.NewString(), UserID: 3, ProfileID: "p", MediaFileID: file.ID, PlayMethod: playback.PlayTranscode, StartedAt: time.Now().UTC()}
-			sources := &fakeStrmSources{rows: map[string]remotesource.Source{}}
-			sources.put(file.FilePath, remoteURL, tc.sourceRevision)
-			var apiAllow, workerAllow atomic.Bool
-			apiAllow.Store(true)
-			workerAllow.Store(true)
-			var apiDials, workerDials atomic.Int32
-			api := strmHost(client, file, sources, &apiAllow, tc.storage(file), session, &apiDials)
-			worker := strmHost(client, file, sources, &workerAllow, tc.storage(file), session, &workerDials)
-			transport := uuid.NewString()
-			t.Cleanup(func() {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				_ = api.WorkerGrants.RevokeTransport(ctx, transport)
-				_ = client.Del(ctx, "bloem:native-video:"+session.ID+":"+strconv.Itoa(file.ID), "bloem:native-video-session:"+session.ID, playback.StreamDenyKey(session.ID)).Err()
-			})
-			if err := api.Bind(t.Context(), session, file); err != nil {
-				t.Fatalf("API Bind = %v", err)
-			}
-			start := transcodenode.TranscodeStartRequest{SessionID: transport, InputPath: file.FilePath, SourceVideoCodec: "h264", TargetCodecVideo: "h264", TargetCodecAudio: "copy", TargetResolution: "720p",
-				TargetBitrateKbps: 500, SegmentDuration: 1, AudioTrackIndex: -1, SubtitleTrackIndex: -1, TotalDuration: 3, HWAccel: "none", RequireReady: true}
-			if err := api.WorkerGrants.Prepare(t.Context(), 7, api, session, start); err != nil {
-				t.Fatalf("API Prepare = %v", err)
-			}
-			body, _ := json.Marshal(start)
-			records := strmControlPlane(t, client, session.ID, transport, file.ID)
-			for _, leak := range []string{"very-secret", "harbour.mkv", server.Listener.Addr().String()} {
-				if strings.Contains(string(body), leak) || strings.Contains(records, leak) {
-					t.Fatalf("the start or a control-plane record names the URL (%q)", leak)
-				}
-			}
-
-			// A worker whose own guard refuses the address gets no grant: it
-			// checks the URL itself rather than trusting the API's check.
-			workerAllow.Store(false)
-			refused := strmWorkerStart(t, strmWorker(t, ffmpeg, 7, worker), start)
-			if refused.Code != http.StatusForbidden {
-				t.Fatalf("worker start with its guard refusing = %d %s", refused.Code, refused.Body.String())
-			}
-			workerAllow.Store(true)
-
-			before, beforeDials := remoteReads.Load(), workerDials.Load()
-			handler := strmWorker(t, ffmpeg, 7, worker)
-			response := strmWorkerStart(t, handler, start)
-			if response.Code != http.StatusAccepted {
-				t.Fatalf("worker start = %d %s", response.Code, response.Body.String())
-			}
-			if remoteReads.Load() == before || workerDials.Load() == beforeDials {
-				t.Fatal("the worker did not read the remote media through its own guard")
-			}
-			// The API accepts the attested recipe; the worker's playlist reads
-			// then carry its stream token, which names the catalog path only.
-			card := playback.NewRecipeCard(session.UserID, session.ProfileID, file.ID, "", playback.TranscodeOpts{SessionID: session.ID, TranscodeTransportID: transport, InputPath: file.FilePath,
-				SourceVideoCodec: "h264", TargetCodecVideo: "h264", TargetCodecAudio: "copy", TargetResolution: "720p", TargetBitrateKbps: 500, SegmentDuration: 1, AudioTrackIndex: -1, SubtitleTrackIndex: -1, TotalDuration: 3, HWAccel: "none"})
-			card.RoutingExecutionNodeID = 7
-			if err := api.WorkerGrants.Accept(t.Context(), 7, transport, card); err != nil {
-				t.Fatalf("API Accept = %v", err)
-			}
-			token, err := streamtoken.Sign(card.ToClaims(), "synthetic-worker-secret", time.Minute)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if claims, _ := json.Marshal(card.ToClaims()); strings.Contains(string(claims), "very-secret") || strings.Contains(string(claims), "harbour.mkv") {
-				t.Fatal("the stream token names the URL")
-			}
-			deadline := time.Now().Add(60 * time.Second)
-			for {
-				request := httptest.NewRequest(http.MethodGet, "/transcode/"+transport+"/master.m3u8", nil)
-				request.Header.Set("Authorization", "Bearer synthetic-worker-secret")
-				request.Header.Set("X-Silo-Stream-Token", token)
-				playlist := httptest.NewRecorder()
-				handler.ServeHTTP(playlist, request)
-				if playlist.Code == http.StatusOK && bytes.Contains(playlist.Body.Bytes(), []byte("#EXTM3U")) {
-					break
-				}
-				if time.Now().After(deadline) {
-					t.Fatalf("worker playlist = %d %s", playlist.Code, playlist.Body.String())
-				}
-				time.Sleep(100 * time.Millisecond)
-			}
-
-			// A different worker never resolves this grant.
-			if other := strmWorkerStart(t, strmWorker(t, ffmpeg, 8, worker), start); other.Code != http.StatusForbidden {
-				t.Fatalf("another worker's start = %d", other.Code)
-			}
+			runStrmWorkerCase(t, ffmpeg, client, server, remoteURL, remoteReads, tc.name, tc.path, tc.sourceRevision, tc.storage)
 		})
+	}
+}
+
+// runStrmWorkerCase is one item of TestStrmWorkerHLSRunsOnTheWorkerThroughItsOwnGuard.
+func runStrmWorkerCase(t *testing.T, ffmpeg string, client *redis.Client, server *httptest.Server, remoteURL string, remoteReads *atomic.Int32, name, filePath, sourceRevision string, storageFor func(*models.MediaFile) nativeStorageOpen) {
+	t.Helper()
+	tc := struct {
+		name, path, sourceRevision string
+		storage                    func(*models.MediaFile) nativeStorageOpen
+	}{name: name, path: filePath, sourceRevision: sourceRevision, storage: storageFor}
+	file := &models.MediaFile{ID: 4100 + len(tc.name), MediaFolderID: 7, ContentID: "movie-harbor-" + tc.name, FilePath: tc.path, Container: "mkv", CodecVideo: "h264", VideoTracks: []models.VideoTrack{{Codec: "h264"}}, Duration: 3}
+	session := &playback.Session{ID: uuid.NewString(), UserID: 3, ProfileID: "p", MediaFileID: file.ID, PlayMethod: playback.PlayTranscode, StartedAt: time.Now().UTC()}
+	sources := &fakeStrmSources{rows: map[string]remotesource.Source{}}
+	sources.put(file.FilePath, remoteURL, tc.sourceRevision)
+	var apiAllow, workerAllow atomic.Bool
+	apiAllow.Store(true)
+	workerAllow.Store(true)
+	var apiDials, workerDials atomic.Int32
+	api := strmHost(client, file, sources, &apiAllow, tc.storage(file), session, &apiDials)
+	worker := strmHost(client, file, sources, &workerAllow, tc.storage(file), session, &workerDials)
+	transport := uuid.NewString()
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		_ = api.WorkerGrants.RevokeTransport(ctx, transport)
+		_ = client.Del(ctx, "bloem:native-video:"+session.ID+":"+strconv.Itoa(file.ID), "bloem:native-video-session:"+session.ID, playback.StreamDenyKey(session.ID)).Err()
+	})
+	if err := api.Bind(t.Context(), session, file); err != nil {
+		t.Fatalf("API Bind = %v", err)
+	}
+	start := transcodenode.TranscodeStartRequest{SessionID: transport, InputPath: file.FilePath, SourceVideoCodec: "h264", TargetCodecVideo: "h264", TargetCodecAudio: "copy", TargetResolution: "720p",
+		TargetBitrateKbps: 500, SegmentDuration: 1, AudioTrackIndex: -1, SubtitleTrackIndex: -1, TotalDuration: 3, HWAccel: "none", RequireReady: true}
+	if err := api.WorkerGrants.Prepare(t.Context(), 7, api, session, start); err != nil {
+		t.Fatalf("API Prepare = %v", err)
+	}
+	body, _ := json.Marshal(start)
+	records := strmControlPlane(t, client, session.ID, transport, file.ID)
+	for _, leak := range []string{"very-secret", "harbor.mkv", server.Listener.Addr().String()} {
+		if strings.Contains(string(body), leak) || strings.Contains(records, leak) {
+			t.Fatalf("the start or a control-plane record names the URL (%q)", leak)
+		}
+	}
+
+	// A worker whose own guard refuses the address gets no grant: it
+	// checks the URL itself rather than trusting the API's check.
+	workerAllow.Store(false)
+	refused := strmWorkerStart(t, strmWorker(t, ffmpeg, 7, worker), start)
+	if refused.Code != http.StatusForbidden {
+		t.Fatalf("worker start with its guard refusing = %d %s", refused.Code, refused.Body.String())
+	}
+	workerAllow.Store(true)
+
+	before, beforeDials := remoteReads.Load(), workerDials.Load()
+	handler := strmWorker(t, ffmpeg, 7, worker)
+	response := strmWorkerStart(t, handler, start)
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("worker start = %d %s", response.Code, response.Body.String())
+	}
+	if remoteReads.Load() == before || workerDials.Load() == beforeDials {
+		t.Fatal("the worker did not read the remote media through its own guard")
+	}
+	// The API accepts the attested recipe; the worker's playlist reads
+	// then carry its stream token, which names the catalog path only.
+	card := playback.NewRecipeCard(session.UserID, session.ProfileID, file.ID, "", playback.TranscodeOpts{SessionID: session.ID, TranscodeTransportID: transport, InputPath: file.FilePath,
+		SourceVideoCodec: "h264", TargetCodecVideo: "h264", TargetCodecAudio: "copy", TargetResolution: "720p", TargetBitrateKbps: 500, SegmentDuration: 1, AudioTrackIndex: -1, SubtitleTrackIndex: -1, TotalDuration: 3, HWAccel: "none"})
+	card.RoutingExecutionNodeID = 7
+	if err := api.WorkerGrants.Accept(t.Context(), 7, transport, card); err != nil {
+		t.Fatalf("API Accept = %v", err)
+	}
+	token, err := streamtoken.Sign(card.ToClaims(), "synthetic-worker-secret", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if claims, _ := json.Marshal(card.ToClaims()); strings.Contains(string(claims), "very-secret") || strings.Contains(string(claims), "harbor.mkv") {
+		t.Fatal("the stream token names the URL")
+	}
+	// The start waited for the first playlist (RequireReady), so it is
+	// there now; the read carries the accepted recipe's token.
+	request := httptest.NewRequest(http.MethodGet, "/transcode/"+transport+"/master.m3u8", nil)
+	request.Header.Set("Authorization", "Bearer synthetic-worker-secret")
+	request.Header.Set("X-Silo-Stream-Token", token)
+	playlist := httptest.NewRecorder()
+	handler.ServeHTTP(playlist, request)
+	if playlist.Code != http.StatusOK || !bytes.Contains(playlist.Body.Bytes(), []byte("#EXTM3U")) {
+		t.Fatalf("worker playlist = %d %s", playlist.Code, playlist.Body.String())
+	}
+
+	// A different worker never resolves this grant.
+	if other := strmWorkerStart(t, strmWorker(t, ffmpeg, 8, worker), start); other.Code != http.StatusForbidden {
+		t.Fatalf("another worker's start = %d", other.Code)
 	}
 }

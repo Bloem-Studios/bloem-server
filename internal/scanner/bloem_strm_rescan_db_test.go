@@ -72,7 +72,7 @@ func TestLocalStrmRescanSkipsUnchangedRemoteDB(t *testing.T) {
 	t.Cleanup(func() { strmRuntime = previous })
 
 	root := t.TempDir()
-	strmPath := filepath.Join(root, "Quiet Harbour (2018)", "Quiet Harbour (2018).strm")
+	strmPath := filepath.Join(root, "Quiet Harbor (2018)", "Quiet Harbor (2018).strm")
 	remoteURL := server.URL + "/films/quiet.mp4?token=one"
 	writeTestFile(t, strmPath, remoteURL+"\n")
 	var folderID int
