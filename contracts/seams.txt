@@ -191,6 +191,7 @@ internal/playback/gpudetect_test.go
 internal/playback/protocol_v3.go
 internal/playback/remux.go  # three hook lines (S3): progressive remux of a context-scoped input reads its host's pinned source (bloem_context_media.go); Jellyfin remux of native-storage files, approved 2026-11-12, generic enough to offer Silo with S2/S4
 internal/playback/session.go
+internal/playback/subtitles.go  # three hook lines (S5): an embedded text subtitle of a context-scoped input is extracted from its host's pinned source (bloem_context_media.go); Jellyfin embedded subtitles of native-storage files, approved 2026-11-12, generic enough to offer Silo with S2-S4
 internal/playback/session_test.go
 internal/playback/testdata/protocol_v3/decision_response.json
 internal/playback/testdata/protocol_v3/hls-subtitle-rendition-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features

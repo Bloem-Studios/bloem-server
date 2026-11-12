@@ -113,7 +113,7 @@ uses any more.
 - **Audiobooks** play directly, track by track; see
   [how stored audiobooks play](bloem-native-audio-playback.md).
 
-Jellyfin apps play stored movies too, without embedded subtitles yet. Not
+Jellyfin apps play stored movies too, with embedded text subtitles. Not
 supported yet: downloads, converting for offline use and series. Every read checks again that the viewer may see the title and that the
 source is still switched on.
 

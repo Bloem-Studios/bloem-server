@@ -153,6 +153,27 @@ func resolveContextCopySeekAnchor(ctx context.Context, ffmpegPath, inputPath str
 	return true, origin, segment, err
 }
 
+// extractContextSubtitle is ExtractSubtitleWithFormat's hook for
+// context-scoped inputs: the track is extracted from the host's pinned source.
+// Such an input is never a file here, so the subtitle cache, keyed by a
+// file's size and modification time, keeps nothing for it and cannot serve
+// one revision's text for another.
+func extractContextSubtitle(ctx context.Context, inputPath string, trackIndex int, format, ffmpegPath string) (bool, []byte, error) {
+	host := contextMediaHost(ctx, inputPath)
+	if host == nil {
+		return false, nil, nil
+	}
+	binding, err := host.Input(ctx, inputPath)
+	if err != nil {
+		return true, nil, err
+	}
+	data, err := ExtractSourceSubtitle(ctx, TranscodeOpts{
+		InputPath: binding.InputPath, InputSource: binding.InputSource, InputFormat: binding.InputFormat,
+		SessionID: binding.SessionID, FFmpegPath: ffmpegPath,
+	}, trackIndex, format, 0, 0)
+	return true, data, err
+}
+
 // contextTranscodeInput gives StartTranscode the host's pinned source for a
 // context-scoped input that no explicit binding covers.
 func contextTranscodeInput(ctx context.Context, opts TranscodeOpts) (TranscodeOpts, error) {

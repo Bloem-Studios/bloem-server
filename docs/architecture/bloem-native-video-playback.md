@@ -68,7 +68,7 @@ changes, but cannot prove the bytes stayed the same between checks.
 ## What does not work yet
 
 - Downloads and converting for offline use, in Bloem's apps and Jellyfin apps.
-- Embedded subtitles in Jellyfin apps.
+- Attached fonts and bitmap subtitles in Jellyfin apps.
 - Series from storage, and `.strm` or other remote-address shortcuts.
 - Switching to another file mid-play needs a fresh start.
 - Without Redis, a playback session cannot be picked up by another server.
@@ -263,8 +263,13 @@ changes, through playback's context-scoped media host
 - Direct play (`ServeDirectPlay`) is served by `NativeVideoCompat.ServeDirect`
   (`internal/api/bloem_native_video_compat.go`) through native direct delivery,
   with ranges, HEAD and a revision ETag, and no redirect. Progressive remux
-  (`ServeRemuxWithOptions`), local HLS (`StartTranscode`) and copy seek
-  anchors (`ResolveCopySeekAnchor`) read the host's pinned source.
+  (`ServeRemuxWithOptions`), local HLS (`StartTranscode`), copy seek anchors
+  (`ResolveCopySeekAnchor`) and embedded text subtitles
+  (`ExtractSubtitleWithFormat`) read the host's pinned source. HDR tone-map
+  validation of a local transcode goes through the source's own `Validate`,
+  as for native API playback. The subtitle cache keys entries by a file's size
+  and modification time; a native input is never a file, so nothing is cached
+  for it and a new revision cannot get an older revision's text.
 
 The compatibility session is the credential. Each open and each authority
 check rechecks the stored compatibility session and its login session, the
@@ -288,8 +293,8 @@ the Jellyfin server stores. `bloemCompatNativeRecipes`
 storing it, filling in the grant's worker when the route is not yet recorded.
 A recipe for another worker (a failover) is refused, so the move fails closed.
 
-Not covered yet: embedded subtitle extraction and attached fonts for native
-files, Jellyfin's proxy-node direct play (a proxy refuses native sources, so
+Not covered yet: attached fonts and bitmap (PGS) subtitle extraction for
+native files, Jellyfin's proxy-node direct play (a proxy refuses native sources, so
 the redirect fails; an API-egress route works), and native downloads.
 
 ### Supported surfaces and evidence limits
