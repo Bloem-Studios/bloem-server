@@ -215,3 +215,7 @@
 ./internal/scanner TestLocalStrmScanRecordsRemoteSourceDB
 ./internal/libraryingest TestNativeStrmStorageScanPublishesRemoteMovieDB
 ./internal/libraryingest TestNativeStrmStorageUnreadableURLSkipsOnlyThatEntryDB
+./internal/remotesource TestRemoteSourceValidatorsDB
+./internal/scanner TestLocalStrmRescanSkipsUnchangedRemoteDB
+./internal/libraryingest TestNativeStrmStorageRescanSkipsUnchangedRemoteDB
+./internal/libraryingest TestStrmReuseScalesToThousandsOfEntriesDB

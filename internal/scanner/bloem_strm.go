@@ -3,6 +3,7 @@ package scanner
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -49,11 +50,46 @@ func strmProbeConfig() NativeProbeConfig {
 // container Bloem has no reviewed demuxer for.
 var ErrStrmNotVideo = errors.New("remote source: not a video Bloem can read")
 
-// RemoteProbe is the probe of one `.strm` URL.
+// RemoteProbe is the probe of one `.strm` URL. Reused is true when it is
+// the stored probe of an unchanged remote, not a new one.
 type RemoteProbe struct {
-	URL   string
-	Probe *ProbeData
-	Size  int64
+	URL        string
+	Probe      *ProbeData
+	Size       int64
+	Validators remotesource.Validators
+	Reused     bool
+}
+
+// Source is the remote-source row that records this probe.
+func (p RemoteProbe) Source(filePath, sourceRevision string) (remotesource.Source, error) {
+	probe, err := json.Marshal(p.Probe)
+	if err != nil {
+		return remotesource.Source{}, err
+	}
+	return remotesource.Source{FilePath: filePath, URL: p.URL, SourceRevision: sourceRevision, RemoteSize: p.Size, Validators: p.Validators, Probe: probe}, nil
+}
+
+// ReuseRemoteProbe returns the stored probe of a `.strm` URL when a rescan
+// finds the same URL (and storage object revision) and the remote answers a
+// one-byte request with the same size and ETag, or Last-Modified when it
+// sent no ETag. ok is false whenever that cannot be shown; the caller then
+// probes as usual. The check goes through the guard like any other request.
+func ReuseRemoteProbe(ctx context.Context, guard *remotesource.Guard, stored remotesource.Source, found bool, rawURL, sourceRevision string) (RemoteProbe, bool) {
+	if guard == nil || !found || len(stored.Probe) == 0 || stored.URL != rawURL || stored.Revision != remotesource.Revision(rawURL) || stored.SourceRevision != sourceRevision {
+		return RemoteProbe{}, false
+	}
+	if err := guard.Check(ctx, rawURL); err != nil {
+		return RemoteProbe{}, false
+	}
+	fresh, err := remotesource.Stat(ctx, guard.Client(), rawURL)
+	if err != nil || !stored.Validators.Unchanged(fresh) {
+		return RemoteProbe{}, false
+	}
+	var probe ProbeData
+	if err := json.Unmarshal(stored.Probe, &probe); err != nil || len(probe.VideoTracks) == 0 || probe.CodecVideo == "" {
+		return RemoteProbe{}, false
+	}
+	return RemoteProbe{URL: rawURL, Probe: &probe, Size: fresh.Size, Validators: fresh, Reused: true}, true
 }
 
 // ProbeRemote probes the media at rawURL with the scanner's trusted ffprobe.
@@ -95,7 +131,7 @@ func (s *Scanner) ProbeRemote(ctx context.Context, guard *remotesource.Guard, ra
 	if len(probe.VideoTracks) == 0 || probe.CodecVideo == "" {
 		return RemoteProbe{}, ErrStrmNotVideo
 	}
-	return RemoteProbe{URL: rawURL, Probe: probe, Size: file.Info().Size}, nil
+	return RemoteProbe{URL: rawURL, Probe: probe, Size: file.Info().Size, Validators: file.Validators()}, nil
 }
 
 // sniffRemoteDemuxer picks the reviewed demuxer from the first bytes, then
@@ -173,7 +209,14 @@ func (s *Scanner) probeBloemStrm(ctx context.Context, filePath string) (*ProbeDa
 		rejected := errors.Is(err, remotesource.ErrInvalidStrm) || errors.Is(err, ErrStrmNotVideo) || errors.Is(err, ErrNativeProbeInvalid)
 		return nil, probeSourceLocal, rejected
 	}
-	if err := rt.Store.Put(ctx, remotesource.Source{FilePath: filePath, URL: result.URL, RemoteSize: result.Size}); err != nil {
+	if result.Reused {
+		return result.Probe, probeSourceLocal, false
+	}
+	src, err := result.Source(filePath, "")
+	if err == nil {
+		err = rt.Store.Put(ctx, src)
+	}
+	if err != nil {
 		slog.WarnContext(ctx, "scanner: could not record a .strm source", "component", "scanner", "path", filePath, "error", err)
 		return nil, probeSourceLocal, false
 	}
@@ -188,6 +231,13 @@ func (s *Scanner) readAndProbeStrm(ctx context.Context, rt *remotesource.Runtime
 	rawURL, err := remotesource.ParseStrm(content)
 	if err != nil {
 		return RemoteProbe{}, err
+	}
+	stored, found, err := rt.Store.Get(ctx, filePath)
+	if err != nil {
+		return RemoteProbe{}, err
+	}
+	if reused, ok := ReuseRemoteProbe(ctx, rt.Guard, stored, found, rawURL, ""); ok {
+		return reused, nil
 	}
 	return s.ProbeRemote(ctx, rt.Guard, rawURL, nil)
 }

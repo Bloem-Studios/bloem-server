@@ -28,11 +28,18 @@ type Source struct {
 	// storage source, empty for a local file.
 	SourceRevision string
 	RemoteSize     int64
+	// Validators and Probe are what the last probe saw and found: a rescan
+	// that sees the same URL with unchanged validators reuses Probe (JSON of
+	// the scanner's probe) instead of reading the media. Probe is nil when
+	// no probe was recorded. Get fills Validators.Size from RemoteSize.
+	Validators Validators
+	Probe      []byte
 }
 
 // DB is the part of pgx the store uses.
 type DB interface {
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	Query(context.Context, string, ...any) (pgx.Rows, error)
 	QueryRow(context.Context, string, ...any) pgx.Row
 }
 
@@ -47,9 +54,7 @@ func (s *Store) Get(ctx context.Context, filePath string) (Source, bool, error) 
 	if s == nil || s.db == nil {
 		return Source{}, false, nil
 	}
-	out := Source{FilePath: filePath}
-	err := s.db.QueryRow(ctx, `SELECT url, revision, source_revision, remote_size FROM bloem_remote_sources WHERE file_path=$1`, filePath).
-		Scan(&out.URL, &out.Revision, &out.SourceRevision, &out.RemoteSize)
+	out, err := scanSource(s.db.QueryRow(ctx, `SELECT `+sourceColumns+` FROM bloem_remote_sources WHERE file_path=$1`, filePath))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Source{}, false, nil
 	}
@@ -59,17 +64,66 @@ func (s *Store) Get(ctx context.Context, filePath string) (Source, bool, error) 
 	return out, true, nil
 }
 
+const sourceColumns = `file_path, url, revision, source_revision, remote_size, etag, last_modified, probe`
+
+func scanSource(row pgx.Row) (Source, error) {
+	var (
+		out      Source
+		modified *time.Time
+	)
+	if err := row.Scan(&out.FilePath, &out.URL, &out.Revision, &out.SourceRevision, &out.RemoteSize, &out.Validators.ETag, &modified, &out.Probe); err != nil {
+		return Source{}, err
+	}
+	out.Validators.Size = out.RemoteSize
+	if modified != nil {
+		out.Validators.LastModified = modified.UTC()
+	}
+	return out, nil
+}
+
+// GetMany returns the sources of a page of catalog paths, keyed by path, in
+// one query. Paths without a source are absent.
+func (s *Store) GetMany(ctx context.Context, filePaths []string) (map[string]Source, error) {
+	out := make(map[string]Source, len(filePaths))
+	if s == nil || s.db == nil || len(filePaths) == 0 {
+		return out, nil
+	}
+	rows, err := s.db.Query(ctx, `SELECT `+sourceColumns+` FROM bloem_remote_sources WHERE file_path = ANY($1)`, filePaths)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		src, err := scanSource(rows)
+		if err != nil {
+			return nil, err
+		}
+		out[src.FilePath] = src
+	}
+	return out, rows.Err()
+}
+
 // Put records the source for a path, replacing an older URL.
 func (s *Store) Put(ctx context.Context, src Source) error {
 	if s == nil || s.db == nil || src.FilePath == "" || ValidateURL(src.URL) != nil || src.RemoteSize < 0 {
 		return ErrInvalidStrm
 	}
 	src.Revision = Revision(src.URL)
-	_, err := s.db.Exec(ctx, `INSERT INTO bloem_remote_sources(file_path,url,revision,source_revision,remote_size,updated_at)
-		VALUES($1,$2,$3,$4,$5,NOW())
+	var modified *time.Time
+	if !src.Validators.LastModified.IsZero() {
+		at := src.Validators.LastModified.UTC()
+		modified = &at
+	}
+	var probe any
+	if len(src.Probe) > 0 {
+		probe = string(src.Probe)
+	}
+	_, err := s.db.Exec(ctx, `INSERT INTO bloem_remote_sources(file_path,url,revision,source_revision,remote_size,etag,last_modified,probe,updated_at)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,NOW())
 		ON CONFLICT(file_path) DO UPDATE SET url=EXCLUDED.url,revision=EXCLUDED.revision,
-		  source_revision=EXCLUDED.source_revision,remote_size=EXCLUDED.remote_size,updated_at=NOW()`,
-		src.FilePath, src.URL, src.Revision, src.SourceRevision, src.RemoteSize)
+		  source_revision=EXCLUDED.source_revision,remote_size=EXCLUDED.remote_size,
+		  etag=EXCLUDED.etag,last_modified=EXCLUDED.last_modified,probe=EXCLUDED.probe,updated_at=NOW()`,
+		src.FilePath, src.URL, src.Revision, src.SourceRevision, src.RemoteSize, src.Validators.ETag, modified, probe)
 	return err
 }
 

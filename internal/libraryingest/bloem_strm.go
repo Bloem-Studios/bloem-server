@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"google.golang.org/protobuf/proto"
 
@@ -57,8 +58,73 @@ func (c *StorageScanner) prepareStrmMovie(ctx context.Context, location storages
 		}
 		return scanner.StorageMovie{}, false, nil
 	}
-	if err := c.remote.Store.Put(ctx, remotesource.Source{FilePath: key, URL: result.URL, SourceRevision: entry.GetRevision(), RemoteSize: result.Size}); err != nil {
+	src, err := result.Source(key, entry.GetRevision())
+	if err != nil {
+		return scanner.StorageMovie{}, false, err
+	}
+	if err := c.remote.Store.Put(ctx, src); err != nil {
 		return scanner.StorageMovie{}, false, err
 	}
 	return scanner.StorageMovie{Entry: proto.CloneOf(entry), Probe: result.Probe}, true, nil
+}
+
+// strmReuseWorkers bounds the one-byte validator requests a page sends at
+// once. Most `.strm` files of a library point at one host.
+const strmReuseWorkers = 8
+
+// reuseStrmMovies finds the page's `.strm` objects that need no new probe:
+// the object revision is the one the stored URL was read from, and the remote
+// answers with the same size and ETag (or Last-Modified). Those publish with
+// the stored probe and are not opened; the rest are returned for probing. The
+// stored rows are read in one query and the validator requests run
+// concurrently, so a rescan of thousands of unchanged entries stays quick.
+func (c *StorageScanner) reuseStrmMovies(ctx context.Context, location storagesource.Location, page *storagev1.ListResponse, strms []int) ([]scanner.StorageMovie, []int, error) {
+	if len(strms) == 0 {
+		return nil, strms, nil
+	}
+	keys := make([]string, len(strms))
+	for j, i := range strms {
+		key, err := storagesource.CatalogLocation(location.ID, page.GetEntries()[i].GetId())
+		if err != nil {
+			return nil, nil, err
+		}
+		keys[j] = key
+	}
+	stored, err := c.remote.Store.GetMany(ctx, keys)
+	if err != nil {
+		return nil, nil, err
+	}
+	results := make([]scanner.RemoteProbe, len(strms))
+	ok := make([]bool, len(strms))
+	work := make(chan int)
+	var wg sync.WaitGroup
+	for range min(strmReuseWorkers, len(strms)) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := range work {
+				entry := page.GetEntries()[strms[j]]
+				src, found := stored[keys[j]]
+				results[j], ok[j] = scanner.ReuseRemoteProbe(ctx, c.remote.Guard, src, found, src.URL, entry.GetRevision())
+			}
+		}()
+	}
+	for j := range strms {
+		work <- j
+	}
+	close(work)
+	wg.Wait()
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
+	}
+	var movies []scanner.StorageMovie
+	var probe []int
+	for j, i := range strms {
+		if !ok[j] {
+			probe = append(probe, i)
+			continue
+		}
+		movies = append(movies, scanner.StorageMovie{Entry: proto.CloneOf(page.GetEntries()[i]), Probe: results[j].Probe})
+	}
+	return movies, probe, nil
 }

@@ -77,14 +77,20 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesour
 		}
 		candidates = append(candidates, i)
 	}
+	movies := make([]scanner.StorageMovie, 0, len(candidates)+len(strms))
+	// Unchanged `.strm` objects keep their stored probe without being opened.
+	reused, strms, err := c.reuseStrmMovies(ctx, location, page, strms)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	movies = append(movies, reused...)
 	if len(candidates) == 0 && len(strms) == 0 {
-		return nil, skipped, excluded, nil
+		return movies, skipped, excluded, nil
 	}
 	sealed, err := c.movieReader.AdmitScanPage(ctx, location, source, lease, checkpoint, page)
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	movies := make([]scanner.StorageMovie, 0, len(candidates))
 	for _, i := range candidates {
 		entry := page.GetEntries()[i]
 		file, err := c.movieReader.OpenScanEntry(ctx, sealed, i)
