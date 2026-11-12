@@ -18183,6 +18183,42 @@
       "value": "تمت ترقية مصدر التخزين"
     }
   ],
+  "bloem.admin.strm.loadFailed": [
+    {
+      "type": 0,
+      "value": "تعذّر تحميل إعدادات ملفات ‎.strm."
+    }
+  ],
+  "bloem.admin.strm.loading": [
+    {
+      "type": 0,
+      "value": "جارٍ تحميل الإعدادات"
+    }
+  ],
+  "bloem.admin.strm.privateAddresses": [
+    {
+      "type": 0,
+      "value": "السماح بالعناوين الخاصة"
+    }
+  ],
+  "bloem.admin.strm.privateAddressesDescription": [
+    {
+      "type": 0,
+      "value": "يسمح لعناوين الويب في ملفات ‎.strm بالوصول إلى شبكة هذا الخادم نفسها: الخادم نفسه، والعناوين الخاصة وعناوين الارتباط المحلي، وخدمات البيانات الوصفية السحابية. معطّل افتراضيًا، مما يحمي هذه الشبكة من أي شخص يمكنه كتابة ملف ‎.strm. لا تُستخدم إلا العناوين التي تبدأ بـ http://‎ أو https://‎. يسري خلال ثوانٍ؛ شغّل فحصًا للمكتبة لإضافة الملفات التي رُفضت."
+    }
+  ],
+  "bloem.admin.strm.retry": [
+    {
+      "type": 0,
+      "value": "إعادة المحاولة"
+    }
+  ],
+  "bloem.admin.strm.title": [
+    {
+      "type": 0,
+      "value": "ملفات ‎.strm"
+    }
+  ],
   "bloem.admin.users.access.liveTv.description": [
     {
       "type": 0,

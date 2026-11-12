@@ -363,6 +363,36 @@
       "value": "Plateforme"
     }
   ],
+  "bloem.adminNav.strm.description": [
+    {
+      "type": 0,
+      "value": "Indique si les fichiers .strm peuvent pointer vers des adresses du réseau du serveur."
+    }
+  ],
+  "bloem.adminNav.strm.label": [
+    {
+      "type": 0,
+      "value": "Fichiers .strm"
+    }
+  ],
+  "bloem.adminNav.strmSettings.description": [
+    {
+      "type": 0,
+      "value": "Indique si les fichiers .strm peuvent pointer vers des adresses du réseau du serveur."
+    }
+  ],
+  "bloem.adminNav.strmSettings.label": [
+    {
+      "type": 0,
+      "value": "Fichiers .strm"
+    }
+  ],
+  "bloem.adminNav.strmSettings.privateAddresses": [
+    {
+      "type": 0,
+      "value": "Autoriser les adresses privées"
+    }
+  ],
   "bloem.adminShell.chooseContext.body": [
     {
       "type": 0,

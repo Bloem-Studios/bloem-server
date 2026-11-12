@@ -23,6 +23,7 @@ import RequestsSettings from "./RequestsSettings";
 import ProvidersSettings from "./ProvidersSettings";
 import AISettings from "./AISettings";
 import AnnouncementsAdminSettings from "./AnnouncementsAdminSettings";
+import BloemStrmSettings from "./BloemStrmSettings";
 import NotificationsAdminSettings from "./NotificationsAdminSettings";
 import CompatibilityProxiesSettings from "./CompatibilityProxiesSettings";
 import NetworkAccessSettings from "./NetworkAccessSettings";
@@ -47,6 +48,7 @@ const SETTINGS_COMPONENTS: Record<string, ComponentType> = {
   ai: AISettings,
   notifications: NotificationsAdminSettings,
   announcements: AnnouncementsAdminSettings,
+  strm: BloemStrmSettings,
   compatibility: CompatibilityProxiesSettings,
   "network-access": NetworkAccessSettings,
   storage: StorageSettings,
