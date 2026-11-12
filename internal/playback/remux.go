@@ -683,6 +683,9 @@ func ServeRemuxWithDVMode(w http.ResponseWriter, r *http.Request, filePath, outp
 // ServeRemuxWithOptions is the full remux transport, taking its optional
 // serving concerns as a struct.
 func ServeRemuxWithOptions(w http.ResponseWriter, r *http.Request, filePath, outputFormat string, seekSeconds float64, transcodeAudio bool, audioTrackIndex int, dvProfile int, opts RemuxServeOptions) error {
+	if served, err := serveContextRemux(w, r, ContextRemux{InputPath: filePath, OutputFormat: outputFormat, SeekSeconds: seekSeconds, TranscodeAudio: transcodeAudio, AudioTrackIndex: audioTrackIndex, DVProfile: dvProfile, Options: opts}); served {
+		return err
+	}
 	mode, ffmpegPath := opts.DVMode, opts.FFmpegPath
 	// Remux output streams for the length of the title; roll the write
 	// deadline with progress instead of the server's absolute WriteTimeout.

@@ -15,6 +15,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/downloads"
 	"github.com/Silo-Server/silo-server/internal/jellycompat"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
@@ -80,8 +81,9 @@ func bloemProfileSessionRevoker(pool *pgxpool.Pool, announce func(context.Contex
 }
 
 // bloemGuardNativeStorageFiles hides native storage identities from the
-// Jellyfin handlers that need an OS filename. Native attachment delivery
-// through the compatibility server is not implemented.
+// Jellyfin handlers that need an OS filename. A stream request that carries
+// the native media host (bloemCompatNativeMedia) gets the file: its path
+// reaches bytes only through that host, which authorizes them.
 func bloemGuardNativeStorageFiles(files jellycompat.FilePathResolver) jellycompat.FilePathResolver {
 	if files == nil {
 		return nil
@@ -93,7 +95,7 @@ type bloemNativeStorageFiles struct{ jellycompat.FilePathResolver }
 
 func (r bloemNativeStorageFiles) GetByID(ctx context.Context, id int) (*models.MediaFile, error) {
 	file, err := r.FilePathResolver.GetByID(ctx, id)
-	if err == nil && file != nil && storagesource.IsNativeLocation(file.FilePath) {
+	if err == nil && file != nil && storagesource.IsNativeLocation(file.FilePath) && !playback.HasContextMediaHost(ctx) {
 		return nil, scanner.ErrFileNotFound
 	}
 	return file, err

@@ -236,3 +236,6 @@
 ./internal/scanner TestLocalStrmRescanSkipsUnchangedRemoteDB
 ./internal/libraryingest TestNativeStrmStorageRescanSkipsUnchangedRemoteDB
 ./internal/libraryingest TestStrmReuseScalesToThousandsOfEntriesDB
+
+# Jellyfin native playback: a delegated authority rechecks its compat session by token digest.
+./internal/api TestNativeVideoCompatSessionLiveByDigestDB

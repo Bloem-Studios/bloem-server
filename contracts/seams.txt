@@ -159,6 +159,8 @@ internal/invitations/repository.go
 internal/invitations/repository_atomic_test.go  # fully migrated isolated databases preserve tenant FKs/triggers and strengthen rollback checks
 internal/invitations/service.go
 internal/invitations/service_atomic_test.go  # reuse real tenant membership provisioning in the atomic acceptance fixture
+internal/jellycompat/handlers_playback.go  # three hook lines (S6): the remote transcode start seals the worker grant for a native-storage input before it is sent (playback.SealContextWorkerStart); Jellyfin worker HLS of native-storage files, approved 2026-11-12, chosen over wrapping NodeClient's transport, which Silo's client test pins to *http.Transport
+internal/jellycompat/streamtelemetry.go  # two lines (S1): attachCompatStream notes the compat session, playback session and file for the request's context media host (playback.NoteContextStream); the one place every Jellyfin stream handler names them, so native-storage files play for Jellyfin clients, approved 2026-11-12
 internal/libraryingest/executor.go
 internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
 internal/mail/layout_test.go  # default alt text and logo size derive from branding.DefaultServerName and the embedded default wordmark; Bloem pins its own in bloem_brand_test.go
@@ -182,10 +184,14 @@ internal/notifications/webhook_payload_generic.go
 internal/notifications/webpush_sender.go
 internal/opslog/cleanup.go
 internal/playback/contract/contract_test.go
+internal/playback/copy_seek_anchor.go  # three hook lines (S4): a copy seek anchor for a context-scoped input comes from its host's pinned source (bloem_context_media.go); Jellyfin HLS copy seeks of native-storage files, approved 2026-11-12, generic enough to offer Silo with S2/S3
+internal/playback/directplay.go  # three hook lines (S2): direct play hands a context-scoped input to its host (bloem_context_media.go); Jellyfin direct play of native-storage files, approved 2026-11-12, generic enough to offer Silo with S3/S4
 internal/playback/gpudetect.go
 internal/playback/gpudetect_test.go
 internal/playback/protocol_v3.go
+internal/playback/remux.go  # three hook lines (S3): progressive remux of a context-scoped input reads its host's pinned source (bloem_context_media.go); Jellyfin remux of native-storage files, approved 2026-11-12, generic enough to offer Silo with S2/S4
 internal/playback/session.go
+internal/playback/subtitles.go  # three hook lines (S5): an embedded text subtitle of a context-scoped input is extracted from its host's pinned source (bloem_context_media.go); Jellyfin embedded subtitles of native-storage files, approved 2026-11-12, generic enough to offer Silo with S2-S4
 internal/playback/session_test.go
 internal/playback/testdata/protocol_v3/decision_response.json
 internal/playback/testdata/protocol_v3/hls-subtitle-rendition-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features

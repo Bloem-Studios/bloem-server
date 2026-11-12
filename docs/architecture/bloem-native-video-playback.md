@@ -67,7 +67,8 @@ changes, but cannot prove the bytes stayed the same between checks.
 
 ## What does not work yet
 
-- Jellyfin apps, downloads and converting for offline use.
+- Downloads and converting for offline use, in Bloem's apps and Jellyfin apps.
+- Attached fonts and bitmap subtitles in Jellyfin apps.
 - Series from storage.
 
 `.strm` files, whose video lives at a web address, play through this same pipeline;
@@ -233,6 +234,14 @@ preserves the previous route.
 
 ### Worker HLS and recovery
 
+A worker can run native HLS only when it composes native storage from its own
+approvals. Such a worker answers the authenticated readiness probe
+`GET /bloem/native-execution` with its worker ID. Before a native start, the
+API asks the selected worker (answers are cached for a minute, refusals for
+15 seconds) and skips a worker that does not answer for its own ID, so the
+route loop moves on to another worker or, when the policy allows, the API
+server.
+
 Before a remote HLS start, the API seals a Redis grant for the exact worker,
 transport, playback session, source descriptor and start request. Worker
 attestation precedes acceptance of the immutable recipe. Header-authenticated
@@ -265,18 +274,69 @@ session, then revoke worker authority where present. A failed write returns a
 failed stop and preserves the retryable session. Without Redis, bindings stay
 in bounded local memory and cross-process recovery is unavailable.
 
+### Jellyfin clients
+
+Jellyfin clients play native-storage movies through the same delivery. Silo's
+Jellyfin server keeps its own flow: sessions, stream limits, route selection,
+progress reports and teardown. Only the step that turns a path into bytes
+changes, through playback's context-scoped media host
+(`internal/playback/bloem_context_media.go`):
+
+- `bloemCompatNativeMedia` (`cmd/silo/bloem_compat_native.go`) puts the host on
+  the Jellyfin stream routes only: video streams, HLS playlists and segments,
+  subtitles and attachments. `bloemGuardNativeStorageFiles` returns a native
+  file only inside such a request; every other caller still gets not found.
+- `attachCompatStream` notes the compatibility session, the playback session
+  and the file (`playback.NoteContextStream`).
+- Direct play (`ServeDirectPlay`) is served by `NativeVideoCompat.ServeDirect`
+  (`internal/api/bloem_native_video_compat.go`) through native direct delivery,
+  with ranges, HEAD and a revision ETag, and no redirect. Progressive remux
+  (`ServeRemuxWithOptions`), local HLS (`StartTranscode`), copy seek anchors
+  (`ResolveCopySeekAnchor`) and embedded text subtitles
+  (`ExtractSubtitleWithFormat`) read the host's pinned source. HDR tone-map
+  validation of a local transcode goes through the source's own `Validate`,
+  as for native API playback. The subtitle cache keys entries by a file's size
+  and modification time; a native input is never a file, so nothing is cached
+  for it and a new revision cannot get an older revision's text.
+
+The compatibility session is the credential. Each open and each authority
+check rechecks the stored compatibility session and its login session, the
+account, the profile with its PIN and credential revisions, the membership,
+the viewer's playback and library scope, the source, and the playback session
+it serves. The binding seals only the SHA-256 of the session token
+(`CompatSessionDigest`), never the token; delegated reads look the row up by
+that digest. The PIN was checked at sign-in, so it is not asked again.
+Sessions an `sa_` admin key synthesizes have no login session and are refused.
+A refusal answers 403, never 401, because a Jellyfin client signs out on 401.
+When a Jellyfin playback session finishes or expires, the deny tombstone is
+written and the binding and any worker grant are revoked.
+
+Worker HLS: before Silo's Jellyfin server sends a remote start for a native
+input, `playback.SealContextWorkerStart` has `NativeVideoCompat.SealWorkerStart`
+probe the worker's readiness and seal the grant for that worker, transport (the
+playback session) and exact start body; a retried start replaces the earlier
+grant. The worker rebuilds the transcode and serves segments from the recipe
+the Jellyfin server stores. `bloemCompatNativeRecipes`
+(`cmd/silo/bloem_compat_worker.go`) accepts that recipe into the grant before
+storing it, filling in the grant's worker when the route is not yet recorded.
+A recipe for another worker (a failover) is refused, so the move fails closed.
+
+Not covered yet: attached fonts and bitmap (PGS) subtitle extraction for
+native files, Jellyfin's proxy-node direct play (a proxy refuses native sources, so
+the redirect fails; an API-egress route works), and native downloads.
+
 ### Supported surfaces and evidence limits
 
 The supported contract is native API video playback for admitted catalog
 files. Initial movie scanning accepts MOV/MP4 and Matroska/WebM containers.
-Jellyfin native-file delivery, offline/download conversion and native series
-ingestion remain unsupported. `.strm` items reuse this pipeline with a remote reader
+Offline/download conversion and native series ingestion remain unsupported.
+`.strm` items reuse this pipeline with a remote reader
 ([`.strm` files](bloem-strm.md#playback)).
 Native audiobooks have their own direct-play path; see
-[native audiobook presentations](bloem-native-audio-playback.md). Silo's Jellyfin
-server runs again since 2026-10-18, and `bloemGuardNativeStorageFiles` in
-`cmd/silo/bloem_compat.go` hides native-storage files from it. The capability
-document keeps `native_video_downloads` and `native_video_jellyfin` false.
+[native audiobook presentations](bloem-native-audio-playback.md). Jellyfin
+clients are covered above. The capability document keeps
+`native_video_downloads` and `native_video_jellyfin` false until real Jellyfin
+clients have been checked.
 
 Sidecars belonging to a different original file after an alternate-file start
 need their own host-owned binding; an effective-file binding grants no access to

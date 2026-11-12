@@ -103,6 +103,9 @@ func ExtractSubtitleWithFormat(ctx context.Context, filePath string, trackIndex 
 	if err := checkExtractFormat(outputFormat); err != nil {
 		return nil, err
 	}
+	if handled, data, err := extractContextSubtitle(ctx, filePath, trackIndex, outputFormat, firstFFmpegPath(ffmpegPath)); handled {
+		return data, err
+	}
 	args := append([]string{"-i", filePath}, subtitleFormatOutputArgs(trackIndex, outputFormat)...)
 	return runSubtitleExtract(ctx, firstFFmpegPath(ffmpegPath), args, nil, trackIndex)
 }

@@ -58,7 +58,7 @@ func TranscodeInputSourceMatches(ctx context.Context, inputPath string) bool {
 func bindTranscodeInput(ctx context.Context, opts TranscodeOpts) (TranscodeOpts, error) {
 	binding, ok := ctx.Value(transcodeInputContextKey{}).(TranscodeInputBinding)
 	if !ok {
-		return opts, nil
+		return contextTranscodeInput(ctx, opts)
 	}
 	if binding.InputPath != opts.InputPath || binding.SessionID != opts.SessionID || !TranscodeInputSourceMatches(ctx, opts.InputPath) {
 		return opts, fmt.Errorf("source input does not match execution identity")

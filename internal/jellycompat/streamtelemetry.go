@@ -3,6 +3,7 @@ package jellycompat
 import (
 	"context"
 
+	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
 )
 
@@ -67,6 +68,7 @@ func attachCompatStream(ctx context.Context, session *Session, play *PlaybackSes
 		attachment.StartedAt = play.CreatedAt
 		attachment.StartedAtSource = streamtelemetry.StartedAtSourceSession
 	}
+	playback.NoteContextStream(ctx, playback.ContextStream{Credential: session.Token, UserID: session.StreamAppUserID, ProfileID: session.ProfileID, PlaybackSessionID: play.UpstreamSessionID, MediaFileID: mediaFileID})
 	streamtelemetry.Attach(ctx, attachment)
 }
 

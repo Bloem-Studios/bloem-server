@@ -3946,6 +3946,7 @@ func main() {
 	// a nil interface when the router builds no service, which refuses them.
 	var compatDownloads jellycompat.DownloadServer
 	deps.OnDownloadService = func(svc *downloads.Service) { compatDownloads = newBloemCompatDownloadServer(svc, deps.DB) }
+	deps.NativeVideoCompat = api.NewNativeVideoCompat()
 
 	distFS, fsErr := fs.Sub(siloweb.DistFS, "dist")
 	if fsErr != nil {
@@ -4165,6 +4166,7 @@ func main() {
 			// are shared with the native API. Nil when rate limiting is off.
 			RateLimit: deps.RateLimitMW,
 		}
+		compatDeps.RecipeNodeStore = bloemCompatNativeRecipes(compatDeps.RecipeNodeStore, deps.NativeVideoCompat)
 
 		// Wire direct dependencies when DB is available.
 		if deps.DB != nil {
@@ -4325,6 +4327,7 @@ func main() {
 		compatServer.Store(compat)
 		compatTerminalRecoveryReady = compat.StartBackgroundTasks(context.Background())
 		compatSrv = compat.HTTPServer()
+		compatSrv.Handler = bloemCompatNativeMediaListener(compatSrv.Handler, deps.NativeVideoCompat, compat.SessionStore(), deps.DB)
 		compatSrv.ReadTimeout = 30 * time.Second
 		compatSrv.WriteTimeout = 0
 		compatSrv.IdleTimeout = 120 * time.Second
