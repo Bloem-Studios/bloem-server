@@ -22,11 +22,16 @@ import (
 // request's download authority, which the reader rechecks around every read,
 // as for direct play. Size returns the bytes a download serves when the
 // catalog size is not that, as for a `.strm` item, whose catalog size is the
-// text file's.
+// text file's. Prepare and Secret let download preparation convert them
+// (downloads.NativePreparation, BeginPreparation); without Prepare no
+// prepared copy can be made.
 type NativeVideoDownloads struct {
 	Service *NativeVideoService
 	Open    func(context.Context, *models.MediaFile) (NativeVideoFile, error)
 	Size    func(context.Context, *models.MediaFile) (int64, bool, error)
+	Prepare NativeVideoPrepare
+	// Secret is the node credential a worker's readiness is asked with.
+	Secret func() string
 }
 
 var _ downloads.NativeOriginals = (*NativeVideoDownloads)(nil)

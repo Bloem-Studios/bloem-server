@@ -31,7 +31,10 @@ func TestNativeVideoCapabilitiesDoNotCertifyBackendOrOtherSurfaces(t *testing.T)
 			if body["native_movie_libraries"] != tc.movies || body["native_video_playback"] != tc.video || body["native_video_remote_execution"] != tc.remote {
 				t.Fatalf("incorrect native video composition: %v", body)
 			}
-			if body["backend_verified"] != false || body["native_video_downloads"] != false || body["native_video_jellyfin"] != false || body["schema"] != 2 {
+			if body["native_video_downloads"] != tc.video {
+				t.Fatalf("native video downloads = %v, want %v", body["native_video_downloads"], tc.video)
+			}
+			if body["backend_verified"] != false || body["native_video_jellyfin"] != false || body["schema"] != 2 {
 				t.Fatal("native capability certified unsupported source or surface")
 			}
 		})

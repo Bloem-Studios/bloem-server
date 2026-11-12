@@ -186,6 +186,7 @@ func NewArtifactManager(
 	if preparer == nil {
 		preparer = playbackPreparer{}
 	}
+	preparer, fileRepo = bloemNativeArtifacts(preparer, fileRepo)
 	if owner == "" {
 		owner = "node"
 	}
@@ -965,7 +966,7 @@ func (m *ArtifactManager) encodeOne(ctx context.Context, a *Artifact) {
 		// A preparer without placement only writes here.
 		err = ErrStorageFull
 	} else {
-		prepared, err = m.preparer.PrepareFile(withPrepareObserver(hbCtx, observer), remoteAttemptID, opts, a.OutputPath)
+		prepared, err = m.bloemPrepareFile(withPrepareObserver(hbCtx, observer), remoteAttemptID, file, a, opts)
 	}
 	if err != nil {
 		if prepared.Remote() {

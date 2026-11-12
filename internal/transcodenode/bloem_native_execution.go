@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/downloadprepare"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
@@ -26,8 +27,11 @@ type NativeExecutionRequest struct {
 	InputPath   string
 	HTTPRequest *http.Request
 	Start       *TranscodeStartRequest
-	Recipe      *playback.RecipeCard
-	Claims      *streamtoken.Claims
+	// Prepare is a download preparation's request body, for a prepared
+	// (converted) download of a native input.
+	Prepare *downloadprepare.Request
+	Recipe  *playback.RecipeCard
+	Claims  *streamtoken.Claims
 }
 
 type NativeExecutionGrant struct {
@@ -113,6 +117,10 @@ func (s *Server) WrapNativeExecution(next http.Handler, cfg NativeExecutionConfi
 			http.Error(w, "native execution grant rejected", http.StatusForbidden)
 			return
 		}
+		if candidate.Prepare != nil {
+			next.ServeHTTP(w, r.WithContext(nativePreparationContext(r.Context(), candidate.Prepare, grant)))
+			return
+		}
 		ctx := playback.WithTranscodeInputSource(r.Context(), playback.TranscodeInputBinding{
 			InputPath: grant.InputPath, InputFormat: grant.InputFormat,
 			SessionID: grant.TransportID, InputSource: grant.InputSource,
@@ -140,7 +148,7 @@ func (s *Server) WrapNativeExecution(next http.Handler, cfg NativeExecutionConfi
 			readiness.ServeHTTP(w, r)
 			return
 		}
-		if r.Method == http.MethodPost && r.URL.Path == "/transcode/start" ||
+		if r.Method == http.MethodPost && (r.URL.Path == "/transcode/start" || r.URL.Path == nativePreparationPath) ||
 			(r.Method == http.MethodGet || r.Method == http.MethodHead) && (strings.HasPrefix(r.URL.Path, "/transcode/") || strings.HasPrefix(r.URL.Path, "/remux/")) {
 			authorized.ServeHTTP(w, r)
 			return
@@ -165,6 +173,9 @@ func (s *Server) nativeExecutionCandidate(w http.ResponseWriter, r *http.Request
 			return nil, err
 		}
 		r.Body = io.NopCloser(bytes.NewReader(data))
+		if r.URL.Path == nativePreparationPath {
+			return nativePreparationCandidate(request, data), nil
+		}
 		var start TranscodeStartRequest
 		if err := json.Unmarshal(data, &start); err != nil {
 			return nil, err

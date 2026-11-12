@@ -16,6 +16,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
+	"github.com/Silo-Server/silo-server/internal/downloads"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/playback"
@@ -87,6 +88,8 @@ type nativeVideoPolicy struct {
 	authorizeSource    func(context.Context, *models.MediaFile, storagesource.SourceConfig) error
 	// compat checks Jellyfin-compatible sessions; nil refuses them.
 	compat *NativeVideoCompat
+	// loadDownload reads a download row for download preparation's authority.
+	loadDownload func(context.Context, string) (*downloads.Download, error)
 }
 
 type nativeVideoSubject struct {
@@ -412,6 +415,7 @@ func populateNativeVideoStores(deps Dependencies, p *nativeVideoPolicy) {
 	p.loadLogin = logins.GetByID
 	p.loginActive = logins.ActiveSessionRole
 	p.loadAPIKeyMetadata = keys.GetMetadataByID
+	p.loadDownload = downloads.NewRepository(deps.DB).GetByID
 	if deps.UserStoreProvider != nil {
 		p.loadProfile = func(ctx context.Context, uid int, pid string) (*userstore.Profile, error) {
 			store, err := deps.UserStoreProvider.ForUser(ctx, uid)
@@ -626,6 +630,11 @@ func (s *nativeVideoSubject) verifyDelegated(ctx context.Context) error {
 	if s.policy.denied(ctx, s.binding.SessionID) {
 		return middleware.ErrCurrentCredentialForbidden
 	}
+	if s.delegated.TokenType == nativeVideoDownloadPrepareTokenType {
+		// A download preparation has no playback session; its actor check
+		// rechecks the download it reads for.
+		return verifyNativeVideoActor(ctx, *s.delegated, s.policy)
+	}
 	session, err := s.policy.getSession(s.binding.SessionID)
 	if err != nil {
 		// A read can restore its frozen source on a new worker only from a matching
@@ -719,6 +728,10 @@ func verifyNativeVideoActor(ctx context.Context, d handlers.NativeVideoAuthority
 		}
 	case nativeVideoCompatTokenType, nativeVideoCompatDownloadTokenType:
 		if err := verifyNativeVideoCompatActor(ctx, d, p); err != nil {
+			return err
+		}
+	case nativeVideoDownloadPrepareTokenType:
+		if err := verifyNativeVideoPreparation(ctx, d, p); err != nil {
 			return err
 		}
 	default:

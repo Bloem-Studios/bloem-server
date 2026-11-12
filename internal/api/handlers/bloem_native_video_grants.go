@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/downloadprepare"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/playback"
@@ -93,6 +94,20 @@ func (s *NativeVideoWorkerGrantStore) Prepare(ctx context.Context, node int, ser
 		return err
 	}
 	record.StartDigest, err = nativeVideoDigest(start)
+	if err != nil {
+		return err
+	}
+	return s.insert(ctx, record)
+}
+
+// PrepareDownload admits one download preparation attempt on a worker: only
+// the exact request body may use the grant.
+func (s *NativeVideoWorkerGrantStore) PrepareDownload(ctx context.Context, node int, service *NativeVideoService, session *playback.Session, transport string, request downloadprepare.Request) error {
+	record, err := s.prepare(ctx, node, transport, request.InputPath, service, session)
+	if err != nil {
+		return err
+	}
+	record.StartDigest, err = nativeVideoDigest(request)
 	if err != nil {
 		return err
 	}
@@ -335,6 +350,11 @@ func (s *NativeVideoWorkerGrantStore) Resolve(ctx context.Context, request trans
 	if request.Start != nil {
 		digest, err := nativeVideoDigest(*request.Start)
 		if err != nil || digest != record.StartDigest || request.Start.SessionID != record.TransportID || request.Start.InputPath != request.InputPath {
+			return nil, storagesource.ErrReferenceConflict
+		}
+	} else if request.Prepare != nil {
+		digest, err := nativeVideoDigest(*request.Prepare)
+		if err != nil || digest != record.StartDigest || request.Prepare.InputPath != request.InputPath {
 			return nil, storagesource.ErrReferenceConflict
 		}
 	} else if request.Recipe == nil || record.Accepted == nil || !nativeVideoSameRecipe(*request.Recipe, *record.Accepted) {

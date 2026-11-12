@@ -243,3 +243,6 @@
 
 # Jellyfin native playback: a delegated authority rechecks its compat session by token digest.
 ./internal/api TestNativeVideoCompatSessionLiveByDigestDB
+
+# Offline conversion of native videos reads for a waiting download.
+./internal/downloads TestNativePreparationReadsForWaitingDownloadsDB

@@ -160,23 +160,19 @@ func (f *failingNativeOriginals) OpenOriginal(ctx context.Context, r *http.Reque
 
 var _ io.ReadSeeker = (*nativeOriginalFixture)(nil)
 
-// A native original is offered as it is, never prepared: ffmpeg cannot read
-// native sources in download preparation yet.
-func TestNativeFilesNeverRequestPreparedCopies(t *testing.T) {
+// A native video gets the same quality decisions as a local one: an original
+// downloads as it is, and a bitrate preset asks for a prepared copy, which
+// download preparation reads through the native source.
+func TestNativeFilesGetPreparedCopies(t *testing.T) {
 	resolver := DownloadQualityResolver{}
 	user := &PolicyUser{ID: 7, Policy: access.EffectiveUserPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true}}
 	cfg := config.DownloadConfig{Enabled: true, TranscodeEnabled: true}
 	native := &models.MediaFile{ID: 1, FilePath: "bloem-storage:movie", Container: "mkv", CodecVideo: "h264", Resolution: "1080p"}
-	if _, err := resolver.Resolve(t.Context(), Quality5Mbps, user, cfg, native, playback.ClientCapabilities{}, true, ""); !errors.Is(err, ErrQualityUnavailable) {
-		t.Fatalf("preset err=%v", err)
+	if decision, err := resolver.Resolve(t.Context(), Quality5Mbps, user, cfg, native, playback.ClientCapabilities{}, true, ""); err != nil || !decision.RequiresArtifact {
+		t.Fatalf("native preset decision=%+v err=%v", decision, err)
 	}
 	decision, err := resolver.Resolve(t.Context(), QualityOriginal, user, cfg, native, playback.ClientCapabilities{}, true, "")
 	if err != nil || decision.RequiresArtifact || decision.DeliveryFormat != FormatOriginal {
 		t.Fatalf("original decision=%+v err=%v", decision, err)
-	}
-	local := *native
-	local.FilePath = "/fixture/movie.mkv"
-	if decision, err := resolver.Resolve(t.Context(), Quality5Mbps, user, cfg, &local, playback.ClientCapabilities{}, true, ""); err != nil || !decision.RequiresArtifact {
-		t.Fatalf("local preset decision=%+v err=%v", decision, err)
 	}
 }

@@ -125,7 +125,8 @@ uses any more.
 
 Jellyfin apps play stored movies too, with embedded text subtitles. Stored
 movies download as the original file, in Bloem's apps, the web app and Jellyfin
-apps. Not supported yet: converting for offline use, and series. Every read checks again that the viewer may see the title and that the
+apps, and Bloem's apps and the web app can download a copy converted for offline
+use. Not supported yet: series. Every read checks again that the viewer may see the title and that the
 source is still switched on.
 
 ## Who can change what
@@ -188,8 +189,8 @@ and podcasts; once location editing is composed, `s3` for ebooks, plus movies wh
 native movie libraries are ready, series when native series libraries are ready,
 and audiobooks when native audio is ready, and
 `bookwarehouse` for ebooks, plus audiobooks when native audio is ready.
-`native_video_downloads`, `native_video_jellyfin`, `retained_namespace_reinstall`,
-`enable` and `backend_verified` are always false.
+`native_video_downloads` follows `native_video_playback`. `native_video_jellyfin`,
+`retained_namespace_reinstall`, `enable` and `backend_verified` are always false.
 
 ### Model
 
@@ -227,8 +228,9 @@ filesystem probing, missing-file marking or tool invocation. The native ebook
 reader and video service use separate authorized source resolvers. Alternate
 editions and multipart start may select supported native video only when that
 service is installed. Downloads reach a native video only through the native
-video service's download reader, and only as the original file; Jellyfin stream
-routes reach it only through the native video host.
+video service: originals through its download reader, converted copies through a
+preparation bound to a waiting download; Jellyfin stream routes reach it only
+through the native video host.
 Nothing opens it as a local path. The
 [video execution contract](bloem-native-video-playback.md) describes native API
 serving, worker HLS and the remaining surface limits.
@@ -822,7 +824,7 @@ files; ETags hash the opaque revision. A provider failure at open or before
 the first byte is sent is an ordinary HTTP error, such as 404 for a missing book
 or 503 for an unavailable provider; after bytes were sent the response is
 aborted without an error document. Stored ebooks and audiobooks are not
-downloaded; stored movies download as the original file
+downloaded; stored movies download as the original file or as a converted copy
 ([how stored movies play](bloem-native-video-playback.md#downloads)).
 
 ### Protocol

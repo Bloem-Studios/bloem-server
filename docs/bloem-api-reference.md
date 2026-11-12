@@ -2641,7 +2641,9 @@ No production backend is certified by these flags.
 scanner and library attachment readiness. `native_video_remote_execution`
 reports shared HLS worker grants and serving-recipe composition; each worker
 still needs its own approved runtime and retained provider identity.
-`native_video_downloads` and `native_video_jellyfin` remain false.
+`native_video_downloads` follows `native_video_playback`: native videos download
+as the original file and as copies converted for offline use.
+`native_video_jellyfin` remains false.
 `s3_checked_etag_reads` reports explicit checked-ETag admission support when
 storage composition is ready. Strict immutable-version or verified-snapshot
 admission remains the default. An approved S3 source can explicitly configure

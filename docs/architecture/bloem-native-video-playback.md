@@ -72,10 +72,16 @@ Jellyfin apps, with the same checks as playback. The download resumes where it
 stopped, and stops within about a second when the viewer's access is withdrawn.
 The saved file is named after the title, never after where it is stored.
 
+Bloem's apps and the web app can also download a copy converted for offline use:
+a smaller copy at one of the bitrate presets, or a copy the device can play when
+it cannot play the original. Bloem prepares the copy on the API server or on a
+transcoding worker that can read the storage, reading the movie under the
+authority of the download waiting for it. Cancelling or removing that download,
+or withdrawing the viewer's access, stops the preparation within about a second.
+Jellyfin apps download only the original, as with Silo.
+
 ## What does not work yet
 
-- Converting for offline use. Asking for a smaller copy of a stored movie is
-  refused with "quality unavailable"; the original downloads.
 - Attached fonts and bitmap subtitles in Jellyfin apps.
 - Series from storage.
 - Switching to another file mid-play needs a fresh start.
@@ -96,7 +102,7 @@ in Jellyfin apps too; see [how `.strm` files play](bloem-strm.md).
 | Read ahead in blocks | `nativestorage.ReadAhead` |
 | Private tool address | `nativestorage.ToolInput` |
 | Checked mode | `connection.revision_mode: "checked-etag"` |
-| Capability | `native_video_playback`, `native_video_remote_execution` in the native-storage capability document |
+| Capability | `native_video_playback`, `native_video_remote_execution`, `native_video_downloads` in the native-storage capability document |
 
 ## For developers
 
@@ -379,28 +385,57 @@ on every download route (`/api/v2/direct-download`, managed and ephemeral
   `playback.MaxTokenTTL` at the latest, so a download outlives its access token
   but not its sign-in. Refusals map to the download errors (403 or 404), never
   401.
-- Downloads offer only the original: `bloemArtifactsAvailable` reports no
-  prepared copies for a native file, so a bitrate preset, or a device that
-  cannot play the original, gets `ErrQualityUnavailable`. Download preparation
-  runs ffmpeg on the catalog path (`internal/downloads/artifacts.go`,
-  `internal/playback/prepare_file.go`), and a worker preparation has no native
-  grant; serving a converted copy needs those two Silo files to accept a native
-  input, which they do not.
+- Prepared copies (a bitrate preset, or a copy for a device that cannot play
+  the original) get Silo's quality decisions and artifact queue unchanged. Two
+  approved seams let the queue read a native input. `encodeOne` prepares through
+  `bloemPrepareFile` (`internal/downloads/bloem_native_prepare.go`), and
+  `PrepareFile` hands an input that is not a file here to `prepareContextFile`
+  (`internal/playback/bloem_prepare_file.go`). That runs Silo's prepared-file
+  recipe through the supervised input bridge with the source's fixed demuxer,
+  and refuses a native path that arrives without a source, so ffmpeg never opens
+  a catalog reference.
+- A preparation has no request behind it, so it reads under the authority of a
+  download waiting for it: the oldest `preparing` row linked to the artifact
+  whose viewer may still read the source (`nativeVideoPreparationAuthority`,
+  token type `download_prepare`). Every open and read rechecks that row (still
+  `preparing`, same account, profile and artifact) and, as for delegated
+  playback, the account, the profile's PIN and credential revisions, the
+  membership, the viewer's playback and library scope, the catalog file and the
+  source. A job no waiting download may read for fails.
+- `NativeVideoDownloads.BeginPreparation`
+  (`internal/api/handlers/bloem_native_video_prepare.go`) binds each attempt like
+  a playback start: the attempt's UUID (the end of its `<artifact>-<uuid>` ID)
+  names a binding sealed with that authority. The returned context carries a
+  context-scoped media host, so `PrepareFile` on the API server reads
+  `NativeVideoService.InputSource` through the binding. When the artifact queue
+  sends the attempt to a worker, the host seals a worker grant for exactly that
+  request body (`NativeVideoWorkerGrantStore.PrepareDownload`), after the worker
+  answers the readiness probe. A worker that cannot read native storage gets no
+  request; the preparation falls back to the API server when the local fallback
+  setting allows it. On the worker, `WrapNativeExecution` admits
+  `POST /downloads/prepare` for a native input only under that grant
+  (`internal/transcodenode/bloem_native_prepare.go`). Ending the attempt revokes
+  the binding and the grant.
+- The artifact queue resolves a native file to its download view, so a `.strm`
+  item's tone-map revision records the served size, as the request that queued it
+  did; the source's own `Validate` accepts that size for a `.strm` item, whose
+  binding pins the bytes.
 - A download proxy cannot read native sources: a proxy redirect is probed,
   refused, and the API server serves the file itself.
 
 ### Supported surfaces and evidence limits
 
 The supported contract is native API video playback and original downloads for
-admitted catalog files. Initial movie scanning accepts MOV/MP4 and Matroska/WebM
-containers. Offline conversion and native series ingestion remain unsupported.
+admitted catalog files, including copies converted for offline use. Initial
+movie scanning accepts MOV/MP4 and Matroska/WebM containers.
 `.strm` items reuse this pipeline with a remote reader
 ([`.strm` files](bloem-strm.md#playback)).
 Native audiobooks have their own direct-play path; see
 [native audiobook presentations](bloem-native-audio-playback.md). Jellyfin
 clients are covered above. The capability document keeps
-`native_video_jellyfin` false until real Jellyfin clients have been checked, and
-`native_video_downloads` false until converting for offline use works too.
+`native_video_jellyfin` false until real Jellyfin clients have been checked.
+`native_video_downloads` is true when native video playback is composed: original
+downloads and offline conversion both work.
 
 Sidecars belonging to a different original file after an alternate-file start
 need their own host-owned binding; an effective-file binding grants no access to
@@ -431,7 +466,8 @@ verified snapshot lifecycle.
 Native video arrived in `b781ac3ff` (2026-10-11: playback, the movie scanner and
 checked-ETag reads). Read-ahead followed in `b0b819fc8` (2026-10-11), and native
 audiobooks on 2026-10-12. The Silo merge `68070f04b` (2026-10-27) bound the
-login-session recheck to the delegated account.
+login-session recheck to the delegated account. Original downloads followed in
+`c901194a8` (2026-11-12), and converting for offline use on 2026-11-12.
 
 ### Related pages
 

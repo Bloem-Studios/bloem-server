@@ -352,6 +352,9 @@ func strictDownloadDecoders(caps ClientCapabilities, codec string, frameRate flo
 // writes to outputPath+".part" and atomically renames on success so a partial
 // file is never observable at outputPath. The call blocks until ffmpeg exits.
 func PrepareFile(ctx context.Context, opts TranscodeOpts, outputPath string) error {
+	if handled, err := prepareContextFile(ctx, opts, outputPath); handled {
+		return err
+	}
 	if outputPath == "" {
 		return fmt.Errorf("prepare-file: empty output path")
 	}

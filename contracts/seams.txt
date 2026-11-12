@@ -139,6 +139,7 @@ internal/config/db_loader.go
 internal/config/yaml_import.go
 internal/downloads/artifact_repo.go  # route quota-scoped artifact operations through the admission connection to prevent pool starvation
 internal/downloads/artifact_test.go
+internal/downloads/artifacts.go  # 2 hook lines: NewArtifactManager passes its preparer and file resolver through bloemNativeArtifacts, and encodeOne prepares through bloemPrepareFile (bloem_native_prepare.go), which reads a native input under a waiting download's authority; offline conversion of native-storage and .strm files, approved 2026-11-12
 internal/downloads/offline.go
 internal/downloads/policy.go
 internal/downloads/policy_action_test.go
@@ -189,6 +190,7 @@ internal/playback/copy_seek_anchor.go  # three hook lines (S4): a copy seek anch
 internal/playback/directplay.go  # three hook lines (S2): direct play hands a context-scoped input to its host (bloem_context_media.go); Jellyfin direct play of native-storage files, approved 2026-11-12, generic enough to offer Silo with S3/S4
 internal/playback/gpudetect.go
 internal/playback/gpudetect_test.go
+internal/playback/prepare_file.go  # 3 hook lines: PrepareFile hands an input that is not a file here (a context-scoped or worker-bound source) to prepareContextFile (bloem_prepare_file.go), which encodes it through the supervised input bridge and refuses an unbound native path; offline conversion of native-storage and .strm files, approved 2026-11-12
 internal/playback/protocol_v3.go
 internal/playback/remux.go  # three hook lines (S3): progressive remux of a context-scoped input reads its host's pinned source (bloem_context_media.go); Jellyfin remux of native-storage files, approved 2026-11-12, generic enough to offer Silo with S2/S4
 internal/playback/session.go

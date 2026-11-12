@@ -414,6 +414,10 @@
       "reason": "Belonged to a handler of Silo's retired v1 API, which served it directly; Silo's /api/v2 handlers in internal/apiv2 still pass it to or from the handler layer but declare their own wire types. It appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v2/openapi.json, so no generated client decodes it."
     },
     {
+      "type": "internal/api/handlers.NativeVideoAuthority",
+      "reason": "Server-internal authority sealed into a native video binding and worker grant; the server writes and reads it itself, and no client or generated native client sees or decodes it."
+    },
+    {
       "type": "internal/api/handlers.NodeHWAccel",
       "reason": "One transcode node's GPU inventory inside the admin hw-accel response for the operator UI."
     },

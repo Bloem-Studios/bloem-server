@@ -63,6 +63,12 @@ the library folder, and Bloem refuses to hand it to them as a video.
 again that the viewer may still watch it and that the recorded address is still the
 one this playback started with.
 
+`.strm` items download as stored movies do
+([downloads](bloem-native-video-playback.md#downloading-a-stored-movie)): as the
+original file, in every app, or as a copy converted for offline use, in Bloem's apps
+and the web app. The conversion reads the remote address the same way, on the API
+server or a worker.
+
 ## The security default
 
 Content is never filtered, but the server's own network is protected:
@@ -92,8 +98,6 @@ and the library is scanned again.
 
 - **Subtitle files next to a `.strm` object in a storage source for Jellyfin apps**,
   as for every stored video.
-- **Converting for offline use** of `.strm` items, as for every stored video. Downloads
-  of the original file work.
 - **Attached fonts and bitmap subtitles** of `.strm` items in Jellyfin apps, as for
   stored movies.
 - The remote server must answer range requests for anything larger than 1 MiB.

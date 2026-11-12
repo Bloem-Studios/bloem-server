@@ -41,11 +41,8 @@ type NativeOriginal interface {
 }
 
 // SetNativeOriginals lets the native-storage guard admit the native videos
-// originals can serve. Without it every native row stays hidden. Only
-// original downloads are served: preparing a converted copy reads the source
-// with ffmpeg on the API server or a worker, which native sources do not
-// support yet, so the quality resolver never offers one (see
-// bloemArtifactsAvailable).
+// originals can serve. Without it every native row stays hidden. Converted
+// copies of the admitted videos are prepared through SetNativePreparation.
 func (s *Service) SetNativeOriginals(native NativeOriginals) {
 	if s == nil || native == nil {
 		return
@@ -67,12 +64,6 @@ func (s *Service) nativeOriginals() NativeOriginals {
 
 // NativeOriginalsReady reports whether native originals are served.
 func (s *Service) NativeOriginalsReady() bool { return s.nativeOriginals() != nil }
-
-// bloemArtifactsAvailable keeps prepared (remuxed or converted) copies away
-// from native files: a native original downloads as it is or not at all.
-func bloemArtifactsAvailable(file *models.MediaFile, available bool) bool {
-	return available && (file == nil || !storagesource.IsNativeLocation(file.FilePath))
-}
 
 // bloemServeNativeOriginal serves a native target through the native reader.
 // It reports false for every other target, which Silo's path serves.

@@ -734,7 +734,7 @@ func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx cont
 		"s3_checked_etag_reads":     ready,
 		"s3_bucket_browse":          ready && h.S3Browse != nil,
 		"native_movie_libraries":    movies, "native_series_libraries": series, "native_video_playback": video, "native_video_remote_execution": remoteVideo,
-		"native_video_downloads": false, "native_video_jellyfin": false,
+		"native_video_downloads": video, "native_video_jellyfin": false,
 		"retained_namespace_reinstall": false, "enable": false, "backend_verified": false}
 }
 

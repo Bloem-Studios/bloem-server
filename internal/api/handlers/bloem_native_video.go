@@ -18,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/remotesource"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/tonemap"
@@ -55,6 +56,11 @@ type NativeVideoAuthority struct {
 	// SHA-256 of its token, never the token, so delegated reads can recheck
 	// that the session still exists.
 	CompatSessionDigest string
+	// DownloadID and ArtifactID name the waiting download and the prepared
+	// file a download preparation reads the source for; the download must
+	// still be waiting for that file.
+	DownloadID string `json:",omitempty"`
+	ArtifactID string `json:",omitempty"`
 }
 
 type NativeVideoBinding struct {
@@ -474,7 +480,7 @@ func (s *NativeVideoService) InputSource(ctx context.Context, session *playback.
 		if err != nil {
 			return err
 		}
-		if current == nil || tonemap.RevisionForFile(current) != opts.ToneMapSourceRevision {
+		if current == nil || !nativeVideoToneMapRevision(current, opts.ToneMapSourceRevision) {
 			return tonemap.ErrSourceRevisionChanged
 		}
 		opened, actual, err := s.OpenDelegatedBound(check, &frozenSession, current)
@@ -495,12 +501,24 @@ func (s *NativeVideoService) InputSource(ctx context.Context, session *playback.
 		if err != nil {
 			return err
 		}
-		if current == nil || tonemap.RevisionForFile(current) != opts.ToneMapSourceRevision {
+		if current == nil || !nativeVideoToneMapRevision(current, opts.ToneMapSourceRevision) {
 			return tonemap.ErrSourceRevisionChanged
 		}
 		return opened.Reauthorize(check)
 	}
 	return source, binding.Format, nil
+}
+
+// nativeVideoToneMapRevision reports whether a frozen tone-map revision
+// still describes current. A `.strm` item's prepared download freezes its
+// download view, whose size is the served video's, not the text file's; the
+// session's binding pins those bytes, so only the size may differ.
+func nativeVideoToneMapRevision(current *models.MediaFile, frozen tonemap.SourceRevision) bool {
+	live := tonemap.RevisionForFile(current)
+	if live != frozen && remotesource.IsStrmPath(current.FilePath) {
+		live.FileSize = frozen.FileSize
+	}
+	return live == frozen
 }
 
 // ResolveNativeVideoFile is used only by the installed per-open viewer policy;

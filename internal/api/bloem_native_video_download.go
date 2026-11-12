@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -50,15 +51,23 @@ func newNativeVideoDownloads(deps Dependencies, service *handlers.NativeVideoSer
 		return nil
 	}
 	populateNativeVideoStores(deps, &p)
-	downloads := &handlers.NativeVideoDownloads{Service: service, Open: func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
+	native := &handlers.NativeVideoDownloads{Service: service, Secret: p.secret, Open: func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
 		authority, err := nativeVideoDownloadAuthority(ctx, file.ID, p)
 		if err != nil {
 			return nil, err
 		}
 		return strm.open(ctx, file, authority, storage)
 	}}
+	native.Prepare = func(ctx context.Context, requester *downloads.Download, artifactID string, file *models.MediaFile) (handlers.NativeVideoAuthority, handlers.NativeVideoFile, error) {
+		d, authority, err := nativeVideoPreparationAuthority(ctx, requester, artifactID, file, p)
+		if err != nil {
+			return d, nil, err
+		}
+		opened, err := strm.open(ctx, file, authority, storage)
+		return d, opened, err
+	}
 	if strm != nil && strm.sources != nil {
-		downloads.Size = func(ctx context.Context, file *models.MediaFile) (int64, bool, error) {
+		native.Size = func(ctx context.Context, file *models.MediaFile) (int64, bool, error) {
 			src, found, err := strm.sources.Get(ctx, file.FilePath)
 			if err != nil || !found || src.RemoteSize <= 0 {
 				return 0, false, err
@@ -66,16 +75,18 @@ func newNativeVideoDownloads(deps Dependencies, service *handlers.NativeVideoSer
 			return src.RemoteSize, true, nil
 		}
 	}
-	return downloads
+	return native
 }
 
 // attachNativeVideoDownloads lets the download service serve native
-// originals. It runs once, before the router accepts requests.
+// originals and prepare converted copies of them. It runs once, before the
+// router accepts requests.
 func attachNativeVideoDownloads(svc *downloads.Service, h *handlers.PlaybackHandler) {
 	if svc == nil || h == nil || h.NativeVideo == nil || h.NativeVideo.Downloads == nil {
 		return
 	}
 	svc.SetNativeOriginals(h.NativeVideo.Downloads)
+	svc.SetNativePreparation(h.NativeVideo.Downloads)
 }
 
 // nativeVideoDownloadAuthority checks the download request's viewer once, then
@@ -255,5 +266,77 @@ func nativeVideoDownloadTenant(ctx context.Context, p nativeVideoPolicy, d *hand
 	}
 	d.ProfilePINRevision = profile.PINRevision
 	d.ProfileCredentialRevision = profile.CredentialRevision
+	return nil
+}
+
+// nativeVideoDownloadPrepareTokenType marks the authority a download
+// preparation reads a native source under. No request or credential backs
+// it: it stands for a download waiting for the prepared file.
+const nativeVideoDownloadPrepareTokenType = "download_prepare"
+
+// nativeVideoPreparationAuthority is the authority a download preparation
+// reads file under: the account and profile of requester, a download waiting
+// for artifactID. The preparation runs in the background, after the request
+// that queued it, so no credential backs it. Instead every open and read
+// rechecks that the download still waits for this prepared file, and, as for
+// delegated playback, the account, the profile's PIN and credential
+// revisions, the organization membership, the viewer's playback and library
+// scope, the catalog file and the source. Removing or revoking the download
+// stops the read within a second.
+func nativeVideoPreparationAuthority(ctx context.Context, requester *downloads.Download, artifactID string, file *models.MediaFile, p nativeVideoPolicy) (handlers.NativeVideoAuthority, nativestorage.PlaybackAuthority, error) {
+	empty := handlers.NativeVideoAuthority{}
+	if ctx == nil || requester == nil || file == nil || requester.ID == "" || requester.UserID <= 0 || requester.MediaFileID != file.ID || artifactID == "" ||
+		p.viewer == nil || p.tenants == nil || p.resolveFile == nil || p.authorizeSource == nil || p.loadDownload == nil {
+		return empty, nativestorage.PlaybackAuthority{}, middleware.ErrCurrentCredentialInvalid
+	}
+	d := handlers.NativeVideoAuthority{UserID: requester.UserID, ProfileID: requester.ProfileID, TokenType: nativeVideoDownloadPrepareTokenType, AuthMethod: nativeVideoDownloadPrepareTokenType,
+		PINVerificationSkipped: true, ExpiresAt: time.Now().UTC().Add(playback.MaxTokenTTL), OriginalMethod: "PREPARE", OriginalPath: "download", DownloadID: requester.ID, ArtifactID: artifactID}
+	tenant, err := p.tenants.ResolveSubjectTenant(ctx, d.UserID, d.ProfileID)
+	if err != nil {
+		return empty, nativestorage.PlaybackAuthority{}, err
+	}
+	if tenant.AccountID != d.UserID || tenant.OrganizationID == uuid.Nil || tenant.MembershipID == uuid.Nil {
+		return empty, nativestorage.PlaybackAuthority{}, middleware.ErrCurrentCredentialInvalid
+	}
+	d.Tenant = tenant
+	if d.ProfileID != "" {
+		if p.loadProfile == nil {
+			return empty, nativestorage.PlaybackAuthority{}, middleware.ErrCurrentCredentialInvalid
+		}
+		profile, err := p.loadProfile(ctx, d.UserID, d.ProfileID)
+		if err != nil {
+			return empty, nativestorage.PlaybackAuthority{}, err
+		}
+		if profile == nil || profile.ID != d.ProfileID || profile.OrganizationID != d.Tenant.OrganizationID.String() {
+			return empty, nativestorage.PlaybackAuthority{}, middleware.ErrCurrentCredentialInvalid
+		}
+		d.ProfilePINRevision, d.ProfileCredentialRevision = profile.PINRevision, profile.CredentialRevision
+	}
+	if err := verifyNativeVideoActor(ctx, d, p); err != nil {
+		return empty, nativestorage.PlaybackAuthority{}, err
+	}
+	subject := &nativeVideoSubject{policy: p, delegated: &d, download: true, userID: d.UserID, profileID: d.ProfileID, fileID: file.ID, skipPIN: true, tenant: &d.Tenant}
+	if _, err := subject.refresh(ctx); err != nil {
+		return empty, nativestorage.PlaybackAuthority{}, err
+	}
+	return d, nativeVideoCallbacks(subject), nil
+}
+
+// verifyNativeVideoPreparation rechecks that the download a preparation
+// reads for still waits for the prepared file.
+func verifyNativeVideoPreparation(ctx context.Context, d handlers.NativeVideoAuthority, p nativeVideoPolicy) error {
+	if d.DownloadID == "" || d.ArtifactID == "" || p.loadDownload == nil {
+		return middleware.ErrCurrentCredentialInvalid
+	}
+	row, err := p.loadDownload(ctx, d.DownloadID)
+	if errors.Is(err, downloads.ErrNotFound) {
+		return middleware.ErrCurrentCredentialForbidden
+	}
+	if err != nil {
+		return err
+	}
+	if row == nil || row.ID != d.DownloadID || row.UserID != d.UserID || row.ProfileID != d.ProfileID || row.ArtifactID != d.ArtifactID || row.Status != downloads.StatusPreparing {
+		return middleware.ErrCurrentCredentialForbidden
+	}
 	return nil
 }

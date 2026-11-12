@@ -3663,9 +3663,7 @@
             "type": "boolean"
           },
           "native_video_downloads": {
-            "enum": [
-              false
-            ],
+            "description": "Downloads of native video are composed with native video playback: the original file, and copies converted for offline use (bitrate presets, and originals a device cannot play), prepared on the API server or on a worker that can read native storage.",
             "type": "boolean"
           },
           "native_video_jellyfin": {
