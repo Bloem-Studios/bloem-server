@@ -18,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/remotesource"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/subtitles"
 )
@@ -55,10 +56,12 @@ func nativeExternalSubtitles(sidecars []storagesource.Sidecar) []models.External
 	return out
 }
 
-// withNativeSidecars replaces a native file's catalog external subtitles,
-// which never name a readable file, with the sidecars the scan recorded.
+// withNativeSidecars replaces a storage file's catalog external subtitles,
+// which never name a readable file, with the sidecars the scan recorded. A
+// local `.strm` file keeps the subtitle files Silo's scan found beside it,
+// which the subtitle route serves through bloemStrmSidecar.
 func withNativeSidecars(ctx context.Context, store NativeSidecarStore, file *models.MediaFile) (*models.MediaFile, error) {
-	if store == nil || file == nil || !storagesource.IsNativeLocation(file.FilePath) {
+	if store == nil || file == nil || !storagesource.IsNativeLocation(file.FilePath) || remotesource.IsStrmPath(file.FilePath) {
 		return file, nil
 	}
 	sidecars, err := store.FileSidecars(ctx, file.ID)

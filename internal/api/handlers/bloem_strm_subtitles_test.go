@@ -35,6 +35,9 @@ func strmSubtitleFixture(t *testing.T) (*StreamHandler, *models.MediaFile, *play
 		t.Fatal(err)
 	}
 	file.ExternalSubtitles = []models.ExternalSubtitle{{Path: sidecar, Format: "srt", Language: "eng"}}
+	// As in production, storage sidecars are listed for native files; a local
+	// `.strm` file keeps the subtitle files Silo's scan found beside it.
+	service.Sidecars = &nativeSidecarStore{}
 	*identity = nativestorage.PlaybackIdentity{FileID: file.ID, MediaFolderID: file.MediaFolderID, ContentID: file.ContentID, FilePath: file.FilePath,
 		Reference: storagesource.PersistedRef{Revision: "url-sha256:one", LogicalPath: file.FilePath}}
 	service.Open = func(context.Context, *models.MediaFile) (NativeVideoFile, error) {
