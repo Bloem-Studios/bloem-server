@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -267,4 +268,23 @@ type nativeStrmEntry interface {
 	io.ReaderAt
 	Info() mediasource.Info
 	Reauthorize(context.Context) error
+}
+
+// StrmSidecarSubtitle reports whether subtitlePath is, right now, one of the
+// subtitle files Silo's own sidecar rules give the local `.strm` file at
+// strmPath: beside it and named for it, or in its Subs/ folder. The subtitle
+// route serves a `.strm` item's external subtitle only then, so it never
+// serves the `.strm` text or a file outside the item's folder.
+func StrmSidecarSubtitle(strmPath, subtitlePath string) bool {
+	if !remotesource.IsStrmPath(strmPath) || strings.HasPrefix(strmPath, "bloem-storage:") || !filepath.IsAbs(strmPath) || remotesource.IsStrmPath(subtitlePath) || !IsSubtitleSidecar(subtitlePath) {
+		return false
+	}
+	found, _ := newExternalSubtitleDirCache("movies").Detect(strmPath)
+	want := filepath.Clean(subtitlePath)
+	for _, sub := range found {
+		if filepath.Clean(sub.Path) == want {
+			return true
+		}
+	}
+	return false
 }
