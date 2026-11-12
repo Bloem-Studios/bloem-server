@@ -68,12 +68,18 @@ type AudiobookReceipt struct {
 	Sel       string `json:"sel"`
 	ExpMB     int64  `json:"exp_mb"`
 	ExpDurS   int64  `json:"exp_dur_s"`
+	// TorrentID is Bookwarehouse's record of a torrent the native
+	// Bookwarehouse plugin handed to Bookwarehouse's own qBittorrent. Omitted
+	// when empty, so earlier receipts are unchanged.
+	TorrentID string `json:"torrent_id,omitempty"`
 }
 
 var (
 	audiobookTorrentHash = regexp.MustCompile(`^[a-f0-9]{40}$`)
 	audiobookNZBID       = regexp.MustCompile(`^[1-9][0-9]{0,9}$`)
 	audiobookFingerprint = regexp.MustCompile(`^[a-f0-9]{16}$`)
+	// audiobookBookwarehouseID is a Bookwarehouse torrent record or audiobook id.
+	audiobookBookwarehouseID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 )
 
 // ParseAudiobookReceipt validates a receipt against the submission and attempt
@@ -82,6 +88,9 @@ func ParseAudiobookReceipt(raw, submission string, attempt int) (AudiobookReceip
 	var r AudiobookReceipt
 	if err := decodeStrict(audiobookReceiptPrefix, raw, audiobookReceiptMax, &r); err != nil {
 		return r, err
+	}
+	if r.TorrentID != "" && (r.Kind != "qbittorrent" || !audiobookBookwarehouseID.MatchString(r.TorrentID)) {
+		return r, errAudiobookEnvelope
 	}
 	if r.RequestID != submission || r.Attempt != attempt || attempt < 1 || r.ExpMB < 0 || r.ExpMB > 10_000_000 || r.ExpDurS < 0 || r.ExpDurS > 10_000_000 || utf8.RuneCountInString(r.Sel) > 200 || sanitizeEnvelopeText(r.Sel) != r.Sel {
 		return r, errAudiobookEnvelope
@@ -158,6 +167,10 @@ type AcquisitionDecision struct {
 	Sources       []DecisionSource    `json:"sources,omitempty"`
 	AICalls       int                 `json:"ai_calls"`
 	AdminApproved bool                `json:"admin_approved"`
+	// AudiobookID names the Bookwarehouse audiobook a verified download
+	// became. Only the native Bookwarehouse plugin sets it, on a verify
+	// decision; the host completes the request from the library entry it names.
+	AudiobookID string `json:"audiobook_id,omitempty"`
 }
 
 var (
@@ -217,6 +230,9 @@ func (d *AcquisitionDecision) Validate() error {
 			return errAudiobookEnvelope
 		}
 	default:
+		return errAudiobookEnvelope
+	}
+	if d.AudiobookID != "" && (d.Phase != "verify" || !audiobookBookwarehouseID.MatchString(d.AudiobookID)) {
 		return errAudiobookEnvelope
 	}
 	if !audiobookDetail.MatchString(d.Detail) || d.AICalls < 0 || d.AICalls > 20 || len(d.Candidates) > 5 || len(d.Issues) > 10 || len(d.Queries) > 4 || len(d.Sources) > 3 {

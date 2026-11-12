@@ -34,7 +34,7 @@ type bloemAudiobookSetup struct {
 }
 
 func (s bloemAudiobookSetup) installations(ctx context.Context, v bookrequests.Viewer) ([]handlers.EbookRequestInstallation, error) {
-	rows, err := s.pool.Query(ctx, `SELECT i.id,c.capability_id FROM plugin_installations i JOIN plugin_capabilities c ON c.plugin_installation_id=i.id AND c.capability_type='request_router.v1' JOIN resource_owners ro ON ro.id=i.owner_id JOIN organizations o ON o.id=$1 WHERE i.enabled AND i.kind='plugin' AND i.plugin_id=$2 AND ((ro.kind='platform' AND o.is_default) OR (ro.kind='organization' AND ro.organization_id=o.id)) ORDER BY i.id,c.capability_id`, v.OrganizationID, bookrequests.AudiobookRequestPluginID)
+	rows, err := s.pool.Query(ctx, `SELECT i.id,c.capability_id,i.plugin_id=$3 FROM plugin_installations i JOIN plugin_capabilities c ON c.plugin_installation_id=i.id AND c.capability_type='request_router.v1' JOIN resource_owners ro ON ro.id=i.owner_id JOIN organizations o ON o.id=$1 WHERE i.enabled AND i.kind='plugin' AND (i.plugin_id=$2 OR (i.plugin_id=$3 AND c.capability_id=$4)) AND ((ro.kind='platform' AND o.is_default) OR (ro.kind='organization' AND ro.organization_id=o.id)) ORDER BY i.id,c.capability_id`, v.OrganizationID, bookrequests.AudiobookRequestPluginID, bookrequests.StorageRequestPluginID, bookrequests.AudiobookStorageCapabilityID)
 	if err != nil {
 		return nil, err
 	}
@@ -42,10 +42,13 @@ func (s bloemAudiobookSetup) installations(ctx context.Context, v bookrequests.V
 	out := []handlers.EbookRequestInstallation{}
 	for rows.Next() {
 		var i handlers.EbookRequestInstallation
-		if err = rows.Scan(&i.ID, &i.CapabilityID); err != nil {
+		if err = rows.Scan(&i.ID, &i.CapabilityID, &i.Native); err != nil {
 			return nil, err
 		}
 		i.Name = "Audiobooks"
+		if i.Native {
+			i.Name = "Bookwarehouse library"
+		}
 		out = append(out, i)
 	}
 	return out, rows.Err()
@@ -115,25 +118,27 @@ func (s bloemAudiobookSetup) Create(ctx context.Context, v bookrequests.Viewer, 
 	if err != nil {
 		return bookrequests.AudiobookIntegrationSummary{}, err
 	}
-	valid := false
-	for _, i := range installations {
-		if i.ID == in.InstallationID && i.CapabilityID == in.CapabilityID {
-			valid = true
-			break
-		}
-	}
-	if !valid {
+	index := slices.IndexFunc(installations, func(i handlers.EbookRequestInstallation) bool {
+		return i.ID == in.InstallationID && i.CapabilityID == in.CapabilityID
+	})
+	if index < 0 {
 		return bookrequests.AudiobookIntegrationSummary{}, bookrequests.ErrInvalid
 	}
-	credentials, err := audiobookCredentialBundle(in.Credentials, in.PluginConfig)
-	if err != nil {
+	var credentials string
+	if installations[index].Native {
+		// The storage installation acquires with its own Bookwarehouse
+		// connection; its request connection saves no credentials.
+		if len(in.Credentials) != 0 {
+			return bookrequests.AudiobookIntegrationSummary{}, fmt.Errorf("%w: this connection uses the Bookwarehouse installation's own credentials", bookrequests.ErrInvalid)
+		}
+	} else if credentials, err = audiobookCredentialBundle(in.Credentials, in.PluginConfig); err != nil {
 		return bookrequests.AudiobookIntegrationSummary{}, err
 	}
 	c, err := s.requests.CreateIntegration(ctx, requests.Viewer{UserID: v.UserID, IsAdmin: true}, requests.Integration{Name: in.Name, Enabled: true, InstallationID: &in.InstallationID, CapabilityID: in.CapabilityID, SupportedMediaTypes: []string{"audiobook"}, APIKeyRef: credentials, PluginConfig: in.PluginConfig})
 	if err != nil {
 		return bookrequests.AudiobookIntegrationSummary{}, errors.New("audiobook acquisition connection could not be created")
 	}
-	return bookrequests.AudiobookIntegrationSummary{ID: c.ID, Name: c.Name, InstallationID: in.InstallationID, CapabilityID: in.CapabilityID, DownloadRoots: []string{}}, nil
+	return bookrequests.AudiobookIntegrationSummary{ID: c.ID, Name: c.Name, InstallationID: in.InstallationID, CapabilityID: in.CapabilityID, DownloadRoots: []string{}, Native: installations[index].Native}, nil
 }
 func (s bloemAudiobookSetup) SetLibrary(ctx context.Context, v bookrequests.Viewer, id string, libraryID int, roots []string) (bookrequests.AudiobookIntegrationSummary, error) {
 	if err := s.requirePlatform(ctx, v); err != nil {
@@ -194,8 +199,12 @@ func (s bloemAudiobookSetup) Update(ctx context.Context, v bookrequests.Viewer, 
 	if _, exists := config["service_kind"]; exists {
 		return bookrequests.AudiobookIntegrationSummary{}, bookrequests.ErrInvalid
 	}
-	credentials, err := recomposeAudiobookCredentials(in.Credentials, stored.APIKeyRef, config)
-	if err != nil {
+	var credentials string
+	if summary.Native {
+		if len(in.Credentials) != 0 {
+			return bookrequests.AudiobookIntegrationSummary{}, fmt.Errorf("%w: this connection uses the Bookwarehouse installation's own credentials", bookrequests.ErrInvalid)
+		}
+	} else if credentials, err = recomposeAudiobookCredentials(in.Credentials, stored.APIKeyRef, config); err != nil {
 		return bookrequests.AudiobookIntegrationSummary{}, err
 	}
 	updated, err := s.requests.UpdateIntegrationConditional(requests.WithBloemLaneIntegrationWriter(ctx), requests.Viewer{UserID: v.UserID, IsAdmin: true}, requests.Integration{ID: stored.ID, Name: name, Enabled: stored.Enabled, InstallationID: stored.InstallationID, CapabilityID: stored.CapabilityID, SupportedMediaTypes: []string{"audiobook"}, APIKeyRef: credentials, PluginConfig: config}, stored.Revision)
@@ -261,9 +270,12 @@ func (s bloemAudiobookSetup) Test(ctx context.Context, v bookrequests.Viewer, id
 	if err := s.requirePlatform(ctx, v); err != nil {
 		return handlers.RequestIntegrationTestResult{}, err
 	}
-	_, stored, err := s.saved(ctx, v, id)
+	summary, stored, err := s.saved(ctx, v, id)
 	if err != nil {
 		return handlers.RequestIntegrationTestResult{}, err
+	}
+	if summary.Native {
+		return checkRequestConnection(ctx, s.router, *stored, nil)
 	}
 	secrets, refusal := boundAudiobookCredentials(stored.APIKeyRef, stored.PluginConfig)
 	if refusal != "" {

@@ -30,6 +30,10 @@ type AudiobookIntegration struct {
 	LibraryID      int       `json:"library_id"`
 	DownloadRoots  []string  `json:"download_roots"`
 	Language       string    `json:"language"`
+	// Native marks the storage plugin's integration: no download folders, and
+	// completion by the Bookwarehouse audiobook its verify decision names.
+	// Omitted when false, so descriptors frozen before it existed still match.
+	Native bool `json:"native,omitempty"`
 }
 
 // sameAudiobookIdentity replaces == (the struct holds a slice) and keeps the

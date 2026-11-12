@@ -15,6 +15,10 @@ type EbookRequestInstallation struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
 	CapabilityID string `json:"capability_id"`
+	// Native marks the Bookwarehouse storage installation, which serves
+	// requests with its own connection: a connection to it takes no URL, key
+	// or credentials, and binds to the library that installation stores.
+	Native bool `json:"native,omitempty"`
 }
 type EbookRequestSetup struct {
 	Available     bool                            `json:"available"`

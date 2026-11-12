@@ -876,6 +876,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | `admin_approved` | boolean | yes |  |
 | `ai` | [`DecisionAI`](#decisionai) |  |  |
 | `ai_calls` | integer (int64) | yes |  |
+| `audiobook_id` | string |  |  |
 | `candidates` | array of [`DecisionCandidate`](#decisioncandidate) |  |  |
 | `chosen` | [`DecisionCandidate`](#decisioncandidate) |  |  |
 | `detail` | string |  |  |
@@ -957,6 +958,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | `library_id` | integer (int64) | yes |  |
 | `library_name` | string |  |  |
 | `name` | string | yes |  |
+| `native` | boolean |  |  |
 | `plugin_config` | object of any |  |  |
 | `ready` | boolean | yes |  |
 | `stored_credentials` | array of string |  |  |
@@ -1124,6 +1126,7 @@ Request body (required, `application/json`): [`ActionInput`](#actioninput).
 | `capability_id` | string | yes |  |
 | `id` | integer (int64) | yes |  |
 | `name` | string | yes |  |
+| `native` | boolean |  |  |
 
 ### EbookRequestPolicy
 

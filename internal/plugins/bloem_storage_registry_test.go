@@ -23,6 +23,20 @@ func TestNativeStorageApprovalIsImmutable(t *testing.T) {
 		t.Fatal("approval aliases caller manifest")
 	}
 }
+
+// A native storage release may also serve request_router.v1, and only that.
+func TestNativeStorageApprovalAcceptsRequestRouter(t *testing.T) {
+	a := approvedNativeFixture()
+	a.Manifest.Capabilities = []*publicv1.CapabilityDescriptor{{Type: "request_router.v1", Id: "ebooks"}, {Type: "request_router.v1", Id: "audiobooks"}}
+	if _, err := newNativeStorageApprovals(map[string]NativeStorageArtifact{"fixture": a}); err != nil {
+		t.Fatalf("request router refused: %v", err)
+	}
+	a.Manifest.Capabilities = append(a.Manifest.Capabilities, &publicv1.CapabilityDescriptor{Type: "metadata_provider.v1", Id: "metadata"})
+	if _, err := newNativeStorageApprovals(map[string]NativeStorageArtifact{"fixture": a}); err == nil {
+		t.Fatal("other public capability accepted beside a request router")
+	}
+}
+
 func TestNativeStoragePrivateValidation(t *testing.T) {
 	for _, kind := range []string{"reserved", "checksum", "platform", "path", "capability", "route"} {
 		t.Run(kind, func(t *testing.T) {

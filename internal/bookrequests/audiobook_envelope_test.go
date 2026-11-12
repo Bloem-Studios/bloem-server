@@ -142,3 +142,59 @@ func TestAudiobookDecisionValidation(t *testing.T) {
 		t.Fatalf("verify decision: %+v %v", d, err)
 	}
 }
+
+// The native Bookwarehouse plugin hands a release to Bookwarehouse's own
+// qBittorrent; its receipt also names Bookwarehouse's torrent record.
+func TestAudiobookBookwarehouseReceipt(t *testing.T) {
+	const submission = "0f8fad5b-d9cb-469f-a165-70867728950e"
+	receipt := map[string]any{"kind": "qbittorrent", "id": strings.Repeat("b", 40), "request_id": submission, "attempt": 1, "client": "0123456789abcdef", "confirmed": true, "adopted": false, "sel": "Synthetic Saga", "exp_mb": 512, "exp_dur_s": 0, "torrent_id": "6f1c0e8a-3b2d-4c1e-9f7a-0123456789ab"}
+	parsed, err := ParseAudiobookReceipt(encodeEnvelope("abr1.", receipt), submission, 1)
+	if err != nil || parsed.TorrentID != "6f1c0e8a-3b2d-4c1e-9f7a-0123456789ab" {
+		t.Fatalf("bookwarehouse receipt: %+v %v", parsed, err)
+	}
+	for label, mutate := range map[string]func(map[string]any){
+		"path torrent id": func(m map[string]any) { m["torrent_id"] = "../torrents" },
+		"long torrent id": func(m map[string]any) { m["torrent_id"] = strings.Repeat("t", 129) },
+		"nzbget kind":     func(m map[string]any) { m["kind"], m["id"] = "nzbget", "4711" },
+		"no client":       func(m map[string]any) { m["client"] = "" },
+	} {
+		bad := map[string]any{}
+		for k, v := range receipt {
+			bad[k] = v
+		}
+		mutate(bad)
+		if _, err := ParseAudiobookReceipt(encodeEnvelope("abr1.", bad), submission, 1); err == nil {
+			t.Errorf("%s: receipt accepted", label)
+		}
+	}
+}
+
+// A verified download from the native plugin names the Bookwarehouse
+// audiobook it became, which is how the host finds it in the library.
+func TestAudiobookDecisionAudiobookID(t *testing.T) {
+	verified := map[string]any{"v": 1, "phase": "verify", "outcome": "verified", "ai_calls": 0, "admin_approved": false, "audiobook_id": "6f1c0e8a-3b2d-4c1e-9f7a-0123456789ab"}
+	d, err := ParseAcquisitionDecision(encodeEnvelope("abd1.", verified))
+	if err != nil || d.AudiobookID != "6f1c0e8a-3b2d-4c1e-9f7a-0123456789ab" {
+		t.Fatalf("verified decision: %+v %v", d, err)
+	}
+	encoded, err := d.Encode()
+	if err != nil || !strings.Contains(string(encoded), `"audiobook_id":"6f1c0e8a-3b2d-4c1e-9f7a-0123456789ab"`) {
+		t.Fatalf("audiobook id not stored: %s %v", encoded, err)
+	}
+	plain := map[string]any{"v": 1, "phase": "verify", "outcome": "verified", "ai_calls": 0, "admin_approved": false}
+	if d, err = ParseAcquisitionDecision(encodeEnvelope("abd1.", plain)); err != nil || d.AudiobookID != "" {
+		t.Fatalf("decision without audiobook id: %+v %v", d, err)
+	}
+	if encoded, _ = d.Encode(); strings.Contains(string(encoded), "audiobook_id") {
+		t.Fatalf("empty audiobook id serialized: %s", encoded)
+	}
+	for label, decision := range map[string]map[string]any{
+		"path":   {"v": 1, "phase": "verify", "outcome": "verified", "ai_calls": 0, "admin_approved": false, "audiobook_id": "a/b"},
+		"long":   {"v": 1, "phase": "verify", "outcome": "verified", "ai_calls": 0, "admin_approved": false, "audiobook_id": strings.Repeat("a", 129)},
+		"select": {"v": 1, "phase": "select", "outcome": "handed_off", "ai_calls": 0, "admin_approved": false, "audiobook_id": "abc"},
+	} {
+		if _, err := ParseAcquisitionDecision(encodeEnvelope("abd1.", decision)); err == nil {
+			t.Errorf("%s: decision accepted", label)
+		}
+	}
+}

@@ -85,12 +85,24 @@ type Session struct {
 	ctx      context.Context
 	done     <-chan struct{}
 	provider storagev1.StorageProviderClient
+	router   publicv1.RequestRouterClient
+	manifest *publicv1.PluginManifest
 	process  *plugin.Client
 	command  *exec.Cmd
 }
 
 func (s *Session) Provider() storagev1.StorageProviderClient { return s.provider }
-func (s *Session) Context() context.Context                  { return s.ctx }
+
+// RequestRouter returns the provider's request_router.v1 client for a
+// capability id its verified manifest declares. Calls share the session's
+// process and lifetime; each may run for up to RequestRouterRPCLimit.
+func (s *Session) RequestRouter(capabilityID string) (publicv1.RequestRouterClient, bool) {
+	if s == nil || s.router == nil || !DeclaresRequestRouter(s.manifest, capabilityID) {
+		return nil, false
+	}
+	return requestRouterClient{s.router}, true
+}
+func (s *Session) Context() context.Context { return s.ctx }
 
 // Done closes after the process has exited and its wait state has been reaped.
 func (s *Session) Done() <-chan struct{} { return s.done }
@@ -152,8 +164,8 @@ func validateSnapshot(req Snapshot) error {
 	if req.Manifest.GetSiloApiVersion() != "v1" {
 		return errors.New("unsupported public runtime API")
 	}
-	if len(req.Manifest.GetCapabilities()) != 0 || len(req.Manifest.GetHttpRoutes()) != 0 {
-		return errors.New("native-only provider must not declare public capabilities or routes")
+	if err := ValidateNativeSurfaces(req.Manifest); err != nil {
+		return err
 	}
 	digest, err := hex.DecodeString(req.ExpectedChecksum)
 	if err != nil || len(digest) != sha256.Size {
@@ -406,7 +418,11 @@ func (m *Manager) start(s *slot) (*Session, error) {
 		return nil, err
 	}
 	retained = true
-	return &Session{ctx: s.ctx, done: s.done, provider: provider, process: process, command: command}, nil
+	session := &Session{ctx: s.ctx, done: s.done, provider: provider, manifest: proto.CloneOf(req.Manifest), process: process, command: command}
+	if len(req.Manifest.GetCapabilities()) != 0 {
+		session.router = client.RequestRouter()
+	}
+	return session, nil
 }
 func (m *Manager) monitor(s *slot, session *Session) error {
 	ticker := time.NewTicker(m.config.HealthInterval)

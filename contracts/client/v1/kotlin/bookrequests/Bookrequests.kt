@@ -40,6 +40,8 @@ public data class AcquisitionDecision(
     public val aiCalls: Int = 0,
     @SerialName("admin_approved")
     public val adminApproved: Boolean = false,
+    @SerialName("audiobook_id")
+    public val audiobookId: String = "",
 )
 
 /** Wire type `internal/bookrequests.AcquisitionDecisionRecord`. Direction: response. Dialect: bloem. Gate: audiobook_requests_v1. */
@@ -154,6 +156,8 @@ public data class AudiobookIntegrationSummary(
     public val bindingRevision: Long = 0L,
     @SerialName("ready")
     public val ready: Boolean = false,
+    @SerialName("native")
+    public val native: Boolean = false,
     @SerialName("plugin_config")
     public val pluginConfig: Map<String, JsonElement> = emptyMap(),
     @SerialName("stored_credentials")

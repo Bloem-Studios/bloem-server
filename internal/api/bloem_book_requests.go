@@ -25,14 +25,15 @@ func BuildBloemBookRequestsService(deps Dependencies) *bookrequests.Service {
 	}
 	service := bookrequests.NewService(deps.DB, notifier)
 	if deps.PluginService != nil && deps.SecretCipher != nil {
-		composeBloemBookFulfillment(service, requests.NewRepository(deps.DB, deps.SecretCipher), PluginRequestRouterAdapter{Svc: deps.PluginService})
+		composeBloemBookFulfillment(service, requests.NewRepository(deps.DB, deps.SecretCipher), newBloemRequestRouterResolver(deps))
 	}
 	return service
 }
 
 // composeBloemBookFulfillment attaches the ebook and audiobook acquisition
-// adapters. Production resolves routers through the plugin service; the
-// cross-process acceptance resolves them from its plugin host.
+// adapters. Production resolves routers through the plugin service, or the
+// storage session of a native installation; the cross-process acceptance
+// resolves them from its plugin host.
 func composeBloemBookFulfillment(service *bookrequests.Service, repository *requests.Repository, resolver requests.RouterClientResolver) {
 	service.SetEbookFulfillment(bloemEbookRouter{integrations: repository, resolver: resolver, validator: service})
 	service.SetAudiobookFulfillment(bloemAudiobookRouter{integrations: repository, resolver: resolver, validator: service})
@@ -49,12 +50,14 @@ func newBloemBookRequests(deps Dependencies) *handlers.BloemBookRequestsHandler 
 		repository := requests.NewRepository(deps.DB, deps.SecretCipher)
 		connections := requests.NewService(repository, nil, nil)
 		connections.SetTenantScopeResolver(tenancy.NewStore(deps.DB))
-		AttachRequestRouter(connections, deps.PluginService)
+		// Saving a connection validates it with the plugin that serves it, a
+		// native storage installation included.
+		router := requests.NewPluginRouterProvider(newBloemRequestRouterResolver(deps))
+		connections.SetRouterProvider(router)
 		platform := deps.PlatformAdminAuthorizer
 		if platform == nil {
 			platform = auth.NewPlatformAdminAuthorizer(auth.NewUserRepository(deps.DB))
 		}
-		router := requests.NewPluginRouterProvider(PluginRequestRouterAdapter{Svc: deps.PluginService})
 		setup = bloemEbookSetup{pool: deps.DB, books: service, requests: connections, platform: platform, store: repository, router: router}
 		audiobookSetup = bloemAudiobookSetup{pool: deps.DB, books: service, requests: connections, platform: platform, store: repository, router: router}
 	}

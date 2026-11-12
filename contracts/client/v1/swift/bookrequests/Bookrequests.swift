@@ -24,6 +24,7 @@ public enum Bookrequests {
         public let sources: [DecisionSource]
         public let aiCalls: Int
         public let adminApproved: Bool
+        public let audiobookId: String
 
         public enum CodingKeys: String, CodingKey {
             case v = "v"
@@ -39,6 +40,7 @@ public enum Bookrequests {
             case sources = "sources"
             case aiCalls = "ai_calls"
             case adminApproved = "admin_approved"
+            case audiobookId = "audiobook_id"
         }
 
         public init(
@@ -54,7 +56,8 @@ public enum Bookrequests {
             queries: [String] = [],
             sources: [DecisionSource] = [],
             aiCalls: Int = 0,
-            adminApproved: Bool = false
+            adminApproved: Bool = false,
+            audiobookId: String = ""
         ) {
             self.v = v
             self.phase = phase
@@ -69,6 +72,7 @@ public enum Bookrequests {
             self.sources = sources
             self.aiCalls = aiCalls
             self.adminApproved = adminApproved
+            self.audiobookId = audiobookId
         }
 
         public init(from decoder: any Decoder) throws {
@@ -86,6 +90,7 @@ public enum Bookrequests {
             self.sources = try container.decodeIfPresent([DecisionSource].self, forKey: .sources) ?? []
             self.aiCalls = try container.decodeIfPresent(Int.self, forKey: .aiCalls) ?? 0
             self.adminApproved = try container.decodeIfPresent(Bool.self, forKey: .adminApproved) ?? false
+            self.audiobookId = try container.decodeIfPresent(String.self, forKey: .audiobookId) ?? ""
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -103,6 +108,7 @@ public enum Bookrequests {
             try container.encode(self.sources, forKey: .sources)
             try container.encode(self.aiCalls, forKey: .aiCalls)
             try container.encode(self.adminApproved, forKey: .adminApproved)
+            try container.encode(self.audiobookId, forKey: .audiobookId)
         }
     }
 
@@ -410,6 +416,7 @@ public enum Bookrequests {
         public let downloadRoots: [String]
         public let bindingRevision: Int64
         public let ready: Bool
+        public let native: Bool
         public let pluginConfig: [String: BloemJSONValue]
         public let storedCredentials: [String]
 
@@ -423,6 +430,7 @@ public enum Bookrequests {
             case downloadRoots = "download_roots"
             case bindingRevision = "binding_revision"
             case ready = "ready"
+            case native = "native"
             case pluginConfig = "plugin_config"
             case storedCredentials = "stored_credentials"
         }
@@ -437,6 +445,7 @@ public enum Bookrequests {
             downloadRoots: [String] = [],
             bindingRevision: Int64 = 0,
             ready: Bool = false,
+            native: Bool = false,
             pluginConfig: [String: BloemJSONValue] = [:],
             storedCredentials: [String] = []
         ) {
@@ -449,6 +458,7 @@ public enum Bookrequests {
             self.downloadRoots = downloadRoots
             self.bindingRevision = bindingRevision
             self.ready = ready
+            self.native = native
             self.pluginConfig = pluginConfig
             self.storedCredentials = storedCredentials
         }
@@ -464,6 +474,7 @@ public enum Bookrequests {
             self.downloadRoots = try container.decodeIfPresent([String].self, forKey: .downloadRoots) ?? []
             self.bindingRevision = try container.decodeIfPresent(Int64.self, forKey: .bindingRevision) ?? 0
             self.ready = try container.decodeIfPresent(Bool.self, forKey: .ready) ?? false
+            self.native = try container.decodeIfPresent(Bool.self, forKey: .native) ?? false
             self.pluginConfig = try container.decodeIfPresent([String: BloemJSONValue].self, forKey: .pluginConfig) ?? [:]
             self.storedCredentials = try container.decodeIfPresent([String].self, forKey: .storedCredentials) ?? []
         }
@@ -479,6 +490,7 @@ public enum Bookrequests {
             try container.encode(self.downloadRoots, forKey: .downloadRoots)
             try container.encode(self.bindingRevision, forKey: .bindingRevision)
             try container.encode(self.ready, forKey: .ready)
+            try container.encode(self.native, forKey: .native)
             try container.encode(self.pluginConfig, forKey: .pluginConfig)
             try container.encode(self.storedCredentials, forKey: .storedCredentials)
         }

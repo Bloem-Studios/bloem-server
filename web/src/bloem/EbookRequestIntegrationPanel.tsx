@@ -57,11 +57,13 @@ export function EbookRequestIntegrationPanel() {
   const policyId = useId();
   const [allowHttp, setAllowHttp] = useState(false);
   const httpOptInId = useId();
-  const baseUrlAllowed = allowsBaseURL(baseUrl, allowHttp);
   const installations = list.data?.installations ?? [];
   const plugin =
     installations.find((row) => `${row.id}:${row.capability_id}` === installation) ??
     installations[0];
+  // The Bookwarehouse storage installation uses its own connection.
+  const native = plugin?.native === true;
+  const baseUrlAllowed = native || allowsBaseURL(baseUrl, allowHttp);
   const integration =
     list.data?.integrations.find((row) => row.id === selected) ?? list.data?.integrations[0];
   const library = integration
@@ -96,14 +98,22 @@ export function EbookRequestIntegrationPanel() {
       if (!plugin) throw new Error(bt("bloem.admin.bookRequests.ebookSetup.selectPlugin"));
       if (!baseUrlAllowed) throw new Error(bt("bloem.admin.bookRequests.ebookSetup.httpsRequired"));
       return ebookRequestsApi.createIntegration(
-        {
-          name,
-          base_url: baseUrl,
-          api_key: apiKey,
-          installation_id: plugin.id,
-          capability_id: plugin.capability_id,
-          allow_http: allowHttp,
-        },
+        native
+          ? {
+              name,
+              base_url: "",
+              api_key: "",
+              installation_id: plugin.id,
+              capability_id: plugin.capability_id,
+            }
+          : {
+              name,
+              base_url: baseUrl,
+              api_key: apiKey,
+              installation_id: plugin.id,
+              capability_id: plugin.capability_id,
+              allow_http: allowHttp,
+            },
         context,
       );
     },
@@ -305,39 +315,46 @@ export function EbookRequestIntegrationPanel() {
                 onChange={(event) => setName(event.target.value)}
               />
             </label>
-            <label className="grid gap-2 text-sm font-medium">
-              {bt("bloem.admin.bookRequests.ebookSetup.baseUrl")}
-              <Input
-                type="url"
-                placeholder={EXAMPLE_BASE_URL}
-                value={baseUrl}
-                required
-                maxLength={2048}
-                disabled={busy}
-                onChange={(event) => setBaseUrl(event.target.value)}
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              {bt("bloem.admin.bookRequests.ebookSetup.apiKey")}
-              <Input
-                type="password"
-                autoComplete="off"
-                value={apiKey}
-                required
-                maxLength={4096}
-                disabled={busy}
-                onChange={(event) => setApiKey(event.target.value)}
-              />
-            </label>
-            <label htmlFor={httpOptInId} className="flex items-center gap-2 text-sm sm:col-span-2">
-              <Checkbox
-                id={httpOptInId}
-                checked={allowHttp}
-                disabled={busy}
-                onCheckedChange={(checked) => setAllowHttp(checked === true)}
-              />
-              {bt("bloem.admin.bookRequests.ebookSetup.allowHttp")}
-            </label>
+            {!native && (
+              <>
+                <label className="grid gap-2 text-sm font-medium">
+                  {bt("bloem.admin.bookRequests.ebookSetup.baseUrl")}
+                  <Input
+                    type="url"
+                    placeholder={EXAMPLE_BASE_URL}
+                    value={baseUrl}
+                    required
+                    maxLength={2048}
+                    disabled={busy}
+                    onChange={(event) => setBaseUrl(event.target.value)}
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-medium">
+                  {bt("bloem.admin.bookRequests.ebookSetup.apiKey")}
+                  <Input
+                    type="password"
+                    autoComplete="off"
+                    value={apiKey}
+                    required
+                    maxLength={4096}
+                    disabled={busy}
+                    onChange={(event) => setApiKey(event.target.value)}
+                  />
+                </label>
+                <label
+                  htmlFor={httpOptInId}
+                  className="flex items-center gap-2 text-sm sm:col-span-2"
+                >
+                  <Checkbox
+                    id={httpOptInId}
+                    checked={allowHttp}
+                    disabled={busy}
+                    onCheckedChange={(checked) => setAllowHttp(checked === true)}
+                  />
+                  {bt("bloem.admin.bookRequests.ebookSetup.allowHttp")}
+                </label>
+              </>
+            )}
             <Button type="submit" disabled={busy || !baseUrlAllowed}>
               {create.isPending
                 ? bt("bloem.admin.bookRequests.ebookSetup.adding")

@@ -47,7 +47,7 @@ func snapshot(t *testing.T) Snapshot {
 	sum := sha256.Sum256(b)
 	digest := hex.EncodeToString(sum[:])
 	value, _ := structpb.NewStruct(map[string]any{"token": "synthetic-source-secret"})
-	return Snapshot{InstallationID: 1, Generation: 1, Enabled: true, NativeOnly: true, BinaryPath: fixturePath, ExpectedChecksum: digest, Manifest: &publicv1.PluginManifest{PluginId: "bloem.runtime.fixture", Version: "0.1.0", Checksum: digest, SiloApiVersion: "v1", SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}}, Config: []*publicv1.ConfigEntry{{Key: "source", Value: value}}}
+	return Snapshot{InstallationID: 1, Generation: 1, Enabled: true, NativeOnly: true, BinaryPath: fixturePath, ExpectedChecksum: digest, Manifest: &publicv1.PluginManifest{PluginId: "bloem.runtime.fixture", Version: "0.1.0", Checksum: digest, SiloApiVersion: "v1", SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}, Capabilities: []*publicv1.CapabilityDescriptor{{Type: "request_router.v1", Id: "ebooks"}}}, Config: []*publicv1.ConfigEntry{{Key: "source", Value: value}}}
 }
 func manager(t *testing.T) *Manager {
 	t.Helper()
@@ -167,7 +167,7 @@ func TestRejectUnapprovedAndTamperedArtifact(t *testing.T) {
 			case "reserved":
 				req.Manifest.PluginId = "silo.builtin"
 			case "capability":
-				req.Manifest.Capabilities = []*publicv1.CapabilityDescriptor{{Type: "metadata_provider.v1", Id: "metadata"}}
+				req.Manifest.Capabilities = append(req.Manifest.Capabilities, &publicv1.CapabilityDescriptor{Type: "metadata_provider.v1", Id: "metadata"})
 			}
 			if _, err := m.Ensure(context.Background(), req); err == nil {
 				t.Fatal("unapproved/tampered artifact launched")

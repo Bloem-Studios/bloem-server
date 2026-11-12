@@ -40,6 +40,9 @@ type EbookIntegration struct {
 	BindingRevision              int64     `json:"-"`
 	StorageSourceKey             uuid.UUID `json:"-"`
 	StorageConfigurationRevision int64     `json:"-"`
+	// Native marks an integration served by the storage plugin through its own
+	// installation's connection: it carries no URL or key of its own.
+	Native bool `json:"-"`
 }
 
 type EbookLibrary struct {

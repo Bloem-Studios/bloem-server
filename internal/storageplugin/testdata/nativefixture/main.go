@@ -162,6 +162,15 @@ func (s *server) Read(r *storagev1.ReadRequest, out grpc.ServerStreamingServer[s
 	return status.FromContextError(out.Context().Err()).Err()
 }
 
+// router is the fixture's request_router.v1 capability.
+type router struct {
+	publicv1.UnimplementedRequestRouterServer
+}
+
+func (router) TestConnection(_ context.Context, r *publicv1.TestConnectionRequest) (*publicv1.TestConnectionResponse, error) {
+	return &publicv1.TestConnectionResponse{Ok: true, Message: "fixture router " + r.GetConnection().GetId()}, nil
+}
+
 type extension struct {
 	*sdkruntime.GRPCPlugin
 	storage storagev1.StorageProviderServer
@@ -181,7 +190,7 @@ func main() {
 		panic(err)
 	}
 	sum := sha256.Sum256(b)
-	s := &server{manifest: &publicv1.PluginManifest{PluginId: "bloem.runtime.fixture", Version: "0.1.0", Checksum: hex.EncodeToString(sum[:]), SiloApiVersion: "v1", SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}}}
+	s := &server{manifest: &publicv1.PluginManifest{PluginId: "bloem.runtime.fixture", Version: "0.1.0", Checksum: hex.EncodeToString(sum[:]), SiloApiVersion: "v1", SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}, Capabilities: []*publicv1.CapabilityDescriptor{{Type: "request_router.v1", Id: "ebooks"}}}}
 	s.revision.Store(1)
-	sdkruntime.Serve(sdkruntime.ServeConfig{Plugins: plugin.PluginSet{sdkruntime.PluginSetName: &extension{GRPCPlugin: &sdkruntime.GRPCPlugin{Servers: sdkruntime.CapabilityServers{Runtime: s}}, storage: s}}})
+	sdkruntime.Serve(sdkruntime.ServeConfig{Plugins: plugin.PluginSet{sdkruntime.PluginSetName: &extension{GRPCPlugin: &sdkruntime.GRPCPlugin{Servers: sdkruntime.CapabilityServers{Runtime: s, RequestRouter: router{}}}, storage: s}}})
 }

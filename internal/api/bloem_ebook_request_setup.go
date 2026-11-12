@@ -31,12 +31,12 @@ type bloemEbookSetup struct {
 
 func (s bloemEbookSetup) installations(ctx context.Context, v bookrequests.Viewer) ([]handlers.EbookRequestInstallation, error) {
 	rows, err := s.pool.Query(ctx, `
- SELECT i.id,c.capability_id FROM plugin_installations i
+ SELECT i.id,c.capability_id,i.plugin_id=$3 FROM plugin_installations i
  JOIN plugin_capabilities c ON c.plugin_installation_id=i.id AND c.capability_type='request_router.v1'
  JOIN resource_owners ro ON ro.id=i.owner_id
- WHERE i.enabled AND i.kind='plugin' AND i.plugin_id='bloem.requests.bookwarehouse'
+ WHERE i.enabled AND i.kind='plugin' AND (i.plugin_id=$2 OR (i.plugin_id=$3 AND c.capability_id=$4))
  AND (ro.kind='platform' OR (ro.kind='organization' AND ro.organization_id=$1))
- ORDER BY i.id,c.capability_id`, v.OrganizationID)
+ ORDER BY i.id,c.capability_id`, v.OrganizationID, bookrequests.EbookRequestPluginID, bookrequests.StorageRequestPluginID, bookrequests.EbookStorageCapabilityID)
 	if err != nil {
 		return nil, err
 	}
@@ -44,10 +44,13 @@ func (s bloemEbookSetup) installations(ctx context.Context, v bookrequests.Viewe
 	out := []handlers.EbookRequestInstallation{}
 	for rows.Next() {
 		var i handlers.EbookRequestInstallation
-		if err = rows.Scan(&i.ID, &i.CapabilityID); err != nil {
+		if err = rows.Scan(&i.ID, &i.CapabilityID, &i.Native); err != nil {
 			return nil, err
 		}
 		i.Name = "Bookwarehouse"
+		if i.Native {
+			i.Name = "Bookwarehouse library"
+		}
 		out = append(out, i)
 	}
 	return out, rows.Err()
@@ -117,24 +120,30 @@ func (s bloemEbookSetup) Create(ctx context.Context, v bookrequests.Viewer, in h
 	}
 	in.Name = strings.TrimSpace(in.Name)
 	in.BaseURL = strings.TrimSpace(in.BaseURL)
-	if in.Name == "" || len(in.Name) > 500 || in.BaseURL == "" || len(in.BaseURL) > 4096 || in.APIKey == "" || len(in.APIKey) > 8192 || in.InstallationID <= 0 {
+	if in.Name == "" || len(in.Name) > 500 || len(in.BaseURL) > 4096 || len(in.APIKey) > 8192 || in.InstallationID <= 0 {
 		return bookrequests.EbookIntegration{}, bookrequests.ErrInvalid
 	}
 	installations, err := s.installations(ctx, v)
 	if err != nil {
 		return bookrequests.EbookIntegration{}, err
 	}
-	valid := false
-	for _, installation := range installations {
-		if installation.ID == in.InstallationID && installation.CapabilityID == in.CapabilityID {
-			valid = true
-			break
-		}
-	}
-	if !valid {
+	index := slices.IndexFunc(installations, func(i handlers.EbookRequestInstallation) bool {
+		return i.ID == in.InstallationID && i.CapabilityID == in.CapabilityID
+	})
+	if index < 0 {
 		return bookrequests.EbookIntegration{}, bookrequests.ErrInvalid
 	}
-	connection, err := s.requests.CreateIntegration(ctx, requests.Viewer{UserID: v.UserID, IsAdmin: true}, requests.Integration{Name: in.Name, Enabled: true, BaseURL: in.BaseURL, APIKeyRef: in.APIKey, InstallationID: &in.InstallationID, CapabilityID: in.CapabilityID, SupportedMediaTypes: []string{"book"}, PluginConfig: map[string]any{"preferred_format": "epub", "allow_http": in.AllowHTTP}})
+	config := map[string]any{"preferred_format": "epub", "allow_http": in.AllowHTTP}
+	if installations[index].Native {
+		// The storage installation requests with its own connection.
+		if in.BaseURL != "" || in.APIKey != "" || in.AllowHTTP {
+			return bookrequests.EbookIntegration{}, bookrequests.ErrInvalid
+		}
+		config = map[string]any{"preferred_format": "epub"}
+	} else if in.BaseURL == "" || in.APIKey == "" {
+		return bookrequests.EbookIntegration{}, bookrequests.ErrInvalid
+	}
+	connection, err := s.requests.CreateIntegration(ctx, requests.Viewer{UserID: v.UserID, IsAdmin: true}, requests.Integration{Name: in.Name, Enabled: true, BaseURL: in.BaseURL, APIKeyRef: in.APIKey, InstallationID: &in.InstallationID, CapabilityID: in.CapabilityID, SupportedMediaTypes: []string{"book"}, PluginConfig: config})
 	if err != nil {
 		if errors.Is(err, requests.ErrForbidden) {
 			return bookrequests.EbookIntegration{}, bookrequests.ErrForbidden

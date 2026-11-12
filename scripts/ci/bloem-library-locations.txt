@@ -100,3 +100,9 @@
 
 # A detached source answers configuration and credential changes as not found.
 ./internal/nativestorage TestDetachedSourceConfigurationIsNotFoundDB
+
+# The Bookwarehouse storage plugin also serves ebook and audiobook requests.
+./internal/plugins TestNativeStorageRequestRouterCapabilitiesDB
+./internal/bookrequests TestEbookStorageRequestPluginBindingDatabase
+./internal/bookrequests TestAudiobookNativeCompletionByAudiobookIDDatabase
+./internal/api TestNativeStorageRequestConnectionSetupDatabase

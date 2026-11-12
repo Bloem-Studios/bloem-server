@@ -94,6 +94,9 @@
             "format": "int64",
             "type": "integer"
           },
+          "audiobook_id": {
+            "type": "string"
+          },
           "candidates": {
             "items": {
               "$ref": "#/components/schemas/DecisionCandidate"
@@ -1449,6 +1452,9 @@
           },
           "name": {
             "type": "string"
+          },
+          "native": {
+            "type": "boolean"
           },
           "plugin_config": {
             "additionalProperties": {},
@@ -7977,6 +7983,9 @@
           },
           "name": {
             "type": "string"
+          },
+          "native": {
+            "type": "boolean"
           }
         },
         "required": [

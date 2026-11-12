@@ -240,6 +240,58 @@ it("requires explicit download roots instead of inferring a library path", async
     ),
   );
 });
+it("adds and binds a Bookwarehouse library connection without settings or download roots", async () => {
+  mocks.setup.mockResolvedValue({
+    ...setup,
+    installations: [
+      { id: 36, name: "Bookwarehouse library", capability_id: "audiobooks", native: true },
+    ],
+    integrations: [
+      {
+        id: "connection-n",
+        name: "Library audio",
+        installation_id: 36,
+        capability_id: "audiobooks",
+        library_id: 0,
+        download_roots: [],
+        binding_revision: 1,
+        ready: false,
+        native: true,
+        plugin_config: {},
+      },
+    ],
+  });
+  mocks.createIntegration.mockResolvedValue({ id: "connection-m", name: "More audio" });
+  mocks.setLibrary.mockResolvedValue({});
+  open();
+  fireEvent.change(await screen.findByLabelText("Audiobook library"), { target: { value: "3" } });
+  expect(screen.queryByLabelText(/Download roots \(one per line\)/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Save audiobook library and roots" }));
+  await waitFor(() =>
+    expect(mocks.setLibrary).toHaveBeenCalledWith(
+      "connection-n",
+      3,
+      [],
+      expect.objectContaining({ key: "organization:a" }),
+    ),
+  );
+  expect(screen.queryByLabelText("qBittorrent password")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Connection name"), { target: { value: "More audio" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add audiobook connection" }));
+  await waitFor(() =>
+    expect(mocks.createIntegration).toHaveBeenCalledWith(
+      {
+        name: "More audio",
+        installation_id: 36,
+        capability_id: "audiobooks",
+        plugin_config: {},
+        credentials: {},
+      },
+      expect.objectContaining({ key: "organization:a" }),
+    ),
+  );
+});
 it("blocks an unknown action until a successful reload and uses the refreshed revision", async () => {
   mocks.approveCandidate
     .mockRejectedValueOnce(new TypeError("Unknown outcome"))

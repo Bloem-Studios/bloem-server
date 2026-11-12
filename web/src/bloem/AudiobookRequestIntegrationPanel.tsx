@@ -91,6 +91,10 @@ export function AudiobookRequestIntegrationPanel() {
   const plugin =
     list.data?.installations.find((row) => `${row.id}:${row.capability_id}` === installation) ??
     list.data?.installations[0];
+  // The Bookwarehouse storage installation downloads into Bookwarehouse with
+  // its own connection: no settings, credentials or download folders.
+  const nativePlugin = plugin?.native === true;
+  const nativeIntegration = integration?.native === true;
   const library = libraryDraft ?? String(integration?.library_id || "");
   const roots = rootsDraft ?? integration?.download_roots?.join("\n") ?? "";
   const selectedLibrary = list.data?.libraries.find((row) => String(row.id) === library);
@@ -118,8 +122,8 @@ export function AudiobookRequestIntegrationPanel() {
           name,
           installation_id: plugin.id,
           capability_id: plugin.capability_id,
-          plugin_config: values,
-          credentials,
+          plugin_config: nativePlugin ? {} : values,
+          credentials: nativePlugin ? {} : credentials,
         },
         scope.context,
       );
@@ -147,10 +151,12 @@ export function AudiobookRequestIntegrationPanel() {
       return audiobookAcquisitionsApi.setLibrary(
         integration.id,
         selectedLibrary.id,
-        roots
-          .split("\n")
-          .map((root) => root.trim())
-          .filter(Boolean),
+        nativeIntegration
+          ? []
+          : roots
+              .split("\n")
+              .map((root) => root.trim())
+              .filter(Boolean),
         scope.context,
       );
     },
@@ -320,18 +326,20 @@ export function AudiobookRequestIntegrationPanel() {
                     ? bt("bloem.admin.bookRequests.connectionTest.testing")
                     : bt("bloem.admin.bookRequests.connectionTest.test")}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy || editor?.id === integration.id || !integration.plugin_config}
-                  onClick={() => {
-                    setEditor(editorFor(integration));
-                    setEditMessage("");
-                  }}
-                >
-                  {bt("bloem.admin.bookRequests.audiobookSetup.edit")}
-                </Button>
-                {!integration.plugin_config && (
+                {!nativeIntegration && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy || editor?.id === integration.id || !integration.plugin_config}
+                    onClick={() => {
+                      setEditor(editorFor(integration));
+                      setEditMessage("");
+                    }}
+                  >
+                    {bt("bloem.admin.bookRequests.audiobookSetup.edit")}
+                  </Button>
+                )}
+                {!nativeIntegration && !integration.plugin_config && (
                   <p role="status" className="text-muted-foreground text-sm">
                     {bt("bloem.admin.bookRequests.audiobookSetup.settingsUnreadable")}
                   </p>
@@ -375,31 +383,36 @@ export function AudiobookRequestIntegrationPanel() {
                     ))}
                   </select>
                 </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  {bt("bloem.admin.bookRequests.audiobookSetup.downloadRoots")}
-                  <textarea
-                    className="border-input focus-visible:ring-ring min-h-20 w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
-                    value={roots}
-                    required
-                    disabled={busy}
-                    onChange={(event) => setRootsDraft(event.target.value)}
-                  />
-                  <span className="text-muted-foreground text-xs">
-                    {bt("bloem.admin.bookRequests.audiobookSetup.downloadRootsHelp")}
-                  </span>
-                </label>
-                {selectedLibrary && (
+                {!nativeIntegration && (
+                  <label className="grid gap-2 text-sm font-medium">
+                    {bt("bloem.admin.bookRequests.audiobookSetup.downloadRoots")}
+                    <textarea
+                      className="border-input focus-visible:ring-ring min-h-20 w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                      value={roots}
+                      required
+                      disabled={busy}
+                      onChange={(event) => setRootsDraft(event.target.value)}
+                    />
+                    <span className="text-muted-foreground text-xs">
+                      {bt("bloem.admin.bookRequests.audiobookSetup.downloadRootsHelp")}
+                    </span>
+                  </label>
+                )}
+                {selectedLibrary && !nativeIntegration && (
                   <p className="text-muted-foreground text-sm break-all sm:col-span-2">
                     {bt("bloem.admin.bookRequests.audiobookSetup.libraryPaths", {
                       paths: selectedLibrary.paths.join(DIVIDER),
                     })}
                   </p>
                 )}
-                <Button type="submit" disabled={busy || !selectedLibrary || !roots.trim()}>
+                <Button
+                  type="submit"
+                  disabled={busy || !selectedLibrary || (!nativeIntegration && !roots.trim())}
+                >
                   {bt("bloem.admin.bookRequests.audiobookSetup.saveLibrary")}
                 </Button>
               </>
-            ) : (
+            ) : nativeIntegration ? null : (
               <p className="text-muted-foreground text-sm break-all sm:col-span-2">
                 {bt("bloem.admin.bookRequests.audiobookSetup.downloadRootsSummary", {
                   roots:
@@ -551,34 +564,38 @@ export function AudiobookRequestIntegrationPanel() {
                 />
               </label>
             </div>
-            <AudiobookRequestConfigForm
-              values={values}
-              setValues={setValues}
-              disabled={createBusy}
-            />
-            <fieldset className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
-              <legend className="px-2 font-medium">
-                {bt("bloem.admin.bookRequests.audiobookSetup.credentials")}
-              </legend>
-              {credentialFields.map(([key, label]) => (
-                <label key={key} className="grid gap-2 text-sm font-medium">
-                  {bt(label)}
-                  <Input
-                    type="password"
-                    autoComplete="off"
-                    value={credentials[key] ?? ""}
-                    maxLength={1024}
-                    disabled={createBusy}
-                    onChange={(event) =>
-                      setCredentials({ ...credentials, [key]: event.target.value })
-                    }
-                  />
-                </label>
-              ))}
-              <p className="text-muted-foreground text-xs sm:col-span-2">
-                {bt("bloem.admin.bookRequests.audiobookSetup.newCredentialsHelp")}
-              </p>
-            </fieldset>
+            {!nativePlugin && (
+              <>
+                <AudiobookRequestConfigForm
+                  values={values}
+                  setValues={setValues}
+                  disabled={createBusy}
+                />
+                <fieldset className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
+                  <legend className="px-2 font-medium">
+                    {bt("bloem.admin.bookRequests.audiobookSetup.credentials")}
+                  </legend>
+                  {credentialFields.map(([key, label]) => (
+                    <label key={key} className="grid gap-2 text-sm font-medium">
+                      {bt(label)}
+                      <Input
+                        type="password"
+                        autoComplete="off"
+                        value={credentials[key] ?? ""}
+                        maxLength={1024}
+                        disabled={createBusy}
+                        onChange={(event) =>
+                          setCredentials({ ...credentials, [key]: event.target.value })
+                        }
+                      />
+                    </label>
+                  ))}
+                  <p className="text-muted-foreground text-xs sm:col-span-2">
+                    {bt("bloem.admin.bookRequests.audiobookSetup.newCredentialsHelp")}
+                  </p>
+                </fieldset>
+              </>
+            )}
             <Button type="submit" disabled={createBusy}>
               {create.isPending
                 ? bt("bloem.admin.bookRequests.audiobookSetup.adding")

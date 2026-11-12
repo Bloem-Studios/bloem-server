@@ -46,7 +46,7 @@ func TestManagedBorrowDescribeAdmission(t *testing.T) {
 				t.Fatal(err)
 			}
 			snapshot := storageplugin.Snapshot{InstallationID: 1, Generation: 1, BinaryPath: binary, ExpectedChecksum: checksum, Enabled: true, NativeOnly: true,
-				Manifest: &publicv1.PluginManifest{PluginId: "bloem.runtime.fixture", Version: "0.1.0", Checksum: checksum, SiloApiVersion: "v1", SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}},
+				Manifest: &publicv1.PluginManifest{PluginId: "bloem.runtime.fixture", Version: "0.1.0", Checksum: checksum, SiloApiVersion: "v1", SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}, Capabilities: []*publicv1.CapabilityDescriptor{{Type: "request_router.v1", Id: "ebooks"}}},
 				Config:   []*publicv1.ConfigEntry{{Key: "source", Value: config}}}
 			run := ManagedRuntime{Manager: m}
 			first, err := run.Borrow(ctx, snapshot)

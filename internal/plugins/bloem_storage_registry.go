@@ -25,6 +25,7 @@ import (
 	publicmanifest "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/manifest"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/secret"
+	"github.com/Silo-Server/silo-server/internal/storageplugin"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -129,7 +130,7 @@ func validateNativeStorageArtifact(a NativeStorageArtifact) error {
 		return err
 	}
 	m := a.Manifest
-	if m.GetPluginId() == "silo.builtin" || m.GetSiloApiVersion() != "v1" || len(m.GetCapabilities()) != 0 || len(m.GetHttpRoutes()) != 0 {
+	if m.GetPluginId() == "silo.builtin" || m.GetSiloApiVersion() != "v1" || storageplugin.ValidateNativeSurfaces(m) != nil {
 		return errors.New("native-only manifest declares reserved identity, unsupported API or public surfaces")
 	}
 	digest, err := hex.DecodeString(a.Checksum)
@@ -227,7 +228,8 @@ func (r *NativeStorageRegistry) NativeStorageIDs(ctx context.Context, ids []int)
 }
 
 // Install atomically publishes the installation, explicit marker, ZIP archive,
-// encrypted config and retained source. It creates no public capabilities.
+// encrypted config and retained source. The only capability rows it writes are
+// the request_router.v1 capabilities the approved manifest declares.
 func (r *NativeStorageRegistry) Install(ctx context.Context, req NativeStorageInstallRequest) (*NativeStorageSnapshot, error) {
 	return r.install(ctx, req, nil)
 }
@@ -359,6 +361,9 @@ func (r *NativeStorageRegistry) install(ctx context.Context, req NativeStorageIn
 		return nil, err
 	}
 	if err = r.replaceConfigTx(ctx, tx, installation.ID, req.Config); err != nil {
+		return nil, err
+	}
+	if err = replaceNativeRequestRoutersTx(ctx, tx, installation.ID, a.Manifest); err != nil {
 		return nil, err
 	}
 	if retained {

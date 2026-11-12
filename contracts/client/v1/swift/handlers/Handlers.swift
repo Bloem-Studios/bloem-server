@@ -370,21 +370,25 @@ public enum Handlers {
         public let id: Int
         public let name: String
         public let capabilityId: String
+        public let native: Bool
 
         public enum CodingKeys: String, CodingKey {
             case id = "id"
             case name = "name"
             case capabilityId = "capability_id"
+            case native = "native"
         }
 
         public init(
             id: Int = 0,
             name: String = "",
-            capabilityId: String = ""
+            capabilityId: String = "",
+            native: Bool = false
         ) {
             self.id = id
             self.name = name
             self.capabilityId = capabilityId
+            self.native = native
         }
 
         public init(from decoder: any Decoder) throws {
@@ -392,6 +396,7 @@ public enum Handlers {
             self.id = try container.decodeIfPresent(Int.self, forKey: .id) ?? 0
             self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
             self.capabilityId = try container.decodeIfPresent(String.self, forKey: .capabilityId) ?? ""
+            self.native = try container.decodeIfPresent(Bool.self, forKey: .native) ?? false
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -399,6 +404,7 @@ public enum Handlers {
             try container.encode(self.id, forKey: .id)
             try container.encode(self.name, forKey: .name)
             try container.encode(self.capabilityId, forKey: .capabilityId)
+            try container.encode(self.native, forKey: .native)
         }
     }
 

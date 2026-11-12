@@ -297,3 +297,64 @@ func TestEbookConnectionTestUsesSavedConnectionDatabase(t *testing.T) {
 		t.Fatalf("ebook test reached an audiobook connection: %v", err)
 	}
 }
+
+// The Bookwarehouse storage installation serves both request lanes with its
+// own connection: its request connections save no URL, key or credentials,
+// and their tests reach the plugin without a credential check.
+func TestNativeStorageRequestConnectionSetupDatabase(t *testing.T) {
+	env := newRequestConnectionEnv(t)
+	install := env.installation(t, bookrequests.StorageRequestPluginID, bookrequests.EbookStorageCapabilityID)
+	if _, err := env.pool.Exec(t.Context(), `INSERT INTO plugin_capabilities(plugin_installation_id,capability_type,capability_id) VALUES($1,'request_router.v1','audiobooks')`, install); err != nil {
+		t.Fatal(err)
+	}
+	checkNativeEbookConnectionSetup(t, env, install)
+	checkNativeAudiobookConnectionSetup(t, env, install)
+}
+
+func checkNativeEbookConnectionSetup(t *testing.T, env *requestConnectionEnv, install int) {
+	t.Helper()
+	ctx := t.Context()
+	ebooks := bloemEbookSetup{pool: env.pool, books: env.books, requests: env.conns, platform: env.platform(), store: env.store, router: env.router}
+	installations, err := ebooks.installations(ctx, env.admin)
+	if err != nil || len(installations) != 1 || installations[0].ID != install || installations[0].CapabilityID != "ebooks" || !installations[0].Native {
+		t.Fatalf("ebook installations %+v %v", installations, err)
+	}
+	if _, err = ebooks.Create(ctx, env.admin, handlers.EbookRequestConnectionInput{Name: "Books", BaseURL: "https://books.example.test", APIKey: "synthetic-book-key", InstallationID: install, CapabilityID: "ebooks"}); !errors.Is(err, bookrequests.ErrInvalid) {
+		t.Fatalf("native ebook connection saved a URL and key: %v", err)
+	}
+	created, err := ebooks.Create(ctx, env.admin, handlers.EbookRequestConnectionInput{Name: "Books", InstallationID: install, CapabilityID: "ebooks"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := env.store.GetIntegration(ctx, created.ID)
+	if err != nil || stored.BaseURL != "" || stored.APIKeyRef != "" || len(stored.PluginConfig) != 1 || stored.PluginConfig["preferred_format"] != "epub" {
+		t.Fatalf("native ebook connection %+v %v", stored, err)
+	}
+	env.router.ok = true
+	if result, err := ebooks.Test(ctx, env.admin, created.ID); err != nil || !result.OK || len(env.router.tests) != 1 || env.router.tests[0].APIKey != "" {
+		t.Fatalf("native ebook test %+v %v %+v", result, err, env.router.tests)
+	}
+}
+
+func checkNativeAudiobookConnectionSetup(t *testing.T, env *requestConnectionEnv, install int) {
+	t.Helper()
+	ctx := t.Context()
+	audio := bloemAudiobookSetup{pool: env.pool, books: env.books, requests: env.conns, platform: env.platform(), store: env.store, router: env.router}
+	if _, err := audio.Create(ctx, env.admin, handlers.AudiobookRequestConnectionInput{Name: "Audio", InstallationID: install, CapabilityID: "audiobooks", PluginConfig: map[string]any{}, Credentials: map[string]string{"ai_api_key": "synthetic"}}); !errors.Is(err, bookrequests.ErrInvalid) {
+		t.Fatalf("native audiobook connection saved credentials: %v", err)
+	}
+	summary, err := audio.Create(ctx, env.admin, handlers.AudiobookRequestConnectionInput{Name: "Audio", InstallationID: install, CapabilityID: "audiobooks", PluginConfig: map[string]any{}})
+	if err != nil || !summary.Native {
+		t.Fatalf("native audiobook connection %+v %v", summary, err)
+	}
+	if stored, err := env.store.GetIntegration(ctx, summary.ID); err != nil || stored.APIKeyRef != "" {
+		t.Fatalf("native audiobook credentials %+v %v", stored, err)
+	}
+	setup, err := audio.List(ctx, env.admin, true)
+	if err != nil || len(setup.Integrations) != 1 || !setup.Integrations[0].Native || len(setup.Installations) != 1 || !setup.Installations[0].Native {
+		t.Fatalf("native audiobook setup %+v %v", setup, err)
+	}
+	if result, err := audio.Test(ctx, env.admin, summary.ID); err != nil || !result.OK || len(env.router.tests) != 2 {
+		t.Fatalf("native audiobook test %+v %v", result, err)
+	}
+}

@@ -128,6 +128,9 @@ func (r *NativeStorageRegistry) upgrade(ctx context.Context, installationID int,
 	if tag.RowsAffected() != 1 {
 		return nil, storagesource.ErrSourceUnavailable
 	}
+	if err = replaceNativeRequestRoutersTx(ctx, tx, installationID, a.Manifest); err != nil {
+		return nil, err
+	}
 	// Once COMMIT is attempted, a transport error cannot prove rollback; keep
 	// the package so a committed upgrade stays runnable.
 	keep = true

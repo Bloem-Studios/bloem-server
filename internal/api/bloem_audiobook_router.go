@@ -36,17 +36,23 @@ func (a bloemAudiobookRouter) connection(ctx context.Context, in bookrequests.Au
 	if err != nil {
 		return nil, errors.New("audiobook acquisition connection unavailable")
 	}
-	if c == nil || !c.Enabled || c.ID != in.Integration.ID || c.InstallationID == nil || *c.InstallationID != in.Integration.InstallationID || c.CapabilityID != in.Integration.CapabilityID || !slices.Equal(c.SupportedMediaTypes, []string{"audiobook"}) || c.APIKeyRef == "" {
+	if c == nil || !c.Enabled || c.ID != in.Integration.ID || c.InstallationID == nil || *c.InstallationID != in.Integration.InstallationID || c.CapabilityID != in.Integration.CapabilityID || !slices.Equal(c.SupportedMediaTypes, []string{"audiobook"}) {
 		return nil, bookrequests.ErrConflict
 	}
 	if _, exists := c.PluginConfig["service_kind"]; exists {
 		return nil, bookrequests.ErrInvalid
 	}
-	// Every saved credential must still be bound to the URL it was entered
+	// The storage plugin's connection carries no credentials: it uses its own
+	// installation's Bookwarehouse connection. Every credential a request
+	// plugin's connection saved must still be bound to the URL it was entered
 	// for. Bloem's own editor keeps that true, but Silo's generic editor (in
 	// the mirrored switching phase) or a direct SQL edit can move a URL under
 	// a saved composite; the host refuses rather than relying on the plugin.
-	if _, refusal := boundAudiobookCredentials(c.APIKeyRef, c.PluginConfig); refusal != "" {
+	if in.Integration.Native {
+		if c.APIKeyRef != "" {
+			return nil, bookrequests.ErrConflict
+		}
+	} else if _, refusal := boundAudiobookCredentials(c.APIKeyRef, c.PluginConfig); c.APIKeyRef == "" || refusal != "" {
 		return nil, bookrequests.ErrConflict
 	}
 	config, err := structpb.NewStruct(c.PluginConfig)
@@ -159,6 +165,11 @@ func (a bloemAudiobookRouter) CheckStatus(ctx context.Context, in bookrequests.A
 		}
 	}
 	if t.Status == "completed" && (t.ExternalStatus != "verified" || out.Decision == nil || out.Decision.Outcome != "verified") {
+		return bookrequests.AudiobookOutcome{}, bookrequests.ErrInvalid
+	}
+	// The host finds a native download in the library by the Bookwarehouse
+	// audiobook it became.
+	if t.Status == "completed" && in.Integration.Native && out.Decision.AudiobookID == "" {
 		return bookrequests.AudiobookOutcome{}, bookrequests.ErrInvalid
 	}
 	if t.ExternalStatus == "review" && (out.Decision == nil || out.Decision.Outcome != "review") {

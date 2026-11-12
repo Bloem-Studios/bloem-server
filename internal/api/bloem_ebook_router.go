@@ -42,7 +42,9 @@ func (a bloemEbookRouter) connection(ctx context.Context, in bookrequests.Dispat
 	if err != nil {
 		return nil, "", errors.New("ebook fulfillment connection unavailable")
 	}
-	if connection == nil || !connection.Enabled || connection.ID != in.Integration.ID || connection.InstallationID == nil || *connection.InstallationID != in.Integration.InstallationID || connection.CapabilityID != in.Integration.CapabilityID || !slices.Contains(connection.SupportedMediaTypes, "book") || strings.TrimSpace(connection.APIKeyRef) == "" {
+	// The storage plugin's connection carries no key: it uses its own
+	// installation's Bookwarehouse connection.
+	if connection == nil || !connection.Enabled || connection.ID != in.Integration.ID || connection.InstallationID == nil || *connection.InstallationID != in.Integration.InstallationID || connection.CapabilityID != in.Integration.CapabilityID || !slices.Contains(connection.SupportedMediaTypes, "book") || !in.Integration.Native && strings.TrimSpace(connection.APIKeyRef) == "" {
 		return nil, "", bookrequests.ErrConflict
 	}
 	format := "epub"

@@ -147,6 +147,8 @@ public data class EbookRequestInstallation(
     public val name: String = "",
     @SerialName("capability_id")
     public val capabilityId: String = "",
+    @SerialName("native")
+    public val native: Boolean = false,
 )
 
 /** Wire type `internal/api/handlers.EbookRequestPolicy`. Direction: both. Dialect: bloem. Gate: ebook_requests_v1. Registered root. */

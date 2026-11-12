@@ -30,6 +30,9 @@ type ebookIntegrationSnapshot struct {
 	BindingRevision              int64
 	StorageSourceKey             uuid.UUID
 	StorageConfigurationRevision int64
+	// Omitted when false, so descriptors frozen before it existed still
+	// equal a request plugin's live integration.
+	Native bool `json:",omitempty"`
 }
 
 type ebookWork struct {

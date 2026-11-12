@@ -10,6 +10,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Silo-Server/silo-server/internal/storagesource"
 )
 
 const (
@@ -720,7 +722,7 @@ func (s *Service) finishAudiobook(ctx context.Context, work *audiobookWork, outc
 	if match != "" {
 		newStatus, content, apply.fulfilment, apply.reason = "completed", match, "library", ""
 	} else if apply.providerDone {
-		items, err := audiobookPathMatches(ctx, tx, r, work.input)
+		items, err := audiobookCompletionMatches(ctx, tx, r, work.input)
 		if err != nil {
 			return false, nil, err
 		}
@@ -792,7 +794,7 @@ func insertHostAudiobookReview(ctx context.Context, tx pgx.Tx, requestID string,
 // marker folder completes the request. Several items go to review; none
 // past 24 hours raises one attention notice.
 func (s *Service) completeAudiobookByPathTx(ctx context.Context, tx pgx.Tx, r Request, work *audiobookWork, completedAt *time.Time, attentionAttempt int) (bool, []audiobookNotice, error) {
-	items, err := audiobookPathMatches(ctx, tx, r, work.input)
+	items, err := audiobookCompletionMatches(ctx, tx, r, work.input)
 	if err != nil {
 		return false, nil, err
 	}
@@ -829,6 +831,95 @@ func (s *Service) completeAudiobookByPathTx(ctx context.Context, tx pgx.Tx, r Re
 		return false, notices, err
 	}
 }
+
+// audiobookCompletionMatches returns up to two distinct audiobook items a
+// verified download became: by marker folder for a request plugin, and by the
+// Bookwarehouse audiobook id for the native storage plugin.
+func audiobookCompletionMatches(ctx context.Context, tx pgx.Tx, r Request, in AudiobookDispatchInput) ([]string, error) {
+	if in.Integration.Native {
+		return audiobookNativeMatches(ctx, tx, r, in)
+	}
+	return audiobookPathMatches(ctx, tx, r, in)
+}
+
+// audiobookNativeMatches finds the items whose live storage files are the
+// tracks of the Bookwarehouse audiobook named by this attempt's latest
+// verified decision. The storage plugin names an audiobook's tracks
+// "audio/<audiobook id>/<file id>"; a file counts only while its reference is
+// current for the source of the integration's own installation and publishes
+// at the catalog location of that entry.
+func audiobookNativeMatches(ctx context.Context, tx pgx.Tx, r Request, in AudiobookDispatchInput) ([]string, error) {
+	if in.Integration.LibraryID <= 0 || in.SubmissionID == "" || in.Attempt < 1 {
+		return nil, nil
+	}
+	var audiobook string
+	err := tx.QueryRow(ctx, `SELECT dec.envelope->>'audiobook_id' FROM bloem_audiobook_request_decisions dec
+ JOIN bloem_ebook_request_dispatches d ON d.request_id=dec.request_id
+ WHERE d.submission_request_id=$1 AND dec.attempt=$2 AND dec.phase='verify' AND dec.outcome='verified' AND dec.envelope ? 'audiobook_id'
+ ORDER BY dec.id DESC LIMIT 1`, in.SubmissionID, in.Attempt).Scan(&audiobook)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !audiobookBookwarehouseID.MatchString(audiobook) {
+		return nil, nil
+	}
+	rows, err := tx.Query(ctx, audiobookNativeMatchSQL, in.Integration.LibraryID, in.Integration.InstallationID, StorageRequestPluginID, "audio/"+audiobook+"/", r.OrganizationID)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	out := []string{}
+	for rows.Next() {
+		var content, path, entry string
+		var location uuid.UUID
+		if err = rows.Scan(&content, &path, &location, &entry); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if expected, err := storagesource.CatalogLocation(location, entry); err != nil || path != expected || seen[content] {
+			continue
+		}
+		seen[content] = true
+		out = append(out, content)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	if len(out) > 1 {
+		return out[:2], nil
+	}
+	if len(out) == 1 {
+		var locked string
+		err := tx.QueryRow(ctx, `SELECT content_id FROM media_items WHERE content_id=$1 AND type='audiobook' FOR SHARE`, out[0]).Scan(&locked)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+const audiobookNativeMatchSQL = `
+ SELECT i.content_id,mf.file_path,l.id,ref.entry_id FROM media_files mf
+ JOIN bloem_storage_file_refs ref ON ref.media_file_id=mf.id AND starts_with(ref.entry_id,$4)
+ JOIN library_storage_locations l ON l.id=ref.location_id AND l.folder_id=mf.media_folder_id
+ JOIN bloem_storage_sources s ON s.key=l.source_key AND s.enabled AND s.installation_id=$2 AND s.plugin_id=$3 AND ref.configuration_revision=s.configuration_revision
+ JOIN media_items i ON i.content_id=mf.content_id AND i.type='audiobook'
+ JOIN media_folders f ON f.id=mf.media_folder_id AND f.enabled AND lower(btrim(f.type)) IN ('audiobook','audiobooks')
+ JOIN resource_owners ro ON ro.id=f.owner_id
+ WHERE mf.media_folder_id=$1 AND mf.missing_since IS NULL
+ AND EXISTS(SELECT 1 FROM bloem_storage_file_roots m JOIN bloem_storage_selected_roots root ON root.location_id=m.location_id AND root.id=m.root_id AND root.enabled
+  WHERE m.location_id=l.id AND m.media_file_id=mf.id AND m.enabled)
+ AND ((ro.kind='organization' AND ro.organization_id=$5)
+  OR (ro.kind='platform' AND EXISTS(SELECT 1 FROM organization_entitlements e WHERE e.organization_id=$5 AND e.media_folder_id=f.id AND e.root_owner_id=ro.id AND e.status='active')))
+ ORDER BY i.content_id,mf.id LIMIT 100`
 
 // audiobookPathMatches returns up to two distinct audiobook items with a
 // scanned file inside this attempt's marker folder under a frozen root. Range

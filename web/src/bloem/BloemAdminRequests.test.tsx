@@ -277,6 +277,38 @@ describe("organization ebook queue", () => {
     );
     await waitFor(() => expect(screen.getByLabelText("API key")).toHaveValue(""));
   });
+  it("adds a Bookwarehouse library connection without a URL or key", async () => {
+    mocks.ebookSupported = true;
+    mocks.active = { ...org("a"), authority: "platform_admin" };
+    mocks.integrations.mockResolvedValue({
+      available: true,
+      enabled: false,
+      integrations: [],
+      libraries: [{ id: 10, name: "Ebooks" }],
+      installations: [
+        { id: 30, name: "Bookwarehouse library", capability_id: "ebooks", native: true },
+      ],
+    });
+    open("/admin/requests?kind=ebook");
+    fireEvent.change(await screen.findByRole("textbox", { name: "Connection name" }), {
+      target: { value: "Library books" },
+    });
+    expect(screen.queryByLabelText("Base URL")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("API key")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add connection" }));
+    await waitFor(() =>
+      expect(mocks.createIntegration).toHaveBeenCalledWith(
+        {
+          name: "Library books",
+          base_url: "",
+          api_key: "",
+          installation_id: 30,
+          capability_id: "ebooks",
+        },
+        expect.objectContaining({ key: "organization:a" }),
+      ),
+    );
+  });
   it("requires explicit trusted-local opt-in for HTTP and resets it after connection creation", async () => {
     mocks.ebookSupported = true;
     mocks.active = { ...org("a"), authority: "platform_admin" };
