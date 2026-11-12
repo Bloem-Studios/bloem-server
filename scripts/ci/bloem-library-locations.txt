@@ -196,6 +196,7 @@
 ./internal/plugins TestNativeStorageRegistrySnapshotValidatesEachArchiveOnce
 ./internal/plugins TestNativeStorageRegistryRemoveAuthorizedRefusesSourceInUse
 ./internal/plugins TestRotateCredentialsKeepsOtherFieldsDB
+./internal/plugins TestReplaceConfigurationCarriesS3StoredSettingsDB
 ./internal/resourcetenancy TestStoragePageReplayRequiresCurrentAuthority
 ./internal/resourcetenancy TestStoragePageAuthorityLocksInstallationBeforeSource
 ./internal/resourcetenancy TestNativeScanAuthorityOwnerPolicy
