@@ -28,10 +28,13 @@ import {
 } from "@/hooks/queries/admin/storageSources";
 
 import {
+  S3_LIMIT_KEYS,
+  S3_PROXY_KEYS,
   pruneConfigSchema,
   s3BucketOptional,
   sourceName,
   validateS3Connection,
+  withS3AdvancedSection,
   withS3FieldCopy,
   withoutEmpty,
 } from "./storageSchema";
@@ -50,8 +53,23 @@ const HIDDEN_EDIT_FIELDS = [
   "allow_loopback_http",
   "session_token",
 ];
-// The non-secret facts the source list returns, which prefill the edit form.
-const SUMMARY_FIELDS = ["source_name", "bucket", "prefix", "region", "endpoint", "revision_mode"];
+// The non-secret facts the source list returns, which prefill the edit form. The server
+// returns the proxy address and user to a platform administrator only.
+const SUMMARY_FIELDS = [
+  "source_name",
+  "bucket",
+  "prefix",
+  "region",
+  "endpoint",
+  "revision_mode",
+  ...S3_LIMIT_KEYS,
+  "http_proxy",
+  "http_proxy_username",
+];
+// An emptied one of these is sent as null: the server keeps the stored value of a
+// field an edit leaves out, so leaving it out would not clear it. The write-only
+// proxy password is left out when blank, and the server keeps it for the same proxy.
+const CLEARABLE_FIELDS = [...S3_LIMIT_KEYS, "http_proxy", "http_proxy_username"];
 
 /** The machine-readable code on an error, whatever class carries it. */
 function errorCode(error: unknown): string | undefined {
@@ -276,11 +294,14 @@ function RotateKeysForm({ source, onDone }: { source: StorageSource; onDone: () 
 function S3EditForm({
   source,
   artifact,
+  platform,
   onSaved,
   onInUse,
 }: {
   source: StorageSource;
   artifact: StorageArtifact;
+  /** Only a platform administrator sees and sets the proxy; the server refuses it otherwise. */
+  platform: boolean;
   onSaved: () => void;
   onInUse: () => void;
 }) {
@@ -290,17 +311,29 @@ function S3EditForm({
   const section = artifact.config_schema[0];
   // Memoized: the form resets its values whenever it is handed a new schema or value.
   const schema = useMemo(
-    () => (section ? withS3FieldCopy(pruneConfigSchema(section, HIDDEN_EDIT_FIELDS)) : undefined),
-    [section],
+    () =>
+      section
+        ? withS3AdvancedSection(
+            withS3FieldCopy(
+              pruneConfigSchema(
+                section,
+                platform ? HIDDEN_EDIT_FIELDS : [...HIDDEN_EDIT_FIELDS, ...S3_PROXY_KEYS],
+              ),
+            ),
+          )
+        : undefined,
+    [section, platform],
   );
   const bucketOptional = section ? s3BucketOptional(section) : false;
   const summary = source.connection_summary;
   const value = useMemo(
     () =>
       Object.fromEntries(
-        SUMMARY_FIELDS.filter((k) => typeof summary?.[k] === "string").map((k) => [k, summary[k]]),
+        SUMMARY_FIELDS.filter(
+          (k) => typeof summary?.[k] === "string" && (platform || !S3_PROXY_KEYS.includes(k)),
+        ).map((k) => [k, summary[k]]),
       ),
-    [summary],
+    [summary, platform],
   );
   if (!schema) {
     return (
@@ -324,12 +357,18 @@ function S3EditForm({
       messages.push(bt("bloem.admin.storage.sourceRow.enterKeysAgain"));
     setErrors(messages);
     if (messages.length > 0) return;
+    const cleared = Object.fromEntries(
+      CLEARABLE_FIELDS.filter((k) => k in entry && (entry[k] === "" || entry[k] === null)).map(
+        (k) => [k, null],
+      ),
+    );
     replace.mutate(
       {
         source,
         config: {
           [key]: {
             ...withoutEmpty(entry),
+            ...cleared,
             source_name: sourceName(entry),
             source_id: source.provider_source_id,
           },
@@ -652,6 +691,7 @@ export function StorageSourceRow({
           <S3EditForm
             source={source}
             artifact={artifact}
+            platform={scope === "platform"}
             onSaved={() => {
               setTestResult(null);
               setPanel(null);

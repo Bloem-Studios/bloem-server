@@ -36,6 +36,48 @@ export function pruneConfigSchema(
   };
 }
 
+/** The S3 request limits (0.5.0 and later): they decide how hard Bloem uses the service. */
+export const S3_LIMIT_KEYS = [
+  "auth_pause_seconds",
+  "auth_pause_max_seconds",
+  "auth_failure_budget",
+  "auth_failure_window_seconds",
+  "max_concurrent_requests",
+  "max_listing_requests",
+  "max_read_mbps",
+];
+/** The S3 proxy fields, which only a platform administrator may see or set. */
+export const S3_PROXY_KEYS = ["http_proxy", "http_proxy_username", "http_proxy_password"];
+/** The optional S3 settings an edit or add form keeps under "Advanced options". */
+export const S3_ADVANCED_KEYS = [...S3_LIMIT_KEYS, ...S3_PROXY_KEYS];
+
+/**
+ * Groups the S3 limit and proxy fields the schema has into one collapsed
+ * "Advanced options" section. A schema without them is returned unchanged.
+ */
+export function withS3AdvancedSection(schema: PluginConfigSchema): PluginConfigSchema {
+  const form = schema.admin_form;
+  if (!form) return schema;
+  const keys = S3_ADVANCED_KEYS.filter((key) => form.fields.some((f) => f.key === key));
+  if (keys.length === 0) return schema;
+  return {
+    ...schema,
+    admin_form: {
+      ...form,
+      sections: [
+        ...(form.sections ?? []),
+        {
+          key: "bloem-s3-advanced",
+          title: bloemT("bloem.admin.storage.s3Add.advancedOptions"),
+          collapsible: true,
+          collapsed_default: true,
+          field_keys: keys,
+        },
+      ],
+    },
+  };
+}
+
 /** The hint shown under every S3 folder (prefix) field. */
 export function prefixHint(): string {
   return bloemT("bloem.admin.storage.s3Fields.prefixHint");

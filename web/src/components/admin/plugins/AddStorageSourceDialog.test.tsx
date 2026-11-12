@@ -1687,4 +1687,82 @@ Whitelisted IP: Not configured`;
     expect(document.body.textContent).not.toContain(SECRET);
     expect(document.body.textContent).not.toContain(ACCESS);
   });
+
+  describe("the request limits and proxy of the 0.5.0 release", () => {
+    const parsed = JSON.parse(s3Schema.json_schema) as { properties: Record<string, unknown> };
+    parsed.properties.max_read_mbps = { type: "integer" };
+    for (const key of ["http_proxy", "http_proxy_username", "http_proxy_password"])
+      parsed.properties[key] = { type: "string" };
+    const artifacts050: StorageArtifact[] = [
+      {
+        ...artifacts[0]!,
+        artifact_key: "s3-0.5.0-linux-amd64-z",
+        version: "0.5.0",
+        config_schema: [
+          {
+            ...s3Schema,
+            json_schema: JSON.stringify(parsed),
+            admin_form: {
+              fields: [
+                ...s3Schema.admin_form.fields,
+                field("max_read_mbps", "Speed limit in Mbps (optional)", "NUMBER"),
+                field("http_proxy", "Proxy (optional)"),
+                field("http_proxy_username", "Proxy user name (optional)"),
+                field("http_proxy_password", "Proxy password (optional)", "PASSWORD", true),
+              ],
+            },
+          } as never,
+        ],
+      },
+    ];
+    const proxyLabels = [
+      "Proxy (optional)",
+      "Proxy user name (optional)",
+      "Proxy password (optional)",
+    ];
+
+    it("shows them only under Advanced options and saves them", async () => {
+      discover.mockResolvedValue(undefined);
+      openS3({ artifacts: artifacts050 });
+      fillConnection();
+      expect(screen.queryByLabelText("Speed limit in Mbps (optional)")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Proxy (optional)")).not.toBeInTheDocument();
+      advanced();
+      click("Type a bucket name instead");
+      fill("Bucket", "media");
+      fill("Speed limit in Mbps (optional)", "90");
+      fill("Proxy (optional)", " http://proxy.example:3128 ");
+      fill("Proxy user name (optional)", "squid");
+      fill("Proxy password (optional)", "pw");
+      expect(screen.getByLabelText("Proxy password (optional)")).toHaveAttribute(
+        "type",
+        "password",
+      );
+      click("Add source");
+      await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
+      expect(discoverCall(0).config.connection).toMatchObject({
+        max_read_mbps: 90,
+        http_proxy: "http://proxy.example:3128",
+        http_proxy_username: "squid",
+        http_proxy_password: "pw",
+      });
+    });
+
+    it("never offers the proxy to an organization administrator", async () => {
+      scope = "organization";
+      discover.mockResolvedValue(undefined);
+      openS3({ artifacts: artifacts050 });
+      fillConnection();
+      advanced();
+      expect(screen.getByLabelText("Speed limit in Mbps (optional)")).toBeInTheDocument();
+      for (const label of proxyLabels)
+        expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+      click("Type a bucket name instead");
+      fill("Bucket", "media");
+      click("Add source");
+      await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
+      for (const key of ["http_proxy", "http_proxy_username", "http_proxy_password"])
+        expect(discoverCall(0).config.connection).not.toHaveProperty(key);
+    });
+  });
 });

@@ -15,6 +15,7 @@ import {
   type StorageSource,
   useDiscoverStorageSource,
   useListS3Buckets,
+  useStorageScope,
 } from "@/hooks/queries/admin/storageSources";
 
 import { adminFormForConfigSchema, formValuesFromConfig } from "./configSchemaAdminForm";
@@ -46,6 +47,8 @@ import {
 import { SchemaForm } from "./SchemaForm";
 import { buildSchemaValues } from "./schemaFormUtils";
 import {
+  S3_ADVANCED_KEYS,
+  S3_PROXY_KEYS,
   newProviderSourceId,
   pruneConfigSchema,
   s3BucketOptional,
@@ -61,9 +64,17 @@ const S3_PLUGIN = "bloem.storage.s3";
 const HIDDEN_S3_FIELDS = ["source_id", "state_path", "probe_key", "allow_loopback_http"];
 // What every administrator is given by a provider, and so all that is shown up front.
 const PRIMARY_KEYS = ["endpoint", "access_key", "secret_key"];
-// The order of the rest, under "Advanced options".
-const ADVANCED_ORDER = ["bucket", "region", "prefix", "session_token", "source_name"];
-const SECRET_KEYS = ["access_key", "secret_key", "session_token"];
+// The order of the rest, under "Advanced options"; the request limits and proxy of newer
+// releases come last.
+const ADVANCED_ORDER = [
+  "bucket",
+  "region",
+  "prefix",
+  "session_token",
+  "source_name",
+  ...S3_ADVANCED_KEYS,
+];
+const SECRET_KEYS = ["access_key", "secret_key", "session_token", "http_proxy_password"];
 // Changing any of these makes a bucket list loaded with the old values untrustworthy.
 const CONNECTION_KEYS = ["endpoint", "region", "access_key", "secret_key", "session_token"];
 const SAVE_OPTIONS = { explicitClears: true };
@@ -76,6 +87,7 @@ const TRIM_KEYS = [
   "session_token",
   "bucket",
   "prefix",
+  "http_proxy",
 ];
 const PROBLEMS_ID = "s3-add-problems";
 const BUCKET_GROUP_ID = "s3-add-bucket-group";
@@ -151,11 +163,15 @@ export function S3AddForm({
   onBusyChange?: (busy: boolean) => void;
 }) {
   const bt = useBloemT();
+  // Only a platform administrator may route a source through a proxy; the server
+  // refuses the proxy fields from an organization administrator.
+  const platform = useStorageScope().scope === "platform";
   const section = artifact.config_schema[0];
   // Memoized: a new schema would reset the form.
   const form = useMemo(() => {
     if (!section) return undefined;
-    const schema = withS3FieldCopy(pruneConfigSchema(section, HIDDEN_S3_FIELDS));
+    const hidden = platform ? HIDDEN_S3_FIELDS : [...HIDDEN_S3_FIELDS, ...S3_PROXY_KEYS];
+    const schema = withS3FieldCopy(pruneConfigSchema(section, hidden));
     const descriptor = adminFormForConfigSchema(schema);
     if (!descriptor) return undefined;
     return {
@@ -170,7 +186,7 @@ export function S3AddForm({
         ),
       },
     };
-  }, [section]);
+  }, [section, platform]);
   if (!form) {
     return (
       <p className="text-muted-foreground text-sm">

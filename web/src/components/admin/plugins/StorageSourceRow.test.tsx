@@ -776,4 +776,133 @@ describe("StorageSourceRow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete source" }));
     expect(deleteRemoved).toHaveBeenCalledWith({ source: gone }, expect.any(Object));
   });
+
+  describe("the request limits and proxy of the 0.5.0 release", () => {
+    const limitFields: [string, string][] = [
+      ["auth_pause_seconds", "Pause after refused keys (seconds, optional)"],
+      ["auth_pause_max_seconds", "Longest pause (seconds, optional)"],
+      ["auth_failure_budget", "Refusals allowed per window (optional)"],
+      ["auth_failure_window_seconds", "Refusal window (seconds, optional)"],
+      ["max_concurrent_requests", "Requests at once (optional)"],
+      ["max_listing_requests", "Requests at once for scans (optional)"],
+      ["max_read_mbps", "Speed limit in Mbps (optional)"],
+    ];
+    const parsed = JSON.parse(s3Schema.json_schema) as { properties: Record<string, unknown> };
+    for (const [key] of limitFields) parsed.properties[key] = { type: "integer" };
+    for (const key of ["http_proxy", "http_proxy_username", "http_proxy_password"])
+      parsed.properties[key] = { type: "string" };
+    const s3Artifact050: StorageArtifact = {
+      ...s3Artifact,
+      artifact_key: "s3-0.5.0-linux-amd64-z",
+      version: "0.5.0",
+      config_schema: [
+        {
+          ...s3Schema,
+          json_schema: JSON.stringify(parsed),
+          admin_form: {
+            fields: [
+              ...s3Schema.admin_form.fields,
+              ...limitFields.map(([key, label]) => field(key, label, "NUMBER")),
+              field("http_proxy", "Proxy (optional)"),
+              field("http_proxy_username", "Proxy user name (optional)"),
+              field("http_proxy_password", "Proxy password (optional)", "PASSWORD", true),
+            ],
+          },
+        } as never,
+      ],
+    };
+    const tuned = {
+      ...s3Source,
+      connection_summary: {
+        ...s3Source.connection_summary,
+        max_read_mbps: "90",
+        max_listing_requests: "3",
+        http_proxy: "http://proxy.example:3128",
+        http_proxy_username: "squid",
+      },
+    } as StorageSource;
+    const editAndEnterKeys = (source: StorageSource) => {
+      render(
+        <ul>
+          <StorageSourceRow source={source} artifact={s3Artifact050} />
+        </ul>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK" } });
+      fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK" } });
+    };
+    const openAdvanced = () => fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    const saved = () =>
+      (replaceConfig.mock.calls[0]![0] as { config: { connection: Record<string, unknown> } })
+        .config.connection;
+
+    it("groups them under a collapsed Advanced options section", () => {
+      editAndEnterKeys(tuned);
+      expect(screen.getByText("Advanced options")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Speed limit in Mbps (optional)")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Bucket")).toBeInTheDocument();
+      openAdvanced();
+      for (const [, label] of limitFields) expect(screen.getByLabelText(label)).toBeInTheDocument();
+      expect(screen.getByLabelText("Proxy password (optional)")).toHaveAttribute(
+        "type",
+        "password",
+      );
+    });
+
+    it("keeps the stored values it was given and leaves the proxy password to the server", () => {
+      editAndEnterKeys(tuned);
+      openAdvanced();
+      expect(screen.getByLabelText("Speed limit in Mbps (optional)")).toHaveValue(90);
+      expect(screen.getByLabelText("Proxy (optional)")).toHaveValue("http://proxy.example:3128");
+      expect(screen.getByLabelText("Proxy password (optional)")).toHaveValue("");
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(saved()).toMatchObject({
+        max_read_mbps: 90,
+        max_listing_requests: 3,
+        http_proxy: "http://proxy.example:3128",
+        http_proxy_username: "squid",
+      });
+      // Left out, the stored password stays for the same proxy and user.
+      expect(saved()).not.toHaveProperty("http_proxy_password");
+    });
+
+    it("sends a cleared limit or proxy as null so the server clears it", () => {
+      editAndEnterKeys(tuned);
+      openAdvanced();
+      fireEvent.change(screen.getByLabelText("Speed limit in Mbps (optional)"), {
+        target: { value: "" },
+      });
+      fireEvent.change(screen.getByLabelText("Proxy (optional)"), { target: { value: "" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(saved()).toMatchObject({ max_read_mbps: null, http_proxy: null });
+      expect(saved().max_listing_requests).toBe(3);
+    });
+
+    it("sends a newly typed proxy password", () => {
+      editAndEnterKeys(tuned);
+      openAdvanced();
+      fireEvent.change(screen.getByLabelText("Proxy password (optional)"), {
+        target: { value: "pw" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(saved().http_proxy_password).toBe("pw");
+    });
+
+    it("never shows or sends the proxy fields to an organization administrator", () => {
+      scopeValue = "organization";
+      editAndEnterKeys({ ...tuned, owner_kind: "organization" } as StorageSource);
+      openAdvanced();
+      expect(screen.getByLabelText("Speed limit in Mbps (optional)")).toHaveValue(90);
+      for (const label of [
+        "Proxy (optional)",
+        "Proxy user name (optional)",
+        "Proxy password (optional)",
+      ])
+        expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      for (const key of ["http_proxy", "http_proxy_username", "http_proxy_password"])
+        expect(saved()).not.toHaveProperty(key);
+      expect(saved().max_read_mbps).toBe(90);
+    });
+  });
 });
