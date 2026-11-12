@@ -72,7 +72,7 @@ func TestBloemAudiobookAcquisitionDocumentContract(t *testing.T) {
 	body := bloemDocObject(t, binding, "requestBody", "content", "application/json", "schema")
 	bloemDocFields(t, bloemDocSchema(t, doc, body), "library_id", "download_roots")
 	summary := bloemDocObject(t, doc, "components", "schemas", "AudiobookIntegrationSummary")
-	bloemDocFields(t, summary, "id", "name", "installation_id", "capability_id", "library_id", "library_name", "download_roots", "binding_revision", "ready", "plugin_config", "stored_credentials")
+	bloemDocFields(t, summary, "id", "name", "installation_id", "capability_id", "library_id", "library_name", "download_roots", "binding_revision", "ready", "native", "plugin_config", "stored_credentials")
 	update := bloemDocObject(t, doc, "paths", BloemPrefix+"/admin/organization/audiobook-request-integrations/{id}", "put", "requestBody", "content", "application/json", "schema")
 	bloemDocFields(t, bloemDocSchema(t, doc, update), "name", "plugin_config", "credentials")
 	bloemDocFields(t, bloemDocObject(t, doc, "components", "schemas", "RequestIntegrationTestResult"), "ok", "message")
