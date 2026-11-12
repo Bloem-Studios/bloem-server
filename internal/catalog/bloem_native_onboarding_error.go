@@ -17,7 +17,11 @@ const (
 type NativeOnboardingError struct {
 	Code                                          string
 	CurrentSourceRevision, CurrentLibraryRevision *int64
-	Cause                                         error
+	// Field is the canonical configuration field a refusal names, such as
+	// "connection.http_proxy". It is set only from a fixed allowlist, never
+	// from request text.
+	Field string
+	Cause error
 }
 
 func (e *NativeOnboardingError) Error() string { return "Native storage admission unavailable" }

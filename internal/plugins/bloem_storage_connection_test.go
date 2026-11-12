@@ -105,3 +105,88 @@ func TestRotateCredentialsRequiresRegistryAndAuthority(t *testing.T) {
 		}
 	}
 }
+
+// An S3 edit replaces the whole configuration, but the request limits and the
+// proxy that an edit form does not send keep their stored values. Credentials
+// are never carried, and the proxy password only to the same proxy and user.
+func TestCarryS3StoredSettings(t *testing.T) {
+	stored := map[string]any{"source_id": "s3_1", "bucket": "media", "endpoint": "https://s3.example", "access_key": "OLD", "secret_key": "OLD2", "session_token": "OLD3",
+		"auth_failure_budget": 3.0, "auth_failure_window_seconds": 60.0, "auth_pause_seconds": 600.0, "auth_pause_max_seconds": 3600.0,
+		"max_concurrent_requests": 8.0, "max_listing_requests": 2.0, "max_read_mbps": 90.0,
+		"http_proxy": "http://proxy.example:3128", "http_proxy_username": "u", "http_proxy_password": "p"}
+	carried := []string{"auth_failure_budget", "auth_failure_window_seconds", "auth_pause_seconds", "auth_pause_max_seconds",
+		"max_concurrent_requests", "max_listing_requests", "max_read_mbps", "http_proxy", "http_proxy_username", "http_proxy_password"}
+	edit := func(connection map[string]any) map[string]any {
+		submitted := map[string]map[string]any{"connection": connection}
+		next := carryS3StoredSettings(stored, submitted)
+		if len(submitted["connection"]) != len(connection) {
+			t.Fatal("the submitted configuration was modified in place")
+		}
+		return next["connection"]
+	}
+
+	t.Run("omitted settings keep their stored values", func(t *testing.T) {
+		conn := edit(map[string]any{"source_id": "s3_1", "bucket": "other", "access_key": "NEW", "secret_key": "NEW2"})
+		for _, k := range carried {
+			if conn[k] != stored[k] {
+				t.Fatalf("%s = %v, want the stored value", k, conn[k])
+			}
+		}
+		if conn["bucket"] != "other" || conn["access_key"] != "NEW" || conn["secret_key"] != "NEW2" {
+			t.Fatalf("submitted fields not kept: %v", conn)
+		}
+		if _, ok := conn["session_token"]; ok {
+			t.Fatal("a credential was carried from the stored configuration")
+		}
+		if _, ok := conn["endpoint"]; ok {
+			t.Fatal("a field outside the carried set was carried")
+		}
+	})
+	t.Run("submitted values win and null clears", func(t *testing.T) {
+		conn := edit(map[string]any{"max_read_mbps": 50.0, "max_concurrent_requests": nil, "http_proxy_password": "p2"})
+		if conn["max_read_mbps"] != 50.0 || conn["http_proxy_password"] != "p2" {
+			t.Fatalf("submitted values lost: %v", conn)
+		}
+		if _, ok := conn["max_concurrent_requests"]; ok {
+			t.Fatal("null did not clear the stored value")
+		}
+		if conn["max_listing_requests"] != 2.0 {
+			t.Fatal("an omitted limit was not carried")
+		}
+	})
+	t.Run("the proxy password follows only the same proxy and user", func(t *testing.T) {
+		if conn := edit(map[string]any{"http_proxy": "http://elsewhere.example:3128"}); conn["http_proxy_password"] != nil {
+			t.Fatal("password carried to a different proxy")
+		}
+		if conn := edit(map[string]any{"http_proxy_username": "v"}); conn["http_proxy_password"] != nil {
+			t.Fatal("password carried to a different user")
+		}
+		if conn := edit(map[string]any{"http_proxy": "http://proxy.example:3128", "http_proxy_username": "u"}); conn["http_proxy_password"] != "p" {
+			t.Fatal("password not carried when proxy and user are resubmitted unchanged")
+		}
+	})
+	t.Run("clearing the proxy drops its omitted user and password", func(t *testing.T) {
+		for _, proxy := range []any{nil, ""} {
+			conn := edit(map[string]any{"http_proxy": proxy})
+			if conn["http_proxy_username"] != nil || conn["http_proxy_password"] != nil {
+				t.Fatalf("proxy %v: user or password carried without a proxy: %v", proxy, conn)
+			}
+		}
+	})
+	t.Run("a case variant counts as sent", func(t *testing.T) {
+		conn := edit(map[string]any{"MAX_READ_MBPS": 5.0})
+		if _, ok := conn["max_read_mbps"]; ok {
+			t.Fatal("stored value carried beside a case variant")
+		}
+	})
+	t.Run("nothing stored or no connection is unchanged", func(t *testing.T) {
+		submitted := map[string]map[string]any{"connection": {"bucket": "b"}}
+		if got := carryS3StoredSettings(nil, submitted); len(got["connection"]) != 1 {
+			t.Fatalf("got %v", got)
+		}
+		other := map[string]map[string]any{"source": {"bucket": "b"}}
+		if got := carryS3StoredSettings(stored, other); len(got) != 1 || len(got["source"]) != 1 {
+			t.Fatalf("got %v", got)
+		}
+	})
+}

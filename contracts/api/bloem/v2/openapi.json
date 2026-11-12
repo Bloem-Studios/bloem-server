@@ -16012,7 +16012,7 @@
                 }
               }
             },
-            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended.",
+            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. platform_setting_required: config connection sets http_proxy, http_proxy_username or http_proxy_password (in any spelling encoding/json matches, with any value including null), which only a platform administrator may set; the message names the field and never quotes the value.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -16229,7 +16229,7 @@
                 }
               }
             },
-            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended.",
+            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. platform_setting_required: config connection sets http_proxy, http_proxy_username or http_proxy_password (in any spelling encoding/json matches, with any value including null), which only a platform administrator may set; the message names the field and never quotes the value.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -16704,7 +16704,7 @@
                 }
               }
             },
-            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended.",
+            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. platform_setting_required: config connection sets http_proxy, http_proxy_username or http_proxy_password (in any spelling encoding/json matches, with any value including null), which only a platform administrator may set; the message names the field and never quotes the value.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -16945,7 +16945,7 @@
                 }
               }
             },
-            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended.",
+            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. platform_setting_required: config connection sets http_proxy, http_proxy_username or http_proxy_password (in any spelling encoding/json matches, with any value including null), which only a platform administrator may set; the message names the field and never quotes the value.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -18955,7 +18955,7 @@
     },
     "/api/bloem/v2/admin/organization/native-storage/sources/{source_key}/configuration": {
       "put": {
-        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. The source and its installation must be enabled and attached (otherwise not_found). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request).",
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. The source and its installation must be enabled and attached (otherwise not_found). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request). For an S3 source, the optional request limits (auth_failure_budget, auth_failure_window_seconds, auth_pause_seconds, auth_pause_max_seconds, max_concurrent_requests, max_listing_requests, max_read_mbps) and http_proxy that the connection leaves out keep their stored values, and one sent as null is cleared. http_proxy_username is kept while a proxy remains, and the write-only http_proxy_password only while http_proxy and http_proxy_username equal the stored ones. Credentials and every other field are never kept.",
         "operationId": "replaceConfigurationBloemOrganizationNativeStorage",
         "parameters": [
           {
@@ -19051,7 +19051,7 @@
                 }
               }
             },
-            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended.",
+            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. platform_setting_required: config connection sets http_proxy, http_proxy_username or http_proxy_password (in any spelling encoding/json matches, with any value including null), which only a platform administrator may set; the message names the field and never quotes the value.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -28577,7 +28577,7 @@
     },
     "/api/bloem/v2/admin/platform/native-storage/sources/{source_key}/configuration": {
       "put": {
-        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. The source and its installation must be enabled and attached (otherwise not_found). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request).",
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. The source and its installation must be enabled and attached (otherwise not_found). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request). For an S3 source, the optional request limits (auth_failure_budget, auth_failure_window_seconds, auth_pause_seconds, auth_pause_max_seconds, max_concurrent_requests, max_listing_requests, max_read_mbps) and http_proxy that the connection leaves out keep their stored values, and one sent as null is cleared. http_proxy_username is kept while a proxy remains, and the write-only http_proxy_password only while http_proxy and http_proxy_username equal the stored ones. Credentials and every other field are never kept.",
         "operationId": "replaceConfigurationBloemPlatformNativeStorage",
         "parameters": [
           {

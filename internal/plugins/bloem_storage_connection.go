@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
@@ -78,6 +79,82 @@ func overlayS3Credentials(current map[string]any, c S3Credentials) (map[string]m
 		conn["session_token"] = c.SessionToken
 	}
 	return map[string]map[string]any{"connection": conn}, nil
+}
+
+// s3CarriedSettingKeys are the optional S3 settings an edit keeps when it does
+// not send them: the request limits and the proxy address. The proxy user and
+// password follow the rules in carryS3StoredSettings.
+var s3CarriedSettingKeys = []string{"auth_failure_budget", "auth_failure_window_seconds", "auth_pause_seconds", "auth_pause_max_seconds",
+	"max_concurrent_requests", "max_listing_requests", "max_read_mbps", "http_proxy"}
+
+// carryS3StoredSettings returns config with the stored values of the optional
+// S3 settings the submitted connection leaves out, so an edit form that does
+// not know them, or may not show them, does not reset them. A field sent in
+// any spelling encoding/json matches counts as sent, and a field sent as null
+// is cleared. The proxy user is kept only while a proxy remains, and the
+// write-only proxy password only for the same proxy and user, so a stored
+// password never goes to a proxy it was not entered for. Credentials and every
+// other field are never carried. Neither input is modified.
+func carryS3StoredSettings(stored map[string]any, config map[string]map[string]any) map[string]map[string]any {
+	submitted, ok := config["connection"]
+	if !ok || submitted == nil {
+		return config
+	}
+	conn := make(map[string]any, len(submitted)+len(s3CarriedSettingKeys)+2)
+	for k, v := range submitted {
+		conn[k] = v
+	}
+	// carry reports whether key was sent; a null exact key is a clear.
+	carry := func(key string, allowed bool) {
+		for k := range submitted {
+			if strings.EqualFold(k, key) {
+				if k == key && submitted[k] == nil {
+					delete(conn, key)
+				}
+				return
+			}
+		}
+		if v, ok := stored[key]; ok && allowed {
+			conn[key] = v
+		}
+	}
+	text := func(m map[string]any, key string) string { v, _ := m[key].(string); return v }
+	for _, key := range s3CarriedSettingKeys {
+		carry(key, true)
+	}
+	proxy := text(conn, "http_proxy")
+	carry("http_proxy_username", proxy != "")
+	carry("http_proxy_password", proxy != "" && proxy == text(stored, "http_proxy") && text(conn, "http_proxy_username") == text(stored, "http_proxy_username"))
+	next := make(map[string]map[string]any, len(config))
+	for k, v := range config {
+		next[k] = v
+	}
+	next["connection"] = conn
+	return next
+}
+
+// withStoredS3Settings applies carryS3StoredSettings to an edit of an attached
+// S3 source; any other source's configuration is returned unchanged. As with
+// credential rotation, the caller's expected revision fences the read: a write
+// after it increments the revision, so the replacement fails rather than
+// committing settings carried from a stale read.
+func (r *NativeStorageRegistry) withStoredS3Settings(ctx context.Context, key, owner uuid.UUID, config map[string]map[string]any) (map[string]map[string]any, error) {
+	var installationID int
+	err := r.pool.QueryRow(ctx, `SELECT installation_id FROM bloem_storage_sources WHERE key=$1 AND owner_id=$2 AND plugin_id=$3 AND installation_id IS NOT NULL`, key, owner, nativeS3PluginID).Scan(&installationID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return config, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if r.configs == nil {
+		return nil, nativeManagementUnavailable()
+	}
+	configs, err := r.configs.ListGlobalConfigs(ctx, installationID)
+	if err != nil {
+		return nil, err
+	}
+	return carryS3StoredSettings(pickConnectionConfigStrict(configs), config), nil
 }
 
 // rotateCredentials replaces the stored S3 credentials of an in-use source. It

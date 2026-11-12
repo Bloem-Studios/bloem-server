@@ -803,7 +803,14 @@ replacement rule; it is not an in-place toggle for attached libraries.
   browse endpoint guard below, `allow_loopback_http`/`allow_insecure_http` are
   refused (`s3_endpoint_rejected`) and case-variant keys are invalid, on every
   route that accepts a configuration, because the plugin process connects to that
-  address. The plain catalog install refuses S3 artifacts (`artifact_rejected` for
+  address. Keys match the way `encoding/json` matches them (`strings.EqualFold`:
+  case, U+017F as `s`, U+212A as `k`). The S3 proxy fields `http_proxy`,
+  `http_proxy_username` and `http_proxy_password` are refused there in any such
+  spelling and with any value, null included (403 `platform_setting_required`,
+  the message naming the field): a proxy names any host and port, so only a
+  platform administrator sets one, and an organization's source summary never
+  shows it. Platform scope keeps the plugin's own rules for the proxy, as for
+  the endpoint. The plain catalog install refuses S3 artifacts (`artifact_rejected` for
   a platform administrator, `not_found` for an organization administrator); S3
   catalog upgrades stay platform-managed (organization administrators get
   `not_found`, also for their own S3 sources, which a platform administrator or a
@@ -831,8 +838,23 @@ replacement rule; it is not an in-place toggle for attached libraries.
   config). An empty or omitted `session_token` clears a stored token. A non-S3 or
   unknown source returns `not_found`; a disabled source (no attached installation)
   returns `native_storage_unavailable`.
+- An S3 configuration replacement keeps the stored request limits
+  (`auth_failure_budget`, `auth_failure_window_seconds`, `auth_pause_seconds`,
+  `auth_pause_max_seconds`, `max_concurrent_requests`, `max_listing_requests`,
+  `max_read_mbps`) and `http_proxy` when the submitted connection leaves them out
+  (in any `encoding/json` spelling), and clears one sent as null
+  (`carryS3StoredSettings` in `internal/plugins`), so an edit form that does not
+  know or show them does not reset them. `http_proxy_username` is kept only while
+  a proxy remains, and the write-only `http_proxy_password` only while
+  `http_proxy` and `http_proxy_username` equal the stored ones, so a stored
+  password never reaches a proxy it was not entered for. Credentials and every
+  other field are never kept. The stored connection is read before the
+  replacement transaction; the expected revision fences that read, as for
+  credential rotation.
 - Source documents carry `connection_summary`, a non-secret allowlisted projection
-  (never null) for display. `GET /artifacts` adds `catalog` and `config_schema` so
+  (never null) for display. For S3 it includes the request limits above and, for
+  a platform administrator only, `http_proxy` (only an http or https origin with
+  no userinfo) and `http_proxy_username`; never the proxy password. `GET /artifacts` adds `catalog` and `config_schema` so
   a client can render an install form. Capabilities report `s3_catalog_discovery`,
   `s3_bucket_browse` (both follow composition in both scopes) and
   `credential_rotation_in_use`.

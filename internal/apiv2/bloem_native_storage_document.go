@@ -237,7 +237,14 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 			&huma.Param{Name: "after", In: "query", Schema: after, Description: "Exclusive keyset cursor returned as next_after; omit on the first page."},
 			&huma.Param{Name: "limit", In: "query", Schema: &huma.Schema{Type: "integer", Minimum: &one, Maximum: &hundred, Default: 50}})
 	}
-	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{403: bloemNativeStorageForbidden})
+	forbidden := bloemNativeStorageForbidden
+	switch path {
+	case "/installations", "/installations/discover", "/catalog/installations", "/catalog/installations/discover", "/sources/{source_key}/configuration":
+		if scope == "organization" {
+			forbidden += " platform_setting_required: config connection sets http_proxy, http_proxy_username or http_proxy_password (in any spelling encoding/json matches, with any value including null), which only a platform administrator may set; the message names the field and never quotes the value."
+		}
+	}
+	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{403: forbidden})
 	errorKey := path
 	if method+" "+path == deleteSourceErrors {
 		// Deleting a source writes, unlike reading it on the same path.
@@ -262,7 +269,7 @@ var bloemNativeStorageNotes = map[string]string{
 	"/installations/discover":                          "Only a host-approved bloem.storage.s3 artifact qualifies. The provider runs once in a temporary process to report the selected source's root; the caller never supplies a root, source key or state_path.",
 	"/catalog/installations":                           "S3 sources are added only through catalog discovery: an S3 catalog key is artifact_rejected for a platform administrator and not_found for an organization administrator. A key with no catalog release is artifact_rejected; a failed download or checksum is native_storage_unavailable.",
 	"/catalog/installations/{installation_id}/upgrade": "An organization administrator receives not_found for the S3 plugin, also for an S3 source the organization owns; a platform administrator, or a manual upload of an approved artifact, upgrades it. A key with no catalog release is artifact_rejected; a failed download or checksum is native_storage_unavailable.",
-	"/sources/{source_key}/configuration":              "The source and its installation must be enabled and attached (otherwise not_found). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request).", //nolint:goconst // Route keys stay literal, as in the switch below.
+	"/sources/{source_key}/configuration":              "The source and its installation must be enabled and attached (otherwise not_found). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request). For an S3 source, the optional request limits (auth_failure_budget, auth_failure_window_seconds, auth_pause_seconds, auth_pause_max_seconds, max_concurrent_requests, max_listing_requests, max_read_mbps) and http_proxy that the connection leaves out keep their stored values, and one sent as null is cleared. http_proxy_username is kept while a proxy remains, and the write-only http_proxy_password only while http_proxy and http_proxy_username equal the stored ones. Credentials and every other field are never kept.", //nolint:goconst // Route keys stay literal, as in the switch below.
 	"/sources/{source_key}/credentials":                "Only an enabled, attached S3 source qualifies: another plugin's source, or a disabled or detached one, is not_found.",
 }
 

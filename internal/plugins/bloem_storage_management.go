@@ -74,6 +74,10 @@ func (r *NativeStorageRegistry) ReplaceConfigurationAuthorized(ctx context.Conte
 	if key == uuid.Nil || owner == uuid.Nil || expected <= 0 {
 		return 0, &catalog.NativeOnboardingError{Code: "invalid_request"}
 	}
+	config, err := r.withStoredS3Settings(ctx, key, owner, config)
+	if err != nil {
+		return 0, err
+	}
 	return r.replaceConfiguration(ctx, key, owner, config, &expected, authorize)
 }
 func (r *NativeStorageRegistry) RemoveAuthorized(ctx context.Context, id int, key, owner uuid.UUID, expected int64, uninstall bool, authorize NativeStorageAuthorizeTx) error {

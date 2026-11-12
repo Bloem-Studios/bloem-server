@@ -162,6 +162,7 @@ func NativeStorageAPIError(err error) *APIError {
 		"initialization_incomplete":          {503, "Native library initialization is incomplete"},
 		nativeStorageUnavailableCode:         {503, "Native storage unavailable"},
 		"s3_endpoint_rejected":               {422, "The S3 endpoint is not allowed"},
+		nativeStoragePlatformSettingCode:     {403, "Only a platform administrator can set this setting"},
 		"s3_access_denied":                   {422, "The S3 backend denied access"},
 		"s3_backend_error":                   {502, "The S3 backend request failed"},
 	}
@@ -169,6 +170,11 @@ func NativeStorageAPIError(err error) *APIError {
 		result.Status = mapping.status
 		result.Code = typed.Code
 		result.Message = mapping.message
+	}
+	// The field comes from the guard's allowlist, never from the request.
+	if typed.Code == nativeStoragePlatformSettingCode && typed.Field != "" {
+		result.Status, result.Code = 403, typed.Code
+		result.Message = "Only a platform administrator can set " + typed.Field
 	}
 	return result
 }

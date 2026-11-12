@@ -94,3 +94,28 @@ func TestConnectionSummaryForActorScopeAndOwner(t *testing.T) {
 		})
 	}
 }
+
+// An organization administrator never sees the proxy of its own source: only a
+// platform administrator sets it, and its host belongs to the platform. The
+// request limits stay visible so the edit form keeps them.
+func TestConnectionSummaryForHidesProxyOutsidePlatformScope(t *testing.T) {
+	s := &SourceManagement{readConnectionConfig: func(context.Context, int) (map[string]any, error) {
+		return map[string]any{"bucket": "media", "max_read_mbps": 90.0, "http_proxy": "http://proxy.example:3128", "http_proxy_username": "u", "http_proxy_password": "p"}, nil
+	}}
+	view := summaryTestView()
+	view.OwnerKind = resourcetenancy.OwnerOrganization
+	platform := s.connectionSummaryFor(context.Background(), auth.AdminScopePlatform, view).ConnectionSummary
+	if platform["http_proxy"] != "http://proxy.example:3128" || platform["http_proxy_username"] != "u" || platform["max_read_mbps"] != "90" {
+		t.Fatalf("platform summary: %v", platform)
+	}
+	organization := s.connectionSummaryFor(context.Background(), auth.AdminScopeOrganization, view).ConnectionSummary
+	if _, ok := organization["http_proxy"]; ok {
+		t.Fatalf("organization summary shows the proxy: %v", organization)
+	}
+	if _, ok := organization["http_proxy_username"]; ok {
+		t.Fatalf("organization summary shows the proxy user: %v", organization)
+	}
+	if organization["max_read_mbps"] != "90" || organization["bucket"] != "media" {
+		t.Fatalf("organization summary lost non-proxy fields: %v", organization)
+	}
+}

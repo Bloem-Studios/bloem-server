@@ -71,3 +71,47 @@ func TestConnectionSummaryS3OmitsUnsafeEndpoint(t *testing.T) {
 		t.Fatalf("valid https endpoint dropped: %v", got)
 	}
 }
+
+// The S3 request limits and the proxy address and user are summarized so an
+// edit form can keep them; the proxy password never is.
+func TestConnectionSummaryS3LimitsAndProxy(t *testing.T) {
+	// The config store decodes numbers as json.Number; a request as float64.
+	conn := map[string]any{"bucket": "media", "auth_failure_budget": json.Number("3"), "auth_failure_window_seconds": json.Number("60"), "auth_pause_seconds": json.Number("600"),
+		"auth_pause_max_seconds": json.Number("3600"), "max_concurrent_requests": 16.0, "max_listing_requests": json.Number("3"), "max_read_mbps": int64(90),
+		"http_proxy": "http://proxy.example:3128", "http_proxy_username": "squid", "http_proxy_password": "PROXYSECRET"}
+	got := ConnectionSummary("bloem.storage.s3", conn)
+	want := map[string]string{"bucket": "media", "prefix": "", "auth_failure_budget": "3", "auth_failure_window_seconds": "60", "auth_pause_seconds": "600",
+		"auth_pause_max_seconds": "3600", "max_concurrent_requests": "16", "max_listing_requests": "3", "max_read_mbps": "90",
+		"http_proxy": "http://proxy.example:3128", "http_proxy_username": "squid"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v", got)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Fatalf("%s = %q want %q", k, got[k], v)
+		}
+	}
+	raw, _ := json.Marshal(got)
+	if strings.Contains(string(raw), "PROXYSECRET") {
+		t.Fatal("summary leaked the proxy password")
+	}
+	for name, value := range map[string]any{"fraction": 2.5, "zero": 0.0, "negative": -1.0, "text": "16", "bool": true, "number_fraction": json.Number("2.5"), "number_bad": json.Number("x")} {
+		if got := ConnectionSummary("bloem.storage.s3", map[string]any{"bucket": "b", "max_read_mbps": value}); got["max_read_mbps"] != "" {
+			t.Fatalf("%s: limit %v summarized as %q", name, value, got["max_read_mbps"])
+		}
+	}
+	for name, proxy := range map[string]string{
+		"userinfo": "http://u:pw@proxy.example:3128",
+		"at":       "http://@proxy.example:3128",
+		"scheme":   "socks5://proxy.example:1080",
+		"no host":  "http://",
+		"query":    "http://proxy.example:3128?x=1",
+	} {
+		if got := ConnectionSummary("bloem.storage.s3", map[string]any{"bucket": "b", "http_proxy": proxy}); got["http_proxy"] != "" {
+			t.Fatalf("%s: unsafe proxy %q summarized", name, proxy)
+		}
+	}
+	if got := ConnectionSummary("bloem.storage.s3", map[string]any{"bucket": "b", "http_proxy": "https://proxy.example/"}); got["http_proxy"] != "https://proxy.example/" {
+		t.Fatalf("https proxy not summarized: %v", got)
+	}
+}

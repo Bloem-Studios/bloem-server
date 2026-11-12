@@ -83,12 +83,20 @@ func (s *SourceManagement) withConnectionSummary(ctx context.Context, view Sourc
 // actor or a source the platform does not own. An organization administrator
 // may read a platform source its organization is entitled to, but that
 // source's bucket, prefix, endpoint, region and probe key stay with the
-// platform, so the view keeps its empty summary.
+// platform, so the view keeps its empty summary. The proxy of an organization's
+// own source is set only by a platform administrator and is not shown to the
+// organization either.
 func (s *SourceManagement) connectionSummaryFor(ctx context.Context, scope auth.AdminScope, view SourceView) SourceView {
 	if scope != auth.AdminScopePlatform && view.OwnerKind == resourcetenancy.OwnerPlatform {
 		return view
 	}
-	return s.withConnectionSummary(ctx, view)
+	view = s.withConnectionSummary(ctx, view)
+	if scope != auth.AdminScopePlatform {
+		for _, key := range s3ProxySummaryKeys {
+			delete(view.ConnectionSummary, key)
+		}
+	}
+	return view
 }
 func (s *SourceManagement) GetSource(ctx context.Context, actor auth.AdminContextClaims, key uuid.UUID) (SourceView, error) {
 	if key == uuid.Nil {

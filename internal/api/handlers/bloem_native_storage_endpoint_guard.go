@@ -11,8 +11,26 @@ import (
 
 // nativeStorageGuardedConnectionKeys are the connection fields that decide
 // where a storage plugin process connects, or relax that.
-var nativeStorageGuardedConnectionKeys = map[string]bool{
-	"endpoint": true, "base_url": true, "allow_loopback_http": true, "allow_insecure_http": true,
+var nativeStorageGuardedConnectionKeys = []string{"endpoint", "base_url", "allow_loopback_http", "allow_insecure_http"}
+
+// nativeStoragePlatformOnlyConnectionKeys are the S3 proxy fields. A proxy
+// names any host and port the plugin then connects to, so only a platform
+// administrator may set them.
+var nativeStoragePlatformOnlyConnectionKeys = []string{"http_proxy", "http_proxy_username", "http_proxy_password"}
+
+const nativeStoragePlatformSettingCode = "platform_setting_required"
+
+// nativeStorageJSONKey returns the canonical key among keys that encoding/json
+// would decode name into, or "". Plugins decode field names the way
+// encoding/json does, and strings.EqualFold folds exactly as it does: case,
+// U+017F (long s) as "s" and U+212A (Kelvin sign) as "k".
+func nativeStorageJSONKey(name string, keys []string) string {
+	for _, key := range keys {
+		if strings.EqualFold(name, key) {
+			return key
+		}
+	}
+	return ""
 }
 
 // nativeStorageOrganizationConnectionGuard stops an organization administrator
@@ -25,9 +43,13 @@ var nativeStorageGuardedConnectionKeys = map[string]bool{
 //     allowed;
 //   - allow_loopback_http (S3) and allow_insecure_http (Bookwarehouse) are
 //     refused;
-//   - a case variant of "connection" or of any of those fields, and any two
-//     connection fields differing only in case, are invalid, because plugins
-//     decode JSON field names case-insensitively.
+//   - the S3 proxy fields http_proxy, http_proxy_username and
+//     http_proxy_password are refused with 403 platform_setting_required
+//     naming the field, whatever their value, including null or empty;
+//   - a variant of "connection" or of any of those fields that encoding/json
+//     still matches (case, long s, Kelvin sign), and any two connection
+//     fields it would treat as one, are invalid, because plugins decode JSON
+//     field names that way.
 //
 // This is a check at configuration time: the plugin process resolves the name
 // again whenever it starts, so DNS rebinding afterwards is a documented
@@ -46,13 +68,24 @@ func nativeStorageOrganizationConnectionGuard(ctx context.Context, scope auth.Ad
 	if connection == nil {
 		return nil
 	}
-	seen := map[string]bool{}
+	keys := make([]string, 0, len(connection))
 	for key := range connection {
-		folded := strings.ToLower(key)
-		if seen[folded] || (nativeStorageGuardedConnectionKeys[folded] && key != folded) {
+		for _, other := range keys {
+			if strings.EqualFold(key, other) {
+				return nativeStorageInvalid()
+			}
+		}
+		keys = append(keys, key)
+		if canonical := nativeStorageJSONKey(key, nativeStorageGuardedConnectionKeys); canonical != "" && canonical != key {
 			return nativeStorageInvalid()
 		}
-		seen[folded] = true
+	}
+	// Refused whatever its spelling or value: with no proxy field the edit
+	// keeps the one a platform administrator stored.
+	for _, key := range keys {
+		if canonical := nativeStorageJSONKey(key, nativeStoragePlatformOnlyConnectionKeys); canonical != "" {
+			return &catalog.NativeOnboardingError{Code: nativeStoragePlatformSettingCode, Field: "connection." + canonical}
+		}
 	}
 	rejected := &catalog.NativeOnboardingError{Code: nativestorage.S3EndpointRejectedCode}
 	for _, flag := range []string{"allow_loopback_http", "allow_insecure_http"} {
