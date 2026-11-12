@@ -409,7 +409,6 @@ var profileCascadeTables = []string{
 	"user_history_hidden_items",
 	"user_home_item_dismissals",
 	"user_collection_sort_preferences",
-	"user_personal_collections",
 	"user_personal_collection_profiles",
 	"user_audio_preferences",
 	"user_subtitle_preferences",
@@ -461,7 +460,7 @@ func (s *PostgresUserStore) lockProfileForDelete(ctx context.Context, tx pgx.Tx,
 	return deleted, nil
 }
 
-func (s *PostgresUserStore) DeleteProfile(ctx context.Context, id string) error {
+func (s *PostgresUserStore) DeleteProfile(ctx context.Context, id string) ([]string, error) {
 	return s.DeleteProfileAudited(ctx, id, nil)
 }
 
@@ -470,52 +469,27 @@ var _ userstore.AuditedProfileDeleter = (*PostgresUserStore)(nil)
 // DeleteProfileAudited is DeleteProfile with audit run in the delete's
 // transaction before it commits; a nil audit records nothing. The profile row
 // is locked before it is read, so audit sees the image that was deleted.
-func (s *PostgresUserStore) DeleteProfileAudited(ctx context.Context, id string, audit func(tx pgx.Tx, deleted *userstore.Profile) error) error {
+func (s *PostgresUserStore) DeleteProfileAudited(ctx context.Context, id string, audit func(tx pgx.Tx, deleted *userstore.Profile) error) ([]string, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("beginning transaction for profile delete: %w", err)
+		return nil, fmt.Errorf("beginning transaction for profile delete: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 	// The account locks before any row, in the order imports take them
 	// (LockAccountForImport), so a deletion and an import of the same
 	// account wait on each other's locks rather than on each other's rows.
 	if err := LockAccountForImport(ctx, tx, s.userID); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Deleting the account locks it before its cascade reaches the profile
 	// and its collections, so the audit row's account keys come first.
 	if audit != nil {
 		if err := auditmutation.LockActors(ctx, tx); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	var deleted *userstore.Profile
-	var lockProfile func() error
-	if audit != nil {
-		lockProfile = func() (err error) {
-			deleted, err = s.lockProfileForDelete(ctx, tx, id)
-			return err
-		}
-	}
-	if err := deleteProfile(ctx, tx, s.userID, id, lockProfile); err != nil {
-		return err
-	}
-	if audit != nil {
-		if err := audit(tx, deleted); err != nil {
-			return err
-		}
-	}
-
-	return tx.Commit(ctx)
-}
-
-// deleteProfile deletes a profile in the caller's transaction. Bloem-owned split
-// of DeleteProfileAudited's body, so a caller-owned transaction can delete a
-// profile too. lockProfile, when set, runs where DeleteProfileAudited locks the
-// profile row: after its collections, before any delete.
-func deleteProfile(ctx context.Context, tx preferenceSettingsExecutor, userID int, id string, lockProfile func() error) error {
 	// Lock every collection whose revision the deletes below advance, in id
 	// order, before taking any revision row: the profile's own collections
 	// and those it has visibility rows on. The visibility and item deletes
@@ -528,13 +502,14 @@ func deleteProfile(ctx context.Context, tx preferenceSettingsExecutor, userID in
 			SELECT collection_id FROM user_personal_collection_profiles WHERE user_id = $1 AND profile_id = $2
 		))
 		ORDER BY id FOR UPDATE`,
-		userID, id); err != nil {
-		return fmt.Errorf("locking collections of profile %s: %w", id, err)
+		s.userID, id); err != nil {
+		return nil, fmt.Errorf("locking collections of profile %s: %w", id, err)
 	}
 
-	if lockProfile != nil {
-		if err := lockProfile(); err != nil {
-			return err
+	var deleted *userstore.Profile
+	if audit != nil {
+		if deleted, err = s.lockProfileForDelete(ctx, tx, id); err != nil {
+			return nil, err
 		}
 	}
 
@@ -544,17 +519,17 @@ func deleteProfile(ctx context.Context, tx preferenceSettingsExecutor, userID in
 		DELETE FROM user_collection_sort_preferences
 		WHERE user_id = $1 AND collection_kind = 'user' AND collection_id IN (
 			SELECT id FROM user_personal_collections WHERE user_id = $1 AND profile_id = $2
-		)`, userID, id); err != nil {
-		return fmt.Errorf("deleting collection sort preferences for profile %s: %w", id, err)
+		)`, s.userID, id); err != nil {
+		return nil, fmt.Errorf("deleting collection sort preferences for profile %s: %w", id, err)
 	}
 
-	_, err := tx.Exec(ctx, `
+	_, err = tx.Exec(ctx, `
 		DELETE FROM user_personal_collection_items
 		WHERE user_id = $1 AND collection_id IN (
 			SELECT id FROM user_personal_collections WHERE user_id = $1 AND profile_id = $2
-		)`, userID, id)
+		)`, s.userID, id)
 	if err != nil {
-		return fmt.Errorf("deleting collection items for profile %s: %w", id, err)
+		return nil, fmt.Errorf("deleting collection items for profile %s: %w", id, err)
 	}
 
 	// Visibility rows of the profile's own collections go with them, as
@@ -563,40 +538,54 @@ func deleteProfile(ctx context.Context, tx preferenceSettingsExecutor, userID in
 		DELETE FROM user_personal_collection_profiles
 		WHERE user_id = $1 AND collection_id IN (
 			SELECT id FROM user_personal_collections WHERE user_id = $1 AND profile_id = $2
-		)`, userID, id); err != nil {
-		return fmt.Errorf("deleting collection visibility for profile %s: %w", id, err)
+		)`, s.userID, id); err != nil {
+		return nil, fmt.Errorf("deleting collection visibility for profile %s: %w", id, err)
 	}
 
 	// Jellyfin display preferences carry the profile in their key.
 	if _, err := tx.Exec(ctx,
 		`DELETE FROM jellycompat_displayprefs WHERE user_id = $1 AND left(prefs_id, length($2)) = $2`,
-		userID, userstore.ProfileDisplayPrefsPrefix(id)); err != nil {
-		return fmt.Errorf("deleting display preferences for profile %s: %w", id, err)
+		s.userID, userstore.ProfileDisplayPrefsPrefix(id)); err != nil {
+		return nil, fmt.Errorf("deleting display preferences for profile %s: %w", id, err)
 	}
-	// Every caller's executor is a transaction; the override lock needs one.
-	sectionTx, ok := tx.(pgx.Tx)
-	if !ok {
-		return fmt.Errorf("deleting section overrides for profile %s: not in a transaction", id)
+	if err := deleteProfileSectionOverrides(ctx, tx, s.userID, id); err != nil {
+		return nil, err
 	}
-	if err := deleteProfileSectionOverrides(ctx, sectionTx, userID, id); err != nil {
-		return err
+
+	// The profile's own collections, returned so the caller can remove their
+	// artwork once this commits.
+	rows, err := tx.Query(ctx, "DELETE FROM user_personal_collections WHERE user_id = $1 AND profile_id = $2 RETURNING id", s.userID, id)
+	if err != nil {
+		return nil, fmt.Errorf("deleting collections for profile %s: %w", id, err)
+	}
+	collectionIDs, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, fmt.Errorf("deleting collections for profile %s: %w", id, err)
 	}
 
 	for _, table := range profileCascadeTables {
-		if _, err := tx.Exec(ctx, fmt.Sprintf("DELETE FROM %s WHERE user_id = $1 AND profile_id = $2", table), userID, id); err != nil {
-			return fmt.Errorf("deleting from %s for profile %s: %w", table, id, err)
+		if _, err := tx.Exec(ctx, fmt.Sprintf("DELETE FROM %s WHERE user_id = $1 AND profile_id = $2", table), s.userID, id); err != nil {
+			return nil, fmt.Errorf("deleting from %s for profile %s: %w", table, id, err)
 		}
 	}
 
-	result, err := tx.Exec(ctx, "DELETE FROM user_profiles WHERE user_id = $1 AND id = $2", userID, id)
+	result, err := tx.Exec(ctx, "DELETE FROM user_profiles WHERE user_id = $1 AND id = $2", s.userID, id)
 	if err != nil {
-		return fmt.Errorf("deleting profile %s: %w", id, err)
+		return nil, fmt.Errorf("deleting profile %s: %w", id, err)
 	}
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("profile %s not found", id)
+		return nil, fmt.Errorf("profile %s not found", id)
+	}
+	if audit != nil {
+		if err := audit(tx, deleted); err != nil {
+			return nil, err
+		}
 	}
 
-	return nil
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return collectionIDs, nil
 }
 
 // deleteProfileSectionOverrides takes a profile's entries out of the account's

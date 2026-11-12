@@ -1286,6 +1286,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		// avatars use the signed artwork endpoint. Never use public S3 here.
 		profileHandler.AvatarStore = handlers.NewProfileAvatarStore(deps.Blobs)
 		profileHandler.AvatarResolver = deps.ArtworkResolver
+		profileHandler.ArtworkStore = deps.Blobs.Assets
 		profileHandler.SessionsReader = playbackSessionsLoader
 		if deps.DB != nil {
 			// Profile deletion always owns the shared device/download cleanup,
@@ -1828,6 +1829,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		adminHandler.Config = deps.Config
 		adminHandler.ArtworkBackend = deps.ArtworkBackend
+		adminHandler.ArtworkStore = deps.Blobs.Assets
 		if deps.OnUserSessionsRevoked != nil {
 			adminHandler.OnUserSessionsRevoked = deps.OnUserSessionsRevoked
 		}

@@ -49,10 +49,12 @@ func (h *ProfileHandler) deleteProfileWithLifecycle(
 	userID int,
 	profile *userstore.Profile,
 ) error {
-	if err := store.DeleteProfile(ctx, profile.ID); err != nil {
+	deletedCollections, err := store.DeleteProfile(ctx, profile.ID)
+	if err != nil {
 		return err
 	}
 	h.completeProfileDeleteAfterCommit(ctx, userID, profile)
+	removeDeletedCollectionArtwork(ctx, h.ArtworkStore, userCollectionImagePrefix, deletedCollections...)
 	return nil
 }
 

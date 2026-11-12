@@ -30,7 +30,10 @@ func (s *bloemSocketViewer) Resolve(ctx context.Context, in access.ResolveInput)
 	if _, err := access.GroupSubjectFromContext(ctx, in.UserID, in.ProfileID); err != nil {
 		return access.Scope{}, err
 	}
-	if in.SkipPINVerification || (in.ProfileID != "" && in.ProfileToken != "pin-proof") {
+	// Silo #3937: an impersonated ("View as user") or API-key session skips
+	// the profile PIN, as the real resolver allows; every other session must
+	// still present the PIN proof.
+	if !in.SkipPINVerification && in.ProfileID != "" && in.ProfileToken != "pin-proof" {
 		return access.Scope{}, access.ErrProfileUnverified
 	}
 	return access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true, PolicyRevision: s.policyRevision}, s.err

@@ -1529,12 +1529,15 @@ func (f *Fetcher) fetchUserCollection(ctx context.Context, s ResolvedSection, li
 			qd = qd.Normalize()
 			// Build a synthetic resolved section with the query definition as config.
 			cfgBytes, _ := json.Marshal(qd)
+			// fetchFiltered replaces the query's limit with the row's, so a
+			// collection limit below the row size has to cap the row itself.
+			itemLimit := min(s.ItemLimit, *catalog.ApplySmartCollectionItemLimit(qd).Limit)
 			synth := ResolvedSection{
 				ID:          s.ID,
 				SectionType: SectionCustomFilter,
 				Title:       s.Title,
 				Featured:    s.Featured,
-				ItemLimit:   s.ItemLimit,
+				ItemLimit:   itemLimit,
 				Config:      cfgBytes,
 				Position:    s.Position,
 			}
@@ -1550,16 +1553,22 @@ func (f *Fetcher) fetchUserCollection(ctx context.Context, s ResolvedSection, li
 		if qd.Limit != nil && *qd.Limit > 0 {
 			limit = *qd.Limit
 		}
+		// Both queries read the viewer's own state, as fetchFiltered does for
+		// the collection without a display filter.
+		viewerAccess := filter
+		viewerAccess.UserID = userID
+		viewerAccess.ProfileID = profileID
+		baseAccess := filter
+		if qd.IsPersonalized() {
+			baseAccess = viewerAccess
+		}
 		executor := &catalog.QueryExecutor{Pool: f.pool}
-		items, _, err := executor.Preview(ctx, qd, filter, limit)
+		items, _, err := executor.Preview(ctx, qd, baseAccess, limit)
 		if err != nil {
 			return nil, 0, err
 		}
 
-		displayAccess := filter
-		displayAccess.UserID = userID
-		displayAccess.ProfileID = profileID
-		items, err = catalog.FilterCollectionItemsByDisplayQuery(ctx, f.pool, items, collection.DisplayQueryDefinition, displayAccess)
+		items, err = catalog.FilterCollectionItemsByDisplayQuery(ctx, f.pool, items, collection.DisplayQueryDefinition, viewerAccess)
 		if err != nil {
 			return nil, 0, err
 		}

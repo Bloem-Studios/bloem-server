@@ -13,7 +13,6 @@ import (
 type ProfileLifecycleWriter interface {
 	PreferenceSettingsWriter
 	GetProfile(context.Context, string) (*Profile, error)
-	DeleteProfile(context.Context, string) error
 }
 
 // ErrProfileLifecycleUnsupported reports that the backing store cannot run a

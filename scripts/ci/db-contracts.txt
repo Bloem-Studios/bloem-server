@@ -18,6 +18,7 @@
 ./internal/recommendations TestRecentCompletedItemIDsGroupsSeriesBeforeLimit
 ./internal/sections TestCompatibilityRecentlyAddedReturnsFlatDistinctSeries
 ./internal/sections TestSectionsSkipItemsInNoLibraryPostgres
+./internal/sections TestPersonalSmartCollectionRowKeepsTheCollectionLimitPostgres
 ./internal/sections TestEpisodeCardsCarryParentArtworkPostgres
 ./internal/catalog TestCatalogQueryWithoutLibraryLeavesOutItemsInNoLibraryDB
 ./internal/catalog TestCountsAndListingsLeaveOutItemsHeldByRemovalGraceDB
@@ -28,6 +29,7 @@
 ./internal/audiobooks TestABSListsLeaveOutBooksInNoLibraryDB
 ./internal/api/handlers TestAdminStatsLeaveOutFilesAndItemsHeldByRemovalGraceDB
 ./internal/sections TestRuleRowsReadTheViewersWatchStatePostgres
+./internal/sections TestSmartCollectionRowWithDisplayFilterReadsTheViewersWatchStatePostgres
 ./internal/scanner TestFileRepositoryPreservesFirstSeenScanProvenance
 ./internal/scanner TestMultiEpisodeFileServesSpannedEpisodesDB
 ./internal/scanner TestScannedGroupForItemDB
@@ -40,6 +42,7 @@
 ./internal/scanner TestHDR10PlusBackfillLeavesARowRewrittenDuringTheReadDB
 ./internal/scanner TestHDR10PlusBackfillStopsWhenStorageStallsDB
 ./internal/scanner TestRescanKeepsHDR10PlusWhenTheFrameReadFailsDB
+./internal/scanner TestRescanKeepsSidecarsItCouldNotListDB
 ./internal/scanner TestScanStateCarriesProbeRejectionDB
 ./internal/scanner TestRescanKeepsProbeFactsOfARejectedUnchangedFileDB
 ./internal/scanner TestFinalizeVariantsKeepsMatchSuppressionDB
@@ -54,6 +57,9 @@
 ./internal/catalogseed TestSeedCarriesSeasonEpisodeLocksDB
 ./internal/metadata TestIdentify_SeasonEpisodeLocksFollowTheShow
 ./internal/metadata TestIdentify_SeasonEpisodeLocksClearOnEveryCorrectionPath
+./internal/metadata TestResetToProvider_SeasonAndEpisodeRows
+./internal/metadata TestResetToProvider_ItemRowClearsStoredLocks
+./internal/metadata TestResetToProvider_DoesNotFollowARebind
 
 # Movie box sets: grouping by viewer access and the minimum, grouped browse
 # and letters, search, sync bookkeeping, and collection artwork.
@@ -208,6 +214,9 @@
 
 # Minting a key for another account holds the Owner rules against a concurrent promotion.
 ./internal/api/handlers TestAdminAPIKeyCreationHoldsOwnerRulesAgainstPromotionDB
+
+# Deleting an account removes its personal collections' artwork.
+./internal/api/handlers TestAdminAccountDeleteRemovesCollectionArtworkDB
 
 # Recovery identity changes retire links and prevent delivery to a stale address.
 ./internal/passwordreset TestResetLinkRetiresOnRecoveryEmailChangeDB
@@ -461,6 +470,9 @@
 
 # Intro analysis state timestamps and config-hash isolation.
 ./internal/intromarkers TestSeasonStateIsKeyedByAnalysisHashPostgres
+
+# The nightly episode pass loads whole seasons a page at a time.
+./internal/intromarkers TestEligibleCandidatePagesHoldWholeSeasonsPostgres
 
 # Credits tail failures replace legacy metadata verdicts and back off.
 ./internal/intromarkers TestMovieTailFailureReplacesMetadataUnusableRowPostgres
