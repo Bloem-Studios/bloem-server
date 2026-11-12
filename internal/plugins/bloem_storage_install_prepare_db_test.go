@@ -251,10 +251,17 @@ func TestInitialS3PreparationRefusals(t *testing.T) {
 					t.Fatal(err)
 				}
 			case "replaced-executable":
-				if err := os.Remove(snapshot.Installation.InstallPath); err != nil {
+				// Keep the prepared inode alive: after a plain remove, ext4 hands
+				// the replacement the same inode number, and with the same bytes,
+				// mode and coarse-clock mtime nothing would tell them apart. The
+				// pinned mtime makes this case depend on the inode alone.
+				if err := os.Rename(snapshot.Installation.InstallPath, filepath.Join(r.baseDir, "old-plugin")); err != nil {
 					t.Fatal(err)
 				}
 				if err := os.WriteFile(snapshot.Installation.InstallPath, req.Binary, 0500); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chtimes(snapshot.Installation.InstallPath, time.Now(), p.binaryFile.ModTime()); err != nil {
 					t.Fatal(err)
 				}
 			case "executable":
