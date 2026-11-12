@@ -224,8 +224,16 @@ func (h *PlaybackHandler) prepareNativeVideoTransportV3(r *http.Request, session
 	if result.PlayMethod == playback.PlayRemux && timeline.seekSeconds > 0 {
 		url = appendPlaybackQueryV3(url, "seek", strconv.FormatFloat(timeline.seekSeconds, 'f', -1, 64))
 	}
+	// A header-authenticated URL carries no stream token, so the server-side
+	// recipe is the only thing a restarted process can rebuild the session
+	// from. It keeps the native InputPath, so recovery still runs the bound
+	// native source authority check before registering the session.
+	var sessionRecipe *playback.RecipeCard
+	if mode.headerAuth {
+		sessionRecipe = sessionRecipeCardV3(card, &routeSession)
+	}
 	completed := false
-	return preparedTransportV3{url: url, routingWorkload: workload, routingExecution: noderouting.Execution(routeSession.RoutingExecution), routingEgress: noderouting.EgressAPI, commit: func() *transportErrorV3 {
+	return preparedTransportV3{sessionRecipe: sessionRecipe, url: url, routingWorkload: workload, routingExecution: noderouting.Execution(routeSession.RoutingExecution), routingEgress: noderouting.EgressAPI, commit: func() *transportErrorV3 {
 		if completed {
 			return nil
 		}

@@ -90,6 +90,7 @@
 ./internal/api TestNativeAudioPlaybackStartSeekNextTrackResumeDB
 ./internal/api TestNativeAudioPlaybackRevocationDB
 ./internal/api TestNativeAudioHiddenPresentationServesNoCoverDB
+./internal/api TestNativeAudioStreamSurvivesRestartDB
 ./internal/scanner TestLocalAudiobookScanPreservesPublishedNativeAudioDB
 
 # Independent-review regressions for metadata locks and staging replay.

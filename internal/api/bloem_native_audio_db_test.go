@@ -252,6 +252,7 @@ func (f *nativeAudioAPIFixture) handlers(t *testing.T) (*handlers.PlaybackHandle
 	p.resolveFile = h.ResolveNativeVideoFile
 	p.getSession = sessions.GetSession
 	p.denied = nativeVideoSessionDenied(f.deps.RedisClient, service.Deny)
+	p.secret = func() string { return f.deps.Config.Auth.JWTSecret }
 	service.Open = func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
 		authority, err := nativeVideoAuthority(ctx, file.ID, p)
 		if err != nil {
