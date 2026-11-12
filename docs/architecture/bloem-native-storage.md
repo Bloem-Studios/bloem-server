@@ -673,6 +673,12 @@ movie publication, in the same authorized page transaction.
   provider knows is marked `unmatched` and gets Silo's fallback episodes
   (`SynthesizeFallbackEpisodes`). New files of a matched series are bulk
   linked; episodes the provider does not list yet wait for Silo's refresh.
+- A remote TV catalog publishes gradually. Each scan probes at most a budget
+  of new or changed episodes, paced per storage source across scans
+  (`ConfigureNativeSeriesProbes`; startup sets 10,000 per scan at one probe a
+  second, burst two). Episodes over the budget stay listed but unpublished
+  and the next scan probes them, in listing order, so a show appears with its
+  first probed episode. Unchanged episodes are never probed and do not count.
 - Completion drops the sidecars whose entry is gone, reads the episodes of
   the location's missing files before the sweep can delete those files, and
   after commit removes their stale `episode_libraries` rows through Silo's

@@ -220,6 +220,7 @@ type StorageScanner struct {
 	// The series lane probes with movieReader and movieProbeConfig.
 	nativeSeriesReady bool
 	seriesMetadata    NativeSeriesMetadata
+	seriesProbes      *seriesProbes
 	retries           int
 	retryDelay        time.Duration
 }
@@ -382,6 +383,10 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 	// A TV library pairs each directory's subtitle sidecars with its episodes
 	// across the directory's pages.
 	var seriesDir seriesDirectory
+	var probeGate *seriesProbeGate
+	if librarykind.IsTV(folder.Type) {
+		probeGate = c.newSeriesProbeGate(source.Key)
+	}
 	var times scanPageTimes
 	for {
 		began := time.Now()
@@ -453,6 +458,9 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 				}
 			}
 			matchStats.log(job, folder.ID)
+			if deferred := probeGate.deferredCount(); deferred > 0 {
+				slog.InfoContext(job, "storage scan: episode probes deferred to a later scan", "component", "libraryingest", "library_id", folder.ID, "deferred", deferred)
+			}
 			return result, nil
 		}
 		var page *storagev1.ListResponse
@@ -470,7 +478,7 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 			following.stop()
 			following = nil
 			if !ahead {
-				page, books, movies, sidecars, skipped, excluded, restart, err = c.fetchAndPrepare(job, folder, selection, source, lease, checkpoint, provider, media)
+				page, books, movies, sidecars, skipped, excluded, restart, err = c.fetchAndPrepare(job, folder, selection, source, lease, checkpoint, provider, media, probeGate)
 			}
 			if restart {
 				continue
@@ -612,7 +620,7 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 
 // fetchAndPrepare lists a directory's next page and prepares its ebooks or
 // movies. restart reports a checkpoint the journal reset; list it again.
-func (c *StorageScanner) fetchAndPrepare(ctx context.Context, folder *models.MediaFolder, selection storagesource.LocationSelection, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, provider storagev1.StorageProviderClient, media mediasource.Source) (page *storagev1.ListResponse, books []scanner.StorageEbook, movies []scanner.StorageMovie, sidecars []scanner.StorageSeriesSidecar, skipped int, excluded []string, restart bool, err error) {
+func (c *StorageScanner) fetchAndPrepare(ctx context.Context, folder *models.MediaFolder, selection storagesource.LocationSelection, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, provider storagev1.StorageProviderClient, media mediasource.Source, probes *seriesProbeGate) (page *storagev1.ListResponse, books []scanner.StorageEbook, movies []scanner.StorageMovie, sidecars []scanner.StorageSeriesSidecar, skipped int, excluded []string, restart bool, err error) {
 	page, err = c.fetchPage(ctx, lease, checkpoint, provider)
 	if errors.Is(err, storagesource.ErrCheckpointRestart) {
 		return nil, nil, nil, nil, 0, nil, true, nil
@@ -623,7 +631,7 @@ func (c *StorageScanner) fetchAndPrepare(ctx context.Context, folder *models.Med
 	switch {
 	case librarykind.IsTV(folder.Type):
 		var prepared preparedSeries
-		prepared, err = c.prepareSeries(ctx, folder, selection, source, lease, checkpoint, page)
+		prepared, err = c.prepareSeries(ctx, folder, selection, source, lease, checkpoint, page, probes)
 		movies, sidecars, skipped, excluded = prepared.episodes, prepared.sidecars, prepared.skipped, prepared.excluded
 	case librarykind.IsMovie(folder.Type):
 		movies, skipped, excluded, err = c.prepareMovies(ctx, folder, selection.Location, source, lease, checkpoint, page)

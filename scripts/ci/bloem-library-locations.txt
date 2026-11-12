@@ -106,4 +106,5 @@
 ./internal/libraryingest TestNativeSeriesStorageDefaultHoldDB
 ./internal/libraryingest TestNativeSeriesStorageScanPublishesShowsDB
 ./internal/libraryingest TestNativeSeriesStorageCompletionSweepDB
+./internal/libraryingest TestNativeSeriesStorageGradualPublicationDB
 ./internal/nativestorage TestLibraryLocationsAliasLibraryTypesDB

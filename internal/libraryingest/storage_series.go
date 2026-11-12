@@ -42,8 +42,10 @@ type preparedSeries struct {
 // prepareSeries sorts a TV page's files. Subtitle sidecars are kept for their
 // episode; extras, samples, zero-byte objects and files without an episode
 // number are neither opened nor published, and a file an older scan published
-// goes missing. Only new or changed episodes are probed.
-func (c *StorageScanner) prepareSeries(ctx context.Context, folder *models.MediaFolder, selection storagesource.LocationSelection, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse) (preparedSeries, error) {
+// goes missing. Only new or changed episodes are probed, within the scan's
+// probe budget and its source's probe rate; an episode over budget stays
+// unpublished until a later scan.
+func (c *StorageScanner) prepareSeries(ctx context.Context, folder *models.MediaFolder, selection storagesource.LocationSelection, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse, probes *seriesProbeGate) (preparedSeries, error) {
 	var out preparedSeries
 	if !c.nativeSeriesReady || c.movieReader == nil {
 		return out, storagesource.ErrSourceUnavailable
@@ -82,7 +84,7 @@ func (c *StorageScanner) prepareSeries(ctx context.Context, folder *models.Media
 		out.excluded = append(out.excluded, page.GetEntries()[i].GetId())
 		return true
 	})
-	episodes, err := c.prepareVideos(ctx, folder, selection.Location, source, lease, checkpoint, page, candidates)
+	episodes, err := c.prepareVideos(ctx, folder, selection.Location, source, lease, checkpoint, page, candidates, probes)
 	out.episodes = episodes
 	return out, err
 }

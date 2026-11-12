@@ -12,6 +12,13 @@ import (
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 )
 
+// Native series probe limits; see ConfigureNativeSeriesProbes.
+const (
+	nativeSeriesProbesPerScan   = 10000
+	nativeSeriesProbesPerSecond = 1
+	nativeSeriesProbeBurst      = 2
+)
+
 // newNativeMovieStorageScanner is called only at startup, before installing the
 // ingestor or starting queues. Playback acceptance authorizes this composition;
 // configuration alone never proves a particular backend or movie is readable.
@@ -47,8 +54,15 @@ func newNativeMovieStorageScanner(deps *api.Dependencies) (*libraryingest.Storag
 	if err := storage.ConfigureNativeMovies(true, reader, cfg); err != nil {
 		return nil, err
 	}
-	// Episodes are probed with the movie reader and limits.
+	// Episodes are probed with the movie reader and limits. A remote TV
+	// catalog publishes gradually: each scan probes at most
+	// nativeSeriesProbesPerScan new episodes, at most one a second per source
+	// (a whole catalog is millions of files, and a remote source may block
+	// a client that reads too fast); the rest wait for the next scan.
 	if err := storage.ConfigureNativeSeries(true); err != nil {
+		return nil, err
+	}
+	if err := storage.ConfigureNativeSeriesProbes(nativeSeriesProbesPerScan, nativeSeriesProbesPerSecond, nativeSeriesProbeBurst); err != nil {
 		return nil, err
 	}
 	if deps.Scanner.NativeAudioScanConfigured() {

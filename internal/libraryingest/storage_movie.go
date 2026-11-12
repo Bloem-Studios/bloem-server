@@ -69,7 +69,7 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, folder *models.Media
 		}
 		candidates = append(candidates, i)
 	}
-	movies, err := c.prepareVideos(ctx, folder, location, source, lease, checkpoint, page, candidates)
+	movies, err := c.prepareVideos(ctx, folder, location, source, lease, checkpoint, page, candidates, nil)
 	if err != nil {
 		return nil, 0, nil, err
 	}
@@ -78,9 +78,10 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, folder *models.Media
 
 // prepareVideos probes the page's candidate video files. A file whose
 // published row is current for the same listed entry is not opened again: it
-// is returned unprobed, and publication keeps its rows. page must be the
+// is returned unprobed, and publication keeps its rows. A file the probe gate
+// refuses is left out: it stays listed but unpublished. page must be the
 // caller's own clone.
-func (c *StorageScanner) prepareVideos(ctx context.Context, folder *models.MediaFolder, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse, candidates []int) ([]scanner.StorageMovie, error) {
+func (c *StorageScanner) prepareVideos(ctx context.Context, folder *models.MediaFolder, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse, candidates []int, probes *seriesProbeGate) ([]scanner.StorageMovie, error) {
 	if len(candidates) == 0 {
 		return nil, nil
 	}
@@ -97,7 +98,7 @@ func (c *StorageScanner) prepareVideos(ctx context.Context, folder *models.Media
 	for _, i := range candidates {
 		if entry := page.GetEntries()[i]; unchanged[entry.GetId()] {
 			videos = append(videos, scanner.UnprobedStorageVideo(entry))
-		} else {
+		} else if probes.admit() {
 			probe = append(probe, i)
 		}
 	}
@@ -110,6 +111,9 @@ func (c *StorageScanner) prepareVideos(ctx context.Context, folder *models.Media
 	}
 	for _, i := range probe {
 		entry := page.GetEntries()[i]
+		if err := probes.wait(ctx); err != nil {
+			return nil, err
+		}
 		file, err := c.movieReader.OpenScanEntry(ctx, sealed, i)
 		if err != nil {
 			return nil, fmt.Errorf("open storage video %q: %w", entry.GetName(), err)

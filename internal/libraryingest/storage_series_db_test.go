@@ -398,3 +398,38 @@ func TestNativeSeriesStorageCompletionSweepDB(t *testing.T) {
 		t.Fatalf("e02=%d a01=%d showB items=%d memberships=%d sidecars=%d", e02, a01, showBItems, showBMemberships, sidecars)
 	}
 }
+
+// A scan probes at most its budget of new episodes. The rest stay listed but
+// unpublished, and later scans publish them in listing order, so shows appear
+// as their episodes are probed; probed episodes are never read again.
+func TestNativeSeriesStorageGradualPublicationDB(t *testing.T) {
+	binary, manifest := nativeMovieScanArtifact(t)
+	f := newNativeSeriesScanFixture(t, binary, manifest, true)
+	if err := f.scan.ConfigureNativeSeriesProbes(2, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	reads := func() int { return strings.Count(seriesAudit(t, f), "\nread ") }
+	var published, series []int
+	for range 3 {
+		f.scanOnce(t)
+		published = append(published, len(seriesFiles(t, f)))
+		var items int
+		if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM media_item_libraries WHERE media_folder_id=$1`, f.folder.ID).Scan(&items); err != nil {
+			t.Fatal(err)
+		}
+		series = append(series, items)
+	}
+	// Listing order: Show A's Season 00 and Season 01, then Show B.
+	if !slices.Equal(published, []int{2, 4, 4}) || !slices.Equal(series, []int{1, 2, 2}) {
+		t.Fatalf("published files per scan %v, series %v", published, series)
+	}
+	files := seriesFiles(t, f)
+	if !slices.Equal(files[seriesA02+".mkv"].sidecars, []string{"en"}) || !slices.Equal(files[seriesB01+".mkv"].sidecars, []string{"zh"}) {
+		t.Fatalf("sidecars of later-published episodes %+v", files)
+	}
+	before := reads()
+	f.scanOnce(t)
+	if reads() != before {
+		t.Fatal("a published episode was probed again")
+	}
+}
