@@ -206,6 +206,7 @@ same path. Read the upstream document together with its overlay.
 
 ### Live TV
 
+- [How `.strm` files play](../architecture/bloem-strm.md) — `.strm` remote-URL items from library folders and storage sources, the SSRF guard and the private-address setting, playback through Bloem.
 - [How Xtream Live TV providers work](../architecture/xtream-live-tv.md) — encrypted provider accounts, live channels, XMLTV, connection limits; no VOD or remote URLs.
 - [How apps reach Live TV](../architecture/live-tv-client-access.md) — the `watch_live_tv` permission, capability discovery and tuner-session handling.
 - [How Live TV finds tuners](../livetv-tuner-discovery.md) — HDHomeRun and Dispatcharr discovery and probing.

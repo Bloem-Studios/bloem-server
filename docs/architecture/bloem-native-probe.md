@@ -36,7 +36,9 @@ looks at, and the limits that keep it safe.
 
 The ending only chooses how to read the file. The bytes must really be that kind
 of file, and a movie must contain video. Other files are skipped without being
-opened, including `.strm` shortcuts. An audiobook track whose listing already
+opened. A `.strm` file is read for its web address, and the video at that address is
+probed the same way, with AVI and MPEG-TS readers as well
+([`.strm` files](bloem-strm.md)). An audiobook track whose listing already
 carries its length and format is not opened at all.
 
 ## The limits

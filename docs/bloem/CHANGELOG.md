@@ -3,6 +3,19 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 12, 2026 — `.strm` files play
+
+Bloem now accepts `.strm` files pointing anywhere, reversing the earlier non-goal. A
+`.strm` file in a movie or series library folder, or a `.strm` object in a movie
+library's storage source, catalogs as the movie or episode its name says, probed from
+the URL it holds; the URL lives in `bloem_remote_sources`, never in a path. Playback
+reuses the native video pipeline with a remote reader: direct play answers ranges from
+remote ranges, and remux and HLS run on the API server. One security default limits no
+content: only `http`/`https`, and no connection to the server's own network (loopback,
+link-local and metadata, private, CGNAT) at any dial or redirect unless the platform
+setting `bloem.strm.allow_private_addresses` is on. Jellyfin playback and transcoding
+workers are not covered yet ([how `.strm` files play](../architecture/bloem-strm.md)).
+
 ## November 11, 2026 — "Explore all" on episode rows fills, and book cover errors are logged
 
 "Explore all" on a home row of episodes sorted by air date ran the general

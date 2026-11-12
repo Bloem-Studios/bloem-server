@@ -52,7 +52,7 @@ def routes():
 
     s.rect(900, 500, 260, 168, "#FFFFFF", "#E5E7EB", rx=14)
     s.text(920, 530, "Not yet", size=16, weight="700")
-    for i, t in enumerate(["Jellyfin apps", "Downloads", "Series from storage", ".strm shortcuts"]):
+    for i, t in enumerate(["Jellyfin apps", "Downloads", "Series from storage"]):
         y = 564 + i * 28
         no_mark(s, 932, y - 5, r=10)
         s.text(952, y, t, size=14.5, fill=INK)

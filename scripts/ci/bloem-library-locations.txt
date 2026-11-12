@@ -209,3 +209,9 @@
 ./internal/resourcetenancy TestStorageScanOverlappingLibrariesJournalLockOrderDB
 ./internal/scanner TestNativeAudioFirstOmissionKeepsPriorPresentationDB
 ./internal/storagesource TestAudioStagingOtherRunCleanupAndCrossLocationDB
+
+# .strm remote sources: the store and setting, local and storage-source ingest.
+./internal/remotesource TestRemoteSourceStoreDB
+./internal/scanner TestLocalStrmScanRecordsRemoteSourceDB
+./internal/libraryingest TestNativeStrmStorageScanPublishesRemoteMovieDB
+./internal/libraryingest TestNativeStrmStorageUnreadableURLSkipsOnlyThatEntryDB

@@ -119,7 +119,7 @@ Bloem's own features stay inside that rule:
 | Recording rule | a series rule, `livetv_series_rules`, with `keep_last` |
 | Recordings folder | the `livetv.dvr_path` setting (default `/var/lib/bloem/dvr`) |
 | `.strm` file | a `media_files` row with container `strm`; its address is in `bloem_remote_sources`, never in a path |
-| Security default, the check | `internal/remotesource` (`Guard`, `Dialer`) |
+| Security default, the check | `internal/remotesource` (`Guard`, `BlockedAddr`, `BlockedName`) |
 | Allow private addresses | the `bloem.strm.allow_private_addresses` setting (default `false`) |
 | Storage source | the storage provider protocol, `proto/bloem/plugin/v1/storage_provider.proto` |
 | Media folder | `MEDIA_ROOT`, mounted read-only |
@@ -174,17 +174,19 @@ workflows.
 - **Parsing.** The content is UTF-8 text of at most 8 KiB. The URL is the first
   non-empty line, trimmed. It must parse as an absolute `http` or `https` URL with a
   host; anything else rejects the file at scan time.
-- **Storage.** The URL is stored in `bloem_remote_sources`, keyed by `media_file_id`,
-  with a SHA-256 revision of the URL. `media_files.file_path` keeps the `.strm` file's own
+- **Storage.** The URL is stored in `bloem_remote_sources`, keyed by the catalog
+  file's `file_path`, with a SHA-256 revision of the URL. `media_files.file_path` keeps the `.strm` file's own
   location; the URL never appears in a catalog path, a client stream URL, a playback
   recipe, a log line or an API response.
 - **SSRF default.** `remotesource.Guard` resolves the host and refuses every resolved
   address in `127.0.0.0/8`, `::1`, `0.0.0.0/8`, `::`, `169.254.0.0/16`, `fe80::/10`,
   `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`, `100.64.0.0/10`,
-  multicast, broadcast, and IPv4-mapped forms of those, plus the metadata names
-  `metadata.google.internal` and `metadata`. The check runs in the dialer's `Control`
-  hook on the address actually dialled, so DNS rebinding between check and connect is
-  refused, and the redirect policy re-validates every hop's scheme (at most 10 hops).
+  multicast, broadcast, and IPv4-mapped, NAT64 and 6to4 forms of those, plus the names
+  `localhost`, `metadata` and `metadata.google.internal`. The guard resolves each host
+  itself at every dial, connects only to checked addresses and checks the socket
+  address again in the dialer's `Control` hook, so DNS rebinding between check and
+  connect is refused; the redirect policy re-validates every hop's scheme (at most 10
+  hops), and every hop dials through the same checks.
   `bloem.strm.allow_private_addresses` (platform admin settings, default `false`)
   turns the address check off; the scheme check always stays.
 - **Probe and ffmpeg.** ffprobe and ffmpeg never receive the URL. They read through a
@@ -209,6 +211,7 @@ Technical pages:
 - [Xtream live TV providers](../../architecture/xtream-live-tv.md).
 - [Live TV tuner discovery](../../livetv-tuner-discovery.md).
 - [Bloem web feature coverage](../../architecture/bloem-web-feature-coverage.md).
+- [How `.strm` files play](../../architecture/bloem-strm.md).
 - Silo's [non-goals](../../non-goals.md), and the summary in
   [BLOEM_AGENTS.md](../../../BLOEM_AGENTS.md).
 - Index: [Bloem documentation](../README.md).

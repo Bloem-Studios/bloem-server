@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a .strm file is scanned and played</title>
+<desc id="d">Top row, scanning: a .strm file in a library folder or a storage source; the scan reads its first line, checks the address and lets ffprobe read the video through Bloem; Bloem keeps the address in its own record, never in a path. Bottom row, playing: the app asks Bloem; Bloem passes the bytes on, rewraps or converts them; every connection and redirect goes through the address check; the remote server answers range requests. Below the check: addresses on the server's own network are refused unless a platform administrator allows them.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="619" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a .strm file is scanned and played</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The address stays inside Bloem. Every connection to it passes the same check.</text>
+<text x="40" y="140" font-size="16" font-weight="700" fill="#6B7280" text-anchor="start">Scanning</text>
+<rect x="40" y="156" width="340" height="128" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">A .strm file</text>
+<text x="58" y="212" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">In a library folder or a storage source.</text>
+<text x="58" y="232" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Its first line is a web address.</text>
+<rect x="430" y="156" width="340" height="128" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="448" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The scan</text>
+<text x="448" y="212" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Reads the address, checks it, and lets</text>
+<text x="448" y="232" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">ffprobe read the video through Bloem.</text>
+<rect x="820" y="156" width="340" height="128" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="838" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's record</text>
+<text x="838" y="212" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">The address, kept apart. The catalog</text>
+<text x="838" y="232" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">shows the file's own name and the video's</text>
+<text x="838" y="252" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">details.</text>
+<line x1="384" y1="220" x2="426" y2="220" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="774" y1="220" x2="816" y2="220" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="334" font-size="16" font-weight="700" fill="#6B7280" text-anchor="start">Playing</text>
+<rect x="40" y="350" width="255" height="128" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="382" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The app</text>
+<text x="58" y="406" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Asks Bloem, gets Bloem's</text>
+<text x="58" y="426" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">addresses. Never the remote</text>
+<text x="58" y="446" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">one.</text>
+<rect x="335" y="350" width="255" height="128" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="353" y="382" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem</text>
+<text x="353" y="406" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Passes the bytes on, rewraps</text>
+<text x="353" y="426" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">them or converts them.</text>
+<rect x="630" y="350" width="255" height="128" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="648" y="382" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Address check</text>
+<text x="648" y="406" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">At every connection and every</text>
+<text x="648" y="426" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">redirect.</text>
+<rect x="925" y="350" width="235" height="128" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="943" y="382" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Remote server</text>
+<text x="943" y="406" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Answers range requests.</text>
+<line x1="299" y1="414" x2="331" y2="414" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="594" y1="414" x2="626" y2="414" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="889" y1="414" x2="921" y2="414" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="630" y="498" width="530" height="70" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<circle cx="660" cy="533" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M654.6,527.6 L665.4,538.4 M665.4,527.6 L654.6,538.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="684" y="527" font-size="15.5" font-weight="700" fill="#B91C1C" text-anchor="start">The server's own network: refused</text>
+<text x="684" y="551" font-size="14" font-weight="normal" fill="#B91C1C" text-anchor="start">unless a platform administrator allows private addresses</text>
+<path d="M 757 482 L 757 494" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="596" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Content is never filtered. The one default protects the server's own network.</text>
+</svg>

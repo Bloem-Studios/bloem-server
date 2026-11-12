@@ -68,7 +68,10 @@ changes, but cannot prove the bytes stayed the same between checks.
 ## What does not work yet
 
 - Jellyfin apps, downloads and converting for offline use.
-- Series from storage, and `.strm` or other remote-address shortcuts.
+- Series from storage.
+
+`.strm` files, whose video lives at a web address, play through this same pipeline;
+see [how `.strm` files play](bloem-strm.md).
 - Switching to another file mid-play needs a fresh start.
 - Without Redis, a playback session cannot be picked up by another server.
 
@@ -144,7 +147,8 @@ aggregate input reads, 128 KiB chunks, two concurrent reads, 60 seconds, 4 MiB o
 JSON and 64 KiB of stderr. The configured trusted ffprobe binary probes admitted
 MOV/MP4 (`.mp4`, `.mov`, `.m4v`) or Matroska/WebM (`.mkv`, `.webm`) entries.
 Suffixes only select the reviewed demuxer; actual bytes must contain video. Other
-suffixes are skipped, including `.strm`.
+suffixes are skipped. A `.strm` entry is probed from the URL it holds when the scanner
+has remote sources configured ([`.strm` files](bloem-strm.md#scanning)).
 
 The scanner seals a listed page against its current lease, checkpoint, source
 and resource owners. It probes before the authorized publication transaction,
@@ -241,8 +245,9 @@ in bounded local memory and cross-process recovery is unavailable.
 
 The supported contract is native API video playback for admitted catalog
 files. Initial movie scanning accepts MOV/MP4 and Matroska/WebM containers.
-Jellyfin native-file delivery, offline/download conversion, native series
-ingestion, and arbitrary remote URL or `.strm` playback remain unsupported.
+Jellyfin native-file delivery, offline/download conversion and native series
+ingestion remain unsupported. `.strm` items reuse this pipeline with a remote reader
+([`.strm` files](bloem-strm.md#playback)).
 Native audiobooks have their own direct-play path; see
 [native audiobook presentations](bloem-native-audio-playback.md). Silo's Jellyfin
 server runs again since 2026-10-18, and `bloemGuardNativeStorageFiles` in

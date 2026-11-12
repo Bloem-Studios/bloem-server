@@ -58,7 +58,4 @@
 <circle cx="932" cy="615" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
 <path d="M927.5,610.5 L936.5,619.5 M936.5,610.5 L927.5,619.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
 <text x="952" y="620" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Series from storage</text>
-<circle cx="932" cy="643" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
-<path d="M927.5,638.5 L936.5,647.5 M936.5,638.5 L927.5,647.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
-<text x="952" y="648" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">.strm shortcuts</text>
 </svg>

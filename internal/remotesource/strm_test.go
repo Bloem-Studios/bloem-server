@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/Silo-Server/silo-server/internal/config"
 )
 
 func TestParseStrm(t *testing.T) {
@@ -26,6 +28,18 @@ func TestParseStrm(t *testing.T) {
 		if _, err := ParseStrm([]byte(in)); !errors.Is(err, ErrInvalidStrm) {
 			t.Errorf("ParseStrm(%q) = %v, want ErrInvalidStrm", in, err)
 		}
+	}
+}
+
+func TestAllowPrivateSettingKeyMatchesConfig(t *testing.T) {
+	if AllowPrivateSettingKey != config.StrmAllowPrivateAddressesSettingKey {
+		t.Fatalf("remotesource reads %q but the admin setting is %q", AllowPrivateSettingKey, config.StrmAllowPrivateAddressesSettingKey)
+	}
+	if normalized, err := config.NormalizeAdminSetting(AllowPrivateSettingKey, "TRUE"); err != nil || normalized != "true" {
+		t.Fatalf("NormalizeAdminSetting = %q, %v", normalized, err)
+	}
+	if _, err := config.NormalizeAdminSetting(AllowPrivateSettingKey, "sometimes"); err == nil {
+		t.Fatal("the setting must be a boolean")
 	}
 }
 
