@@ -3,10 +3,12 @@
 > **Provenance and status.** Bloem page, written on 2026-11-12 and checked against
 > `main` at `bf0fde82f` plus the `.strm` changes. `.strm` support is a Bloem addition:
 > Silo refuses `.strm` files ([Bloem's non-goals](../bloem/overlays/non-goals.md#strm-files-are-in-scope)).
-> Version 1 covers scanning from library folders and storage sources and playback in
-> the web app and Bloem's apps on the API server; Jellyfin apps and transcoding
-> workers are not covered yet. The technical rules are in the
-> [For developers](#for-developers) section.
+> It covers scanning from library folders and storage sources, playback in the web
+> app and Bloem's apps on the API server and on transcoding workers, subtitle files
+> beside a `.strm` file, rescans that skip unchanged files, and the private-address
+> switch in the admin settings. Jellyfin apps play `.strm` items through the Jellyfin
+> media host for stored movies, which is not merged yet. The technical rules are in
+> the [For developers](#for-developers) section.
 
 A **`.strm` file** is a small text file in a library whose content is the web address
 of a video somewhere else. This page covers how Bloem finds such a file, what it keeps,
@@ -27,6 +29,12 @@ how the video plays, the one security default, and what does not work yet.
 4. **A changed address is a new version.** When the file changes, the next scan reads
    it again. A new address replaces the old one, and a playback started with the old
    address asks the app to start again.
+5. **An unchanged file is not read again.** A rescan that finds the same address, with
+   the remote server reporting the same size and version, keeps what the last scan
+   learned and asks the remote server for one byte only.
+6. **Subtitle files beside it are its subtitles.** `Harbour Lights (2019).en.srt` next to
+   `Harbour Lights (2019).strm` is offered and served like a subtitle file next to any
+   video.
 
 Bloem never filters what a `.strm` file points at.
 
@@ -39,8 +47,11 @@ The app gets an ordinary playback plan with Bloem's own addresses. Bloem then:
 - **rewraps** the video as MP4 without converting it; or
 - **converts** it into short HLS segments.
 
-All three run on the API server. ffmpeg and ffprobe never see the remote address: they
-read from a private address inside Bloem that fetches the bytes for them.
+Converting runs on the API server or on a transcoding worker, as for any stored movie.
+A worker reads the remote address itself, from Bloem's record, and applies the same
+security default with its own check. ffmpeg and ffprobe never see the remote address:
+they read from a private address inside Bloem (or the worker) that fetches the bytes
+for them.
 
 **Each time the video is opened**, and about once a second while it plays, Bloem checks
 again that the viewer may still watch it and that the recorded address is still the
@@ -58,7 +69,7 @@ Content is never filtered, but the server's own network is protected:
   A name that answers differently the second time, or a redirect into the private
   network, is refused too.
 - A **platform administrator** can allow private addresses, for videos that really
-  live on the private network.
+  live on the private network, in the admin settings under **Libraries → .strm files**.
 
 A refused address does not stop a scan: a storage source skips that file, a library
 folder keeps listing it, and in both cases it does not play.
@@ -73,13 +84,13 @@ and the library is scanned again.
 
 ## What does not work yet
 
-- **Jellyfin apps** list a `.strm` item but cannot play it.
-- **Transcoding workers.** Converting runs on the API server only. A delivery policy
-  that converts only on workers cannot play a `.strm` item.
+- **Jellyfin apps** list a `.strm` item but cannot play it until Bloem's Jellyfin media
+  host for stored movies is merged. With it, direct play, rewrapping and converting
+  (on the API server or a worker) work for `.strm` items too, under the same checks.
 - **Episodes from storage sources.** Storage sources only scan movies so far; `.strm`
   episodes work from library folders.
-- **Subtitle files next to a `.strm` file** are not picked up. Subtitles inside the
-  video are.
+- **Subtitle files next to a `.strm` object in a storage source**, and subtitle files
+  next to a `.strm` file for Jellyfin apps.
 - **Downloads** of `.strm` items, as for every stored video.
 - The remote server must answer range requests for anything larger than 1 MiB.
 
@@ -88,7 +99,7 @@ and the library is scanned again.
 | Who | What they decide |
 | --- | --- |
 | Anyone who can write to a library folder or bucket | What a `.strm` file points at. |
-| Platform administrator | Which libraries are scanned, and whether `.strm` addresses may reach private addresses. |
+| Platform administrator | Which libraries are scanned, and whether `.strm` addresses may reach private addresses (Settings → Libraries → .strm files). |
 | Viewers | Nothing about the address: they never see it. |
 
 ## Words used in the code
@@ -101,7 +112,9 @@ and the library is scanned again.
 | Allow private addresses | `bloem.strm.allow_private_addresses` (`config.StrmAllowPrivateAddressesSettingKey`) |
 | A new version | `remotesource.Revision` (`url-sha256:` of the URL) |
 | Reading the video | `remotesource.File`, `scanner.(*Scanner).ProbeRemote` |
+| The size and version check | `remotesource.Stat`, `remotesource.Validators`, `scanner.ReuseRemoteProbe` |
 | Playing through Bloem | `internal/api/bloem_strm.go` behind `handlers.NativeVideoService` |
+| A subtitle file beside it | `scanner.StrmSidecarSubtitle`, `handlers.bloemStrmSidecar` |
 
 ## For developers
 
@@ -109,7 +122,8 @@ and the library is scanned again.
   [playback protocol v3](playback-protocol-v3.md); there is no `.strm` route. The
   setting is written with Silo's admin settings routes
   (`PUT /api/v2/admin/settings/{key}`), which need the account `admin` role, the
-  platform administrator.
+  platform administrator. The web app's page is `BloemStrmSettings`
+  (`/admin/settings/strm`, listed under Libraries after Silo's library settings).
 
 ### Parsing and storage
 
@@ -117,9 +131,11 @@ and the library is scanned again.
   dropped, the first non-empty line trimmed. `ValidateURL` requires an absolute
   `http`/`https` URL with a host and no control characters. Userinfo and query strings
   are kept.
-- `bloem_remote_sources` (migration `20261112042022_bloem_remote_sources.sql`) is keyed
-  by `file_path`, the catalog file's `media_files.file_path`, so the scanner can write it
-  during the probe before Silo's upsert gives the file an id. `url` is checked to start
+- `bloem_remote_sources` (migrations `20261112042022_bloem_remote_sources.sql` and
+  `20261112051322_bloem_remote_source_validators.sql`) is keyed by `file_path`, the
+  catalog file's `media_files.file_path`, so the scanner can write it during the probe
+  before Silo's upsert gives the file an id. `etag`, `last_modified` and `probe` (the
+  scanner's probe as JSON) are what the last probe saw and found. `url` is checked to start
   with `http://` or `https://` and to be at most 8 KiB. `revision` is
   `remotesource.Revision(url)`; `source_revision` is the storage entry revision for a
   storage object and empty for a local file; `remote_size` is the remote size at scan.
@@ -181,6 +197,15 @@ and the library is scanned again.
   as excluded (an older publication goes missing) and deletes its row; a failure of
   the scan's own authority fails the page. The row's `source_revision` is the entry
   revision.
+- Rescans: `scanner.ReuseRemoteProbe` reuses the stored probe when the URL (and, for a
+  storage object, the object revision in `source_revision`) is the recorded one and
+  `remotesource.Stat` (a `Range: bytes=0-0` GET through the guard) reports the same
+  size and the same ETag, or the same Last-Modified when no ETag was recorded. With
+  neither, or on any error, the file is probed again. Local folders reach this only
+  when Silo's size and time check already sees a change. Storage sources read a page's
+  rows with one `GetMany` query, run the checks eight at a time (`strmReuseWorkers`) and
+  publish reused entries without opening them; 4,999 unchanged entries take well under
+  a second against a local server (`TestStrmReuseScalesToThousandsOfEntriesDB`).
 - `Scanner.ProbeRemote` sniffs the container (EBML, an MOV atom, `RIFF…AVI `, MPEG-TS
   sync bytes at 188 or 192, then the URL's extension) and runs `ProbeNative` with the
   native movie limits (128 MiB of reads, 128 KiB chunks, two concurrent reads, 60 s,
@@ -198,7 +223,7 @@ and the library is scanned again.
   call `strmPlayback.open`, which looks up `bloem_remote_sources` by catalog path:
   - a local `.strm` with a row opens the URL under `nativeVideoAuthority` /
     `nativeVideoDelegatedAuthority`; its identity carries `Reference.Revision =
-    revision`;
+    revision` and `Reference.LogicalPath` = the catalog path, and no storage location;
   - a storage `.strm` with a row opens the object through
     `Coordinator.OpenAuthorizedPlayback` (every storage check), requires
     `source_revision` to equal the object's revision, and takes the size from the
@@ -210,6 +235,28 @@ and the library is scanned again.
   `409 source_revision_changed`. Direct play, progressive remux and local HLS are
   tested with `.strm` items; seek anchors and embedded subtitle extraction use the same
   opened file through the unchanged native pipeline.
+- An open the guard refuses is `strmRefusedError`: still
+  `remotesource.ErrBlockedAddress`, and a 403 `source_refused` `handlers.APIError` to
+  `errors.As`, so the Jellyfin media host answers 403.
+- Subtitle files: Silo's scanner already lists files named for a local `.strm` file
+  (beside it or in its `Subs/` folder) as its `external_subtitles`. The subtitle route
+  in `stream.go` (a declared seam, one Bloem condition) serves such a track only when
+  `scanner.StrmSidecarSubtitle` finds it among the `.strm` file's sidecars by Silo's own
+  rules at request time, after the native source preflight; it is then served by
+  Silo's local sidecar code. Every other external subtitle of a native file stays 404.
+
+### Workers
+
+- The worker grant (`NativeVideoWorkerGrantStore.prepare`) binds a storage object's
+  catalog location, or, for an identity with no storage location whose catalog path is
+  a local `.strm` file, that path (`nativeVideoGrantLocation`). The grant, the start
+  request, the recipe and the stream token carry only the catalog path and the URL's
+  revision.
+- The worker composes `NewNativeVideoDelegateService` as for stored movies; its
+  `strm.open` reads the URL from `bloem_remote_sources` itself and opens it through its
+  own `remotesource.ForPool` guard, which reads the private-address setting from the
+  database and checks every connection and redirect. A worker without approved native
+  storage does not answer `GET /bloem/native-execution` and is skipped.
 
 ### Tests
 
@@ -228,22 +275,31 @@ and the library is scanned again.
 - `internal/api`: `TestStrmDirectPlayProxiesRanges`, `TestStrmURLChangeIsANewRevision`,
   `TestStrmReauthorizeChecksTheViewer`, `TestStrmOpenRefusesPrivateAddressesAndUnrecordedFiles`,
   `TestStrmStoredObjectNeedsTheScannedRevision`, `TestStrmRemuxRunsFFmpegThroughTheBridge`,
-  `TestStrmHLSTranscodeReadsThroughTheBridge`.
+  `TestStrmHLSTranscodeReadsThroughTheBridge`, `TestStrmRefusedAddressReadsAs403`, and
+  `TestStrmWorkerHLSRunsOnTheWorkerThroughItsOwnGuard` (Redis: an API host seals the
+  grant, a separate worker host with its own guard resolves it and runs a real ffmpeg
+  HLS encode, for a local and a storage `.strm`).
+- `internal/api/handlers`: `TestNativeVideoWorkerGrantAdmitsLocalStrmItems`,
+  `TestNativeVideoWorkerGrantRefusesLocationFreeStorageIdentities`,
+  `TestStrmSidecarSubtitlesServeLikeLocalSidecars`, `TestStrmSidecarSubtitlesStayBesideTheirStrmFile`.
+- Rescans: `TestStatReadsValidatorsWithOneByte`, `TestValidatorsUnchanged`,
+  `TestRemoteSourceValidatorsDB`, `TestLocalStrmRescanSkipsUnchangedRemoteDB`,
+  `TestNativeStrmStorageRescanSkipsUnchangedRemoteDB`, `TestStrmReuseScalesToThousandsOfEntriesDB`.
+- Web: `BloemStrmSettings.test.tsx`.
 - The DB tests are listed in `scripts/ci/bloem-library-locations.txt`.
 
 ### Known limits
 
-- Worker HLS: `NativeVideoWorkerGrantStore.prepare` requires the catalog path to be
-  the storage location of the bound reference, so a local `.strm` is refused for
-  workers. A storage `.strm` passes through `OpenDelegated` on a worker composed with
-  `NewNativeVideoDelegateService`, but that route is not tested end to end.
 - Jellyfin: `bloemNativeStorageFiles` (`cmd/silo/bloem_compat.go`) hides native files,
-  now including `.strm`, from Jellyfin playback.
+  including `.strm`, from Jellyfin playback until the Jellyfin media host for stored
+  movies is merged; that host treats every native location, `.strm` included, the same
+  way.
 - `media_files.file_size` of a local `.strm` is the text file's size; the remote size
   is in `remote_size`. Silo's OSHash logs that the file is too small.
 - Silo switching: Silo, serving the same database, treats a local `.strm` row as a plain
   file, and its own scans drop the row.
-- External subtitles are refused for native files, including `.strm` items.
+- External subtitles of storage objects are refused; a `.strm` item's are served only
+  for files beside a local `.strm` file.
 
 The picture is an SVG file under `docs/architecture/images/bloem-strm/`, drawn by
 `scripts/bloem/draw-pictures.py` from `scripts/bloem/pictures/bloem_strm.py`.

@@ -3,6 +3,19 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 12, 2026 — `.strm` items convert on workers and keep their subtitles
+
+`.strm` items now convert on transcoding workers: the worker grant binds a local
+`.strm` file's catalog path, and the worker reads the URL from Bloem's record and
+opens it through its own address check. Rescans keep the last probe of an unchanged
+`.strm` file or object (same URL and object revision, same remote size and ETag or
+Last-Modified) and ask the remote for one byte, so storage sources with thousands of
+`.strm` objects rescan quickly. Subtitle files beside a local `.strm` file are offered
+and served like any local sidecar, and a platform administrator can allow private
+addresses under Settings → Libraries → .strm files. A refused address answers 403. Jellyfin
+apps play `.strm` items once Bloem's Jellyfin media host for stored movies is merged
+([how `.strm` files play](../architecture/bloem-strm.md)).
+
 ## November 12, 2026 — `.strm` files play
 
 Bloem now accepts `.strm` files pointing anywhere, reversing the earlier non-goal. A
