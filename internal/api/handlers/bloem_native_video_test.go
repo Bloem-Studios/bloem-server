@@ -68,7 +68,7 @@ func nativeVideoFixture(t *testing.T) (*NativeVideoService, *models.MediaFile, *
 	}
 	identity := &nativestorage.PlaybackIdentity{FileID: 42, MediaFolderID: 7, ContentID: "movie", FilePath: f.FilePath, Reference: storagesource.PersistedRef{Revision: "version-1"}}
 	closed := new(int)
-	s := &NativeVideoService{Files: testPlaybackFileResolver{file: f}, Bindings: videoBindingFixture{}, Sessions: m}
+	s := &NativeVideoService{Files: testPlaybackFileResolver{file: f}, Bindings: videoBindingFixture{}, Sessions: m, WorkerReadiness: NewNativeVideoWorkerReadiness()}
 	s.Open = func(context.Context, *models.MediaFile) (NativeVideoFile, error) {
 		return &videoFileFixture{Reader: bytes.NewReader([]byte("0123456789")), id: *identity, info: mediasource.Info{Name: "movie.mp4", Size: 10, Revision: identity.Reference.Revision}, closed: closed}, nil
 	}

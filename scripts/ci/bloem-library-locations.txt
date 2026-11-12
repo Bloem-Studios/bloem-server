@@ -100,3 +100,6 @@
 
 # A detached source answers configuration and credential changes as not found.
 ./internal/nativestorage TestDetachedSourceConfigurationIsNotFoundDB
+
+# Jellyfin clients see no storage-backed library until native playback reaches them.
+./internal/storagesource TestLibrariesByStorageSplitsStorageBackedLibrariesDB

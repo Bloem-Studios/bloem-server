@@ -205,6 +205,14 @@ preserves the previous route.
 
 ### Worker HLS and recovery
 
+A worker can run native HLS only when it composes native storage from its own
+approvals. Such a worker answers the authenticated readiness probe
+`GET /bloem/native-execution` with its worker ID. Before a native start, the
+API asks the selected worker (answers are cached for a minute, refusals for
+15 seconds) and skips a worker that does not answer for its own ID, so the
+route loop moves on to another worker or, when the policy allows, the API
+server.
+
 Before a remote HLS start, the API seals a Redis grant for the exact worker,
 transport, playback session, source descriptor and start request. Worker
 attestation precedes acceptance of the immutable recipe. Header-authenticated
@@ -246,8 +254,11 @@ ingestion, and arbitrary remote URL or `.strm` playback remain unsupported.
 Native audiobooks have their own direct-play path; see
 [native audiobook presentations](bloem-native-audio-playback.md). Silo's Jellyfin
 server runs again since 2026-10-18, and `bloemGuardNativeStorageFiles` in
-`cmd/silo/bloem_compat.go` hides native-storage files from it. The capability
-document keeps `native_video_downloads` and `native_video_jellyfin` false.
+`cmd/silo/bloem_compat.go` hides native-storage files from it. Its viewer scope
+also leaves out every library with a storage location, mixed libraries included
+(`bloemCompatHideNativeLibraries`), so Jellyfin apps do not list titles they
+cannot play. The capability document keeps `native_video_downloads` and
+`native_video_jellyfin` false.
 
 Sidecars belonging to a different original file after an alternate-file start
 need their own host-owned binding; an effective-file binding grants no access to

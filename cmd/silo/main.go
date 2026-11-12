@@ -4316,6 +4316,7 @@ func main() {
 						accessGroupStore,
 					).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
 				}
+				compatScopeResolver = bloemCompatHideNativeLibraries(compatScopeResolver, deps.DB)
 				compatDeps.AccessFilterFn = jellycompat.NewScopeAccessFilter(compatScopeResolver)
 				compatDeps.PlaybackScopeResolver = compatScopeResolver
 			}

@@ -85,6 +85,10 @@ type NativeVideoService struct {
 	WorkerGrants   *NativeVideoWorkerGrantStore
 	Sessions       SessionManagerInterface
 	Deny           *playback.StreamDeny
+
+	// WorkerReadiness remembers which workers can read native storage; nil
+	// sends native HLS to no worker.
+	WorkerReadiness *NativeVideoWorkerReadiness
 }
 
 func nativeVideoUnavailable() error {

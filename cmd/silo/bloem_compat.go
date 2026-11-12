@@ -8,9 +8,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
+	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/downloads"
 	"github.com/Silo-Server/silo-server/internal/jellycompat"
@@ -97,4 +101,88 @@ func (r bloemNativeStorageFiles) GetByID(ctx context.Context, id int) (*models.M
 		return nil, scanner.ErrFileNotFound
 	}
 	return file, err
+}
+
+// compatStorageLibraries lists libraries by whether they read from a storage
+// source (storagesource.Repository).
+type compatStorageLibraries interface {
+	LibrariesByStorage(context.Context) (without, with []int, err error)
+}
+
+// bloemCompatStorageLibrariesTTL bounds how long a new storage-backed library
+// can stay visible to Jellyfin clients.
+const bloemCompatStorageLibrariesTTL = 5 * time.Second
+
+// bloemCompatHideNativeLibraries leaves every library that reads from a
+// storage source out of a Jellyfin viewer's scope. Jellyfin clients cannot
+// play native-storage files yet, so without this their items would look
+// playable and then fail. Browse, search, latest, next up and item reads all
+// filter by the scope. A mixed library is hidden whole until native playback
+// reaches the compatibility server.
+func bloemCompatHideNativeLibraries(next jellycompat.ScopeResolver, pool *pgxpool.Pool) jellycompat.ScopeResolver {
+	if pool == nil {
+		return next
+	}
+	return hideStorageLibraries(next, storagesource.NewRepository(pool))
+}
+
+func hideStorageLibraries(next jellycompat.ScopeResolver, libraries compatStorageLibraries) jellycompat.ScopeResolver {
+	if next == nil || libraries == nil {
+		return next
+	}
+	return &bloemCompatNativeLibraryHider{next: next, libraries: libraries, now: time.Now}
+}
+
+type bloemCompatNativeLibraryHider struct {
+	next      jellycompat.ScopeResolver
+	libraries compatStorageLibraries
+	now       func() time.Time
+
+	mu            sync.Mutex
+	until         time.Time
+	without, with []int
+}
+
+func (h *bloemCompatNativeLibraryHider) Resolve(ctx context.Context, input access.ResolveInput) (access.Scope, error) {
+	scope, err := h.next.Resolve(ctx, input)
+	if err != nil {
+		return scope, err
+	}
+	without, with, err := h.storageLibraries(ctx)
+	if err != nil {
+		// Fail closed: an unknown split could show unplayable items.
+		return access.Scope{}, fmt.Errorf("list storage-backed libraries: %w", err)
+	}
+	if len(with) == 0 {
+		return scope, nil
+	}
+	if scope.AllowedLibraryIDs == nil {
+		scope.AllowedLibraryIDs = slices.Clone(without)
+	} else {
+		scope.AllowedLibraryIDs = slices.DeleteFunc(slices.Clone(scope.AllowedLibraryIDs), func(id int) bool {
+			_, stored := slices.BinarySearch(with, id)
+			return stored
+		})
+	}
+	if scope.AllowedLibraryIDs == nil {
+		scope.AllowedLibraryIDs = []int{}
+	}
+	scope.LibrariesRestricted = true
+	return scope, nil
+}
+
+func (h *bloemCompatNativeLibraryHider) storageLibraries(ctx context.Context) (without, with []int, err error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if now := h.now(); now.Before(h.until) {
+		return h.without, h.with, nil
+	}
+	without, with, err = h.libraries.LibrariesByStorage(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	without, with = slices.Clone(without), slices.Clone(with)
+	slices.Sort(with)
+	h.without, h.with, h.until = without, with, h.now().Add(bloemCompatStorageLibrariesTTL)
+	return without, with, nil
 }
