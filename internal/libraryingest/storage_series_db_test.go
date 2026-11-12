@@ -48,6 +48,7 @@ type nativeSeriesScanFixture struct {
 	location  storagesource.Location
 	installed *plugins.NativeStorageSnapshot
 	notify    string
+	host      *nativestorage.Host
 }
 
 func newNativeSeriesScanFixture(t *testing.T, binary []byte, manifest *publicv1.PluginManifest, seriesReady bool) nativeSeriesScanFixture {
@@ -133,7 +134,7 @@ func newNativeSeriesScanFixture(t *testing.T, binary []byte, manifest *publicv1.
 	if err := scan.ConfigureNativeSeries(true); err != nil {
 		t.Fatal(err)
 	}
-	return nativeSeriesScanFixture{pool, scan, folder, location, installed, notify}
+	return nativeSeriesScanFixture{pool, scan, folder, location, installed, notify, host}
 }
 
 func (f nativeSeriesScanFixture) scanOnce(t *testing.T) *Result {

@@ -33,7 +33,10 @@ func seriesFixtures(prefix, revision string) ([]object, error) {
 	if err != nil {
 		return nil, err
 	}
-	srt := []byte("1\n00:00:00,000 --> 00:00:01,000\nhi\n")
+	// Each sidecar's text names its file, so a read shows which one it got.
+	srt := func(name string) []byte {
+		return []byte("1\n00:00:00,000 --> 00:00:01,000\nhi " + path.Base(name) + "\n")
+	}
 	var result []object
 	add := func(logical string, data []byte, directory bool) {
 		entry := &storagev1.Entry{Id: logical, Name: path.Base(logical), LogicalPath: logical, Kind: storagev1.EntryKind_ENTRY_KIND_FILE,
@@ -54,19 +57,19 @@ func seriesFixtures(prefix, revision string) ([]object, error) {
 	add(seriesShowA+"/Featurettes/Making Of.mkv", mkv, false)
 	add(seriesA01+".mkv", mkv, false)
 	for _, suffix := range []string{".en.srt", ".en.sdh.srt", ".nl.srt"} {
-		add(seriesA01+suffix, srt, false)
+		add(seriesA01+suffix, srt(seriesA01+suffix), false)
 	}
 	add(seriesA02+".mkv", mkv, false)
-	add(seriesA02+".en.srt", srt, false)
+	add(seriesA02+".en.srt", srt(seriesA02+".en.srt"), false)
 	// A zero-byte placeholder of a later episode and a sample.
 	add(seriesShowA+"/Season 01/Show A (2005) - S01E03 [WEBDL-1080p]-Grp.mkv", nil, false)
 	add(seriesShowA+"/Season 01/sample.mkv", mkv, false)
 	// Sidecars listed a page before their episode.
-	add(seriesA00+".en.srt", srt, false)
-	add(seriesA00+".nl.srt", srt, false)
+	add(seriesA00+".en.srt", srt(seriesA00+".en.srt"), false)
+	add(seriesA00+".nl.srt", srt(seriesA00+".nl.srt"), false)
 	add(seriesA00+".mkv", mkv, false)
 	add(seriesB01+".mkv", mkv, false)
-	add(seriesB01+".zh.srt", srt, false)
+	add(seriesB01+".zh.srt", srt(seriesB01+".zh.srt"), false)
 	return result, nil
 }
 

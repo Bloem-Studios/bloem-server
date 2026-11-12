@@ -108,3 +108,7 @@
 ./internal/libraryingest TestNativeSeriesStorageCompletionSweepDB
 ./internal/libraryingest TestNativeSeriesStorageGradualPublicationDB
 ./internal/nativestorage TestLibraryLocationsAliasLibraryTypesDB
+
+# Native episode subtitle sidecars: listed with their flags and read through the
+# provider at their recorded revision, only under the episode's playback authority.
+./internal/libraryingest TestNativeSeriesSidecarsReadThroughProviderDB
