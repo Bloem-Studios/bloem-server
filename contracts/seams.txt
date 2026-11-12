@@ -115,7 +115,7 @@ internal/backup/restoreset_users.go  # two fields and two calls: a restore set r
 internal/backup/restoreset_write.go  # one call: a user-data backup's restore set leaves the plugins and settings out (bloem_user_data_backup.go)
 internal/backup/selective_apply.go  # one call: a restore of accounts only is marked, so it takes no backup first (bloem_user_data_backup.go)
 internal/backup/service.go  # three calls: a Bloem backup's dump leaves out every table that is not user data, it copies no server files, and a restore of accounts takes no backup first (bloem_user_data_backup.go)
-internal/backup/swap.go  # one call: a user-data backup cannot replace the live database (bloem_user_data_backup.go)
+internal/backup/swap.go  # three calls: a user-data backup cannot replace the live database (bloem_user_data_backup.go); the live-database connection checks wait for a just-closed connection to end (bloem_closing_connections.go)
 internal/backup/users_apply.go  # a restored account is created in its organization, a restored profile carries its group name (bloem_restore_tenancy.go)
 internal/backup/users_plan.go  # one call: the planner names the organization an account is restored into, so its group is matched there (bloem_restore_tenancy.go)
 internal/blobgc/collector_s3_db_test.go  # added lines: collect the test's own queue row first; dbpins runs listed packages at once and another may hold an older due row (failed in Bloem CI on 2026-11-02)

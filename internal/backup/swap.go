@@ -359,6 +359,7 @@ func checkDeployment(ctx context.Context, src *Source, loader DatabaseLoader, op
 // checkLiveIdle requires that no client other than this command is on the
 // live database.
 func checkLiveIdle(ctx context.Context, ctl ControlDB, live string) error {
+	bloemAwaitClosingConnections(ctx, ctl, live) // Bloem: bloem_closing_connections.go
 	others, err := ctl.OtherConnections(ctx, live)
 	if err != nil {
 		return fmt.Errorf("checking for other connections: %w", err)
@@ -373,6 +374,7 @@ func checkLiveIdle(ctx context.Context, ctl ControlDB, live string) error {
 // privileges a swap needs, free names for the two databases it creates, and
 // writable stores. It changes nothing and returns the live database's oid.
 func swapPreflight(ctx context.Context, ctl ControlDB, stores blobStores, live, restored, before string, extensions func() ([]string, error)) (uint32, error) {
+	bloemAwaitClosingConnections(ctx, ctl, live) // Bloem: bloem_closing_connections.go
 	if others, err := ctl.OtherConnections(ctx, live); err != nil {
 		return 0, fmt.Errorf("checking for other connections: %w", err)
 	} else if others > 0 {

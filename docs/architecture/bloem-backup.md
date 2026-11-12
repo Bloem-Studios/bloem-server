@@ -1,7 +1,7 @@
 # How backups work in Bloem
 
-> **Provenance and status.** Bloem page, written on 2026-11-06, updated on 2026-11-09
-> against `main` at `1b63fdf08`. Backup and restore are Silo's feature, merged
+> **Provenance and status.** Bloem page, written on 2026-11-06, updated on 2026-11-12
+> against `main` at `94a2a9fcb`. Backup and restore are Silo's feature, merged
 > from Silo through `cecd5b9bc`; this page covers what Bloem changes. The nightly
 > backup is switched off on Bloem's production server (`backup.enabled` is false);
 > "Back up now" and each person's "Your data" export still work. Silo's
@@ -84,7 +84,7 @@ compared for it.
   except `users`, `organizations`, `organization_memberships` and `access_groups`, on
   top of the tables every backup leaves out. A manifest whose `excluded_table_data`
   names `media_items` is a user-data backup, and `RestoreSwap` refuses it (one seam
-  line in `swap.go`; the exclusion is one in `service.go`). Its restore set holds only
+  line in `swap.go`'s `validateForSwap`; the exclusion is one in `service.go`). Its restore set holds only
   the users, libraries, collections and home-sections sections, which a restore of
   accounts maps by (`bloemRestoreSetSections`, one line in `restoreset_write.go`), and
   it copies no server files (`withBlobs` is off; avatars
@@ -92,6 +92,19 @@ compared for it.
   before-restore backup (`bloemBeforeRestoreContext` in `selective_apply.go`,
   `bloemSkipBeforeRestore` in `backupWith`). The switch is off by default, so Silo's
   own tests keep whole-server backups.
+- A just-closed connection (`bloem_closing_connections.go`): an in-place restore
+  counts the other sessions on the live database (`OtherConnections`, from
+  `pg_stat_activity`) in `swapPreflight` and `checkLiveIdle`. A connection the restore
+  or its caller has just closed, such as the one `PGLoader.ServerID` opens right
+  before the preflight, stays listed until its server process exits, and on a loaded
+  host the count saw it and refused the restore with "1 other clients are connected".
+  `bloemAwaitClosingConnections` runs first, on its own seam line in each of the two
+  functions, and waits up to `bloemClosingConnectionGrace` (2 s) for the count to reach
+  zero. A client that stays connected is still refused by Silo's own count right
+  after. `TestBloemSwapPreflightWaitsForAClosingConnection`,
+  `TestBloemLiveIdleCheckWaitsForAClosingConnection` and
+  `TestBloemSwapPreflightStillRefusesAConnectedClient` cover it; Silo's
+  `TestBeforeMigrateBackupOnAnOldSchemaDB` failed on busy CI runners without it.
 - Whole-server classification, for a backup taken with the switch off. Every table
   belongs to one group: data, restored as the backup has it (organizations,
   memberships, plans, branding, promotions, book requests, the Live TV setup); server
