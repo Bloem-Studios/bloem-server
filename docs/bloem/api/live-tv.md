@@ -1162,7 +1162,6 @@ Uses native account authentication and selected-profile authority, including PIN
 | `id` | string | yes |  |
 | `last_error` | string |  |  |
 | `library_item_id` | string |  |  |
-| `path` | string |  |  |
 | `profile_id` | string |  |  |
 | `program_id` | string |  |  |
 | `series_rule_id` | string |  |  |

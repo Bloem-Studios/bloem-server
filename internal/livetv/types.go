@@ -236,7 +236,7 @@ type Recording struct {
 	UserID        int       `json:"user_id,omitempty"`
 	ProfileID     string    `json:"profile_id,omitempty"`
 	Status        string    `json:"status"`
-	Path          string    `json:"path,omitempty"`
+	Path          string    `json:"-"` // server file path; stored, never sent to clients
 	LibraryItemID string    `json:"library_item_id,omitempty"`
 	Start         time.Time `json:"start"`
 	Stop          time.Time `json:"stop"`

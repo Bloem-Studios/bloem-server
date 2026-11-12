@@ -144,6 +144,16 @@ Silo's `POST /api/v1/events/ws-ticket`, until they went with Silo's v1 API on
 called the removed routes, because the web app, bloem-apple and bloem-android
 use the v2 sockets. Silo's removals table is unchanged.
 
+#### Live TV recording path no longer sent
+
+Removed on 2026-11-12: the `path` field of a Live TV recording (`LiveTVRecording`,
+`internal/livetv` `Recording.Path`) in the responses of
+`/api/bloem/v2/livetv/recordings`. It carried the recording's file path on the
+server to any viewer with Live TV, while Silo now shows file paths only to
+viewers who curate metadata (Silo #3999). The server keeps the path in its own
+column for the recorder; no client read the field. Silo's removals table is
+unchanged.
+
 ### Related pages
 
 - [Leaving Silo's `/api/v1`](../../../architecture/bloem-leaving-silo-v1.md): what

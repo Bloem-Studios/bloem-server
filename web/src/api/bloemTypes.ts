@@ -254,7 +254,6 @@ export interface LiveTVRecording {
   channel_id: string;
   series_rule_id?: string;
   status: string;
-  path?: string;
   library_item_id?: string;
   start: string;
   stop: string;

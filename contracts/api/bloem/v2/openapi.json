@@ -9941,9 +9941,6 @@
           "library_item_id": {
             "type": "string"
           },
-          "path": {
-            "type": "string"
-          },
           "profile_id": {
             "type": "string"
           },
