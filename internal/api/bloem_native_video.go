@@ -117,7 +117,7 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 	}, getSession: deps.SessionMgr.GetSession, denied: nativeVideoSessionDenied(deps.RedisClient, h.StreamDeny), resolveFile: h.ResolveNativeVideoFile, authorizeSource: func(ctx context.Context, file *models.MediaFile, source storagesource.SourceConfig) error {
 		return authorizeNativeStorageSource(ctx, file, source, tenantResolver, resources)
 	}}
-	service := &handlers.NativeVideoService{Presentation: nativeAudioPresentation(deps), Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: h.StreamDeny}
+	service := &handlers.NativeVideoService{Presentation: nativeAudioPresentation(deps), Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: h.StreamDeny, WorkerReadiness: handlers.NewNativeVideoWorkerReadiness()}
 	strm, storage := newStrmPlayback(deps), coordinatorOpen(coordinator)
 	service.Open = func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
 		if file == nil {

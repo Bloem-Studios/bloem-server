@@ -52,6 +52,19 @@ type NativeDeliveryAuthority interface {
 	Close() error
 }
 
+// NativeExecutionReadinessPath is the authenticated worker route that reports
+// whether this worker can execute native-storage inputs. Only a worker that
+// runs WrapNativeExecution with approved storage answers it; the API sends a
+// native start to no other worker.
+const NativeExecutionReadinessPath = "/bloem/native-execution"
+
+// NativeExecutionReadiness is the readiness probe's answer. NodeID is the
+// worker identity its grants are sealed for.
+type NativeExecutionReadiness struct {
+	NativeExecution bool `json:"native_execution"`
+	NodeID          int  `json:"node_id"`
+}
+
 type NativeExecutionConfig struct {
 	NodeID  int
 	Resolve func(context.Context, NativeExecutionRequest) (*NativeExecutionGrant, error)
@@ -114,7 +127,19 @@ func (s *Server) WrapNativeExecution(next http.Handler, cfg NativeExecutionConfi
 		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}))
+	readiness := s.requireBearer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if cfg.NodeID <= 0 || cfg.Resolve == nil {
+			http.Error(w, "native execution authority unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(NativeExecutionReadiness{NativeExecution: true, NodeID: cfg.NodeID})
+	}))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == NativeExecutionReadinessPath {
+			readiness.ServeHTTP(w, r)
+			return
+		}
 		if r.Method == http.MethodPost && r.URL.Path == "/transcode/start" ||
 			(r.Method == http.MethodGet || r.Method == http.MethodHead) && (strings.HasPrefix(r.URL.Path, "/transcode/") || strings.HasPrefix(r.URL.Path, "/remux/")) {
 			authorized.ServeHTTP(w, r)
