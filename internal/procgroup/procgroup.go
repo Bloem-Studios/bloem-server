@@ -29,5 +29,6 @@ func CommandContext(ctx context.Context, name string, args ...string) *exec.Cmd 
 	cmd.SysProcAttr = sysProcAttr()
 	cmd.Cancel = func() error { return Kill(cmd) }
 	cmd.WaitDelay = DefaultWaitDelay
+	refuseNativeInput(cmd, args) // Bloem: never hand a media tool a native catalog location
 	return cmd
 }

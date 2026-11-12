@@ -2,10 +2,10 @@ package audiobooks
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -26,8 +26,8 @@ func TestNativeAudioEnrichmentCoverFallbackReadsNothing(t *testing.T) {
 	}
 	root := t.TempDir()
 	t.Chdir(root)
-	// An on-disk name collision must remain unread: ffmpeg interprets the reserved
-	// prefix as a protocol rather than a physical filename.
+	// An on-disk name collision must remain unread: ffmpeg is never started on
+	// a native catalog location (procgroup.ErrNativeInput).
 	if err := os.WriteFile(address, []byte("unrelated local bytes"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -45,12 +45,8 @@ func TestNativeAudioEnrichmentCoverFallbackReadsNothing(t *testing.T) {
 	if err := e.applyLocalCoverFallback(t.Context(), "native-cover"); err != nil {
 		t.Fatal(err)
 	}
-	stderr, err := os.ReadFile(log)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(stderr), "Protocol not found") || !strings.Contains(string(stderr), address) {
-		t.Fatalf("ffmpeg did not reject protocol: %s", stderr)
+	if _, err := os.Stat(log); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("ffmpeg started on the native location: %v", err)
 	}
 	var poster string
 	if err := pool.QueryRow(t.Context(), `SELECT COALESCE(poster_path,'') FROM media_items WHERE content_id='native-cover'`).Scan(&poster); err != nil {

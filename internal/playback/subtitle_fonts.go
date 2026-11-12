@@ -68,6 +68,9 @@ var subtitleFontProbeSlots = make(chan struct{}, 2)
 // ListAttachedSubtitleFonts bounds concurrent metadata probes and their duration.
 // Busy or unavailable probes return an error; callers can omit optional discovery.
 func ListAttachedSubtitleFonts(ctx context.Context, inputPath, ffmpegPath string) ([]SubtitleFontMetadata, error) {
+	if handled, fonts, err := listContextSubtitleFonts(ctx, inputPath, ffmpegPath); handled { // Bloem
+		return fonts, err
+	}
 	select {
 	case subtitleFontProbeSlots <- struct{}{}:
 		defer func() { <-subtitleFontProbeSlots }()
@@ -110,6 +113,9 @@ func ExtractAttachedSubtitleFont(ctx context.Context, inputPath, ffmpegPath stri
 }
 
 func extractAttachedSubtitleFonts(ctx context.Context, inputPath, ffmpegPath string, index *int) ([]SubtitleFontAttachment, error) {
+	if handled, fonts, err := extractContextSubtitleFonts(ctx, inputPath, ffmpegPath, index); handled { // Bloem
+		return fonts, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	if strings.TrimSpace(inputPath) == "" {

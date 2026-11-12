@@ -610,6 +610,7 @@ func (c *SubtitleCache) cachedFormatEntryPath(inputPath string, trackIndex int, 
 		return "", time.Time{}, false
 	}
 	src, err := fspath.Stat(inputPath)
+	err = uncachedNativeSource(inputPath, err) // Bloem
 	if err != nil {
 		return "", time.Time{}, false
 	}
@@ -694,6 +695,7 @@ func (c *SubtitleCache) reserveFill(inputPath string, trackIndex int, format str
 		return nil, nil
 	}
 	src, err := fspath.Stat(inputPath)
+	err = uncachedNativeSource(inputPath, err) // Bloem
 	if err != nil {
 		return nil, nil
 	}

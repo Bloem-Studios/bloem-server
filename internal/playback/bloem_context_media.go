@@ -3,8 +3,11 @@ package playback
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
+
+	"github.com/Silo-Server/silo-server/internal/procgroup"
 )
 
 // Context-scoped media sources serve inputs that are not files on this host,
@@ -172,6 +175,87 @@ func extractContextSubtitle(ctx context.Context, inputPath string, trackIndex in
 		SessionID: binding.SessionID, FFmpegPath: ffmpegPath,
 	}, trackIndex, format, 0, 0)
 	return true, data, err
+}
+
+// listContextSubtitleFonts is ListAttachedSubtitleFonts' hook: a
+// context-scoped input's fonts are probed from its host's pinned source. A
+// native catalog location outside such a request has none listed: its path is
+// never handed to ffprobe (a `.strm` file is a text file whose content anyone
+// who can write to the library folder controls).
+func listContextSubtitleFonts(ctx context.Context, inputPath, ffmpegPath string) (bool, []SubtitleFontMetadata, error) {
+	opts, handled, err := contextFontSource(ctx, inputPath, ffmpegPath)
+	if !handled || err != nil || opts.InputSource == nil {
+		return handled, nil, err
+	}
+	streams, err := probeSourceFontStreams(ctx, opts)
+	if err != nil {
+		return true, nil, err
+	}
+	fonts := make([]SubtitleFontMetadata, 0, len(streams))
+	for i, stream := range streams {
+		name := safeAttachmentDisplayName(stream, fmt.Sprintf("attachment-%d%s", i, fontAttachmentExt(stream)))
+		fonts = append(fonts, SubtitleFontMetadata{Index: stream.Index, Codec: stream.CodecName, FileName: name, MimeType: SubtitleFontMIMEType(name)})
+	}
+	return true, fonts, nil
+}
+
+// extractContextSubtitleFonts is extractAttachedSubtitleFonts' hook: a
+// context-scoped input's fonts come from its host's pinned source, and a
+// native catalog location outside such a request has none. index, when set,
+// selects one font by its container stream index.
+func extractContextSubtitleFonts(ctx context.Context, inputPath, ffmpegPath string, index *int) (bool, []SubtitleFontAttachment, error) {
+	opts, handled, err := contextFontSource(ctx, inputPath, ffmpegPath)
+	if !handled || err != nil || opts.InputSource == nil {
+		return handled, nil, err
+	}
+	fonts, err := ExtractSourceSubtitleFonts(ctx, opts)
+	if err != nil || index == nil {
+		return true, fonts, err
+	}
+	for _, font := range fonts {
+		if font.StreamIndex == *index {
+			return true, []SubtitleFontAttachment{font}, nil
+		}
+	}
+	return true, nil, nil
+}
+
+// contextFontSource resolves the font hooks' input: the host's pinned source
+// for a context-scoped input (handled, with InputSource set), or handled with
+// no source for a native catalog location without a host. Any other input is
+// not handled and keeps Silo's file path.
+func contextFontSource(ctx context.Context, inputPath, ffmpegPath string) (TranscodeOpts, bool, error) {
+	host := contextMediaHost(ctx, inputPath)
+	if host == nil {
+		return TranscodeOpts{}, procgroup.NativeLocation(inputPath), nil
+	}
+	binding, err := host.Input(ctx, inputPath)
+	if err != nil {
+		return TranscodeOpts{}, true, err
+	}
+	return TranscodeOpts{
+		InputPath: binding.InputPath, InputSource: binding.InputSource, InputFormat: binding.InputFormat,
+		SessionID: binding.SessionID, FFmpegPath: ffmpegPath,
+	}, true, nil
+}
+
+// errNativeSubtitleSource keeps a native catalog location out of the
+// subtitle cache.
+var errNativeSubtitleSource = errors.New("native catalog location is not cached")
+
+// uncachedNativeSource is the subtitle cache's hook on its source stat. The
+// cache keys an entry by the source file's size and modification time, and a
+// hit is served without opening the source. For a `.strm` file those are the
+// text file's, and a hit would skip the host's authority check on the
+// remote source, so a native catalog location is never cached, as a storage
+// identity (never a file here) already is not. Without a cache entry a text
+// track is extracted on its own through the host, never by the batch demux
+// that would hand ffmpeg the file.
+func uncachedNativeSource(inputPath string, statErr error) error {
+	if statErr == nil && procgroup.NativeLocation(inputPath) {
+		return errNativeSubtitleSource
+	}
+	return statErr
 }
 
 // contextTranscodeInput gives StartTranscode the host's pinned source for a

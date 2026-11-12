@@ -164,6 +164,7 @@ internal/jellycompat/streamtelemetry.go  # two lines (S1): attachCompatStream no
 internal/libraryingest/executor.go
 internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
 internal/mail/layout_test.go  # default alt text and logo size derive from branding.DefaultServerName and the embedded default wordmark; Bloem pins its own in bloem_brand_test.go
+internal/mediasample/run.go  # three hook lines: Run refuses a native catalog location (a .strm file, a storage identity) before ffmpeg starts, as -i or inside its stdin concat list, as a permanent invalid-data failure (bloem_native_input.go); never hand ffmpeg a .strm/native catalog path, approved 2026-11-12
 internal/metadata/image_cache_job_repo.go
 internal/metadata/image_cache_processor.go
 internal/metadata/nfo/lookup.go  # listDir caches a listing only once the directory's change time has settled too (lastChange, bloem_listing_settle.go): settling on the modification time alone, which copy tools restore, cached listings that missed a same-tick change
@@ -191,6 +192,8 @@ internal/playback/gpudetect_test.go
 internal/playback/protocol_v3.go
 internal/playback/remux.go  # three hook lines (S3): progressive remux of a context-scoped input reads its host's pinned source (bloem_context_media.go); Jellyfin remux of native-storage files, approved 2026-11-12, generic enough to offer Silo with S2/S4
 internal/playback/session.go
+internal/playback/subtitle_cache.go  # two hook lines: the source stat refuses a native catalog location, so a .strm item's text is never cached under the text file's size and time, every request rechecks the host, and no batch demux reads the file (bloem_context_media.go); never hand ffmpeg a .strm/native catalog path, approved 2026-11-12
+internal/playback/subtitle_fonts.go  # six hook lines: attached fonts of a context-scoped input are listed and extracted from its host's pinned source, and a native catalog location without a host has none (bloem_context_media.go); never hand ffmpeg a .strm/native catalog path, approved 2026-11-12
 internal/playback/subtitles.go  # three hook lines (S5): an embedded text subtitle of a context-scoped input is extracted from its host's pinned source (bloem_context_media.go); Jellyfin embedded subtitles of native-storage files, approved 2026-11-12, generic enough to offer Silo with S2-S4
 internal/playback/session_test.go
 internal/playback/testdata/protocol_v3/decision_response.json
@@ -215,6 +218,7 @@ internal/policy/store_test.go
 internal/policy/vendor/permission.rego
 internal/policy/vendor/scope.rego
 internal/policy/viewer_resolver.go
+internal/procgroup/procgroup.go  # one hook line: CommandContext refuses (cmd.Err, ErrNativeInput) a media tool whose -i or trailing ffprobe input is a native catalog location (bloem_native_input.go); never hand ffmpeg a .strm/native catalog path, approved 2026-11-12
 internal/progresssync/service.go
 internal/proxy/download_test.go
 internal/proxy/mediagrant_test.go

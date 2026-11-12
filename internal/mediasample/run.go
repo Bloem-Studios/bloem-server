@@ -114,6 +114,9 @@ func (r Runner) Run(ctx context.Context, req Request) (Result, error) {
 	if err := req.Validate(); err != nil {
 		return Result{}, fmt.Errorf("invalid sampling request: %w", err)
 	}
+	if err := refuseNativeInput(req.Input); err != nil { // Bloem
+		return Result{}, err
+	}
 	failure := &Error{}
 	toneMap := &toneMapResolver{}
 	keyframes := sheetKeyframes(ctx, req)

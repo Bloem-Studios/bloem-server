@@ -335,8 +335,11 @@ files beside a local `.strm` file are local files, which Silo's subtitle route
 serves from disk once the guard has returned the file
 ([`.strm` files in Jellyfin apps](bloem-strm.md#jellyfin-apps)).
 
-Not covered yet: attached fonts and bitmap (PGS) subtitle extraction for
-native files, and Jellyfin's proxy-node direct play (a proxy refuses native sources, so
+Inside a request with the host, Silo's attached-font listing and extraction read
+the host's source, so the attachment route serves a native file's fonts; ffmpeg and
+ffprobe never get a native path ([media tools](bloem-strm.md#playback)). Not
+covered yet: listing those fonts (PlaybackInfo carries no host, so it lists none),
+bitmap (PGS) subtitle extraction for native files, and Jellyfin's proxy-node direct play (a proxy refuses native sources, so
 the redirect fails; an API-egress route works). Jellyfin downloads
 (`/Items/{id}/Download`) are covered under [Downloads](#downloads).
 

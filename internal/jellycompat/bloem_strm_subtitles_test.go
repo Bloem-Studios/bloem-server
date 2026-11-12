@@ -6,10 +6,13 @@ package jellycompat
 // carries the native media host (cmd/silo/bloem_compat_native.go). Inside one,
 // Silo's subtitle route serves the subtitle files beside it as it does for any
 // local file, and extracts an embedded track through the host's pinned
-// source.
+// source. ffmpeg and ffprobe never open the `.strm` file itself: its text is
+// whatever anyone who can write to the library folder put there.
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,8 +25,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/procgroup"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 )
 
@@ -81,10 +86,35 @@ func strmMediaURL(t *testing.T, path string) string {
 	return server.URL + "/source"
 }
 
+// recordingMediaTools returns an ffmpeg path whose ffmpeg and ffprobe
+// (playback derives ffprobe beside ffmpeg) log every argument to the
+// returned file before running the real tools.
+func recordingMediaTools(t *testing.T, ffmpeg string) (string, string) {
+	t.Helper()
+	ffprobe, err := exec.LookPath("ffprobe")
+	if err != nil {
+		t.Skip("ffprobe required")
+	}
+	dir := t.TempDir()
+	log := filepath.Join(dir, "arguments.log")
+	for name, tool := range map[string]string{"ffmpeg": ffmpeg, "ffprobe": ffprobe} {
+		script := "#!/bin/sh\nprintf '%s\\n' \"$@\" >> '" + log + "'\nexec '" + tool + "' \"$@\"\n"
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(script), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return filepath.Join(dir, "ffmpeg"), log
+}
+
 func TestStrmSubtitlesServeForJellyfinApps(t *testing.T) {
-	ffmpeg, err := exec.LookPath("ffmpeg")
+	realFFmpeg, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		t.Skip("ffmpeg required")
+	}
+	ffmpeg, toolLog := recordingMediaTools(t, realFFmpeg)
+	font, err := os.ReadFile(filepath.Join("..", "..", "web", "public", "vendor", "pdfjs", "standard_fonts", "LiberationSans-Regular.ttf"))
+	if err != nil {
+		t.Fatal(err)
 	}
 	dir := filepath.Join(t.TempDir(), "Harbor Lights (2019)")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -103,8 +133,10 @@ func TestStrmSubtitlesServeForJellyfinApps(t *testing.T) {
 		t.Fatal(err)
 	}
 	media := filepath.Join(t.TempDir(), "remote.mkv")
-	if out, err := exec.Command(ffmpeg, "-v", "error", "-f", "lavfi", "-i", "color=c=blue:s=64x48:r=10", "-i", embedded,
-		"-t", "2", "-map", "0:v", "-map", "1:s", "-c:v", "libx264", "-threads", "1", "-pix_fmt", "yuv420p", "-c:s", "srt", media).CombinedOutput(); err != nil {
+	if out, err := exec.Command(realFFmpeg, "-v", "error", "-f", "lavfi", "-i", "color=c=blue:s=64x48:r=10", "-i", embedded,
+		"-t", "2", "-map", "0:v", "-map", "1:s", "-c:v", "libx264", "-threads", "1", "-pix_fmt", "yuv420p", "-c:s", "srt",
+		"-attach", filepath.Join("..", "..", "web", "public", "vendor", "pdfjs", "standard_fonts", "LiberationSans-Regular.ttf"),
+		"-metadata:s:t", "mimetype=application/x-truetype-font", media).CombinedOutput(); err != nil {
 		t.Fatalf("synthetic media: %v %s", err, out)
 	}
 	if !scanner.StrmSidecarSubtitle(strm, sidecar) {
@@ -119,14 +151,15 @@ func TestStrmSubtitlesServeForJellyfinApps(t *testing.T) {
 	}
 	source := PlaybackMediaSource{ID: "source-42", FileID: file.ID}
 	store := NewPlaybackSessionStore(time.Hour, nil)
-	store.Put(PlaybackSession{ID: "play-1", CompatToken: "token-1", RouteItemID: "item-1", UpstreamSessionID: "upstream-1", UpstreamPlayMethod: "direct", MediaSources: []PlaybackMediaSource{source}})
+	store.Put(PlaybackSession{ID: "play-1", CompatToken: "token-1", RouteItemID: "item-1", ItemID: "movie-1", UpstreamSessionID: "upstream-1", UpstreamPlayMethod: "direct", MediaSources: []PlaybackMediaSource{source}})
 	cacheDir := t.TempDir()
 	handler := &PlaybackHandler{playbackStore: store, fileResolver: strmGuardedFiles{file: file}, FFmpegPath: ffmpeg,
-		SubtitleCache: playback.NewSubtitleCache(func() string { return cacheDir })}
+		SubtitleCache: playback.NewSubtitleCache(func() string { return cacheDir }),
+		content:       &stubContentService{detail: &upstreamItemDetail{ContentID: "movie-1", Versions: []catalog.FileVersion{{FileID: file.ID}}}}}
 	host := &strmSubtitleHost{strm: strm, media: strmMediaURL(t, media)}
 
-	request := func(index int, withHost bool) *httptest.ResponseRecorder {
-		r := httptest.NewRequest(http.MethodGet, "/Videos/item-1/source-42/Subtitles/"+strconv.Itoa(index)+"/stream.srt?PlaySessionId=play-1", nil)
+	serve := func(path string, index int, withHost bool, handle http.HandlerFunc) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodGet, path+"?PlaySessionId=play-1", nil)
 		routeCtx := chi.NewRouteContext()
 		routeCtx.URLParams.Add("routeItemId", "item-1")
 		routeCtx.URLParams.Add("routeMediaSourceId", source.ID)
@@ -138,7 +171,11 @@ func TestStrmSubtitlesServeForJellyfinApps(t *testing.T) {
 			ctx = playback.WithContextMediaHost(ctx, host)
 		}
 		w := httptest.NewRecorder()
-		handler.HandleSubtitleStream(w, r.WithContext(ctx))
+		handle(w, r.WithContext(ctx))
+		return w
+	}
+	request := func(index int, withHost bool) *httptest.ResponseRecorder {
+		w := serve("/Videos/item-1/source-42/Subtitles/"+strconv.Itoa(index)+"/stream.srt", index, withHost, handler.HandleSubtitleStream)
 		if strings.Contains(w.Body.String(), "very-secret") || strings.Contains(w.Body.String(), "media.example.net") {
 			t.Fatalf("track %d names the .strm address: %q", index, w.Body.String())
 		}
@@ -155,10 +192,61 @@ func TestStrmSubtitlesServeForJellyfinApps(t *testing.T) {
 	if host.inputs == 0 || host.noted.PlaybackSessionID != "upstream-1" || host.noted.MediaFileID != file.ID || host.noted.UserID != 7 {
 		t.Fatalf("embedded track did not read the host's source for the noted stream: inputs=%d stream=%+v", host.inputs, host.noted)
 	}
+	// Nothing is cached under the `.strm` file's size and time: the next
+	// request reads the host's source again, which rechecks its authority.
+	inputs := host.inputs
+	if w := request(1, true); w.Code != http.StatusOK || host.inputs == inputs {
+		t.Fatalf("second embedded request = %d, host inputs %d -> %d", w.Code, inputs, host.inputs)
+	}
+	if _, cached := handler.SubtitleCache.LookupText(strm, 0, "srt"); cached {
+		t.Fatal("embedded text was cached under the .strm file")
+	}
+
+	// The attached font comes from the host's source too.
+	attachment := func(withHost bool) *httptest.ResponseRecorder {
+		return serve("/Videos/item-1/source-42/Attachments/2", 2, withHost, handler.HandleAttachment)
+	}
+	if w := attachment(true); w.Code != http.StatusOK || !bytes.Equal(w.Body.Bytes(), font) {
+		t.Fatalf("attached font = %d, %d bytes", w.Code, w.Body.Len())
+	}
+	hosted := playback.WithContextMediaHost(t.Context(), host)
+	playback.NoteContextStream(hosted, playback.ContextStream{UserID: 7, PlaybackSessionID: "upstream-1", MediaFileID: file.ID})
+	if fonts, err := playback.ListAttachedSubtitleFonts(hosted, strm, ffmpeg); err != nil || len(fonts) != 1 || fonts[0].Index != 2 || fonts[0].FileName != "LiberationSans-Regular.ttf" {
+		t.Fatalf("listed fonts through the host = %+v, %v", fonts, err)
+	}
+	// Without the host there are no fonts, and ffprobe is not asked.
+	if fonts, err := playback.ListAttachedSubtitleFonts(t.Context(), strm, ffmpeg); err != nil || fonts != nil {
+		t.Fatalf("listed fonts without the host = %+v, %v", fonts, err)
+	}
+	if fonts, err := playback.ExtractAttachedSubtitleFonts(t.Context(), strm, ffmpeg); err != nil || fonts != nil {
+		t.Fatalf("font bundle without the host = %d fonts, %v", len(fonts), err)
+	}
+	// Silo's batch demux and a direct extract refuse the file before ffmpeg runs.
+	if err := handler.extractTextSubtitleBatch(t.Context(), strm, []playback.TextSubtitleOutput{{TextSubtitleTrack: playback.TextSubtitleTrack{Ordinal: 0, Format: "srt"}, Path: filepath.Join(t.TempDir(), "out.srt")}}); !errors.Is(err, procgroup.ErrNativeInput) {
+		t.Fatalf("batch demux of the .strm file = %v, want ErrNativeInput", err)
+	}
+	if _, err := playback.ExtractSubtitleWithFormat(t.Context(), strm, 0, "srt", ffmpeg); !errors.Is(err, procgroup.ErrNativeInput) {
+		t.Fatalf("extract without the host = %v, want ErrNativeInput", err)
+	}
+
 	// Outside a stream request with the host, the guard hides the file.
 	for _, index := range []int{external, 1} {
 		if w := request(index, false); w.Code != http.StatusNotFound {
 			t.Fatalf("track %d without the native media host = %d, want 404", index, w.Code)
+		}
+	}
+	if w := attachment(false); w.Code != http.StatusNotFound {
+		t.Fatalf("attachment without the native media host = %d, want 404", w.Code)
+	}
+
+	// The tools ran, on the host's source only.
+	arguments, err := os.ReadFile(toolLog)
+	if err != nil || len(arguments) == 0 {
+		t.Fatalf("media tools did not run: %v", err)
+	}
+	for _, argument := range strings.Split(string(arguments), "\n") {
+		if strings.Contains(argument, ".strm") {
+			t.Fatalf("a media tool was given the .strm file: %q", argument)
 		}
 	}
 }

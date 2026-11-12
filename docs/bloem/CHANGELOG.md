@@ -3,6 +3,18 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 12, 2026 — ffmpeg never opens a `.strm` file
+
+Silo's subtitle batch extract and attached-font probe handed ffmpeg a `.strm` file's
+own path, a text file anyone who can write to the library folder controls. ffmpeg
+refused it as invalid data, but read it. Every ffmpeg and ffprobe run of Silo's code
+now refuses a `.strm` file or storage identity as input before the tool starts
+(`procgroup`), and trickplay, markers and chapter images refuse one as a permanent
+failure (`mediasample`). Embedded text of a `.strm` item is no longer cached under
+the text file's size and time, so every request goes through the Jellyfin media
+host's checks, and attached fonts come from the host's source
+([how `.strm` files play](../architecture/bloem-strm.md)).
+
 ## November 12, 2026 — `.strm` items convert on workers and keep their subtitles
 
 `.strm` items now convert on transcoding workers: the worker grant binds a local

@@ -7,7 +7,8 @@
 > app and Bloem's apps on the API server and on transcoding workers, subtitle files
 > beside a `.strm` file, rescans that skip unchanged files, and the private-address
 > switch in the admin settings. Jellyfin apps play `.strm` items, with their subtitles,
-> through the Jellyfin media host for stored movies (checked on 2026-11-12). The
+> through the Jellyfin media host for stored movies (checked on 2026-11-12), and ffmpeg
+> and ffprobe never open a `.strm` file itself (checked on 2026-11-12). The
 > technical rules are in the [For developers](#for-developers) section.
 
 A **`.strm` file** is a small text file in a library whose content is the web address
@@ -55,7 +56,8 @@ Converting runs on the API server or on a transcoding worker, as for any stored 
 A worker reads the remote address itself, from Bloem's record, and applies the same
 security default with its own check. ffmpeg and ffprobe never see the remote address:
 they read from a private address inside Bloem (or the worker) that fetches the bytes
-for them.
+for them. They never open the `.strm` file either: its text is whatever was written to
+the library folder, and Bloem refuses to hand it to them as a video.
 
 **Each time the video is opened**, and about once a second while it plays, Bloem checks
 again that the viewer may still watch it and that the recorded address is still the
@@ -240,6 +242,17 @@ and the library is scanned again.
   `409 source_revision_changed`. Direct play, progressive remux and local HLS are
   tested with `.strm` items; seek anchors and embedded subtitle extraction use the same
   opened file through the unchanged native pipeline.
+- Media tools: `procgroup.CommandContext`, which starts every ffmpeg and ffprobe
+  run of Silo's code, refuses with `procgroup.ErrNativeInput`, before the tool
+  starts, a command whose `-i` argument or trailing ffprobe input is a native
+  location (`procgroup.NativeLocation`, the same rule as `IsNativeLocation`). That
+  covers subtitle batch and single-track extracts, font probes, remux, transcodes,
+  scanner backfills and tone-map checks outside a media host. `mediasample.Runner.Run`
+  (trickplay, intro and credits markers, chapter images, locally and on a node)
+  refuses a native input before ffmpeg starts, since its concat list names the input
+  on stdin; the refusal classifies as `invalid_data`, permanent, as ffmpeg's own
+  failure on the text did. Bloem's readers run their tools on the private source
+  address, never on the catalog path.
 - An open the guard refuses is `strmRefusedError`: still
   `remotesource.ErrBlockedAddress`, and a 403 `source_refused` `handlers.APIError` to
   `errors.As`, so the Jellyfin media host answers 403.
@@ -271,11 +284,17 @@ and the library is scanned again.
   serves them from disk as for any local file. That read is not a source open, so
   it does not run the native recheck the API route runs; the compatibility session
   and the playback session authorize it, as for a local file.
-- Embedded text subtitles: Silo's subtitle cache keys a track by the `.strm` file's
-  size and modification time, which change with its URL. On a miss its batch demux
-  hands ffmpeg the `.strm` text file, which ffmpeg refuses as invalid data (a
-  warning in the log); the single-track extract then reads the host's source. The
-  text is cached under the `.strm` file like a local file's.
+- Embedded text subtitles: Silo's subtitle cache keeps nothing for a native location
+  (`uncachedNativeSource` on its source stat), as for a storage identity, which is
+  never a file here. Its entries are keyed by the source file's size and time, which
+  for a `.strm` file are the text file's, and a hit would skip the host's checks. So
+  no batch demux runs; each request extracts its track through the host's source
+  (`extractContextSubtitle`), which rechecks the viewer and the recorded URL.
+- Attached fonts: inside a request with the host, `ListAttachedSubtitleFonts` and the
+  font extractors read the host's source (`listContextSubtitleFonts`,
+  `extractContextSubtitleFonts`, then `ExtractSourceSubtitleFonts`), so the attachment
+  route serves a `.strm` item's fonts. Without a host a native location has no fonts,
+  and ffprobe is not run.
 
 ### Workers
 
@@ -317,8 +336,13 @@ and the library is scanned again.
 - Jellyfin: `TestStrmJellyfinDirectPlay`, `TestStrmJellyfinRefusalsAnswer403`,
   `TestStrmJellyfinRemuxAndTranscode`, `TestStrmJellyfinWorkerStartSealsTheGrant`
   (`internal/api`) and `TestStrmSubtitlesServeForJellyfinApps`
-  (`internal/jellycompat`: a sidecar and an embedded track through Silo's subtitle
-  route, both 404 without the host).
+  (`internal/jellycompat`: a sidecar, an embedded track and an attached font through
+  Silo's routes, all 404 without the host; nothing cached under the `.strm` file; the
+  batch demux and an extract without the host refused; and recording ffmpeg and
+  ffprobe wrappers that never see a `.strm` argument).
+- Media tools: `TestCommandContextRefusesNativeInputs` and
+  `TestNativeLocationMatchesStorageSource` (`internal/procgroup`),
+  `TestRunRefusesNativeInputsWithoutStartingFFmpeg` (`internal/mediasample`).
 - `internal/api/handlers`: `TestNativeVideoWorkerGrantAdmitsLocalStrmItems`,
   `TestNativeVideoWorkerGrantRefusesLocationFreeStorageIdentities`,
   `TestStrmSidecarSubtitlesServeLikeLocalSidecars`, `TestStrmSidecarSubtitlesStayBesideTheirStrmFile`.
@@ -330,8 +354,14 @@ and the library is scanned again.
 
 ### Known limits
 
-- Jellyfin: attached fonts are not listed for a `.strm` item: Silo's font probe reads
-  the `.strm` text file. Bitmap subtitles cannot be extracted, as for stored movies.
+- Jellyfin: attached fonts are not listed for a `.strm` item, as for stored movies:
+  PlaybackInfo carries no media host, so it lists none, and Jellyfin apps do not ask
+  the attachment route for them. Bitmap subtitles cannot be extracted, as for stored
+  movies (the extract is refused before ffmpeg starts).
+- Jellyfin: a subtitle file beside a local `.strm` file is read from disk without the
+  native recheck Bloem's own subtitle route runs (`subtitleFilePreflight`). The
+  compatibility session and the playback session authorize it, as for a local file's
+  sidecar. Adding the recheck would mean a hook in Silo's Jellyfin subtitle route.
 - `media_files.file_size` of a local `.strm` is the text file's size; the remote size
   is in `remote_size`. Silo's OSHash logs that the file is too small.
 - Silo switching: Silo, serving the same database, treats a local `.strm` row as a plain
