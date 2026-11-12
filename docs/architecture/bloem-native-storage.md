@@ -89,6 +89,16 @@ become versions of one title. Bloem looks inside each video file once, with the
 trusted tool ffprobe, to learn its streams; see
 [how Bloem looks inside a stored file](bloem-native-probe.md).
 
+## How a TV show gets its name
+
+A TV library reads the same way. In
+`television/00s/Show A (2005) {tvdb-111}/Season 01/Show A (2005) - S01E01 [WEBDL-1080p]-Grp.mkv`
+the show is "Show A" (2005), the `{tvdb-111}` tag picks the exact show, and the
+file is season 1, episode 1. All of a show's seasons become one series, whatever
+group folder (`00s`, `4k`) holds it. Specials keep season 0. Subtitle files beside
+an episode (`… .en.srt`, `… .en.sdh.srt`) are attached to that episode; artwork,
+`tvshow.nfo`, samples, extras and dot-folders such as `.downloads/` are never read.
+
 ## Where covers come from
 
 ![A cover request: check the viewer may see the book, then serve a kept copy, or the cover cache, or read it from the source and keep a copy](images/native-storage/covers.svg)
@@ -161,6 +171,12 @@ then admits movie attachment only after composing the native playback service. A
 incomplete composition retains the publication hold. This describes code
 readiness, not production source certification.
 
+Series (TV) admission follows movies: the same startup assembly configures the
+series lane on the movie scan reader (`ConfigureNativeSeries`), and the API
+admits TV attachment only where native movie libraries are ready
+(`native_series_libraries`). Each selected root's source must declare the
+`series` media kind. Mixed libraries stay outside native storage.
+
 Audiobook scanning also requires the composed direct-play service through a shared
 startup latch. See [native audiobook presentations](bloem-native-audio-playback.md)
 for publication, retained authority and fixed-file delivery.
@@ -168,7 +184,8 @@ for publication, retained authority and fixed-file delivery.
 The capability document (`GET .../native-storage/capabilities`, `schema` 2) lists
 `supported_source_media`: filesystem paths for movies, series, ebooks, audiobooks
 and podcasts; once location editing is composed, `s3` for ebooks, plus movies when
-native movie libraries are ready and audiobooks when native audio is ready, and
+native movie libraries are ready, series when native series libraries are ready,
+and audiobooks when native audio is ready, and
 `bookwarehouse` for ebooks, plus audiobooks when native audio is ready.
 `native_video_downloads`, `native_video_jellyfin`, `retained_namespace_reinstall`,
 `enable` and `backend_verified` are always false.
@@ -609,6 +626,63 @@ names, because the provider's logical path is relative to its root.
 
 Which files are probed, and with what limits, is on the
 [native probe page](bloem-native-probe.md).
+
+A movie or episode file whose published row is current for the same listed
+entry (same revision and entry digest, `bloem_storage_file_refs.entry_sha256`,
+under the same configuration revision, present and still in the library) is
+not opened again: the scan passes it unprobed and publication keeps its rows,
+while a `pending` item is still matched. Publication rechecks that inside the
+page transaction; a file that changed in between fails the page with
+`ErrStorageVideoChanged`, and the scan's retry probes it. Bump
+`storageVideoPublication` when publication changes, to republish every file.
+
+### Series
+
+Series publication (`scanner.PublishStorageSeriesTx`) is the TV sibling of
+movie publication, in the same authorized page transaction.
+
+- Identity comes from Silo's naming functions, unchanged: root inference,
+  content-group identity and `ParseFilename` for season, episode and
+  multi-episode ranges. The naming root is the library's selected root
+  (`StorageSeriesParseRoots`), so an all-buckets `television/` bucket or a
+  decade group folder is never taken for a show; a selected root that is
+  itself a show folder parses from its parent, so its title and tags count.
+- Only files with an episode number are published. Air-date names and files
+  without a number stay journal entries: Silo links those by reparsing the
+  file path, which a native catalog key cannot feed. Extras, samples,
+  zero-byte objects (folder markers) and anything under a dot-folder
+  (`.downloads/`) are skipped without a read.
+- One `series` item per show: a new file joins the item its content group (the
+  show folder, anchored by `{tvdb-}`) already has in the library, from an
+  earlier page or season, otherwise it gets a `pending` item. Files carry
+  `season_number`, `episode_number` and the multi-episode range, and keep
+  `observed_root_path` empty, so Silo's path-based series root queue never sees
+  them. Silo's shared upsert stores season 0 as unknown (NULL); publication
+  then sets specials back to 0.
+- Text subtitles (`.srt`, `.vtt`, `.ass`, `.ssa`) are attached to the episode
+  whose base name they extend (Silo's `naming.SubtitleSuffix`), with language,
+  forced and SDH tags, in `bloem_storage_episode_sidecars`. The scan pairs a
+  directory's sidecars with its episodes across the directory's pages. They
+  are not published as files and not yet offered to clients.
+- After each page commits, a `pending` series (or an `unmatched` one with
+  provider tags) is matched through `MetadataService.Process`: a `{tvdb-}`
+  tag (else `{tmdb-}`) applies as `ModeIdentify`, other shows search with
+  title and year (`ModeInitialMatch`, type `series`). A match creates the
+  provider's seasons and episodes and links the files with Silo's
+  `BulkLinkEpisodesBySeries`, which reads the persisted numbers. A show no
+  provider knows is marked `unmatched` and gets Silo's fallback episodes
+  (`SynthesizeFallbackEpisodes`). New files of a matched series are bulk
+  linked; episodes the provider does not list yet wait for Silo's refresh.
+- Completion drops the sidecars whose entry is gone, reads the episodes of
+  the location's missing files before the sweep can delete those files, and
+  after commit removes their stale `episode_libraries` rows through Silo's
+  `EpisodeLibraryRepository`. A show left without present files loses its
+  membership and, when orphaned, its item, seasons and episodes.
+
+A series source declares the `series` media kind, lists one directory per
+call with entry IDs that stay stable for the same object, and returns zero-byte
+folder marker objects as the directory, never as files (the scan also skips
+zero-byte files).
 
 ### Incremental listing
 

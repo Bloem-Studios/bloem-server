@@ -63,6 +63,12 @@ func (s *server) Configure(_ context.Context, r *publicv1.ConfigureRequest) (*pu
 		revision = "v1"
 	}
 	s.objects = fixtures(revision)
+	if s.mode == "series" {
+		var err error
+		if s.objects, err = seriesFixtures(s.notify, revision); err != nil {
+			return nil, status.Error(codes.InvalidArgument, "series fixture unavailable")
+		}
+	}
 	if strings.HasPrefix(s.mode, "movies") {
 		var err error
 		if strings.HasPrefix(s.mode, "movies-folders") {
@@ -140,6 +146,9 @@ func (s *server) Describe(ctx context.Context, _ *storagev1.DescribeRequest) (*s
 		}
 	}
 	d := &storagev1.DescribeResponse{Revision: 1, Sources: []*storagev1.Source{{Id: "books", RootEntryId: "root", RevisionPinnedReads: s.pinned}}}
+	if s.mode == "series" {
+		d.Sources[0].MediaKinds = []string{"series"}
+	}
 	if strings.HasPrefix(s.mode, "audio") {
 		d.Sources[0].DirectoryOnlyListing = s.mode != "audio-no-directory"
 		if s.mode != "audio-no-kind" {
@@ -177,6 +186,9 @@ func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1
 	s.audit("list")
 	if s.mode == "catalog" {
 		return s.listCatalog(r)
+	}
+	if s.mode == "series" {
+		return s.listSeries(r)
 	}
 	if s.mode == "describe-gate" {
 		return nil, status.Error(codes.Unavailable, "unexpected listing after Describe gate")

@@ -100,3 +100,10 @@
 
 # A detached source answers configuration and credential changes as not found.
 ./internal/nativestorage TestDetachedSourceConfigurationIsNotFoundDB
+
+# Native series (TV) libraries: readiness hold, the verified ClearStream layout,
+# matching and linking, the completion sweep, and series media-kind admission.
+./internal/libraryingest TestNativeSeriesStorageDefaultHoldDB
+./internal/libraryingest TestNativeSeriesStorageScanPublishesShowsDB
+./internal/libraryingest TestNativeSeriesStorageCompletionSweepDB
+./internal/nativestorage TestLibraryLocationsAliasLibraryTypesDB

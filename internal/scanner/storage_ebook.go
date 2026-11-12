@@ -573,7 +573,9 @@ func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, loc
 // SweepStorageLocationTx reconciles the completing location and empties its
 // expired trash inside the caller's authorized completion transaction. The
 // library repository retains its orphan, present-file and removal-grace guards.
-// Native ebook and movie publication has no episode memberships or filesystem roots.
+// Native publication has no filesystem roots. A TV library's series items are
+// reconciled here like movies; its episode memberships follow the committed
+// missing flags afterwards (ReconcileStorageEpisodeMemberships).
 // The returned artwork directories may be removed only after a successful commit.
 func (s *Scanner) SweepStorageLocationTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder, location storagesource.Location) (int, []string, error) {
 	result, directories, err := s.SweepStorageLocationCountsTx(ctx, tx, folder, location)
@@ -604,7 +606,7 @@ func (s *Scanner) reconcileStorageItemsTx(ctx context.Context, tx pgx.Tx, folder
 
 func (s *Scanner) SweepStorageLocationCountsTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder, location storagesource.Location) (ScanResult, []string, error) {
 	if s == nil || s.libraryRepo == nil || s.fileRepo == nil || tx == nil || folder == nil ||
-		(!librarykind.IsEbook(folder.Type) && !librarykind.IsMovie(folder.Type) && !librarykind.Of(folder.Type).Audiobook) || folder.ID != location.FolderID {
+		(!librarykind.IsEbook(folder.Type) && !librarykind.IsMovie(folder.Type) && !librarykind.IsTV(folder.Type) && !librarykind.Of(folder.Type).Audiobook) || folder.ID != location.FolderID {
 		return ScanResult{}, nil, fmt.Errorf("storage sweep: scanner or library not configured")
 	}
 	rows, err := tx.Query(ctx, `SELECT DISTINCT mf.content_id FROM media_files mf JOIN bloem_storage_file_refs r ON r.media_file_id=mf.id WHERE r.location_id=$1 AND mf.media_folder_id=$2 AND mf.content_id IS NOT NULL ORDER BY mf.content_id`, location.ID, folder.ID)

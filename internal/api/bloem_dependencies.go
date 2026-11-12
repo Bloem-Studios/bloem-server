@@ -25,12 +25,15 @@ type BloemDependencies struct {
 	// trusted probe and publication coordinator. It is not backend health proof
 	// or viewer playback authority, and no request/config setting may change it.
 	NativeMovieScannerReady bool
-	NativeAudioScannerReady bool
-	NativeAudioGate         *atomic.Bool
-	Ambience                *ambience.Service   // S-3 seasonal ambience packs (nil when DB unavailable)
-	Promotions              *promotions.Service // S-2 promotion cards (nil when DB unavailable)
-	HostStatsSource         handlers.HostStatsSource
-	LiveTV                  *livetv.Service // shared Live TV / OTA / DVR service (may be nil)
+	// NativeSeriesScannerReady witnesses the series lane on the same scanner;
+	// TV libraries are admitted only where movie playback readiness is too.
+	NativeSeriesScannerReady bool
+	NativeAudioScannerReady  bool
+	NativeAudioGate          *atomic.Bool
+	Ambience                 *ambience.Service   // S-3 seasonal ambience packs (nil when DB unavailable)
+	Promotions               *promotions.Service // S-2 promotion cards (nil when DB unavailable)
+	HostStatsSource          handlers.HostStatsSource
+	LiveTV                   *livetv.Service // shared Live TV / OTA / DVR service (may be nil)
 
 	// OrganizationDomains maps each request's domain to its organization for
 	// presentation; OrganizationDomainStore writes domains and branding. Both

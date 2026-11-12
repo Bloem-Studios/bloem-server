@@ -44,6 +44,7 @@ type BloemNativeStorageCapabilities struct {
 	S3BucketBrowse              bool `json:"s3_bucket_browse" doc:"The stateless S3 bucket and folder browse operations are composed. Organization administrators are limited to well-known S3 endpoint ports."`
 	S3CheckedETagReads          bool `json:"s3_checked_etag_reads" doc:"Explicit checked-etag admission is supported for approved S3 source configuration. This does not enable a source or prove immutable bytes."`
 	NativeMovieLibraries        bool `json:"native_movie_libraries" doc:"Movie attachment and scanning are composed with native video playback; individual sources still require admission under their retained read policy."`
+	NativeSeriesLibraries       bool `json:"native_series_libraries" doc:"TV (series) library attachment and scanning are composed with native video playback, as native_movie_libraries is for movies; each selected source must declare the series media kind."`
 	NativeVideoPlayback         bool `json:"native_video_playback" doc:"Native API video playback is composed; this does not certify a backend or client runtime."`
 	NativeVideoRemoteExecution  bool `json:"native_video_remote_execution" doc:"Shared worker grants and header-auth serving recipes are composed for remote HLS; the selected worker still needs its own approved runtime and retained provider identity."`
 	NativeVideoDownloads        bool `json:"native_video_downloads" enum:"false"`

@@ -18,7 +18,7 @@ func TestNativeMovieScannerStartupRequiresCompleteDependencies(t *testing.T) {
 		t.Run(missing, func(t *testing.T) {
 			pool := new(pgxpool.Pool)
 			fileRepo := scanner.NewFileRepository(pool)
-			deps := &api.Dependencies{DB: pool, NativeStorage: &nativestorage.Host{Registry: new(plugins.NativeStorageRegistry), Manager: storageplugin.NewManager(storageplugin.Config{})}, Scanner: scanner.NewScanner(fileRepo, "ffprobe", nil, 1, false, 0), FileRepo: fileRepo, BloemDependencies: api.BloemDependencies{NativeMovieScannerReady: true}}
+			deps := &api.Dependencies{DB: pool, NativeStorage: &nativestorage.Host{Registry: new(plugins.NativeStorageRegistry), Manager: storageplugin.NewManager(storageplugin.Config{})}, Scanner: scanner.NewScanner(fileRepo, "ffprobe", nil, 1, false, 0), FileRepo: fileRepo, BloemDependencies: api.BloemDependencies{NativeMovieScannerReady: true, NativeSeriesScannerReady: true}}
 			switch missing {
 			case "deps":
 				deps = nil
@@ -41,7 +41,7 @@ func TestNativeMovieScannerStartupRequiresCompleteDependencies(t *testing.T) {
 			if err == nil || scanner != nil {
 				t.Fatalf("incomplete %s published scanner readiness", missing)
 			}
-			if deps != nil && deps.NativeMovieScannerReady {
+			if deps != nil && (deps.NativeMovieScannerReady || deps.NativeSeriesScannerReady) {
 				t.Fatalf("incomplete %s left readiness advertised", missing)
 			}
 		})

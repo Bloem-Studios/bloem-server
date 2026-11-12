@@ -25,6 +25,7 @@ type LibraryLocations struct {
 	pool                *pgxpool.Pool
 	nativeMovieReady    bool
 	nativeAudioReady    bool
+	nativeSeriesReady   bool
 	mixedLocationsReady bool
 	browser             *SourceBrowser
 	sources             *storagesource.Repository
@@ -94,6 +95,15 @@ func (l *LibraryLocations) AttachTx(ctx context.Context, tx pgx.Tx, sourceKey uu
 		return err
 	}
 	return nil
+}
+
+// SetNativeSeriesReady must be called only after the series scan lane and
+// native video playback are both composed.
+func (l *LibraryLocations) SetNativeSeriesReady(ready bool) {
+	if l != nil {
+		l.nativeSeriesReady = ready
+		l.resources.SetNativeSeriesReady(ready)
+	}
 }
 
 // SetNativeAudioReady must be called only after full audio composition.

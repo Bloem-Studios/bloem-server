@@ -1219,6 +1219,7 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | `native_audio_libraries` | boolean | yes | Requires the complete native audio scanner, catalog and playback composition. |
 | `native_audio_playback` | boolean | yes | Always equal to native_audio_libraries: true only when the native audio scanner, catalog and playback are all composed. |
 | `native_movie_libraries` | boolean | yes | Movie attachment and scanning are composed with native video playback; individual sources still require admission under their retained read policy. |
+| `native_series_libraries` | boolean | yes | TV (series) library attachment and scanning are composed with native video playback, as native_movie_libraries is for movies; each selected source must declare the series media kind. |
 | `native_video_downloads` | boolean: `False` | yes |  |
 | `native_video_jellyfin` | boolean: `False` | yes |  |
 | `native_video_playback` | boolean | yes | Native API video playback is composed; this does not certify a backend or client runtime. |
