@@ -246,8 +246,12 @@ func (c *nativeSidecarCache) get(key string) ([]byte, bool) {
 	if !ok {
 		return nil, false
 	}
+	entry, ok := element.Value.(*nativeSidecarCacheEntry)
+	if !ok {
+		return nil, false
+	}
 	c.order.MoveToFront(element)
-	return bytes.Clone(element.Value.(*nativeSidecarCacheEntry).data), true
+	return bytes.Clone(entry.data), true
 }
 
 func (c *nativeSidecarCache) put(key string, data []byte) {
@@ -267,9 +271,10 @@ func (c *nativeSidecarCache) put(key string, data []byte) {
 	c.bytes += len(data)
 	for c.bytes > nativeSidecarCacheBytes {
 		oldest := c.order.Back()
-		entry := oldest.Value.(*nativeSidecarCacheEntry)
 		c.order.Remove(oldest)
-		delete(c.items, entry.key)
-		c.bytes -= len(entry.data)
+		if entry, ok := oldest.Value.(*nativeSidecarCacheEntry); ok {
+			delete(c.items, entry.key)
+			c.bytes -= len(entry.data)
+		}
 	}
 }

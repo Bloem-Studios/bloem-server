@@ -214,16 +214,13 @@ type PlaybackFile struct {
 var _ mediasource.File = (*PlaybackFile)(nil)
 
 type playbackFileState struct {
-	ctx         context.Context
-	cancel      context.CancelCauseFunc
-	coordinator *Coordinator
-	authority   PlaybackAuthority
-	file        models.MediaFile
-	source      storagesource.SourceConfig
-	// ref is the entry read; fileRef is file's own entry, which authorizes
-	// it. They differ only for a sidecar, which sidecar rechecks.
-	ref, fileRef   storagesource.PersistedRef
-	sidecar        func(context.Context) error
+	ctx            context.Context
+	cancel         context.CancelCauseFunc
+	coordinator    *Coordinator
+	authority      PlaybackAuthority
+	file           models.MediaFile
+	source         storagesource.SourceConfig
+	ref            storagesource.PersistedRef
 	snapshot       *plugins.NativeStorageSnapshot
 	runtime        context.Context
 	cover          bool
@@ -234,6 +231,11 @@ type playbackFileState struct {
 	closed         bool
 	sticky         error
 	active         sync.WaitGroup
+
+	// ref is the entry read; fileRef is file's own entry, which authorizes
+	// it. They differ only for a sidecar, which sidecar rechecks.
+	fileRef storagesource.PersistedRef
+	sidecar func(context.Context) error
 }
 
 func (s *playbackFileState) fail(err error) error {

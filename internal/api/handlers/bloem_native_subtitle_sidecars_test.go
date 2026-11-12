@@ -91,7 +91,7 @@ func (p *nativeSidecarProvider) count() int {
 const (
 	nativeSidecarSDH    = "1\n00:00:01,000 --> 00:00:02,500\n[door creaks] Hearing-impaired line\n"
 	nativeSidecarPlain  = "1\n00:00:01,000 --> 00:00:02,500\nPlain English line\n"
-	nativeSidecarForced = "[Script Info]\nScriptType: v4.00+\n\n[Events]\nFormat: Layer, Start, End, Style, Text\nDialogue: 0,0:00:01.00,0:00:02.00,Default,Forced Dutch sign\n"
+	nativeSidecarForced = "[Script Info]\nScriptType: v4.00+\n\n[Events]\nFormat: Layer, Start, End, Style, Text\nDialogue: 0,0:00:01.00,0:00:02.00,Default,Forced Dutch sign\n" //nolint:misspell // "Dialogue" is the ASS event keyword
 )
 
 func nativeSidecarFixture(t *testing.T) (*StreamHandler, *models.MediaFile, *playback.Session, *nativeSidecarStore, *nativeSidecarProvider) {
