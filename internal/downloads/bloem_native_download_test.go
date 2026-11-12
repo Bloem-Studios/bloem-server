@@ -37,7 +37,7 @@ type nativeOriginalsFixture struct {
 	body    string
 	openErr error
 	opened  *nativeOriginalFixture
-	ctx     context.Context
+	marker  any
 }
 
 func (n *nativeOriginalsFixture) DownloadFile(_ context.Context, file *models.MediaFile) (*models.MediaFile, bool) {
@@ -50,7 +50,7 @@ func (n *nativeOriginalsFixture) DownloadFile(_ context.Context, file *models.Me
 }
 
 func (n *nativeOriginalsFixture) OpenOriginal(ctx context.Context, _ *http.Request, _ *models.MediaFile) (NativeOriginal, error) {
-	n.ctx = ctx
+	n.marker = ctx.Value(nativeServeCtxKey{})
 	if n.openErr != nil {
 		return nil, n.openErr
 	}
@@ -94,7 +94,7 @@ func TestNativeOriginalDownloadServesThroughNativeReader(t *testing.T) {
 	if rr.Code != http.StatusPartialContent || rr.Body.String() != "video" {
 		t.Fatalf("status=%d body=%q", rr.Code, rr.Body.String())
 	}
-	if originals.ctx == nil || originals.ctx.Value(nativeServeCtxKey{}) != "request" {
+	if originals.marker != "request" {
 		t.Fatal("native reader did not get the request context")
 	}
 	disposition := rr.Header().Get("Content-Disposition")

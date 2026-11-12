@@ -107,122 +107,153 @@ func nativeVideoDownloadDelegation(ctx context.Context, fileID int, p nativeVide
 	}
 	d := handlers.NativeVideoAuthority{ExpiresAt: time.Now().UTC().Add(playback.MaxTokenTTL), OriginalMethod: "GET", OriginalPath: "download"}
 	link := false
+	var err error
 	if compat, ok := ctx.Value(nativeVideoCompatDownloadKey{}).(nativeVideoCompatDownload); ok {
-		sessions := p.compat.currentSessions()
-		if sessions == nil {
-			return empty, middleware.ErrCurrentCredentialInvalid
-		}
-		current, err := sessions.Recheck(ctx, compat.credential)
-		if err != nil {
-			return empty, err
-		}
-		// Sessions an `sa_` admin key synthesizes have no login session.
-		if current.UserID != compat.userID || current.ProfileID != compat.profileID || current.LoginSessionID == "" || strings.HasPrefix(compat.credential, "sa_") {
-			return empty, middleware.ErrCurrentCredentialForbidden
-		}
-		d.UserID, d.ProfileID = current.UserID, current.ProfileID
-		d.TokenType, d.AuthMethod = nativeVideoCompatDownloadTokenType, nativeVideoCompatDownloadTokenType
-		d.LoginSessionID = current.LoginSessionID
-		d.CompatSessionDigest = nativeVideoCompatDigest(compat.credential)
-		d.PINVerificationSkipped = true
-		if !current.ExpiresAt.IsZero() && current.ExpiresAt.Before(d.ExpiresAt) {
-			d.ExpiresAt = current.ExpiresAt.UTC()
-		}
+		err = nativeVideoCompatDownloadActor(ctx, compat, p, &d)
 	} else {
-		// The viewer access middleware resolved this scope for the request,
-		// with its PIN proof; the delegation pins the revisions it saw.
-		scope, hasScope := access.GetScope(ctx)
-		claims := middleware.GetClaims(ctx)
-		if !hasScope || claims == nil || scope.UserID <= 0 || claims.UserID != scope.UserID || !scope.PlaybackAllowed || claims.ProfileID != "" && claims.ProfileID != scope.ProfileID {
-			return empty, middleware.ErrCurrentCredentialInvalid
-		}
-		if profile := middleware.GetProfileID(ctx); profile != "" && profile != scope.ProfileID {
-			return empty, middleware.ErrCurrentCredentialInvalid
-		}
-		d.UserID, d.ProfileID = scope.UserID, scope.ProfileID
-		switch claims.TokenType {
-		case auth.TokenTypeDirectDownloadLink:
-			// A link authorizes one file of its login session.
-			if claims.FileID != fileID {
-				return empty, middleware.ErrCurrentCredentialForbidden
-			}
-			link = true
-			d.PINVerificationSkipped = true
-			fallthrough
-		case auth.TokenTypeAccess:
-			if claims.SessionID == "" {
-				return empty, middleware.ErrCurrentCredentialInvalid
-			}
-			d.TokenType = auth.TokenTypeAccess
-			d.LoginSessionID = claims.SessionID
-			d.AuthMethod = claims.AuthMethod
-			d.PINVerificationSkipped = d.PINVerificationSkipped || claims.AuthMethod == auth.AuthMethodDirectProfile
-		case auth.TokenTypeAPIKey:
-			if p.loadAPIKeyMetadata == nil {
-				return empty, middleware.ErrCurrentCredentialInvalid
-			}
-			key, err := p.loadAPIKeyMetadata(ctx, claims.APIKeyID)
-			if err != nil {
-				return empty, err
-			}
-			if key == nil || key.ID != claims.APIKeyID || key.UserID != d.UserID || key.Revision <= 0 || len(key.Scopes) != 0 {
-				return empty, middleware.ErrCurrentCredentialForbidden
-			}
-			d.TokenType = auth.TokenTypeAPIKey
-			d.APIKeyID, d.APIKeyRevision = key.ID, key.Revision
-			d.PINVerificationSkipped = true
-		default:
-			return empty, middleware.ErrCurrentCredentialForbidden
-		}
+		link, err = nativeVideoRequestDownloadActor(ctx, fileID, p, &d)
 	}
-	if d.LoginSessionID != "" {
-		login, err := p.loadLogin(ctx, d.LoginSessionID)
-		if err != nil {
-			return empty, err
-		}
-		if login == nil || login.ID != d.LoginSessionID || login.UserID != d.UserID {
-			return empty, middleware.ErrCurrentCredentialInvalid
-		}
-		if link {
-			// A link token names no sign-in method; the session's own does.
-			d.AuthMethod = login.AuthMethod
-		}
-		if login.Purpose == models.SessionPurposeRemotePlayback && login.AbsoluteExpiresAt != nil && login.AbsoluteExpiresAt.Before(d.ExpiresAt) {
-			d.ExpiresAt = login.AbsoluteExpiresAt.UTC()
-		}
-		if login.ExpiresAt.Before(d.ExpiresAt) {
-			d.ExpiresAt = login.ExpiresAt.UTC()
-		}
-	}
-	captured, ok := tenancy.FromContext(ctx)
-	if !ok || captured.AccountID != d.UserID || captured.OrganizationID == uuid.Nil || captured.MembershipID == uuid.Nil {
-		return empty, middleware.ErrCurrentCredentialInvalid
-	}
-	tenant, err := p.tenants.ResolveSubjectTenant(ctx, d.UserID, d.ProfileID)
 	if err != nil {
 		return empty, err
 	}
-	tenant.Legacy = captured.Legacy
-	if tenant != captured {
-		return empty, middleware.ErrCurrentCredentialInvalid
+	if err := nativeVideoDownloadLogin(ctx, p, &d, link); err != nil {
+		return empty, err
 	}
-	d.Tenant = tenant
-	if d.ProfileID != "" {
-		if p.loadProfile == nil {
-			return empty, middleware.ErrCurrentCredentialInvalid
-		}
-		profile, err := p.loadProfile(ctx, d.UserID, d.ProfileID)
-		if err != nil {
-			return empty, err
-		}
-		if profile == nil || profile.ID != d.ProfileID || profile.OrganizationID != d.Tenant.OrganizationID.String() {
-			return empty, middleware.ErrCurrentCredentialInvalid
-		}
-		d.ProfilePINRevision = profile.PINRevision
-		d.ProfileCredentialRevision = profile.CredentialRevision
+	if err := nativeVideoDownloadTenant(ctx, p, &d); err != nil {
+		return empty, err
 	}
 	if err := verifyNativeVideoActor(ctx, d, p); err != nil {
 		return empty, err
 	}
 	return d, nil
+}
+
+// nativeVideoCompatDownloadActor fills d from the Jellyfin-compatible session.
+func nativeVideoCompatDownloadActor(ctx context.Context, compat nativeVideoCompatDownload, p nativeVideoPolicy, d *handlers.NativeVideoAuthority) error {
+	sessions := p.compat.currentSessions()
+	if sessions == nil {
+		return middleware.ErrCurrentCredentialInvalid
+	}
+	current, err := sessions.Recheck(ctx, compat.credential)
+	if err != nil {
+		return err
+	}
+	// Sessions an `sa_` admin key synthesizes have no login session.
+	if current.UserID != compat.userID || current.ProfileID != compat.profileID || current.LoginSessionID == "" || strings.HasPrefix(compat.credential, "sa_") {
+		return middleware.ErrCurrentCredentialForbidden
+	}
+	d.UserID, d.ProfileID = current.UserID, current.ProfileID
+	d.TokenType, d.AuthMethod = nativeVideoCompatDownloadTokenType, nativeVideoCompatDownloadTokenType
+	d.LoginSessionID = current.LoginSessionID
+	d.CompatSessionDigest = nativeVideoCompatDigest(compat.credential)
+	d.PINVerificationSkipped = true
+	if !current.ExpiresAt.IsZero() && current.ExpiresAt.Before(d.ExpiresAt) {
+		d.ExpiresAt = current.ExpiresAt.UTC()
+	}
+	return nil
+}
+
+// nativeVideoRequestDownloadActor fills d from the request's credential. The
+// viewer access middleware resolved its scope, with its PIN proof; the
+// delegation pins the revisions it saw. It reports whether the credential is a
+// direct-download link.
+func nativeVideoRequestDownloadActor(ctx context.Context, fileID int, p nativeVideoPolicy, d *handlers.NativeVideoAuthority) (bool, error) {
+	scope, hasScope := access.GetScope(ctx)
+	claims := middleware.GetClaims(ctx)
+	if !hasScope || claims == nil || scope.UserID <= 0 || claims.UserID != scope.UserID || !scope.PlaybackAllowed || claims.ProfileID != "" && claims.ProfileID != scope.ProfileID {
+		return false, middleware.ErrCurrentCredentialInvalid
+	}
+	if profile := middleware.GetProfileID(ctx); profile != "" && profile != scope.ProfileID {
+		return false, middleware.ErrCurrentCredentialInvalid
+	}
+	d.UserID, d.ProfileID = scope.UserID, scope.ProfileID
+	switch claims.TokenType {
+	case auth.TokenTypeDirectDownloadLink, auth.TokenTypeAccess:
+		link := claims.TokenType == auth.TokenTypeDirectDownloadLink
+		// A link authorizes one file of its login session.
+		if claims.SessionID == "" || link && claims.FileID != fileID {
+			return false, middleware.ErrCurrentCredentialForbidden
+		}
+		d.TokenType = auth.TokenTypeAccess
+		d.LoginSessionID = claims.SessionID
+		d.AuthMethod = claims.AuthMethod
+		d.PINVerificationSkipped = link || claims.AuthMethod == auth.AuthMethodDirectProfile
+		return link, nil
+	case auth.TokenTypeAPIKey:
+		if p.loadAPIKeyMetadata == nil {
+			return false, middleware.ErrCurrentCredentialInvalid
+		}
+		key, err := p.loadAPIKeyMetadata(ctx, claims.APIKeyID)
+		if err != nil {
+			return false, err
+		}
+		if key == nil || key.ID != claims.APIKeyID || key.UserID != d.UserID || key.Revision <= 0 || len(key.Scopes) != 0 {
+			return false, middleware.ErrCurrentCredentialForbidden
+		}
+		d.TokenType = auth.TokenTypeAPIKey
+		d.APIKeyID, d.APIKeyRevision = key.ID, key.Revision
+		d.PINVerificationSkipped = true
+		return false, nil
+	default:
+		return false, middleware.ErrCurrentCredentialForbidden
+	}
+}
+
+// nativeVideoDownloadLogin bounds d by its login session, when it has one.
+func nativeVideoDownloadLogin(ctx context.Context, p nativeVideoPolicy, d *handlers.NativeVideoAuthority, link bool) error {
+	if d.LoginSessionID == "" {
+		return nil
+	}
+	login, err := p.loadLogin(ctx, d.LoginSessionID)
+	if err != nil {
+		return err
+	}
+	if login == nil || login.ID != d.LoginSessionID || login.UserID != d.UserID {
+		return middleware.ErrCurrentCredentialInvalid
+	}
+	if link {
+		// A link token names no sign-in method; the session's own does.
+		d.AuthMethod = login.AuthMethod
+	}
+	if login.Purpose == models.SessionPurposeRemotePlayback && login.AbsoluteExpiresAt != nil && login.AbsoluteExpiresAt.Before(d.ExpiresAt) {
+		d.ExpiresAt = login.AbsoluteExpiresAt.UTC()
+	}
+	if login.ExpiresAt.Before(d.ExpiresAt) {
+		d.ExpiresAt = login.ExpiresAt.UTC()
+	}
+	return nil
+}
+
+// nativeVideoDownloadTenant pins the request's organization and the profile's
+// PIN and credential revisions.
+func nativeVideoDownloadTenant(ctx context.Context, p nativeVideoPolicy, d *handlers.NativeVideoAuthority) error {
+	captured, ok := tenancy.FromContext(ctx)
+	if !ok || captured.AccountID != d.UserID || captured.OrganizationID == uuid.Nil || captured.MembershipID == uuid.Nil {
+		return middleware.ErrCurrentCredentialInvalid
+	}
+	tenant, err := p.tenants.ResolveSubjectTenant(ctx, d.UserID, d.ProfileID)
+	if err != nil {
+		return err
+	}
+	tenant.Legacy = captured.Legacy
+	if tenant != captured {
+		return middleware.ErrCurrentCredentialInvalid
+	}
+	d.Tenant = tenant
+	if d.ProfileID == "" {
+		return nil
+	}
+	if p.loadProfile == nil {
+		return middleware.ErrCurrentCredentialInvalid
+	}
+	profile, err := p.loadProfile(ctx, d.UserID, d.ProfileID)
+	if err != nil {
+		return err
+	}
+	if profile == nil || profile.ID != d.ProfileID || profile.OrganizationID != d.Tenant.OrganizationID.String() {
+		return middleware.ErrCurrentCredentialInvalid
+	}
+	d.ProfilePINRevision = profile.PINRevision
+	d.ProfileCredentialRevision = profile.CredentialRevision
+	return nil
 }
