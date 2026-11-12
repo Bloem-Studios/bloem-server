@@ -7,6 +7,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/libraryingest"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
+	"github.com/Silo-Server/silo-server/internal/remotesource"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
@@ -46,6 +47,9 @@ func newNativeMovieStorageScanner(deps *api.Dependencies) (*libraryingest.Storag
 	if err := storage.ConfigureNativeMovies(true, reader, cfg); err != nil {
 		return nil, err
 	}
+	// `.strm` objects in movie storage sources catalog the movie their URL
+	// points at, through the shared SSRF guard (docs/architecture/bloem-strm.md).
+	storage.ConfigureRemoteSources(remotesource.ForPool(deps.DB))
 	if deps.Scanner.NativeAudioScanConfigured() {
 		// Every audio probe read is a provider range request, so larger
 		// reads cut the requests per probe.

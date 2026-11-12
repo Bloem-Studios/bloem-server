@@ -51,10 +51,19 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesour
 	// and proves pinned Stat metadata against exactly that pending checkpoint.
 	page = proto.CloneOf(page)
 	skipped := 0
-	var candidates []int
+	var candidates, strms []int
 	var excluded []string
 	for i, entry := range page.GetEntries() {
 		if entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_FILE {
+			continue
+		}
+		if c.takesStrm(entry) {
+			if scanner.StorageMovieFileSkipped(entry) {
+				skipped++
+				excluded = append(excluded, entry.GetId())
+				continue
+			}
+			strms = append(strms, i)
 			continue
 		}
 		if _, ok := scanner.NativeMovieDemuxer(entry.GetName()); !ok {
@@ -68,7 +77,7 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesour
 		}
 		candidates = append(candidates, i)
 	}
-	if len(candidates) == 0 {
+	if len(candidates) == 0 && len(strms) == 0 {
 		return nil, skipped, excluded, nil
 	}
 	sealed, err := c.movieReader.AdmitScanPage(ctx, location, source, lease, checkpoint, page)
@@ -89,6 +98,19 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesour
 		// failed admission/configuration still leaves this handle with us.
 		if err := errors.Join(probeErr, file.Close()); err != nil {
 			return nil, 0, nil, storageMovieProbeError(entry.GetName(), err)
+		}
+		movies = append(movies, movie)
+	}
+	for _, i := range strms {
+		entry := page.GetEntries()[i]
+		movie, ok, err := c.prepareStrmMovie(ctx, location, sealed, i, entry)
+		if err != nil {
+			return nil, 0, nil, err
+		}
+		if !ok {
+			skipped++
+			excluded = append(excluded, entry.GetId())
+			continue
 		}
 		movies = append(movies, movie)
 	}

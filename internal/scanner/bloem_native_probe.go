@@ -35,6 +35,10 @@ const (
 	NativeProbeFLAC
 	NativeProbeOgg
 	NativeProbeWAV
+	// NativeProbeAVI and NativeProbeMPEGTS read remote `.strm` media; native
+	// storage movies stay on MOV and Matroska.
+	NativeProbeAVI
+	NativeProbeMPEGTS
 )
 
 // NativeProbeConfig comes from the trusted scan consumer. Every bound is
@@ -80,6 +84,10 @@ func probeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 		demuxer, formats = "ogg", "ogg"
 	case NativeProbeWAV:
 		demuxer, formats = "wav", "wav"
+	case NativeProbeAVI:
+		demuxer, formats = "avi", "avi"
+	case NativeProbeMPEGTS:
+		demuxer, formats = "mpegts", "mpegts"
 	default:
 		return nil, nil, ErrNativeProbeInvalid
 	}

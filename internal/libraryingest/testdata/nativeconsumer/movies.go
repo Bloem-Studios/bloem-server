@@ -25,6 +25,10 @@ func movieFixtures(prefix, revision string) ([]object, error) {
 			Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Size: int64(len(data)), Revision: revision, ModifiedUnixNano: 1700000000000000000}, data})
 	}
 	data := []byte("https://untrusted.invalid/remote-movie")
+	if url, err := os.ReadFile(prefix + ".strm-url"); err == nil {
+		// A test that serves the remote movie names its address here.
+		data = url
+	}
 	result = append(result, object{&storagev1.Entry{Id: "03-shortcut", Name: "remote.strm", LogicalPath: "Movies/remote.strm",
 		Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Size: int64(len(data)), Revision: revision, ModifiedUnixNano: 1700000000000000000}, data})
 	return result, nil
