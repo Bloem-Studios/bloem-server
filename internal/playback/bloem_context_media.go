@@ -171,6 +171,29 @@ func contextTranscodeInput(ctx context.Context, opts TranscodeOpts) (TranscodeOp
 	return opts, nil
 }
 
+// ContextWorkerStartSealer is an optional ContextMediaHost capability: it
+// gives a transcode worker the authority to read a context-scoped input
+// before the start request (its exact JSON body) is sent to nodeURL.
+type ContextWorkerStartSealer interface {
+	SealWorkerStart(ctx context.Context, nodeURL string, start []byte) error
+}
+
+// SealContextWorkerStart is the remote transcode start's hook: within a
+// request whose host can seal worker starts, it does so before the start is
+// sent. Elsewhere it does nothing, and a worker refuses an input it has no
+// authority for.
+func SealContextWorkerStart(ctx context.Context, nodeURL string, start []byte) error {
+	media, _ := ctx.Value(contextMediaKey{}).(*contextMedia)
+	if media == nil {
+		return nil
+	}
+	sealer, ok := media.host.(ContextWorkerStartSealer)
+	if !ok {
+		return nil
+	}
+	return sealer.SealWorkerStart(ctx, nodeURL, start)
+}
+
 // ContextMediaStatus maps a host error to a response status. A host error
 // may carry its own (HTTPStatus() int).
 func ContextMediaStatus(err error) int {

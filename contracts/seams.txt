@@ -159,6 +159,7 @@ internal/invitations/repository.go
 internal/invitations/repository_atomic_test.go  # fully migrated isolated databases preserve tenant FKs/triggers and strengthen rollback checks
 internal/invitations/service.go
 internal/invitations/service_atomic_test.go  # reuse real tenant membership provisioning in the atomic acceptance fixture
+internal/jellycompat/handlers_playback.go  # three hook lines (S6): the remote transcode start seals the worker grant for a native-storage input before it is sent (playback.SealContextWorkerStart); Jellyfin worker HLS of native-storage files, approved 2026-11-12, chosen over wrapping NodeClient's transport, which Silo's client test pins to *http.Transport
 internal/jellycompat/streamtelemetry.go  # two lines (S1): attachCompatStream notes the compat session, playback session and file for the request's context media host (playback.NoteContextStream); the one place every Jellyfin stream handler names them, so native-storage files play for Jellyfin clients, approved 2026-11-12
 internal/libraryingest/executor.go
 internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library

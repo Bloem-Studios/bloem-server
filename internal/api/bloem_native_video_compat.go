@@ -71,6 +71,8 @@ type nativeVideoCompatDelivery struct {
 	service    *handlers.NativeVideoService
 	getSession func(string) (*playback.Session, error)
 	files      handlers.FilePathResolver
+	// secret signs the API's requests to workers.
+	secret func() string
 }
 
 func NewNativeVideoCompat() *NativeVideoCompat { return &NativeVideoCompat{} }
@@ -92,9 +94,9 @@ func (c *NativeVideoCompat) currentSessions() NativeVideoCompatSessions {
 	return nil
 }
 
-func (c *NativeVideoCompat) install(service *handlers.NativeVideoService, getSession func(string) (*playback.Session, error), files handlers.FilePathResolver) {
+func (c *NativeVideoCompat) install(service *handlers.NativeVideoService, getSession func(string) (*playback.Session, error), files handlers.FilePathResolver, secret func() string) {
 	if c != nil && service != nil && getSession != nil && files != nil {
-		c.delivery.Store(&nativeVideoCompatDelivery{service: service, getSession: getSession, files: files})
+		c.delivery.Store(&nativeVideoCompatDelivery{service: service, getSession: getSession, files: files, secret: secret})
 	}
 }
 

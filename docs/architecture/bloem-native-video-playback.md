@@ -278,6 +278,16 @@ A refusal answers 403, never 401, because a Jellyfin client signs out on 401.
 When a Jellyfin playback session finishes or expires, the deny tombstone is
 written and the binding and any worker grant are revoked.
 
+Worker HLS: before Silo's Jellyfin server sends a remote start for a native
+input, `playback.SealContextWorkerStart` has `NativeVideoCompat.SealWorkerStart`
+probe the worker's readiness and seal the grant for that worker, transport (the
+playback session) and exact start body; a retried start replaces the earlier
+grant. The worker rebuilds the transcode and serves segments from the recipe
+the Jellyfin server stores. `bloemCompatNativeRecipes`
+(`cmd/silo/bloem_compat_worker.go`) accepts that recipe into the grant before
+storing it, filling in the grant's worker when the route is not yet recorded.
+A recipe for another worker (a failover) is refused, so the move fails closed.
+
 Not covered yet: embedded subtitle extraction and attached fonts for native
 files, Jellyfin's proxy-node direct play (a proxy refuses native sources, so
 the redirect fails; an API-egress route works), and native downloads.

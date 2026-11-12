@@ -27,8 +27,13 @@ func (c *NativeVideoCompat) revokeStopped(ctx context.Context, session *playback
 	if err := delivery.service.Bindings.RevokeSession(ctx, session.ID); err != nil {
 		slog.WarnContext(ctx, "jellyfin native video binding revocation failed", "component", "native_video", "session", session.ID, "error", err)
 	}
-	if delivery.service.WorkerGrants != nil && delivery.service.WorkerGrants.Enabled() && session.TranscodeTransportID != "" {
-		if err := delivery.service.WorkerGrants.RevokeTransport(ctx, session.TranscodeTransportID); err != nil {
+	// A Jellyfin remote transcode uses the playback session as its transport.
+	transport := session.TranscodeTransportID
+	if transport == "" {
+		transport = session.ID
+	}
+	if delivery.service.WorkerGrants.Enabled() {
+		if err := delivery.service.WorkerGrants.RevokeTransport(ctx, transport); err != nil {
 			slog.WarnContext(ctx, "jellyfin native worker grant revocation failed", "component", "native_video", "session", session.ID, "error", err)
 		}
 	}

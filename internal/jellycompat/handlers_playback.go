@@ -1931,6 +1931,9 @@ func (h *PlaybackHandler) startRemoteTranscodeWithToneMapMode(
 		if err := nodeauth.Sign(httpReq, transcodeNodeURL, h.JWTSecret); err != nil {
 			return transcodenode.TranscodeStartResponse{}, 0, false, fmt.Errorf("sign transcode request: %w", err)
 		}
+		if err := playback.SealContextWorkerStart(requestCtx, transcodeNodeURL, body); err != nil {
+			return transcodenode.TranscodeStartResponse{}, 0, false, fmt.Errorf("seal worker start: %w", err)
+		}
 		resp, err := telemetry.DoTrustedNode(transcodeproxy.NodeClient(), httpReq, "transcode_start")
 		if err != nil {
 			nodepool.ReportConnectFailure(h.NodePlanner, transcodeNodeURL, err)

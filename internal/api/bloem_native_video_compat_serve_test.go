@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -31,27 +33,52 @@ type compatServeFixture struct {
 	sessions   *compatSessionsFixture
 	host       *NativeVideoCompat
 	store      *nativeVideoBoundBindingsFixture
+	service    *handlers.NativeVideoService
+	stream     playback.ContextStream
 	opens      int
 }
 
 // newCompatServeFixture composes the Jellyfin native media host over native
 // video delivery, with a synthetic ten-byte source.
 func newCompatServeFixture(t *testing.T) *compatServeFixture {
+	return newCompatServeFixtureFor(t, "play-session")
+}
+
+func newCompatServeFixtureFor(t *testing.T, sessionID string) *compatServeFixture {
 	t.Helper()
 	d := newNativeVideoDelegationFixture(t)
 	f := d.base
+	f.session.ID = sessionID
+	f.policy.getSession = func(id string) (*playback.Session, error) {
+		if f.session == nil || id != sessionID {
+			return nil, playback.ErrSessionNotFound
+		}
+		return f.session, nil
+	}
+	locationID := uuid.New()
+	location, err := storagesource.CatalogLocation(locationID, "movie")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.file.FilePath = location
 	sessions := compatPolicy(f)
 	host := f.policy.compat
 	store := &nativeVideoBoundBindingsFixture{}
 	f.policy.loadBinding = store.Get
 	identity := nativestorage.PlaybackIdentity{FileID: 11, MediaFolderID: 9, ContentID: "movie", FilePath: f.file.FilePath}
-	identity.Reference.EntryID, identity.Reference.Revision = "movie", "v1"
-	info := mediasource.Info{Name: "movie.mp4", Size: 10, Revision: "v1"}
-	fixture := &compatServeFixture{delegation: d, sessions: sessions, host: host, store: store}
-	service := &handlers.NativeVideoService{Files: compatFilesFixture{file: f.file}, Bindings: store}
+	identity.Reference.LocationID, identity.Reference.EntryID, identity.Reference.Revision, identity.Reference.LogicalPath = locationID, "movie", "v1", "Movies/movie.mp4"
+	info := mediasource.Info{Name: "movie.mp4", LogicalPath: "Movies/movie.mp4", Size: 10, Revision: "v1"}
+	stream := compatTestStream()
+	stream.PlaybackSessionID = sessionID
+	fixture := &compatServeFixture{delegation: d, sessions: sessions, host: host, store: store, stream: stream}
+	service := &handlers.NativeVideoService{Files: compatFilesFixture{file: f.file}, Bindings: store, WorkerReadiness: handlers.NewNativeVideoWorkerReadiness()}
+	fixture.service = service
 	configureNativeVideoBoundAuthority(service, f.policy)
 	service.Delegation = func(ctx context.Context) (handlers.NativeVideoAuthority, error) {
 		return nativeVideoDelegation(ctx, f.policy)
+	}
+	reader := func(ctx context.Context, file *models.MediaFile, authority nativestorage.PlaybackAuthority) handlers.NativeVideoFile {
+		return &nativeVideoBoundReaderFixture{Reader: bytes.NewReader([]byte("0123456789")), ctx: ctx, binding: handlers.NativeVideoBinding{Identity: identity, Info: info}, authority: authority, file: file, source: f.source}
 	}
 	service.Open = func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
 		fixture.opens++
@@ -59,15 +86,24 @@ func newCompatServeFixture(t *testing.T) *compatServeFixture {
 		if err != nil {
 			return nil, err
 		}
-		return &nativeVideoBoundReaderFixture{Reader: bytes.NewReader([]byte("0123456789")), ctx: ctx, binding: handlers.NativeVideoBinding{Identity: identity, Info: info}, authority: authority, file: file, source: f.source}, nil
+		return reader(ctx, file, authority), nil
 	}
-	host.install(service, f.policy.getSession, compatFilesFixture{file: f.file})
+	service.OpenDelegated = func(ctx context.Context, file *models.MediaFile, binding handlers.NativeVideoBinding) (handlers.NativeVideoFile, error) {
+		authority, err := nativeVideoDelegatedAuthority(ctx, file, binding, f.policy)
+		if err != nil {
+			return nil, err
+		}
+		return reader(ctx, file, authority), nil
+	}
+	host.install(service, f.policy.getSession, compatFilesFixture{file: f.file}, func() string { return compatTestNodeSecret })
 	return fixture
 }
 
+const compatTestNodeSecret = "compat-node-secret"
+
 func (f *compatServeFixture) request(method, rangeHeader string) *http.Request {
 	ctx := playback.WithContextMediaHost(context.Background(), f.host)
-	playback.NoteContextStream(ctx, compatTestStream())
+	playback.NoteContextStream(ctx, f.stream)
 	r := httptest.NewRequest(method, "/Videos/item/stream?static=true", nil).WithContext(ctx)
 	if rangeHeader != "" {
 		r.Header.Set("Range", rangeHeader)
