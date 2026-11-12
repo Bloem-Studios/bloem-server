@@ -3147,6 +3147,7 @@ public enum Handlers {
         public let s3CheckedETagReads: Bool
         public let s3BucketBrowse: Bool
         public let nativeMovieLibraries: Bool
+        public let nativeSeriesLibraries: Bool
         public let nativeVideoPlayback: Bool
         public let nativeVideoRemoteExecution: Bool
         public let nativeVideoDownloads: Bool
@@ -3175,6 +3176,7 @@ public enum Handlers {
             case s3CheckedETagReads = "s3_checked_etag_reads"
             case s3BucketBrowse = "s3_bucket_browse"
             case nativeMovieLibraries = "native_movie_libraries"
+            case nativeSeriesLibraries = "native_series_libraries"
             case nativeVideoPlayback = "native_video_playback"
             case nativeVideoRemoteExecution = "native_video_remote_execution"
             case nativeVideoDownloads = "native_video_downloads"
@@ -3204,6 +3206,7 @@ public enum Handlers {
             s3CheckedETagReads: Bool = false,
             s3BucketBrowse: Bool = false,
             nativeMovieLibraries: Bool = false,
+            nativeSeriesLibraries: Bool = false,
             nativeVideoPlayback: Bool = false,
             nativeVideoRemoteExecution: Bool = false,
             nativeVideoDownloads: Bool = false,
@@ -3231,6 +3234,7 @@ public enum Handlers {
             self.s3CheckedETagReads = s3CheckedETagReads
             self.s3BucketBrowse = s3BucketBrowse
             self.nativeMovieLibraries = nativeMovieLibraries
+            self.nativeSeriesLibraries = nativeSeriesLibraries
             self.nativeVideoPlayback = nativeVideoPlayback
             self.nativeVideoRemoteExecution = nativeVideoRemoteExecution
             self.nativeVideoDownloads = nativeVideoDownloads
@@ -3261,6 +3265,7 @@ public enum Handlers {
             self.s3CheckedETagReads = try container.decodeIfPresent(Bool.self, forKey: .s3CheckedETagReads) ?? false
             self.s3BucketBrowse = try container.decodeIfPresent(Bool.self, forKey: .s3BucketBrowse) ?? false
             self.nativeMovieLibraries = try container.decodeIfPresent(Bool.self, forKey: .nativeMovieLibraries) ?? false
+            self.nativeSeriesLibraries = try container.decodeIfPresent(Bool.self, forKey: .nativeSeriesLibraries) ?? false
             self.nativeVideoPlayback = try container.decodeIfPresent(Bool.self, forKey: .nativeVideoPlayback) ?? false
             self.nativeVideoRemoteExecution = try container.decodeIfPresent(Bool.self, forKey: .nativeVideoRemoteExecution) ?? false
             self.nativeVideoDownloads = try container.decodeIfPresent(Bool.self, forKey: .nativeVideoDownloads) ?? false
@@ -3291,6 +3296,7 @@ public enum Handlers {
             try container.encode(self.s3CheckedETagReads, forKey: .s3CheckedETagReads)
             try container.encode(self.s3BucketBrowse, forKey: .s3BucketBrowse)
             try container.encode(self.nativeMovieLibraries, forKey: .nativeMovieLibraries)
+            try container.encode(self.nativeSeriesLibraries, forKey: .nativeSeriesLibraries)
             try container.encode(self.nativeVideoPlayback, forKey: .nativeVideoPlayback)
             try container.encode(self.nativeVideoRemoteExecution, forKey: .nativeVideoRemoteExecution)
             try container.encode(self.nativeVideoDownloads, forKey: .nativeVideoDownloads)

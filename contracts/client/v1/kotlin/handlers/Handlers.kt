@@ -1038,6 +1038,8 @@ public data class nativeStorageCapabilitiesResponse(
     public val s3BucketBrowse: Boolean = false,
     @SerialName("native_movie_libraries")
     public val nativeMovieLibraries: Boolean = false,
+    @SerialName("native_series_libraries")
+    public val nativeSeriesLibraries: Boolean = false,
     @SerialName("native_video_playback")
     public val nativeVideoPlayback: Boolean = false,
     @SerialName("native_video_remote_execution")
