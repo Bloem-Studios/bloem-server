@@ -1466,6 +1466,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		playbackHandler.StreamTelemetry = deps.StreamTelemetry
 		playbackHandler.ItemAccess = itemRepo
+		if itemsHandler != nil {
+			playbackHandler.FileNamesVisible = itemsHandler.CanViewFilePaths
+		}
 		playbackHandler.EpisodeLookup = episodeRepo
 		playbackHandler.ExtraLookup = extraRepo
 		playbackHandler.OriginalLangLookup = itemRepo
@@ -2039,6 +2042,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 
 		mediaResolver := &pgSubtitleMediaResolver{pool: deps.DB}
 		subtitleSearchHandler = handlers.NewSubtitleSearchHandler(subtitleManager, subtitleRepo, mediaResolver)
+		if itemsHandler != nil {
+			subtitleSearchHandler.FileNamesVisible = itemsHandler.CanViewFilePaths
+		}
 		if subtitleAINotifier != nil {
 			subtitleSearchHandler.SetSubtitleReadyAnnouncer(subtitleAINotifier)
 		}
@@ -2515,6 +2521,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 			deps.OnDownloadService(downloadSvc)
 		}
 		downloadHandler = handlers.NewDownloadHandler(downloadSvc)
+		if itemsHandler != nil {
+			downloadHandler.FileNamesVisible = itemsHandler.CanViewFilePaths
+		}
 		if jwtService != nil {
 			downloadHandler.SetDirectDownloadLinks(jwtService)
 		}

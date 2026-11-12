@@ -27293,6 +27293,7 @@ export interface components {
        * @example 120
        */
       file_id: string;
+      /** @description Absent for viewers without file-path visibility, except on audiobooks and ebooks */
       file_name?: string;
       /** @description Absent for viewers without file-path visibility */
       file_path?: string;
@@ -35701,6 +35702,7 @@ export interface components {
       default: boolean;
       embedded_title?: string;
       external: boolean;
+      /** @description An external track's file name; absent for viewers without file-path visibility, except on audiobooks and ebooks */
       file_name?: string;
       forced: boolean;
       hearing_impaired: boolean;
@@ -35907,8 +35909,9 @@ export interface components {
        * @example 42
        */
       file_id: string;
+      /** @description Absent for viewers without file-path visibility, except on audiobooks and ebooks */
       file_name?: string;
-      /** @description Only for accounts allowed to see paths */
+      /** @description Absent for viewers without file-path visibility */
       file_path?: string;
       /**
        * Format: int64
@@ -36384,6 +36387,7 @@ export interface components {
       default: boolean;
       embedded_title?: string;
       external: boolean;
+      /** @description An external track's file name; absent for viewers without file-path visibility, except on audiobooks and ebooks */
       file_name?: string;
       forced: boolean;
       hearing_impaired: boolean;
