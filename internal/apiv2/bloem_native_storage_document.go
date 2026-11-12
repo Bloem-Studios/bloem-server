@@ -238,11 +238,8 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 			&huma.Param{Name: "limit", In: "query", Schema: &huma.Schema{Type: "integer", Minimum: &one, Maximum: &hundred, Default: 50}})
 	}
 	forbidden := bloemNativeStorageForbidden
-	switch path {
-	case "/installations", "/installations/discover", "/catalog/installations", "/catalog/installations/discover", "/sources/{source_key}/configuration":
-		if scope == "organization" {
-			forbidden += " platform_setting_required: config connection sets http_proxy, http_proxy_username or http_proxy_password (in any spelling encoding/json matches, with any value including null), which only a platform administrator may set; the message names the field and never quotes the value."
-		}
+	if bloemNativeStorageConnectionGuarded(scope, path) {
+		forbidden += " platform_setting_required: config connection sets http_proxy, http_proxy_username or http_proxy_password (in any spelling encoding/json matches, with any value including null), which only a platform administrator may set; the message names the field and never quotes the value."
 	}
 	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{403: forbidden})
 	errorKey := path
@@ -386,17 +383,27 @@ func bloemNativeStorageErrors(scope, path string) map[int]string {
 	default:
 		r[409] = strings.TrimSpace(r[409] + " " + authChanged)
 	}
-	switch path {
-	case "/installations", "/installations/discover", "/catalog/installations", "/catalog/installations/discover", "/sources/{source_key}/configuration":
-		if scope == "organization" {
-			if r[422] == "" {
-				r[422] = endpointGuard
-			} else {
-				r[422] += " " + endpointGuard
-			}
+	if bloemNativeStorageConnectionGuarded(scope, path) {
+		if r[422] == "" {
+			r[422] = endpointGuard
+		} else {
+			r[422] += " " + endpointGuard
 		}
 	}
 	return r
+}
+
+// bloemNativeStorageConnectionGuarded reports whether an operation takes a
+// configuration that the organization connection guard checks.
+func bloemNativeStorageConnectionGuarded(scope, path string) bool {
+	if scope != "organization" {
+		return false
+	}
+	switch path {
+	case "/installations", "/installations/discover", "/catalog/installations", "/catalog/installations/discover", "/sources/{source_key}/configuration":
+		return true
+	}
+	return false
 }
 
 func registerBloemNativeStorageDocument(reg *Registry) {
