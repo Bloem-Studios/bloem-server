@@ -198,3 +198,85 @@ func TestAudiobookDecisionAudiobookID(t *testing.T) {
 		}
 	}
 }
+
+// The storage plugin places audiobook requests with Bookwarehouse's abiplayer
+// route. Its receipt keeps kind qbittorrent, with the abiplayer request id in
+// torrent_id and the normalized title and author it asked for. Only a
+// storage-plugin connection may report those fields.
+func TestAudiobookAbiplayerReceipt(t *testing.T) {
+	const submission = "0f8fad5b-d9cb-469f-a165-70867728950e"
+	receipt := map[string]any{"kind": "qbittorrent", "id": strings.Repeat("c", 40), "request_id": submission, "attempt": 2, "client": "0123456789abcdef", "confirmed": true, "adopted": false, "sel": "The Hobbit by J. R. R. Tolkien", "exp_mb": 0, "exp_dur_s": 0, "torrent_id": "4711", "norm_title": "the hobbit", "norm_author": "j r r tolkien"}
+	parsed, err := ParseStorageAudiobookReceipt(encodeEnvelope("abr1.", receipt), submission, 2)
+	if err != nil || parsed.TorrentID != "4711" || parsed.NormTitle != "the hobbit" || parsed.NormAuthor != "j r r tolkien" {
+		t.Fatalf("abiplayer receipt: %+v %v", parsed, err)
+	}
+	if _, err = ParseAudiobookReceipt(encodeEnvelope("abr1.", receipt), submission, 2); err == nil {
+		t.Fatal("request plugin connection accepted an abiplayer receipt")
+	}
+	if parsed, err = ParseAudiobookReceiptFor(AudiobookIntegration{Native: true}, encodeEnvelope("abr1.", receipt), submission, 2); err != nil || parsed.NormTitle != "the hobbit" {
+		t.Fatalf("native integration parse: %+v %v", parsed, err)
+	}
+	if _, err = ParseAudiobookReceiptFor(AudiobookIntegration{}, encodeEnvelope("abr1.", receipt), submission, 2); err == nil {
+		t.Fatal("request plugin integration accepted an abiplayer receipt")
+	}
+	for label, mutate := range map[string]func(map[string]any){
+		"no author":       func(m map[string]any) { delete(m, "norm_author") },
+		"unicode lower":   func(m map[string]any) { m["norm_title"] = "les misérables 2" },
+		"author only":     func(m map[string]any) { delete(m, "norm_title") },
+		"200 byte title":  func(m map[string]any) { m["norm_title"] = strings.Repeat("t", 200) },
+		"uncased letters": func(m map[string]any) { m["norm_title"] = "三体" },
+	} {
+		good := map[string]any{}
+		for k, v := range receipt {
+			good[k] = v
+		}
+		mutate(good)
+		if _, err := ParseStorageAudiobookReceipt(encodeEnvelope("abr1.", good), submission, 2); err != nil {
+			t.Errorf("%s: receipt refused: %v", label, err)
+		}
+	}
+	for label, mutate := range map[string]func(map[string]any){
+		"no torrent id":  func(m map[string]any) { delete(m, "torrent_id") },
+		"nzbget kind":    func(m map[string]any) { m["kind"], m["id"] = "nzbget", "4711" },
+		"unknown kind":   func(m map[string]any) { m["kind"], m["id"], m["client"], m["confirmed"] = "unknown", "", "", false },
+		"upper case":     func(m map[string]any) { m["norm_title"] = "The Hobbit" },
+		"punctuation":    func(m map[string]any) { m["norm_author"] = "j. r. r. tolkien" },
+		"double space":   func(m map[string]any) { m["norm_title"] = "the  hobbit" },
+		"leading space":  func(m map[string]any) { m["norm_title"] = " the hobbit" },
+		"trailing space": func(m map[string]any) { m["norm_author"] = "tolkien " },
+		"tab":            func(m map[string]any) { m["norm_title"] = "the\thobbit" },
+		"long title":     func(m map[string]any) { m["norm_title"] = strings.Repeat("t", 201) },
+		"long author":    func(m map[string]any) { m["norm_author"] = strings.Repeat("é", 101) },
+		"bidi author":    func(m map[string]any) { m["norm_author"] = "tolkien\u202e" },
+		"unknown field":  func(m map[string]any) { m["title"] = "the hobbit" },
+		"hash id":        func(m map[string]any) { m["id"] = "4711" },
+	} {
+		bad := map[string]any{}
+		for k, v := range receipt {
+			bad[k] = v
+		}
+		mutate(bad)
+		if _, err := ParseStorageAudiobookReceipt(encodeEnvelope("abr1.", bad), submission, 2); err == nil {
+			t.Errorf("%s: receipt accepted", label)
+		}
+	}
+	// A storage-plugin connection still accepts every older receipt shape,
+	// parsed exactly as a request plugin's connection parses it.
+	for label, older := range map[string]map[string]any{
+		"qbittorrent": {"kind": "qbittorrent", "id": strings.Repeat("b", 40), "request_id": submission, "attempt": 2, "client": "0123456789abcdef", "confirmed": true, "adopted": false, "sel": "Synthetic Saga", "exp_mb": 512, "exp_dur_s": 0, "torrent_id": "6f1c0e8a-3b2d-4c1e-9f7a-0123456789ab"},
+		"nzbget":      {"kind": "nzbget", "id": "4711", "request_id": submission, "attempt": 2, "client": "0123456789abcdef"},
+		"unknown":     {"kind": "unknown", "id": "", "request_id": submission, "attempt": 2},
+	} {
+		raw := encodeEnvelope("abr1.", older)
+		want, wantErr := ParseAudiobookReceipt(raw, submission, 2)
+		got, err := ParseStorageAudiobookReceipt(raw, submission, 2)
+		if wantErr != nil || err != nil || got != want {
+			t.Errorf("%s: storage parse %+v %v, request parse %+v %v", label, got, err, want, wantErr)
+		}
+	}
+	// The recovery receipt keeps its exact bytes.
+	raw, _ := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(RecoveryReceipt(submission, 2).ExternalID, "abr1."))
+	if strings.Contains(string(raw), "norm_") {
+		t.Fatalf("recovery receipt gained fields: %s", raw)
+	}
+}

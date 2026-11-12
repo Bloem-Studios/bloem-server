@@ -188,7 +188,7 @@ func (s *Service) saveAudiobookOutcome(ctx context.Context, work *audiobookWork,
 }
 
 func (s *Service) saveAudiobookReceipt(ctx context.Context, work *audiobookWork, receipt Receipt) error {
-	if _, err := ParseAudiobookReceipt(receipt.ExternalID, work.input.SubmissionID, work.input.Attempt); err != nil {
+	if _, err := ParseAudiobookReceiptFor(work.input.Integration, receipt.ExternalID, work.input.SubmissionID, work.input.Attempt); err != nil {
 		return ErrInvalid
 	}
 	descriptor, err := json.Marshal(work.input.Integration)
@@ -721,7 +721,10 @@ func (s *Service) finishAudiobook(ctx context.Context, work *audiobookWork, outc
 	newStatus, content := "approved", ""
 	if match != "" {
 		newStatus, content, apply.fulfilment, apply.reason = "completed", match, "library", ""
-	} else if apply.providerDone {
+	} else if apply.providerDone || work.input.Integration.Native && apply.fulfilment != "review" {
+		// The native lane also matches by title and author while the
+		// download runs, since a plugin may name no audiobook. A download the
+		// plugin holds for review waits for an administrator.
 		items, err := audiobookCompletionMatches(ctx, tx, r, work.input)
 		if err != nil {
 			return false, nil, err
@@ -842,16 +845,38 @@ func audiobookCompletionMatches(ctx context.Context, tx pgx.Tx, r Request, in Au
 	return audiobookPathMatches(ctx, tx, r, in)
 }
 
-// audiobookNativeMatches finds the items whose live storage files are the
+// audiobookNativeMatches returns up to two distinct native library items the
+// request became: the Bookwarehouse audiobook a verified decision names, or
+// else the new items with the request's title and author.
+func audiobookNativeMatches(ctx context.Context, tx pgx.Tx, r Request, in AudiobookDispatchInput) ([]string, error) {
+	if in.Integration.LibraryID <= 0 || in.SubmissionID == "" || in.Attempt < 1 {
+		return nil, nil
+	}
+	out, err := audiobookNativeIDMatches(ctx, tx, r, in)
+	if err == nil && len(out) == 0 {
+		out, err = audiobookNativeTitleMatches(ctx, tx, r, in)
+	}
+	if err != nil || len(out) != 1 {
+		return out, err
+	}
+	var locked string
+	err = tx.QueryRow(ctx, `SELECT content_id FROM media_items WHERE content_id=$1 AND type='audiobook' FOR SHARE`, out[0]).Scan(&locked)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// audiobookNativeIDMatches finds the items whose live storage files are the
 // tracks of the Bookwarehouse audiobook named by this attempt's latest
 // verified decision. The storage plugin names an audiobook's tracks
 // "audio/<audiobook id>/<file id>"; a file counts only while its reference is
 // current for the source of the integration's own installation and publishes
 // at the catalog location of that entry.
-func audiobookNativeMatches(ctx context.Context, tx pgx.Tx, r Request, in AudiobookDispatchInput) ([]string, error) {
-	if in.Integration.LibraryID <= 0 || in.SubmissionID == "" || in.Attempt < 1 {
-		return nil, nil
-	}
+func audiobookNativeIDMatches(ctx context.Context, tx pgx.Tx, r Request, in AudiobookDispatchInput) ([]string, error) {
 	var audiobook string
 	err := tx.QueryRow(ctx, `SELECT dec.envelope->>'audiobook_id' FROM bloem_audiobook_request_decisions dec
  JOIN bloem_ebook_request_dispatches d ON d.request_id=dec.request_id
@@ -866,17 +891,98 @@ func audiobookNativeMatches(ctx context.Context, tx pgx.Tx, r Request, in Audiob
 	if !audiobookBookwarehouseID.MatchString(audiobook) {
 		return nil, nil
 	}
-	rows, err := tx.Query(ctx, audiobookNativeMatchSQL, in.Integration.LibraryID, in.Integration.InstallationID, StorageRequestPluginID, "audio/"+audiobook+"/", r.OrganizationID)
+	out, err := audiobookNativeLiveItems(ctx, tx, audiobookNativeMatchSQL, in.Integration.LibraryID, in.Integration.InstallationID, StorageRequestPluginID, "audio/"+audiobook+"/", r.OrganizationID)
+	if len(out) > 1 {
+		return out[:2], err
+	}
+	return out, err
+}
+
+// audiobookNativeTitleMatches finds the native library items that appeared
+// after the request and carry its title and author
+// (audiobookTitleAuthorMatch), each with a live storage file as
+// audiobookNativeIDMatches requires. Items older than the request never
+// count: a copy the library already held does not show that this request was
+// fulfilled. The created_at bound keeps the candidates few, and the title
+// token narrows them further.
+func audiobookNativeTitleMatches(ctx context.Context, tx pgx.Tx, r Request, in AudiobookDispatchInput) ([]string, error) {
+	if len(bookTitleForms(r.Title)) == 0 || len(bookAuthorKeys(r.Author)) == 0 {
+		return nil, nil
+	}
+	rows, err := tx.Query(ctx, audiobookTitleCandidatesSQL, in.Integration.LibraryID, r.CreatedAt, audiobookTitlePrefilterToken(r.Title), bookApostrophes, audiobookTitleCandidateLimit)
 	if err != nil {
 		return nil, err
 	}
+	candidates := 0
+	matched := []string{}
+	for rows.Next() {
+		var content, title string
+		var authors []string
+		if err = rows.Scan(&content, &title, &authors); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		candidates++
+		if audiobookTitleAuthorMatch(r.Title, r.Author, title, authors) {
+			matched = append(matched, content)
+		}
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	// A cut-off list could hide a second match, so it is no evidence yet.
+	if candidates >= audiobookTitleCandidateLimit {
+		return nil, nil
+	}
+	out := []string{}
+	for _, content := range matched {
+		live, err := audiobookNativeLiveItems(ctx, tx, audiobookNativeItemSQL, in.Integration.LibraryID, in.Integration.InstallationID, StorageRequestPluginID, "audio/", r.OrganizationID, content)
+		if err != nil {
+			return nil, err
+		}
+		if len(live) > 0 {
+			if out = append(out, content); len(out) == 2 {
+				break
+			}
+		}
+	}
+	return out, nil
+}
+
+// audiobookTitleCandidateLimit bounds the title candidates read per check.
+const audiobookTitleCandidateLimit = 500
+
+// audiobookTitleCandidatesSQL takes $1 library, $2 the request's creation
+// time, $3 the title token (empty for none), $4 the apostrophes to drop and
+// $5 the row limit. It starts from idx_media_items_type_created.
+const audiobookTitleCandidatesSQL = `
+ SELECT i.content_id,i.title,COALESCE(array_agg(p.name ORDER BY ip.sort_order,p.name) FILTER (WHERE p.name IS NOT NULL),'{}')
+ FROM media_items i
+ LEFT JOIN item_people ip ON ip.content_id=i.content_id AND ip.kind=7
+ LEFT JOIN people p ON p.id=ip.person_id
+ WHERE i.type='audiobook' AND i.created_at>$2
+ AND ($3='' OR strpos(translate(lower(fold_search_diacritics(i.title)),$4,''),$3)>0)
+ AND EXISTS(SELECT 1 FROM media_files mf WHERE mf.content_id=i.content_id AND mf.media_folder_id=$1 AND mf.missing_since IS NULL)
+ GROUP BY i.content_id,i.title
+ ORDER BY i.content_id LIMIT $5`
+
+// audiobookNativeLiveItems runs one of the native file queries and returns
+// the distinct items, in query order, with a file published at the catalog
+// location of its storage entry.
+func audiobookNativeLiveItems(ctx context.Context, tx pgx.Tx, query string, args ...any) ([]string, error) {
+	rows, err := tx.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 	seen := map[string]bool{}
 	out := []string{}
 	for rows.Next() {
 		var content, path, entry string
 		var location uuid.UUID
 		if err = rows.Scan(&content, &path, &location, &entry); err != nil {
-			rows.Close()
 			return nil, err
 		}
 		if expected, err := storagesource.CatalogLocation(location, entry); err != nil || path != expected || seen[content] {
@@ -885,28 +991,13 @@ func audiobookNativeMatches(ctx context.Context, tx pgx.Tx, r Request, in Audiob
 		seen[content] = true
 		out = append(out, content)
 	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return nil, err
-	}
-	if len(out) > 1 {
-		return out[:2], nil
-	}
-	if len(out) == 1 {
-		var locked string
-		err := tx.QueryRow(ctx, `SELECT content_id FROM media_items WHERE content_id=$1 AND type='audiobook' FOR SHARE`, out[0]).Scan(&locked)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-	return out, nil
+	return out, rows.Err()
 }
 
-const audiobookNativeMatchSQL = `
+// audiobookNativeFilesSQL takes $1 library, $2 installation, $3 plugin, $4
+// entry prefix and $5 organization: the library's files whose storage
+// reference is current for the integration's own source.
+const audiobookNativeFilesSQL = `
  SELECT i.content_id,mf.file_path,l.id,ref.entry_id FROM media_files mf
  JOIN bloem_storage_file_refs ref ON ref.media_file_id=mf.id AND starts_with(ref.entry_id,$4)
  JOIN library_storage_locations l ON l.id=ref.location_id AND l.folder_id=mf.media_folder_id
@@ -918,8 +1009,14 @@ const audiobookNativeMatchSQL = `
  AND EXISTS(SELECT 1 FROM bloem_storage_file_roots m JOIN bloem_storage_selected_roots root ON root.location_id=m.location_id AND root.id=m.root_id AND root.enabled
   WHERE m.location_id=l.id AND m.media_file_id=mf.id AND m.enabled)
  AND ((ro.kind='organization' AND ro.organization_id=$5)
-  OR (ro.kind='platform' AND EXISTS(SELECT 1 FROM organization_entitlements e WHERE e.organization_id=$5 AND e.media_folder_id=f.id AND e.root_owner_id=ro.id AND e.status='active')))
+  OR (ro.kind='platform' AND EXISTS(SELECT 1 FROM organization_entitlements e WHERE e.organization_id=$5 AND e.media_folder_id=f.id AND e.root_owner_id=ro.id AND e.status='active')))`
+
+const audiobookNativeMatchSQL = audiobookNativeFilesSQL + `
  ORDER BY i.content_id,mf.id LIMIT 100`
+
+// audiobookNativeItemSQL also takes $6, the one item to check.
+const audiobookNativeItemSQL = audiobookNativeFilesSQL + `
+ AND mf.content_id=$6 ORDER BY mf.id LIMIT 100`
 
 // audiobookPathMatches returns up to two distinct audiobook items with a
 // scanned file inside this attempt's marker folder under a frozen root. Range

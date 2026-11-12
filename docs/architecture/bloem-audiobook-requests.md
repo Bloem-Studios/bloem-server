@@ -247,8 +247,8 @@ exists in the organization's catalog.
 
 Completion requires all supplied stable identifiers to match one
 `media_items.type=audiobook` item. ISBN-10 and ISBN-13 are equivalent. A title or
-author resemblance is never sufficient, and an ebook with the same ISBN does
-not qualify. The match also requires a media-file row in an enabled audiobook
+author resemblance is not sufficient here (the storage plugin's lane below is the
+one exception), and an ebook with the same ISBN does not qualify. The match also requires a media-file row in an enabled audiobook
 folder owned by the organization, or in a platform folder with an active
 entitlement for that organization. The request, provider-ID, catalog, file,
 folder, owner, organization and entitlement rows are locked while completion
@@ -357,6 +357,35 @@ an attempt-marker folder. Two matching items require review. The path lookup
 first materializes the library/path index range; it does not search the entire
 catalog. A completed download does not create a scanner schedule or guarantee
 filesystem liveness.
+
+The Bookwarehouse storage plugin's connection (`bloem.storage.bookwarehouse`,
+capability `audiobooks`) has no download folders. Its library is bound to the
+plugin's own installation and usually carries ASINs, while requests often carry
+only an ISBN. Its requests complete, after an identifier match, from the native
+library's items with a live storage reference that is current for that
+installation's source:
+
+- by the `audiobook_id` of the attempt's latest verified decision, the
+  Bookwarehouse audiobook whose tracks are `audio/<audiobook_id>/<file>`;
+- otherwise by title and author, on every pass while the download runs or
+  waits for the library, unless the plugin holds it for review. An item counts
+  only if it appeared after the request was made, so a copy the library
+  already held does not complete it. Its title must equal the request's after
+  folding case, accents and punctuation (`&` reads as "and", apostrophes
+  drop), with or without either title's subtitle after a colon or a spaced
+  dash. One of its credited authors must equal one of the request's authors,
+  split on commas, semicolons, `&` and "and". One such item completes the
+  request; two go to review with `multiple_items`. The rule is
+  `audiobookTitleAuthorMatch` in `internal/bookrequests/audiobook_title_match.go`.
+
+The plugin places these requests with Bookwarehouse's abiplayer route. Its
+`abr1.` receipt keeps kind `qbittorrent`, with the abiplayer request id in
+`torrent_id` and the normalized `norm_title` and `norm_author` it asked for. The
+host accepts those two fields only from the storage plugin's connection, only on
+a `qbittorrent` receipt with a `torrent_id`, and only as lowercase letters and
+digits separated by single spaces, at most 200 bytes each. They are informational:
+completion compares the request's own title and author. The plugin's `completed`
+answer is never completion by itself.
 
 ### Connection edits and credential rotation
 

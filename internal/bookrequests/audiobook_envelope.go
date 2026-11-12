@@ -68,10 +68,16 @@ type AudiobookReceipt struct {
 	Sel       string `json:"sel"`
 	ExpMB     int64  `json:"exp_mb"`
 	ExpDurS   int64  `json:"exp_dur_s"`
-	// TorrentID is Bookwarehouse's record of a torrent the native
-	// Bookwarehouse plugin handed to Bookwarehouse's own qBittorrent. Omitted
-	// when empty, so earlier receipts are unchanged.
+	// TorrentID is Bookwarehouse's record of the hand-off: a torrent record,
+	// or the request id of Bookwarehouse's abiplayer route. Omitted when
+	// empty, so earlier receipts are unchanged.
 	TorrentID string `json:"torrent_id,omitempty"`
+	// NormTitle and NormAuthor are the normalized title and author the
+	// storage plugin placed or adopted an abiplayer request for. They are
+	// informational: completion matches the request's own title and author.
+	// Omitted when empty, so earlier receipts are unchanged.
+	NormTitle  string `json:"norm_title,omitempty"`
+	NormAuthor string `json:"norm_author,omitempty"`
 }
 
 var (
@@ -82,14 +88,34 @@ var (
 	audiobookBookwarehouseID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 )
 
-// ParseAudiobookReceipt validates a receipt against the submission and attempt
-// it must belong to.
+// ParseAudiobookReceipt validates a request plugin's receipt against the
+// submission and attempt it must belong to.
 func ParseAudiobookReceipt(raw, submission string, attempt int) (AudiobookReceipt, error) {
+	return parseAudiobookReceipt(raw, submission, attempt, false)
+}
+
+// ParseStorageAudiobookReceipt validates a receipt from the storage plugin's
+// connection. It also accepts norm_title and norm_author on a qbittorrent
+// receipt with a torrent_id: a request placed with Bookwarehouse's abiplayer
+// route.
+func ParseStorageAudiobookReceipt(raw, submission string, attempt int) (AudiobookReceipt, error) {
+	return parseAudiobookReceipt(raw, submission, attempt, true)
+}
+
+// ParseAudiobookReceiptFor parses a receipt for the integration it came from.
+func ParseAudiobookReceiptFor(in AudiobookIntegration, raw, submission string, attempt int) (AudiobookReceipt, error) {
+	return parseAudiobookReceipt(raw, submission, attempt, in.Native)
+}
+
+func parseAudiobookReceipt(raw, submission string, attempt int, storage bool) (AudiobookReceipt, error) {
 	var r AudiobookReceipt
 	if err := decodeStrict(audiobookReceiptPrefix, raw, audiobookReceiptMax, &r); err != nil {
 		return r, err
 	}
 	if r.TorrentID != "" && (r.Kind != "qbittorrent" || !audiobookBookwarehouseID.MatchString(r.TorrentID)) {
+		return r, errAudiobookEnvelope
+	}
+	if !validReceiptNorms(r, storage) {
 		return r, errAudiobookEnvelope
 	}
 	if r.RequestID != submission || r.Attempt != attempt || attempt < 1 || r.ExpMB < 0 || r.ExpMB > 10_000_000 || r.ExpDurS < 0 || r.ExpDurS > 10_000_000 || utf8.RuneCountInString(r.Sel) > 200 || sanitizeEnvelopeText(r.Sel) != r.Sel {
@@ -112,6 +138,31 @@ func ParseAudiobookReceipt(raw, submission string, attempt int) (AudiobookReceip
 		return r, errAudiobookEnvelope
 	}
 	return r, nil
+}
+
+// validReceiptNorms allows norm_title and norm_author only from the storage
+// plugin's connection, on a qbittorrent receipt naming its abiplayer request
+// in torrent_id.
+func validReceiptNorms(r AudiobookReceipt, storage bool) bool {
+	if r.NormTitle == "" && r.NormAuthor == "" {
+		return true
+	}
+	return storage && r.Kind == "qbittorrent" && r.TorrentID != "" && normalizedReceiptText(r.NormTitle) && normalizedReceiptText(r.NormAuthor)
+}
+
+// normalizedReceiptText reports whether s is at most 200 bytes of lowercase
+// letters and digits separated by single spaces, as the storage plugin
+// normalizes a title or author. The empty string qualifies.
+func normalizedReceiptText(s string) bool {
+	if len(s) > 200 || strings.HasPrefix(s, " ") || strings.HasSuffix(s, " ") || strings.Contains(s, "  ") || !utf8.ValidString(s) {
+		return false
+	}
+	for _, r := range s {
+		if r != ' ' && !unicode.IsDigit(r) && (!unicode.IsLetter(r) || unicode.ToLower(r) != r) {
+			return false
+		}
+	}
+	return true
 }
 
 // RecoveryReceipt builds the unknown receipt the host stores after a lost

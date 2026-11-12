@@ -105,6 +105,12 @@
 ./internal/plugins TestNativeStorageRequestRouterCapabilitiesDB
 ./internal/bookrequests TestEbookStorageRequestPluginBindingDatabase
 ./internal/bookrequests TestAudiobookNativeCompletionByAudiobookIDDatabase
+# Native audiobook requests also complete by title and author.
+./internal/bookrequests TestAudiobookNativeCompletionByTitleDatabase
+./internal/bookrequests TestAudiobookNativeTitleMatchWhileDownloadingDatabase
+./internal/bookrequests TestAudiobookNativeTitleMatchesGoToReviewDatabase
+./internal/bookrequests TestAudiobookNativeIdentifierBeforeTitleDatabase
+./internal/bookrequests TestAudiobookNativeTitleMatchRespectsPluginReviewDatabase
 ./internal/api TestNativeStorageRequestConnectionSetupDatabase
 
 # Integration-tagged storage, ingestion, plugin-registry and authority tests
