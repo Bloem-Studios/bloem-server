@@ -321,6 +321,19 @@ func attachStorageSeriesSidecarsTx(ctx context.Context, tx pgx.Tx, folderID int,
 	return err
 }
 
+// AttachStorageSidecarsTx records a movie page's sidecars, keyed by the entry
+// ID of their movie's video, inside the page's authorized transaction, as
+// PublishStorageSeriesTx records an episode page's.
+func (s *Scanner) AttachStorageSidecarsTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder, location storagesource.Location, sidecars map[string][]StorageSeriesSidecar) error {
+	if len(sidecars) == 0 {
+		return nil
+	}
+	if s == nil || tx == nil || folder == nil || folder.ID != location.FolderID {
+		return errors.New("storage sidecar publication is not configured")
+	}
+	return attachStorageSeriesSidecarsTx(ctx, tx, folder.ID, location, sidecars, map[string]int{})
+}
+
 // storageSeriesMatches lists each series that still needs a provider match: a
 // pending item, or an unmatched one whose show folder declares provider IDs
 // (an earlier attempt can have failed transiently).
@@ -341,8 +354,9 @@ func storageSeriesMatches(identities []storageSeriesIdentity, contentIDs, status
 	return matches
 }
 
-// FinalizeStorageSeriesLocationTx drops the sidecars whose listed entry the
-// completing location no longer holds at that revision. It runs in the
+// FinalizeStorageSeriesLocationTx drops the sidecars (of episodes and
+// movies) whose listed entry the completing location no longer holds at that
+// revision. It runs in the
 // authorized completion transaction, after reconciliation.
 func (s *Scanner) FinalizeStorageSeriesLocationTx(ctx context.Context, tx pgx.Tx, location storagesource.Location) error {
 	_, err := tx.Exec(ctx, `DELETE FROM bloem_storage_episode_sidecars c WHERE c.location_id=$1 AND NOT EXISTS(

@@ -7,15 +7,17 @@ import (
 	"io"
 	"os/exec"
 
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 )
 
 // ConfigureNativeMovies is startup-only, before this coordinator or its reader
@@ -41,74 +43,65 @@ func (c *StorageScanner) ConfigureNativeMovies(ready bool, reader *nativestorage
 	return nil
 }
 
-// prepareMovies probes the page's movie files. Files Silo's walk would not
-// publish (extras, samples, ignored folders) are neither opened nor probed;
-// their IDs are returned so a file published by an older scan goes missing.
-func (c *StorageScanner) prepareMovies(ctx context.Context, folder *models.MediaFolder, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse) ([]scanner.StorageMovie, int, []string, error) {
+// preparedMovies is one movie page ready to publish: its movie files (probed,
+// or unchanged and not read) and the subtitle sidecars it lists.
+type preparedMovies struct {
+	movies   []scanner.StorageMovie
+	sidecars []scanner.StorageSeriesSidecar
+	skipped  int
+	excluded []string
+}
+
+// prepareMovies probes the page's movie files and keeps its subtitle
+// sidecars for their movie. Files Silo's walk would not publish (extras,
+// samples, ignored folders) are neither opened nor probed; their IDs are
+// returned so a file published by an older scan goes missing.
+func (c *StorageScanner) prepareMovies(ctx context.Context, folder *models.MediaFolder, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse) (preparedMovies, error) {
+	var out preparedMovies
 	if !c.nativeMovieReady || c.movieReader == nil {
-		return nil, 0, nil, storagesource.ErrSourceUnavailable
+		return out, storagesource.ErrSourceUnavailable
 	}
 	// Retain only our own validated listing data. The reader seals another copy
 	// and proves pinned Stat metadata against exactly that pending checkpoint.
 	page = proto.CloneOf(page)
-	skipped := 0
 	var candidates, strms []int
-	var excluded []string
 	for i, entry := range page.GetEntries() {
 		if entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_FILE {
 			continue
 		}
-		if c.takesStrm(entry) {
-			if scanner.StorageMovieFileSkipped(entry) {
-				skipped++
-				excluded = append(excluded, entry.GetId())
-				continue
-			}
-			strms = append(strms, i)
+		if sub, ok := scanner.StorageSeriesSidecarFromEntry(entry); ok {
+			out.sidecars = append(out.sidecars, sub)
 			continue
 		}
-		if _, ok := scanner.NativeMovieDemuxer(entry.GetName()); !ok {
-			skipped++
+		_, video := scanner.NativeMovieDemuxer(entry.GetName())
+		strm := c.takesStrm(entry)
+		if !video && !strm {
+			out.skipped++
 			continue
 		}
 		if scanner.StorageMovieFileSkipped(entry) {
-			skipped++
-			excluded = append(excluded, entry.GetId())
+			out.skipped++
+			out.excluded = append(out.excluded, entry.GetId())
 			continue
 		}
-		candidates = append(candidates, i)
+		if strm {
+			strms = append(strms, i)
+		} else {
+			candidates = append(candidates, i)
+		}
 	}
 	movies, err := c.prepareVideos(ctx, folder, location, source, lease, checkpoint, page, candidates, nil)
 	if err != nil {
-		return nil, 0, nil, err
+		return out, err
 	}
-	// Unchanged `.strm` objects keep their stored probe without being opened.
-	reused, strms, err := c.reuseStrmMovies(ctx, location, page, strms)
+	remote, refused, err := c.prepareStrms(ctx, location, source, lease, checkpoint, page, strms, nil)
 	if err != nil {
-		return nil, 0, nil, err
+		return out, err
 	}
-	movies = append(movies, reused...)
-	if len(strms) == 0 {
-		return movies, skipped, excluded, nil
-	}
-	sealed, err := c.movieReader.AdmitScanPage(ctx, location, source, lease, checkpoint, page)
-	if err != nil {
-		return nil, 0, nil, err
-	}
-	for _, i := range strms {
-		entry := page.GetEntries()[i]
-		movie, ok, err := c.prepareStrmMovie(ctx, location, sealed, i, entry)
-		if err != nil {
-			return nil, 0, nil, err
-		}
-		if !ok {
-			skipped++
-			excluded = append(excluded, entry.GetId())
-			continue
-		}
-		movies = append(movies, movie)
-	}
-	return movies, skipped, excluded, nil
+	out.movies = append(movies, remote...)
+	out.skipped += len(refused)
+	out.excluded = append(out.excluded, refused...)
+	return out, nil
 }
 
 // prepareVideos probes the page's candidate video files. A file whose
@@ -209,4 +202,24 @@ func storageMovieProbeReason(err error) string {
 		return "the read was interrupted"
 	}
 	return ""
+}
+
+// publishMoviePage publishes a movie page and records the sidecars that now
+// have their movie, pairing them with the directory's movies as a TV page
+// pairs them with its episodes. It returns the directory state to keep once
+// the page commits.
+func (c *StorageScanner) publishMoviePage(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder, location storagesource.Location, configurationRevision int64, movies []scanner.StorageMovie, dir *seriesDirectory, directoryID string, sidecars []scanner.StorageSeriesSidecar) (scanner.StorageMoviePublishResult, seriesDirectory, error) {
+	videos := make([]*storagev1.Entry, len(movies))
+	for i, movie := range movies {
+		videos[i] = movie.Entry
+	}
+	paired, next := dir.pair(directoryID, videos, sidecars)
+	var result scanner.StorageMoviePublishResult
+	if len(movies) > 0 {
+		var err error
+		if result, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, configurationRevision, movies); err != nil {
+			return result, next, err
+		}
+	}
+	return result, next, c.scanner.AttachStorageSidecarsTx(ctx, tx, folder, location, paired)
 }

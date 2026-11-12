@@ -25,12 +25,18 @@ func movieFixtures(prefix, revision string) ([]object, error) {
 			Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Size: int64(len(data)), Revision: revision, ModifiedUnixNano: 1700000000000000000}, data})
 	}
 	data := []byte("https://untrusted.invalid/remote-movie")
-	if url, err := os.ReadFile(prefix + ".strm-url"); err == nil {
+	url, err := os.ReadFile(prefix + ".strm-url")
+	if err == nil {
 		// A test that serves the remote movie names its address here.
 		data = url
 	}
 	result = append(result, object{&storagev1.Entry{Id: "03-shortcut", Name: "remote.strm", LogicalPath: "Movies/remote.strm",
 		Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Size: int64(len(data)), Revision: revision, ModifiedUnixNano: 1700000000000000000}, data})
+	if err == nil {
+		srt := []byte("1\n00:00:00,000 --> 00:00:01,000\nhi remote.en.srt\n")
+		result = append(result, object{&storagev1.Entry{Id: "04-shortcut-srt", Name: "remote.en.srt", LogicalPath: "Movies/remote.en.srt",
+			Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Size: int64(len(srt)), Revision: revision, ModifiedUnixNano: 1700000000000000000}, srt})
+	}
 	return result, nil
 }
 

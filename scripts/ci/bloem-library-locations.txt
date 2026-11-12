@@ -236,6 +236,10 @@
 ./internal/scanner TestLocalStrmRescanSkipsUnchangedRemoteDB
 ./internal/libraryingest TestNativeStrmStorageRescanSkipsUnchangedRemoteDB
 ./internal/libraryingest TestStrmReuseScalesToThousandsOfEntriesDB
+# .strm episodes and sidecars from storage sources: episodes probed, reused and
+# skipped like movies; sidecars beside a .strm object read through the provider.
+./internal/libraryingest TestNativeStrmStorageSeriesEpisodesDB
+./internal/libraryingest TestNativeStrmStorageMovieSidecarDB
 
 # Jellyfin native playback: a delegated authority rechecks its compat session by token digest.
 ./internal/api TestNativeVideoCompatSessionLiveByDigestDB

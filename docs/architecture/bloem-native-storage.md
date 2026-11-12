@@ -605,6 +605,9 @@ names, because the provider's logical path is relative to its root.
   Extras are not published; a native listing cannot prove that a title folder
   holds media, so an extras folder counts as title-owned when its owner is
   named like a title (`Title (Year)` or provider tags).
+- Text subtitles beside a movie (`.srt`, `.vtt`, `.ass`, `.ssa`) are attached to
+  the movie whose base name they extend, as for episodes below, and never opened
+  by the scan.
 - A new file joins the movie item of its content group in the library
   (`media_files.content_group_key`): other editions and copies of the title
   become versions of one item. Edition keys and page-local multipart totals

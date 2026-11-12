@@ -179,8 +179,8 @@ failed output is discarded. Text burn-in extracts execution-only ASS and font
 files while retaining the catalog subtitle ordinal in the durable recipe.
 Software HDR-to-SDR uses the same fresh source and shared tone-map checks.
 
-An episode's subtitle sidecars (`bloem_storage_episode_sidecars`, recorded by
-the series scan) are its external subtitles. `NativeVideoService.catalog()`,
+A stored episode's or movie's subtitle sidecars (`bloem_storage_episode_sidecars`,
+recorded by the series and movie scans) are its external subtitles. `NativeVideoService.catalog()`,
 the resolver behind the v3 plan, recovery and the subtitle route, lists the
 sidecars whose entry its location still holds at the recorded revision
 (`storagesource.Repository.FileSidecars`), in name order, with language,

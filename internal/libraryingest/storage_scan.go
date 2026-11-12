@@ -382,8 +382,8 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 	}
 	var following *followingPage
 	defer func() { following.stop() }()
-	// A TV library pairs each directory's subtitle sidecars with its episodes
-	// across the directory's pages.
+	// A TV or movie library pairs each directory's subtitle sidecars with its
+	// episodes or movies across the directory's pages.
 	var seriesDir seriesDirectory
 	var probeGate *seriesProbeGate
 	if librarykind.IsTV(folder.Type) {
@@ -419,10 +419,12 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 			var missingEpisodes []string
 			finalize := func(ctx context.Context, tx pgx.Tx) error {
 				var err error
-				if librarykind.IsTV(folder.Type) {
+				if librarykind.IsTV(folder.Type) || librarykind.IsMovie(folder.Type) {
 					if err = c.scanner.FinalizeStorageSeriesLocationTx(ctx, tx, location); err != nil {
 						return err
 					}
+				}
+				if librarykind.IsTV(folder.Type) {
 					// Read before the sweep can delete the files.
 					if missingEpisodes, err = c.scanner.StorageMissingEpisodesTx(ctx, tx, folder, location); err != nil {
 						return err
@@ -528,11 +530,10 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 				published, series, nextSeriesDir, err = c.publishSeriesPage(ctx, tx, scanner.StorageSeriesPage{Folder: folder, Location: location, ConfigurationRevision: source.ConfigurationRevision,
 					Roots: scanner.StorageSeriesParseRoots(selection.Roots), Episodes: uniqueMovies}, &seriesDir, checkpoint.DirectoryID, pageSidecars)
 			case librarykind.IsMovie(folder.Type):
-				if len(uniqueMovies) > 0 {
-					var moviePage scanner.StorageMoviePublishResult
-					moviePage, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueMovies)
-					published, matches = moviePage.StoragePublishResult, moviePage.Matches
-				}
+				pageSidecars := slices.DeleteFunc(slices.Clone(sidecars), func(s scanner.StorageSeriesSidecar) bool { return !allowed[s.Entry.GetId()] })
+				var moviePage scanner.StorageMoviePublishResult
+				moviePage, nextSeriesDir, err = c.publishMoviePage(ctx, tx, folder, location, source.ConfigurationRevision, uniqueMovies, &seriesDir, checkpoint.DirectoryID, pageSidecars)
+				published, matches = moviePage.StoragePublishResult, moviePage.Matches
 			case librarykind.IsAudiobook(folder.Type):
 				var allowedTracks []scanner.StorageAudioTrack
 				for _, track := range audio {
@@ -571,8 +572,10 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 		}
 		// The committed page renewed the lease.
 		confirmLease()
-		if librarykind.IsTV(folder.Type) {
+		if librarykind.IsTV(folder.Type) || librarykind.IsMovie(folder.Type) {
 			seriesDir = nextSeriesDir
+		}
+		if librarykind.IsTV(folder.Type) {
 			series.matches = slices.DeleteFunc(series.matches, func(m scanner.StorageSeriesMatch) bool {
 				attempted := matchAttempted[m.ContentID]
 				matchAttempted[m.ContentID] = true
@@ -627,7 +630,9 @@ func (c *StorageScanner) fetchAndPrepare(ctx context.Context, folder *models.Med
 		prepared, err = c.prepareSeries(ctx, folder, selection, source, lease, checkpoint, page, probes)
 		movies, sidecars, skipped, excluded = prepared.episodes, prepared.sidecars, prepared.skipped, prepared.excluded
 	case librarykind.IsMovie(folder.Type):
-		movies, skipped, excluded, err = c.prepareMovies(ctx, folder, selection.Location, source, lease, checkpoint, page)
+		var prepared preparedMovies
+		prepared, err = c.prepareMovies(ctx, folder, selection.Location, source, lease, checkpoint, page)
+		movies, sidecars, skipped, excluded = prepared.movies, prepared.sidecars, prepared.skipped, prepared.excluded
 	default:
 		books, skipped, err = c.prepare(ctx, media, source, page.GetEntries())
 	}

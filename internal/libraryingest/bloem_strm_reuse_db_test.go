@@ -88,7 +88,7 @@ func TestStrmReuseScalesToThousandsOfEntriesDB(t *testing.T) {
 	c := &StorageScanner{remote: &remotesource.Runtime{Store: remotesource.NewStore(pool), Guard: remotesource.NewGuard(remotesource.Options{AllowPrivate: func(context.Context) bool { return true }})}}
 
 	began := time.Now()
-	movies, probeLeft, err := c.reuseStrmMovies(t.Context(), location, page, strms)
+	movies, probeLeft, err := c.reuseStrmVideos(t.Context(), location, page, strms)
 	elapsed := time.Since(began)
 	if err != nil {
 		t.Fatal(err)

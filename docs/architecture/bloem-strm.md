@@ -20,8 +20,8 @@ how the video plays, the one security default, and what does not work yet.
 
 1. **It is a video.** Bloem reads the first line that is not empty and treats the
    file as the movie or episode its name says, like any other video. A `.strm` file
-   can sit in a movie or series library folder, or in a movie library's storage source
-   (an S3 bucket, for example).
+   can sit in a movie or series library folder, or in a movie or series library's
+   storage source (an S3 bucket, for example).
 2. **The scan looks at the video.** Bloem checks the address, then lets ffprobe read
    the video through Bloem to learn its length, picture, sound and subtitles.
 3. **Bloem keeps the address to itself.** It stores the address in its own record. The
@@ -34,7 +34,8 @@ how the video plays, the one security default, and what does not work yet.
    learned and asks the remote server for one byte only.
 6. **Subtitle files beside it are its subtitles.** `Harbour Lights (2019).en.srt` next to
    `Harbour Lights (2019).strm` is offered and served like a subtitle file next to any
-   video, in the web app, Bloem's apps and Jellyfin apps.
+   video, in a library folder or a storage source. Jellyfin apps get those beside a
+   `.strm` file in a library folder.
 
 Bloem never filters what a `.strm` file points at.
 
@@ -87,9 +88,8 @@ and the library is scanned again.
 
 ## What does not work yet
 
-- **Episodes from storage sources.** Storage sources only scan movies so far; `.strm`
-  episodes work from library folders.
-- **Subtitle files next to a `.strm` object in a storage source**.
+- **Subtitle files next to a `.strm` object in a storage source for Jellyfin apps**,
+  as for every stored video.
 - **Downloads** of `.strm` items, as for every stored video.
 - **Attached fonts and bitmap subtitles** of `.strm` items in Jellyfin apps, as for
   stored movies.
@@ -191,8 +191,11 @@ and the library is scanned again.
   rejection; a refused address or a network failure stays retryable. `ScanFile` (the
   single-file trigger) still refuses `.strm`; the next library scan picks the file up.
 - Storage sources: `StorageScanner.ConfigureRemoteSources` (startup, in
-  `cmd/silo/bloem_native_movie_scanner.go`) makes `prepareMovies` take `.strm`
-  entries of movie libraries (same extras and sample skips). `prepareStrmMovie` opens
+  `cmd/silo/bloem_native_movie_scanner.go`) makes `prepareMovies` and
+  `prepareSeries` take `.strm` entries of movie and TV libraries (same extras,
+  sample and episode-number rules as other videos), through `prepareStrms`. A
+  `.strm` episode counts against the series probe budget and pacing like any
+  episode. `prepareStrmVideo` opens
   the pinned entry with the scan reader, reads it, and probes while the entry stays
   open, rechecking its authority on every probe read. An unusable URL skips the entry
   as excluded (an older publication goes missing) and deletes its row; a failure of
@@ -239,8 +242,13 @@ and the library is scanned again.
 - An open the guard refuses is `strmRefusedError`: still
   `remotesource.ErrBlockedAddress`, and a 403 `source_refused` `handlers.APIError` to
   `errors.As`, so the Jellyfin media host answers 403.
-- Subtitle files: Silo's scanner already lists files named for a local `.strm` file
-  (beside it or in its `Subs/` folder) as its `external_subtitles`. The subtitle route
+- Subtitle files in storage: a storage `.strm` object's text subtitles are its
+  sidecars in `bloem_storage_episode_sidecars`, paired by the movie and series lanes
+  like any stored video's ([native storage](bloem-native-storage.md)), and are listed
+  and served through the provider like other native sidecars (`serveNativeSidecar`).
+- Subtitle files beside a local `.strm` file: Silo's scanner already lists files named
+  for it (beside it or in its `Subs/` folder) as its `external_subtitles`, which
+  `withNativeSidecars` leaves in place for a local `.strm` path. The subtitle route
   in `stream.go` (a declared seam, one Bloem condition) serves such a track only when
   `scanner.StrmSidecarSubtitle` finds it among the `.strm` file's sidecars by Silo's own
   rules at request time, after the native source preflight; it is then served by
@@ -294,7 +302,10 @@ and the library is scanned again.
   `TestProbeRemoteRefusesPrivateAddressesByDefault`, `TestSniffRemoteDemuxer`,
   `TestLocalStrmScanRecordsRemoteSourceDB`.
 - `internal/libraryingest` (integration tag): `TestNativeStrmStorageScanPublishesRemoteMovieDB`,
-  `TestNativeStrmStorageUnreadableURLSkipsOnlyThatEntryDB`.
+  `TestNativeStrmStorageUnreadableURLSkipsOnlyThatEntryDB`,
+  `TestNativeStrmStorageSeriesEpisodesDB` (a storage `.strm` episode, its sidecar, an
+  unreadable one skipped, the one-byte rescan, and the object revision playback needs),
+  `TestNativeStrmStorageMovieSidecarDB`.
 - `internal/api`: `TestStrmDirectPlayProxiesRanges`, `TestStrmURLChangeIsANewRevision`,
   `TestStrmReauthorizeChecksTheViewer`, `TestStrmOpenRefusesPrivateAddressesAndUnrecordedFiles`,
   `TestStrmStoredObjectNeedsTheScannedRevision`, `TestStrmRemuxRunsFFmpegThroughTheBridge`,
@@ -324,8 +335,8 @@ and the library is scanned again.
   is in `remote_size`. Silo's OSHash logs that the file is too small.
 - Silo switching: Silo, serving the same database, treats a local `.strm` row as a plain
   file, and its own scans drop the row.
-- External subtitles of storage objects are refused; a `.strm` item's are served only
-  for files beside a local `.strm` file.
+- A local `.strm` item's external subtitles are served only for files beside it by
+  Silo's sidecar rules; a storage object's only from its recorded sidecars.
 
 The picture is an SVG file under `docs/architecture/images/bloem-strm/`, drawn by
 `scripts/bloem/draw-pictures.py` from `scripts/bloem/pictures/bloem_strm.py`.

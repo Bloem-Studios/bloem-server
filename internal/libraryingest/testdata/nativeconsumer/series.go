@@ -26,6 +26,9 @@ const (
 	seriesA02   = seriesShowA + "/Season 01/Show A (2005) - S01E02 [WEBDL-1080p]-Grp"
 	seriesA00   = seriesShowA + "/Season 00/Show A (2005) - S00E01 [WEBDL-1080p]-Grp"
 	seriesB01   = seriesShowB + "/Season 01/Show B (2012) - S01E01-E02 [HDTV-720p]-Grp"
+	seriesShowC = "television/10s/Show C (2015) {tvdb-333}"
+	seriesC01   = seriesShowC + "/Season 01/Show C (2015) - S01E01"
+	seriesC02   = seriesShowC + "/Season 01/Show C (2015) - S01E02"
 )
 
 func seriesFixtures(prefix, revision string) ([]object, error) {
@@ -70,6 +73,15 @@ func seriesFixtures(prefix, revision string) ([]object, error) {
 	add(seriesA00+".mkv", mkv, false)
 	add(seriesB01+".mkv", mkv, false)
 	add(seriesB01+".zh.srt", srt(seriesB01+".zh.srt"), false)
+	if url, err := os.ReadFile(prefix + ".strm-url"); err == nil {
+		// A test that serves a remote episode names its address here: one
+		// `.strm` episode with a sidecar, and one whose address never answers.
+		add(seriesShowC, nil, true)
+		add(seriesShowC+"/Season 01", nil, true)
+		add(seriesC01+".strm", url, false)
+		add(seriesC01+".en.srt", srt(seriesC01+".en.srt"), false)
+		add(seriesC02+".strm", []byte("https://untrusted.invalid/remote-episode\n"), false)
+	}
 	return result, nil
 }
 

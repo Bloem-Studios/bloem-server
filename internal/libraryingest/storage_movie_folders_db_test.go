@@ -94,7 +94,7 @@ func nativeMovieItems(t *testing.T, pool *pgxpool.Pool, folderID int) map[string
 
 // Folder names from the live movies bucket. Titles must come from the title
 // folder, editions must share one item, sidecars, extras and samples must not
-// be read or published, ignored folders must never be listed, and folder
+// be read by the scan or published as files, ignored folders must never be listed, and folder
 // provider tags must match through the metadata pipeline, not the path queue.
 func TestNativeMovieStorageTitleFoldersPublishAndMatch(t *testing.T) {
 	binary, manifest := nativeMovieScanArtifact(t)
@@ -106,7 +106,8 @@ func TestNativeMovieStorageTitleFoldersPublishAndMatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.ScanResult.New != 4 || result.ScanResult.Unchanged != 4 {
+	// The subtitle beside 3 A.M. is attached to its movie, not skipped.
+	if result.ScanResult.New != 4 || result.ScanResult.Unchanged != 3 {
 		t.Fatalf("scan result %+v", result.ScanResult)
 	}
 	items := nativeMovieItems(t, f.pool, f.folder.ID)

@@ -46,7 +46,8 @@ type preparedSeries struct {
 // number are neither opened nor published, and a file an older scan published
 // goes missing. Only new or changed episodes are probed, within the scan's
 // probe budget and its source's probe rate; an episode over budget stays
-// unpublished until a later scan.
+// unpublished until a later scan. A `.strm` object is an episode like any
+// other, probed from its URL (prepareStrms).
 func (c *StorageScanner) prepareSeries(ctx context.Context, folder *models.MediaFolder, selection storagesource.LocationSelection, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse, probes *seriesProbeGate) (preparedSeries, error) {
 	var out preparedSeries
 	if !c.nativeSeriesReady || c.movieReader == nil {
@@ -54,6 +55,7 @@ func (c *StorageScanner) prepareSeries(ctx context.Context, folder *models.Media
 	}
 	page = proto.CloneOf(page)
 	var candidates []int
+	strm := map[int]bool{}
 	for i, entry := range page.GetEntries() {
 		if entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_FILE {
 			continue
@@ -62,7 +64,9 @@ func (c *StorageScanner) prepareSeries(ctx context.Context, folder *models.Media
 			out.sidecars = append(out.sidecars, sub)
 			continue
 		}
-		if _, ok := scanner.NativeMovieDemuxer(entry.GetName()); !ok {
+		_, video := scanner.NativeMovieDemuxer(entry.GetName())
+		strm[i] = !video && c.takesStrm(entry)
+		if !video && !strm[i] {
 			out.skipped++
 			continue
 		}
@@ -86,9 +90,26 @@ func (c *StorageScanner) prepareSeries(ctx context.Context, folder *models.Media
 		out.excluded = append(out.excluded, page.GetEntries()[i].GetId())
 		return true
 	})
-	episodes, err := c.prepareVideos(ctx, folder, selection.Location, source, lease, checkpoint, page, candidates, probes)
-	out.episodes = episodes
-	return out, err
+	var videos, strms []int
+	for _, i := range candidates {
+		if strm[i] {
+			strms = append(strms, i)
+		} else {
+			videos = append(videos, i)
+		}
+	}
+	episodes, err := c.prepareVideos(ctx, folder, selection.Location, source, lease, checkpoint, page, videos, probes)
+	if err != nil {
+		return out, err
+	}
+	remote, refused, err := c.prepareStrms(ctx, selection.Location, source, lease, checkpoint, page, strms, probes)
+	if err != nil {
+		return out, err
+	}
+	out.episodes = append(episodes, remote...)
+	out.skipped += len(refused)
+	out.excluded = append(out.excluded, refused...)
+	return out, nil
 }
 
 // publishSeriesPage pairs the page's sidecars with its directory's episodes
