@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
 	"path"
 	"sync"
 
@@ -117,7 +118,7 @@ func (s *strmPlayback) openLocal(ctx context.Context, file *models.MediaFile, sr
 	remote, err := remotesource.Open(lifetime, s.guard.Client(), src.URL, remotesource.NameHint(src.URL))
 	if err != nil {
 		cancel()
-		return nil, err
+		return nil, strmOpenError(err)
 	}
 	frozen := *file
 	return &strmVideoFile{
@@ -157,7 +158,7 @@ func (s *strmPlayback) openStored(ctx context.Context, file *models.MediaFile, s
 	remote, err := remotesource.Open(base.Context(), s.guard.Client(), src.URL, remotesource.NameHint(src.URL))
 	if err != nil {
 		_ = base.Close()
-		return nil, err
+		return nil, strmOpenError(err)
 	}
 	info := base.Info()
 	info.Size = remote.Info().Size
@@ -242,3 +243,26 @@ func (f *strmVideoFile) Close() error {
 }
 
 var _ io.ReadSeeker = (*strmVideoFile)(nil)
+
+// strmRefusedError is an open the guard refused. It stays
+// remotesource.ErrBlockedAddress for callers that check it, and reads as a
+// 403 API error, which the Jellyfin native media host answers with: the
+// address is refused, the service is not down. It never names the URL.
+type strmRefusedError struct{ err error }
+
+func (e strmRefusedError) Error() string { return e.err.Error() }
+func (e strmRefusedError) Unwrap() error { return e.err }
+func (e strmRefusedError) As(target any) bool {
+	if apiErr, ok := target.(**handlers.APIError); ok {
+		*apiErr = &handlers.APIError{Status: http.StatusForbidden, Code: "source_refused", Message: "This video's address is refused by the server"}
+		return true
+	}
+	return false
+}
+
+func strmOpenError(err error) error {
+	if errors.Is(err, remotesource.ErrBlockedAddress) {
+		return strmRefusedError{err: err}
+	}
+	return err
+}
