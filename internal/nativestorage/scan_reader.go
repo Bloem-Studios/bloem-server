@@ -27,11 +27,12 @@ import (
 // and accepts no path, URL or independently selected entry identity.
 // Its lifetime must remain inside the scan's publication boundary.
 type ScanReader struct {
-	pool             *pgxpool.Pool
-	host             *Host
-	runtime          Runtime
-	nativeMovieReady bool
-	nativeAudioReady bool
+	pool              *pgxpool.Pool
+	host              *Host
+	runtime           Runtime
+	nativeMovieReady  bool
+	nativeAudioReady  bool
+	nativeSeriesReady bool
 	// authorityReuse is how long a page's successful authorization stands
 	// for the reads of its open files; zero checks before and after each.
 	authorityReuse time.Duration
@@ -126,6 +127,7 @@ func (r *ScanReader) AdmitScanPage(ctx context.Context, location storagesource.L
 	resources := resourcetenancy.NewStore(r.pool)
 	resources.SetNativeMovieReady(r.nativeMovieReady)
 	resources.SetNativeAudioReady(r.nativeAudioReady)
+	resources.SetNativeSeriesReady(r.nativeSeriesReady)
 	pinned, err := resources.StorageScanResources(ctx, location, source)
 	if err != nil {
 		return nil, err
@@ -213,6 +215,7 @@ func (r *ScanReader) authorize(ctx context.Context, p *ScanPage) (scanOwnerEvide
 	resources := resourcetenancy.NewStore(r.pool)
 	resources.SetNativeMovieReady(r.nativeMovieReady)
 	resources.SetNativeAudioReady(r.nativeAudioReady)
+	resources.SetNativeSeriesReady(r.nativeSeriesReady)
 	if err = resources.RequireStorageScanTx(ctx, tx, p.location, p.source, p.resources); err != nil {
 		return owners, err
 	}
@@ -497,6 +500,13 @@ func (s *scanEntrySource) ReadRange(ctx context.Context, ref mediasource.Ref, of
 	err := s.raw.ReadRange(ctx, ref, offset, length, w)
 	after := s.state.check(ctx)
 	return s.state.fail(errors.Join(err, after))
+}
+
+// SetNativeSeriesReady is startup-only, before page admission or provider reads.
+func (r *ScanReader) SetNativeSeriesReady(ready bool) {
+	if r != nil {
+		r.nativeSeriesReady = ready
+	}
 }
 
 // SetNativeAudioReady is startup-only, before page admission or provider reads.

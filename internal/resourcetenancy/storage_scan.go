@@ -104,7 +104,7 @@ func (s *Store) retainStorageScanTx(ctx context.Context, tx pgx.Tx, binding stor
 	if err != nil {
 		return out, err
 	}
-	if !librarykind.SupportsNativeStorageKinds(out.LibraryKind, s.nativeMovieReady, s.nativeAudioReady) {
+	if !librarykind.SupportsNativeStorageLanes(out.LibraryKind, s.nativeMovieReady, s.nativeAudioReady, s.nativeSeriesReady) {
 		return out, ErrResourceHidden
 	}
 	for _, location := range out.Locations {
@@ -177,7 +177,7 @@ func (s *Store) requireLegacyStorageAttachmentTx(ctx context.Context, tx pgx.Tx,
 	if err != nil {
 		return storageScanError(err)
 	}
-	if !librarykind.SupportsNativeStorageKinds(kind, s.nativeMovieReady, s.nativeAudioReady) || !enabled {
+	if !librarykind.SupportsNativeStorageLanes(kind, s.nativeMovieReady, s.nativeAudioReady, s.nativeSeriesReady) || !enabled {
 		return ErrResourceHidden
 	}
 	var actualBinding storagesource.Location
@@ -287,5 +287,13 @@ func storageScanError(err error) error {
 func (s *Store) SetNativeAudioReady(ready bool) {
 	if s != nil {
 		s.nativeAudioReady = ready
+	}
+}
+
+// SetNativeSeriesReady is startup-only, before authority checks or scans.
+// False is the default and holds every series library.
+func (s *Store) SetNativeSeriesReady(ready bool) {
+	if s != nil {
+		s.nativeSeriesReady = ready
 	}
 }

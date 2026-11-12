@@ -7,6 +7,7 @@ import (
 	"io"
 	"os/exec"
 
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
@@ -43,7 +44,7 @@ func (c *StorageScanner) ConfigureNativeMovies(ready bool, reader *nativestorage
 // prepareMovies probes the page's movie files. Files Silo's walk would not
 // publish (extras, samples, ignored folders) are neither opened nor probed;
 // their IDs are returned so a file published by an older scan goes missing.
-func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse) ([]scanner.StorageMovie, int, []string, error) {
+func (c *StorageScanner) prepareMovies(ctx context.Context, folder *models.MediaFolder, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse) ([]scanner.StorageMovie, int, []string, error) {
 	if !c.nativeMovieReady || c.movieReader == nil {
 		return nil, 0, nil, storagesource.ErrSourceUnavailable
 	}
@@ -68,31 +69,66 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesour
 		}
 		candidates = append(candidates, i)
 	}
-	if len(candidates) == 0 {
-		return nil, skipped, excluded, nil
-	}
-	sealed, err := c.movieReader.AdmitScanPage(ctx, location, source, lease, checkpoint, page)
+	movies, err := c.prepareVideos(ctx, folder, location, source, lease, checkpoint, page, candidates, nil)
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	movies := make([]scanner.StorageMovie, 0, len(candidates))
+	return movies, skipped, excluded, nil
+}
+
+// prepareVideos probes the page's candidate video files. A file whose
+// published row is current for the same listed entry is not opened again: it
+// is returned unprobed, and publication keeps its rows. A file the probe gate
+// refuses is left out: it stays listed but unpublished. page must be the
+// caller's own clone.
+func (c *StorageScanner) prepareVideos(ctx context.Context, folder *models.MediaFolder, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse, candidates []int, probes *seriesProbeGate) ([]scanner.StorageMovie, error) {
+	if len(candidates) == 0 {
+		return nil, nil
+	}
+	entries := make([]*storagev1.Entry, len(candidates))
+	for j, i := range candidates {
+		entries[j] = page.GetEntries()[i]
+	}
+	unchanged, err := c.scanner.StorageVideosUnchanged(ctx, folder, location, source.ConfigurationRevision, entries)
+	if err != nil {
+		return nil, err
+	}
+	videos := make([]scanner.StorageMovie, 0, len(candidates))
+	var probe []int
 	for _, i := range candidates {
+		if entry := page.GetEntries()[i]; unchanged[entry.GetId()] {
+			videos = append(videos, scanner.UnprobedStorageVideo(entry))
+		} else if probes.admit() {
+			probe = append(probe, i)
+		}
+	}
+	if len(probe) == 0 {
+		return videos, nil
+	}
+	sealed, err := c.movieReader.AdmitScanPage(ctx, location, source, lease, checkpoint, page)
+	if err != nil {
+		return nil, err
+	}
+	for _, i := range probe {
 		entry := page.GetEntries()[i]
+		if err := probes.wait(ctx); err != nil {
+			return nil, err
+		}
 		file, err := c.movieReader.OpenScanEntry(ctx, sealed, i)
 		if err != nil {
-			return nil, 0, nil, fmt.Errorf("open storage movie %q: %w", entry.GetName(), err)
+			return nil, fmt.Errorf("open storage video %q: %w", entry.GetName(), err)
 		}
 		cfg := c.movieProbeConfig
 		cfg.Input.CancelSource, cfg.Input.Reauthorize, cfg.Input.ReleaseHost = file.Cancel, file.Reauthorize, nil
-		movie, probeErr := c.scanner.ProbeStorageMovie(file.Context(), entry, file, cfg)
+		video, probeErr := c.scanner.ProbeStorageMovie(file.Context(), entry, file, cfg)
 		// ScanEntryFile.Close is idempotent: successful ToolInput owns cleanup;
 		// failed admission/configuration still leaves this handle with us.
 		if err := errors.Join(probeErr, file.Close()); err != nil {
-			return nil, 0, nil, storageMovieProbeError(entry.GetName(), err)
+			return nil, storageMovieProbeError(entry.GetName(), err)
 		}
-		movies = append(movies, movie)
+		videos = append(videos, video)
 	}
-	return movies, skipped, excluded, nil
+	return videos, nil
 }
 
 // storageMovieProbeError names the entry and adds a reason an operator can act

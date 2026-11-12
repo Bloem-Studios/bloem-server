@@ -480,7 +480,7 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 	externalCount := len(file.ExternalSubtitles)
 	if trackIndex < externalCount {
 		if storagesource.IsNativeLocation(file.FilePath) {
-			writeError(w, http.StatusNotFound, "not_found", "Subtitle track not found")
+			h.serveNativeSidecar(w, r, session, file, trackIndex, requestedFormat)
 			return
 		}
 		sub := file.ExternalSubtitles[trackIndex]

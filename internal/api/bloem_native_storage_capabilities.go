@@ -15,6 +15,7 @@ type nativeStorageCapabilities struct {
 	locations   bool
 	video       bool
 	movies      bool
+	series      bool
 	remoteVideo bool
 	audio       bool
 }
@@ -40,6 +41,11 @@ func (c *nativeStorageCapabilities) NativeMovieLibrariesReady(ctx context.Contex
 	return c.NativeVideoReady(ctx) && c.movies
 }
 
+// NativeSeriesLibrariesReady requires the movie composition plus the series lane.
+func (c *nativeStorageCapabilities) NativeSeriesLibrariesReady(ctx context.Context) bool {
+	return c.NativeMovieLibrariesReady(ctx) && c.series
+}
+
 func (c *nativeStorageCapabilities) NativeRemoteVideoReady(ctx context.Context) bool {
 	return c.NativeVideoReady(ctx) && c.remoteVideo
 }
@@ -50,11 +56,15 @@ func attachNativeVideoReadiness(deps Dependencies, h *handlers.PlaybackHandler, 
 	if h == nil || h.NativeVideo == nil || stream == nil || stream.NativeVideo != h.NativeVideo {
 		return
 	}
-	movies := false
+	movies, series := false, false
 	if deps.NativeMovieScannerReady && libraries != nil {
 		if locations, ok := libraries.StorageLocations.(interface{ SetNativeMovieReady(bool) }); ok {
 			locations.SetNativeMovieReady(true)
 			movies = true
+		}
+		if locations, ok := libraries.StorageLocations.(interface{ SetNativeSeriesReady(bool) }); ok && movies && deps.NativeSeriesScannerReady {
+			locations.SetNativeSeriesReady(true)
+			series = true
 		}
 	}
 	if deps.NativeStorageManagement == nil {
@@ -63,6 +73,7 @@ func attachNativeVideoReadiness(deps Dependencies, h *handlers.PlaybackHandler, 
 	if c, ok := deps.NativeStorageManagement.Capabilities.(*nativeStorageCapabilities); ok && c != nil {
 		c.video = true
 		c.movies = movies
+		c.series = series
 		c.remoteVideo = h.NativeVideo.WorkerGrants.Enabled() && h.NodeRecipeStore != nil && h.NodeRecipeStore.Enabled()
 	}
 	attachNativeAudioReadiness(deps, h, stream, libraries)

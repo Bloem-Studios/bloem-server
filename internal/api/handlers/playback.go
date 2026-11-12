@@ -1822,7 +1822,7 @@ func (h *PlaybackHandler) loadAuthorizedFile(r *http.Request, fileID int) (*mode
 	if h.NativeVideo != nil && h.NativeVideo.Files != nil {
 		file, err := h.NativeVideo.Files.GetByID(r.Context(), fileID)
 		if err == nil && NativeVideoSupported(file) {
-			resolver = h.NativeVideo.Files
+			resolver = h.NativeVideo.catalog()
 		}
 	}
 	return h.loadAuthorizedFileFrom(r, resolver, fileID)

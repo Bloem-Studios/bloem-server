@@ -128,6 +128,12 @@ func (c *Coordinator) resolvePlayback(ctx context.Context, file models.MediaFile
 // local lifecycle changes; fresh policy and reference/snapshot reads around
 // provider I/O detect durable changes from other hosts. No DB transaction spans I/O.
 func (c *Coordinator) OpenAuthorizedPlayback(ctx context.Context, file *models.MediaFile, authority PlaybackAuthority) (*PlaybackFile, error) {
+	return c.openAuthorized(ctx, file, authority, nil)
+}
+
+// openAuthorized opens file, or with pin the sidecar pin names, under the
+// file's playback authority.
+func (c *Coordinator) openAuthorized(ctx context.Context, file *models.MediaFile, authority PlaybackAuthority, pin *sidecarPin) (*PlaybackFile, error) {
 	if ctx == nil || c == nil || file == nil || c.References == nil || c.Registry == nil || c.Runtime == nil || authority.AuthorizeFile == nil || authority.AuthorizeSource == nil {
 		return nil, storagesource.ErrSourceUnavailable
 	}
@@ -156,6 +162,15 @@ func (c *Coordinator) OpenAuthorizedPlayback(ctx context.Context, file *models.M
 	if err != nil {
 		return nil, err
 	}
+	read := ref
+	var sidecar func(context.Context) error
+	if pin != nil {
+		read = pin.ref
+		sidecar = func(ctx context.Context) error { return pin.check(ctx, frozenFile.ID, ref) }
+		if err = sidecar(ctx); err != nil {
+			return nil, err
+		}
+	}
 	borrowed := clonePlaybackSnapshot(snapshot)
 	lease, err := c.Runtime.Borrow(ctx, storageplugin.Snapshot{InstallationID: snapshot.Installation.ID, Generation: snapshot.Generation, BinaryPath: snapshot.Installation.InstallPath, ExpectedChecksum: snapshot.ArtifactChecksum, Manifest: borrowed.Manifest, Config: borrowed.Config, Enabled: true, NativeOnly: true})
 	if err != nil {
@@ -165,7 +180,7 @@ func (c *Coordinator) OpenAuthorizedPlayback(ctx context.Context, file *models.M
 		return nil, storagesource.ErrSourceUnavailable
 	}
 	readCtx, cancel := context.WithCancelCause(ctx)
-	state := &playbackFileState{ctx: readCtx, cancel: cancel, coordinator: c, authority: authority, file: frozenFile, source: source, ref: ref, snapshot: snapshot, runtime: lease.Context, release: release}
+	state := &playbackFileState{ctx: readCtx, cancel: cancel, coordinator: c, authority: authority, file: frozenFile, source: source, ref: read, fileRef: ref, sidecar: sidecar, snapshot: snapshot, runtime: lease.Context, release: release}
 	state.stop = context.AfterFunc(lease.Context, func() { _ = state.fail(storageplugin.ErrUnavailable) })
 	defer func() {
 		if !transferred {
@@ -177,13 +192,13 @@ func (c *Coordinator) OpenAuthorizedPlayback(ctx context.Context, file *models.M
 	if err = state.checkLocked(readCtx); err != nil {
 		return nil, err
 	}
-	providerRef := mediasource.Ref{SourceID: source.ProviderSourceID, EntryID: ref.EntryID, Revision: ref.Revision}
+	providerRef := mediasource.Ref{SourceID: source.ProviderSourceID, EntryID: read.EntryID, Revision: read.Revision}
 	opened, err := mediasource.Open(readCtx, &playbackSource{raw: lease.Source, state: state, ref: providerRef}, providerRef)
 	if err != nil {
 		return nil, err
 	}
 	transferred = true
-	return &PlaybackFile{file: opened, state: state, identity: PlaybackIdentity{FileID: frozenFile.ID, MediaFolderID: frozenFile.MediaFolderID, ContentID: frozenFile.ContentID, FilePath: frozenFile.FilePath, SourceKey: source.Key, OwnerID: source.OwnerID, InstallationID: snapshot.Installation.ID, PluginID: source.PluginID, ProviderSourceID: source.ProviderSourceID, RootEntryID: source.RootEntryID, ConfigurationRevision: source.ConfigurationRevision, Reference: ref, Generation: snapshot.Generation, ArtifactChecksum: snapshot.ArtifactChecksum}}, nil
+	return &PlaybackFile{file: opened, state: state, identity: PlaybackIdentity{FileID: frozenFile.ID, MediaFolderID: frozenFile.MediaFolderID, ContentID: frozenFile.ContentID, FilePath: frozenFile.FilePath, SourceKey: source.Key, OwnerID: source.OwnerID, InstallationID: snapshot.Installation.ID, PluginID: source.PluginID, ProviderSourceID: source.ProviderSourceID, RootEntryID: source.RootEntryID, ConfigurationRevision: source.ConfigurationRevision, Reference: read, Generation: snapshot.Generation, ArtifactChecksum: snapshot.ArtifactChecksum}}, nil
 }
 
 // PlaybackFile owns admission until Close. Cancellation and terminal policy or
@@ -216,6 +231,11 @@ type playbackFileState struct {
 	closed         bool
 	sticky         error
 	active         sync.WaitGroup
+
+	// ref is the entry read; fileRef is file's own entry, which authorizes
+	// it. They differ only for a sidecar, which sidecar rechecks.
+	fileRef storagesource.PersistedRef
+	sidecar func(context.Context) error
 }
 
 func (s *playbackFileState) fail(err error) error {
@@ -290,9 +310,12 @@ func (s *playbackFileState) checkLocked(ctx context.Context) error {
 		var source storagesource.SourceConfig
 		var ref storagesource.PersistedRef
 		source, ref, err = s.coordinator.authorizePlayback(ctx, s.file, s.authority)
-		if err == nil && (!SameSource(source, s.source) || ref != s.ref) {
+		if err == nil && (!SameSource(source, s.source) || ref != s.fileRef) {
 			err = storagesource.ErrSourceUnavailable
 		}
+	}
+	if err == nil && s.sidecar != nil {
+		err = s.sidecar(ctx)
 	}
 	if err != nil {
 		return s.fail(err)

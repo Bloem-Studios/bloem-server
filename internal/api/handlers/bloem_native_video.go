@@ -85,6 +85,11 @@ type NativeVideoService struct {
 	WorkerGrants   *NativeVideoWorkerGrantStore
 	Sessions       SessionManagerInterface
 	Deny           *playback.StreamDeny
+	// Sidecars lists the subtitle sidecars of native files as their external
+	// subtitles; nil lists none. OpenSidecar reads one with a session's bound
+	// authority, rechecked as the bound video's around every provider read.
+	Sidecars    NativeSidecarStore
+	OpenSidecar func(context.Context, *models.MediaFile, NativeVideoBinding, storagesource.PersistedRef) (NativeVideoFile, error)
 }
 
 func nativeVideoUnavailable() error {

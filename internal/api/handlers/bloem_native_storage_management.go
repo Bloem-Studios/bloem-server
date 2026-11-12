@@ -675,7 +675,7 @@ func nativeStorageInstallRequest(cmd *nativestorage.InstallCommand, fields map[s
 func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx context.Context) map[string]any {
 	ready := h != nil && h.Capabilities != nil && h.Capabilities.NativeStorageReady(ctx)
 	discoveryReady := false
-	movies, video, remoteVideo := false, false, false
+	movies, series, video, remoteVideo := false, false, false, false
 	if ready {
 		if discovery, ok := h.Capabilities.(interface{ InitialRootDiscoveryReady(context.Context) bool }); ok {
 			discoveryReady = discovery.InitialRootDiscoveryReady(ctx)
@@ -686,6 +686,11 @@ func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx cont
 			NativeRemoteVideoReady(context.Context) bool
 		}); ok {
 			movies, video, remoteVideo = v.NativeMovieLibrariesReady(ctx), v.NativeVideoReady(ctx), v.NativeRemoteVideoReady(ctx)
+		}
+		if v, ok := h.Capabilities.(interface {
+			NativeSeriesLibrariesReady(context.Context) bool
+		}); ok {
+			series = movies && v.NativeSeriesLibrariesReady(ctx)
 		}
 	}
 	browsing, editing, audio := false, false, false
@@ -708,6 +713,9 @@ func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx cont
 	if movies {
 		kinds = append(kinds, "movies")
 	}
+	if series {
+		kinds = append(kinds, "series")
+	}
 	if audio {
 		kinds = append(kinds, "audiobooks")
 	}
@@ -725,7 +733,7 @@ func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx cont
 		"s3_catalog_discovery":      discoveryReady && h.Registry != nil,
 		"s3_checked_etag_reads":     ready,
 		"s3_bucket_browse":          ready && h.S3Browse != nil,
-		"native_movie_libraries":    movies, "native_video_playback": video, "native_video_remote_execution": remoteVideo,
+		"native_movie_libraries":    movies, "native_series_libraries": series, "native_video_playback": video, "native_video_remote_execution": remoteVideo,
 		"native_video_downloads": false, "native_video_jellyfin": false,
 		"retained_namespace_reinstall": false, "enable": false, "backend_verified": false}
 }

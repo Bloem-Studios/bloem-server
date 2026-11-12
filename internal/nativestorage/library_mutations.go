@@ -187,6 +187,8 @@ func nativeMediaKind(libraryType string) string {
 		return "movies"
 	case librarykind.IsAudiobook(libraryType):
 		return "audiobooks"
+	case librarykind.IsTV(libraryType):
+		return "series"
 	}
 	return ""
 }
@@ -195,7 +197,7 @@ func (l *LibraryLocations) requireSelectionKind(libraryType string, p *PreparedS
 		return nil
 	}
 	kind := nativeMediaKind(libraryType)
-	admitted := kind == "ebooks" || kind == "movies" && l.nativeMovieReady || kind == "audiobooks" && l.nativeAudioReady
+	admitted := kind == "ebooks" || kind == "movies" && l.nativeMovieReady || kind == "audiobooks" && l.nativeAudioReady || kind == "series" && l.nativeSeriesReady
 	if !admitted {
 		return nativeDomainError("native_storage_unavailable")
 	}

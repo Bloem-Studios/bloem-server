@@ -3658,6 +3658,10 @@
             "description": "Movie attachment and scanning are composed with native video playback; individual sources still require admission under their retained read policy.",
             "type": "boolean"
           },
+          "native_series_libraries": {
+            "description": "TV (series) library attachment and scanning are composed with native video playback, as native_movie_libraries is for movies; each selected source must declare the series media kind.",
+            "type": "boolean"
+          },
           "native_video_downloads": {
             "enum": [
               false
@@ -3743,6 +3747,7 @@
           "s3_bucket_browse",
           "s3_checked_etag_reads",
           "native_movie_libraries",
+          "native_series_libraries",
           "native_video_playback",
           "native_video_remote_execution",
           "native_video_downloads",

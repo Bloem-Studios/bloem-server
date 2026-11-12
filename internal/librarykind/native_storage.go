@@ -9,5 +9,12 @@ func SupportsNativeStorage(libraryType string, nativeMovieReady bool) bool {
 
 // SupportsNativeStorageKinds admits only composed native media lanes.
 func SupportsNativeStorageKinds(libraryType string, movies, audiobooks bool) bool {
-	return IsEbook(libraryType) || movies && IsMovie(libraryType) || audiobooks && IsAudiobook(libraryType)
+	return SupportsNativeStorageLanes(libraryType, movies, audiobooks, false)
+}
+
+// SupportsNativeStorageLanes is SupportsNativeStorageKinds with the series
+// lane. A dedicated TV library is admitted only while series scanning and
+// native video playback are both composed; mixed libraries never are.
+func SupportsNativeStorageLanes(libraryType string, movies, audiobooks, series bool) bool {
+	return IsEbook(libraryType) || movies && IsMovie(libraryType) || audiobooks && IsAudiobook(libraryType) || series && IsTV(libraryType)
 }

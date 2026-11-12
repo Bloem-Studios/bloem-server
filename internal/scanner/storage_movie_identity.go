@@ -169,7 +169,8 @@ func StorageMovieFileSkipped(entry *storagev1.Entry) bool {
 // StorageDirectorySkipped reports a listed directory the native scan never
 // lists, as Silo's walk never enters it: a skipped (hidden or housekeeping)
 // directory name for every library kind, and for movie libraries a
-// sample/subtitle folder or an extras folder owned by a title. Its entry is
+// sample/subtitle folder or an extras folder owned by a title (TV libraries
+// follow the movie rules, as their files do). Its entry is
 // still recorded; its contents cost no provider requests.
 func StorageDirectorySkipped(libraryType string, entry *storagev1.Entry) bool {
 	if entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_DIRECTORY {
@@ -179,7 +180,7 @@ func StorageDirectorySkipped(libraryType string, entry *storagev1.Entry) bool {
 	if !ok {
 		return false
 	}
-	movie := librarykind.IsMovie(libraryType)
+	movie := librarykind.IsMovie(libraryType) || librarykind.IsTV(libraryType)
 	for dir := p; strings.HasPrefix(dir, storageMovieParseRoot+"/"); dir = path.Dir(dir) {
 		if SkippedDirName(path.Base(dir)) {
 			return true

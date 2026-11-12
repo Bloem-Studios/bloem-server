@@ -107,7 +107,8 @@ func (s *Scanner) PublishStorageMoviesTx(ctx context.Context, tx pgx.Tx, folder 
 	entries := make([]*storagev1.Entry, len(movies))
 	seen := make(map[string]bool, len(movies))
 	for i, movie := range movies {
-		if movie.Entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_FILE || movie.Entry.GetRevision() == "" || movie.Probe == nil || len(movie.Probe.VideoTracks) == 0 || movie.Probe.CodecVideo == "" {
+		// A nil probe marks an entry the scan found unchanged (UnprobedStorageVideo).
+		if movie.Entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_FILE || movie.Entry.GetRevision() == "" || movie.Probe != nil && (len(movie.Probe.VideoTracks) == 0 || movie.Probe.CodecVideo == "") {
 			return result, ErrNativeProbeInvalid
 		}
 		key, err := storagesource.CatalogLocation(location.ID, movie.Entry.GetId())
@@ -118,6 +119,9 @@ func (s *Scanner) PublishStorageMoviesTx(ctx context.Context, tx pgx.Tx, folder 
 			return result, storagesource.ErrReferenceConflict
 		}
 		seen[key], paths[i], entries[i] = true, key, movie.Entry
+	}
+	if err := requireStorageVideosUnchangedTx(ctx, tx, folder.ID, location, configurationRevision, movies); err != nil {
+		return result, err
 	}
 	identities := storageMovieIdentities(entries)
 	existing := make(map[string]storageExistingMovie, len(movies))
@@ -144,7 +148,7 @@ func (s *Scanner) PublishStorageMoviesTx(ctx context.Context, tx pgx.Tx, folder 
 	if err := rows.Err(); err != nil {
 		return result, err
 	}
-	groups, err := storageMovieGroupItemsTx(ctx, tx, folder.ID, identities, paths, existing)
+	groups, err := storageGroupItemsTx(ctx, tx, folder.ID, "movie", groupKeys(identities), paths, existing)
 	if err != nil {
 		return result, err
 	}
@@ -161,6 +165,9 @@ func (s *Scanner) PublishStorageMoviesTx(ctx context.Context, tx pgx.Tx, folder 
 			if group, found := groups[groupKey]; found && groupKey != "" {
 				id, status = group.contentID, group.status
 			} else {
+				if movie.Probe == nil {
+					return result, ErrStorageVideoChanged
+				}
 				id, status = contentid.ForLocal(paths[i]), "pending"
 				if identity.ambiguous {
 					status = "ambiguous"
@@ -184,10 +191,25 @@ func (s *Scanner) PublishStorageMoviesTx(ctx context.Context, tx pgx.Tx, folder 
 		files[i] = models.MediaFile{ContentID: id, MediaFolderID: folder.ID, FilePath: paths[i], FileSize: movie.Entry.GetSize(), FileModifiedAt: &modified, BaseType: "movie",
 			BaseTitle: identity.title, BaseYear: identity.year, ContentGroupKey: identity.groupKey, GroupKeyVersion: identity.groupKeyVersion, IdentityConfidence: identity.confidence}
 		applyStorageMovieVariant(&files[i], identity.variant)
-		applyProbeData(&files[i], movie.Probe, "storage")
+		if movie.Probe != nil {
+			applyProbeData(&files[i], movie.Probe, "storage")
+		}
 	}
+	// Part totals count the page's unchanged parts too, but only probed files
+	// are written. An unchanged file keeps its rows; its item still retries a
+	// pending match.
 	applyStorageMoviePartTotals(files)
 	result.Matches = storageMovieMatches(identities, contentIDs, statuses)
+	var probed []int
+	for i, movie := range movies {
+		if movie.Probe != nil {
+			probed = append(probed, i)
+		}
+	}
+	if len(probed) == 0 {
+		return result, nil
+	}
+	movies, paths, files, contentIDs = storagePick(movies, probed), storagePick(paths, probed), storagePick(files, probed), storagePick(contentIDs, probed)
 	if err := s.itemRepo.UpsertBatchTx(ctx, tx, items); err != nil {
 		return result, err
 	}
@@ -218,7 +240,7 @@ func (s *Scanner) PublishStorageMoviesTx(ctx context.Context, tx pgx.Tx, folder 
 	}
 	refs := make([]storagesource.FileRef, len(movies))
 	for i, movie := range movies {
-		refs[i] = storagesource.FileRef{MediaFileID: fileIDs[paths[i]], PersistedRef: storagesource.PersistedRef{LocationID: location.ID, EntryID: movie.Entry.GetId(), Revision: movie.Entry.GetRevision(), LogicalPath: movie.Entry.GetLogicalPath()}}
+		refs[i] = storagesource.FileRef{MediaFileID: fileIDs[paths[i]], PersistedRef: storagesource.PersistedRef{LocationID: location.ID, EntryID: movie.Entry.GetId(), Revision: movie.Entry.GetRevision(), LogicalPath: movie.Entry.GetLogicalPath()}, EntrySHA256: storageVideoDigest(movie.Entry)}
 	}
 	if err := storagesource.AttachFilesTx(ctx, tx, configurationRevision, refs); err != nil {
 		return result, err
@@ -237,18 +259,33 @@ func storageGroupLookupKey(identity storageMovieIdentity) string {
 	return strconv.Itoa(identity.groupKeyVersion) + "|" + identity.groupKey
 }
 
-// storageMovieGroupItemsTx finds the movie item each new file's content group
-// already has in this library: another edition or copy of the same title,
-// published from another folder or an earlier page. A matched item wins.
-func storageMovieGroupItemsTx(ctx context.Context, tx pgx.Tx, folderID int, identities []storageMovieIdentity, paths []string, existing map[string]storageExistingMovie) (map[string]storageMovieGroup, error) {
+// storageGroupKey is one file's persisted content group.
+type storageGroupKey struct {
+	version int
+	key     string
+}
+
+func groupKeys(identities []storageMovieIdentity) []storageGroupKey {
+	out := make([]storageGroupKey, len(identities))
+	for i, identity := range identities {
+		out[i] = storageGroupKey{identity.groupKeyVersion, identity.groupKey}
+	}
+	return out
+}
+
+// storageGroupItemsTx finds the item of itemType each new file's content group
+// already has in this library: another edition or copy of the same title, or
+// another season of the same show, published from another folder or an
+// earlier page. A matched item wins.
+func storageGroupItemsTx(ctx context.Context, tx pgx.Tx, folderID int, itemType string, identities []storageGroupKey, paths []string, existing map[string]storageExistingMovie) (map[string]storageMovieGroup, error) {
 	groups := make(map[string]storageMovieGroup)
 	var versions []int
 	var keys []string
 	for i, identity := range identities {
-		if existing[paths[i]].contentID != "" || identity.groupKey == "" {
+		if existing[paths[i]].contentID != "" || identity.key == "" {
 			continue
 		}
-		versions, keys = append(versions, identity.groupKeyVersion), append(keys, identity.groupKey)
+		versions, keys = append(versions, identity.version), append(keys, identity.key)
 	}
 	if len(keys) == 0 {
 		return groups, nil
@@ -257,8 +294,8 @@ func storageMovieGroupItemsTx(ctx context.Context, tx pgx.Tx, folderID int, iden
 		FROM unnest($2::int[],$3::text[]) AS g(version,key)
 		JOIN media_files f ON f.media_folder_id=$1 AND f.group_key_version=g.version AND f.content_group_key=g.key
 		JOIN media_items i ON i.content_id=f.content_id
-		WHERE f.missing_since IS NULL AND f.extra_id IS NULL AND i.type='movie'
-		ORDER BY f.group_key_version,f.content_group_key,(i.status='matched') DESC,f.id`, folderID, versions, keys)
+		WHERE f.missing_since IS NULL AND f.extra_id IS NULL AND i.type=$4
+		ORDER BY f.group_key_version,f.content_group_key,(i.status='matched') DESC,f.id`, folderID, versions, keys, itemType)
 	if err != nil {
 		return nil, err
 	}

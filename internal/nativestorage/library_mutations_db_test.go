@@ -550,6 +550,39 @@ func TestLibraryLocationsAliasLibraryTypesDB(t *testing.T) {
 			t.Fatal("series library admitted plugin selections")
 		}
 	})
+	// Once the series lane is composed, a TV library admits exactly the roots
+	// whose source declares the series media kind.
+	t.Run("series ready uses declarations", func(t *testing.T) {
+		l, a, roots := mutationFixture(t)
+		l.SetNativeSeriesReady(true)
+		for _, source := range l.browser.runtime.(browseRuntime).description.Sources {
+			if source.Id == "second" {
+				source.MediaKinds = []string{"series"}
+			}
+		}
+		repo := catalog.NewFolderRepository(l.pool)
+		ebooksOnly, err := l.PrepareCreation(t.Context(), a, nil, false, roots[:1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = repo.Create(t.Context(), catalog.CreateFolderInput{Name: "undeclared series", Type: "tv", Paths: []string{}, AttachStorage: func(ctx context.Context, tx pgx.Tx, id int) error {
+			return l.AttachCreationTx(ctx, tx, a, id, ebooksOnly)
+		}})
+		requireNativeCode(t, err, "invalid_request")
+		declared, err := l.PrepareCreation(t.Context(), a, nil, false, roots[1:])
+		if err != nil {
+			t.Fatal(err)
+		}
+		f, err := repo.Create(t.Context(), catalog.CreateFolderInput{Name: "series", Type: "series", Paths: []string{}, AttachStorage: func(ctx context.Context, tx pgx.Tx, id int) error {
+			return l.AttachCreationTx(ctx, tx, a, id, declared)
+		}})
+		if err != nil {
+			t.Fatalf("declared series root refused: %v", err)
+		}
+		if view, err := l.ReadSelections(t.Context(), a, f.ID); err != nil || len(view.Selections) != 1 {
+			t.Fatalf("series selections: %+v %v", view, err)
+		}
+	})
 }
 
 // Until mixed-location scanning is composed, a library holds filesystem paths

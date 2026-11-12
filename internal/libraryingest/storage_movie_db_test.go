@@ -210,6 +210,10 @@ func TestNativeMovieStorageScanPublishesPinnedBytes(t *testing.T) {
 	if err != nil || result.ScanResult.Unchanged != 3 {
 		t.Fatalf("rescan %+v %v", result, err)
 	}
+	// An unchanged listing opens nothing: the published rows are current.
+	if again, err := os.ReadFile(f.notify + ".io"); err != nil || strings.Count(string(again), "read ") != strings.Count(string(audit), "read ") || strings.Count(string(again), "stat ") != strings.Count(string(audit), "stat ") {
+		t.Fatal("unchanged rescan probed a movie again", err)
+	}
 	// A user's match may relink this file to a different catalog identity.
 	// Rescanning its bytes must keep that chosen identity and metadata.
 	contentID = "native-movie-selected-match"

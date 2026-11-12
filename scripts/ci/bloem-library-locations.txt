@@ -215,3 +215,14 @@
 ./internal/resourcetenancy TestStorageScanOverlappingLibrariesJournalLockOrderDB
 ./internal/scanner TestNativeAudioFirstOmissionKeepsPriorPresentationDB
 ./internal/storagesource TestAudioStagingOtherRunCleanupAndCrossLocationDB
+
+# Native series (TV) libraries: readiness hold, the verified ClearStream layout,
+# matching and linking, the completion sweep, and series media-kind admission.
+./internal/libraryingest TestNativeSeriesStorageDefaultHoldDB
+./internal/libraryingest TestNativeSeriesStorageScanPublishesShowsDB
+./internal/libraryingest TestNativeSeriesStorageCompletionSweepDB
+./internal/libraryingest TestNativeSeriesStorageGradualPublicationDB
+
+# Native episode subtitle sidecars: listed with their flags and read through the
+# provider at their recorded revision, only under the episode's playback authority.
+./internal/libraryingest TestNativeSeriesSidecarsReadThroughProviderDB

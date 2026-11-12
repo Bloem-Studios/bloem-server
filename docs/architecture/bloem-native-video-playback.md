@@ -43,7 +43,7 @@ asks for them only on a worker or only through the standalone proxy is refused.
 ## What Bloem checks
 
 **Each time the file is opened**, which includes every start, seek, subtitle
-extraction and restart, Bloem checks again:
+extraction, subtitle file read and restart, Bloem checks again:
 
 - the account or API key, the sign-in, the profile and its PIN;
 - the organization membership and the library access;
@@ -173,6 +173,30 @@ PGS subtitles and attached fonts are extracted with bounded complete output;
 failed output is discarded. Text burn-in extracts execution-only ASS and font
 files while retaining the catalog subtitle ordinal in the durable recipe.
 Software HDR-to-SDR uses the same fresh source and shared tone-map checks.
+
+An episode's subtitle sidecars (`bloem_storage_episode_sidecars`, recorded by
+the series scan) are its external subtitles. `NativeVideoService.catalog()`,
+the resolver behind the v3 plan, recovery and the subtitle route, lists the
+sidecars whose entry its location still holds at the recorded revision
+(`storagesource.Repository.FileSidecars`), in name order, with language,
+forced and SDH flags and format. They replace the catalog's external
+subtitles for a native file and are listed under an opaque
+`bloem-storage-sidecar:<location and entry digest>/<file name>` path that
+names no local file and does not change with the sidecar's revision. Silo's
+inventory, labels and `external_subtitle_key` URLs then apply unchanged.
+The subtitle route serves one only after the session's video preflight
+(binding, deny marker, profile, bound revision). It reopens the current row
+and reads it through `Coordinator.OpenAuthorizedSidecar` with the bound
+video's delegated authority. That repeats the video's viewer, publication and
+source checks, and confirms the sidecar is still attached at the pinned entry,
+revision and path, before admission and around every provider read. The bytes
+must match the listed size and are at most 8 MiB. The video preflight runs
+again after the read. Delivery follows Silo's local sidecar: the stored timing
+correction, SRT as WebVTT unless `original=1`, ASS/SSA raw. An in-process LRU
+cache of at most 32 MiB keys bytes by the bound source identity and the
+sidecar's entry and revision, never by path. A changed sidecar is therefore
+read again, and a cache hit still passes the binding and preflight checks.
+Text sidecars cannot be burned in, as with Silo's local sidecars.
 
 Direct play and the input bridge read through `nativestorage.ReadAhead`, never
 one provider range per consumer read. It fetches 1 MiB blocks on aligned
