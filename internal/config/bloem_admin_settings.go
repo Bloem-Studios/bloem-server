@@ -10,20 +10,26 @@ const (
 	// The key avoids the word "password": tools that look for stored secrets
 	// (the scenario executor's scratch-database guard) read it as one.
 	ProfilePasswordsEnabledSettingKey = "bloem.auth.profile_sign_in_enabled" //nolint:gosec // G101: a setting key, not a credential
+
+	// StrmAllowPrivateAddressesSettingKey lets `.strm` URLs reach addresses
+	// on the server's private network (loopback, link-local, private, CGNAT,
+	// metadata). Off by default; internal/remotesource reads it.
+	StrmAllowPrivateAddressesSettingKey = "bloem.strm.allow_private_addresses"
 )
 
 // bloemAdminSettingDefaults extends Silo's adminSettingDefaults.
 var bloemAdminSettingDefaults = map[string]string{
-	EbookRequestsEnabledSettingKey:    "false",
-	ProfilePasswordsEnabledSettingKey: "false",
-	"livetv.dvr_path":                 DefaultLiveTVDVRPath,
-	"livetv.max_transcodes":           "3",
-	"livetv.hw_accel":                 DefaultLiveTVHWAccel,
-	"livetv.hw_decode":                DefaultLiveTVHWDecode,
-	"livetv.encoder_preset":           DefaultLiveTVEncoderPreset,
-	"livetv.framerate_cap":            DefaultLiveTVFrameRateCap,
-	"livetv.max_resolution":           DefaultLiveTVMaxResolution,
-	"livetv.play_method":              DefaultLiveTVPlayMethod,
+	EbookRequestsEnabledSettingKey:      "false",
+	ProfilePasswordsEnabledSettingKey:   "false",
+	StrmAllowPrivateAddressesSettingKey: "false",
+	"livetv.dvr_path":                   DefaultLiveTVDVRPath,
+	"livetv.max_transcodes":             "3",
+	"livetv.hw_accel":                   DefaultLiveTVHWAccel,
+	"livetv.hw_decode":                  DefaultLiveTVHWDecode,
+	"livetv.encoder_preset":             DefaultLiveTVEncoderPreset,
+	"livetv.framerate_cap":              DefaultLiveTVFrameRateCap,
+	"livetv.max_resolution":             DefaultLiveTVMaxResolution,
+	"livetv.play_method":                DefaultLiveTVPlayMethod,
 
 	// LAN service advertisement (_bloem._tcp mDNS). Off by default: it needs
 	// the host's L2 broadcast domain, and operators on shared networks may
@@ -49,7 +55,7 @@ func normalizeBloemAdminSetting(key, raw, value string) (string, bool, error) {
 	switch key {
 	case "s3.user_db_path_style", "s3.user_db_endpoint":
 		return raw, true, nil
-	case EbookRequestsEnabledSettingKey, ProfilePasswordsEnabledSettingKey, "lan.advertisement_enabled":
+	case EbookRequestsEnabledSettingKey, ProfilePasswordsEnabledSettingKey, StrmAllowPrivateAddressesSettingKey, "lan.advertisement_enabled":
 		normalized, err = normalizeAdminBool(key, value)
 	case "livetv.max_transcodes":
 		normalized, err = normalizeAdminInt(key, value, -1, 1024)
