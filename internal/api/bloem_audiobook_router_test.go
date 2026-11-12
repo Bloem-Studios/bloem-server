@@ -166,3 +166,45 @@ func TestAudiobookRouterMapsPluginStatusVocabulary(t *testing.T) {
 		}
 	}
 }
+
+// The storage plugin's abiplayer receipt (kind qbittorrent with norm_title
+// and norm_author) passes from its own connection, and a verified completion
+// still names the Bookwarehouse audiobook. A request plugin's connection
+// refuses the receipt outright.
+func TestAudiobookRouterAbiplayerReceipt(t *testing.T) {
+	a, in, fulfill := audiobookAdapterFixture()
+	in.Integration.Native = true
+	native := *a.integrations.(ebookConnectionFixture).integration
+	native.APIKeyRef = ""
+	a.integrations = ebookConnectionFixture{&native}
+	raw, _ := json.Marshal(bookrequests.AudiobookReceipt{Kind: "qbittorrent", ID: "cccccccccccccccccccccccccccccccccccccccc", RequestID: in.SubmissionID, Attempt: in.Attempt, Client: "0123456789abcdef", Confirmed: true, Sel: "Synthetic Saga by Test Author", TorrentID: "4711", NormTitle: "synthetic saga", NormAuthor: "test author"})
+	abiplayer := "abr1." + base64.RawURLEncoding.EncodeToString(raw)
+	fulfill.response.Targets[0].ExternalId = abiplayer
+	out, err := a.Fulfill(t.Context(), in)
+	if err != nil || out.Kind != bookrequests.AudiobookHandedOff || out.Receipt.ExternalID != abiplayer {
+		t.Fatalf("native abiplayer hand-off: %+v %v", out, err)
+	}
+	status := func(decision bookrequests.AcquisitionDecision) *audiobookStatusClientFixture {
+		encoded, _ := json.Marshal(decision)
+		return &audiobookStatusClientFixture{status: &pluginv1.TargetStatus{Quality: "audiobook", ConnectionId: "connection", Status: "completed", ExternalStatus: "verified", Message: "abd1." + base64.RawURLEncoding.EncodeToString(encoded)}}
+	}
+	a.resolver = ebookResolverFixture{status(bookrequests.AcquisitionDecision{V: 1, Phase: "verify", Outcome: "verified", AudiobookID: "bw-42"})}
+	if out, err = a.CheckStatus(t.Context(), in, bookrequests.Receipt{ExternalID: abiplayer, Status: "downloading"}); err != nil || out.ProviderStatus != "completed" || out.Decision.AudiobookID != "bw-42" {
+		t.Fatalf("abiplayer completion: %+v %v", out, err)
+	}
+	a.resolver = ebookResolverFixture{status(bookrequests.AcquisitionDecision{V: 1, Phase: "verify", Outcome: "verified"})}
+	if _, err = a.CheckStatus(t.Context(), in, bookrequests.Receipt{ExternalID: abiplayer, Status: "downloading"}); !errors.Is(err, bookrequests.ErrInvalid) {
+		t.Fatalf("native completion without an audiobook id: %v", err)
+	}
+
+	// A request plugin's connection refuses the abiplayer receipt.
+	a, in, fulfill = audiobookAdapterFixture()
+	fulfill.response.Targets[0].ExternalId = abiplayer
+	if _, err = a.Fulfill(t.Context(), in); !errors.Is(err, bookrequests.ErrInvalid) {
+		t.Fatalf("request plugin abiplayer hand-off accepted: %v", err)
+	}
+	a.resolver = ebookResolverFixture{status(bookrequests.AcquisitionDecision{V: 1, Phase: "verify", Outcome: "verified"})}
+	if _, err = a.CheckStatus(t.Context(), in, bookrequests.Receipt{ExternalID: abiplayer, Status: "downloading"}); !errors.Is(err, bookrequests.ErrInvalid) {
+		t.Fatalf("request plugin abiplayer status accepted: %v", err)
+	}
+}
