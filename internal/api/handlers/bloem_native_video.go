@@ -51,6 +51,10 @@ type NativeVideoAuthority struct {
 	OriginalMethod            string
 	OriginalPath              string
 	PlaybackSessionID         string
+	// CompatSessionDigest identifies a Jellyfin-compatible session by the
+	// SHA-256 of its token, never the token, so delegated reads can recheck
+	// that the session still exists.
+	CompatSessionDigest string
 }
 
 type NativeVideoBinding struct {

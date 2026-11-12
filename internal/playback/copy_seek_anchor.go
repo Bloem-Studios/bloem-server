@@ -52,6 +52,9 @@ func ResolveCopySeekAnchor(
 	if requestedSeekSeconds <= 0 {
 		return 0, 0, nil
 	}
+	if handled, origin, segment, err := resolveContextCopySeekAnchor(ctx, ffmpegPath, inputPath, requestedSeekSeconds, segmentDuration); handled {
+		return origin, segment, err
+	}
 	if strings.TrimSpace(inputPath) == "" {
 		return 0, 0, fmt.Errorf("resolve copy seek anchor: empty input path")
 	}

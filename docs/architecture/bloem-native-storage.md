@@ -113,8 +113,8 @@ uses any more.
 - **Audiobooks** play directly, track by track; see
   [how stored audiobooks play](bloem-native-audio-playback.md).
 
-Not supported yet: downloads, converting for offline use, Jellyfin apps and
-series. Every read checks again that the viewer may see the title and that the
+Jellyfin apps play stored movies too, without embedded subtitles yet. Not
+supported yet: downloads, converting for offline use and series. Every read checks again that the viewer may see the title and that the
 source is still switched on.
 
 ## Who can change what
@@ -208,7 +208,8 @@ The whole `bloem-storage:` namespace is reserved, including malformed identities
 filesystem probing, missing-file marking or tool invocation. The native ebook
 reader and video service use separate authorized source resolvers. Alternate
 editions and multipart start may select supported native video only when that
-service is installed. Downloads and Jellyfin delivery still refuse the namespace.
+service is installed. Downloads still refuse the namespace; Jellyfin stream
+routes reach it only through the native video host.
 Nothing opens it as a local path. The
 [video execution contract](bloem-native-video-playback.md) describes native API
 serving, worker HLS and the remaining surface limits.

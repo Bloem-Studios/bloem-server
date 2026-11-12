@@ -97,29 +97,3 @@ func (r *Repository) AddLocationTx(ctx context.Context, tx pgx.Tx, sourceKey uui
 	_, err = tx.Exec(ctx, `INSERT INTO bloem_library_location_state(folder_id) VALUES($1) ON CONFLICT(folder_id) DO NOTHING`, folderID)
 	return location, err
 }
-
-// LibrariesByStorage splits every library by whether it reads from a storage
-// source: without lists libraries with paths only, with lists each library
-// that has at least one storage location, mixed libraries included. Both are
-// ordered by library ID.
-func (r *Repository) LibrariesByStorage(ctx context.Context) (without, with []int, err error) {
-	rows, err := r.pool.Query(ctx, `SELECT f.id, EXISTS(SELECT 1 FROM library_storage_locations l WHERE l.folder_id=f.id) FROM media_folders f ORDER BY f.id`)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer rows.Close()
-	without, with = []int{}, []int{}
-	for rows.Next() {
-		var id int
-		var stored bool
-		if err := rows.Scan(&id, &stored); err != nil {
-			return nil, nil, err
-		}
-		if stored {
-			with = append(with, id)
-		} else {
-			without = append(without, id)
-		}
-	}
-	return without, with, rows.Err()
-}

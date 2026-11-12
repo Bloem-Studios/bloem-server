@@ -85,6 +85,8 @@ type nativeVideoPolicy struct {
 	denied             func(context.Context, string) bool
 	resolveFile        func(context.Context, int) (*models.MediaFile, error)
 	authorizeSource    func(context.Context, *models.MediaFile, storagesource.SourceConfig) error
+	// compat checks Jellyfin-compatible sessions; nil refuses them.
+	compat *NativeVideoCompat
 }
 
 type nativeVideoSubject struct {
@@ -99,6 +101,7 @@ type nativeVideoSubject struct {
 	fileID    int
 	skipPIN   bool
 	tenant    *tenancy.Context
+	compat    *nativeVideoCompatSubject
 }
 
 func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinator, h *handlers.PlaybackHandler, sh *handlers.StreamHandler, authMiddleware *middleware.AuthMiddleware, viewer *middleware.ViewerAccessMiddleware) {
@@ -116,7 +119,7 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 		return cfg.Auth.JWTSecret
 	}, getSession: deps.SessionMgr.GetSession, denied: nativeVideoSessionDenied(deps.RedisClient, h.StreamDeny), resolveFile: h.ResolveNativeVideoFile, authorizeSource: func(ctx context.Context, file *models.MediaFile, source storagesource.SourceConfig) error {
 		return authorizeNativeStorageSource(ctx, file, source, tenantResolver, resources)
-	}}
+	}, compat: deps.NativeVideoCompat}
 	service := &handlers.NativeVideoService{Presentation: nativeAudioPresentation(deps), Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: h.StreamDeny, WorkerReadiness: handlers.NewNativeVideoWorkerReadiness()}
 	service.Open = func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
 		if file == nil {
@@ -135,10 +138,16 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 	configureNativeVideoDelegates(deps, coordinator, service, p)
 	h.NativeVideo = service
 	sh.NativeVideo = service
+	deps.NativeVideoCompat.install(service, deps.SessionMgr.GetSession, deps.FileRepo)
+	deps.NativeVideoCompat.watchStops(deps.SessionMgr)
 }
 
 func nativeVideoCapture(ctx context.Context, p nativeVideoPolicy) (*nativeVideoSubject, error) {
-
+	if ctx != nil {
+		if stream, ok := playback.ContextStreamFrom(ctx); ok {
+			return nativeVideoCompatCapture(ctx, p, stream)
+		}
+	}
 	if ctx == nil || p.credentials == nil || p.viewer == nil || p.tenants == nil || p.resolveFile == nil || p.authorizeSource == nil {
 		return nil, middleware.ErrCurrentCredentialInvalid
 	}
@@ -196,7 +205,7 @@ func nativeVideoAuthority(ctx context.Context, fileID int, p nativeVideoPolicy) 
 	if err != nil {
 		return nativestorage.PlaybackAuthority{}, err
 	}
-	if subject.stream != nil && subject.fileID != fileID {
+	if (subject.stream != nil || subject.compat != nil) && subject.fileID != fileID {
 		return nativestorage.PlaybackAuthority{}, middleware.ErrCurrentCredentialInvalid
 	}
 	subject.fileID = fileID
@@ -269,6 +278,13 @@ func (s *nativeVideoSubject) refresh(ctx context.Context) (context.Context, erro
 		}
 		// Catalog filters require the actor ID in claims as well as viewer scope.
 		// These internal lookup claims confer no admin or bearer authority.
+		ctx = middleware.SetClaims(ctx, &auth.Claims{UserID: s.userID, ProfileID: s.profileID})
+	} else if s.compat != nil {
+		login, err := s.verifyCompat(ctx)
+		if err != nil {
+			return nil, err
+		}
+		input.SessionID = login
 		ctx = middleware.SetClaims(ctx, &auth.Claims{UserID: s.userID, ProfileID: s.profileID})
 	} else {
 		claims := *s.claims
@@ -495,6 +511,10 @@ func nativeVideoDelegation(ctx context.Context, p nativeVideoPolicy) (handlers.N
 		d.TokenType = "stream"
 		d.PlaybackSessionID = subject.stream.SessionID
 		d.ExpiresAt = subject.stream.ExpiresAt.UTC()
+	case subject.compat != nil:
+		if err := nativeVideoCompatDelegation(ctx, subject, p, &d); err != nil {
+			return empty, err
+		}
 	case subject.claims.TokenType == auth.TokenTypeAccess:
 		if subject.claims.ExpiresAt == nil || p.loadLogin == nil {
 			return empty, middleware.ErrCurrentCredentialInvalid
@@ -676,6 +696,10 @@ func verifyNativeVideoActor(ctx context.Context, d handlers.NativeVideoAuthority
 	case "stream":
 		if d.PlaybackSessionID == "" {
 			return middleware.ErrCurrentCredentialInvalid
+		}
+	case nativeVideoCompatTokenType:
+		if err := verifyNativeVideoCompatActor(ctx, d, p); err != nil {
+			return err
 		}
 	default:
 		return middleware.ErrCurrentCredentialForbidden

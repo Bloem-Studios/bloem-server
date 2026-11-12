@@ -57,4 +57,8 @@ type BloemDependencies struct {
 	// NativeStorageManagement shares retained domain services and the reader
 	// coordinator. Construction does not witness complete mutation readiness.
 	NativeStorageManagement *handlers.BloemNativeStorageManagementHandler
+
+	// NativeVideoCompat is the Jellyfin listener's native media host. The
+	// router installs native video delivery into it when it builds one.
+	NativeVideoCompat *NativeVideoCompat
 }
