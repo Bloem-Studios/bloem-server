@@ -23,8 +23,9 @@ else:
 - **No addresses from the provider.** Bloem asks for each live stream itself, at a fixed
   address, and ignores any other stream or artwork address the provider suggests.
 - **No redirects.** If the provider answers "look elsewhere", Bloem refuses.
-- **No pasted web addresses.** Bloem never plays a stream someone types in. It is not an
-  Xtream server for other apps either.
+- **No pasted web addresses.** Live TV never plays a stream someone types in. It is not
+  an Xtream server for other apps either. (Library `.strm` files are a separate feature;
+  see [Bloem's non-goals](../bloem/overlays/non-goals.md#strm-files-are-in-scope).)
 
 ## Keeping the password safe
 

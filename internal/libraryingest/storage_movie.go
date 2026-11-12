@@ -52,10 +52,19 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, folder *models.Media
 	// and proves pinned Stat metadata against exactly that pending checkpoint.
 	page = proto.CloneOf(page)
 	skipped := 0
-	var candidates []int
+	var candidates, strms []int
 	var excluded []string
 	for i, entry := range page.GetEntries() {
 		if entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_FILE {
+			continue
+		}
+		if c.takesStrm(entry) {
+			if scanner.StorageMovieFileSkipped(entry) {
+				skipped++
+				excluded = append(excluded, entry.GetId())
+				continue
+			}
+			strms = append(strms, i)
 			continue
 		}
 		if _, ok := scanner.NativeMovieDemuxer(entry.GetName()); !ok {
@@ -72,6 +81,32 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, folder *models.Media
 	movies, err := c.prepareVideos(ctx, folder, location, source, lease, checkpoint, page, candidates, nil)
 	if err != nil {
 		return nil, 0, nil, err
+	}
+	// Unchanged `.strm` objects keep their stored probe without being opened.
+	reused, strms, err := c.reuseStrmMovies(ctx, location, page, strms)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	movies = append(movies, reused...)
+	if len(strms) == 0 {
+		return movies, skipped, excluded, nil
+	}
+	sealed, err := c.movieReader.AdmitScanPage(ctx, location, source, lease, checkpoint, page)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	for _, i := range strms {
+		entry := page.GetEntries()[i]
+		movie, ok, err := c.prepareStrmMovie(ctx, location, sealed, i, entry)
+		if err != nil {
+			return nil, 0, nil, err
+		}
+		if !ok {
+			skipped++
+			excluded = append(excluded, entry.GetId())
+			continue
+		}
+		movies = append(movies, movie)
 	}
 	return movies, skipped, excluded, nil
 }

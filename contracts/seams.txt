@@ -234,7 +234,7 @@ internal/scanner/ebook_scan.go
 internal/scanner/ebook_skip.go  # skip-state preload also reads ebook_cover_retries so a failed local cover is retried without per-file queries
 internal/scanner/file_repo.go  # native selected-target authorization boundary
 internal/scanner/file_repo_chapter_lock_db_test.go  # waits for a closed dedicated session to leave pg_stat_activity instead of racing its backend exit (flaked in CI; same race upstream)
-internal/scanner/scanner.go
+internal/scanner/scanner.go  # also two Bloem hooks: the video walk takes .strm files (bloemStrmFile) and probeFile hands them to probeBloemStrm
 internal/sections/fetcher.go
 internal/sections/types.go
 internal/subtitles/ai/transcriber.go  # Chinese and Japanese cues: words joined without spaces, width counted in columns, 16-character lines, splits at clause marks; cues held 0.6 s after speech (holdCueEnds); candidate for a Silo upstream PR

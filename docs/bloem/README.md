@@ -120,7 +120,7 @@ All historical; the [changelog](CHANGELOG.md) carries every later integration.
 
 For these, Bloem's text differs throughout; read the Bloem edition instead of the upstream file.
 
-- [docs/non-goals.md](overlays/non-goals.md) (upstream: [docs/non-goals.md](../non-goals.md)) — Live TV in scope, remote-URL ingestion still out.
+- [docs/non-goals.md](overlays/non-goals.md) (upstream: [docs/non-goals.md](../non-goals.md)) — Live TV and `.strm` remote-URL items in scope, private addresses refused by default.
 - [Installing and running Bloem with Docker](overlays/wiki/deployment/docker.md) — maintained Bloem installation and operations guide; the former upstream wiki page was removed.
 - [Bloem guides for operators and viewers](overlays/wiki/index.md) — Bloem's guide index, alongside the current [Silo reference index](../README.md).
 
@@ -206,6 +206,7 @@ same path. Read the upstream document together with its overlay.
 
 ### Live TV
 
+- [How `.strm` files play](../architecture/bloem-strm.md) — `.strm` remote-URL items from library folders and storage sources, the SSRF guard and the private-address setting, playback through Bloem.
 - [How Xtream Live TV providers work](../architecture/xtream-live-tv.md) — encrypted provider accounts, live channels, XMLTV, connection limits; no VOD or remote URLs.
 - [How apps reach Live TV](../architecture/live-tv-client-access.md) — the `watch_live_tv` permission, capability discovery and tuner-session handling.
 - [How Live TV finds tuners](../livetv-tuner-discovery.md) — HDHomeRun and Dispatcharr discovery and probing.

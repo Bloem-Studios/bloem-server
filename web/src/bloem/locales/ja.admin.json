@@ -15485,6 +15485,42 @@
       "value": "ストレージソースをアップグレードしました"
     }
   ],
+  "bloem.admin.strm.loadFailed": [
+    {
+      "type": 0,
+      "value": ".strm ファイルの設定を読み込めませんでした。"
+    }
+  ],
+  "bloem.admin.strm.loading": [
+    {
+      "type": 0,
+      "value": "設定を読み込み中"
+    }
+  ],
+  "bloem.admin.strm.privateAddresses": [
+    {
+      "type": 0,
+      "value": "プライベートアドレスを許可"
+    }
+  ],
+  "bloem.admin.strm.privateAddressesDescription": [
+    {
+      "type": 0,
+      "value": ".strm ファイル内の Web アドレスが、このサーバー自身のネットワーク (サーバー自体、プライベートアドレスとリンクローカルアドレス、クラウドのメタデータサービス) に接続できるようにします。デフォルトではオフで、.strm ファイルを書き込める人からそのネットワークを守ります。使用されるのは http:// または https:// で始まるアドレスだけです。数秒以内に反映されます。拒否されたファイルを取り込むには、ライブラリをスキャンしてください。"
+    }
+  ],
+  "bloem.admin.strm.retry": [
+    {
+      "type": 0,
+      "value": "再試行"
+    }
+  ],
+  "bloem.admin.strm.title": [
+    {
+      "type": 0,
+      "value": ".strm ファイル"
+    }
+  ],
   "bloem.admin.users.access.liveTv.description": [
     {
       "type": 0,

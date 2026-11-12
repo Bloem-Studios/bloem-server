@@ -55,15 +55,28 @@ went with it ([leaving Silo's v1 API](docs/architecture/bloem-leaving-silo-v1.md
   adding fields and routes behind `feature_tokens`, and gets a `v3` only for a breaking change to
   Bloem's own contract.
 
-## Live TV is in scope (overrides the Non-goals section)
+## Live TV and `.strm` are in scope (overrides the Non-goals section)
 
 **Live TV is a maintained Bloem feature**: HDHomeRun-compatible tuners, authenticated
 Xtream live providers, guides, channel playback, DVR rules and recordings are in scope.
 Xtream is live-only and uses fixed reviewed endpoints with encrypted credentials; it is
-not VOD/series ingestion or an Xtream server API. Arbitrary remote-URL shortcuts (including
-`.strm`) and generic remote-stream ingestion remain out of scope; see
-[Bloem's edition of docs/non-goals.md](docs/bloem/overlays/non-goals.md)
-and [docs/architecture/xtream-live-tv.md](docs/architecture/xtream-live-tv.md) for the boundary.
+not VOD/series ingestion or an Xtream server API
+([docs/architecture/xtream-live-tv.md](docs/architecture/xtream-live-tv.md)).
+
+**`.strm` remote-URL items are a Bloem feature** (decided 2026-11-12, reversing the earlier
+rule): a `.strm` file in a library folder or a storage source may point at any web
+address, and Bloem catalogs, probes and plays it like the video it names. Bloem never
+filters content. It keeps one security default, which limits no content:
+
+- only `http` and `https` addresses;
+- by default, Bloem refuses an address that resolves to loopback, link-local, private
+  (RFC 1918, IPv6 ULA), CGNAT or cloud-metadata ranges, so a library file cannot make the
+  server reach internal infrastructure (SSRF);
+- the check runs at every fetch, after DNS resolution and on every redirect hop;
+- the platform setting `bloem.strm.allow_private_addresses` allows private addresses.
+
+Bloem proxies the bytes: clients never see the remote address. See
+[Bloem's edition of docs/non-goals.md](docs/bloem/overlays/non-goals.md).
 
 ## Silo switching
 

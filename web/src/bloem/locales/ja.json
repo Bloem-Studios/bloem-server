@@ -367,6 +367,36 @@
       "value": "プラットフォーム"
     }
   ],
+  "bloem.adminNav.strm.description": [
+    {
+      "type": 0,
+      "value": ".strm ファイルがサーバー自身のネットワーク上のアドレスを指せるかどうか。"
+    }
+  ],
+  "bloem.adminNav.strm.label": [
+    {
+      "type": 0,
+      "value": ".strm ファイル"
+    }
+  ],
+  "bloem.adminNav.strmSettings.description": [
+    {
+      "type": 0,
+      "value": ".strm ファイルがサーバー自身のネットワーク上のアドレスを指せるかどうか。"
+    }
+  ],
+  "bloem.adminNav.strmSettings.label": [
+    {
+      "type": 0,
+      "value": ".strm ファイル"
+    }
+  ],
+  "bloem.adminNav.strmSettings.privateAddresses": [
+    {
+      "type": 0,
+      "value": "プライベートアドレスを許可"
+    }
+  ],
   "bloem.adminShell.chooseContext.body": [
     {
       "type": 0,

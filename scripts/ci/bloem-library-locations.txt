@@ -226,3 +226,13 @@
 # Native episode subtitle sidecars: listed with their flags and read through the
 # provider at their recorded revision, only under the episode's playback authority.
 ./internal/libraryingest TestNativeSeriesSidecarsReadThroughProviderDB
+
+# .strm remote sources: the store and setting, local and storage-source ingest.
+./internal/remotesource TestRemoteSourceStoreDB
+./internal/scanner TestLocalStrmScanRecordsRemoteSourceDB
+./internal/libraryingest TestNativeStrmStorageScanPublishesRemoteMovieDB
+./internal/libraryingest TestNativeStrmStorageUnreadableURLSkipsOnlyThatEntryDB
+./internal/remotesource TestRemoteSourceValidatorsDB
+./internal/scanner TestLocalStrmRescanSkipsUnchangedRemoteDB
+./internal/libraryingest TestNativeStrmStorageRescanSkipsUnchangedRemoteDB
+./internal/libraryingest TestStrmReuseScalesToThousandsOfEntriesDB

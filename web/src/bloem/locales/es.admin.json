@@ -16676,6 +16676,42 @@
       "value": "Origen de almacenamiento actualizado a una nueva versión"
     }
   ],
+  "bloem.admin.strm.loadFailed": [
+    {
+      "type": 0,
+      "value": "No se pudieron cargar los ajustes de los archivos .strm."
+    }
+  ],
+  "bloem.admin.strm.loading": [
+    {
+      "type": 0,
+      "value": "Cargando ajustes"
+    }
+  ],
+  "bloem.admin.strm.privateAddresses": [
+    {
+      "type": 0,
+      "value": "Permitir direcciones privadas"
+    }
+  ],
+  "bloem.admin.strm.privateAddressesDescription": [
+    {
+      "type": 0,
+      "value": "Permite que las direcciones web de los archivos .strm lleguen a la red propia de este servidor: el propio servidor, las direcciones privadas y de enlace local, y los servicios de metadatos en la nube. Desactivado de forma predeterminada, lo que protege esa red de cualquiera que pueda escribir un archivo .strm. Solo se usan direcciones que empiezan por http:// o https://. Se aplica en unos segundos; ejecuta un análisis de la biblioteca para incorporar los archivos rechazados."
+    }
+  ],
+  "bloem.admin.strm.retry": [
+    {
+      "type": 0,
+      "value": "Reintentar"
+    }
+  ],
+  "bloem.admin.strm.title": [
+    {
+      "type": 0,
+      "value": "Archivos .strm"
+    }
+  ],
   "bloem.admin.users.access.liveTv.description": [
     {
       "type": 0,

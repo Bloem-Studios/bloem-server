@@ -90,6 +90,10 @@ type NativeVideoService struct {
 	// authority, rechecked as the bound video's around every provider read.
 	Sidecars    NativeSidecarStore
 	OpenSidecar func(context.Context, *models.MediaFile, NativeVideoBinding, storagesource.PersistedRef) (NativeVideoFile, error)
+
+	// WorkerReadiness remembers which workers can read native storage; nil
+	// sends native HLS to no worker.
+	WorkerReadiness *NativeVideoWorkerReadiness
 }
 
 func nativeVideoUnavailable() error {

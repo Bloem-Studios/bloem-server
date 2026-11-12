@@ -15497,6 +15497,42 @@
       "value": "已升级存储源"
     }
   ],
+  "bloem.admin.strm.loadFailed": [
+    {
+      "type": 0,
+      "value": "无法加载 .strm 文件设置。"
+    }
+  ],
+  "bloem.admin.strm.loading": [
+    {
+      "type": 0,
+      "value": "正在加载设置"
+    }
+  ],
+  "bloem.admin.strm.privateAddresses": [
+    {
+      "type": 0,
+      "value": "允许私有地址"
+    }
+  ],
+  "bloem.admin.strm.privateAddressesDescription": [
+    {
+      "type": 0,
+      "value": "允许 .strm 文件中的网址访问此服务器自身的网络：服务器本身、私有地址和链路本地地址，以及云元数据服务。默认关闭，以防能写入 .strm 文件的人访问该网络。只会使用以 http:// 或 https:// 开头的地址。几秒内生效；运行一次媒体库扫描即可收录之前被拒绝的文件。"
+    }
+  ],
+  "bloem.admin.strm.retry": [
+    {
+      "type": 0,
+      "value": "重试"
+    }
+  ],
+  "bloem.admin.strm.title": [
+    {
+      "type": 0,
+      "value": ".strm 文件"
+    }
+  ],
   "bloem.admin.users.access.liveTv.description": [
     {
       "type": 0,

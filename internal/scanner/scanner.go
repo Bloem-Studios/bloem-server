@@ -477,6 +477,9 @@ func (m walkMode) acceptsPath(path string) bool {
 	case walkModeEbook:
 		return SupportsEbookFile(path)
 	default:
+		if bloemStrmFile(path) {
+			return true
+		}
 		return SupportsVideoFile(path)
 	}
 }
@@ -4295,6 +4298,9 @@ const probeSourceLocal = "local"
 // opposed to no probe having run or one failing for reasons unrelated to the
 // file.
 func (s *Scanner) probeFile(ctx context.Context, filePath string) (probe *ProbeData, probeSource string, rejected bool) {
+	if bloemStrmFile(filePath) {
+		return s.probeBloemStrm(ctx, filePath)
+	}
 	probeSource = probeSourceLocal
 	if s.ffprobePath == "" {
 		return nil, probeSource, false

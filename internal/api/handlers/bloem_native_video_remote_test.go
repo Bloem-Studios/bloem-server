@@ -29,6 +29,9 @@ func TestNativeVideoRemotePreparationAndRollback(t *testing.T) {
 	}
 	var received transcodenode.TranscodeStartRequest
 	node := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if answerNativeExecutionReadiness(w, r, 7) {
+			return
+		}
 		if r.Method == http.MethodPost && r.URL.Path == "/transcode/start" {
 			if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
 				t.Error(err)
@@ -81,6 +84,9 @@ func TestNativeVideoRemoteHeaderAuthRequiresRecipeBeforePublication(t *testing.T
 			}
 			var received transcodenode.TranscodeStartRequest
 			node := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if answerNativeExecutionReadiness(w, r, 7) {
+					return
+				}
 				if r.Method == http.MethodPost && r.URL.Path == "/transcode/start" {
 					if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
 						t.Error(err)
@@ -228,6 +234,9 @@ func TestNativeVideoRemoteProxyRoutingFallsBackToSameWorkerAPIRelay(t *testing.T
 			}
 			starts := &atomic.Int32{}
 			worker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if answerNativeExecutionReadiness(w, r, 7) {
+					return
+				}
 				switch {
 				case r.Method == http.MethodGet && r.URL.Path == "/hw-capabilities":
 					writeJSON(w, http.StatusOK, playback.HWAccelInfo{Transformations: remoteHLSPlanV3().Transformations})

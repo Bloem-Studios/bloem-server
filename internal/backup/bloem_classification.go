@@ -65,7 +65,7 @@ var bloemServerStateTables = strings.Fields(`
 	admin_people_bulk_jobs admin_people_bulk_job_receipts admin_people_bulk_targets admin_people_selections
 	bloem_audiobook_request_acquisitions bloem_audiobook_request_decisions bloem_ebook_request_dispatches
 	bloem_ebook_request_policy_epoch bloem_library_location_state bloem_livetv_xtream_leases
-	bloem_org_session_revocations bloem_preview_event_counts bloem_preview_personal_presentation
+	bloem_org_session_revocations bloem_preview_event_counts bloem_preview_personal_presentation bloem_remote_sources
 	bloem_preview_ticket_uses bloem_silo_switching
 	bloem_storage_audio_probes bloem_storage_audio_staged_tracks bloem_storage_change_tokens bloem_storage_entries
 	bloem_storage_episode_sidecars
@@ -201,6 +201,7 @@ var bloemRestoredSettings = strings.Fields(`livetv.`)
 // profiles may sign in with their own password (as auth.local_password_login).
 var bloemStricterSettings = []string{
 	"lan.advertisement_enabled", "bloem.requests.ebooks_enabled", "bloem.auth.profile_sign_in_enabled",
+	"bloem.strm.allow_private_addresses",
 }
 
 // pageLiveTV is Bloem's Live TV settings page.
@@ -212,6 +213,7 @@ var bloemSettingRules = map[string]settingRule{
 	"lan.advertisement_enabled":          {page: "general", class: SettingPortable},
 	"bloem.requests.ebooks_enabled":      {page: pageRequests, class: SettingPortable},
 	"bloem.auth.profile_sign_in_enabled": {page: pageSignIn, class: SettingPortable},
+	"bloem.strm.allow_private_addresses": {page: "general", class: SettingPortable},
 	"livetv.":                            {page: pageLiveTV, class: SettingPortable},
 	"livetv.dvr_path":                    {page: pageLiveTV, class: SettingServerSpecific},
 	"livetv.hw_accel":                    {page: pageLiveTV, class: SettingServerSpecific},

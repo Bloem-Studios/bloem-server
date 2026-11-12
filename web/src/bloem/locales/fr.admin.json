@@ -16652,6 +16652,42 @@
       "value": "Source de stockage mise à jour"
     }
   ],
+  "bloem.admin.strm.loadFailed": [
+    {
+      "type": 0,
+      "value": "Impossible de charger les réglages des fichiers .strm."
+    }
+  ],
+  "bloem.admin.strm.loading": [
+    {
+      "type": 0,
+      "value": "Chargement des réglages"
+    }
+  ],
+  "bloem.admin.strm.privateAddresses": [
+    {
+      "type": 0,
+      "value": "Autoriser les adresses privées"
+    }
+  ],
+  "bloem.admin.strm.privateAddressesDescription": [
+    {
+      "type": 0,
+      "value": "Permet aux adresses web des fichiers .strm d'atteindre le réseau de ce serveur : le serveur lui-même, les adresses privées et link-local, et les services de métadonnées cloud. Désactivé par défaut, ce qui protège ce réseau contre quiconque peut écrire un fichier .strm. Seules les adresses commençant par http:// ou https:// sont utilisées. Prend effet en quelques secondes ; lancez une analyse de la bibliothèque pour reprendre les fichiers refusés."
+    }
+  ],
+  "bloem.admin.strm.retry": [
+    {
+      "type": 0,
+      "value": "Réessayer"
+    }
+  ],
+  "bloem.admin.strm.title": [
+    {
+      "type": 0,
+      "value": "Fichiers .strm"
+    }
+  ],
   "bloem.admin.users.access.liveTv.description": [
     {
       "type": 0,

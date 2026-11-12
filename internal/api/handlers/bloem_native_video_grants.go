@@ -6,11 +6,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/remotesource"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/transcodenode"
 	"github.com/google/uuid"
@@ -125,7 +128,7 @@ func (s *NativeVideoWorkerGrantStore) prepare(ctx context.Context, node int, tra
 	if err != nil {
 		return record, err
 	}
-	location, err := storagesource.CatalogLocation(binding.Identity.Reference.LocationID, binding.Identity.Reference.EntryID)
+	location, err := nativeVideoGrantLocation(binding.Identity)
 	if err != nil || location != path || path != binding.Identity.FilePath || binding.SessionID != session.ID || binding.UserID != session.UserID || binding.ProfileID != session.ProfileID || binding.Authority.UserID != binding.UserID || binding.Authority.ProfileID != binding.ProfileID || binding.Info.Revision == "" || binding.Info.Revision != binding.Identity.Reference.Revision || binding.Info.LogicalPath != binding.Identity.Reference.LogicalPath || binding.Format == "" {
 		return record, storagesource.ErrReferenceConflict
 	}
@@ -146,6 +149,23 @@ func (s *NativeVideoWorkerGrantStore) prepare(ctx context.Context, node int, tra
 	}
 	return record, nil
 }
+
+// nativeVideoGrantLocation is the catalog path a binding's identity stands
+// for: a storage object's catalog location, or a local `.strm` file's own
+// path. A `.strm` item carries no storage location; its identity is its
+// catalog path and the URL's revision, and the worker resolves the URL from
+// the catalog itself, so neither the grant nor the start ever holds it.
+func nativeVideoGrantLocation(identity nativestorage.PlaybackIdentity) (string, error) {
+	ref := identity.Reference
+	if ref.LocationID == uuid.Nil && ref.EntryID == "" && remotesource.IsStrmPath(identity.FilePath) && !strings.HasPrefix(identity.FilePath, "bloem-storage:") {
+		if ref.LogicalPath != identity.FilePath {
+			return "", storagesource.ErrReferenceConflict
+		}
+		return identity.FilePath, nil
+	}
+	return storagesource.CatalogLocation(ref.LocationID, ref.EntryID)
+}
+
 func (s *NativeVideoWorkerGrantStore) insert(ctx context.Context, record nativeVideoWorkerGrant) error {
 	key, err := nativeVideoWorkerKey(record.NodeID, record.TransportID)
 	if err != nil {

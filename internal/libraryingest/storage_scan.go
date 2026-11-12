@@ -23,6 +23,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/plugins"
+	"github.com/Silo-Server/silo-server/internal/remotesource"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
@@ -221,6 +222,7 @@ type StorageScanner struct {
 	nativeSeriesReady bool
 	seriesMetadata    NativeSeriesMetadata
 	seriesProbes      *seriesProbes
+	remote            *remotesource.Runtime
 	retries           int
 	retryDelay        time.Duration
 }

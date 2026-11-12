@@ -16171,6 +16171,42 @@
       "value": "Speicherquelle aktualisiert"
     }
   ],
+  "bloem.admin.strm.loadFailed": [
+    {
+      "type": 0,
+      "value": "Die Einstellungen für .strm-Dateien konnten nicht geladen werden."
+    }
+  ],
+  "bloem.admin.strm.loading": [
+    {
+      "type": 0,
+      "value": "Einstellungen werden geladen"
+    }
+  ],
+  "bloem.admin.strm.privateAddresses": [
+    {
+      "type": 0,
+      "value": "Private Adressen erlauben"
+    }
+  ],
+  "bloem.admin.strm.privateAddressesDescription": [
+    {
+      "type": 0,
+      "value": "Erlaubt den Webadressen in .strm-Dateien, das eigene Netzwerk dieses Servers zu erreichen: den Server selbst, private und link-lokale Adressen sowie Cloud-Metadatendienste. Standardmäßig aus; das schützt dieses Netzwerk vor allen, die eine .strm-Datei schreiben können. Es werden nur Adressen verwendet, die mit http:// oder https:// beginnen. Wirkt innerhalb von Sekunden; starte einen Bibliotheksscan, um abgelehnte Dateien aufzunehmen."
+    }
+  ],
+  "bloem.admin.strm.retry": [
+    {
+      "type": 0,
+      "value": "Erneut versuchen"
+    }
+  ],
+  "bloem.admin.strm.title": [
+    {
+      "type": 0,
+      "value": ".strm-Dateien"
+    }
+  ],
   "bloem.admin.users.access.liveTv.description": [
     {
       "type": 0,

@@ -3,6 +3,32 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 12, 2026 — `.strm` items convert on workers and keep their subtitles
+
+`.strm` items now convert on transcoding workers: the worker grant binds a local
+`.strm` file's catalog path, and the worker reads the URL from Bloem's record and
+opens it through its own address check. Rescans keep the last probe of an unchanged
+`.strm` file or object (same URL and object revision, same remote size and ETag or
+Last-Modified) and ask the remote for one byte, so storage sources with thousands of
+`.strm` objects rescan quickly. Subtitle files beside a local `.strm` file are offered
+and served like any local sidecar, and a platform administrator can allow private
+addresses under Settings → Libraries → .strm files. A refused address answers 403. Jellyfin
+apps play `.strm` items once Bloem's Jellyfin media host for stored movies is merged
+([how `.strm` files play](../architecture/bloem-strm.md)).
+
+## November 12, 2026 — `.strm` files play
+
+Bloem now accepts `.strm` files pointing anywhere, reversing the earlier non-goal. A
+`.strm` file in a movie or series library folder, or a `.strm` object in a movie
+library's storage source, catalogs as the movie or episode its name says, probed from
+the URL it holds; the URL lives in `bloem_remote_sources`, never in a path. Playback
+reuses the native video pipeline with a remote reader: direct play answers ranges from
+remote ranges, and remux and HLS run on the API server. One security default limits no
+content: only `http`/`https`, and no connection to the server's own network (loopback,
+link-local and metadata, private, CGNAT) at any dial or redirect unless the platform
+setting `bloem.strm.allow_private_addresses` is on. Jellyfin playback and transcoding
+workers are not covered yet ([how `.strm` files play](../architecture/bloem-strm.md)).
+
 ## November 11, 2026 — "Explore all" on episode rows fills, and book cover errors are logged
 
 "Explore all" on a home row of episodes sorted by air date ran the general

@@ -5,6 +5,7 @@ import {
   Building2,
   CalendarClock,
   FileKey2,
+  FileVideo,
   GitBranch,
   HardDrive,
   Library,
@@ -251,10 +252,35 @@ export const BLOEM_ADMIN_SETTINGS: AdminSettingsSearchItem[] = [
     },
     icon: Megaphone,
   },
+  {
+    id: "strm",
+    get label() {
+      return bloemT("bloem.adminNav.strmSettings.label");
+    },
+    get description() {
+      return bloemT("bloem.adminNav.strmSettings.description");
+    },
+    settings: [searchEntry("bloem.adminNav.strmSettings.privateAddresses")],
+    get keywords() {
+      return [
+        "strm",
+        "remote",
+        "url",
+        "private network",
+        "ssrf",
+        ...englishTerms(
+          "bloem.adminNav.strmSettings.label",
+          "bloem.adminNav.strmSettings.description",
+        ),
+      ];
+    },
+    icon: FileVideo,
+  },
 ];
 
 /**
- * Adds Bloem's settings page to Silo's Integrations topic. It changes Silo's
+ * Adds Bloem's settings pages to Silo's topics: Announcements to Integrations,
+ * .strm files to Libraries after Silo's library settings. It changes Silo's
  * list in place: a copy would freeze Silo's translated labels.
  */
 export function addBloemSettingsNavigation(sections: AdminNavSection[]): void {
@@ -263,10 +289,19 @@ export function addBloemSettingsNavigation(sections: AdminNavSection[]): void {
     icon: Megaphone,
     href: "/admin/settings/announcements",
   });
+  const strm = navItem("strm", {
+    keywords: ["settings", "strm", "remote", "url", "private network"],
+    icon: FileVideo,
+    href: "/admin/settings/strm",
+  });
   for (const section of sections) {
     for (const entry of section.entries) {
       if (!("items" in entry)) continue;
       if (entry.id === "integrations") entry.items.push(item);
+      if (entry.id === "libraries") {
+        const settings = entry.items.findIndex((page) => page.href === "/admin/settings/library");
+        entry.items.splice(settings < 0 ? entry.items.length : settings + 1, 0, strm);
+      }
     }
   }
 }
