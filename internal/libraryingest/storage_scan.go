@@ -500,7 +500,8 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 		var audioRejected int
 		var matches []scanner.StorageMovieMatch
 		var series seriesWork
-		var nextSeriesDir seriesDirectory
+		// A page the journal applies without publishing keeps the state.
+		nextSeriesDir := seriesDir
 		publish := func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry, _ []string) error {
 			allowed := make(map[string]bool, len(files))
 			for _, file := range files {
