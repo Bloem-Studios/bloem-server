@@ -117,7 +117,8 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 	}, getSession: deps.SessionMgr.GetSession, denied: nativeVideoSessionDenied(deps.RedisClient, h.StreamDeny), resolveFile: h.ResolveNativeVideoFile, authorizeSource: func(ctx context.Context, file *models.MediaFile, source storagesource.SourceConfig) error {
 		return authorizeNativeStorageSource(ctx, file, source, tenantResolver, resources)
 	}}
-	service := &handlers.NativeVideoService{Presentation: nativeAudioPresentation(deps), Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: h.StreamDeny}
+	service := &handlers.NativeVideoService{Presentation: nativeAudioPresentation(deps), Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: h.StreamDeny,
+		Sidecars: storagesource.NewRepository(deps.DB)}
 	service.Open = func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
 		if file == nil {
 			return nil, catalog.ErrItemNotFound
@@ -418,6 +419,19 @@ func configureNativeVideoDelegates(deps Dependencies, coordinator *nativestorage
 		if opened.Identity() != binding.Identity {
 			opened.Close()
 			return nil, storagesource.ErrReferenceConflict
+		}
+		return opened, nil
+	}
+	// A sidecar is read with the bound video's delegated authority: its live
+	// binding, session, deny marker and actor, and the video's own source.
+	service.OpenSidecar = func(ctx context.Context, file *models.MediaFile, binding handlers.NativeVideoBinding, ref storagesource.PersistedRef) (handlers.NativeVideoFile, error) {
+		authority, err := nativeVideoDelegatedAuthority(ctx, file, binding, p)
+		if err != nil {
+			return nil, err
+		}
+		opened, err := coordinator.OpenAuthorizedSidecar(ctx, file, authority, ref)
+		if err != nil {
+			return nil, err
 		}
 		return opened, nil
 	}

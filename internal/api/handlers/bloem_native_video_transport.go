@@ -16,18 +16,24 @@ import (
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
 )
 
-type nativeVideoCatalogFiles struct{ FilePathResolver }
+type nativeVideoCatalogFiles struct {
+	FilePathResolver
+	sidecars NativeSidecarStore
+}
 
 func (f nativeVideoCatalogFiles) GetByID(ctx context.Context, id int) (*models.MediaFile, error) {
 	file, err := f.FilePathResolver.GetByID(ctx, id)
 	if err == nil && file != nil && storagesource.IsNativeLocation(file.FilePath) && !NativeVideoSupported(file) {
 		return nil, catalog.ErrItemNotFound
 	}
-	return file, err
+	if err != nil {
+		return file, err
+	}
+	return withNativeSidecars(ctx, f.sidecars, file)
 }
 func (h *PlaybackHandler) playbackMetadataFiles() FilePathResolver {
 	if h.NativeVideo != nil && h.NativeVideo.Files != nil {
-		return nativeVideoCatalogFiles{h.NativeVideo.Files}
+		return h.NativeVideo.catalog()
 	}
 	return h.fileResolver
 }

@@ -663,7 +663,9 @@ movie publication, in the same authorized page transaction.
   whose base name they extend (Silo's `naming.SubtitleSuffix`), with language,
   forced and SDH tags, in `bloem_storage_episode_sidecars`. The scan pairs a
   directory's sidecars with its episodes across the directory's pages. They
-  are not published as files and not yet offered to clients.
+  are not published as files. Playback lists them where Silo lists a local
+  file's external subtitles and reads them through the provider
+  ([execution and ownership](bloem-native-video-playback.md#execution-and-ownership)).
 - After each page commits, a `pending` series (or an `unmatched` one with
   provider tags) is matched through `MetadataService.Process`: a `{tvdb-}`
   tag (else `{tmdb-}`) applies as `ModeIdentify`, other shows search with

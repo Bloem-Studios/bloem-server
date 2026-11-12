@@ -13,7 +13,7 @@ import (
 
 func (h *StreamHandler) subtitleMetadataFiles() FilePathResolver {
 	if h.NativeVideo != nil && h.NativeVideo.Files != nil {
-		return nativeVideoCatalogFiles{h.NativeVideo.Files}
+		return h.NativeVideo.catalog()
 	}
 	return h.fileResolver
 }
