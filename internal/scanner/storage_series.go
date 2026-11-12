@@ -2,9 +2,11 @@ package scanner
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"slices"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/contentid"
 	"github.com/Silo-Server/silo-server/internal/librarykind"
@@ -12,7 +14,6 @@ import (
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/titleutil"
-	"github.com/jackc/pgx/v5"
 )
 
 // StorageSeriesPage is one listed page of a TV library, already probed.
@@ -63,7 +64,7 @@ func (s *Scanner) PublishStorageSeriesTx(ctx context.Context, tx pgx.Tx, page St
 	folder, location := page.Folder, page.Location
 	if s == nil || s.itemRepo == nil || s.fileRepo == nil || tx == nil || folder == nil ||
 		folder.ID != location.FolderID || !folder.Enabled || !librarykind.IsTV(folder.Type) || page.ConfigurationRevision <= 0 {
-		return result, fmt.Errorf("storage series publication is not configured")
+		return result, errors.New("storage series publication is not configured")
 	}
 	episodes := page.Episodes
 	paths := make([]string, len(episodes))
@@ -113,22 +114,14 @@ func (s *Scanner) PublishStorageSeriesTx(ctx context.Context, tx pgx.Tx, page St
 		old, ok := existing[paths[i]]
 		id, status := old.contentID, old.status
 		identity := identities[i]
-		groupKey := storageGroupLookupKey(storageMovieIdentity{groupKey: identity.groupKey, groupKeyVersion: identity.groupKeyVersion})
 		if id == "" {
 			if episode.Probe == nil {
 				return result, ErrStorageVideoChanged
 			}
-			if group, found := groups[groupKey]; found && groupKey != "" {
-				id, status = group.contentID, group.status
-			} else {
-				id, status = contentid.ForLocal(paths[i]), "pending"
-				if identity.ambiguous {
-					status = "ambiguous"
-				}
-				items = append(items, &models.MediaItem{ContentID: id, Type: "series", Title: identity.title, SortTitle: titleutil.DeriveDefaultSortTitle(identity.title), Year: identity.year, Status: status})
-				if groupKey != "" {
-					groups[groupKey] = storageMovieGroup{contentID: id, status: status}
-				}
+			var item *models.MediaItem
+			id, status, item = storageSeriesItem(groups, identity, paths[i])
+			if item != nil {
+				items = append(items, item)
 			}
 		}
 		contentIDs[i], statuses[i] = id, status
@@ -165,23 +158,8 @@ func (s *Scanner) PublishStorageSeriesTx(ctx context.Context, tx pgx.Tx, page St
 	if err := s.itemRepo.UpsertBatchTx(ctx, tx, items); err != nil {
 		return result, err
 	}
-	if len(written) > 0 {
-		writtenIDs := storagePick(contentIDs, written)
-		if _, err := tx.Exec(ctx, `INSERT INTO media_item_libraries(content_id,media_folder_id,first_seen_at)
-			SELECT id,$2,NOW() FROM unnest($1::text[]) AS t(id) ON CONFLICT(content_id,media_folder_id) DO NOTHING`, writtenIDs, folder.ID); err != nil {
-			return result, err
-		}
-		if err := s.fileRepo.UpsertBatchTx(ctx, tx, files); err != nil {
-			return result, err
-		}
-		// The shared upsert stores season 0 as unknown (NULL), and Silo's bulk
-		// linker skips files without a season. Specials keep their season 0;
-		// later upserts preserve it.
-		if len(specials) > 0 {
-			if _, err := tx.Exec(ctx, `UPDATE media_files SET season_number=0 WHERE media_folder_id=$1 AND file_path=ANY($2) AND season_number IS NULL AND extra_id IS NULL`, folder.ID, specials); err != nil {
-				return result, err
-			}
-		}
+	if err := s.writeStorageSeriesFilesTx(ctx, tx, folder.ID, storagePick(contentIDs, written), files, specials); err != nil {
+		return result, err
 	}
 	fileIDs, err := storageFileIDsTx(ctx, tx, folder.ID, paths)
 	if err != nil {
@@ -198,6 +176,46 @@ func (s *Scanner) PublishStorageSeriesTx(ctx context.Context, tx pgx.Tx, page St
 		}
 	}
 	return result, attachStorageSeriesSidecarsTx(ctx, tx, folder.ID, location, page.Sidecars, fileIDs)
+}
+
+// storageSeriesItem returns the series item a new episode file joins: its
+// content group's item in this library, or a new pending (or ambiguous) item
+// it creates, which later files of the group join.
+func storageSeriesItem(groups map[string]storageMovieGroup, identity storageSeriesIdentity, path string) (string, string, *models.MediaItem) {
+	groupKey := storageGroupLookupKey(storageMovieIdentity{groupKey: identity.groupKey, groupKeyVersion: identity.groupKeyVersion})
+	if group, found := groups[groupKey]; found && groupKey != "" {
+		return group.contentID, group.status, nil
+	}
+	id, status := contentid.ForLocal(path), "pending"
+	if identity.ambiguous {
+		status = "ambiguous"
+	}
+	if groupKey != "" {
+		groups[groupKey] = storageMovieGroup{contentID: id, status: status}
+	}
+	return id, status, &models.MediaItem{ContentID: id, Type: "series", Title: identity.title, SortTitle: titleutil.DeriveDefaultSortTitle(identity.title), Year: identity.year, Status: status}
+}
+
+// writeStorageSeriesFilesTx writes probed episode files and their series
+// memberships. The shared upsert stores season 0 as unknown (NULL), and Silo's
+// bulk linker skips files without a season, so specials are set back to 0;
+// later upserts preserve it.
+func (s *Scanner) writeStorageSeriesFilesTx(ctx context.Context, tx pgx.Tx, folderID int, contentIDs []string, files []models.MediaFile, specials []string) error {
+	if len(files) == 0 {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO media_item_libraries(content_id,media_folder_id,first_seen_at)
+		SELECT id,$2,NOW() FROM unnest($1::text[]) AS t(id) ON CONFLICT(content_id,media_folder_id) DO NOTHING`, contentIDs, folderID); err != nil {
+		return err
+	}
+	if err := s.fileRepo.UpsertBatchTx(ctx, tx, files); err != nil {
+		return err
+	}
+	if len(specials) == 0 {
+		return nil
+	}
+	_, err := tx.Exec(ctx, `UPDATE media_files SET season_number=0 WHERE media_folder_id=$1 AND file_path=ANY($2) AND season_number IS NULL AND extra_id IS NULL`, folderID, specials)
+	return err
 }
 
 // storageExistingFilesTx reads the published files at paths and refuses one
@@ -337,7 +355,7 @@ func (s *Scanner) FinalizeStorageSeriesLocationTx(ctx context.Context, tx pgx.Tx
 // provider does not list yet wait for Silo's scheduled refresh.
 func (s *Scanner) LinkStorageSeries(ctx context.Context, seriesID string) (int, error) {
 	if s == nil || s.fileRepo == nil {
-		return 0, fmt.Errorf("storage series file repository is not configured")
+		return 0, errors.New("storage series file repository is not configured")
 	}
 	return s.fileRepo.BulkLinkEpisodesBySeries(ctx, seriesID)
 }

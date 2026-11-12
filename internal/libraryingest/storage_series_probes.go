@@ -53,8 +53,10 @@ func (c *StorageScanner) newSeriesProbeGate(source uuid.UUID) *seriesProbeGate {
 		gate.remaining.Store(int64(p.perScan))
 	}
 	if p.perSecond > 0 {
-		limiter, _ := p.limiters.LoadOrStore(source, rate.NewLimiter(p.perSecond, p.burst))
-		gate.limiter = limiter.(*rate.Limiter)
+		stored, _ := p.limiters.LoadOrStore(source, rate.NewLimiter(p.perSecond, p.burst))
+		if limiter, ok := stored.(*rate.Limiter); ok {
+			gate.limiter = limiter
+		}
 	}
 	return gate
 }

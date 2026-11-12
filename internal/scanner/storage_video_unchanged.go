@@ -6,11 +6,12 @@ import (
 	"crypto/sha256"
 	"errors"
 
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/Silo-Server/silo-server/internal/models"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
-	"github.com/jackc/pgx/v5"
-	"google.golang.org/protobuf/proto"
 )
 
 // ErrStorageVideoChanged reports that a video listed as unchanged, and so not

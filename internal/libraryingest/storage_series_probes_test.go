@@ -2,6 +2,7 @@ package libraryingest
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -16,8 +17,12 @@ func TestSeriesProbeGateBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	gate := c.newSeriesProbeGate(uuid.New())
-	if !gate.admit() || !gate.admit() || gate.admit() || gate.admit() {
-		t.Fatal("budget of two admitted a different number of probes")
+	var admitted []bool
+	for range 4 {
+		admitted = append(admitted, gate.admit())
+	}
+	if !slices.Equal(admitted, []bool{true, true, false, false}) {
+		t.Fatalf("budget of two admitted %v", admitted)
 	}
 	if gate.deferred != 2 {
 		t.Fatalf("deferred = %d", gate.deferred)

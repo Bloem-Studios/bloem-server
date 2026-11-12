@@ -520,28 +520,18 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 				}
 			}
 			var err error
-			if librarykind.IsTV(folder.Type) {
-				videos := make([]*storagev1.Entry, len(uniqueMovies))
-				for i, episode := range uniqueMovies {
-					videos[i] = episode.Entry
-				}
+			switch {
+			case librarykind.IsTV(folder.Type):
 				pageSidecars := slices.DeleteFunc(slices.Clone(sidecars), func(s scanner.StorageSeriesSidecar) bool { return !allowed[s.Entry.GetId()] })
-				var paired map[string][]scanner.StorageSeriesSidecar
-				paired, nextSeriesDir = seriesDir.pair(checkpoint.DirectoryID, videos, pageSidecars)
-				if len(uniqueMovies) > 0 || len(paired) > 0 {
-					var seriesPage scanner.StorageSeriesPublishResult
-					seriesPage, err = c.scanner.PublishStorageSeriesTx(ctx, tx, scanner.StorageSeriesPage{Folder: folder, Location: location, ConfigurationRevision: source.ConfigurationRevision,
-						Roots: scanner.StorageSeriesParseRoots(selection.Roots), Episodes: uniqueMovies, Sidecars: paired})
-					published = seriesPage.StoragePublishResult
-					series = seriesWork{matches: seriesPage.Matches, link: seriesPage.Link, fallback: seriesPage.Fallback}
-				}
-			} else if librarykind.IsMovie(folder.Type) {
+				published, series, nextSeriesDir, err = c.publishSeriesPage(ctx, tx, scanner.StorageSeriesPage{Folder: folder, Location: location, ConfigurationRevision: source.ConfigurationRevision,
+					Roots: scanner.StorageSeriesParseRoots(selection.Roots), Episodes: uniqueMovies}, &seriesDir, checkpoint.DirectoryID, pageSidecars)
+			case librarykind.IsMovie(folder.Type):
 				if len(uniqueMovies) > 0 {
 					var moviePage scanner.StorageMoviePublishResult
 					moviePage, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueMovies)
 					published, matches = moviePage.StoragePublishResult, moviePage.Matches
 				}
-			} else if librarykind.IsAudiobook(folder.Type) {
+			case librarykind.IsAudiobook(folder.Type):
 				var allowedTracks []scanner.StorageAudioTrack
 				for _, track := range audio {
 					if allowed[track.Entry.Id] {
@@ -551,7 +541,7 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 				var audioPage scanner.StorageAudioResult
 				audioPage, err = c.scanner.PublishStorageAudioPageTx(ctx, tx, scanner.StorageAudioPage{Folder: folder, Location: location, Lease: lease, ConfigurationRevision: source.ConfigurationRevision, DirectoryID: checkpoint.DirectoryID, Complete: page.GetComplete(), Tracks: allowedTracks})
 				published, audioRejected = audioPage.StoragePublishResult, audioPage.BooksRejected
-			} else {
+			default:
 				if len(uniqueBooks) == 0 {
 					return nil
 				}

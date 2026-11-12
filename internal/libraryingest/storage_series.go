@@ -4,11 +4,13 @@ import (
 	"context"
 	"slices"
 
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
-	"google.golang.org/protobuf/proto"
 )
 
 // ConfigureNativeSeries is startup-only, after ConfigureNativeMovies and before
@@ -87,6 +89,23 @@ func (c *StorageScanner) prepareSeries(ctx context.Context, folder *models.Media
 	episodes, err := c.prepareVideos(ctx, folder, selection.Location, source, lease, checkpoint, page, candidates, probes)
 	out.episodes = episodes
 	return out, err
+}
+
+// publishSeriesPage pairs the page's sidecars with its directory's episodes
+// and publishes the page in its authorized transaction. It returns the
+// directory state to keep once the page commits.
+func (c *StorageScanner) publishSeriesPage(ctx context.Context, tx pgx.Tx, page scanner.StorageSeriesPage, dir *seriesDirectory, directoryID string, sidecars []scanner.StorageSeriesSidecar) (scanner.StoragePublishResult, seriesWork, seriesDirectory, error) {
+	videos := make([]*storagev1.Entry, len(page.Episodes))
+	for i, episode := range page.Episodes {
+		videos[i] = episode.Entry
+	}
+	paired, next := dir.pair(directoryID, videos, sidecars)
+	if len(page.Episodes) == 0 && len(paired) == 0 {
+		return scanner.StoragePublishResult{}, seriesWork{}, next, nil
+	}
+	page.Sidecars = paired
+	result, err := c.scanner.PublishStorageSeriesTx(ctx, tx, page)
+	return result.StoragePublishResult, seriesWork{matches: result.Matches, link: result.Link, fallback: result.Fallback}, next, err
 }
 
 // seriesDirectory carries one directory's videos and still unpaired sidecars

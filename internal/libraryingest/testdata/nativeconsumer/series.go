@@ -6,9 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 )
 
 // seriesTree serves the TV layout verified on the live ClearStream node:
