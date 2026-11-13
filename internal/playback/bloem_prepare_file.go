@@ -131,7 +131,13 @@ func runSourcePrepare(ctx context.Context, opts TranscodeOpts, partPath string, 
 	configureTranscodeInputCommand(cmd, input)
 	cmd.Stderr = io.Discard
 	if opts.PrepareProgressSink != nil {
-		cmd.Stdout = newPrepareProgressWriter(opts.PrepareProgressSink, opts.TotalDuration)
+		// As PrepareFile's own run: copied video keeps the source's own
+		// timing, so a remux reads out_time alone.
+		frameRate := opts.SourceFrameRate
+		if opts.AudioOnly || opts.TargetCodecVideo == codecCopyV3 {
+			frameRate = 0
+		}
+		cmd.Stdout = newPrepareProgressWriter(opts.PrepareProgressSink, opts.TotalDuration, frameRate)
 	}
 	cmd.WaitDelay = 3 * time.Second
 	if logs != nil {

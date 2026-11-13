@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/playback"
@@ -91,5 +92,57 @@ func TestPrepareFileRefusesUnboundNativeInput(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Dir(output)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+type prepareProgressReadings struct {
+	mu       sync.Mutex
+	readings []playback.PrepareProgress
+}
+
+func (r *prepareProgressReadings) PrepareProgress(p playback.PrepareProgress) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.readings = append(r.readings, p)
+}
+
+// A native source's prepared download reads its progress from the frames
+// encoded, as Silo's path does, so a subtitle with no cue yet cannot hold it
+// back; a copied video keeps FFmpeg's out_time.
+func TestPrepareFileNativeInputReadsFramesWhenEncodingVideo(t *testing.T) {
+	opts, _, _ := nativeInputFixture(t)
+	source := opts.InputSource
+	opts.InputSource, opts.InputFormat = nil, ""
+	opts.SessionID, opts.SubtitleTrackIndex = "download-prepare-job", -1
+	dir := t.TempDir()
+	script := filepath.Join(dir, "ffmpeg")
+	// 1500 frames at 24 fps is 62.5 s, further than FFmpeg's 30 s.
+	body := "#!/bin/sh\n" +
+		"printf 'frame=1500\\nfps=240\\nout_time_us=30000000\\nspeed=4.0x\\nprogress=continue\\n'\n" +
+		"eval \"touch \\${$#}\"\n"
+	if err := os.WriteFile(script, []byte(body), 0o755); err != nil { //nolint:gosec // the fake ffmpeg must be executable
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		videoCodec string
+		want       float64
+	}{
+		{"h264", 62.5},
+		{"copy", 30},
+	} {
+		progress := &prepareProgressReadings{}
+		run := opts
+		run.FFmpegPath, run.TargetCodecVideo, run.TargetCodecAudio = script, tc.videoCodec, "aac"
+		run.TotalDuration, run.SourceFrameRate, run.PrepareProgressSink = 120, 24, progress
+		bound := playback.WithTranscodeInputSource(context.Background(), playback.TranscodeInputBinding{InputPath: run.InputPath, InputFormat: "mov", SessionID: run.SessionID, InputSource: source})
+		if err := playback.PrepareFile(bound, run, filepath.Join(dir, tc.videoCodec+".mp4")); err != nil {
+			t.Fatalf("%s: PrepareFile: %v", tc.videoCodec, err)
+		}
+		progress.mu.Lock()
+		got := progress.readings
+		progress.mu.Unlock()
+		if len(got) != 1 || got[0].EncodedSeconds != tc.want {
+			t.Fatalf("%s: readings = %+v, want %vs", tc.videoCodec, got, tc.want)
+		}
 	}
 }
