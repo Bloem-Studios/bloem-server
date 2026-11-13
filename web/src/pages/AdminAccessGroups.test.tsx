@@ -708,7 +708,3 @@ describe("AdminAccessGroups revisions and capability", () => {
     expect(fetch.mock.calls.every(([url]) => !String(url).endsWith("/1"))).toBe(true);
   });
 });
-
-vi.mock("@/contexts/AdminContextProvider", () => ({
-  useAdminContext: () => ({ active: { scope: "platform" } }),
-}));

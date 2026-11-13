@@ -23,7 +23,7 @@ import {
 } from "@/hooks/queries/admin/accessGroups";
 import { useRequestGroupLimit } from "@/hooks/queries/admin/requests";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAdminContext } from "@/contexts/AdminContextProvider";
+import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
 import { useT, type MessageKey } from "@/i18n";
 import { requestGroupLimitSummary } from "@/lib/requestAccess";
 import { TOUCH_TARGETS } from "@/lib/touchTargets";
@@ -313,8 +313,10 @@ function AccessGroupCard({ group, onClick }: { group: AccessGroup; onClick: () =
   );
 }
 
+// Outside an AdminContextProvider (Silo's own page tests) it is Silo's
+// platform page.
 export default function AdminAccessGroups() {
-  const { active } = useAdminContext();
+  const active = useOptionalAdminContext()?.active;
   return active?.scope === "organization" ? (
     <OrganizationAdminAccessGroups key={active.key} />
   ) : (

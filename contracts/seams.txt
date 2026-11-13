@@ -308,7 +308,6 @@ web/src/lib/adminSettingsSearch.ts
 web/src/lib/documentTitle.ts
 web/src/lib/episodeCardLabels.ts  # no placeholder 'Episode N' title above the episode code; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/lib/loginSessionDevice.ts  # recognizes Bloem client user agents as the app
-web/src/pages/AdminAccessGroups.test.tsx
 web/src/pages/AdminAccessGroups.tsx
 web/src/pages/AdminLibraries.tsx  # shows a storage library's source instead of paths
 web/src/pages/AdminPlugins.tsx  # Storage tab for storage sources inside an administrative context

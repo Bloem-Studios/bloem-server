@@ -74,8 +74,8 @@ const person = {
   ],
 };
 
-vi.mock("@/contexts/AdminContextProvider", () => ({
-  useAdminContext: () => ({
+vi.mock("@/contexts/AdminContextProvider", () => {
+  const context = () => ({
     active: state.active,
     available: [
       state.active,
@@ -90,8 +90,9 @@ vi.mock("@/contexts/AdminContextProvider", () => ({
     switching: false,
     failure: null,
     switchContext: state.switchContext,
-  }),
-}));
+  });
+  return { useAdminContext: context, useOptionalAdminContext: context };
+});
 
 vi.mock("@/hooks/useDocumentTitle", () => ({ useDocumentTitle: vi.fn() }));
 vi.mock("@/hooks/queries/admin/organizations", () => ({
