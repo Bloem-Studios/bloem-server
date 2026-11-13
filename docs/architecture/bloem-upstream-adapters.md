@@ -1,7 +1,8 @@
 # How Bloem's adapters over Silo work
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-09
-> and checked against `main` at `5a93e8b41`. Adapters are Bloem's own: they are how Bloem changes Silo's
+> and checked against `main` at `5a93e8b41`; its tenant identity section was added on
+> 2026-11-13 with the merge of Silo through `8d68c470d` (`e50da6f2d`). Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
 > Its routes were checked again on 2026-11-11, after Silo retired its v1 API, and its
@@ -644,6 +645,18 @@ tenant identity and viewer policy still run after extraction. Removing URL
 authentication without replacing every media loader caused subtitle and attached-font
 requests to fail with 401. Follow upstream here rather than adding a second subtitle
 transport.
+
+### Tenant identity in Silo's own gate chains
+
+Most native operations get the tenant identity gate from `bloemAuthChain`
+(`internal/apiv2/bloem_hooks.go`), right after authentication. An operation whose gate
+chain Silo assembles by hand gets it on one added line instead. The Apple notification
+display route (`notificationDisplayGateChain`) builds its viewer middleware for two
+credential paths, the long-lived display token and an ordinary access token, so Bloem
+wraps that middleware with `bloemWithTenantIdentityGate` right after Silo defines it,
+and both paths pass the gate once (`TestBloemNotificationDisplayRunsTenantIdentity`).
+When Silo restructures such a chain, the gate goes back on its own line around Silo's
+middleware, never inside Silo's lines.
 
 ### Native audiobook boundary
 

@@ -1,7 +1,8 @@
 # How search finds titles by words and by meaning
 
-> **Provenance and status.** Bloem page, written on 2026-11-10 and updated on 2026-11-11
-> against `main` at `e2806cad4`. Search and embeddings are Silo's. Bloem adds three
+> **Provenance and status.** Bloem page, written on 2026-11-10, updated on 2026-11-11
+> against `main` at `e2806cad4` and on 2026-11-13 against the merge of Silo through
+> `8d68c470d` (`e50da6f2d`). Search and embeddings are Silo's. Bloem adds three
 > things, carried until Silo has them: task labels for the `gemini-embedding-2` model, a
 > choice to drop the most common words of a search first, and a names-first query in
 > every hybrid search. The technical rules are in the [For developers](#for-developers) section.
@@ -30,7 +31,9 @@ With **Meilisearch** as the search engine, a search runs like this:
    lie close to it.
 3. **Mixing.** Bloem merges the two lists. The **meaning-based share** sets how much
    each counts: 0 ranks by words only, 1 by meaning only, and the default is 0.5.
-   Bloem's production uses 0.6.
+   Bloem's production uses 0.6. The meaning list keeps only titles whose vectors lie
+   close enough to the search's, so a search of a few words no longer brings back the
+   whole library.
 4. **Names first.** Bloem also looks for the search's words in the titles' names alone,
    every word required, and ranks a title whose name has all of them above the mixed
    list. Someone typing a title, even with a typing mistake, still gets it first while
@@ -153,14 +156,21 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   terms, it is not an episode-only search, `CoverageReady` reports every requested type
   at or above 0.85 of its eligible items carrying a vector from the locked model, and the
   query vector arrives. Query vectors are cached for 15 minutes (1,024 entries). A failed
-  query embed puts the node in a cooldown during which searches run keyword-only. A search
-  that mixes episodes and other types is a federated search whose episode query has no
-  vector.
-- Every hybrid query of two or more terms goes to Meilisearch as a federated
-  multi-search with one more query (`bloem_search_title_boost.go`, hooked into
-  `meilisearchClient.Search` and `FederatedSearch`): keyword only, `matchingStrategy`
-  `all`, on `title`, `original_title`, `sort_title` and `title_variants`, with the same
-  filter and 1.2 times the hybrid query's weight. Meilisearch returns each document once.
+  query embed puts the node in a cooldown during which searches run keyword-only.
+- Since Silo `784c406b6` (#4058) every hybrid search is a federated multi-search
+  (`buildFederatedSearchRequest`): a keyword query weighted `1 - r` for a semantic ratio
+  `r`, a meaning-only query (empty `q`, ratio 1) weighted `r` with a
+  `rankingScoreThreshold` for a cosine of 0.3 (`meilisearchSemanticScoreFloor`), and,
+  when the search mixes episodes and other types, a keyword episode query weighted
+  `1 - r`. Episodes carry no vectors.
+- Bloem adds title queries to that request (`bloem_search_title_boost.go`, hooked into
+  `meilisearchClient.Search` and `FederatedSearch`): after each keyword query of two or
+  more terms, a keyword-only query with `matchingStrategy` `all` on `title`,
+  `original_title`, `sort_title` and `title_variants`, the same filter, and 1.2 times the
+  heaviest query's weight (0.72 at 0.6). Silo's queries keep their weights. Meilisearch
+  returns each document once. The boost is off unless `catalog.SetBloemTitleBoost(true)`
+  ran, which Bloem's server does at startup in `bloemWireCoreDependencies`; Silo's own
+  tests check Silo's request with it off.
   The title query goes out twice, as typed and with a trailing space that marks the
   last word finished (Meilisearch matches the last word as a prefix and does not
   forgive a transposition in a short prefix). The index settings set
@@ -168,10 +178,10 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   hooked into `catalogSearchMeilisearchSettings`). It is a search-time setting outside
   the schema version: changing it needs no reindex and forces no rebuild, and an index
   built earlier gets it from a one-time settings update.
-- In a search that mixes episodes and other types, Silo's keyword-only episode query
-  gets the same title twin, and its own weight is multiplied by `(1 - r) / r` for a
-  semantic ratio `r` above 0.5 (0.67 at 0.6), the keyword share Meilisearch gives the
-  words half inside a hybrid query. If Meilisearch refuses the federated request with a
+- Silo's keyword episode query gets the same title twins. Its weight already is the
+  keyword share; a keyword-only query beside a hybrid query that mixes keyword and
+  meaning itself (ratio below 1, the form before `784c406b6`) is still multiplied by
+  `(1 - r) / r` for `r` above 0.5. If Meilisearch refuses the federated request with a
   4xx, the original request runs unchanged; a timeout or 5xx is returned as it is.
 - `timeout_ms` (default 800) bounds the search call. A search that fails or runs out of
   time is answered by the PostgreSQL provider. Indexing has its own two-minute limit
@@ -226,7 +236,9 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   live index of 2.79 million documents, episodes excluded. Target in the top 50: `last`
   16.5%, `frequency` 36.5%, `all` 1.0%. Exact titles found first 73.5% under every
   strategy; titles with one typo 62.5% under `last` and 63.0% under `frequency`.
-- **Meaning-based share and names first, November 11.** After the re-embed, the same
+- **Meaning-based share and names first, November 11.** These measurements predate
+  Silo's split into keyword and meaning-only queries (November 13), which gives the
+  keyword queries the same `1 - r` to `r` share. After the re-embed, the same
   searches against the live index, limited to the 163 targets still in the catalog (37
   books were in libraries deleted on November 10). Meilisearch's mix behaves like a
   switch: up to a share of 0.57 a strong keyword hit wins, and from 0.6 the list is the
