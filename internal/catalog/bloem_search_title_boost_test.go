@@ -15,10 +15,13 @@ type titleBoostCall struct {
 	Request meilisearchFederatedSearchRequest
 }
 
-// titleBoostServer records every request and answers /multi-search with
-// multiStatus; every other path succeeds.
+// titleBoostServer turns the title boost on for the test, records every
+// request and answers /multi-search with multiStatus; every other path
+// succeeds.
 func titleBoostServer(t *testing.T, multiStatus int) (*meilisearchClient, func() []titleBoostCall) {
 	t.Helper()
+	SetBloemTitleBoost(true)
+	t.Cleanup(func() { SetBloemTitleBoost(false) })
 	var mu sync.Mutex
 	var calls []titleBoostCall
 	client := newMeilisearchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -211,5 +214,65 @@ func TestIndexSettingsForgiveOneTypoFromThreeLetters(t *testing.T) {
 		if string(raw) != `{"minWordSizeForTypos":{"oneTypo":3,"twoTypos":9}}` {
 			t.Fatalf("semantic=%v: typoTolerance = %s", semantic, raw)
 		}
+	}
+}
+
+// Silo runs every hybrid search as federated queries: a keyword query, a
+// meaning-only query with an empty q, and a keyword episode query when the
+// search mixes episodes with other media. The title queries must still join
+// that request, above every other query, and the keyword queries keep Silo's
+// weights, which already give them the keyword share.
+func TestSilosFederatedHybridSearchGetsTheTitleQueries(t *testing.T) {
+	p := &MeilisearchSearchProvider{}
+	base := meilisearchSearchRequest{
+		Query:                "show about a chef",
+		AttributesToRetrieve: []string{"content_id"},
+		MatchingStrategy:     "frequency",
+		Vector:               []float32{1, 0},
+		Hybrid:               &meilisearchHybridRequest{Embedder: "e", SemanticRatio: 0.6},
+	}
+	silo := p.buildFederatedSearchRequest("catalog", CatalogSearchRequest{Query: base.Query}, base, 0, 20)
+	client, calls := titleBoostServer(t, http.StatusOK)
+	if _, err := client.FederatedSearch(context.Background(), silo); err != nil {
+		t.Fatalf("FederatedSearch: %v", err)
+	}
+	q := calls()[0].Request.Queries
+	near := func(a, b float64) bool { return a-b < 1e-9 && b-a < 1e-9 }
+	var titles, others []meilisearchFederatedQuery
+	for _, query := range q {
+		if slices.Equal(query.AttributesToSearchOn, bloemTitleBoostAttributes) && query.MatchingStrategy == "all" {
+			titles = append(titles, query)
+		} else {
+			others = append(others, query)
+		}
+	}
+	if !reflect.DeepEqual(others, silo.Queries) {
+		t.Fatalf("Silo's queries changed: %#v, want %#v", others, silo.Queries)
+	}
+	// Two media queries and two episode queries, each as typed and finished.
+	if len(titles) != 4 {
+		t.Fatalf("title queries = %#v, want four", titles)
+	}
+	for _, title := range titles {
+		if !near(title.FederationOptions.Weight, 0.6*bloemTitleBoostWeight) || title.Hybrid != nil || title.Vector != nil {
+			t.Fatalf("title query = %#v, want weight %v above the meaning query", title, 0.6*bloemTitleBoostWeight)
+		}
+	}
+}
+
+// Switched off, as in Silo's own tests, a hybrid search goes out exactly as
+// Silo built it.
+func TestTitleBoostSwitchedOffLeavesSilosRequest(t *testing.T) {
+	client, calls := titleBoostServer(t, http.StatusOK)
+	SetBloemTitleBoost(false)
+	if _, err := client.Search(context.Background(), "catalog", hybridSearchRequest("funny movie about a dog")); err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if _, err := client.FederatedSearch(context.Background(), mixedSearchRequest(0.6)); err != nil {
+		t.Fatalf("FederatedSearch: %v", err)
+	}
+	got := calls()
+	if len(got) != 2 || got[0].Path != "/indexes/catalog/search" || got[1].Path != "/multi-search" || len(got[1].Request.Queries) != 2 {
+		t.Fatalf("calls = %#v, want Silo's two requests unchanged", got)
 	}
 }

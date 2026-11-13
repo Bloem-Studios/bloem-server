@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync/atomic"
 )
 
 // Bloem: title matches stay first in hybrid search.
@@ -23,15 +24,23 @@ import (
 // holds all the typed words ranks first; everything else keeps the hybrid
 // order. Meilisearch returns each document once.
 //
-// A search that mixes episodes and other types already is a federated search
-// whose episode query is keyword-only at weight 1, which balances the hybrid
-// query only at Silo's default ratio of 0.5. At 0.6 episodes whose plots share
-// a word filled everyday searches (40 of the top 10s of 22 such searches,
-// against 18 at 0.5). Keyword-only queries next to a hybrid query with ratio r
-// are therefore weighted (1-r)/r, never above their own weight, and get the
-// same title query, so an episode looked up by its title still comes first
-// (73% in the top 10 either way) while plot matches no longer crowd out the
-// meaning results (16, all episodes named with the typed words).
+// Since Silo 784c406b6 (#4058) Silo runs every hybrid search as federated
+// queries of its own: a keyword query weighted 1-r, a meaning-only query (an
+// empty q at semantic ratio 1) weighted r, and a keyword episode query weighted
+// 1-r when the search mixes episodes with other media. Each keyword query of
+// two or more terms gets the title queries, weighted above the heaviest query
+// in the request, and Silo's weights stay as they are.
+//
+// Before that, a search that mixed episodes and other types was a federated
+// search of one hybrid query and a keyword-only episode query at weight 1,
+// which balanced only at Silo's default ratio of 0.5. At 0.6 episodes whose
+// plots share a word filled everyday searches (40 of the top 10s of 22 such
+// searches, against 18 at 0.5). Keyword-only queries next to a hybrid query
+// that mixes keyword and meaning with ratio r are therefore weighted (1-r)/r,
+// never above their own weight, the share Silo's own split now gives them,
+// and get the same title query, so an episode looked up by its title still
+// comes first (73% in the top 10 either way) while plot matches no longer
+// crowd out the meaning results (16, all episodes named with the typed words).
 //
 // The title query goes out twice: as typed, and with the last word marked as
 // finished (a trailing space). Meilisearch treats the last word as a prefix
@@ -47,6 +56,15 @@ import (
 
 const bloemTitleBoostWeight = 1.2
 
+// bloemTitleBoostOn switches the title queries on. Bloem's server turns it on
+// at startup (bloemWireCoreDependencies in cmd/silo/bloem_main.go); off, every
+// search goes out as Silo builds it, which is what Silo's own tests check.
+var bloemTitleBoostOn atomic.Bool
+
+// SetBloemTitleBoost turns the title queries on or off for every Meilisearch
+// search in this process.
+func SetBloemTitleBoost(on bool) { bloemTitleBoostOn.Store(on) }
+
 var bloemTitleBoostAttributes = []string{"title", "original_title", "sort_title", "title_variants"}
 
 // bloemTitleBoostApplies reports whether a query gets the title query: only
@@ -57,8 +75,8 @@ func bloemTitleBoostApplies(query string, hybrid *meilisearchHybridRequest) bool
 }
 
 // bloemTitleQueries returns the title query as typed and with its last word
-// finished.
-func bloemTitleQueries(base meilisearchFederatedQuery) []meilisearchFederatedQuery {
+// finished, weighted bloemTitleBoostWeight times weight.
+func bloemTitleQueries(base meilisearchFederatedQuery, weight float64) []meilisearchFederatedQuery {
 	typed := strings.TrimSpace(base.Query)
 	queries := make([]meilisearchFederatedQuery, 0, 2)
 	for _, text := range []string{typed, typed + " "} {
@@ -70,33 +88,45 @@ func bloemTitleQueries(base meilisearchFederatedQuery) []meilisearchFederatedQue
 			AttributesToSearchOn: append([]string(nil), bloemTitleBoostAttributes...),
 			MatchingStrategy:     "all",
 		}
-		query.FederationOptions.Weight = base.FederationOptions.Weight * bloemTitleBoostWeight
+		query.FederationOptions.Weight = weight * bloemTitleBoostWeight
 		queries = append(queries, query)
 	}
 	return queries
 }
 
-// withBloemTitleBoost puts a title query after every query of a request that
-// holds a qualifying hybrid query, and weights the keyword-only queries down to
-// the hybrid query's keyword share. It reports false when no query qualifies.
+// withBloemTitleBoost puts the title queries after every query of two or more
+// terms in a request that has a meaning side, and weights the keyword-only
+// queries down to the keyword share of a hybrid query that mixes keyword and
+// meaning. It reports false when no query qualifies.
 func withBloemTitleBoost(req meilisearchFederatedSearchRequest) (meilisearchFederatedSearchRequest, bool) {
-	var hybrid *meilisearchHybridRequest
+	var meaning bool
+	var mixed *meilisearchHybridRequest
+	var termed bool
+	heaviest := 0.0
 	for _, query := range req.Queries {
-		if bloemTitleBoostApplies(query.Query, query.Hybrid) {
-			hybrid = query.Hybrid
-			break
+		heaviest = max(heaviest, query.FederationOptions.Weight)
+		if query.Hybrid != nil {
+			meaning = true
+			if query.Hybrid.SemanticRatio < 1 && mixed == nil {
+				mixed = query.Hybrid
+			}
+		}
+		if len(catalogSearchQueryTerms(query.Query)) >= meilisearchShortHybridMinTerms {
+			termed = true
 		}
 	}
-	if hybrid == nil {
+	if !meaning || !termed {
 		return req, false
 	}
+	// A meaning-only query (ratio 1) leaves Silo's keyword queries weighted
+	// by its own split; only a mixing hybrid query rescales them.
 	keywordShare := 1.0
-	if ratio := hybrid.SemanticRatio; ratio > 0.5 {
-		keywordShare = (1 - ratio) / ratio
+	if mixed != nil && mixed.SemanticRatio > 0.5 {
+		keywordShare = (1 - mixed.SemanticRatio) / mixed.SemanticRatio
 	}
 	queries := make([]meilisearchFederatedQuery, 0, 3*len(req.Queries))
 	for _, query := range req.Queries {
-		titles := bloemTitleQueries(query)
+		titles := bloemTitleQueries(query, heaviest)
 		if query.Hybrid == nil {
 			query.FederationOptions.Weight *= keywordShare
 		}
@@ -114,7 +144,7 @@ func withBloemTitleBoost(req meilisearchFederatedSearchRequest) (meilisearchFede
 // qualify or Meilisearch rejected the federated form; the caller then runs
 // the request as it was.
 func (c *meilisearchClient) bloemTitleBoostSearch(ctx context.Context, uid string, req meilisearchSearchRequest) (meilisearchSearchResponse, bool, error) {
-	if !bloemTitleBoostApplies(req.Query, req.Hybrid) {
+	if !bloemTitleBoostOn.Load() || !bloemTitleBoostApplies(req.Query, req.Hybrid) {
 		return meilisearchSearchResponse{}, false, nil
 	}
 	main := meilisearchFederatedQuery{
@@ -130,7 +160,7 @@ func (c *meilisearchClient) bloemTitleBoostSearch(ctx context.Context, uid strin
 	main.FederationOptions.Weight = 1
 	return c.bloemRunTitleBoost(ctx, meilisearchFederatedSearchRequest{
 		Federation: meilisearchFederationOptions{Offset: req.Offset, Limit: req.Limit},
-		Queries:    append([]meilisearchFederatedQuery{main}, bloemTitleQueries(main)...),
+		Queries:    append([]meilisearchFederatedQuery{main}, bloemTitleQueries(main, main.FederationOptions.Weight)...),
 	})
 }
 
@@ -138,6 +168,9 @@ func (c *meilisearchClient) bloemTitleBoostSearch(ctx context.Context, uid strin
 // whose hybrid query qualifies, such as a search that mixes episodes and
 // media.
 func (c *meilisearchClient) bloemTitleBoostFederatedSearch(ctx context.Context, req meilisearchFederatedSearchRequest) (meilisearchSearchResponse, bool, error) {
+	if !bloemTitleBoostOn.Load() {
+		return meilisearchSearchResponse{}, false, nil
+	}
 	boosted, ok := withBloemTitleBoost(req)
 	if !ok {
 		return meilisearchSearchResponse{}, false, nil

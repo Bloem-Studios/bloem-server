@@ -242,6 +242,9 @@ func withBloemViewerTenancy(resolver scopeResolver, pool *pgxpool.Pool) *policy.
 // context tokens and the platform admin authorizer
 // and the tenancy ownership/membership bootstrapper.
 func bloemWireCoreDependencies(ctx context.Context, deps *api.Dependencies, pool *pgxpool.Pool, cfg *config.Config) {
+	// Hybrid searches also query the title fields, so a typed title stays
+	// first (internal/catalog/bloem_search_title_boost.go).
+	catalog.SetBloemTitleBoost(true)
 	adminPeopleService := adminpeople.NewService(pool, cfg.Auth.JWTSecret)
 	adminPeopleWorker := adminpeople.NewWorker(adminPeopleService, adminpeople.WorkerOptions{})
 	startAdminPeopleBackgroundWorker(ctx, adminPeopleWorker)
