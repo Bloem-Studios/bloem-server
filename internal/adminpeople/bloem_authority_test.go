@@ -2,7 +2,9 @@ package adminpeople
 
 import (
 	"errors"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
@@ -226,5 +228,109 @@ func TestBulkJobSkipsPeopleTheActorMayNotActOn(t *testing.T) {
 	}
 	if protected[f.ownerID] != ReasonTargetProtected || protected[f.platformID] != ReasonTargetProtected || protected[f.adminID] != ReasonActorAuthorityTarget {
 		t.Fatalf("skipped = %+v", result.Skipped)
+	}
+}
+
+func TestBudgetsCountPerPersonPerActorAndPerOrganization(t *testing.T) {
+	f := newAuthorityFixture(t)
+	record := func(actor int, action string, subject int, count int) {
+		t.Helper()
+		for i := 0; i < count; i++ {
+			if _, err := f.pool.Exec(f.ctx, `INSERT INTO admin_audit_events (actor_account_id,actor_platform_role,authority_context,action,target_type,target_id,organization_id,subject_id,before_revision,after_revision,outcome) VALUES ($1,'organization_admin','organization',$2,'membership','m',$3,$4,0,0,'success')`, actor, action, f.orgA, strconv.Itoa(subject)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	check := func(budget Budget, actor, subject int) error {
+		return CheckBudget(f.ctx, f.pool, budget, f.orgA, actor, strconv.Itoa(subject))
+	}
+	var limited *RateLimitedError
+
+	// Per person: one reset in two minutes.
+	if err := check(BudgetDisclose, f.ownerID, f.memberID); err != nil {
+		t.Fatal(err)
+	}
+	record(f.ownerID, "people.password_reset_issued", f.memberID, 1)
+	if err := check(BudgetDisclose, f.ownerID, f.memberID); !errors.As(err, &limited) || limited.RetryAfter <= 0 || limited.RetryAfter > 2*time.Minute {
+		t.Fatalf("second reset for one person = %v", err)
+	}
+	if err := check(BudgetDisclose, f.ownerID, f.adminID); err != nil {
+		t.Fatalf("another person is limited too: %v", err)
+	}
+
+	// Refusals count: a probe for protected people spends the same budget.
+	record(f.ownerID, "people.password_reset_refused", f.adminID, 1)
+	if err := check(BudgetDisclose, f.ownerID, f.adminID); !errors.Is(err, ErrRateLimited) {
+		t.Fatalf("a refusal did not count: %v", err)
+	}
+
+	// Per actor: ten in ten minutes, across different people.
+	record(f.adminID, "people.password_reset_issued", f.memberID+100, 9)
+	if err := check(BudgetDisclose, f.adminID, f.memberID+200); err != nil {
+		t.Fatalf("nine resets already limited the actor: %v", err)
+	}
+	record(f.adminID, "people.password_reset_issued", f.memberID+101, 1)
+	if err := check(BudgetDisclose, f.adminID, f.memberID+200); !errors.Is(err, ErrRateLimited) {
+		t.Fatalf("ten resets did not limit the actor: %v", err)
+	}
+
+	// Per organization, and only this organization.
+	record(f.platformID, "people.profile_renamed", f.memberID, 6)
+	if err := check(BudgetMutate, f.ownerID, f.memberID); !errors.Is(err, ErrRateLimited) {
+		t.Fatalf("six edits of one person did not limit the sixth: %v", err)
+	}
+	if err := CheckBudget(f.ctx, f.pool, BudgetMutate, f.orgB, f.ownerBID, strconv.Itoa(f.memberID)); err != nil {
+		t.Fatalf("another organization is limited: %v", err)
+	}
+
+	// Outside the window nothing counts.
+	if _, err := f.pool.Exec(f.ctx, `ALTER TABLE admin_audit_events DISABLE TRIGGER admin_audit_events_immutable`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(f.ctx, `UPDATE admin_audit_events SET created_at = created_at - interval '2 hours'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := check(BudgetMutate, f.ownerID, f.memberID); err != nil {
+		t.Fatalf("old events still count: %v", err)
+	}
+}
+
+// TestPromotionAfterTheWriteRetiresTheResetLink pins the lock story: a write
+// holds the member's row; a promotion waits for it and then, in its own
+// transaction, deletes the link the write stored.
+func TestPromotionAfterTheWriteRetiresTheResetLink(t *testing.T) {
+	f := newAuthorityFixture(t)
+	tx, err := f.pool.Begin(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(f.ctx) }()
+	actor := MutationActor{AccountID: f.adminID, Authority: AuthorityOrganizationAdmin}
+	locked, err := LockAuthority(f.ctx, tx, f.orgA, actor, f.memberID)
+	if err != nil || locked.Class != TargetMember {
+		t.Fatalf("lock = %+v, %v", locked, err)
+	}
+	if _, err := tx.Exec(f.ctx, `INSERT INTO password_reset_tokens (user_id,token_hash,password_fingerprint,issued_by,expires_at) VALUES ($1,'digest','fingerprint',$2,now()+interval '1 hour')`, f.memberID, f.adminID); err != nil {
+		t.Fatal(err)
+	}
+	promoted := make(chan error, 1)
+	go func() {
+		_, err := f.pool.Exec(f.ctx, `UPDATE organization_memberships SET legacy_role='admin' WHERE organization_id=$1 AND account_id=$2`, f.orgA, f.memberID)
+		promoted <- err
+	}()
+	select {
+	case err := <-promoted:
+		t.Fatalf("the promotion did not wait for the write's lock: %v", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	if err := tx.Commit(f.ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-promoted; err != nil {
+		t.Fatal(err)
+	}
+	var links int
+	if err := f.pool.QueryRow(f.ctx, `SELECT count(*) FROM password_reset_tokens WHERE user_id=$1`, f.memberID).Scan(&links); err != nil || links != 0 {
+		t.Fatalf("links after a later promotion = %d (%v)", links, err)
 	}
 }

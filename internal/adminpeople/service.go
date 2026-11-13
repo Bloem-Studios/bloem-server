@@ -92,6 +92,11 @@ type ProfileSummary struct {
 	GroupID   int       `json:"group_id"`
 	GroupName string    `json:"group_name"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// Revision is the profile's own revision, the precondition of a rename, a
+	// PIN clear or a removal. It is not the person's security revision.
+	Revision  int64 `json:"revision"`
+	HasPIN    bool  `json:"has_pin"`
+	IsPrimary bool  `json:"is_primary"`
 }
 
 type PersonSummary struct {
@@ -158,6 +163,9 @@ type MutationActor struct {
 	SecurityRevision int64
 	PolicyRevision   int64
 	RequestID        string
+	// SupportAccessID is the break-glass access the request runs under. It is
+	// recorded on every audit row the request writes; uuid.Nil means none.
+	SupportAccessID uuid.UUID
 }
 type mutationMetadataKey struct{}
 
@@ -482,7 +490,7 @@ func (s *Service) loadProfiles(ctx context.Context, organizationID uuid.UUID, pe
 		people[i].Profiles = []ProfileSummary{}
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT p.user_id,p.id,p.name,p.access_group_id,g.name,p.updated_at
+		SELECT p.user_id,p.id,p.name,p.access_group_id,g.name,p.updated_at,p.revision,p.pin_hash<>'',p.is_primary
 		FROM user_profiles p JOIN access_groups g ON g.organization_id=p.organization_id AND g.id=p.access_group_id
 		WHERE p.organization_id=$1 AND p.user_id=ANY($2::int[]) ORDER BY p.user_id,lower(p.name),p.id`, organizationID, ids)
 	if err != nil {
@@ -492,7 +500,7 @@ func (s *Service) loadProfiles(ctx context.Context, organizationID uuid.UUID, pe
 	for rows.Next() {
 		var accountID int
 		var profile ProfileSummary
-		if err := rows.Scan(&accountID, &profile.ID, &profile.Name, &profile.GroupID, &profile.GroupName, &profile.UpdatedAt); err != nil {
+		if err := rows.Scan(&accountID, &profile.ID, &profile.Name, &profile.GroupID, &profile.GroupName, &profile.UpdatedAt, &profile.Revision, &profile.HasPIN, &profile.IsPrimary); err != nil {
 			return fmt.Errorf("scan organization profile: %w", err)
 		}
 		i := indexes[accountID]
@@ -1746,21 +1754,14 @@ func bumpPersonRevisions(ctx context.Context, tx pgx.Tx, membershipID uuid.UUID,
 }
 
 func recordPeopleAudit(ctx context.Context, tx pgx.Tx, actorID int, action, targetType, targetID string, organizationID uuid.UUID, accountID int, beforeRevision, afterRevision int64, outcome string, before, after map[string]any) error {
-	beforeJSON, _ := json.Marshal(before)
-	afterJSON, _ := json.Marshal(after)
 	actor, err := mutationActor(ctx, actorID)
 	if err != nil {
 		return err
 	}
-	subject := ""
-	if accountID > 0 {
-		subject = strconv.Itoa(accountID)
-	}
-	_, err = tx.Exec(ctx, `INSERT INTO admin_audit_events (actor_account_id,actor_platform_role,authority_context,action,target_type,target_id,organization_id,subject_id,before_revision,after_revision,outcome,request_id,before_state,after_state) VALUES ($1,$2,'organization',$3,$4,$5,$6,NULLIF($7,''),$8,$9,$10,NULLIF($11,''),$12,$13)`, actorID, actor.Authority, action, targetType, targetID, organizationID, subject, beforeRevision, afterRevision, outcome, actor.RequestID, beforeJSON, afterJSON)
-	if err != nil {
-		return fmt.Errorf("record people admin audit: %w", err)
-	}
-	return nil
+	return RecordAudit(ctx, tx, AuditEvent{
+		Actor: actor, Action: action, TargetType: targetType, TargetID: targetID, OrganizationID: organizationID, SubjectAccountID: accountID,
+		BeforeRevision: beforeRevision, AfterRevision: afterRevision, Outcome: outcome, Before: before, After: after,
+	})
 }
 
 func (s *Service) GetBulkJob(ctx context.Context, organizationID uuid.UUID, jobID string) (BulkResult, error) {
@@ -1921,14 +1922,14 @@ func getPersonInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.
 		return PersonSummary{}, err
 	}
 	person.Profiles = []ProfileSummary{}
-	rows, err := tx.Query(ctx, `SELECT p.id,p.name,p.access_group_id,g.name,p.updated_at FROM user_profiles p JOIN access_groups g ON g.organization_id=p.organization_id AND g.id=p.access_group_id WHERE p.organization_id=$1 AND p.user_id=$2 ORDER BY lower(p.name),p.id`, organizationID, accountID)
+	rows, err := tx.Query(ctx, `SELECT p.id,p.name,p.access_group_id,g.name,p.updated_at,p.revision,p.pin_hash<>'',p.is_primary FROM user_profiles p JOIN access_groups g ON g.organization_id=p.organization_id AND g.id=p.access_group_id WHERE p.organization_id=$1 AND p.user_id=$2 ORDER BY lower(p.name),p.id`, organizationID, accountID)
 	if err != nil {
 		return PersonSummary{}, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var profile ProfileSummary
-		if err := rows.Scan(&profile.ID, &profile.Name, &profile.GroupID, &profile.GroupName, &profile.UpdatedAt); err != nil {
+		if err := rows.Scan(&profile.ID, &profile.Name, &profile.GroupID, &profile.GroupName, &profile.UpdatedAt, &profile.Revision, &profile.HasPIN, &profile.IsPrimary); err != nil {
 			return PersonSummary{}, err
 		}
 		person.Profiles = append(person.Profiles, profile)

@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -42,6 +42,8 @@ const (
 var (
 	// ErrTargetProtected is matched by errors.Is for every *TargetProtectedError.
 	ErrTargetProtected = errors.New("target is protected from this actor")
+	// ErrMembershipNotActive means the target's membership is invited or suspended.
+	ErrMembershipNotActive = errors.New("membership is not active")
 	// ErrAccountShared means the account belongs to more than one organization.
 	// Account-wide effects (a password reset, signing out everywhere) must not
 	// let one organization act on another's member.
@@ -149,9 +151,23 @@ type LockedAuthority struct {
 // returned LockedAuthority is filled in for a refusal too, so a caller can
 // audit it.
 func LockAuthority(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actor MutationActor, accountID int) (LockedAuthority, error) {
+	return loadAuthority(ctx, tx, organizationID, actor, accountID, true)
+}
+
+// ReadAuthority is LockAuthority without the locks, for routes that only read:
+// it judges the same facts, so a list answers 409 where the write would.
+func ReadAuthority(ctx context.Context, q Querier, organizationID uuid.UUID, actor MutationActor, accountID int) (LockedAuthority, error) {
+	return loadAuthority(ctx, q, organizationID, actor, accountID, false)
+}
+
+func loadAuthority(ctx context.Context, q Querier, organizationID uuid.UUID, actor MutationActor, accountID int, lock bool) (LockedAuthority, error) {
+	shared, exclusive := "", ""
+	if lock {
+		shared, exclusive = " FOR SHARE", " FOR UPDATE"
+	}
 	var out LockedAuthority
 	var ownerAccountID *int
-	err := tx.QueryRow(ctx, `SELECT owner_account_id FROM organizations WHERE id=$1 AND status='active' FOR SHARE`, organizationID).Scan(&ownerAccountID)
+	err := q.QueryRow(ctx, `SELECT owner_account_id FROM organizations WHERE id=$1 AND status='active'`+shared, organizationID).Scan(&ownerAccountID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, ErrAuthorizationStateChanged
 	}
@@ -165,7 +181,7 @@ func LockAuthority(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, act
 	case AuthorityPlatformAdmin:
 		var enabled bool
 		var role string
-		err = tx.QueryRow(ctx, `SELECT enabled,role,is_owner FROM users WHERE id=$1 FOR SHARE`, actor.AccountID).Scan(&enabled, &role, &out.Actor.IsServerOwner)
+		err = q.QueryRow(ctx, `SELECT enabled,role,is_owner FROM users WHERE id=$1`+shared, actor.AccountID).Scan(&enabled, &role, &out.Actor.IsServerOwner)
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && (!enabled || role != models.RoleAdmin)) {
 			return out, ErrAuthorizationStateChanged
 		}
@@ -177,7 +193,7 @@ func LockAuthority(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, act
 		var role string
 		var revision int64
 		var enabled bool
-		err = tx.QueryRow(ctx, `SELECT m.status,m.legacy_role,m.security_revision,u.enabled FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE m.organization_id=$1 AND m.account_id=$2 FOR SHARE OF m`, organizationID, actor.AccountID).Scan(&status, &role, &revision, &enabled)
+		err = q.QueryRow(ctx, `SELECT m.status,m.legacy_role,m.security_revision,u.enabled FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE m.organization_id=$1 AND m.account_id=$2`+strings.ReplaceAll(shared, "SHARE", "SHARE OF m"), organizationID, actor.AccountID).Scan(&status, &role, &revision, &enabled)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return out, ErrAuthorizationStateChanged
 		}
@@ -192,23 +208,32 @@ func LockAuthority(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, act
 	}
 
 	target := TargetFacts{AccountID: accountID}
-	err = tx.QueryRow(ctx, `SELECT id,status,legacy_role,security_revision FROM organization_memberships WHERE organization_id=$1 AND account_id=$2 FOR UPDATE`, organizationID, accountID).Scan(&target.MembershipID, &target.Status, &target.LegacyRole, &target.SecurityRevision)
+	err = q.QueryRow(ctx, `SELECT id,status,legacy_role,security_revision FROM organization_memberships WHERE organization_id=$1 AND account_id=$2`+exclusive, organizationID, accountID).Scan(&target.MembershipID, &target.Status, &target.LegacyRole, &target.SecurityRevision)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, ErrNotFound
 	}
 	if err != nil {
 		return out, err
 	}
-	if err = tx.QueryRow(ctx, `SELECT enabled,role,is_owner FROM users WHERE id=$1 FOR UPDATE`, accountID).Scan(&target.Enabled, &target.UserRole, &target.IsServerOwner); err != nil {
+	if err = q.QueryRow(ctx, `SELECT enabled,role,is_owner FROM users WHERE id=$1`+exclusive, accountID).Scan(&target.Enabled, &target.UserRole, &target.IsServerOwner); err != nil {
 		return out, err
 	}
-	if err = tx.QueryRow(ctx, `SELECT count(*) FROM organization_memberships WHERE account_id=$1`, accountID).Scan(&target.MembershipCount); err != nil {
+	if err = q.QueryRow(ctx, `SELECT count(*) FROM organization_memberships WHERE account_id=$1`, accountID).Scan(&target.MembershipCount); err != nil {
 		return out, err
 	}
 	target.IsOrganizationOwner = ownerAccountID != nil && *ownerAccountID == accountID
 	out.Target = target
 	out.Class, err = Judge(out.Actor, target)
 	return out, err
+}
+
+// RequireActive refuses an action on a member whose membership is invited or
+// suspended: there is nothing of theirs to reset, sign out or edit.
+func (a LockedAuthority) RequireActive() error {
+	if a.Target.Status != tenancy.MembershipActive {
+		return ErrMembershipNotActive
+	}
+	return nil
 }
 
 // RequireUnshared refuses an account-wide effect on an account that belongs to
@@ -220,63 +245,28 @@ func (a LockedAuthority) RequireUnshared() error {
 	return nil
 }
 
-// auditedRefusal marks an error whose refusal audit row must be committed
-// even though the request failed.
-type auditedRefusal struct{ cause error }
-
-func (e *auditedRefusal) Error() string { return e.cause.Error() }
-func (e *auditedRefusal) Unwrap() error { return e.cause }
-
 // auditRefusal turns a per-target refusal into an audited one: it writes the
 // "<action>_refused" conflict row in the open transaction and marks the error
-// so writePerson commits the row. Every other error passes through.
+// so the transaction commits it. Every other error passes through.
 func auditRefusal(ctx context.Context, tx pgx.Tx, err error, actorID int, action, targetType, targetID string, organizationID uuid.UUID, accountID int, revision int64) error {
 	var refusal *TargetProtectedError
 	if !errors.As(err, &refusal) {
 		return err
 	}
-	if auditErr := recordPeopleAudit(ctx, tx, actorID, action, targetType, targetID, organizationID, accountID, revision, revision, "conflict", nil, map[string]any{"reason": string(refusal.Reason)}); auditErr != nil {
-		return auditErr
+	actor, actorErr := mutationActor(ctx, actorID)
+	if actorErr != nil {
+		return actorErr
 	}
-	return &auditedRefusal{cause: err}
+	return RefuseAudited(ctx, tx, AuditEvent{
+		Actor: actor, Action: action, TargetType: targetType, TargetID: targetID, OrganizationID: organizationID,
+		SubjectAccountID: accountID, BeforeRevision: revision, AfterRevision: revision,
+	}, string(refusal.Reason), err)
 }
 
 // writePerson runs one person write in its own transaction. A refusal commits
-// its audit row; a deadlock with a concurrent write on the same people is
-// retried, because two administrators acting on each other lock in opposite
-// order.
+// its audit row; a deadlock is retried.
 func (s *Service) writePerson(ctx context.Context, fn func(pgx.Tx) (PersonSummary, error)) (PersonSummary, error) {
-	for attempt := 1; ; attempt++ {
-		person, err := s.writePersonOnce(ctx, fn)
-		var pgErr *pgconn.PgError
-		if attempt < 3 && errors.As(err, &pgErr) && pgErr.Code == sqlstateDeadlockDetected {
-			continue
-		}
-		return person, err
-	}
-}
-
-func (s *Service) writePersonOnce(ctx context.Context, fn func(pgx.Tx) (PersonSummary, error)) (PersonSummary, error) {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return PersonSummary{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	person, err := fn(tx)
-	if err != nil {
-		var refusal *auditedRefusal
-		if errors.As(err, &refusal) {
-			if commitErr := tx.Commit(ctx); commitErr != nil {
-				return PersonSummary{}, commitErr
-			}
-			return PersonSummary{}, refusal.cause
-		}
-		return PersonSummary{}, err
-	}
-	if err = tx.Commit(ctx); err != nil {
-		return PersonSummary{}, err
-	}
-	return person, nil
+	return RunSupportTx(ctx, s.pool.Begin, fn)
 }
 
 // ReasonTargetProtected is the bulk skip reason for a person the actor may not

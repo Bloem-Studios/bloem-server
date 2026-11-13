@@ -39,6 +39,11 @@ type AdminContextClaims struct {
 	// context lives no longer than that session: revoking it ends the context
 	// on its next request instead of when the token expires.
 	SessionID string
+	// SupportAccessID names the break-glass support access an organization
+	// pass was opened under (bloem_support_access). Such a pass has no
+	// membership: its holder is a platform administrator who is not a member
+	// of the organization. uuid.Nil for every ordinary pass.
+	SupportAccessID uuid.UUID
 }
 
 type AdminContextTokenService interface {
@@ -60,6 +65,7 @@ type adminContextJWTClaims struct {
 	SecurityRevision     int64      `json:"security_revision,omitempty"`
 	EffectiveAuthority   string     `json:"effective_authority,omitempty"`
 	SessionID            string     `json:"session_id,omitempty"`
+	SupportAccessID      string     `json:"support_access_id,omitempty"`
 	TokenType            string     `json:"token_type"`
 	jwt.RegisteredClaims
 }
@@ -106,7 +112,11 @@ func (s *adminContextTokenService) Mint(claims AdminContextClaims) (string, erro
 	}
 	if claims.Scope == AdminScopeOrganization {
 		jwtClaims.OrganizationID = claims.OrganizationID.String()
-		jwtClaims.MembershipID = claims.MembershipID.String()
+		if claims.SupportAccessID == uuid.Nil {
+			jwtClaims.MembershipID = claims.MembershipID.String()
+		} else {
+			jwtClaims.SupportAccessID = claims.SupportAccessID.String()
+		}
 	}
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwtClaims).SignedString(s.secret)
 	if err != nil {
@@ -156,9 +166,16 @@ func (s *adminContextTokenService) Parse(tokenStr string) (AdminContextClaims, e
 		if parseErr != nil {
 			return AdminContextClaims{}, fmt.Errorf("%w: organization id", ErrInvalidAdminContext)
 		}
-		claims.MembershipID, parseErr = uuid.Parse(jwtClaims.MembershipID)
-		if parseErr != nil {
-			return AdminContextClaims{}, fmt.Errorf("%w: membership id", ErrInvalidAdminContext)
+		if jwtClaims.SupportAccessID != "" {
+			claims.SupportAccessID, parseErr = uuid.Parse(jwtClaims.SupportAccessID)
+			if parseErr != nil || claims.SupportAccessID == uuid.Nil || jwtClaims.MembershipID != "" {
+				return AdminContextClaims{}, fmt.Errorf("%w: support access id", ErrInvalidAdminContext)
+			}
+		} else {
+			claims.MembershipID, parseErr = uuid.Parse(jwtClaims.MembershipID)
+			if parseErr != nil {
+				return AdminContextClaims{}, fmt.Errorf("%w: membership id", ErrInvalidAdminContext)
+			}
 		}
 	}
 	if err := validateAdminContextClaims(claims); err != nil {
@@ -180,6 +197,15 @@ func validateAdminContextClaims(claims AdminContextClaims) error {
 			return fmt.Errorf("%w: platform scope cannot carry organization authority", ErrInvalidAdminContext)
 		}
 	case AdminScopeOrganization:
+		if claims.SupportAccessID != uuid.Nil {
+			// Break-glass support access: a platform administrator who is not a
+			// member. No membership, no security revision, and nothing but the
+			// platform authority it was opened with.
+			if claims.OrganizationID == uuid.Nil || claims.MembershipID != uuid.Nil || claims.SecurityRevision != 0 || claims.PolicyRevision <= 0 || claims.EffectiveAuthority != "platform_admin" {
+				return fmt.Errorf("%w: incomplete support access authority", ErrInvalidAdminContext)
+			}
+			return nil
+		}
 		if claims.OrganizationID == uuid.Nil || claims.MembershipID == uuid.Nil || claims.PolicyRevision <= 0 || claims.SecurityRevision <= 0 || (claims.EffectiveAuthority != "organization_admin" && claims.EffectiveAuthority != "platform_admin") {
 			return fmt.Errorf("%w: incomplete organization authority", ErrInvalidAdminContext)
 		}
