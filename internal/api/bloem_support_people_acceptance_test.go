@@ -40,7 +40,12 @@ func newSupportFixture(t *testing.T) *supportFixture {
 
 func newSupportFixtureWithMail(t *testing.T, sender mail.Sender) *supportFixture {
 	t.Helper()
-	base := newMultitenantAdminAcceptanceFixtureWithMail(t, sender)
+	return newSupportFixtureWith(t, BloemDependencies{SupportMail: sender})
+}
+
+func newSupportFixtureWith(t *testing.T, bloem BloemDependencies) *supportFixture {
+	t.Helper()
+	base := newMultitenantAdminAcceptanceFixtureWith(t, bloem)
 	f := &supportFixture{multitenantAdminAcceptanceFixture: base}
 	ctx := context.Background()
 	north := base.organizationIDs[0]

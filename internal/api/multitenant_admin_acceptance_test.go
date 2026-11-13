@@ -49,6 +49,13 @@ func newMultitenantAdminAcceptanceFixture(t *testing.T) *multitenantAdminAccepta
 // routes' reset email going through sender instead of the server's SMTP settings.
 func newMultitenantAdminAcceptanceFixtureWithMail(t *testing.T, sender mail.Sender) *multitenantAdminAcceptanceFixture {
 	t.Helper()
+	return newMultitenantAdminAcceptanceFixtureWith(t, BloemDependencies{SupportMail: sender})
+}
+
+// newMultitenantAdminAcceptanceFixtureWith is the fixture with extra Bloem
+// dependencies, such as a fake stream control service.
+func newMultitenantAdminAcceptanceFixtureWith(t *testing.T, bloem BloemDependencies) *multitenantAdminAcceptanceFixture {
+	t.Helper()
 	ctx := context.Background()
 	pool := newDisposableAPIDatabase(t, "bloem_multitenant_admin_", true)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
@@ -152,7 +159,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organ
 	fixture.router = NewRouter(Dependencies{
 		AppContext: ctx, DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
-		BloemDependencies:     BloemDependencies{SupportMail: sender},
+		BloemDependencies:     bloem,
 	})
 	for index, organizationID := range fixture.organizationIDs {
 		login := performJSONRequest(t, fixture.router, http.MethodPost, "/api/v2/auth/login", `{"username":"`+adminUsernames[index]+`","password":"`+password+`"}`, "", nil)

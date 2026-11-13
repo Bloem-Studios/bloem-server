@@ -29,6 +29,7 @@ type BloemSystemHandler struct {
 	playbackOverlays            bool
 	promotionsViewer            bool
 	organizationDomains         bool
+	organizationSupport         bool
 	bookRequests                bool
 	ebookRequests               bool
 	bookRequestConnectionAdmin  bool
@@ -79,6 +80,14 @@ func (h *BloemSystemHandler) SetPromotionsViewerAvailable(available bool) {
 // and /branding).
 func (h *BloemSystemHandler) SetOrganizationDomainsAvailable(available bool) {
 	h.organizationDomains = available
+}
+
+// SetOrganizationSupportAvailable tracks the organization support routes: a
+// member's password reset, sessions, devices and profiles, and the
+// organization's streams (/admin/organization/support-capabilities says which
+// parts this server can serve).
+func (h *BloemSystemHandler) SetOrganizationSupportAvailable(available bool) {
+	h.organizationSupport = available
 }
 
 // SetSeasonalViewerAvailable tracks the authenticated native ambience route.
@@ -213,6 +222,9 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	}
 	if h.organizationDomains {
 		featureTokens = append(featureTokens, "organization_domains_v1")
+	}
+	if h.organizationSupport {
+		featureTokens = append(featureTokens, "organization_support_v1")
 	}
 	writeJSON(w, http.StatusOK, bloemCapabilitiesResponse{
 		API:            nativeAPIIdentifier,

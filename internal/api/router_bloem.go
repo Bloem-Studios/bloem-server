@@ -250,6 +250,9 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 			}
 		}
 		if system != nil {
+			system.SetOrganizationSupportAvailable(surfaces.Support.Available() && authMW != nil && adminMW != nil)
+		}
+		if system != nil {
 			system.SetOrganizationDomainsAvailable(surfaces.Storefront.Domains != nil && authMW != nil && adminMW != nil)
 		}
 		mountBloemPlatformStorefront(r, surfaces.Storefront, authMW, adminMW)
@@ -324,6 +327,12 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 				})
 			}
 
+			if surfaces.Support != nil {
+				r.Get("/organization/support-capabilities", surfaces.Support.HandleCapabilities)
+				r.Get("/organization/streams", surfaces.Support.HandleListStreams)
+				r.Post("/organization/streams/{session_id}/stop", surfaces.Support.HandleStopStream)
+				r.Post("/organization/streams/{session_id}/message", surfaces.Support.HandleMessageStream)
+			}
 			if peopleHandler != nil {
 				people := peopleHandler
 				r.Get("/organization/entitlement-cohorts", people.HandleListEntitlementCohorts)
@@ -447,19 +456,13 @@ func mountBloemOrganizationSupportPeople(r chi.Router, support *handlers.BloemOr
 		return
 	}
 	r.Post("/password-reset", support.HandleResetPassword)
-	r.Route("/sessions", func(r chi.Router) {
-		r.Get("/", support.HandleListSessions)
-		r.Delete("/", support.HandleRevokeSessions)
-		r.Delete("/{session_id}", support.HandleRevokeSession)
-	})
-	r.Route("/devices", func(r chi.Router) {
-		r.Get("/", support.HandleListDevices)
-		r.Delete("/{device_id}", support.HandleDeleteDevice)
-	})
-	r.Route("/profiles", func(r chi.Router) {
-		r.Post("/", support.HandleCreateProfile)
-		r.Patch("/{profile_id}/details", support.HandleRenameProfile)
-		r.Delete("/{profile_id}/pin", support.HandleClearProfilePIN)
-		r.Delete("/{profile_id}", support.HandleRemoveProfile)
-	})
+	r.Get("/sessions", support.HandleListSessions)
+	r.Delete("/sessions", support.HandleRevokeSessions)
+	r.Delete("/sessions/{session_id}", support.HandleRevokeSession)
+	r.Get("/devices", support.HandleListDevices)
+	r.Delete("/devices/{device_id}", support.HandleDeleteDevice)
+	r.Post("/profiles", support.HandleCreateProfile)
+	r.Patch("/profiles/{profile_id}/details", support.HandleRenameProfile)
+	r.Delete("/profiles/{profile_id}/pin", support.HandleClearProfilePIN)
+	r.Delete("/profiles/{profile_id}", support.HandleRemoveProfile)
 }

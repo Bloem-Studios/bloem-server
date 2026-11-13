@@ -32,5 +32,14 @@ func newBloemSupportHandler(deps Dependencies, people *adminpeople.Service, admi
 		deps.EmailBrand,
 		"",
 	)
-	return handlers.NewBloemOrganizationSupportHandler(deps.DB, people, resets, admin)
+	support := handlers.NewBloemOrganizationSupportHandler(deps.DB, people, resets, admin)
+	// Streams read through Silo's session loader with the organization filter,
+	// and stop or message through Silo's own administrator services. Typed nil
+	// pointers must not become non-nil interfaces.
+	var sessions handlers.SupportStreamSessions
+	if admin != nil && admin.AdminPlaybackSessionsAvailable() {
+		sessions = admin
+	}
+	support.SetStreams(sessions, deps.AdminPlaybackControl)
+	return support
 }

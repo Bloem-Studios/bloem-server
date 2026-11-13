@@ -6902,6 +6902,130 @@
         ],
         "type": "object"
       },
+      "BloemSupportStreamMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "command_id": {
+            "description": "Client-allocated canonical UUID naming this one command; a retry preserves it.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "message": {
+            "description": "Text displayed on the player.",
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sequence": {
+            "description": "Client-allocated positive order within this session. A command below the latest applied sequence is refused as stale (409 stale_sequence, X-Silo-Latest-Sequence).",
+            "format": "int64",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "title": {
+            "maxLength": 256,
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "sequence",
+          "message"
+        ],
+        "type": "object"
+      },
+      "BloemSupportStreamMessageReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "command_id": {
+            "type": "string"
+          },
+          "delivery": {
+            "enum": [
+              "dispatched",
+              "fallback_scheduled"
+            ],
+            "type": "string"
+          },
+          "outcome": {
+            "description": "applied (202): this request dispatched the command once. replayed (200): the identity was already applied; nothing was dispatched.",
+            "enum": [
+              "applied",
+              "replayed"
+            ],
+            "type": "string"
+          },
+          "sequence": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "command_id",
+          "sequence",
+          "outcome",
+          "delivery"
+        ],
+        "type": "object"
+      },
+      "BloemSupportStreamStop": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "description": "Shown to the player when it supports it.",
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "BloemSupportStreamStopResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "already_revoked": {
+            "description": "The session was already stopped before this request.",
+            "type": "boolean"
+          },
+          "authority_revoked": {
+            "description": "The session's playback authority is durably revoked: media tokens and progress writes are refused from now on. Buffered media already delivered may still play out.",
+            "type": "boolean"
+          },
+          "client_notified": {
+            "description": "A dismissal was written to the player's realtime lane. It is never awaited; false means no lane was open.",
+            "type": "boolean"
+          },
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "authority_revoked",
+          "already_revoked",
+          "client_notified"
+        ],
+        "type": "object"
+      },
+      "BloemSupportStreamsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "next_cursor": {
+            "type": "string"
+          },
+          "streams": {
+            "description": "Live streams of this organization's members, ordered by session id. Only support fields: no IP address, node, routing, bitrate or codec.",
+            "items": {
+              "$ref": "#/components/schemas/SupportStream"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "streams"
+        ],
+        "type": "object"
+      },
       "BloemTenantCreateBody": {
         "additionalProperties": false,
         "properties": {
@@ -11196,6 +11320,217 @@
           "checksum",
           "content_type",
           "size_bytes"
+        ],
+        "type": "object"
+      },
+      "SupportCapabilities": {
+        "additionalProperties": false,
+        "properties": {
+          "devices": {
+            "type": "boolean"
+          },
+          "password_reset": {
+            "$ref": "#/components/schemas/SupportCapabilitiesPasswordResetStruct"
+          },
+          "profiles": {
+            "$ref": "#/components/schemas/SupportCapabilitiesProfilesStruct"
+          },
+          "sessions": {
+            "type": "boolean"
+          },
+          "streams": {
+            "$ref": "#/components/schemas/SupportCapabilitiesStreamsStruct"
+          }
+        },
+        "required": [
+          "password_reset",
+          "sessions",
+          "devices",
+          "profiles",
+          "streams"
+        ],
+        "type": "object"
+      },
+      "SupportCapabilitiesPasswordResetStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "boolean"
+          },
+          "link": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "email",
+          "link"
+        ],
+        "type": "object"
+      },
+      "SupportCapabilitiesProfilesStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "add": {
+            "type": "boolean"
+          },
+          "clear_pin": {
+            "type": "boolean"
+          },
+          "remove": {
+            "type": "boolean"
+          },
+          "rename": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "add",
+          "rename",
+          "clear_pin",
+          "remove"
+        ],
+        "type": "object"
+      },
+      "SupportCapabilitiesStreamsStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "list": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "boolean"
+          },
+          "stop": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "list",
+          "stop",
+          "message"
+        ],
+        "type": "object"
+      },
+      "SupportStream": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "audio_decision": {
+            "type": "string"
+          },
+          "can_message": {
+            "type": "boolean"
+          },
+          "can_stop": {
+            "type": "boolean"
+          },
+          "device": {
+            "$ref": "#/components/schemas/SupportStreamDevice"
+          },
+          "duration_seconds": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "episode_number": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "is_paused": {
+            "type": "boolean"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "person_name": {
+            "type": "string"
+          },
+          "play_method": {
+            "type": "string"
+          },
+          "position_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "profile_id": {
+            "type": "string"
+          },
+          "profile_name": {
+            "type": "string"
+          },
+          "season_number": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "series_name": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "video_decision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "account_id",
+          "person_name",
+          "profile_id",
+          "profile_name",
+          "title",
+          "media_type",
+          "started_at",
+          "updated_at",
+          "position_seconds",
+          "duration_seconds",
+          "is_paused",
+          "play_method",
+          "video_decision",
+          "audio_decision",
+          "device",
+          "can_stop",
+          "can_message"
+        ],
+        "type": "object"
+      },
+      "SupportStreamDevice": {
+        "additionalProperties": false,
+        "properties": {
+          "app": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "platform",
+          "id",
+          "app"
         ],
         "type": "object"
       },
@@ -22372,6 +22707,463 @@
           }
         ],
         "summary": "Read a sanitized organization policy decision explanation.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/streams": {
+      "get": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Polling only: there is no organization realtime channel. The organization filter is applied in SQL, so cursors and pages are exact.",
+        "operationId": "listBloemOrganizationStreams",
+        "parameters": [
+          {
+            "description": "Page size from 1 to 100; defaults to 50.",
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "description": "Page size from 1 to 100; defaults to 50.",
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque next_cursor from the previous page.",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "description": "Opaque next_cursor from the previous page.",
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportStreamsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: limit is outside 1 to 100, cursor is malformed, or a parameter is not supported."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "List the organization's live streams.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/streams/{session_id}/message": {
+      "post": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Keeps Silo's client-allocated command identity (command_id and sequence), applied once per session. A replay of an applied identity answers 200 with the recorded receipt and sends nothing.",
+        "operationId": "messageBloemOrganizationStream",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemSupportStreamMessage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportStreamMessageReceipt"
+                }
+              }
+            },
+            "description": "This command identity was already applied; the recorded receipt is returned and nothing is dispatched."
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportStreamMessageReceipt"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such session in this organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self or platform_account). stale_sequence: the sequence is behind the session's latest applied command (X-Silo-Latest-Sequence carries it). idempotency_conflict: the command_id was applied with different content. realtime_unavailable: the player has no realtime connection.",
+            "headers": {
+              "X-Silo-Latest-Sequence": {
+                "description": "On stale_sequence, the session's latest applied sequence as a decimal integer.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: command_id, sequence, title or message is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: the store or stream control is unavailable. dependency_unavailable (Retry-After: 30): the server holding the session did not answer, so the command may have been applied; retry with the same identity."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Show a message on one of the organization's streams.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/streams/{session_id}/stop": {
+      "post": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Silo's terminate semantics: the session's authority is revoked durably first, then the player is told as best effort. Safe to retry. Any person of the organization may have a stream stopped, administrators and the owner included; the actor's own stream and a platform-level account's stream are refused (409 target_protected). A session outside the organization is 404.",
+        "operationId": "stopBloemOrganizationStream",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemSupportStreamStop"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportStreamStopResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such session in this organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self or platform_account): the stream belongs to the actor or to a platform-level account."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: reason is longer than 1024 characters."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: the store or stream control is unavailable. dependency_unavailable (Retry-After: 30): the server holding the session did not answer; its authority is already revoked and retrying is safe."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Stop one of the organization's streams.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/support-capabilities": {
+      "get": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. A client hides what is false and never infers it from a failure. Also advertised publicly by organization_support_v1 in feature_tokens.",
+        "operationId": "getBloemOrganizationSupportCapabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportCapabilities"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Say which support operations this server can serve.",
         "tags": [
           "administration"
         ]

@@ -267,7 +267,7 @@ func mountedAdministrativeAndLiveTVOperations(t *testing.T) map[string]struct{} 
 	router := chi.NewRouter()
 	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), &handlers.AdminContextSessionHandler{},
 		&apimw.AuthMiddleware{}, &apimw.AdminContextMiddleware{}, bloemRouteSurfaces{
-			Platform: &handlers.BloemAdminPlatformHandler{}, People: &handlers.BloemAdminPeopleHandler{},
+			Platform: &handlers.BloemAdminPlatformHandler{}, People: &handlers.BloemAdminPeopleHandler{}, Support: &handlers.BloemOrganizationSupportHandler{},
 			Organization: &handlers.BloemAdminOrganizationHandler{}, Explain: &handlers.BloemPolicyExplainHandler{},
 			Storefront: bloemPlatformStorefrontHandlers{Tenants: &handlers.AdminTenantsHandler{}, TenantMembers: &handlers.AdminTenantMembersHandler{},
 				Accounts: &handlers.AdminHandler{}, Announcements: &handlers.AdminAnnouncementsHandler{},

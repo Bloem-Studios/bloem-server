@@ -19,7 +19,7 @@ import (
 // so a retry is safe.
 func supportDependencyUnavailable(w http.ResponseWriter) {
 	w.Header().Set("Retry-After", "30")
-	writeError(w, http.StatusServiceUnavailable, "dependency_unavailable", "The sign-out took effect but a connected service could not be told; try again shortly")
+	writeError(w, http.StatusServiceUnavailable, "dependency_unavailable", "The change took effect but a connected service could not be told; try again shortly")
 }
 
 type supportResetRequest struct {

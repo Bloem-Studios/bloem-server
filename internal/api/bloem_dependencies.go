@@ -57,6 +57,10 @@ type BloemDependencies struct {
 	PlatformAdminAuthorizer auth.PlatformAdminAuthorizer
 	AdminPeopleService      *adminpeople.Service
 	AdminPeopleWorker       *adminpeople.Worker
+	// AdminPlaybackControl is Silo's administrator terminate and sequenced
+	// command service, which the organization support streams route calls for
+	// sessions of the organization only. Set by the router before Bloem wiring.
+	AdminPlaybackControl handlers.SupportStreamControl
 	// SupportMail replaces the SMTP sender for the organization support
 	// routes' reset emails; nil sends through the server's mail settings.
 	SupportMail mail.Sender

@@ -186,6 +186,11 @@ type PlaybackSessionsQuery struct {
 	Lifecycle bool
 	// SessionID, when set, limits results to one session.
 	SessionID string
+	// OrganizationID, when set, limits results to sessions of accounts that
+	// are members of that organization whose profile (when the session names
+	// one) belongs to it. Zero keeps today's unscoped read. The filter is in
+	// SQL so cursors and totals stay correct.
+	OrganizationID uuid.UUID
 	// Detached reads one session from this playback_sessions_sync row,
 	// rendered by worker.SessionSyncRowJSON, instead of the table.
 	Detached json.RawMessage
@@ -403,6 +408,11 @@ func (l *PlaybackSessionsLoader) load(ctx context.Context, query PlaybackSession
 	if query.SessionID != "" {
 		args = append(args, query.SessionID)
 		predicates = append(predicates, fmt.Sprintf("s.session_id = $%d", len(args)))
+	}
+	if query.OrganizationID != uuid.Nil {
+		args = append(args, query.OrganizationID)
+		predicates = append(predicates, fmt.Sprintf(`EXISTS (SELECT 1 FROM organization_memberships om WHERE om.account_id = s.user_id AND om.organization_id = $%[1]d)
+			AND (COALESCE(s.profile_id, '') = '' OR EXISTS (SELECT 1 FROM user_profiles up WHERE up.user_id = s.user_id AND up.id = s.profile_id AND up.organization_id = $%[1]d))`, len(args)))
 	}
 	if query.Lifecycle {
 		predicates = append(predicates, "lc.state IS DISTINCT FROM 'stopped'")

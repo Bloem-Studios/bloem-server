@@ -14,7 +14,7 @@ For the plain-language picture, read the [Organizations and administration expla
 - [OPA tenant authorization](../../architecture/opa-tenant-authorization.md)
 - [Lifecycle safety](../../architecture/bloem-lifecycle-safety.md)
 
-## Operations (107)
+## Operations (111)
 
 | Method and path | Summary |
 | --- | --- |
@@ -55,6 +55,10 @@ For the plain-language picture, read the [Organizations and administration expla
 | [`DELETE /api/bloem/v2/admin/organization/people/{account_id}/sessions/{session_id}`](#delete-apibloemv2adminorganizationpeopleaccount_idsessionssession_id) | Sign a member out of one session. |
 | [`GET /api/bloem/v2/admin/organization/policy-decisions`](#get-apibloemv2adminorganizationpolicy-decisions) | Page sanitized organization policy decision explanations. |
 | [`GET /api/bloem/v2/admin/organization/policy-decisions/{id}`](#get-apibloemv2adminorganizationpolicy-decisionsid) | Read a sanitized organization policy decision explanation. |
+| [`GET /api/bloem/v2/admin/organization/streams`](#get-apibloemv2adminorganizationstreams) | List the organization's live streams. |
+| [`POST /api/bloem/v2/admin/organization/streams/{session_id}/message`](#post-apibloemv2adminorganizationstreamssession_idmessage) | Show a message on one of the organization's streams. |
+| [`POST /api/bloem/v2/admin/organization/streams/{session_id}/stop`](#post-apibloemv2adminorganizationstreamssession_idstop) | Stop one of the organization's streams. |
+| [`GET /api/bloem/v2/admin/organization/support-capabilities`](#get-apibloemv2adminorganizationsupport-capabilities) | Say which support operations this server can serve. |
 | [`POST /api/bloem/v2/admin/platform/accounts`](#post-apibloemv2adminplatformaccounts) | Create an account, optionally on a plan. |
 | [`PUT /api/bloem/v2/admin/platform/accounts/{account_id}`](#put-apibloemv2adminplatformaccountsaccount_id) | Update an account, optionally moving it to a plan. |
 | [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions`](#get-apibloemv2adminplatformaccountsaccount_idauth-sessions) | List an account's sign-in sessions. |
@@ -989,6 +993,101 @@ Requires the selected organization administrative context. Current account, logi
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the decision ID is not a positive integer or the decision is absent from the organization. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
+
+### `GET /api/bloem/v2/admin/organization/streams`
+
+List the organization's live streams.
+
+Operation ID: `listBloemOrganizationStreams`.
+Credentials: `bloemOrganizationContext`.
+
+Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Polling only: there is no organization realtime channel. The organization filter is applied in SQL, so cursors and pages are exact.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `limit` | query | integer (int64) |  | Page size from 1 to 100; defaults to 50. |
+| `cursor` | query | string |  | Opaque next_cursor from the previous page. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemSupportStreamsResponse`](#bloemsupportstreamsresponse) | OK |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found |
+| 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: limit is outside 1 to 100, cursor is malformed, or a parameter is not supported. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
+
+### `POST /api/bloem/v2/admin/organization/streams/{session_id}/message`
+
+Show a message on one of the organization's streams.
+
+Operation ID: `messageBloemOrganizationStream`.
+Credentials: `bloemOrganizationContext`.
+
+Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Keeps Silo's client-allocated command identity (command_id and sequence), applied once per session. A replay of an applied identity answers 200 with the recorded receipt and sends nothing.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `session_id` | path | string | yes |  |
+
+Request body (required, `application/json`): [`BloemSupportStreamMessage`](#bloemsupportstreammessage).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemSupportStreamMessageReceipt`](#bloemsupportstreammessagereceipt) | This command identity was already applied; the recorded receipt is returned and nothing is dispatched. |
+| 202 | [`BloemSupportStreamMessageReceipt`](#bloemsupportstreammessagereceipt) | Accepted |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such session in this organization. |
+| 409 | [`BloemSupportConflict`](#bloemsupportconflict) | target_protected (reason self or platform_account). stale_sequence: the sequence is behind the session's latest applied command (X-Silo-Latest-Sequence carries it). idempotency_conflict: the command_id was applied with different content. realtime_unavailable: the player has no realtime connection. |
+| 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: command_id, sequence, title or message is invalid. |
+| 429 | [`BloemNativeError`](README.md#bloemnativeerror) | rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: the store or stream control is unavailable. dependency_unavailable (Retry-After: 30): the server holding the session did not answer, so the command may have been applied; retry with the same identity. |
+
+### `POST /api/bloem/v2/admin/organization/streams/{session_id}/stop`
+
+Stop one of the organization's streams.
+
+Operation ID: `stopBloemOrganizationStream`.
+Credentials: `bloemOrganizationContext`.
+
+Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Silo's terminate semantics: the session's authority is revoked durably first, then the player is told as best effort. Safe to retry. Any person of the organization may have a stream stopped, administrators and the owner included; the actor's own stream and a platform-level account's stream are refused (409 target_protected). A session outside the organization is 404.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `session_id` | path | string | yes |  |
+
+Request body (optional, `application/json`): [`BloemSupportStreamStop`](#bloemsupportstreamstop).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemSupportStreamStopResponse`](#bloemsupportstreamstopresponse) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such session in this organization. |
+| 409 | [`BloemSupportConflict`](#bloemsupportconflict) | target_protected (reason self or platform_account): the stream belongs to the actor or to a platform-level account. |
+| 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: reason is longer than 1024 characters. |
+| 429 | [`BloemNativeError`](README.md#bloemnativeerror) | rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: the store or stream control is unavailable. dependency_unavailable (Retry-After: 30): the server holding the session did not answer; its authority is already revoked and retrying is safe. |
+
+### `GET /api/bloem/v2/admin/organization/support-capabilities`
+
+Say which support operations this server can serve.
+
+Operation ID: `getBloemOrganizationSupportCapabilities`.
+Credentials: `bloemOrganizationContext`.
+
+Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. A client hides what is false and never infers it from a failure. Also advertised publicly by organization_support_v1 in feature_tokens.
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`SupportCapabilities`](#supportcapabilities) | OK |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
 ### `POST /api/bloem/v2/admin/platform/accounts`
@@ -3633,6 +3732,46 @@ Type: object.
 | `person` | [`PersonSummary`](#personsummary) | yes | With the raised security_revision. |
 | `revoked` | [`BloemSupportRevoked`](#bloemsupportrevoked) | yes |  |
 
+### BloemSupportStreamMessage
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `command_id` | string (uuid) | yes | Client-allocated canonical UUID naming this one command; a retry preserves it. |
+| `message` | string | yes | Text displayed on the player. |
+| `sequence` | integer (int64) | yes | Client-allocated positive order within this session. A command below the latest applied sequence is refused as stale (409 stale_sequence, X-Silo-Latest-Sequence). |
+| `title` | string |  |  |
+
+### BloemSupportStreamMessageReceipt
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `command_id` | string | yes |  |
+| `delivery` | string: `dispatched`, `fallback_scheduled` | yes |  |
+| `outcome` | string: `applied`, `replayed` | yes | applied (202): this request dispatched the command once. replayed (200): the identity was already applied; nothing was dispatched. |
+| `sequence` | integer (int64) | yes |  |
+
+### BloemSupportStreamStop
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `reason` | string |  | Shown to the player when it supports it. |
+
+### BloemSupportStreamStopResponse
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `already_revoked` | boolean | yes | The session was already stopped before this request. |
+| `authority_revoked` | boolean | yes | The session's playback authority is durably revoked: media tokens and progress writes are refused from now on. Buffered media already delivered may still play out. |
+| `client_notified` | boolean | yes | A dismissal was written to the player's realtime lane. It is never awaited; false means no lane was open. |
+| `session_id` | string | yes |  |
+
+### BloemSupportStreamsResponse
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `next_cursor` | string |  |  |
+| `streams` | array of [`SupportStream`](#supportstream) | yes | Live streams of this organization's members, ordered by session id. Only support fields: no IP address, node, routing, bitrate or codec. |
+
 ### BloemTenantCreateBody
 
 | Field | Type | Required | Description |
@@ -4161,6 +4300,75 @@ Type: object.
 | --- | --- | --- | --- |
 | `mode` | string | yes |  |
 | `values` | array of string |  |  |
+
+### SupportCapabilities
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `devices` | boolean | yes |  |
+| `password_reset` | [`SupportCapabilitiesPasswordResetStruct`](#supportcapabilitiespasswordresetstruct) | yes |  |
+| `profiles` | [`SupportCapabilitiesProfilesStruct`](#supportcapabilitiesprofilesstruct) | yes |  |
+| `sessions` | boolean | yes |  |
+| `streams` | [`SupportCapabilitiesStreamsStruct`](#supportcapabilitiesstreamsstruct) | yes |  |
+
+### SupportCapabilitiesPasswordResetStruct
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `email` | boolean | yes |  |
+| `link` | boolean | yes |  |
+
+### SupportCapabilitiesProfilesStruct
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `add` | boolean | yes |  |
+| `clear_pin` | boolean | yes |  |
+| `remove` | boolean | yes |  |
+| `rename` | boolean | yes |  |
+
+### SupportCapabilitiesStreamsStruct
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `list` | boolean | yes |  |
+| `message` | boolean | yes |  |
+| `stop` | boolean | yes |  |
+
+### SupportStream
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `account_id` | integer (int64) | yes |  |
+| `audio_decision` | string | yes |  |
+| `can_message` | boolean | yes |  |
+| `can_stop` | boolean | yes |  |
+| `device` | [`SupportStreamDevice`](#supportstreamdevice) | yes |  |
+| `duration_seconds` | integer or null (int64) | yes |  |
+| `episode_number` | integer (int64) |  |  |
+| `is_paused` | boolean | yes |  |
+| `media_type` | string | yes |  |
+| `person_name` | string | yes |  |
+| `play_method` | string | yes |  |
+| `position_seconds` | number (double) | yes |  |
+| `profile_id` | string | yes |  |
+| `profile_name` | string | yes |  |
+| `season_number` | integer (int64) |  |  |
+| `series_name` | string |  |  |
+| `session_id` | string | yes |  |
+| `started_at` | string (date-time) | yes |  |
+| `title` | string | yes |  |
+| `updated_at` | string (date-time) | yes |  |
+| `video_decision` | string | yes |  |
+
+### SupportStreamDevice
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `app` | string | yes |  |
+| `id` | string | yes |  |
+| `name` | string | yes |  |
+| `platform` | string | yes |  |
 
 ### TenantMemberResponse
 

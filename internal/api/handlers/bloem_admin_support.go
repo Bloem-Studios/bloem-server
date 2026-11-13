@@ -53,6 +53,10 @@ type BloemOrganizationSupportHandler struct {
 	sessionsRevoked        func(ctx context.Context, userID int) error
 	profileSessionsRevoked func(ctx context.Context, userID int, profileIDs []string) error
 
+	// sessions and control serve the stream routes (SetStreams).
+	sessions SupportStreamSessions
+	control  SupportStreamControl
+
 	now func() time.Time
 }
 
@@ -200,4 +204,49 @@ func itoa(value int) string { return strconv.Itoa(value) }
 func isDeadlock(err error) bool {
 	var pgErr interface{ SQLState() string }
 	return errors.As(err, &pgErr) && pgErr.SQLState() == "40P01"
+}
+
+// SupportCapabilities is what the support routes can do on this server. A
+// client hides what is false and never infers it from a failure.
+type SupportCapabilities struct {
+	PasswordReset struct {
+		Email bool `json:"email"`
+		Link  bool `json:"link"`
+	} `json:"password_reset"`
+	Sessions bool `json:"sessions"`
+	Devices  bool `json:"devices"`
+	Profiles struct {
+		Add      bool `json:"add"`
+		Rename   bool `json:"rename"`
+		ClearPIN bool `json:"clear_pin"`
+		Remove   bool `json:"remove"`
+	} `json:"profiles"`
+	Streams struct {
+		List    bool `json:"list"`
+		Stop    bool `json:"stop"`
+		Message bool `json:"message"`
+	} `json:"streams"`
+}
+
+// Available reports whether the support routes are mounted at all.
+func (h *BloemOrganizationSupportHandler) Available() bool {
+	return h != nil && h.pool != nil && h.people != nil
+}
+
+// HandleCapabilities handles GET /admin/organization/support-capabilities.
+func (h *BloemOrganizationSupportHandler) HandleCapabilities(w http.ResponseWriter, r *http.Request) {
+	if _, ok := h.require(w, r); !ok {
+		return
+	}
+	var capabilities SupportCapabilities
+	if h.resets != nil {
+		reset := h.resets.Capabilities(r.Context())
+		capabilities.PasswordReset.Email, capabilities.PasswordReset.Link = reset.Email, reset.Link
+	}
+	capabilities.Sessions, capabilities.Devices = true, true
+	_, lifecycle := h.profileLifecycle()
+	capabilities.Profiles.Add, capabilities.Profiles.Remove = lifecycle, lifecycle
+	capabilities.Profiles.Rename, capabilities.Profiles.ClearPIN = true, true
+	capabilities.Streams.List, capabilities.Streams.Stop, capabilities.Streams.Message = h.streamCapabilities()
+	writeJSON(w, http.StatusOK, capabilities)
 }

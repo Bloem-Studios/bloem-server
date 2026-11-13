@@ -17,7 +17,7 @@ Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's ex
 | [Plans and preview](plans.md) | 34 | [bloem-plans.md](../../architecture/bloem-plans.md) |
 | [Messages and promotions](messages.md) | 24 | [bloem-messages-and-promotions.md](../../architecture/bloem-messages-and-promotions.md) |
 | [Apps and clients](apps.md) | 10 | [bloem-apps.md](../../architecture/bloem-apps.md) |
-| [Organizations and administration](organizations.md) | 107 | [bloem-organizations.md](../../architecture/bloem-organizations.md) |
+| [Organizations and administration](organizations.md) | 111 | [bloem-organizations.md](../../architecture/bloem-organizations.md) |
 | [Retired v1 routes](v1-routes.md) | hand-written | |
 
 ## Conventions

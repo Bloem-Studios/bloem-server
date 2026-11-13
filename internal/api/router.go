@@ -2598,6 +2598,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// SPA fallback. Same pattern as the Jellyfin compat listener on 8096.
 	tenantMiddleware := newBloemTenantMiddleware(deps)
 	attachNativeLibraryLocations(deps, libraryHandler)
+	if adminPlaybackControlHandler != nil {
+		deps.AdminPlaybackControl = adminPlaybackControlHandler
+	}
 	wireBloemRouter(r, deps, tenantMiddleware, requestHandler, adminHandler, authMiddleware, catalog.BloemPreviewSearch(catalogSearchService.Provider(), itemRepo), apimw.RequireActingAdminWith(actingAdmin))
 
 	// The native v2 API. The subtree is handed to the sealed apiv2 listener

@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 951 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 280 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 284 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Retired alpha v1 API (410 Gone except the health and ready probes) | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -109,6 +109,10 @@ security declaration and the wire reference before sending credentials or mutati
 | `DELETE /api/bloem/v2/admin/organization/people/{account_id}/sessions/{session_id}` | `revokeBloemOrganizationPersonSession` | Sign a member out of one session. |
 | `GET /api/bloem/v2/admin/organization/policy-decisions` | `listBloemOrganizationPolicyDecisions` | Page sanitized organization policy decision explanations. |
 | `GET /api/bloem/v2/admin/organization/policy-decisions/{id}` | `getBloemOrganizationPolicyDecision` | Read a sanitized organization policy decision explanation. |
+| `GET /api/bloem/v2/admin/organization/streams` | `listBloemOrganizationStreams` | List the organization's live streams. |
+| `POST /api/bloem/v2/admin/organization/streams/{session_id}/message` | `messageBloemOrganizationStream` | Show a message on one of the organization's streams. |
+| `POST /api/bloem/v2/admin/organization/streams/{session_id}/stop` | `stopBloemOrganizationStream` | Stop one of the organization's streams. |
+| `GET /api/bloem/v2/admin/organization/support-capabilities` | `getBloemOrganizationSupportCapabilities` | Say which support operations this server can serve. |
 | `POST /api/bloem/v2/admin/platform/accounts` | `createBloemPlatformAccount` | Create an account, optionally on a plan. |
 | `POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs` | `createBloemPlatformDirectPolicyJob` | Enqueue a confirmed bulk entitlement policy job. |
 | `GET /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}` | `getBloemPlatformDirectPolicyJob` | Read a bulk entitlement policy job. |
@@ -309,7 +313,7 @@ security declaration and the wire reference before sending credentials or mutati
 
 ## Inventory entries without typed OpenAPI
 
-The current inventory identifies **4** explicit method/path entries without a
+The current inventory identifies **0** explicit method/path entries without a
 typed native declaration. They require handler-level verification before generating
 client calls. A method missing from a documented path still appears here. This is
 documentation debt, not an assertion that these routes are unavailable or safe for
@@ -317,10 +321,6 @@ unauthenticated callers. Optional groups absent from this inventory can add furt
 
 | Observed method and path | Inventory source |
 | --- | --- |
-| `GET /api/bloem/v2/admin/organization/people/{account_id}/devices/` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v2/admin/organization/people/{account_id}/profiles/` | `internal/api/router_bloem.go` |
-| `DELETE /api/bloem/v2/admin/organization/people/{account_id}/sessions/` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v2/admin/organization/people/{account_id}/sessions/` | `internal/api/router_bloem.go` |
 
 ## Unresolved mount dispatchers
 

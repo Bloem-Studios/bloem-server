@@ -1,11 +1,13 @@
 package apiv2
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
 // The organization support routes: what an organization administrator uses to
@@ -93,6 +95,51 @@ type bloemSupportSessionInput struct {
 
 type bloemSupportDeviceInput struct {
 	DeviceID string `path:"device_id" maxLength:"256"`
+}
+
+type BloemSupportStreamsInput struct {
+	Limit  int    `query:"limit" minimum:"1" maximum:"100" doc:"Page size from 1 to 100; defaults to 50."`
+	Cursor string `query:"cursor" maxLength:"512" doc:"Opaque next_cursor from the previous page."`
+}
+
+type BloemSupportStreamsResponse struct {
+	Streams    []handlers.SupportStream `json:"streams" doc:"Live streams of this organization's members, ordered by session id. Only support fields: no IP address, node, routing, bitrate or codec."`
+	NextCursor string                   `json:"next_cursor,omitempty"`
+}
+
+type BloemSupportStreamStop struct {
+	Reason string `json:"reason,omitempty" maxLength:"1024" doc:"Shown to the player when it supports it."`
+}
+
+type BloemSupportStreamStopInput struct {
+	SessionID string                  `path:"session_id" minLength:"1" maxLength:"128"`
+	Body      *BloemSupportStreamStop `required:"false"`
+}
+
+type BloemSupportStreamStopResponse struct {
+	SessionID        string `json:"session_id"`
+	AuthorityRevoked bool   `json:"authority_revoked" doc:"The session's playback authority is durably revoked: media tokens and progress writes are refused from now on. Buffered media already delivered may still play out."`
+	AlreadyRevoked   bool   `json:"already_revoked" doc:"The session was already stopped before this request."`
+	ClientNotified   bool   `json:"client_notified" doc:"A dismissal was written to the player's realtime lane. It is never awaited; false means no lane was open."`
+}
+
+type BloemSupportStreamMessage struct {
+	CommandID string `json:"command_id" format:"uuid" doc:"Client-allocated canonical UUID naming this one command; a retry preserves it."`
+	Sequence  int64  `json:"sequence" minimum:"1" maximum:"9007199254740991" doc:"Client-allocated positive order within this session. A command below the latest applied sequence is refused as stale (409 stale_sequence, X-Silo-Latest-Sequence)."`
+	Title     string `json:"title,omitempty" maxLength:"256"`
+	Message   string `json:"message" minLength:"1" maxLength:"2048" doc:"Text displayed on the player."`
+}
+
+type BloemSupportStreamMessageInput struct {
+	SessionID string `path:"session_id" minLength:"1" maxLength:"128"`
+	Body      BloemSupportStreamMessage
+}
+
+type BloemSupportStreamMessageReceipt struct {
+	CommandID string `json:"command_id"`
+	Sequence  int64  `json:"sequence"`
+	Outcome   string `json:"outcome" enum:"applied,replayed" doc:"applied (202): this request dispatched the command once. replayed (200): the identity was already applied; nothing was dispatched."`
+	Delivery  string `json:"delivery" enum:"dispatched,fallback_scheduled"`
 }
 
 // bloemSupportOp starts a support operation with the answers every one shares.
@@ -192,5 +239,41 @@ func registerBloemOrganizationSupportDocument(reg *Registry) {
 			422: "validation_failed: expected_revision is not positive.",
 		})
 		registerBloemChiDocument[bloemJSONInput[BloemSupportProfileRevision], struct{}](reg, op)
+	}
+
+	{
+		op := bloemSupportOp(reg, "GET", "/admin/organization/support-capabilities", "getBloemOrganizationSupportCapabilities", "Say which support operations this server can serve.", 200)
+		op.Description = bloemOrganizationAuthorityDescription + " A client hides what is false and never infers it from a failure. Also advertised publicly by organization_support_v1 in feature_tokens."
+		bloemDocumentOmit(&op, 409, 429)
+		registerBloemChiDocument[struct{}, bloemJSONOutput[handlers.SupportCapabilities]](reg, op)
+	}
+	{
+		op := bloemSupportOp(reg, "GET", "/admin/organization/streams", "listBloemOrganizationStreams", "List the organization's live streams.", 200)
+		op.Description = bloemSupportAuthority + " Polling only: there is no organization realtime channel. The organization filter is applied in SQL, so cursors and pages are exact."
+		bloemDocumentOmit(&op, 409, 429)
+		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "validation_failed: limit is outside 1 to 100, cursor is malformed, or a parameter is not supported."})
+		registerBloemChiDocument[BloemSupportStreamsInput, bloemJSONOutput[BloemSupportStreamsResponse]](reg, op)
+	}
+	{
+		op := bloemSupportOp(reg, "POST", "/admin/organization/streams/{session_id}/stop", "stopBloemOrganizationStream", "Stop one of the organization's streams.", 200)
+		op.Description += " Silo's terminate semantics: the session's authority is revoked durably first, then the player is told as best effort. Safe to retry. Any person of the organization may have a stream stopped, administrators and the owner included; the actor's own stream and a platform-level account's stream are refused (409 target_protected). A session outside the organization is 404."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{503: "tenant_unavailable: the store or stream control is unavailable. dependency_unavailable (Retry-After: 30): the server holding the session did not answer; its authority is already revoked and retrying is safe."})
+		bloemDocumentValidation(reg, &op)
+		bloemDocumentDescribe(&op, map[int]string{404: "not_found: no such session in this organization.", 409: "target_protected (reason self or platform_account): the stream belongs to the actor or to a platform-level account.", 422: "validation_failed: reason is longer than 1024 characters."})
+		registerBloemChiDocument[BloemSupportStreamStopInput, bloemJSONOutput[BloemSupportStreamStopResponse]](reg, op)
+	}
+	{
+		op := bloemSupportOp(reg, "POST", "/admin/organization/streams/{session_id}/message", "messageBloemOrganizationStream", "Show a message on one of the organization's streams.", 202)
+		op.Description += " Keeps Silo's client-allocated command identity (command_id and sequence), applied once per session. A replay of an applied identity answers 200 with the recorded receipt and sends nothing."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{503: "tenant_unavailable: the store or stream control is unavailable. dependency_unavailable (Retry-After: 30): the server holding the session did not answer, so the command may have been applied; retry with the same identity."})
+		bloemDocumentValidation(reg, &op)
+		bloemDocumentDescribe(&op, map[int]string{
+			404: "not_found: no such session in this organization.",
+			409: "target_protected (reason self or platform_account). stale_sequence: the sequence is behind the session's latest applied command (X-Silo-Latest-Sequence carries it). idempotency_conflict: the command_id was applied with different content. realtime_unavailable: the player has no realtime connection.",
+			422: "validation_failed: command_id, sequence, title or message is invalid.",
+		})
+		op.Responses["409"].Headers = map[string]*huma.Header{"X-Silo-Latest-Sequence": {Schema: &huma.Schema{Type: "string"}, Description: "On stale_sequence, the session's latest applied sequence as a decimal integer."}}
+		op.Responses["200"] = &huma.Response{Description: "This command identity was already applied; the recorded receipt is returned and nothing is dispatched.", Content: map[string]*huma.MediaType{"application/json": {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[BloemSupportStreamMessageReceipt](), true, "")}}}
+		registerBloemChiDocument[BloemSupportStreamMessageInput, bloemJSONOutput[BloemSupportStreamMessageReceipt]](reg, op)
 	}
 }

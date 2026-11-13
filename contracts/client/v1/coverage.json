@@ -3072,6 +3072,34 @@
     {
       "type": "internal/apiv2.BloemSupportSignOutResponse",
       "reason": "OpenAPI-only declaration of the organization support routes (an organization administrator's password reset, sessions, devices, profiles, streams and break-glass support access). Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/api/handlers.SupportCapabilities",
+      "reason": "OpenAPI-only declaration of the organization support routes (an organization administrator's password reset, sessions, devices, profiles, streams and break-glass support access). Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/api/handlers.SupportStream",
+      "reason": "OpenAPI-only declaration of the organization support routes (an organization administrator's password reset, sessions, devices, profiles, streams and break-glass support access). Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemSupportStreamMessage",
+      "reason": "OpenAPI-only declaration of the organization support routes (an organization administrator's password reset, sessions, devices, profiles, streams and break-glass support access). Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemSupportStreamMessageReceipt",
+      "reason": "OpenAPI-only declaration of the organization support routes (an organization administrator's password reset, sessions, devices, profiles, streams and break-glass support access). Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemSupportStreamStop",
+      "reason": "OpenAPI-only declaration of the organization support routes (an organization administrator's password reset, sessions, devices, profiles, streams and break-glass support access). Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemSupportStreamStopResponse",
+      "reason": "OpenAPI-only declaration of the organization support routes (an organization administrator's password reset, sessions, devices, profiles, streams and break-glass support access). Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemSupportStreamsResponse",
+      "reason": "OpenAPI-only declaration of the organization support routes (an organization administrator's password reset, sessions, devices, profiles, streams and break-glass support access). Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
     }
   ]
 }
