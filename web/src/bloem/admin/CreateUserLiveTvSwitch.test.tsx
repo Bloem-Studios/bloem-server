@@ -27,6 +27,11 @@ vi.mock("@/hooks/queries/admin/libraries", () => ({
 vi.mock("@/hooks/queries/admin/accessGroups", () => ({
   useAccessGroups: () => ({ data: [], isSuccess: true }),
 }));
+// Silo's server-wide downloads notice (#4087) reads the server settings.
+vi.mock("@/hooks/queries/admin/settings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/hooks/queries/admin/settings")>()),
+  useAdminServerSettings: () => ({ data: undefined }),
+}));
 
 beforeEach(() => {
   setAccessToken("account");
