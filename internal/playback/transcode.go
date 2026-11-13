@@ -3759,6 +3759,8 @@ func (s *TranscodeSession) restart(
 		s.restarting = nil
 		s.mu.Unlock()
 		close(flight.done)
+		cancel()
+		_ = input.complete(flight.err)
 		return flight.err
 	}
 	s.running = false
