@@ -1510,6 +1510,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		playbackHandler.EventsHub = deps.EventsHub
 		playbackHandler.LifecycleEncoder = apiv2.PlaybackLifecycleEncoder{}
 		playbackHandler.LiveRowJSON = deps.LiveSessionRowJSON
+		playbackHandler.InstallReconstructedClientRestore()
 		if deps.FileRepo != nil {
 			playbackHandler.MissingMarker = deps.FileRepo
 		}

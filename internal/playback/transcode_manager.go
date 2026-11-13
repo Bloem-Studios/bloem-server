@@ -87,6 +87,10 @@ type TranscodeManager struct {
 	// AuthorizeSessionReconstruction checks host-owned source authority before
 	// a recipe can register a playback session. Nil preserves ordinary recovery.
 	AuthorizeSessionReconstruction func(context.Context, RecipeCard) error
+	// RestoreReconstructedClient fills the client metadata a recipe card does
+	// not carry (a stream token's never does) from host-owned durable facts,
+	// so a rebuilt session keeps its device. Nil keeps the card's own.
+	RestoreReconstructedClient func(context.Context, *RecipeCard)
 
 	// Package-private execution seams keep reconstruction lifecycle tests
 	// deterministic without invoking a host FFmpeg binary. Production always
@@ -775,6 +779,7 @@ func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str
 			return nil, nil, false
 		}
 	}
+	m.restoreReconstructedClient(ctx, &card)
 	s := &Session{
 		ID:                            card.SessionID,
 		UserID:                        card.UserID,
