@@ -81,7 +81,9 @@ func TestNativeInputExitedWrapperCancellationJoinsDescendant(t *testing.T) {
 	}
 	waitNativeProcessState(t, func() bool {
 		stat, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", child))
-		if errors.Is(err, os.ErrNotExist) {
+		// A child reaped between the open and the read answers ESRCH, not
+		// ENOENT; both mean it is gone.
+		if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ESRCH) {
 			return true
 		}
 		if err != nil {
