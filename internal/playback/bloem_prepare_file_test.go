@@ -120,7 +120,7 @@ func TestPrepareFileNativeInputReadsFramesWhenEncodingVideo(t *testing.T) {
 	body := "#!/bin/sh\n" +
 		"printf 'frame=1500\\nfps=240\\nout_time_us=30000000\\nspeed=4.0x\\nprogress=continue\\n'\n" +
 		"eval \"touch \\${$#}\"\n"
-	if err := os.WriteFile(script, []byte(body), 0o755); err != nil { //nolint:gosec // the fake ffmpeg must be executable
+	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
