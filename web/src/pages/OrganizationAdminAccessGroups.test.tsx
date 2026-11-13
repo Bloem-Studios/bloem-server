@@ -12,8 +12,8 @@ vi.mock("@/api/adminV2Client", async (importOriginal) => {
   return { ...actual, adminV2Api: vi.fn() };
 });
 
-vi.mock("@/contexts/AdminContextProvider", () => ({
-  useAdminContext: () => ({
+vi.mock("@/contexts/AdminContextProvider", () => {
+  const context = () => ({
     active: {
       key: "organization:org-1",
       scope: "organization",
@@ -24,8 +24,9 @@ vi.mock("@/contexts/AdminContextProvider", () => ({
       policyRevision: 7,
       securityRevision: 3,
     },
-  }),
-}));
+  });
+  return { useAdminContext: context, useOptionalAdminContext: context };
+});
 
 const defaultGroup = {
   id: 1,
