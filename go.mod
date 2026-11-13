@@ -66,6 +66,7 @@ require (
 require (
 	cloud.google.com/go v0.123.0 // indirect
 	filippo.io/hpke v0.4.0 // indirect
+	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/PuerkitoBio/goquery v1.8.0 // indirect
 	github.com/TwiN/go-color v1.4.1 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
@@ -73,6 +74,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cyberphone/json-canonicalization v0.0.0-20241213102144-19d51d7fe467 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
 	github.com/digitorus/pkcs7 v0.0.0-20230818184609-3a137a874352 // indirect
@@ -236,3 +238,5 @@ require (
 tool golang.org/x/vuln/cmd/govulncheck
 
 replace github.com/zishang520/webtransport-go => ./internal/compat/zishang520-webtransport-go
+
+replace github.com/sigstore/rekor v1.5.2 => ./internal/compat/sigstore-rekor
