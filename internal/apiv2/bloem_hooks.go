@@ -43,6 +43,13 @@ func bloemTenantIdentityGate(deps Dependencies, h http.Handler) http.Handler {
 	return h
 }
 
+// bloemWithTenantIdentityGate puts the tenant identity gate in front of the
+// handler inner builds, for gate chains that assemble their own post-auth
+// middleware (the Apple display route runs it on both credential paths).
+func bloemWithTenantIdentityGate(deps Dependencies, inner func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler { return bloemTenantIdentityGate(deps, inner(next)) }
+}
+
 // bloemCheckOperationPath accepts both surfaces registered through this
 // package: Silo's /api/v2 and Bloem's native /api/bloem/v2 (see
 // bloem_native_document.go). Both get the same checks, metadata, body limits
