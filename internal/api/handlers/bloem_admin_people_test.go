@@ -319,6 +319,20 @@ func TestBloemAdminPeopleForeignPathTargetsAreNonDisclosing(t *testing.T) {
 	}
 }
 
+func TestBloemAdminPeopleProtectedTargetIsAConflictNotAForbidden(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	for _, reason := range []adminpeople.TargetClass{adminpeople.TargetSelf, adminpeople.TargetPlatformAccount, adminpeople.TargetOrganizationOwner, adminpeople.TargetOrganizationAdmin} {
+		store := &adminPeopleServiceStub{err: &adminpeople.TargetProtectedError{Reason: reason}}
+		handler := NewBloemAdminPeopleHandler(store)
+		req := adminPeopleRequest(http.MethodPatch, NativeAPIPrefix+"/admin/organization/people/42/memberships/current", `{"expected_revision":3,"status":"suspended"}`, organizationID, 7, map[string]string{"account_id": "42"})
+		rec := httptest.NewRecorder()
+		handler.HandleUpdateMembership(rec, req)
+		if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), `"error":"target_protected"`) || !strings.Contains(rec.Body.String(), `"reason":"`+string(reason)+`"`) {
+			t.Fatalf("%s: response = %d %s", reason, rec.Code, rec.Body.String())
+		}
+	}
+}
+
 func adminPeopleRequest(method, target, body string, organizationID uuid.UUID, accountID int, params map[string]string) *http.Request {
 	req := httptest.NewRequest(method, target, strings.NewReader(body))
 	membershipID := uuid.New()

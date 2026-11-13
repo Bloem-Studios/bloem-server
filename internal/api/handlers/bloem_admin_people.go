@@ -418,6 +418,9 @@ func (h *BloemAdminPeopleHandler) requireOrganization(w http.ResponseWriter, r *
 }
 
 func (h *BloemAdminPeopleHandler) writeError(w http.ResponseWriter, r *http.Request, err error, accountID int) {
+	if writeSupportAuthorityError(w, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, adminpeople.ErrNotFound), errors.Is(err, adminpeople.ErrInvalidSelection):
 		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")

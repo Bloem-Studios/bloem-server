@@ -1458,6 +1458,9 @@ func (s *Service) executeBulkRecord(ctx context.Context, tx pgx.Tx, organization
 	if membershipID != snapshot.MembershipID || revision != snapshot.MembershipRevision || accountRevision != snapshot.AccountPolicyRevision || status != snapshot.MembershipStatus {
 		return "skipped", ReasonAuthorizationChanged, nil
 	}
+	if outcome, reason, err := bulkTargetProtection(ctx, tx, organizationID, snapshot.AccountID); outcome != "" || err != nil {
+		return outcome, reason, err
+	}
 	switch action.Kind {
 	case BulkAssignGroup:
 		rows, err := tx.Query(ctx, `SELECT id,access_group_id,(access_group_id=$3),updated_at FROM user_profiles WHERE organization_id=$1 AND user_id=$2 ORDER BY id FOR UPDATE`, organizationID, snapshot.AccountID, snapshot.GroupID)
@@ -1569,6 +1572,9 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	}
 	if membershipID != snapshot.MembershipID || status != tenancy.MembershipActive || status != snapshot.MembershipStatus || membershipRevision != snapshot.MembershipRevision || accountRevision != snapshot.AccountPolicyRevision || currentGroupID != snapshot.GroupID || currentCohortID != snapshot.CohortID || currentCohortRevision != snapshot.CohortRevision || sourceKey != snapshot.SourceTemplateKey || sourceRevision != snapshot.SourceTemplateRevision {
 		return "skipped", ReasonAuthorizationChanged, nil
+	}
+	if outcome, reason, err := bulkTargetProtection(ctx, tx, organizationID, snapshot.AccountID); outcome != "" || err != nil {
+		return outcome, reason, err
 	}
 	rows, err := tx.Query(ctx, `SELECT id,access_group_id,(access_group_id=$3),updated_at FROM user_profiles WHERE organization_id=$1 AND user_id=$2 ORDER BY id FOR UPDATE`, organizationID, snapshot.AccountID, currentGroupID)
 	if err != nil {
@@ -1816,41 +1822,28 @@ func isPolicyBulkAction(kind string) bool {
 }
 
 func (s *Service) UpdateMembership(ctx context.Context, organizationID uuid.UUID, actorID, accountID int, expectedRevision int64, status tenancy.MembershipStatus) (PersonSummary, error) {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return PersonSummary{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	person, err := s.UpdateMembershipInTransaction(ctx, tx, organizationID, actorID, accountID, expectedRevision, status)
-	if err != nil {
-		return PersonSummary{}, err
-	}
-	if err = tx.Commit(ctx); err != nil {
-		return PersonSummary{}, err
-	}
-	return person, nil
+	return s.writePerson(ctx, func(tx pgx.Tx) (PersonSummary, error) {
+		return s.UpdateMembershipInTransaction(ctx, tx, organizationID, actorID, accountID, expectedRevision, status)
+	})
 }
 
 func (s *Service) UpdateMembershipInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID, accountID int, expectedRevision int64, status tenancy.MembershipStatus) (PersonSummary, error) {
 	if status != tenancy.MembershipActive && status != tenancy.MembershipSuspended {
 		return PersonSummary{}, ErrInvalidBulkAction
 	}
-	var err error
-	var id uuid.UUID
-	var current tenancy.MembershipStatus
-	var revision int64
-	var protected bool
-	err = tx.QueryRow(ctx, `SELECT m.id,m.status,m.security_revision,(o.owner_account_id=m.account_id) FROM organization_memberships m JOIN organizations o ON o.id=m.organization_id WHERE m.organization_id=$1 AND m.account_id=$2 FOR UPDATE OF m`, organizationID, accountID).Scan(&id, &current, &revision, &protected)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return PersonSummary{}, ErrNotFound
-	}
+	actor, err := mutationActor(ctx, actorID)
 	if err != nil {
 		return PersonSummary{}, err
 	}
+	locked, err := LockAuthority(ctx, tx, organizationID, actor, accountID)
+	if err != nil {
+		return PersonSummary{}, auditRefusal(ctx, tx, err, actorID, "people.membership_update_refused", "membership", locked.Target.MembershipID.String(), organizationID, accountID, locked.Target.SecurityRevision)
+	}
+	id, current, revision := locked.Target.MembershipID, locked.Target.Status, locked.Target.SecurityRevision
 	if revision != expectedRevision {
 		return PersonSummary{}, ErrAuthorizationStateChanged
 	}
-	if protected && status == tenancy.MembershipSuspended {
+	if locked.Target.IsOrganizationOwner && status == tenancy.MembershipSuspended {
 		return PersonSummary{}, ErrInvalidBulkAction
 	}
 	if current != status {
@@ -1868,26 +1861,23 @@ func (s *Service) UpdateMembershipInTransaction(ctx context.Context, tx pgx.Tx, 
 }
 
 func (s *Service) UpdateProfileGroup(ctx context.Context, organizationID uuid.UUID, actorID, accountID int, profileID string, expectedRevision int64, groupID int) (PersonSummary, error) {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return PersonSummary{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	person, err := s.UpdateProfileGroupInTransaction(ctx, tx, organizationID, actorID, accountID, profileID, expectedRevision, groupID)
-	if err != nil {
-		return PersonSummary{}, err
-	}
-	if err = tx.Commit(ctx); err != nil {
-		return PersonSummary{}, err
-	}
-	return person, nil
+	return s.writePerson(ctx, func(tx pgx.Tx) (PersonSummary, error) {
+		return s.UpdateProfileGroupInTransaction(ctx, tx, organizationID, actorID, accountID, profileID, expectedRevision, groupID)
+	})
 }
 
 func (s *Service) UpdateProfileGroupInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, actorID, accountID int, profileID string, expectedRevision int64, groupID int) (PersonSummary, error) {
 	if groupID <= 0 || strings.TrimSpace(profileID) == "" {
 		return PersonSummary{}, ErrInvalidBulkAction
 	}
-	var err error
+	actor, err := mutationActor(ctx, actorID)
+	if err != nil {
+		return PersonSummary{}, err
+	}
+	locked, err := LockAuthority(ctx, tx, organizationID, actor, accountID)
+	if err != nil {
+		return PersonSummary{}, auditRefusal(ctx, tx, err, actorID, "people.profile_group_update_refused", "profile", profileID, organizationID, accountID, locked.Target.SecurityRevision)
+	}
 	var groupExists bool
 	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM access_groups WHERE organization_id=$1 AND id=$2)`, organizationID, groupID).Scan(&groupExists); err != nil {
 		return PersonSummary{}, err
@@ -1895,13 +1885,7 @@ func (s *Service) UpdateProfileGroupInTransaction(ctx context.Context, tx pgx.Tx
 	if !groupExists {
 		return PersonSummary{}, ErrNotFound
 	}
-	var membershipID uuid.UUID
-	var revision int64
-	if err = tx.QueryRow(ctx, `SELECT id,security_revision FROM organization_memberships WHERE organization_id=$1 AND account_id=$2 FOR UPDATE`, organizationID, accountID).Scan(&membershipID, &revision); errors.Is(err, pgx.ErrNoRows) {
-		return PersonSummary{}, ErrNotFound
-	} else if err != nil {
-		return PersonSummary{}, err
-	}
+	membershipID, revision := locked.Target.MembershipID, locked.Target.SecurityRevision
 	if revision != expectedRevision {
 		return PersonSummary{}, ErrAuthorizationStateChanged
 	}
