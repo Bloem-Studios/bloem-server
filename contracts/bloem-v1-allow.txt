@@ -25,3 +25,4 @@ scripts/bloem/verify-no-v1_test.py  # the guard's regression cases spell retired
 internal/api/v1_route_surface_test.go          # pins that only Silo's tombstone is mounted under /api/v1
 internal/api/testdata/v1_routes_*.txt          # that test's goldens
 cmd/clientdtogen/internal/digestfile/digestfile_test.go   # fixture rows of the client digest's historical removals table
+internal/compat/sigstore-rekor/pkg/generated/client/*   # rekor's generated client spells the Rekor transparency log's own /api/v1, not Silo's
