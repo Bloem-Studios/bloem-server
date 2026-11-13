@@ -12,6 +12,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/database"
+	"github.com/Silo-Server/silo-server/internal/mail"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
@@ -40,6 +41,13 @@ func TestMultitenantAdminTwoOrganizationIsolation(t *testing.T) {
 }
 
 func newMultitenantAdminAcceptanceFixture(t *testing.T) *multitenantAdminAcceptanceFixture {
+	t.Helper()
+	return newMultitenantAdminAcceptanceFixtureWithMail(t, nil)
+}
+
+// newMultitenantAdminAcceptanceFixtureWithMail is the fixture with the support
+// routes' reset email going through sender instead of the server's SMTP settings.
+func newMultitenantAdminAcceptanceFixtureWithMail(t *testing.T, sender mail.Sender) *multitenantAdminAcceptanceFixture {
 	t.Helper()
 	ctx := context.Background()
 	pool := newDisposableAPIDatabase(t, "bloem_multitenant_admin_", true)
@@ -144,6 +152,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organ
 	fixture.router = NewRouter(Dependencies{
 		AppContext: ctx, DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
+		BloemDependencies:     BloemDependencies{SupportMail: sender},
 	})
 	for index, organizationID := range fixture.organizationIDs {
 		login := performJSONRequest(t, fixture.router, http.MethodPost, "/api/v2/auth/login", `{"username":"`+adminUsernames[index]+`","password":"`+password+`"}`, "", nil)

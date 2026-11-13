@@ -9,6 +9,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/livetv"
+	"github.com/Silo-Server/silo-server/internal/mail"
 	"github.com/Silo-Server/silo-server/internal/orgdomains"
 	"github.com/Silo-Server/silo-server/internal/promotions"
 )
@@ -56,6 +57,9 @@ type BloemDependencies struct {
 	PlatformAdminAuthorizer auth.PlatformAdminAuthorizer
 	AdminPeopleService      *adminpeople.Service
 	AdminPeopleWorker       *adminpeople.Worker
+	// SupportMail replaces the SMTP sender for the organization support
+	// routes' reset emails; nil sends through the server's mail settings.
+	SupportMail mail.Sender
 
 	// NativeStorageManagement shares retained domain services and the reader
 	// coordinator. Construction does not witness complete mutation readiness.

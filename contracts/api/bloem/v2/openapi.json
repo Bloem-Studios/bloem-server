@@ -6641,6 +6641,267 @@
         ],
         "type": "object"
       },
+      "BloemSupportConflict": {
+        "additionalProperties": false,
+        "properties": {
+          "capability": {
+            "description": "With capability_not_configured: the delivery this server cannot make.",
+            "enum": [
+              "email",
+              "link"
+            ],
+            "type": "string"
+          },
+          "current_revision": {
+            "description": "With authorization_state_changed: the person's security_revision, or the profile's revision for a profile write.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "reason": {
+            "description": "With target_protected: why the person is protected from this actor.",
+            "enum": [
+              "self",
+              "platform_account",
+              "organization_owner",
+              "organization_admin"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "type": "object"
+      },
+      "BloemSupportDevicesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "devices"
+        ],
+        "type": "object"
+      },
+      "BloemSupportProfileCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "group_id": {
+            "description": "An access group of this organization. Defaults to the group the account's other profiles inherit.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "description": "Unique among the account's profiles, case-insensitively. Surrounding space is trimmed.",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "BloemSupportProfileOnlyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/ProfileSummary"
+          }
+        },
+        "required": [
+          "profile"
+        ],
+        "type": "object"
+      },
+      "BloemSupportProfileRename": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "description": "The profile's own revision (profiles[].revision), not the person's security_revision.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "name"
+        ],
+        "type": "object"
+      },
+      "BloemSupportProfileResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "person": {
+            "$ref": "#/components/schemas/PersonSummary"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ProfileSummary"
+          }
+        },
+        "required": [
+          "profile",
+          "person"
+        ],
+        "type": "object"
+      },
+      "BloemSupportProfileRevision": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "description": "The profile's own revision (profiles[].revision), not the person's security_revision.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "type": "object"
+      },
+      "BloemSupportReset": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery": {
+            "enum": [
+              "email",
+              "link"
+            ],
+            "type": "string"
+          },
+          "delivery_status": {
+            "description": "not_requested for link. For email, sent or failed_or_unknown: the link is live either way, and issuing again replaces it.",
+            "enum": [
+              "not_requested",
+              "sent",
+              "failed_or_unknown"
+            ],
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "reset_url": {
+            "description": "link delivery only. A bearer credential: shown once, never stored in audit or logs. The host is the target organization's primary domain.",
+            "readOnly": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "delivery",
+          "delivery_status",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "BloemSupportResetRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery": {
+            "description": "email sends the link to the account's own address (valid 24 hours); link returns it once in this response for the administrator to hand over (valid 4 hours).",
+            "enum": [
+              "email",
+              "link"
+            ],
+            "type": "string"
+          },
+          "expected_revision": {
+            "description": "The person's security_revision. It is checked, not raised: issuing a link does not sign the person out.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "delivery"
+        ],
+        "type": "object"
+      },
+      "BloemSupportResetResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "person": {
+            "$ref": "#/components/schemas/PersonSummary"
+          },
+          "reset": {
+            "$ref": "#/components/schemas/BloemSupportReset"
+          }
+        },
+        "required": [
+          "reset",
+          "person"
+        ],
+        "type": "object"
+      },
+      "BloemSupportRevoked": {
+        "additionalProperties": false,
+        "properties": {
+          "sessions": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sessions"
+        ],
+        "type": "object"
+      },
+      "BloemSupportSessionsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "sessions": {
+            "description": "Live sessions, newest first, at most 50. No IP address and no impersonation sessions.",
+            "items": {
+              "$ref": "#/components/schemas/SessionView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sessions"
+        ],
+        "type": "object"
+      },
+      "BloemSupportSignOutResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "person": {
+            "$ref": "#/components/schemas/PersonSummary",
+            "description": "With the raised security_revision."
+          },
+          "revoked": {
+            "$ref": "#/components/schemas/BloemSupportRevoked"
+          }
+        },
+        "required": [
+          "person",
+          "revoked"
+        ],
+        "type": "object"
+      },
       "BloemTenantCreateBody": {
         "additionalProperties": false,
         "properties": {
@@ -7510,6 +7771,54 @@
           "reason_flags",
           "created_at",
           "read_at"
+        ],
+        "type": "object"
+      },
+      "DeviceProfileView": {
+        "additionalProperties": false,
+        "properties": {
+          "profile_id": {
+            "type": "string"
+          },
+          "profile_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "profile_name"
+        ],
+        "type": "object"
+      },
+      "DeviceView": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceProfileView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "device_id",
+          "name",
+          "platform",
+          "last_seen_at",
+          "profiles"
         ],
         "type": "object"
       },
@@ -9556,11 +9865,21 @@
           "group_name": {
             "type": "string"
           },
+          "has_pin": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string"
           },
+          "is_primary": {
+            "type": "boolean"
+          },
           "name": {
             "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
           },
           "updated_at": {
             "format": "date-time",
@@ -9572,7 +9891,10 @@
           "name",
           "group_id",
           "group_name",
-          "updated_at"
+          "updated_at",
+          "revision",
+          "has_pin",
+          "is_primary"
         ],
         "type": "object"
       },
@@ -10532,6 +10854,66 @@
           "playback_ticket",
           "hls_url",
           "stream_url"
+        ],
+        "type": "object"
+      },
+      "SessionView": {
+        "additionalProperties": false,
+        "properties": {
+          "auth_method": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "device_id": {
+            "type": "string"
+          },
+          "device_name": {
+            "type": "string"
+          },
+          "device_platform": {
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "profile_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "profile_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "device_name",
+          "device_id",
+          "device_platform",
+          "auth_method",
+          "profile_id",
+          "profile_name",
+          "created_at",
+          "last_seen_at",
+          "expires_at"
         ],
         "type": "object"
       },
@@ -20325,6 +20707,219 @@
         ]
       }
     },
+    "/api/bloem/v2/admin/organization/people/{account_id}/devices": {
+      "get": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too.",
+        "operationId": "listBloemOrganizationPersonDevices",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportDevicesResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self, platform_account, organization_owner or organization_admin): the person is protected from this actor. membership_not_active: the membership is invited or suspended. account_shared: the account belongs to more than one organization, so an account-wide effect is refused. authorization_state_changed: the stale revision; current_revision carries the current value."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "List the devices a member's profiles have used.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/people/{account_id}/devices/{device_id}": {
+      "delete": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Ends the person's sessions opened from the device and forgets its registration and per-device settings for their profiles in this organization. Does not raise the security revision and does not stop a stream that is playing. A device the person does not have is 404.",
+        "operationId": "signOutBloemOrganizationPersonDevice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self, platform_account, organization_owner or organization_admin): the person is protected from this actor. membership_not_active: the membership is invited or suspended. account_shared: the account belongs to more than one organization, so an account-wide effect is refused. authorization_state_changed: the stale revision; current_revision carries the current value."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Sign a member out of one device.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
     "/api/bloem/v2/admin/organization/people/{account_id}/memberships/current": {
       "patch": {
         "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match.",
@@ -20443,7 +21038,414 @@
         ]
       }
     },
+    "/api/bloem/v2/admin/organization/people/{account_id}/password-reset": {
+      "post": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. The administrator never types or sees a password. The link is Silo's reset link (one live link per account; issuing replaces it) and is completed on Silo's public reset route, which sets the password, clears the temporary flag and signs the person out everywhere. The response is Cache-Control: no-store. With delivery=link the person also receives an email notice, without the link. The server refuses before replacing a live link when the account cannot take the delivery.",
+        "operationId": "createBloemOrganizationPersonPasswordReset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemSupportResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportResetResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self, platform_account, organization_owner or organization_admin): the person is protected from this actor. membership_not_active: the membership is invited or suspended. account_shared: the account belongs to more than one organization, so an account-wide effect is refused. authorization_state_changed: the stale revision; current_revision carries the current value. password_login_disabled: the account signs in through an external provider. account_disabled: the account is disabled. email_unavailable: delivery=email and the account has no valid address. capability_not_configured (capability email or link): no mail server or no public URL."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: expected_revision is not positive or delivery is not email or link."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Issue a single-use password reset link for a member.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/people/{account_id}/profiles": {
+      "post": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. The account's profile limit applies. The administrator cannot set a PIN or parental fields.",
+        "operationId": "createBloemOrganizationPersonProfile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemSupportProfileCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportProfileResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self, platform_account, organization_owner or organization_admin): the person is protected from this actor. membership_not_active: the membership is invited or suspended. account_shared: the account belongs to more than one organization, so an account-wide effect is refused. authorization_state_changed: the stale revision; current_revision carries the current value. name_conflict: the account already has a profile with this name."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: name is empty, too long or has control characters, or group_id is not a group of this organization. profile_limit_reached: the account is at its profile limit."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Add a profile to a member.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
     "/api/bloem/v2/admin/organization/people/{account_id}/profiles/{profile_id}": {
+      "delete": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Removes the profile's watch history and personal collections; this cannot be undone. The primary profile cannot be removed. Sessions bound to the profile end.",
+        "operationId": "removeBloemOrganizationPersonProfile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemSupportProfileRevision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self, platform_account, organization_owner or organization_admin): the person is protected from this actor. membership_not_active: the membership is invited or suspended. account_shared: the account belongs to more than one organization, so an account-wide effect is refused. authorization_state_changed: the stale revision; current_revision carries the current value. primary_profile_protected: the primary profile cannot be removed."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: expected_revision is not positive."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Remove a member's profile.",
+        "tags": [
+          "administration"
+        ]
+      },
       "patch": {
         "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match.",
         "operationId": "updateBloemOrganizationPersonProfile",
@@ -20564,6 +21566,641 @@
           }
         ],
         "summary": "Assign an organization person profile to an access group.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/people/{account_id}/profiles/{profile_id}/details": {
+      "patch": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Uses the profile's own revision and does not sign the person out.",
+        "operationId": "renameBloemOrganizationPersonProfile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemSupportProfileRename"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportProfileResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self, platform_account, organization_owner or organization_admin): the person is protected from this actor. membership_not_active: the membership is invited or suspended. account_shared: the account belongs to more than one organization, so an account-wide effect is refused. authorization_state_changed: the stale revision; current_revision carries the current value. name_conflict: another profile of the account has this name. For a stale profile revision, authorization_state_changed with current_revision."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: expected_revision is not positive or name is invalid."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Rename a member's profile.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/people/{account_id}/profiles/{profile_id}/pin": {
+      "delete": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. The administrator never sets a PIN: the member or the household's main profile chooses a new one. Clearing the primary profile's PIN is allowed and audited. Clearing a profile that has no PIN succeeds. A profile locked by wrong guesses works at once.",
+        "operationId": "clearBloemOrganizationPersonProfilePin",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemSupportProfileRevision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportProfileOnlyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self, platform_account, organization_owner or organization_admin): the person is protected from this actor. membership_not_active: the membership is invited or suspended. account_shared: the account belongs to more than one organization, so an account-wide effect is refused. authorization_state_changed: the stale revision; current_revision carries the current value."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: expected_revision is not positive."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Clear a member's forgotten profile PIN.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/people/{account_id}/sessions": {
+      "delete": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Raises the person's security_revision, which ends membership-bound tokens and older account-login sessions, and revokes every session of the account, impersonation sessions included. The person's personal API keys survive.",
+        "operationId": "revokeBloemOrganizationPersonSessions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemSupportProfileRevision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportSignOutResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self, platform_account, organization_owner or organization_admin): the person is protected from this actor. membership_not_active: the membership is invited or suspended. account_shared: the account belongs to more than one organization, so an account-wide effect is refused. authorization_state_changed: the stale revision; current_revision carries the current value."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed: expected_revision is not positive."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: the store is unavailable. dependency_unavailable (Retry-After: 30): the sign-out took effect but a connected service could not be told; retrying is safe."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Sign a member out everywhere.",
+        "tags": [
+          "administration"
+        ]
+      },
+      "get": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too.",
+        "operationId": "listBloemOrganizationPersonSessions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportSessionsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self, platform_account, organization_owner or organization_admin): the person is protected from this actor. membership_not_active: the membership is invited or suspended. account_shared: the account belongs to more than one organization, so an account-wide effect is refused. authorization_state_changed: the stale revision; current_revision carries the current value."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "List a member's live sessions.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/people/{account_id}/sessions/{session_id}": {
+      "delete": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Does not raise the security revision. Succeeds when the session already ended. An impersonation session, or one that is not this person's, is 404.",
+        "operationId": "revokeBloemOrganizationPersonSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSupportConflict"
+                }
+              }
+            },
+            "description": "target_protected (reason self, platform_account, organization_owner or organization_admin): the person is protected from this actor. membership_not_active: the membership is invited or suspended. account_shared: the account belongs to more than one organization, so an account-wide effect is refused. authorization_state_changed: the stale revision; current_revision carries the current value."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Sign a member out of one session.",
         "tags": [
           "administration"
         ]

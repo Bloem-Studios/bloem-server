@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 951 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 270 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 280 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Retired alpha v1 API (410 Gone except the health and ready probes) | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -95,8 +95,18 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v2/admin/organization/people/policy-previews` | `previewBloemOrganizationPeoplePolicy` | Preview a policy command and obtain a bound confirmation token. |
 | `POST /api/bloem/v2/admin/organization/people/selections` | `createBloemOrganizationPeopleSelection` | Create an immutable expiring selection from people filters. |
 | `GET /api/bloem/v2/admin/organization/people/{account_id}/` | `getBloemOrganizationPerson` | Read an organization person and profile summary. |
+| `GET /api/bloem/v2/admin/organization/people/{account_id}/devices` | `listBloemOrganizationPersonDevices` | List the devices a member's profiles have used. |
+| `DELETE /api/bloem/v2/admin/organization/people/{account_id}/devices/{device_id}` | `signOutBloemOrganizationPersonDevice` | Sign a member out of one device. |
 | `PATCH /api/bloem/v2/admin/organization/people/{account_id}/memberships/current` | `updateBloemOrganizationPersonMembership` | Change an organization person membership status. |
+| `POST /api/bloem/v2/admin/organization/people/{account_id}/password-reset` | `createBloemOrganizationPersonPasswordReset` | Issue a single-use password reset link for a member. |
+| `POST /api/bloem/v2/admin/organization/people/{account_id}/profiles` | `createBloemOrganizationPersonProfile` | Add a profile to a member. |
+| `DELETE /api/bloem/v2/admin/organization/people/{account_id}/profiles/{profile_id}` | `removeBloemOrganizationPersonProfile` | Remove a member's profile. |
 | `PATCH /api/bloem/v2/admin/organization/people/{account_id}/profiles/{profile_id}` | `updateBloemOrganizationPersonProfile` | Assign an organization person profile to an access group. |
+| `PATCH /api/bloem/v2/admin/organization/people/{account_id}/profiles/{profile_id}/details` | `renameBloemOrganizationPersonProfile` | Rename a member's profile. |
+| `DELETE /api/bloem/v2/admin/organization/people/{account_id}/profiles/{profile_id}/pin` | `clearBloemOrganizationPersonProfilePin` | Clear a member's forgotten profile PIN. |
+| `DELETE /api/bloem/v2/admin/organization/people/{account_id}/sessions` | `revokeBloemOrganizationPersonSessions` | Sign a member out everywhere. |
+| `GET /api/bloem/v2/admin/organization/people/{account_id}/sessions` | `listBloemOrganizationPersonSessions` | List a member's live sessions. |
+| `DELETE /api/bloem/v2/admin/organization/people/{account_id}/sessions/{session_id}` | `revokeBloemOrganizationPersonSession` | Sign a member out of one session. |
 | `GET /api/bloem/v2/admin/organization/policy-decisions` | `listBloemOrganizationPolicyDecisions` | Page sanitized organization policy decision explanations. |
 | `GET /api/bloem/v2/admin/organization/policy-decisions/{id}` | `getBloemOrganizationPolicyDecision` | Read a sanitized organization policy decision explanation. |
 | `POST /api/bloem/v2/admin/platform/accounts` | `createBloemPlatformAccount` | Create an account, optionally on a plan. |
@@ -299,7 +309,7 @@ security declaration and the wire reference before sending credentials or mutati
 
 ## Inventory entries without typed OpenAPI
 
-The current inventory identifies **0** explicit method/path entries without a
+The current inventory identifies **4** explicit method/path entries without a
 typed native declaration. They require handler-level verification before generating
 client calls. A method missing from a documented path still appears here. This is
 documentation debt, not an assertion that these routes are unavailable or safe for
@@ -307,6 +317,10 @@ unauthenticated callers. Optional groups absent from this inventory can add furt
 
 | Observed method and path | Inventory source |
 | --- | --- |
+| `GET /api/bloem/v2/admin/organization/people/{account_id}/devices/` | `internal/api/router_bloem.go` |
+| `POST /api/bloem/v2/admin/organization/people/{account_id}/profiles/` | `internal/api/router_bloem.go` |
+| `DELETE /api/bloem/v2/admin/organization/people/{account_id}/sessions/` | `internal/api/router_bloem.go` |
+| `GET /api/bloem/v2/admin/organization/people/{account_id}/sessions/` | `internal/api/router_bloem.go` |
 
 ## Unresolved mount dispatchers
 

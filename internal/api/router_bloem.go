@@ -60,6 +60,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	var adminMW *apimw.AdminContextMiddleware
 	var platformHandler *handlers.BloemAdminPlatformHandler
 	var peopleHandler *handlers.BloemAdminPeopleHandler
+	var supportHandler *handlers.BloemOrganizationSupportHandler
 	var organizationHandler *handlers.BloemAdminOrganizationHandler
 	var explainHandler *handlers.BloemPolicyExplainHandler
 	var entitlementHandler *handlers.EntitlementTemplatesHandler
@@ -97,6 +98,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 		if deps.DB != nil {
 			peopleHandler.SetCohortStore(entitlements.NewTemplateStore(deps.DB))
 		}
+		supportHandler = newBloemSupportHandler(deps, peopleService, accountPolicyHandler)
 	}
 	// Compatibility Applications administration: platform-scoped lifecycle
 	// state and controls for the removable compatibility applications. The
@@ -142,7 +144,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			UpgradePrompt:  bloemUpgradePromptHandler(deps),
 			NewArrivals:    bloemNewArrivalsHandler(deps),
 			Client:         newBloemClientSurface(deps, authMW, tenantMW, searchProvider, liveTVAdmin),
-			Platform:       platformHandler, People: peopleHandler, Organization: organizationHandler,
+			Platform:       platformHandler, People: peopleHandler, Support: supportHandler, Organization: organizationHandler,
 			Explain:     explainHandler,
 			Entitlement: entitlementHandler, AccountPolicy: accountPolicyHandler,
 			Storefront: newBloemPlatformStorefrontHandlers(deps, accountPolicyHandler,
@@ -170,6 +172,7 @@ type bloemRouteSurfaces struct {
 	Client                 bloemClientSurface
 	Platform               *handlers.BloemAdminPlatformHandler
 	People                 *handlers.BloemAdminPeopleHandler
+	Support                *handlers.BloemOrganizationSupportHandler
 	Organization           *handlers.BloemAdminOrganizationHandler
 	Explain                *handlers.BloemPolicyExplainHandler
 	Entitlement            *handlers.EntitlementTemplatesHandler
@@ -338,6 +341,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 						r.Get("/", people.HandleGetPerson)
 						r.Patch("/memberships/current", people.HandleUpdateMembership)
 						r.Patch("/profiles/{profile_id}", people.HandleUpdateProfile)
+						mountBloemOrganizationSupportPeople(r, surfaces.Support)
 					})
 				})
 			}
@@ -433,5 +437,29 @@ func methodOnly(method string, next http.HandlerFunc) http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		_, _ = w.Write([]byte("{\"error\":\"method_not_allowed\",\"message\":\"Method not allowed\"}\n"))
+	})
+}
+
+// mountBloemOrganizationSupportPeople mounts the support routes about one
+// person of the organization, inside /organization/people/{account_id}.
+func mountBloemOrganizationSupportPeople(r chi.Router, support *handlers.BloemOrganizationSupportHandler) {
+	if support == nil {
+		return
+	}
+	r.Post("/password-reset", support.HandleResetPassword)
+	r.Route("/sessions", func(r chi.Router) {
+		r.Get("/", support.HandleListSessions)
+		r.Delete("/", support.HandleRevokeSessions)
+		r.Delete("/{session_id}", support.HandleRevokeSession)
+	})
+	r.Route("/devices", func(r chi.Router) {
+		r.Get("/", support.HandleListDevices)
+		r.Delete("/{device_id}", support.HandleDeleteDevice)
+	})
+	r.Route("/profiles", func(r chi.Router) {
+		r.Post("/", support.HandleCreateProfile)
+		r.Patch("/{profile_id}/details", support.HandleRenameProfile)
+		r.Delete("/{profile_id}/pin", support.HandleClearProfilePIN)
+		r.Delete("/{profile_id}", support.HandleRemoveProfile)
 	})
 }

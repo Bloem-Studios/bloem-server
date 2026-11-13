@@ -110,6 +110,7 @@ func registerBloemAll(reg *Registry) {
 	registerBloemProfileCredentialDocument(reg)
 	registerBloemOrganizationWorkflowDocument(reg)
 	registerBloemOrganizationAdministrationDocument(reg)
+	registerBloemOrganizationSupportDocument(reg)
 	registerBloemPlatformAdministrationDocument(reg)
 	registerBloemEngagementDocument(reg)
 	registerBloemSeasonalViewerDocument(reg)
