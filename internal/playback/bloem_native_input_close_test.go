@@ -11,13 +11,13 @@ import (
 // closeRaceInput is a source input that records when it is closed. Like a
 // real input, it runs the child on the execution lifetime Open received.
 type closeRaceInput struct {
-	ctx    context.Context
+	run    func(consume func(context.Context, string) error) error
 	once   sync.Once
 	closed chan struct{}
 }
 
 func (i *closeRaceInput) Run(consume func(context.Context, string) error) error {
-	return consume(i.ctx, "pipe:0")
+	return i.run(consume)
 }
 
 func (i *closeRaceInput) Close() error {
@@ -47,7 +47,9 @@ func TestBloemCloseDuringRestartClosesPreparedInput(t *testing.T) {
 					close(opening)
 					<-releaseOpen
 				}
-				input := &closeRaceInput{ctx: ctx, closed: make(chan struct{})}
+				input := &closeRaceInput{closed: make(chan struct{}), run: func(consume func(context.Context, string) error) error {
+					return consume(ctx, "pipe:0")
+				}}
 				inputs <- input
 				return input, nil
 			}},
