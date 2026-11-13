@@ -1,7 +1,8 @@
 # How stored movies play
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against
-> `main` at `b6039036d` and checked again on 2026-11-11, after Silo retired its v1 API.
+> `main` at `b6039036d`, checked again on 2026-11-11, after Silo retired its v1 API, and
+> updated on 2026-11-13 for the server log in the merge `06a12fb0c`.
 > Native video is a Bloem addition: it plays movies kept in
 > [native storage](bloem-native-storage.md) (S3 buckets, for example) through
 > Silo's playback planner and delivery handlers, using Silo's
@@ -20,7 +21,7 @@ not work yet.
 The app gets Silo's usual playback plan, on Silo's `/api/v2`. The
 addresses in it point at Bloem. The storage service's address, its keys, its
 headers and Bloem's private tool addresses never appear in a plan, the catalog, a
-saved recipe or a grant to a worker. The web app and Bloem's apps need nothing
+saved recipe, a grant to a worker or the server's log. The web app and Bloem's apps need nothing
 special for stored movies.
 
 ## Four ways a stored movie plays
@@ -117,8 +118,12 @@ Native video uses Silo's ordinary playback plan (protocol v3) and HTTP delivery
 contract, on Silo's `/api/v2` (the token path accepts only `/api/v2` since Silo retired its
 v1 API). Its catalog identity is an opaque
 `bloem-storage:` reference. Provider URLs, headers, credentials and private tool
-inputs never become client stream URLs, catalog paths, durable recipes or worker
-grants.
+inputs never become client stream URLs, catalog paths, durable recipes, worker
+grants or log lines. A native start does not log its FFmpeg command. Silo's
+transcode restart logs its command, so for a native source it logs the command
+built from the catalog reference; Bloem's own lines after the log line hand FFmpeg
+the private input instead
+(`TestNativeInputRestartLogNamesCatalogFileNotPrivateArgument`).
 
 ### Source admission
 
