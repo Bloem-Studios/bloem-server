@@ -2,7 +2,8 @@
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-09
 > and checked against `main` at `5a93e8b41`; its tenant identity section was added on
-> 2026-11-13 with the merge of Silo through `8d68c470d` (`e50da6f2d`). Adapters are Bloem's own: they are how Bloem changes Silo's
+> 2026-11-13 with the merge of Silo through `8d68c470d` (`e50da6f2d`), and its rekor compatibility
+> copy with the merge of Silo through `2e05489fb` (`c64e7ee95`). Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
 > Its routes were checked again on 2026-11-11, after Silo retired its v1 API, and its
@@ -657,6 +658,22 @@ wraps that middleware with `bloemWithTenantIdentityGate` right after Silo define
 and both paths pass the gate once (`TestBloemNotificationDisplayRunsTenantIdentity`).
 When Silo restructures such a chain, the gate goes back on its own line around Silo's
 middleware, never inside Silo's lines.
+
+### Rekor compatibility copy
+
+Silo's release-signature check (#4055) requires `github.com/sigstore/rekor` v1.5.2 through
+`sigstore-go`'s test CA, which Silo's `pluginsigtest` helper imports. Rekor v1.5.2's
+`pkg/pki/pgp` imports `golang.org/x/crypto/openpgp` (GO-2026-5932), which fails Bloem
+CI's reachable-vulnerability scan; Silo's own scan fails on it too. Rekor v1.5.4 moved
+that package to `github.com/ProtonMail/go-crypto`, later releases need Go 1.27, and
+requiring v1.5.4 would raise about thirty of Silo's module requirements. So Bloem keeps
+Silo's `require` lines and adds its own `replace github.com/sigstore/rekor v1.5.2 =>
+./internal/compat/sigstore-rekor`: rekor v1.5.2, trimmed to the packages the build and its
+tests import, with v1.5.4's `pgp.go` and `github.com/ProtonMail/go-crypto` v1.4.1 and
+`github.com/cloudflare/circl` v1.6.3 added to its `go.mod`. The replace names v1.5.2, so
+it stops applying when Silo requires another rekor version; then delete the directory,
+the replace line and the two indirect requirements it added. Its
+[README](../../internal/compat/sigstore-rekor/README.md) says what changed.
 
 ### Native audiobook boundary
 
