@@ -419,18 +419,20 @@ func (m *TranscodeManager) RestartSessionLocked(ctx context.Context, sessionID s
 // RestartSegmentLocked resolves and restarts one missing HLS segment under the
 // per-session lifecycle lock. Copy-video resolution reads the current manifest,
 // so keeping resolution and restart inside the same lock preserves the mapping
-// it observed.
+// it observed. seenGeneration is the GenerationStartedAt of the progress the
+// restart was decided on (see TranscodeSession.RestartSegmentSince).
 func (m *TranscodeManager) RestartSegmentLocked(
 	ctx context.Context,
 	sessionID string,
 	ts *TranscodeSession,
 	segNum int,
+	seenGeneration time.Time,
 ) (SegmentRecoveryTarget, bool, error) {
 	var target SegmentRecoveryTarget
 	var ok bool
 	err := m.restartSessionLocked(sessionID, ts, func() error {
 		var restartErr error
-		target, ok, restartErr = ts.RestartSegment(ctx, segNum)
+		target, ok, restartErr = ts.RestartSegmentSince(ctx, segNum, seenGeneration)
 		return restartErr
 	})
 	return target, ok, err
@@ -1004,6 +1006,7 @@ func (m *TranscodeManager) doReconstructTranscode(ctx context.Context, sessionID
 	cfg := m.runtimeConfig()
 	outputDir := reconstructionOutputDir(cfg.TranscodeDir, sessionID, card.OutputSubdir)
 	opts := card.TranscodeOpts(outputDir, cfg.FFmpegPath, m.logSink())
+	opts.Reconstructed = true
 	if m.RestoreInputSource != nil {
 		if err := m.RestoreInputSource(ctx, &card, &opts); err != nil {
 			return nil, err

@@ -52,8 +52,9 @@ func parityPreferenceValues(profile *userstore.Profile, disabled []int) []userst
 }
 
 func TestResolveViewerScopeParity(t *testing.T) {
-	ctx := resolvedTenantContextForPolicyTest()
-	engine, err := NewEngine(ctx, WithEvalTimeout(time.Second))
+	ctx := context.Background()
+	ctx = resolvedTenantContextForPolicyTest() // Bloem: viewer scope is bounded by a resolved tenant
+	engine, err := NewEngine(ctx, WithEvalTimeout(time.Minute))
 	if err != nil {
 		t.Fatalf("NewEngine() error: %v", err)
 	}

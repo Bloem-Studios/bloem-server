@@ -30,6 +30,37 @@ func (s *PostgresUserStore) ListProfilesInTransaction(ctx context.Context, tx pg
 	return profiles, err
 }
 
+// bloemCreateProfile is createProfile's insert on Bloem's schema, where a
+// profile row needs the organization and access group resolveProfileTenancy
+// stamped on it: Silo's columns, then organization_id and access_group_id. It
+// always handles the write; createProfile keeps Silo's own insert below its
+// hook. TestBloemProfileQueriesKeepSiloColumns fails when Silo's insert gains a
+// column this one lacks.
+func bloemCreateProfile(ctx context.Context, exec preferenceSettingsExecutor, userID int, p userstore.Profile) (bool, error) {
+	_, err := exec.Exec(ctx, `
+		INSERT INTO user_profiles (
+			id, user_id, name, avatar, pin_hash, is_child, is_primary, max_content_rating, max_advisory_age,
+			require_advisory_age, requests_blocked,
+			quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
+			auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview,
+			library_restrictions_enabled,
+			show_forced_subtitles, max_playback_quality, created_at, updated_at,
+			organization_id, access_group_id
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9::smallint, 0), $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
+		p.ID, userID, p.Name, p.Avatar, p.PINHash, p.IsChild, p.IsPrimary, p.MaxContentRating, p.MaxAdvisoryAge,
+		p.RequireAdvisoryAge, p.RequestsBlocked,
+		p.QualityPreference, p.Language, p.PreferredMetadataLanguage, p.SubtitleLanguage, p.SubtitleMode,
+		p.AutoSkipIntro, p.AutoSkipCredits, p.AutoSkipRecap, p.AutoPlayNextPreview,
+		p.LibraryRestrictionsEnabled,
+		p.ShowForcedSubtitles, p.MaxPlaybackQuality, p.CreatedAt, p.UpdatedAt,
+		p.OrganizationID, p.AccessGroupID,
+	)
+	if err != nil {
+		return true, fmt.Errorf("inserting profile %s: %w", p.ID, err)
+	}
+	return true, replaceProfileAllowedLibraries(ctx, exec, userID, p.ID, p.AllowedLibraryIDs)
+}
+
 // resolveProfileTenancy stamps a new profile with its organization and access
 // group: a profile written while its account is created joins the creation
 // organization in the account's group; otherwise a legacy caller (no

@@ -1037,6 +1037,10 @@ func writeCompatTranscodeError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusUnsupportedMediaType, "TranscodeUnsupported", err.Error())
 	case errors.Is(err, errRemoteTranscodeStartFailed), errors.Is(err, errRemoteSoftwareToneMapStartFailed):
 		writeError(w, http.StatusBadGateway, "TranscodeStartFailed", "No remote transcode executor could start the stream")
+	case errors.Is(err, playback.ErrKeyframePlanChanged):
+		// No rebuild can serve the playlist the player holds, so the session
+		// is gone, as for one that has ended.
+		writeError(w, http.StatusNotFound, "NotFound", "Transcode session not found")
 	case errors.Is(err, playback.ErrManifestNotReady):
 		writeError(w, http.StatusServiceUnavailable, "NotReady", "Transcode playlist not ready")
 	case errors.Is(err, playback.ErrTranscodeFailed):
@@ -1295,6 +1299,7 @@ func (h *PlaybackHandler) HandleHLSSegment(w http.ResponseWriter, r *http.Reques
 					playSession.UpstreamSessionID,
 					transcodeSession,
 					segNum,
+					decision.Progress.GenerationStartedAt,
 				)
 				// A restart skipped because the request ended is not a failure.
 				if restartErr != nil && !errors.Is(restartErr, playback.ErrManifestNotReady) && !errors.Is(restartErr, r.Context().Err()) {
@@ -1613,6 +1618,30 @@ func (h *PlaybackHandler) HandleSubtitleStream(w http.ResponseWriter, r *http.Re
 		requestedFormat = "vtt"
 	}
 
+	// A stored subtitle's issued URL names it by ID, so deleting an earlier
+	// stored subtitle cannot move the URL onto whichever one now holds its
+	// stream index. A URL without the ID (built by the client) resolves by
+	// position below.
+	if storedIDs := newCaseInsensitiveQuery(r.URL.Query()).Values(storedSubtitleIDQuery); len(storedIDs) > 0 {
+		storedID, parseErr := strconv.Atoi(storedIDs[0])
+		if parseErr != nil {
+			// The server never issues a malformed ID.
+			writeError(w, http.StatusNotFound, "NotFound", "Subtitle not found")
+			return
+		}
+		sub, lookupErr := h.findStoredSubtitle(r.Context(), file.ID, storedID)
+		if lookupErr != nil {
+			writeError(w, http.StatusInternalServerError, "ServerError", "Failed to load subtitle")
+			return
+		}
+		if sub == nil {
+			writeError(w, http.StatusNotFound, "NotFound", "Subtitle not found")
+			return
+		}
+		h.serveStoredSubtitle(w, r, *sub, requestedFormat, segmentPTSOffset)
+		return
+	}
+
 	// Check for external subtitles first.
 	for i, sub := range file.ExternalSubtitles {
 		if externalSubtitleRouteIndex(file, i) == trackIndex {
@@ -1665,22 +1694,7 @@ func (h *PlaybackHandler) HandleSubtitleStream(w http.ResponseWriter, r *http.Re
 		baseIndex := computeDownloadedSubBaseIndex(file)
 		downloadedIndex := trackIndex - baseIndex
 		if downloadedIndex >= 0 && downloadedIndex < len(downloaded) {
-			dl := downloaded[downloadedIndex]
-			data, err := h.SubtitleBlobs.Get(r.Context(), dl.S3Key)
-			if err != nil {
-				writeError(w, http.StatusInternalServerError, "ServerError", "Failed to load subtitle from storage")
-				return
-			}
-			// Apply the stored timing correction before conversion or windowing.
-			data, err = subtitles.DeliveryBytes(&dl, data)
-			if err != nil {
-				writeError(w, http.StatusInternalServerError, "ServerError", "Failed to prepare subtitle")
-				return
-			}
-			// The correction can change behind the same URL.
-			w.Header().Set("Cache-Control", "private, no-cache")
-			h.subtitlePlayed(r, subtitles.SyncTarget{MediaFileID: file.ID, StoredID: dl.ID})
-			h.deliverTextSubtitle(w, r, string(dl.Format), data, requestedFormat, segmentPTSOffset)
+			h.serveStoredSubtitle(w, r, downloaded[downloadedIndex], requestedFormat, segmentPTSOffset)
 			return
 		}
 	}
@@ -2058,22 +2072,30 @@ func (h *PlaybackHandler) cleanupPlaySession(
 			_ = h.sessionMgr.StopSession(playSession.UpstreamSessionID)
 		}
 	}
+	// A rebuild or a fresh start holds the session lifecycle lock from before it
+	// starts FFmpeg until it has registered the transcode, so the close above
+	// finds nothing while one is in flight. Wait for it and close what it
+	// registered: the play is over, and nothing else would. The close above
+	// stays outside the lock because a restart holds the lock through its hook,
+	// which can wait on its FFmpeg context. That close cancels the context at
+	// once; one under the lock would wait out restartHookTimeout first.
+	unlock := h.tm.LockSessionLifecycle(playSession.UpstreamSessionID)
+	h.tm.CloseTranscodeSession(playSession.UpstreamSessionID, "")
 	// Deliberate stop: drop the node recipe so a buffered/retrying request after
 	// a node restart cannot reconstruct a fresh ffmpeg for this stopped session.
 	// Best effort and bounded — never fail teardown on a recipe-store hiccup.
-	// The session lifecycle lock orders the delete after a transcode move that
-	// is rewriting the record (commitCompatTranscodeMove).
+	// The lock also orders the delete after a transcode move that is rewriting
+	// the record (commitCompatTranscodeMove).
 	if h.RecipeNodeStore != nil {
-		unlock := h.tm.LockSessionLifecycle(playSession.UpstreamSessionID)
 		delCtx, cancel := context.WithTimeout(context.WithoutCancel(context.Background()), 2*time.Second)
 		err := h.RecipeNodeStore.Delete(delCtx, playSession.UpstreamSessionID)
 		cancel()
-		unlock()
 		if err != nil {
 			slog.WarnContext(ctx, "delete node transcode recipe failed", "component", "jellycompat", "error", err,
 				"playback_session_id", playSession.UpstreamSessionID)
 		}
 	}
+	unlock()
 	// Clients often drop the connection right after reporting a stop, so detach
 	// the sync from request cancellation to keep the admin view accurate.
 	h.syncSessionsNow(context.WithoutCancel(ctx), "compat_stop")
@@ -3804,10 +3826,9 @@ func (h *PlaybackHandler) restartCompatTranscodeForAudioSelection(
 		// recipe written before negotiated audio was.
 		transcodeSession.SetRequireAudioTrack(compatRequiresAudioTrack(source))
 		transcodeSession.SetSourceAudioChannels(sourceAudioChannels)
-		startSegment := 0
-		if segmentDuration := transcodeSession.Opts().SegmentDuration; segmentDuration > 0 && positionSeconds > 0 {
-			startSegment = int(positionSeconds / float64(segmentDuration))
-		}
+		// A keyframe-planned session's segments vary in length, so the
+		// session maps the position to its segment.
+		startSegment := transcodeSession.SegmentAt(positionSeconds)
 		if err := h.tm.RestartSessionLocked(ctx, playSession.UpstreamSessionID, transcodeSession, positionSeconds, startSegment); err != nil {
 			transcodeSession.SetAudioTrackIndex(previousOpts.AudioTrackIndex)
 			transcodeSession.SetRequireAudioTrack(previousOpts.RequireAudioTrack)
@@ -3831,8 +3852,9 @@ func (h *PlaybackHandler) restartCompatTranscodeForAudioSelection(
 		// rebuilds ffmpeg from the newly selected audio track rather than the
 		// stale original. SetAudioTrackIndex mutated the live opts, so read them
 		// back. Best-effort: a stale recipe only costs node-restart resilience,
-		// not the live stream.
-		opts := transcodeSession.Opts()
+		// not the live stream. A keyframe-planned session's recipe keeps its
+		// start at the beginning, so a rebuild serves the same planned playlist.
+		opts := transcodeSession.RecipeOpts()
 		if err := h.persistTranscodeRecipe(context.WithoutCancel(ctx), playSession.ID, playSession.UpstreamSessionID, opts); err != nil {
 			slog.WarnContext(ctx, "persist audio-restarted transcode recipe", "component", "jellycompat", "error", err,
 				"play_session_id", playSessionFingerprint(playSession.ID), "playback_session_id", playSession.UpstreamSessionID)
@@ -4521,6 +4543,45 @@ func seekSecondsFromTicks(seekStr string) float64 {
 		return 0
 	}
 	return float64(ticks) / 10_000_000
+}
+
+// storedSubtitleIDQuery names the stored subtitle a jellycompat subtitle
+// DeliveryUrl was issued for (see storedSubtitleDeliveryURL).
+const storedSubtitleIDQuery = "StoredSubtitleId"
+
+// findStoredSubtitle looks up a stored subtitle by the ID an issued URL
+// carries, returning nil when it is not found. Only the file's own stored
+// subtitles match, so an ID from another file is not found.
+func (h *PlaybackHandler) findStoredSubtitle(ctx context.Context, fileID, id int) (*subtitles.DownloadedSubtitle, error) {
+	if h.SubtitleRepo == nil || h.SubtitleBlobs == nil {
+		return nil, nil
+	}
+	sub, err := h.SubtitleRepo.GetDownloadedSubtitle(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if sub == nil || sub.MediaFileID != fileID {
+		return nil, nil
+	}
+	return sub, nil
+}
+
+func (h *PlaybackHandler) serveStoredSubtitle(w http.ResponseWriter, r *http.Request, dl subtitles.DownloadedSubtitle, requestedFormat string, segmentPTSOffset int64) {
+	data, err := h.SubtitleBlobs.Get(r.Context(), dl.S3Key)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "ServerError", "Failed to load subtitle from storage")
+		return
+	}
+	// Apply the stored timing correction before conversion or windowing.
+	data, err = subtitles.DeliveryBytes(&dl, data)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "ServerError", "Failed to prepare subtitle")
+		return
+	}
+	// The correction can change behind the same URL.
+	w.Header().Set("Cache-Control", "private, no-cache")
+	h.subtitlePlayed(r, subtitles.SyncTarget{MediaFileID: dl.MediaFileID, StoredID: dl.ID})
+	h.deliverTextSubtitle(w, r, string(dl.Format), data, requestedFormat, segmentPTSOffset)
 }
 
 // computeDownloadedSubBaseIndex returns the first index available for downloaded subtitles.

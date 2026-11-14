@@ -392,7 +392,7 @@ func (m *SessionManager) tenantTranscodeCountLocked(tenantID string) int {
 	for _, s := range m.sessions {
 		if s.TenantID == tenantID &&
 			(s.PlayMethod == PlayTranscode || s.replacementPlayMethod == PlayTranscode) &&
-			m.countsTowardLimitsLocked(s, now) {
+			m.countsTowardLimitsLocked(s, now, noPausedSlotCap) {
 			count++
 		}
 	}

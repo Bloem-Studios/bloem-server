@@ -146,6 +146,21 @@ func prepareTranscodeInput(ctx context.Context, opts TranscodeOpts) (context.Con
 	}
 }
 
+// bloemFinishExecutionInput ends a transcode run's source input once its FFmpeg
+// has been waited for: what is left of the process group is killed and the
+// source is joined, with their errors added to waitErr. A run without a source
+// input keeps waitErr. monitorFFmpeg calls it right after cmd.Wait, before done
+// closes, so no restart has replaced the run's input yet.
+func (s *TranscodeSession) bloemFinishExecutionInput(cmd *exec.Cmd, waitErr error) error {
+	s.mu.Lock()
+	input := s.executionInput
+	s.mu.Unlock()
+	if input == nil {
+		return waitErr
+	}
+	return input.complete(errors.Join(waitErr, finishTranscodeInputProcess(cmd)))
+}
+
 func (i *transcodeExecutionInput) complete(childErr error) error {
 	if i == nil {
 		return childErr

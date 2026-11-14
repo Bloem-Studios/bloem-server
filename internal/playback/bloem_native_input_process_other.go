@@ -9,3 +9,4 @@ import (
 
 func configureTranscodeInputProcess(_ *exec.Cmd)                       {}
 func waitTranscodeInputProcess(_ context.Context, cmd *exec.Cmd) error { return cmd.Wait() }
+func finishTranscodeInputProcess(_ *exec.Cmd) error                    { return nil }

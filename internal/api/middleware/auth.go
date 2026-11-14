@@ -66,6 +66,11 @@ type AuthMiddleware struct {
 
 	apiKeyLastUsed  *auth.APIKeyLastUsedTracker
 	sessionLastSeen *auth.SessionLastSeenTracker
+	// streamReference verifies a playback plan's `st` on the native delivery
+	// routes and streamReferenceSession checks the attempt it names; either
+	// nil disables RequireStreamReferenceAuth's reference path.
+	streamReference        StreamReferenceVerifier
+	streamReferenceSession StreamReferenceSession
 
 	// directProfileRoutes decides whether a direct-profile session may reach
 	// the route a request matched. Nil fails closed: every direct-profile

@@ -30,9 +30,16 @@ func waitTranscodeInputProcess(ctx context.Context, cmd *exec.Cmd) error {
 	if !stop() {
 		<-joined
 	}
-	cleanupErr := killTranscodeInputGroup(cmd)
-	if errors.Is(cleanupErr, os.ErrProcessDone) {
-		cleanupErr = nil
+	return errors.Join(err, finishTranscodeInputProcess(cmd))
+}
+
+// finishTranscodeInputProcess kills what is left of a source-input process
+// group once Wait has returned. Cancellation needs no extra step: the command's
+// context ends the group through cmd.Cancel (configureTranscodeInputProcess).
+func finishTranscodeInputProcess(cmd *exec.Cmd) error {
+	err := killTranscodeInputGroup(cmd)
+	if errors.Is(err, os.ErrProcessDone) {
+		return nil
 	}
-	return errors.Join(err, cleanupErr)
+	return err
 }

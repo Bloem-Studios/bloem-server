@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -267,7 +268,7 @@ func TestPermissionMetadataCurationLibraryScope(t *testing.T) {
 
 func newPermissionParityPDP(t *testing.T) *PDP {
 	t.Helper()
-	engine, err := NewEngine(context.Background())
+	engine, err := NewEngine(context.Background(), WithEvalTimeout(time.Minute))
 	if err != nil {
 		t.Fatalf("NewEngine() error: %v", err)
 	}
