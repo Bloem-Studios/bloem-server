@@ -125,6 +125,11 @@ The People writes that existed before (membership suspend and reactivate, the pr
 access-group move, the bulk jobs) use the same rule. A bulk job skips a protected person with
 `target_protected`.
 
+Moving a profile to another access group (one at a time or in a bulk job) advances the
+account's `access_policy_revision` and no longer raises the membership's `security_revision`.
+It used to, which ended the member's older sign-ins through the organization revocation
+trigger; a group move is an ordinary support action and must not sign anyone out.
+
 Stream stop and message have a narrower rule (`adminpeople.JudgeStream`): the actor's own
 stream and a platform account's stream are refused, and any other person's stream may be
 stopped.
@@ -137,6 +142,7 @@ stopped.
 | Sign out everywhere | the person's `security_revision` | yes |
 | Sign out one session or device | none | no |
 | Rename, clear PIN, remove | the profile's `revision` | yes, the profile's, by trigger |
+| Move a profile to another access group | the person's `security_revision` | no (the account policy revision is) |
 | Add a profile | none | no |
 | Stop, message | none (a message keeps Silo's `command_id` and `sequence`) | n/a |
 

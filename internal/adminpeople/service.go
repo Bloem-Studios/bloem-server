@@ -1508,10 +1508,10 @@ func (s *Service) executeBulkRecord(ctx context.Context, tx pgx.Tx, organization
 		if _, err := tx.Exec(ctx, `UPDATE user_profiles SET access_group_id=$3,updated_at=now() WHERE organization_id=$1 AND user_id=$2 AND access_group_id<>$3`, organizationID, snapshot.AccountID, *action.GroupID); err != nil {
 			return "", "", err
 		}
-		if err := bumpPersonRevisions(ctx, tx, membershipID, snapshot.AccountID); err != nil {
+		if err := bumpAccessPolicyRevision(ctx, tx, membershipID); err != nil {
 			return "", "", err
 		}
-		if err := recordPeopleAudit(ctx, tx, actorID, "people.bulk_group_assigned", "membership", membershipID.String(), organizationID, snapshot.AccountID, revision, revision+1, "success", map[string]any{"changed_profiles": changed}, map[string]any{"group_id": *action.GroupID, "changed_profiles": changed}); err != nil {
+		if err := recordPeopleAudit(ctx, tx, actorID, "people.bulk_group_assigned", "membership", membershipID.String(), organizationID, snapshot.AccountID, revision, revision, "success", map[string]any{"changed_profiles": changed}, map[string]any{"group_id": *action.GroupID, "changed_profiles": changed}); err != nil {
 			return "", "", err
 		}
 		return "succeeded", "", nil
@@ -1743,14 +1743,17 @@ func sameProfileSnapshots(current, want []profileSnapshot) bool {
 	return true
 }
 
-func bumpPersonRevisions(ctx context.Context, tx pgx.Tx, membershipID uuid.UUID, accountID int) error {
-	if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET security_revision=security_revision+1,updated_at=now() WHERE id=$1`, membershipID); err != nil {
+// bumpAccessPolicyRevision advances the account's policy revision after a
+// profile moved between access groups, so cached policy is re-read. It does not
+// raise the membership's security revision: that ends the member's sessions
+// (the organization revocation trigger), and moving a profile between groups is
+// an ordinary support action that must not sign the member out.
+func bumpAccessPolicyRevision(ctx context.Context, tx pgx.Tx, membershipID uuid.UUID) error {
+	if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET updated_at=now() WHERE id=$1`, membershipID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=(SELECT account_id FROM organization_memberships WHERE id=$1)`, membershipID); err != nil {
-		return err
-	}
-	return nil
+	_, err := tx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=(SELECT account_id FROM organization_memberships WHERE id=$1)`, membershipID)
+	return err
 }
 
 func recordPeopleAudit(ctx context.Context, tx pgx.Tx, actorID int, action, targetType, targetID string, organizationID uuid.UUID, accountID int, beforeRevision, afterRevision int64, outcome string, before, after map[string]any) error {
@@ -1902,10 +1905,10 @@ func (s *Service) UpdateProfileGroupInTransaction(ctx context.Context, tx pgx.Tx
 		if _, err = tx.Exec(ctx, `UPDATE user_profiles SET access_group_id=$4,updated_at=now() WHERE organization_id=$1 AND user_id=$2 AND id=$3`, organizationID, accountID, profileID, groupID); err != nil {
 			return PersonSummary{}, err
 		}
-		if err = bumpPersonRevisions(ctx, tx, membershipID, accountID); err != nil {
+		if err = bumpAccessPolicyRevision(ctx, tx, membershipID); err != nil {
 			return PersonSummary{}, err
 		}
-		if err = recordPeopleAudit(ctx, tx, actorID, "people.profile_group_updated", "profile", profileID, organizationID, accountID, revision, revision+1, "success", map[string]any{"group_id": beforeGroup}, map[string]any{"group_id": groupID}); err != nil {
+		if err = recordPeopleAudit(ctx, tx, actorID, "people.profile_group_updated", "profile", profileID, organizationID, accountID, revision, revision, "success", map[string]any{"group_id": beforeGroup}, map[string]any{"group_id": groupID}); err != nil {
 			return PersonSummary{}, err
 		}
 	}

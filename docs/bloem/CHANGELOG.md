@@ -21,6 +21,8 @@ Activity as "Platform support" (`support` on `POST /admin/session`). Four migrat
 (`bloem_support_access`, audit targets, `user_profiles.revision`, retiring a reset link on
 promotion) and one Silo seam, `PlaybackSessionsQuery.OrganizationID`
 ([how organization support works](../architecture/bloem-organization-support.md)).
+Moving a profile to another access group no longer signs the member out: it advances the
+account's policy revision and leaves the membership's security revision alone.
 
 ## November 12, 2026 — ffmpeg never opens a `.strm` file
 

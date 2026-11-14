@@ -778,7 +778,9 @@ func TestServiceBulkGroupAssignmentIsOrganizationBoundAndRevisionGuarded(t *test
 	}
 	fixture.assertProfileGroup(t, fixture.sharedAccountID, fixture.profileA, groupA2)
 	fixture.assertProfileGroup(t, fixture.foreignAccountID, fixture.profileB, fixture.groupB)
-	fixture.assertMembershipRevision(t, fixture.orgA, fixture.sharedAccountID, 2)
+	// A group move changes the account's policy revision, not the membership's
+	// security revision: it must not sign the member out.
+	fixture.assertMembershipRevision(t, fixture.orgA, fixture.sharedAccountID, 1)
 	fixture.assertMembershipRevision(t, fixture.orgB, fixture.foreignAccountID, 1)
 	fixture.assertAccountPolicyRevision(t, fixture.sharedAccountID, 2)
 	stored, err := fixture.service.GetBulkJob(fixture.ctx, fixture.orgA, result.JobID)
