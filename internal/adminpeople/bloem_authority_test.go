@@ -334,3 +334,30 @@ func TestPromotionAfterTheWriteRetiresTheResetLink(t *testing.T) {
 		t.Fatalf("links after a later promotion = %d (%v)", links, err)
 	}
 }
+
+// TestProfileGroupMoveRecordsAnOrganizationRevocation confirms finding F-3 of
+// the organization support design: moving a profile to another access group
+// raises the person's security revision, and that records an organization
+// revocation, which ends the person's older account-login sessions at their
+// next profile selection. The behavior is Silo-era and unchanged here; the
+// support routes avoid it by using the per-profile revision for their edits.
+func TestProfileGroupMoveRecordsAnOrganizationRevocation(t *testing.T) {
+	f := newAuthorityFixture(t)
+	other := f.addGroup(t, f.orgA, "Second Group", false)
+	revocations := func() int {
+		var count int
+		if err := f.pool.QueryRow(f.ctx, `SELECT count(*) FROM bloem_org_session_revocations WHERE account_id=$1 AND organization_id=$2`, f.memberID, f.orgA).Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		return count
+	}
+	if got := revocations(); got != 0 {
+		t.Fatalf("revocations before the move = %d", got)
+	}
+	if _, err := f.service.UpdateProfileGroup(f.ctx, f.orgA, f.ownerID, f.memberID, f.memberProfile, f.revision(t, f.memberID), other); err != nil {
+		t.Fatal(err)
+	}
+	if got := revocations(); got != 1 {
+		t.Fatalf("revocations after a group move = %d, want 1: the move signs the member out", got)
+	}
+}

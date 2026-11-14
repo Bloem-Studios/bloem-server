@@ -459,6 +459,12 @@ func TestSupportSessionsAndDevicesAcceptance(t *testing.T) {
 	if !f.sessionRevoked(t, "s-late") || !f.sessionRevoked(t, "s-support") {
 		t.Error("sign out everywhere left a session alive (impersonation sessions die with it)")
 	}
+	// Raising the revision records the organization's revocation, which is what
+	// ends the member's older account-login sessions at their next profile pick.
+	var revocations int
+	if err := f.pool.QueryRow(context.Background(), `SELECT count(*) FROM bloem_org_session_revocations WHERE account_id=$1 AND organization_id=$2`, f.memberID, f.organizationIDs[0]).Scan(&revocations); err != nil || revocations != 1 {
+		t.Errorf("revocation records after signing out everywhere = %d (%v), want 1", revocations, err)
+	}
 	if f.sessionRevoked(t, "s-other") {
 		t.Error("sign out everywhere reached another person")
 	}
@@ -539,6 +545,10 @@ func TestSupportProfilesAcceptance(t *testing.T) {
 	}
 	if f.sessionRevoked(t, "s-member") || f.revision(t, f.memberID) != revision {
 		t.Error("renaming a profile or clearing a PIN signed the member out")
+	}
+	var revocations int
+	if err := f.pool.QueryRow(context.Background(), `SELECT count(*) FROM bloem_org_session_revocations WHERE account_id=$1`, f.memberID).Scan(&revocations); err != nil || revocations != 0 {
+		t.Errorf("a rename or a PIN clear recorded an organization revocation (%d, %v)", revocations, err)
 	}
 
 	// Remove.
