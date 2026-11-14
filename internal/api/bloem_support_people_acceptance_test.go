@@ -384,6 +384,7 @@ func (f *supportFixture) sessionRevoked(t *testing.T, id string) bool {
 	return revoked
 }
 
+//nolint:gocyclo // one linear acceptance walk through the session and device routes
 func TestSupportSessionsAndDevicesAcceptance(t *testing.T) {
 	f := newSupportFixture(t)
 	f.addSession(t, "s-tv", f.memberID, "device-tv", 0)
