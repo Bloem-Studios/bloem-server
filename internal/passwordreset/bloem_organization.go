@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -108,7 +109,7 @@ func (r *Repository) issueForOrganizationTx(ctx context.Context, tx pgx.Tx, in o
 	if err := adminpeople.LockBudget(ctx, tx, adminpeople.BudgetDisclose, in.OrganizationID); err != nil {
 		return err
 	}
-	if err := adminpeople.CheckBudget(ctx, tx, adminpeople.BudgetDisclose, in.OrganizationID, in.Actor.AccountID, fmt.Sprint(in.TargetAccountID)); err != nil {
+	if err := adminpeople.CheckBudget(ctx, tx, adminpeople.BudgetDisclose, in.OrganizationID, in.Actor.AccountID, strconv.Itoa(in.TargetAccountID)); err != nil {
 		return err
 	}
 	event := adminpeople.AuditEvent{

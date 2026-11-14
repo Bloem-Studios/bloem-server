@@ -1679,6 +1679,14 @@
       "BloemAdminContextSummary": {
         "additionalProperties": false,
         "properties": {
+          "access_basis": {
+            "description": "membership: the caller is a member of the organization. support: the pass was opened under break-glass access and carries no membership.",
+            "enum": [
+              "membership",
+              "support"
+            ],
+            "type": "string"
+          },
           "authority": {
             "type": "string"
           },
@@ -1707,6 +1715,15 @@
           },
           "status": {
             "type": "string"
+          },
+          "support_access_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "support_expires_at": {
+            "description": "When the access ends, at most four hours after it was opened. A re-mint cannot extend it.",
+            "format": "date-time",
+            "type": "string"
           }
         },
         "required": [
@@ -1730,6 +1747,10 @@
               "organization"
             ],
             "type": "string"
+          },
+          "support": {
+            "$ref": "#/components/schemas/BloemAdminSessionSupport",
+            "description": "Break-glass access to an organization the caller is not a member of. Ignored when the caller has an active membership there. Only the server Owner may use it; for every other caller the answer is the 404 they always got."
           }
         },
         "required": [
@@ -1756,6 +1777,23 @@
           "expires_at",
           "context"
         ],
+        "type": "object"
+      },
+      "BloemAdminSessionSupport": {
+        "additionalProperties": false,
+        "properties": {
+          "access_id": {
+            "description": "The support_access_id of an access this login session opened and that is still open. The access never lasts longer than four hours from opening.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why the organization is being opened, shown to its administrators in Activity. Required to open; send access_id instead to renew.",
+            "maxLength": 500,
+            "minLength": 10,
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "BloemAmbienceAttachForm": {
@@ -9155,6 +9193,12 @@
               "null"
             ]
           },
+          "actor_authority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "created_at": {
             "format": "date-time",
             "type": "string"
@@ -9166,7 +9210,13 @@
           "outcome": {
             "type": "string"
           },
+          "reason": {
+            "type": "string"
+          },
           "source": {
+            "type": "string"
+          },
+          "support_access_id": {
             "type": "string"
           },
           "target_id": {
@@ -9178,6 +9228,7 @@
           "source",
           "created_at",
           "actor_account_id",
+          "actor_authority",
           "action",
           "target_id",
           "outcome"
@@ -23097,6 +23148,66 @@
           }
         ],
         "summary": "Stop one of the organization's streams.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/support-access": {
+      "delete": {
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Only a pass opened under support access can close one; the pass ends with it. The closing is recorded and shown to the organization's administrators in Activity.",
+        "operationId": "closeBloemOrganizationSupportAccess",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: this pass was not opened under support access, or the access already ended."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "End the break-glass support access this pass was opened under.",
         "tags": [
           "administration"
         ]
@@ -39383,7 +39494,7 @@
     },
     "/api/bloem/v2/admin/session": {
       "post": {
-        "description": "Requires an authenticated account with a current login-session ID and account incarnation. API keys without a login session are refused. scope=platform forbids organization_id and requires current platform authority. scope=organization requires organization_id and current organization administrator or platform authority; membership and organization must be active. The new token is bound to the originating login session. Strict JSON; body limit 16 KiB.",
+        "description": "Requires an authenticated account with a current login-session ID and account incarnation. API keys without a login session are refused. scope=platform forbids organization_id and requires current platform authority. scope=organization requires organization_id and current organization administrator or platform authority; membership and organization must be active. The new token is bound to the originating login session. Strict JSON; body limit 16 KiB. Break-glass: for scope=organization, a caller with no membership who is the server Owner may send support.reason (10 to 500 characters) to open the organization. Every opening is recorded, capped at four hours, and shown to the organization's administrators in Activity with its reason. The pass then has authority platform_admin, no membership, access_basis support and the support_access_id; it works on organization routes only. Renew it with support.access_id while the same login session and access are still open. A suspended organization stays 403 organization_suspended.",
         "operationId": "createBloemAdminSession",
         "requestBody": {
           "content": {
@@ -39444,7 +39555,27 @@
                 }
               }
             },
-            "description": "not_found: the selected organization is absent, hidden or still initializing, or this account has no membership in it or only an invitation."
+            "description": "not_found: the selected organization is absent, hidden or still initializing, or this account has no membership in it or only an invitation; also the answer to a support request from any caller who may not open it, or whose access_id is not an open access of this login session."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeValidationError"
+                }
+              }
+            },
+            "description": "validation_failed (fields support.reason): the server Owner opens an active organization without a reason of 10 to 500 characters without control characters."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: the operator opened 20 support accesses in the last hour; Retry-After says when to retry."
           },
           "503": {
             "content": {

@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -92,7 +93,7 @@ func supportProfileTx(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, 
 	if err := LockBudget(ctx, tx, BudgetMutate, organizationID); err != nil {
 		return LockedAuthority{}, LockedProfile{}, err
 	}
-	if err := CheckBudget(ctx, tx, BudgetMutate, organizationID, actor.AccountID, fmt.Sprint(accountID)); err != nil {
+	if err := CheckBudget(ctx, tx, BudgetMutate, organizationID, actor.AccountID, strconv.Itoa(accountID)); err != nil {
 		return LockedAuthority{}, LockedProfile{}, err
 	}
 	locked, err := supportAuthority(ctx, tx, organizationID, actor, accountID, refusedAction, "profile", profileID)

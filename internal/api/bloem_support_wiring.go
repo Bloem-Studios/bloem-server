@@ -1,13 +1,32 @@
 package api
 
 import (
+	"context"
+	"errors"
+
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/mail"
 	"github.com/Silo-Server/silo-server/internal/passwordreset"
+	"github.com/Silo-Server/silo-server/internal/supportaccess"
 )
+
+// supportAccessValidator adapts the break-glass record to the middleware,
+// which names its "not valid" answer without importing the record.
+type supportAccessValidator struct{ store *supportaccess.Store }
+
+func (v supportAccessValidator) ValidateSupportAccess(ctx context.Context, accessID, organizationID uuid.UUID, accountID int, loginSessionID string) (int64, error) {
+	revision, err := v.store.ValidateSupportAccess(ctx, accessID, organizationID, accountID, loginSessionID)
+	if errors.Is(err, supportaccess.ErrNotFound) {
+		return 0, apimw.ErrSupportAccessInvalid
+	}
+	return revision, err
+}
 
 // newBloemSupportHandler builds the organization support routes' handler. It
 // has its own reset-link service over the same tables as Silo's: the routes
@@ -41,5 +60,6 @@ func newBloemSupportHandler(deps Dependencies, people *adminpeople.Service, admi
 		sessions = admin
 	}
 	support.SetStreams(sessions, deps.AdminPlaybackControl)
+	support.SetSupportAccess(supportaccess.NewStore(deps.DB))
 	return support
 }

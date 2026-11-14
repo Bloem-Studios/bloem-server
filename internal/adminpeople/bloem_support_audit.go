@@ -67,10 +67,10 @@ func orEmpty(state map[string]any) map[string]any {
 	return state
 }
 
-// Refusal is a refusal a support route audits and still answers: the
+// RefusalError is a refusal a support route audits and still answers: the
 // "<action>_refused" conflict row is committed with the request's transaction
 // and the cause is returned to the caller. WrapRefusal makes one.
-type Refusal struct{ cause error }
+type RefusalError struct{ cause error }
 
 // WrapRefusal marks err so RunSupportTx commits the audit row written before
 // it and then returns err.
@@ -78,11 +78,11 @@ func WrapRefusal(err error) error {
 	if err == nil {
 		return nil
 	}
-	return &Refusal{cause: err}
+	return &RefusalError{cause: err}
 }
 
-func (e *Refusal) Error() string { return e.cause.Error() }
-func (e *Refusal) Unwrap() error { return e.cause }
+func (e *RefusalError) Error() string { return e.cause.Error() }
+func (e *RefusalError) Unwrap() error { return e.cause }
 
 // RefuseAudited writes a "<action>_refused" conflict event for a refusal and
 // returns it wrapped for RunSupportTx. reason is a code, never free text.
@@ -97,7 +97,7 @@ func RefuseAudited(ctx context.Context, tx pgx.Tx, event AuditEvent, reason stri
 }
 
 // RunSupportTx runs fn in one transaction. fn returns (result, error); a
-// *Refusal commits what fn wrote (its refusal audit row) and returns the
+// *RefusalError commits what fn wrote (its refusal audit row) and returns the
 // cause. A deadlock is retried up to twice, because two administrators acting
 // on each other lock in opposite order.
 func RunSupportTx[T any](ctx context.Context, begin func(context.Context) (pgx.Tx, error), fn func(pgx.Tx) (T, error)) (T, error) {
@@ -123,7 +123,7 @@ func runSupportTxOnce[T any](ctx context.Context, begin func(context.Context) (p
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
 	result, err := fn(tx)
 	if err != nil {
-		var refusal *Refusal
+		var refusal *RefusalError
 		if errors.As(err, &refusal) {
 			if commitErr := tx.Commit(ctx); commitErr != nil {
 				return zero, commitErr

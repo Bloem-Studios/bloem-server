@@ -16,6 +16,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/invitations"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
+	"github.com/Silo-Server/silo-server/internal/supportaccess"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
@@ -67,6 +68,12 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	if tokens != nil && resolver != nil && membershipStore != nil && platform != nil {
 		session = handlers.NewAdminContextSessionHandler(tokens, resolver, membershipStore, platform)
 		adminMW = apimw.NewAdminContextMiddleware(tokens, resolver, membershipStore, platform, authMW.LoginSessions())
+		if deps.DB != nil {
+			// Break-glass support access for the server Owner.
+			supportStore := supportaccess.NewStore(deps.DB)
+			session.SetSupportAccess(supportStore)
+			adminMW.SetSupportAccess(supportAccessValidator{store: supportStore})
+		}
 	}
 	if tenants != nil {
 		verifier := auth.NewAccountCredentialVerifier(auth.NewUserRepository(deps.DB))
@@ -329,6 +336,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 
 			if surfaces.Support != nil {
 				r.Get("/organization/support-capabilities", surfaces.Support.HandleCapabilities)
+				r.Delete("/organization/support-access", surfaces.Support.HandleCloseSupportAccess)
 				r.Get("/organization/streams", surfaces.Support.HandleListStreams)
 				r.Post("/organization/streams/{session_id}/stop", surfaces.Support.HandleStopStream)
 				r.Post("/organization/streams/{session_id}/message", surfaces.Support.HandleMessageStream)

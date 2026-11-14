@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Who may act on whom</title>
+<desc id="d">A grid. Rows are four kinds of person an administrator might help: an ordinary member, another administrator, the organization owner and a platform account. Columns are three helpers: an organization administrator, the organization owner and the platform operator. Each cell says yes or no.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="559" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Who may act on whom</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Resetting a password, signing out and editing profiles follow one table. Nobody acts on themselves.</text>
+<rect x="344" y="120" width="272" height="50" rx="10" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.6"/>
+<text x="480.0" y="151" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">Organization administrator</text>
+<rect x="624" y="120" width="272" height="50" rx="10" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.6"/>
+<text x="760.0" y="151" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">Organization owner</text>
+<rect x="904" y="120" width="272" height="50" rx="10" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.6"/>
+<text x="1040.0" y="151" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">Platform operator</text>
+<rect x="40" y="190" width="280" height="74" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="226" font-size="16" font-weight="700" fill="#101827" text-anchor="start">An ordinary member</text>
+<text x="60" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Anyone who is not an administrator</text>
+<rect x="344" y="190" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="376" cy="227" r="12" fill="#10B981"/>
+<path d="M370.6,227.24 L374.8,231.56 L382.0,222.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="624" y="190" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="656" cy="227" r="12" fill="#10B981"/>
+<path d="M650.6,227.24 L654.8,231.56 L662.0,222.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="904" y="190" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="936" cy="227" r="12" fill="#10B981"/>
+<path d="M930.6,227.24 L934.8,231.56 L942.0,222.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="40" y="274" width="280" height="74" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="310" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Another administrator</text>
+<text x="60" y="332" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Not the owner</text>
+<rect x="344" y="274" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="376" cy="311" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M370.6,305.6 L381.4,316.4 M381.4,305.6 L370.6,316.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="624" y="274" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="656" cy="311" r="12" fill="#10B981"/>
+<path d="M650.6,311.24 L654.8,315.56 L662.0,306.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="904" y="274" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="936" cy="311" r="12" fill="#10B981"/>
+<path d="M930.6,311.24 L934.8,315.56 L942.0,306.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="40" y="358" width="280" height="74" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="394" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The organization owner</text>
+<text x="60" y="416" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The person who runs it</text>
+<rect x="344" y="358" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="376" cy="395" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M370.6,389.6 L381.4,400.4 M381.4,389.6 L370.6,400.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="624" y="358" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="656" cy="395" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M650.6,389.6 L661.4,400.4 M661.4,389.6 L650.6,400.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="904" y="358" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="936" cy="395" r="12" fill="#10B981"/>
+<path d="M930.6,395.24 L934.8,399.56 L942.0,390.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="40" y="442" width="280" height="74" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="478" font-size="16" font-weight="700" fill="#101827" text-anchor="start">A platform account</text>
+<text x="60" y="500" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">An operator's own account</text>
+<rect x="344" y="442" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="376" cy="479" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M370.6,473.6 L381.4,484.4 M381.4,473.6 L370.6,484.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="624" y="442" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="656" cy="479" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M650.6,473.6 L661.4,484.4 M661.4,473.6 L650.6,484.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="904" y="442" width="272" height="74" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="936" cy="479" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M930.6,473.6 L941.4,484.4 M941.4,473.6 L930.6,484.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="962" y="473" font-size="13" font-weight="normal" fill="#101827" text-anchor="start">Only where the server Owner</text>
+<text x="962" y="490" font-size="13" font-weight="normal" fill="#101827" text-anchor="start">rule allows</text>
+<text x="60" y="522" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A refusal is a 409 with a reason, never a 403: apps read a 403 as losing the organization.</text>
+</svg>

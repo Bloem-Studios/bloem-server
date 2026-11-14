@@ -394,7 +394,10 @@ Field notes:
   `playback_overlays_v1` (a campaign registry is wired), `promotions_viewer_v1` (the
   [campaign viewer routes](#campaign-viewer-routes) and their resolvers are wired) and
   `organization_domains_v1` (the [domain and branding routes](#organization-domains-and-branding)
-  are mounted with both credential gates).
+  are mounted with both credential gates) and
+  `organization_support_v1` (the organization support routes for password reset links,
+  sessions and devices, profiles, streams and break-glass access are mounted with both
+  gates; see [How organization support works](architecture/bloem-organization-support.md)).
 - `features.legacy_silo_v1` and `features.direct_profile_login` are `false` since Silo
   retired its v1 API; `shared_device_pairing` and `delegated_admin_roles` are always `false`.
 - `media_types`: the fixed vocabulary of `mediaTypesServed` — the item types *this build* can

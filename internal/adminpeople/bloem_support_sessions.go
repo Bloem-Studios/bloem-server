@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -178,7 +179,7 @@ func (s *Service) RevokeSessions(ctx context.Context, organizationID uuid.UUID, 
 		if err := LockBudget(ctx, tx, BudgetMutate, organizationID); err != nil {
 			return zero, err
 		}
-		if err := CheckBudget(ctx, tx, BudgetMutate, organizationID, actor.AccountID, fmt.Sprint(accountID)); err != nil {
+		if err := CheckBudget(ctx, tx, BudgetMutate, organizationID, actor.AccountID, strconv.Itoa(accountID)); err != nil {
 			return zero, err
 		}
 		locked, err := supportAuthority(ctx, tx, organizationID, actor, accountID, "people.sessions_revoke_refused", "membership", "")
@@ -225,7 +226,7 @@ func (s *Service) RevokeSession(ctx context.Context, organizationID uuid.UUID, a
 		if err := LockBudget(ctx, tx, BudgetMutate, organizationID); err != nil {
 			return zero, err
 		}
-		if err := CheckBudget(ctx, tx, BudgetMutate, organizationID, actor.AccountID, fmt.Sprint(accountID)); err != nil {
+		if err := CheckBudget(ctx, tx, BudgetMutate, organizationID, actor.AccountID, strconv.Itoa(accountID)); err != nil {
 			return zero, err
 		}
 		locked, err := supportAuthority(ctx, tx, organizationID, actor, accountID, "people.session_revoke_refused", "session", sessionID)
@@ -281,7 +282,7 @@ func (s *Service) SignOutDevice(ctx context.Context, organizationID uuid.UUID, a
 		if err := LockBudget(ctx, tx, BudgetMutate, organizationID); err != nil {
 			return zero, err
 		}
-		if err := CheckBudget(ctx, tx, BudgetMutate, organizationID, actor.AccountID, fmt.Sprint(accountID)); err != nil {
+		if err := CheckBudget(ctx, tx, BudgetMutate, organizationID, actor.AccountID, strconv.Itoa(accountID)); err != nil {
 			return zero, err
 		}
 		locked, err := supportAuthority(ctx, tx, organizationID, actor, accountID, "people.device_sign_out_refused", "device", deviceID)

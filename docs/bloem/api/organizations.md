@@ -14,7 +14,7 @@ For the plain-language picture, read the [Organizations and administration expla
 - [OPA tenant authorization](../../architecture/opa-tenant-authorization.md)
 - [Lifecycle safety](../../architecture/bloem-lifecycle-safety.md)
 
-## Operations (111)
+## Operations (112)
 
 | Method and path | Summary |
 | --- | --- |
@@ -58,6 +58,7 @@ For the plain-language picture, read the [Organizations and administration expla
 | [`GET /api/bloem/v2/admin/organization/streams`](#get-apibloemv2adminorganizationstreams) | List the organization's live streams. |
 | [`POST /api/bloem/v2/admin/organization/streams/{session_id}/message`](#post-apibloemv2adminorganizationstreamssession_idmessage) | Show a message on one of the organization's streams. |
 | [`POST /api/bloem/v2/admin/organization/streams/{session_id}/stop`](#post-apibloemv2adminorganizationstreamssession_idstop) | Stop one of the organization's streams. |
+| [`DELETE /api/bloem/v2/admin/organization/support-access`](#delete-apibloemv2adminorganizationsupport-access) | End the break-glass support access this pass was opened under. |
 | [`GET /api/bloem/v2/admin/organization/support-capabilities`](#get-apibloemv2adminorganizationsupport-capabilities) | Say which support operations this server can serve. |
 | [`POST /api/bloem/v2/admin/platform/accounts`](#post-apibloemv2adminplatformaccounts) | Create an account, optionally on a plan. |
 | [`PUT /api/bloem/v2/admin/platform/accounts/{account_id}`](#put-apibloemv2adminplatformaccountsaccount_id) | Update an account, optionally moving it to a plan. |
@@ -1072,6 +1073,23 @@ Request body (optional, `application/json`): [`BloemSupportStreamStop`](#bloemsu
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: reason is longer than 1024 characters. |
 | 429 | [`BloemNativeError`](README.md#bloemnativeerror) | rate_limited: a support rate limit is spent; Retry-After says when the oldest counted action leaves its window. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: the store or stream control is unavailable. dependency_unavailable (Retry-After: 30): the server holding the session did not answer; its authority is already revoked and retrying is safe. |
+
+### `DELETE /api/bloem/v2/admin/organization/support-access`
+
+End the break-glass support access this pass was opened under.
+
+Operation ID: `closeBloemOrganizationSupportAccess`.
+Credentials: `bloemOrganizationContext`.
+
+Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Only a pass opened under support access can close one; the pass ends with it. The closing is recorded and shown to the organization's administrators in Activity.
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: this pass was not opened under support access, or the access already ended. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
 ### `GET /api/bloem/v2/admin/organization/support-capabilities`
 
@@ -2765,7 +2783,7 @@ Exchange a login session for a scoped administrative context.
 Operation ID: `createBloemAdminSession`.
 Credentials: `bloemAdminLoginSession`.
 
-Requires an authenticated account with a current login-session ID and account incarnation. API keys without a login session are refused. scope=platform forbids organization_id and requires current platform authority. scope=organization requires organization_id and current organization administrator or platform authority; membership and organization must be active. The new token is bound to the originating login session. Strict JSON; body limit 16 KiB.
+Requires an authenticated account with a current login-session ID and account incarnation. API keys without a login session are refused. scope=platform forbids organization_id and requires current platform authority. scope=organization requires organization_id and current organization administrator or platform authority; membership and organization must be active. The new token is bound to the originating login session. Strict JSON; body limit 16 KiB. Break-glass: for scope=organization, a caller with no membership who is the server Owner may send support.reason (10 to 500 characters) to open the organization. Every opening is recorded, capped at four hours, and shown to the organization's administrators in Activity with its reason. The pass then has authority platform_admin, no membership, access_basis support and the support_access_id; it works on organization routes only. Renew it with support.access_id while the same login session and access are still open. A suspended organization stays 403 organization_suspended.
 
 Request body (required, `application/json`): [`BloemAdminSessionRequest`](#bloemadminsessionrequest).
 
@@ -2775,7 +2793,9 @@ Request body (required, `application/json`): [`BloemAdminSessionRequest`](#bloem
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: invalid scope, JSON, organization selection or body exceeding 16 KiB. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: authentication is missing or invalid, the account identity is incomplete, or the credential has no login session (API keys cannot exchange); authorization_state_stale: the membership or its revisions changed during the exchange. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: scope=platform without current platform authority; insufficient_organization_authority: the membership is not an organization administrator; organization_suspended: the organization or membership is suspended; forbidden or password_change_required: this session cannot use the route. |
-| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the selected organization is absent, hidden or still initializing, or this account has no membership in it or only an invitation. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the selected organization is absent, hidden or still initializing, or this account has no membership in it or only an invitation; also the answer to a support request from any caller who may not open it, or whose access_id is not an open access of this login session. |
+| 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed (fields support.reason): the server Owner opens an active organization without a reason of 10 to 500 characters without control characters. |
+| 429 | [`BloemNativeError`](README.md#bloemnativeerror) | rate_limited: the operator opened 20 support accesses in the last hour; Retry-After says when to retry. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; service_unavailable: the login session could not be checked, retry after Retry-After. |
 
 ### `GET /api/bloem/v2/organizations`
@@ -3012,6 +3032,7 @@ Requires an account bearer token or API key; no profile or organization needs to
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `access_basis` | string: `membership`, `support` |  | membership: the caller is a member of the organization. support: the pass was opened under break-glass access and carries no membership. |
 | `authority` | string | yes |  |
 | `key` | string | yes |  |
 | `membership_id` | string |  |  |
@@ -3021,6 +3042,8 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `scope` | string | yes |  |
 | `security_revision` | integer (int64) |  |  |
 | `status` | string | yes |  |
+| `support_access_id` | string (uuid) |  |  |
+| `support_expires_at` | string (date-time) |  | When the access ends, at most four hours after it was opened. A re-mint cannot extend it. |
 
 ### BloemAdminSessionRequest
 
@@ -3028,6 +3051,7 @@ Requires an account bearer token or API key; no profile or organization needs to
 | --- | --- | --- | --- |
 | `organization_id` | string |  |  |
 | `scope` | string: `platform`, `organization` | yes |  |
+| `support` | [`BloemAdminSessionSupport`](#bloemadminsessionsupport) |  | Break-glass access to an organization the caller is not a member of. Ignored when the caller has an active membership there. Only the server Owner may use it; for every other caller the answer is the 404 they always got. |
 
 ### BloemAdminSessionResponse
 
@@ -3036,6 +3060,13 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `access_token` | string | yes |  |
 | `context` | [`BloemAdminContextSummary`](#bloemadmincontextsummary) | yes |  |
 | `expires_at` | string (date-time) | yes |  |
+
+### BloemAdminSessionSupport
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `access_id` | string (uuid) |  | The support_access_id of an access this login session opened and that is still open. The access never lasts longer than four hours from opening. |
+| `reason` | string |  | Why the organization is being opened, shown to its administrators in Activity. Required to open; send access_id instead to renew. |
 
 ### BloemEntitlementApplyRequest
 
@@ -3971,10 +4002,13 @@ Type: object.
 | --- | --- | --- | --- |
 | `action` | string | yes |  |
 | `actor_account_id` | integer or null (int64) | yes |  |
+| `actor_authority` | string or null | yes |  |
 | `created_at` | string (date-time) | yes |  |
 | `id` | integer (int64) | yes |  |
 | `outcome` | string | yes |  |
+| `reason` | string |  |  |
 | `source` | string | yes |  |
+| `support_access_id` | string |  |  |
 | `target_id` | string | yes |  |
 
 ### OrganizationAuditPage

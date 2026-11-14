@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -116,15 +117,6 @@ func (f *supportFixture) call(t *testing.T, method, path, body, pass string) *ht
 	return performJSONRequest(t, f.router, method, NativeAPIPrefix+"/admin/organization/people/"+path, body, pass, nil)
 }
 
-func decodeBody(t *testing.T, response *httptest.ResponseRecorder) map[string]any {
-	t.Helper()
-	var out map[string]any
-	if err := json.Unmarshal(response.Body.Bytes(), &out); err != nil {
-		t.Fatalf("decode %q: %v", response.Body.String(), err)
-	}
-	return out
-}
-
 func (f *supportFixture) revision(t *testing.T, accountID int) int64 {
 	t.Helper()
 	var revision int64
@@ -157,6 +149,9 @@ func (f *supportFixture) auditActions(t *testing.T, action string) []string {
 			t.Fatal(err)
 		}
 		out = append(out, row)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
 	}
 	return out
 }
@@ -395,7 +390,7 @@ func TestSupportSessionsAndDevicesAcceptance(t *testing.T) {
 	f.addSession(t, "s-phone", f.memberID, "device-phone", 0)
 	f.addSession(t, "s-support", f.memberID, "device-support", f.ownerID)
 	f.addSession(t, "s-other", f.otherMemberID, "device-tv", 0)
-	member := fmt.Sprintf("%d", f.memberID)
+	member := strconv.Itoa(f.memberID)
 
 	listed := assertStatus(t, f.call(t, http.MethodGet, member+"/sessions", "", f.ownerPass), http.StatusOK, "list sessions")
 	sessions := listed["sessions"].([]any)
@@ -482,7 +477,7 @@ func TestSupportSessionsAndDevicesAcceptance(t *testing.T) {
 
 func TestSupportProfilesAcceptance(t *testing.T) {
 	f := newSupportFixture(t)
-	member := fmt.Sprintf("%d", f.memberID)
+	member := strconv.Itoa(f.memberID)
 	revision := f.revision(t, f.memberID)
 
 	person := assertStatus(t, f.call(t, http.MethodGet, member+"/", "", f.ownerPass), http.StatusOK, "person")["person"].(map[string]any)
@@ -583,7 +578,7 @@ func TestSupportProfilesAcceptance(t *testing.T) {
 
 func TestSupportRoutesRejectOtherPasses(t *testing.T) {
 	f := newSupportFixture(t)
-	member := fmt.Sprintf("%d", f.memberID)
+	member := strconv.Itoa(f.memberID)
 	// Another organization's administrator reaches nothing of this organization.
 	canal := f.organizationTokens[1]
 	for _, call := range []struct{ method, path, body string }{
@@ -610,18 +605,26 @@ func TestSupportRoutesRejectOtherPasses(t *testing.T) {
 
 // recordingMail is a mail sender that keeps what it was asked to send.
 type recordingMail struct {
-	mu   sync.Mutex
-	sent []mail.Message
-	fail error
+	mu     sync.Mutex
+	sent   []mail.Message
+	fail   error
+	signal chan struct{}
 }
 
 func (m *recordingMail) Enabled(context.Context) bool { return true }
 
 func (m *recordingMail) Send(_ context.Context, message mail.Message) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.sent = append(m.sent, message)
-	return m.fail
+	fail := m.fail
+	m.mu.Unlock()
+	if m.signal != nil {
+		select {
+		case m.signal <- struct{}{}:
+		default:
+		}
+	}
+	return fail
 }
 
 func (m *recordingMail) messages() []mail.Message {
@@ -630,24 +633,28 @@ func (m *recordingMail) messages() []mail.Message {
 	return append([]mail.Message(nil), m.sent...)
 }
 
+// waitFor blocks until count messages were sent: the notice goes out on a
+// background goroutine, so the response can arrive first.
 func (m *recordingMail) waitFor(t *testing.T, count int) []mail.Message {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
+	deadline := time.After(5 * time.Second)
+	for {
 		if got := m.messages(); len(got) >= count {
 			return got
 		}
-		time.Sleep(10 * time.Millisecond)
+		select {
+		case <-m.signal:
+		case <-deadline:
+			t.Fatalf("mail sent = %d messages, want %d", len(m.messages()), count)
+		}
 	}
-	t.Fatalf("mail sent = %d messages, want %d", len(m.messages()), count)
-	return nil
 }
 
 func TestSupportPasswordResetMail(t *testing.T) {
-	sender := &recordingMail{}
+	sender := &recordingMail{signal: make(chan struct{}, 16)}
 	f := newSupportFixtureWithMail(t, sender)
 	f.setting(t, "server.public_url", "https://watch.example.test")
-	member := fmt.Sprintf("%d", f.memberID)
+	member := strconv.Itoa(f.memberID)
 	revision := f.revision(t, f.memberID)
 
 	// Email: the member gets the link; the administrator never sees it.
@@ -718,7 +725,7 @@ func TestSupportRefusesAccountsSharedBetweenOrganizations(t *testing.T) {
 	}
 	f.setting(t, "server.public_url", "https://watch.example.test")
 	f.addSession(t, "s-shared", f.memberID, "device-shared", 0)
-	member := fmt.Sprintf("%d", f.memberID)
+	member := strconv.Itoa(f.memberID)
 	var revision int64
 	if err := f.pool.QueryRow(ctx, `SELECT security_revision FROM organization_memberships WHERE account_id=$1 AND organization_id=$2`, f.memberID, f.organizationIDs[0]).Scan(&revision); err != nil {
 		t.Fatal(err)

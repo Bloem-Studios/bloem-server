@@ -33,6 +33,18 @@ func GetAdminContextClaims(ctx context.Context) (auth.AdminContextClaims, bool) 
 	return claims, ok
 }
 
+// SupportAccessValidator confirms a break-glass support access is still open for
+// the operator, login session and organization a pass names, and returns the
+// organization's current policy revision. Any error other than a transient one
+// must satisfy errors.Is(err, ErrSupportAccessInvalid).
+type SupportAccessValidator interface {
+	ValidateSupportAccess(ctx context.Context, accessID, organizationID uuid.UUID, accountID int, loginSessionID string) (int64, error)
+}
+
+// ErrSupportAccessInvalid marks an access that is closed, expired, foreign, or
+// whose operator or organization no longer qualifies.
+var ErrSupportAccessInvalid = errors.New("support access is not valid")
+
 // AdminContextMiddleware validates an administrative context token and then
 // revalidates the authority it encodes on every /api/bloem/v2/admin request.
 type AdminContextMiddleware struct {
@@ -44,6 +56,16 @@ type AdminContextMiddleware struct {
 	// from. Nil denies every request: an unwired validator must not mean a
 	// context survives the revocation of the session behind it.
 	sessions SessionValidator
+	// supportAccess revalidates a pass opened under break-glass support
+	// access. Nil denies every such pass.
+	supportAccess SupportAccessValidator
+}
+
+// SetSupportAccess installs the validator for passes opened under support access.
+func (m *AdminContextMiddleware) SetSupportAccess(validator SupportAccessValidator) {
+	if m != nil {
+		m.supportAccess = validator
+	}
 }
 
 // LoginSessions returns the validator this middleware checks login sessions
@@ -103,6 +125,10 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 			}
 			next.ServeHTTP(w, r.WithContext(SetAdminContextClaims(r.Context(), claims)))
 		case auth.AdminScopeOrganization:
+			if claims.SupportAccessID != uuid.Nil {
+				m.serveSupportAccess(w, r, next, claims, operator)
+				return
+			}
 			resolved, err := m.resolve(r.Context(), claims.AccountID, &claims.OrganizationID, false)
 			if err != nil {
 				w.Header().Set("Cache-Control", "no-store")

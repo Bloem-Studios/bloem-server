@@ -3,6 +3,25 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 13, 2026 — organization support
+
+An organization's administrators can now give support to their own people without the
+platform operator. Under `/api/bloem/v2/admin/organization`: a member's password reset link
+(by email or handed over once; the administrator never sees a password), signing a member out
+everywhere, of one session or of one device, adding, renaming and removing profiles and
+clearing a forgotten PIN, and the organization's own live streams with stop and message
+(`organization_support_v1`, `support-capabilities`). One authority rule decides who may act on
+whom: administrators help ordinary members, the owner also helps other administrators, nobody
+helps themselves, and a platform account stays behind Silo's Owner rule. A protected person is
+`409 target_protected`, never 403. The People writes that existed (suspend, the profile group
+move, the bulk jobs) follow the same rule: an administrator can no longer suspend another
+administrator or themselves. The server Owner can open a customer's organization with a stated
+reason, for at most four hours, recorded and shown to that organization's administrators in
+Activity as "Platform support" (`support` on `POST /admin/session`). Four migrations
+(`bloem_support_access`, audit targets, `user_profiles.revision`, retiring a reset link on
+promotion) and one Silo seam, `PlaybackSessionsQuery.OrganizationID`
+([how organization support works](../architecture/bloem-organization-support.md)).
+
 ## November 12, 2026 — ffmpeg never opens a `.strm` file
 
 Silo's subtitle batch extract and attached-font probe handed ffmpeg a `.strm` file's

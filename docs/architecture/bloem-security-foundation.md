@@ -59,7 +59,9 @@ profile on the same account cannot stop it or move its position.
 
 ## When an organization revokes a sign-in
 
-An organization administrator can sign a member out of every app at once. Some other changes
+An organization administrator can sign a member out of every app at once
+(`DELETE /api/bloem/v2/admin/organization/people/{account_id}/sessions`, see
+[How organization support works](bloem-organization-support.md)). Some other changes
 to a member's standing in the organization have the same effect. An app that signed in before
 that moment can no longer pick any of the organization's profiles. Because an account belongs
 to one organization, that sign-in is useless, so Bloem ends it and tells the app the sign-in
@@ -127,8 +129,8 @@ Riverside Club is a reseller organization served on its own address, `watch.rive
 
 | Who | What they manage |
 | --- | --- |
-| Platform administrator | With a platform pass: every organization, its owner (with their own password), memberships, domains and branding. |
-| Organization administrator | With an organization pass: their own organization only, including signing members out everywhere. |
+| Platform administrator | With a platform pass: every organization, its owner (with their own password), memberships, domains and branding. The server Owner can also open a customer's organization with a stated reason, for at most four hours, shown to that organization's administrators ([break-glass access](bloem-organization-support.md#when-the-administrator-is-the-one-who-is-stuck)). |
+| Organization administrator | With an organization pass: their own organization only. Ordinary members: reset links (the administrator never sees a password), signing out everywhere, one session or one device, adding, renaming and removing profiles, clearing a forgotten PIN, stopping streams. The organization owner may also do this for the organization's other administrators; nobody does it to themselves ([who may act on whom](bloem-organization-support.md#who-may-do-it-to-whom)). |
 | The storefront (Bloem Garden) | Reseller organizations, accounts, domains and branding, using a platform administrator's API key. |
 | An account's main profile | The household's profiles, PINs and profile sign-ins. Profile sign-ins also need the account password. |
 | The server's operator | Picking the owner of an upgraded server with several administrators, directly in the database. |
@@ -228,6 +230,9 @@ open, versioned allowlist a client matches against, and every later capability l
 Both grow additively. `organization_domains_v1` is one of the conditional tokens: it is
 advertised when the domain and branding routes are mounted with both an account and an
 administrator gate.
+`organization_support_v1` is another: it is advertised when the organization support routes are
+mounted with both gates, and `GET /api/bloem/v2/admin/organization/support-capabilities` says
+which of them this server can serve.
 
 Profile sign-in is dormant since 2026-11-11: its sign-in route lived only on Silo's v1 API, which Silo retired (Silo #3200, merged into Bloem in `26cf9b3e4`). The credential routes are not mounted, `profile_credential_management_v1` and `direct_profile_login` are not advertised, and the web hides the credentials panel and the Profile passwords setting. The code stays; it comes back with a native profile sign-in route under `/api/bloem/v2`. Until then, the rest of
 this section describes how it worked: direct-profile login was implemented on

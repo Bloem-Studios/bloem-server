@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 951 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 284 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 285 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Retired alpha v1 API (410 Gone except the health and ready probes) | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -112,6 +112,7 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v2/admin/organization/streams` | `listBloemOrganizationStreams` | List the organization's live streams. |
 | `POST /api/bloem/v2/admin/organization/streams/{session_id}/message` | `messageBloemOrganizationStream` | Show a message on one of the organization's streams. |
 | `POST /api/bloem/v2/admin/organization/streams/{session_id}/stop` | `stopBloemOrganizationStream` | Stop one of the organization's streams. |
+| `DELETE /api/bloem/v2/admin/organization/support-access` | `closeBloemOrganizationSupportAccess` | End the break-glass support access this pass was opened under. |
 | `GET /api/bloem/v2/admin/organization/support-capabilities` | `getBloemOrganizationSupportCapabilities` | Say which support operations this server can serve. |
 | `POST /api/bloem/v2/admin/platform/accounts` | `createBloemPlatformAccount` | Create an account, optionally on a plan. |
 | `POST /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs` | `createBloemPlatformDirectPolicyJob` | Enqueue a confirmed bulk entitlement policy job. |

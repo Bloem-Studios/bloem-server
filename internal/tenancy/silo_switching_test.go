@@ -204,3 +204,46 @@ func TestSwitchableRefusesDirectProfileLogin(t *testing.T) {
 	_, err := pool.Exec(ctx, `UPDATE user_profiles SET login_email = 'p@example.invalid', password_hash = 'x' WHERE id = 'p1'`)
 	wantError(t, err, "bloem_silo_switching_direct_profile_login")
 }
+
+// TestSwitchableAcceptsSilosProfileAndRoleWrites pins the organization support
+// schema against upstream Silo: its profile inserts never name the per-profile
+// revision column, its profile edits must not trip the revision trigger, and
+// promoting an account must keep working (it also retires a reset link).
+func TestSwitchableAcceptsSilosProfileAndRoleWrites(t *testing.T) {
+	ctx, pool, user, _ := switchablePool(t)
+	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id, user_id, name, is_primary) VALUES ('silo-profile', $1, 'Silo Profile', true)`, user); err != nil {
+		t.Fatalf("a Silo profile insert is refused: %v", err)
+	}
+	var revision int64
+	if err := pool.QueryRow(ctx, `SELECT revision FROM user_profiles WHERE id = 'silo-profile'`).Scan(&revision); err != nil || revision != 1 {
+		t.Fatalf("a Silo profile starts at revision %d (%v), want 1", revision, err)
+	}
+	for _, edit := range []string{
+		`UPDATE user_profiles SET name = 'Renamed', updated_at = now() WHERE id = 'silo-profile'`,
+		`UPDATE user_profiles SET pin_hash = 'hash' WHERE id = 'silo-profile'`,
+		`UPDATE user_profiles SET language = 'nl', subtitle_mode = 'always' WHERE id = 'silo-profile'`,
+	} {
+		if _, err := pool.Exec(ctx, edit); err != nil {
+			t.Fatalf("a Silo profile edit is refused (%s): %v", edit, err)
+		}
+	}
+	if err := pool.QueryRow(ctx, `SELECT revision FROM user_profiles WHERE id = 'silo-profile'`).Scan(&revision); err != nil || revision <= 1 {
+		t.Fatalf("Silo's edits left the profile revision at %d (%v)", revision, err)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO password_reset_tokens (user_id, token_hash, password_fingerprint, expires_at)
+		VALUES ($1, 'silo-digest', 'fingerprint', now() + interval '1 hour')`, user); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET role = 'admin' WHERE id = $1`, user); err != nil {
+		t.Fatalf("Silo promoting an account is refused: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE organization_memberships SET legacy_role = 'admin' WHERE account_id = $1`, user); err != nil {
+		t.Fatalf("promoting a membership is refused: %v", err)
+	}
+	var links int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM password_reset_tokens WHERE user_id = $1`, user).Scan(&links); err != nil || links != 0 {
+		t.Fatalf("reset links after a promotion = %d (%v), want 0", links, err)
+	}
+}

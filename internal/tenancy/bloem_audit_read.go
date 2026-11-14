@@ -12,13 +12,24 @@ import (
 // OrganizationAuditEvent deliberately excludes before/after JSON documents and
 // credential/account data. Both underlying ledgers are filtered by tenant.
 type OrganizationAuditEvent struct {
-	ID             int64     `json:"id"`
-	Source         string    `json:"source"`
-	CreatedAt      time.Time `json:"created_at"`
-	ActorAccountID *int      `json:"actor_account_id"`
-	Action         string    `json:"action"`
-	TargetID       string    `json:"target_id"`
-	Outcome        string    `json:"outcome"`
+	ID        int64     `json:"id"`
+	Source    string    `json:"source"`
+	CreatedAt time.Time `json:"created_at"`
+	// ActorAccountID is the organization's own administrator who acted. It is
+	// null when the actor was a platform administrator, so a customer sees
+	// "platform support" and never the operator's account id.
+	ActorAccountID *int `json:"actor_account_id"`
+	// ActorAuthority is organization_admin or platform_support; null where the
+	// ledger does not record it (entitlement events).
+	ActorAuthority *string `json:"actor_authority"`
+	// SupportAccessID names the break-glass access an event was written under.
+	SupportAccessID *uuid.UUID `json:"support_access_id,omitempty"`
+	// Reason is the reason a platform administrator stated when opening the
+	// organization; present on support_access.opened events only.
+	Reason   string `json:"reason,omitempty"`
+	Action   string `json:"action"`
+	TargetID string `json:"target_id"`
+	Outcome  string `json:"outcome"`
 }
 type OrganizationAuditPage struct {
 	Events     []OrganizationAuditEvent `json:"events"`
@@ -48,11 +59,16 @@ func (s *Store) ListOrganizationAudit(ctx context.Context, organizationID uuid.U
 		before = &after.Time
 	}
 	const limit = 50
-	rows, err := s.pool.Query(ctx, `SELECT id,source,created_at,actor_account_id,action,target_id,outcome FROM (
-  SELECT id,'lifecycle'::text AS source,created_at,actor_account_id,action,target_id,outcome
+	rows, err := s.pool.Query(ctx, `SELECT id,source,created_at,actor_account_id,actor_authority,support_access_id,reason,action,target_id,outcome FROM (
+  SELECT id,'lifecycle'::text AS source,created_at,
+    CASE WHEN actor_platform_role='platform_admin' THEN NULL ELSE actor_account_id END AS actor_account_id,
+    CASE WHEN actor_platform_role='platform_admin' THEN 'platform_support' ELSE 'organization_admin' END AS actor_authority,
+    support_access_id,
+    CASE WHEN action='support_access.opened' THEN COALESCE(after_state->>'reason','') ELSE '' END AS reason,
+    action,target_id,outcome
     FROM admin_audit_events WHERE organization_id=$1
   UNION ALL
-  SELECT id,'entitlement'::text AS source,created_at,actor_account_id,action,
+  SELECT id,'entitlement'::text AS source,created_at,actor_account_id,NULL::text AS actor_authority,NULL::uuid AS support_access_id,''::text AS reason,action,
     COALESCE(target_account_id::text,organization_id::text) AS target_id,'success'::text AS outcome
     FROM entitlement_audit_events WHERE organization_id=$1
  ) events WHERE ($2::timestamptz IS NULL OR (created_at,source,id)<($2::timestamptz,$3::text,$4::bigint))
@@ -63,7 +79,7 @@ func (s *Store) ListOrganizationAudit(ctx context.Context, organizationID uuid.U
 	defer rows.Close()
 	for rows.Next() {
 		var event OrganizationAuditEvent
-		if err := rows.Scan(&event.ID, &event.Source, &event.CreatedAt, &event.ActorAccountID, &event.Action, &event.TargetID, &event.Outcome); err != nil {
+		if err := rows.Scan(&event.ID, &event.Source, &event.CreatedAt, &event.ActorAccountID, &event.ActorAuthority, &event.SupportAccessID, &event.Reason, &event.Action, &event.TargetID, &event.Outcome); err != nil {
 			return page, err
 		}
 		page.Events = append(page.Events, event)

@@ -54,6 +54,8 @@ func newMultitenantAdminAcceptanceFixtureWithMail(t *testing.T, sender mail.Send
 
 // newMultitenantAdminAcceptanceFixtureWith is the fixture with extra Bloem
 // dependencies, such as a fake stream control service.
+//
+//nolint:funlen // the fixture builds two organizations, their people, libraries and administrators end to end
 func newMultitenantAdminAcceptanceFixtureWith(t *testing.T, bloem BloemDependencies) *multitenantAdminAcceptanceFixture {
 	t.Helper()
 	ctx := context.Background()

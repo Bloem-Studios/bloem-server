@@ -1154,6 +1154,7 @@ GET /api/bloem/v2/admin/organization/policy-decisions/{id}	non-media
 GET /api/bloem/v2/admin/organization/streams	non-media
 POST /api/bloem/v2/admin/organization/streams/{session_id}/message	non-media
 POST /api/bloem/v2/admin/organization/streams/{session_id}/stop	non-media
+DELETE /api/bloem/v2/admin/organization/support-access	non-media
 GET /api/bloem/v2/admin/organization/support-capabilities	non-media
 POST /api/bloem/v2/admin/platform/accounts	non-media
 CONNECT /api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs	non-media

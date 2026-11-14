@@ -100,6 +100,7 @@ func (f *streamFixture) stream(t *testing.T, method, path, body, pass string) *h
 	return performJSONRequest(t, f.router, method, NativeAPIPrefix+"/admin/organization/streams/"+path, body, pass, nil)
 }
 
+//nolint:funlen,gocyclo // one acceptance walk through the stream routes, in the order a support session takes them
 func TestSupportStreamsAcceptance(t *testing.T) {
 	f := newStreamFixture(t)
 	f.addStream(t, "sess-member", f.memberID, f.memberProfile, "transcode")

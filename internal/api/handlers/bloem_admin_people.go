@@ -474,7 +474,7 @@ func adminPeopleMutationContext(r *http.Request) context.Context {
 	if authority == "" {
 		authority = adminpeople.AuthorityOrganizationAdmin
 	}
-	return adminpeople.WithMutationActor(r.Context(), adminpeople.MutationActor{AccountID: claims.AccountID, Authority: authority, MembershipID: claims.MembershipID, SecurityRevision: claims.SecurityRevision, PolicyRevision: claims.PolicyRevision, RequestID: adminRequestID(r)})
+	return adminpeople.WithMutationActor(r.Context(), adminpeople.MutationActor{AccountID: claims.AccountID, Authority: authority, MembershipID: claims.MembershipID, SecurityRevision: claims.SecurityRevision, PolicyRevision: claims.PolicyRevision, RequestID: adminRequestID(r), SupportAccessID: claims.SupportAccessID})
 }
 
 func adminPeopleFilterFromQuery(w http.ResponseWriter, r *http.Request) (adminpeople.Filter, bool) {

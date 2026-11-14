@@ -37,6 +37,7 @@ more detailed pages of its area, and ends with a "For developers" section.
 
 - [How organizations work](../architecture/bloem-organizations.md) — the platform, organizations, accounts and profiles; what someone can watch; a reseller's year.
 - [How organization domains and branding work](../architecture/bloem-organization-domains.md) — each organization on its own domains, with its own branding and email links; refusing a sign-in on another organization's domain.
+- [How organization support works](../architecture/bloem-organization-support.md) — what an organization's administrators can do for their members (reset links, sign-outs, profiles, streams), who may act on whom, and the operator's break-glass access with a stated reason.
 - [How plans, previews and upgrades work](../architecture/bloem-plans.md) — the built-in plans, how a plan combines with an account and its profiles, changing a plan safely, the storefront preview, the upgrade prompt.
 - [How Live TV works](../architecture/bloem-live-tv.md) — sources, tuning in, recordings.
 - [How storage sources work](../architecture/bloem-storage-sources.md) — libraries read from S3 and Bookwarehouse.

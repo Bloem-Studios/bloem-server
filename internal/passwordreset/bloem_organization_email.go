@@ -19,7 +19,7 @@ func composeResetNoticeEmail(brand mail.Brand, username, organizationName, serve
 	}
 	who := "An administrator of your organization"
 	if name := strings.TrimSpace(organizationName); name != "" {
-		who = fmt.Sprintf("An administrator of %s", name)
+		who = "An administrator of " + name
 	}
 	intro := fmt.Sprintf("%s issued a password reset for your %s account.", who, product)
 	detail := "They may give you a link to choose a new password. Using it signs you out on every device. " +

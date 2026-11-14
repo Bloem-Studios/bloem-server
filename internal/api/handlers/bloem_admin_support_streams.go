@@ -156,6 +156,9 @@ func (h *BloemOrganizationSupportHandler) deviceNames(ctx context.Context, rows 
 			names[strconv.Itoa(user)+"/"+device] = name
 		}
 	}
+	if err := found.Err(); err != nil {
+		slog.WarnContext(ctx, "stream device names incomplete", "component", "api", "error", err)
+	}
 	return names
 }
 

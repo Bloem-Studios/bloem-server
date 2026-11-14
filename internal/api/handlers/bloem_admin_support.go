@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
@@ -56,6 +55,8 @@ type BloemOrganizationSupportHandler struct {
 	// sessions and control serve the stream routes (SetStreams).
 	sessions SupportStreamSessions
 	control  SupportStreamControl
+	// access is the break-glass record, for the close route.
+	access SupportAccessStore
 
 	now func() time.Time
 }
@@ -133,7 +134,7 @@ func (h *BloemOrganizationSupportHandler) writeSupportError(w http.ResponseWrite
 			Error           string `json:"error"`
 			Message         string `json:"message"`
 			CurrentRevision int64  `json:"current_revision"`
-		}{"authorization_state_changed", "Authorization state changed; reload and retry", revision})
+		}{supportStateChangedCode, supportStateChangedMessage, revision})
 	case errors.Is(err, adminpeople.ErrMembershipNotActive):
 		writeError(w, http.StatusConflict, "membership_not_active", "This person's membership is not active")
 	case errors.Is(err, passwordreset.ErrAccountDisabled):
@@ -159,6 +160,11 @@ func (h *BloemOrganizationSupportHandler) writeSupportError(w http.ResponseWrite
 	}
 }
 
+const (
+	supportStateChangedCode    = "authorization_state_changed"
+	supportStateChangedMessage = "Authorization state changed; reload and retry"
+)
+
 // errSupportNotFound and errSupportConflict let a support operation answer
 // 404 and a coded 409 without a new top-level sentinel each.
 var (
@@ -166,37 +172,22 @@ var (
 	errSupportConflict = errors.New("support conflict")
 )
 
-type supportConflict struct {
+type supportConflictError struct {
 	code    string
 	message string
 }
 
-func (e *supportConflict) Error() string { return e.message }
-func (e *supportConflict) Is(target error) bool {
+func (e *supportConflictError) Error() string { return e.message }
+func (e *supportConflictError) Is(target error) bool {
 	return target == errSupportConflict
 }
 
 func supportConflictCode(err error) string {
-	var conflict *supportConflict
+	var conflict *supportConflictError
 	if errors.As(err, &conflict) {
 		return conflict.code
 	}
 	return "conflict"
-}
-
-// supportBudgetTx opens a support transaction that first serializes and checks
-// a rate-limit budget. target is the account id (as text) or the stream id.
-func supportBudgetTx[T any](ctx context.Context, pool *pgxpool.Pool, budget adminpeople.Budget, organizationID uuid.UUID, actorID int, target string, fn func(pgx.Tx) (T, error)) (T, error) {
-	return adminpeople.RunSupportTx(ctx, pool.Begin, func(tx pgx.Tx) (T, error) {
-		var zero T
-		if err := adminpeople.LockBudget(ctx, tx, budget, organizationID); err != nil {
-			return zero, err
-		}
-		if err := adminpeople.CheckBudget(ctx, tx, budget, organizationID, actorID, target); err != nil {
-			return zero, err
-		}
-		return fn(tx)
-	})
 }
 
 func itoa(value int) string { return strconv.Itoa(value) }

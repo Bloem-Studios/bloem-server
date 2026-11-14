@@ -160,6 +160,9 @@ func (s *adminContextTokenService) Parse(tokenStr string) (AdminContextClaims, e
 			return AdminContextClaims{}, fmt.Errorf("%w: account incarnation id", ErrInvalidAdminContext)
 		}
 	}
+	if claims.Scope != AdminScopeOrganization && jwtClaims.SupportAccessID != "" {
+		return AdminContextClaims{}, fmt.Errorf("%w: support access id outside organization scope", ErrInvalidAdminContext)
+	}
 	if claims.Scope == AdminScopeOrganization {
 		var parseErr error
 		claims.OrganizationID, parseErr = uuid.Parse(jwtClaims.OrganizationID)
@@ -193,7 +196,7 @@ func validateAdminContextClaims(claims AdminContextClaims) error {
 	}
 	switch claims.Scope {
 	case AdminScopePlatform:
-		if claims.OrganizationID != uuid.Nil || claims.MembershipID != uuid.Nil || claims.PolicyRevision != 0 || claims.SecurityRevision != 0 || claims.EffectiveAuthority != "" {
+		if claims.OrganizationID != uuid.Nil || claims.MembershipID != uuid.Nil || claims.SupportAccessID != uuid.Nil || claims.PolicyRevision != 0 || claims.SecurityRevision != 0 || claims.EffectiveAuthority != "" {
 			return fmt.Errorf("%w: platform scope cannot carry organization authority", ErrInvalidAdminContext)
 		}
 	case AdminScopeOrganization:

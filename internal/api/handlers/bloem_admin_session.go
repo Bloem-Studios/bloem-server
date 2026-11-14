@@ -17,6 +17,16 @@ import (
 type adminContextSessionRequest struct {
 	Scope          auth.AdminScope `json:"scope"`
 	OrganizationID string          `json:"organization_id,omitempty"`
+	// Support asks for break-glass access to an organization the caller is not
+	// a member of. It is ignored when the caller has an active membership.
+	Support *adminContextSupportRequest `json:"support,omitempty"`
+}
+
+// adminContextSupportRequest carries the reason for a new support access, or
+// the id of an open one to renew the pass under.
+type adminContextSupportRequest struct {
+	Reason   string `json:"reason,omitempty"`
+	AccessID string `json:"access_id,omitempty"`
 }
 
 type adminContextSessionResponse struct {
@@ -35,6 +45,12 @@ type adminContextSummary struct {
 	Authority        string          `json:"authority"`
 	PolicyRevision   int64           `json:"policy_revision,omitempty"`
 	SecurityRevision int64           `json:"security_revision,omitempty"`
+	// AccessBasis says how the caller reaches the organization: as a member
+	// ("membership") or under break-glass access ("support"). Absent for the
+	// platform context.
+	AccessBasis      string     `json:"access_basis,omitempty"`
+	SupportAccessID  string     `json:"support_access_id,omitempty"`
+	SupportExpiresAt *time.Time `json:"support_expires_at,omitempty"`
 }
 
 // AdminContextSessionStore reads the durable membership data used when a
@@ -55,6 +71,7 @@ type AdminContextSessionHandler struct {
 	resolver    AdminContextSessionResolver
 	memberships AdminContextSessionStore
 	platform    auth.PlatformAdminAuthorizer
+	support     SupportAccessStore
 }
 
 func NewAdminContextSessionHandler(tokens auth.AdminContextTokenService, resolver AdminContextSessionResolver, memberships AdminContextSessionStore, platform auth.PlatformAdminAuthorizer) *AdminContextSessionHandler {
@@ -122,6 +139,13 @@ func (h *AdminContextSessionHandler) HandleSession(w http.ResponseWriter, r *htt
 		}
 		resolved, err := h.resolver.Resolve(r.Context(), claims.UserID, &organizationID, false)
 		if err != nil {
+			// A caller with no membership here may ask for break-glass access.
+			// Anything else, and every caller that cannot, gets exactly the
+			// answer it always got.
+			if request.Support != nil && h.support != nil && errors.Is(err, tenancy.ErrTenantNotFoundOrHidden) {
+				h.openSupport(w, r, claims, actorIncarnation, organizationID, *request.Support)
+				return
+			}
 			writeAdminContextSessionResolveError(w, err)
 			return
 		}
@@ -162,6 +186,7 @@ func (h *AdminContextSessionHandler) HandleSession(w http.ResponseWriter, r *htt
 			Key: "organization:" + organizationID.String(), Scope: auth.AdminScopeOrganization,
 			OrganizationID: organizationID.String(), MembershipID: membership.ID.String(), Name: organization.Name, Status: string(organization.Status), Authority: authority,
 			PolicyRevision: resolved.PolicyRevision, SecurityRevision: resolved.SecurityRevision,
+			AccessBasis: "membership",
 		})
 	default:
 		writeError(w, http.StatusBadRequest, "invalid_request", "Unknown administrative context scope")

@@ -50,7 +50,7 @@ func (h *BloemOrganizationSupportHandler) writeProfileError(w http.ResponseWrite
 			Error           string `json:"error"`
 			Message         string `json:"message"`
 			CurrentRevision int64  `json:"current_revision"`
-		}{"authorization_state_changed", "The profile changed; reload and retry", revision.Current})
+		}{supportStateChangedCode, "The profile changed; reload and retry", revision.Current})
 	case errors.Is(err, adminpeople.ErrProfileNameConflict):
 		writeError(w, http.StatusConflict, "name_conflict", "A profile with this name already exists")
 	case errors.Is(err, adminpeople.ErrPrimaryProfileProtected):
@@ -79,37 +79,11 @@ func (h *BloemOrganizationSupportHandler) HandleCreateProfile(w http.ResponseWri
 	if !ok {
 		return
 	}
-	var body struct {
-		Name    string `json:"name"`
-		GroupID *int   `json:"group_id"`
-	}
-	if !decodeAdminPlatformJSON(w, r, &body) {
-		return
-	}
-	name, nameErr := adminpeople.ValidateProfileName(body.Name)
-	fields := map[string]string{}
-	if nameErr != nil {
-		fields["name"] = "must be 1 to 100 characters without control characters"
-	}
-	if body.GroupID != nil && *body.GroupID <= 0 {
-		fields["group_id"] = "must be a group of this organization"
-	}
-	if len(fields) > 0 {
-		writeAdminValidation(w, fields)
+	name, groupID, ok := h.parseCreateProfile(w, r, request.Tenant.OrganizationID, accountID)
+	if !ok {
 		return
 	}
 	organizationID := request.Tenant.OrganizationID
-	if body.GroupID != nil {
-		var exists bool
-		if err := h.pool.QueryRow(r.Context(), `SELECT EXISTS (SELECT 1 FROM access_groups WHERE organization_id = $1 AND id = $2)`, organizationID, *body.GroupID).Scan(&exists); err != nil {
-			h.writeSupportError(w, r, err, organizationID, accountID)
-			return
-		}
-		if !exists {
-			writeAdminValidation(w, map[string]string{"group_id": "must be a group of this organization"})
-			return
-		}
-	}
 	lifecycle, ok := h.profileLifecycle()
 	if !ok {
 		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
@@ -142,8 +116,8 @@ func (h *BloemOrganizationSupportHandler) HandleCreateProfile(w http.ResponseWri
 		ID: uuid.NewString(), Name: name, OrganizationID: organizationID.String(),
 		AccessGroupID: inheritedGroupID, ShowForcedSubtitles: true,
 	}
-	if body.GroupID != nil {
-		group := int64(*body.GroupID)
+	if groupID != nil {
+		group := int64(*groupID)
 		profile.AccessGroupID = &group
 	}
 	var refusal error
@@ -237,7 +211,7 @@ func (h *BloemOrganizationSupportHandler) createProfileOnce(ctx context.Context,
 // captureRefusal turns an audited refusal into a nil error (so the surrounding
 // transaction commits its audit row) and hands the cause to the caller.
 func captureRefusal(err error, out *error) error {
-	var refusal *adminpeople.Refusal
+	var refusal *adminpeople.RefusalError
 	if errors.As(err, &refusal) {
 		*out = refusal.Unwrap()
 		return nil
@@ -413,4 +387,40 @@ func (h *BloemOrganizationSupportHandler) auditRemovalRefusal(ctx context.Contex
 	_, _ = adminpeople.RunSupportTx(context.WithoutCancel(ctx), h.pool.Begin, func(tx pgx.Tx) (struct{}, error) {
 		return struct{}{}, adminpeople.RefuseAudited(ctx, tx, event, reason, cause)
 	})
+}
+
+// parseCreateProfile reads and validates a profile create request: the name,
+// and the access group when one is named, which must be this organization's.
+func (h *BloemOrganizationSupportHandler) parseCreateProfile(w http.ResponseWriter, r *http.Request, organizationID uuid.UUID, accountID int) (string, *int, bool) {
+	var body struct {
+		Name    string `json:"name"`
+		GroupID *int   `json:"group_id"`
+	}
+	if !decodeAdminPlatformJSON(w, r, &body) {
+		return "", nil, false
+	}
+	name, nameErr := adminpeople.ValidateProfileName(body.Name)
+	fields := map[string]string{}
+	if nameErr != nil {
+		fields["name"] = "must be 1 to 100 characters without control characters"
+	}
+	if body.GroupID != nil && *body.GroupID <= 0 {
+		fields["group_id"] = "must be a group of this organization"
+	}
+	if len(fields) > 0 {
+		writeAdminValidation(w, fields)
+		return "", nil, false
+	}
+	if body.GroupID != nil {
+		var exists bool
+		if err := h.pool.QueryRow(r.Context(), `SELECT EXISTS (SELECT 1 FROM access_groups WHERE organization_id = $1 AND id = $2)`, organizationID, *body.GroupID).Scan(&exists); err != nil {
+			h.writeSupportError(w, r, err, organizationID, accountID)
+			return "", nil, false
+		}
+		if !exists {
+			writeAdminValidation(w, map[string]string{"group_id": "must be a group of this organization"})
+			return "", nil, false
+		}
+	}
+	return name, body.GroupID, true
 }

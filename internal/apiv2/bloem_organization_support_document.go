@@ -142,6 +142,8 @@ type BloemSupportStreamMessageReceipt struct {
 	Delivery  string `json:"delivery" enum:"dispatched,fallback_scheduled"`
 }
 
+const bloemSupportNotFound = "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+
 // bloemSupportOp starts a support operation with the answers every one shares.
 func bloemSupportOp(reg *Registry, method, path, id, summary string, status int) huma.Operation {
 	op := bloemAdminDocumentOp(reg, method, path, id, summary, "bloemOrganizationContext", status)
@@ -157,7 +159,7 @@ func bloemSupportOp(reg *Registry, method, path, id, summary string, status int)
 
 func registerBloemOrganizationSupportDocument(reg *Registry) {
 	const person = "/admin/organization/people/{account_id}"
-	const notFound = "not_found: account_id is not a positive integer or not a member of the organization; the session, device, profile or group is not this person's or this organization's."
+	const notFound = bloemSupportNotFound
 
 	{
 		op := bloemSupportOp(reg, "POST", person+"/password-reset", "createBloemOrganizationPersonPasswordReset", "Issue a single-use password reset link for a member.", 201)
@@ -179,7 +181,7 @@ func registerBloemOrganizationSupportDocument(reg *Registry) {
 		op := bloemSupportOp(reg, "DELETE", person+"/sessions", "revokeBloemOrganizationPersonSessions", "Sign a member out everywhere.", 200)
 		op.Description += " Raises the person's security_revision, which ends membership-bound tokens and older account-login sessions, and revokes every session of the account, impersonation sessions included. The person's personal API keys survive."
 		bloemDocumentValidation(reg, &op)
-		bloemDocumentDescribe(&op, map[int]string{404: notFound, 409: bloemSupportProtected, 422: "validation_failed: expected_revision is not positive."})
+		bloemDocumentDescribe(&op, map[int]string{404: notFound, 409: bloemSupportProtected, 422: bloemOrganizationRevisionInvalid})
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{503: "tenant_unavailable: the store is unavailable. dependency_unavailable (Retry-After: 30): the sign-out took effect but a connected service could not be told; retrying is safe."})
 		registerBloemChiDocument[bloemJSONInput[BloemSupportProfileRevision], bloemJSONOutput[BloemSupportSignOutResponse]](reg, op)
 	}
@@ -200,6 +202,13 @@ func registerBloemOrganizationSupportDocument(reg *Registry) {
 		bloemDocumentDescribe(&op, map[int]string{404: notFound, 409: bloemSupportProtected})
 		registerBloemChiDocument[bloemSupportDeviceInput, struct{}](reg, op)
 	}
+	registerBloemOrganizationSupportProfiles(reg)
+	registerBloemOrganizationSupportStreams(reg)
+}
+
+func registerBloemOrganizationSupportProfiles(reg *Registry) {
+	const person = "/admin/organization/people/{account_id}"
+	const notFound = bloemSupportNotFound
 	{
 		op := bloemSupportOp(reg, "POST", person+"/profiles", "createBloemOrganizationPersonProfile", "Add a profile to a member.", 201)
 		op.Description += " The account's profile limit applies. The administrator cannot set a PIN or parental fields."
@@ -226,7 +235,7 @@ func registerBloemOrganizationSupportDocument(reg *Registry) {
 		op := bloemSupportOp(reg, "DELETE", person+"/profiles/{profile_id}/pin", "clearBloemOrganizationPersonProfilePin", "Clear a member's forgotten profile PIN.", 200)
 		op.Description += " The administrator never sets a PIN: the member or the household's main profile chooses a new one. Clearing the primary profile's PIN is allowed and audited. Clearing a profile that has no PIN succeeds. A profile locked by wrong guesses works at once."
 		bloemDocumentValidation(reg, &op)
-		bloemDocumentDescribe(&op, map[int]string{404: notFound, 409: bloemSupportProtected, 422: "validation_failed: expected_revision is not positive."})
+		bloemDocumentDescribe(&op, map[int]string{404: notFound, 409: bloemSupportProtected, 422: bloemOrganizationRevisionInvalid})
 		registerBloemChiDocument[bloemJSONInput[BloemSupportProfileRevision], bloemJSONOutput[BloemSupportProfileOnlyResponse]](reg, op)
 	}
 	{
@@ -236,11 +245,14 @@ func registerBloemOrganizationSupportDocument(reg *Registry) {
 		bloemDocumentDescribe(&op, map[int]string{
 			404: notFound,
 			409: bloemSupportProtected + " primary_profile_protected: the primary profile cannot be removed.",
-			422: "validation_failed: expected_revision is not positive.",
+			422: bloemOrganizationRevisionInvalid,
 		})
 		registerBloemChiDocument[bloemJSONInput[BloemSupportProfileRevision], struct{}](reg, op)
 	}
 
+}
+
+func registerBloemOrganizationSupportStreams(reg *Registry) {
 	{
 		op := bloemSupportOp(reg, "GET", "/admin/organization/support-capabilities", "getBloemOrganizationSupportCapabilities", "Say which support operations this server can serve.", 200)
 		op.Description = bloemOrganizationAuthorityDescription + " A client hides what is false and never infers it from a failure. Also advertised publicly by organization_support_v1 in feature_tokens."
@@ -275,5 +287,12 @@ func registerBloemOrganizationSupportDocument(reg *Registry) {
 		op.Responses["409"].Headers = map[string]*huma.Header{"X-Silo-Latest-Sequence": {Schema: &huma.Schema{Type: "string"}, Description: "On stale_sequence, the session's latest applied sequence as a decimal integer."}}
 		op.Responses["200"] = &huma.Response{Description: "This command identity was already applied; the recorded receipt is returned and nothing is dispatched.", Content: map[string]*huma.MediaType{"application/json": {Schema: reg.api.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[BloemSupportStreamMessageReceipt](), true, "")}}}
 		registerBloemChiDocument[BloemSupportStreamMessageInput, bloemJSONOutput[BloemSupportStreamMessageReceipt]](reg, op)
+	}
+
+	{
+		op := bloemAdminDocumentOp(reg, "DELETE", "/admin/organization/support-access", "closeBloemOrganizationSupportAccess", "End the break-glass support access this pass was opened under.", "bloemOrganizationContext", 204)
+		op.Description = bloemOrganizationAuthorityDescription + " Only a pass opened under support access can close one; the pass ends with it. The closing is recorded and shown to the organization's administrators in Activity."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{404: "not_found: this pass was not opened under support access, or the access already ended."})
+		registerBloemChiDocument[struct{}, struct{}](reg, op)
 	}
 }

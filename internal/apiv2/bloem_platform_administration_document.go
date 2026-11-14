@@ -27,8 +27,16 @@ const (
 // Mirror private entitlement/session wire types, not persistence models.
 
 type BloemAdminSessionRequest struct {
-	Scope          string `json:"scope" enum:"platform,organization"`
-	OrganizationID string `json:"organization_id,omitempty"`
+	Scope          string                    `json:"scope" enum:"platform,organization"`
+	OrganizationID string                    `json:"organization_id,omitempty"`
+	Support        *BloemAdminSessionSupport `json:"support,omitempty" doc:"Break-glass access to an organization the caller is not a member of. Ignored when the caller has an active membership there. Only the server Owner may use it; for every other caller the answer is the 404 they always got."`
+}
+
+// BloemAdminSessionSupport states why the server Owner opens a customer's
+// organization, or renews the pass under an access that is still open.
+type BloemAdminSessionSupport struct {
+	Reason   string `json:"reason,omitempty" minLength:"10" maxLength:"500" doc:"Why the organization is being opened, shown to its administrators in Activity. Required to open; send access_id instead to renew."`
+	AccessID string `json:"access_id,omitempty" format:"uuid" doc:"The support_access_id of an access this login session opened and that is still open. The access never lasts longer than four hours from opening."`
 }
 
 type BloemAdminSessionResponse struct {
@@ -47,6 +55,10 @@ type BloemAdminContextSummary struct {
 	Authority        string `json:"authority"`
 	PolicyRevision   int64  `json:"policy_revision,omitempty"`
 	SecurityRevision int64  `json:"security_revision,omitempty"`
+	// AccessBasis is absent for the platform context.
+	AccessBasis      string     `json:"access_basis,omitempty" enum:"membership,support" doc:"membership: the caller is a member of the organization. support: the pass was opened under break-glass access and carries no membership."`
+	SupportAccessID  string     `json:"support_access_id,omitempty" format:"uuid"`
+	SupportExpiresAt *time.Time `json:"support_expires_at,omitempty" doc:"When the access ends, at most four hours after it was opened. A re-mint cannot extend it."`
 }
 
 type BloemEntitlementPolicy struct {
@@ -268,8 +280,10 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/session", "createBloemAdminSession", "Exchange a login session for a scoped administrative context.", "bloemAdminLoginSession", 200)
-		op.Description = "Requires an authenticated account with a current login-session ID and account incarnation. API keys without a login session are refused. scope=platform forbids organization_id and requires current platform authority. scope=organization requires organization_id and current organization administrator or platform authority; membership and organization must be active. The new token is bound to the originating login session. Strict JSON; body limit 16 KiB."
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request: invalid scope, JSON, organization selection or body exceeding 16 KiB.", 404: "not_found: the selected organization is absent, hidden or still initializing, or this account has no membership in it or only an invitation."})
+		op.Description = "Requires an authenticated account with a current login-session ID and account incarnation. API keys without a login session are refused. scope=platform forbids organization_id and requires current platform authority. scope=organization requires organization_id and current organization administrator or platform authority; membership and organization must be active. The new token is bound to the originating login session. Strict JSON; body limit 16 KiB. Break-glass: for scope=organization, a caller with no membership who is the server Owner may send support.reason (10 to 500 characters) to open the organization. Every opening is recorded, capped at four hours, and shown to the organization's administrators in Activity with its reason. The pass then has authority platform_admin, no membership, access_basis support and the support_access_id; it works on organization routes only. Renew it with support.access_id while the same login session and access are still open. A suspended organization stays 403 organization_suspended."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request: invalid scope, JSON, organization selection or body exceeding 16 KiB.", 404: "not_found: the selected organization is absent, hidden or still initializing, or this account has no membership in it or only an invitation; also the answer to a support request from any caller who may not open it, or whose access_id is not an open access of this login session."})
+		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "validation_failed (fields support.reason): the server Owner opens an active organization without a reason of 10 to 500 characters without control characters."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: "rate_limited: the operator opened 20 support accesses in the last hour; Retry-After says when to retry."})
 		bloemDocumentDescribe(&op, map[int]string{
 			401: "unauthorized: authentication is missing or invalid, the account identity is incomplete, or the credential has no login session (API keys cannot exchange); authorization_state_stale: the membership or its revisions changed during the exchange.",
 			403: "insufficient_platform_authority: scope=platform without current platform authority; insufficient_organization_authority: the membership is not an organization administrator; organization_suspended: the organization or membership is suspended; forbidden or password_change_required: this session cannot use the route.",
