@@ -43,10 +43,10 @@ func bloemCreateRestoredProfileInTx(ctx context.Context, tx pgx.Tx, userID int, 
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO user_profiles (id, user_id, name, avatar, pin_hash, is_child, is_primary, max_content_rating, max_advisory_age,
-			require_advisory_age, library_restrictions_enabled, max_playback_quality, organization_id, access_group_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9::smallint, 0), $10, $11, $12, $13::uuid, $14)`,
+			require_advisory_age, requests_blocked, library_restrictions_enabled, max_playback_quality, organization_id, access_group_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9::smallint, 0), $10, $11, $12, $13, $14::uuid, $15)`,
 		p.ID, userID, p.Name, p.Avatar, p.PINHash, p.IsChild, primary, p.MaxContentRating, p.MaxAdvisoryAge,
-		p.RequireAdvisoryAge, p.LibraryRestrictionsEnabled, p.MaxPlaybackQuality, organizationID, groupID); err != nil {
+		p.RequireAdvisoryAge, p.RequestsBlocked, p.LibraryRestrictionsEnabled, p.MaxPlaybackQuality, organizationID, groupID); err != nil {
 		return true, false, fmt.Errorf("inserting restored profile: %w", err)
 	}
 	return true, primary, replaceProfileAllowedLibraries(ctx, tx, userID, p.ID, p.AllowedLibraryIDs)

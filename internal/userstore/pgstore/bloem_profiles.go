@@ -216,7 +216,7 @@ func bloemProfileFromRow(row pgx.Row, id string) (*userstore.Profile, error) {
 func bloemListProfiles(ctx context.Context, exec preferenceSettingsExecutor, userID int) ([]userstore.Profile, bool, error) {
 	rows, err := exec.Query(ctx, `
 		SELECT id, name, avatar, pin_hash, is_child, is_primary, max_content_rating, COALESCE(max_advisory_age, 0),
-		       require_advisory_age,
+		       require_advisory_age, requests_blocked,
 		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
 		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
 		       show_forced_subtitles, max_playback_quality, pin_revision, created_at, updated_at,
