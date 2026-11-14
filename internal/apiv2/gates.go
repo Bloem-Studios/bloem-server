@@ -58,6 +58,7 @@ func classGate(deps Dependencies) func(huma.Context, func(huma.Context)) {
 		}
 		if streamReferenceOperations[op.OperationID] && missing == "" {
 			chain = streamReferenceGateChain(deps, chain)
+			chain = bloemStreamReferenceChain(deps, chain) // Bloem: keep the stream-token gate first (bloem_hooks.go)
 		}
 		if attach, _ := op.Metadata[metaAttachSession].(bool); attach && class == ClassPublic && deps.Auth != nil {
 			chain = append(chain, deps.Auth.AttachSession)
