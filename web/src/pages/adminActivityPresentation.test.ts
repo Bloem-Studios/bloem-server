@@ -18,6 +18,9 @@ import {
   formatTranscodeModeSummary,
   formatVideoDetail,
   formatVideoSummary,
+  getPlaybackSessionCompactTitle,
+  getPlaybackSessionSubtitle,
+  getPlaybackSessionTitle,
   getSessionClientLabelFull,
   getSessionRouteNodes,
   normalizeContainerDecision,
@@ -524,5 +527,23 @@ describe("adminActivityPresentation", () => {
     ).toBe("Silo iOS 2.1.0");
     expect(getSessionClientLabelFull(makeSession({ client_name: "Silo iOS" }))).toBe("Silo iOS");
     expect(getSessionClientLabelFull(makeSession())).toBe("");
+  });
+});
+
+describe("playback session titles", () => {
+  it("lead an episode with its series and name the episode below it", () => {
+    const episode = makeSession({
+      media_title: "Goodbye, Mrs. Selvig",
+      media_type: "episode",
+      series_name: "Severance",
+      season_number: 2,
+      episode_number: 1,
+      episode_name: "Goodbye, Mrs. Selvig",
+    });
+    expect(getPlaybackSessionTitle(episode)).toBe("Severance");
+    expect(getPlaybackSessionSubtitle(episode)).toBe("S2E1 · Goodbye, Mrs. Selvig");
+    expect(getPlaybackSessionCompactTitle(episode)).toBe("Severance · S2E1");
+    // A pilot named after its show does not repeat the series.
+    expect(getPlaybackSessionSubtitle({ ...episode, episode_name: "Severance" })).toBe("S2E1");
   });
 });

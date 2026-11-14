@@ -71,16 +71,18 @@ function episodeCode(p: AdminDownloadPreparation): string {
   });
 }
 
-/** Row title: the episode's own name, or the movie title. */
+/** Row title: an episode's series, or the movie title. */
 export function preparationTitle(p: AdminDownloadPreparation): string {
-  if (isEpisodePreparation(p)) return p.episode_name || episodeCode(p);
+  if (isEpisodePreparation(p)) return p.series_name ?? "";
   return p.media_title || t(`${K}.fileFallback`, { id: String(p.media_file_id) });
 }
 
-/** Row subtitle: "S02E01 · Severance" for episodes, "Movie" otherwise. */
+/** Row subtitle: "S02E01 · Goodbye, Mrs. Selvig" for episodes, "Movie" otherwise. */
 export function preparationSubtitle(p: AdminDownloadPreparation): string {
   if (isEpisodePreparation(p)) {
-    return t(`${K}.subtitle.episode`, { code: episodeCode(p), series: p.series_name ?? "" });
+    // A pilot named after its show would otherwise repeat the series title.
+    const episodeName = p.episode_name === p.series_name ? "" : p.episode_name;
+    return [episodeCode(p), episodeName].filter(Boolean).join(" · ");
   }
   return p.media_type === "movie" ? t(`${K}.subtitle.movie`) : p.media_type;
 }

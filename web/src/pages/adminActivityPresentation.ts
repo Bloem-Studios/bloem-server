@@ -634,17 +634,41 @@ function formatContainer(container?: string): string | null {
   return trimmed ? trimmed.toUpperCase() : null;
 }
 
-export function getPlaybackSessionTitle(session: AdminSession): string {
+/**
+ * The line that names a stream: an episode's series ("Severance"), or the movie title.
+ * Pass `englishText` as `translate` for a sort key that does not change with the language.
+ */
+export function getPlaybackSessionTitle(
+  session: AdminSession,
+  translate: (id: MessageKey, values?: TextValues) => string = t,
+): string {
   if (session.series_name && session.season_number != null && session.episode_number != null) {
-    return session.episode_name || `S${session.season_number}E${session.episode_number}`;
+    return session.series_name;
   }
-  return session.media_title || t("web.common.activity.title.file", { id: session.media_file_id });
+  return (
+    session.media_title ||
+    translate("web.common.activity.title.file", { id: session.media_file_id })
+  );
 }
 
+/**
+ * An episode's own name for the line under its series, or "" when it has none or the
+ * name only repeats the series, as a pilot named after its show does.
+ */
+export function getPlaybackSessionEpisodeName(session: AdminSession): string {
+  const name = session.episode_name ?? "";
+  return name === session.series_name ? "" : name;
+}
+
+/** The line under the title: "S2E1 · Goodbye, Mrs. Selvig" for an episode, "Movie" for a movie. */
 export function getPlaybackSessionSubtitle(session: AdminSession): string | null {
   if (session.series_name && session.season_number != null && session.episode_number != null) {
-    const episode = `S${session.season_number}E${session.episode_number}`;
-    return session.series_name ? `${episode} · ${session.series_name}` : episode;
+    return [
+      `S${session.season_number}E${session.episode_number}`,
+      getPlaybackSessionEpisodeName(session),
+    ]
+      .filter(Boolean)
+      .join(" · ");
   }
   if (session.media_type === "movie") {
     return t("web.common.activity.subtitle.movie");
@@ -653,6 +677,14 @@ export function getPlaybackSessionSubtitle(session: AdminSession): string | null
     return t("web.common.activity.subtitle.series");
   }
   return null;
+}
+
+/** One line for tight spaces: "Severance · S2E1" for an episode, otherwise the title. */
+export function getPlaybackSessionCompactTitle(session: AdminSession): string {
+  if (session.series_name && session.season_number != null && session.episode_number != null) {
+    return `${session.series_name} · S${session.season_number}E${session.episode_number}`;
+  }
+  return getPlaybackSessionTitle(session);
 }
 
 function formatChannelLayout(channels?: number | null): string | null {
