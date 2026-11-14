@@ -45,12 +45,15 @@ func init() {
 // bloemRestoredDataTables are Bloem's data: organizations and their
 // memberships, entitlements and policy, branding and promotions, book
 // requests, storage-backed library configuration, and the Live TV setup.
-// Accounts roll back whole with their organizations.
+// Accounts roll back whole with their organizations. Break-glass support
+// access records (bloem_support_access) go with the audit events that name
+// them; each names its login session, which a restore leaves out
+// (auth_sessions), so a restored access can no longer be used.
 var bloemRestoredDataTables = strings.Fields(`
 	organizations organization_memberships organization_entitlements resource_owners platform_security
 	entitlement_bundles entitlement_bundle_versions entitlement_bundle_members
 	entitlement_templates entitlement_template_revisions entitlement_policy_cohorts entitlement_policy_cohort_revisions
-	admin_audit_events entitlement_audit_events
+	bloem_support_access admin_audit_events entitlement_audit_events
 	bloem_organization_branding bloem_organization_domains ambience_packs ambience_assets promotions
 	notification_announcements bloem_upgrade_prompt
 	bloem_book_requests bloem_audiobook_request_integrations bloem_ebook_request_integrations
