@@ -9,6 +9,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import {
   activityMethodMeta,
   classifyActivityMethod,
+  getPlaybackSessionEpisodeName,
   getSessionClientLabel,
 } from "@/pages/adminActivityPresentation";
 import type { AdminSession } from "@/api/types";
@@ -237,18 +238,32 @@ function useFittedCardCount(cardCount: number) {
 // measures either way.
 function StreamCard({ session, showPoster }: { session: AdminSession; showPoster: boolean }) {
   const t = useT();
-  const isEpisode =
-    session.series_name && session.season_number != null && session.episode_number != null;
-  const title = isEpisode
-    ? session.episode_name ||
-      t("web.admin.dashboard.widgets.nowPlaying.episodeFallback", {
-        season: String(session.season_number),
-        episode: String(session.episode_number),
-      })
-    : session.media_title ||
-      t("web.admin.dashboard.widgets.nowPlaying.fileFallback", {
-        id: session.media_file_id,
-      });
+  // An episode leads with its series; the episode's own name goes on the line below.
+  const seriesName =
+    session.season_number != null && session.episode_number != null
+      ? session.series_name
+      : undefined;
+  const title =
+    seriesName ||
+    session.media_title ||
+    t("web.admin.dashboard.widgets.nowPlaying.fileFallback", {
+      id: session.media_file_id,
+    });
+  const detail = seriesName
+    ? [
+        t("web.admin.dashboard.widgets.nowPlaying.episodeLine", {
+          season: String(session.season_number),
+          episode: String(session.episode_number),
+        }),
+        getPlaybackSessionEpisodeName(session),
+      ]
+        .filter(Boolean)
+        .join(" — ")
+    : session.media_type
+      ? session.media_type === "movie"
+        ? t("web.admin.dashboard.widgets.nowPlaying.movie")
+        : t("web.admin.dashboard.widgets.nowPlaying.series")
+      : "";
   const username =
     session.username ||
     t("web.admin.dashboard.widgets.nowPlaying.userFallback", { id: session.user_id });
@@ -288,52 +303,19 @@ function StreamCard({ session, showPoster }: { session: AdminSession; showPoster
 
       {/* Info */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {isEpisode ? (
-          <>
-            {session.content_id ? (
-              <Link
-                to={`/item/${session.content_id}`}
-                className="hover:text-primary truncate text-sm font-bold transition-colors"
-              >
-                {title}
-              </Link>
-            ) : (
-              <div className="truncate text-sm font-bold">{title}</div>
-            )}
-            <div className="text-muted-foreground mb-1.5 truncate text-xs">
-              {session.series_name
-                ? t("web.admin.dashboard.widgets.nowPlaying.episodeLineWithSeries", {
-                    season: String(session.season_number),
-                    episode: String(session.episode_number),
-                    series: session.series_name,
-                  })
-                : t("web.admin.dashboard.widgets.nowPlaying.episodeLine", {
-                    season: String(session.season_number),
-                    episode: String(session.episode_number),
-                  })}
-            </div>
-          </>
+        {session.content_id ? (
+          <Link
+            to={`/item/${session.content_id}`}
+            className="hover:text-primary truncate text-sm font-bold transition-colors"
+          >
+            {title}
+          </Link>
         ) : (
-          <>
-            {session.content_id ? (
-              <Link
-                to={`/item/${session.content_id}`}
-                className="hover:text-primary truncate text-sm font-bold transition-colors"
-              >
-                {title}
-              </Link>
-            ) : (
-              <div className="truncate text-sm font-bold">{title}</div>
-            )}
-            {session.media_type && (
-              <div className="text-muted-foreground mb-1.5 truncate text-xs">
-                {session.media_type === "movie"
-                  ? t("web.admin.dashboard.widgets.nowPlaying.movie")
-                  : t("web.admin.dashboard.widgets.nowPlaying.series")}
-              </div>
-            )}
-          </>
+          <div className="truncate text-sm font-bold">{title}</div>
         )}
+        {detail ? (
+          <div className="text-muted-foreground mb-1.5 truncate text-xs">{detail}</div>
+        ) : null}
 
         {/* Tags */}
         <div className="mb-1.5 flex flex-wrap gap-1">

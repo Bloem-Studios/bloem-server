@@ -5,8 +5,11 @@ import { makePreparation } from "@/test/downloadPreparations";
 import {
   formatRemaining,
   formatSpeed,
+  preparationCompactTitle,
   preparationPercent,
   preparationRemainingSeconds,
+  preparationSubtitle,
+  preparationTitle,
   summarizePreparationAction,
 } from "./adminDownloadPreparationPresentation";
 
@@ -58,5 +61,21 @@ describe("download preparation presentation", () => {
       "Canceled 1 job.",
     );
     expect(summarizePreparationAction("cancel", [])).toBe("Nothing changed.");
+  });
+
+  it("leads an episode with its series and names the episode below", () => {
+    const episode = makePreparation({
+      media_title: "Goodbye, Mrs. Selvig",
+      media_type: "episode",
+      series_name: "Severance",
+      season_number: 2,
+      episode_number: 1,
+      episode_name: "Goodbye, Mrs. Selvig",
+    });
+    expect(preparationTitle(episode)).toBe("Severance");
+    expect(preparationSubtitle(episode)).toBe("S02E01 · Goodbye, Mrs. Selvig");
+    expect(preparationCompactTitle(episode)).toBe("Severance S02E01");
+    // A pilot named after its show does not repeat the series.
+    expect(preparationSubtitle({ ...episode, episode_name: "Severance" })).toBe("S02E01");
   });
 });

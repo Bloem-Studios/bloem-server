@@ -40,12 +40,15 @@ export function RecentActivityWidget() {
           <div className="space-y-0">
             {sessions.slice(0, 10).map((s) => {
               const isEp = s.series_name && s.season_number != null && s.episode_number != null;
+              // "Severance · S2E1": the series says what is on, the code which episode.
               const title = isEp
-                ? s.episode_name ||
-                  t("web.admin.dashboard.widgets.recentActivity.episodeFallback", {
-                    season: String(s.season_number),
-                    episode: String(s.episode_number),
-                  })
+                ? `${s.series_name} · ${t(
+                    "web.admin.dashboard.widgets.recentActivity.episodeFallback",
+                    {
+                      season: String(s.season_number),
+                      episode: String(s.episode_number),
+                    },
+                  )}`
                 : s.media_title ||
                   t("web.admin.dashboard.widgets.recentActivity.fileFallback", {
                     id: s.media_file_id,

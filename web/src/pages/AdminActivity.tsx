@@ -31,6 +31,9 @@ import {
   formatSourceContainerSummary,
   formatToneMapSummary,
   formatTranscodeModeSummary,
+  getPlaybackSessionCompactTitle,
+  getPlaybackSessionSubtitle,
+  getPlaybackSessionTitle,
   getSessionClientLabel,
   getSessionClientLabelFull,
   getSessionRouteNodes,
@@ -63,7 +66,7 @@ import {
 } from "lucide-react";
 import { formatDateTime, formatTime } from "@/lib/datetime";
 import { formatLocale } from "@/lib/appLocale";
-import { englishText, numberText, type TextValues, type Translate, useT } from "@/i18n";
+import { englishText, numberText, type Translate, useT } from "@/i18n";
 import type { MessageKey } from "@/locales/keys";
 
 type SortField = "username" | "media" | "method" | "node" | "started";
@@ -223,7 +226,9 @@ export default function AdminActivity() {
           cmp = (a.username || "").localeCompare(b.username || "");
           break;
         case "media":
-          cmp = getDisplayTitle(a, englishText).localeCompare(getDisplayTitle(b, englishText));
+          cmp = getPlaybackSessionTitle(a, englishText).localeCompare(
+            getPlaybackSessionTitle(b, englishText),
+          );
           break;
         case "method":
           cmp = compareActivityMethods(classifyActivityMethod(a), classifyActivityMethod(b));
@@ -668,8 +673,11 @@ function StreamRow({
   const t = useT();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [ffmpegOpen, setFFmpegOpen] = useState(false);
-  const title = getDisplayTitle(session, t);
-  const subtitle = getDisplaySubtitle(session, t);
+  const title = getPlaybackSessionTitle(session);
+  const subtitle = getPlaybackSessionSubtitle(session);
+  // The stacked row (phones and narrow windows) has one line for the stream,
+  // so that line names the episode as well as the series.
+  const compactTitle = getPlaybackSessionCompactTitle(session);
   const username =
     session.username || t("web.admin.activity.userFallback", { id: session.user_id });
   const elapsed = getElapsed(session.started_at);
@@ -949,10 +957,10 @@ function StreamRow({
           <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-[11px]">
             {itemHref ? (
               <Link to={itemHref} className="hover:text-primary truncate transition-colors">
-                {title}
+                {compactTitle}
               </Link>
             ) : (
-              <span className="truncate">{title}</span>
+              <span className="truncate">{compactTitle}</span>
             )}
             <span className="flex-shrink-0">{MIDDLE_DOT}</span>
             <span className="flex-shrink-0 font-mono tabular-nums">{elapsed}</span>
@@ -1483,26 +1491,6 @@ function EmptyState({ hasData }: { hasData: boolean }) {
 }
 
 // --- Helpers ---
-
-function getDisplayTitle(
-  session: AdminSession,
-  t: (id: MessageKey, values?: TextValues) => string,
-): string {
-  if (session.series_name && session.season_number != null && session.episode_number != null) {
-    return session.episode_name || `S${session.season_number}E${session.episode_number}`;
-  }
-  return session.media_title || t("web.common.activity.title.file", { id: session.media_file_id });
-}
-
-function getDisplaySubtitle(session: AdminSession, t: Translate): string | null {
-  if (session.series_name && session.season_number != null && session.episode_number != null) {
-    const ep = `S${session.season_number}E${session.episode_number}`;
-    return session.series_name ? `${ep} · ${session.series_name}` : ep;
-  }
-  if (session.media_type === "movie") return t("web.common.activity.subtitle.movie");
-  if (session.media_type === "series") return t("web.common.activity.subtitle.series");
-  return null;
-}
 
 function getElapsed(dateStr: string): string {
   const diff = Math.max(0, Date.now() - new Date(dateStr).getTime());

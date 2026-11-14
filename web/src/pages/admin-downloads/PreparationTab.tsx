@@ -55,6 +55,7 @@ import {
   formatSpeed,
   jobCount,
   PREPARATION_STATES,
+  preparationCompactTitle,
   preparationPercent,
   preparationRemainingSeconds,
   preparationRunningLabel,
@@ -498,6 +499,8 @@ function PreparationRow({
   const [ffmpegOpen, setFFmpegOpen] = useState(false);
   const title = preparationTitle(prep);
   const subtitle = preparationSubtitle(prep);
+  // Episodes of one show share a title, so the controls name the episode too.
+  const label = preparationCompactTitle(prep);
   const itemHref = prep.content_id ? `/item/${prep.content_id}` : "";
   const expanded = detailsOpen || ffmpegOpen;
   const toggle = () =>
@@ -520,7 +523,7 @@ function PreparationRow({
       type="button"
       onClick={toggle}
       aria-expanded={expanded}
-      aria-label={t(`${K}.row.detailsLabel`, { title })}
+      aria-label={t(`${K}.row.detailsLabel`, { title: label })}
       className="text-muted-foreground hover:text-primary inline-flex items-center gap-0.5 text-[10px] font-medium transition-colors"
     >
       {t(`${K}.row.details`)}
@@ -532,7 +535,7 @@ function PreparationRow({
     <input
       type="checkbox"
       className={CHECKBOX}
-      aria-label={t(`${K}.row.select`, { title })}
+      aria-label={t(`${K}.row.select`, { title: label })}
       checked={selected}
       disabled={actionsDisabled}
       onChange={onToggleSelected}
@@ -541,7 +544,7 @@ function PreparationRow({
   const rowActions = (
     <RowActions
       prep={prep}
-      title={title}
+      title={label}
       disabled={actionsDisabled}
       pending={actionPending}
       onPause={onPause}
@@ -767,7 +770,7 @@ function ProgressCell({ prep }: { prep: AdminDownloadPreparation }) {
           <div
             className="bg-muted h-1.5 overflow-hidden rounded-full"
             role="progressbar"
-            aria-label={t(`${K}.progress.label`, { title: preparationTitle(prep) })}
+            aria-label={t(`${K}.progress.label`, { title: preparationCompactTitle(prep) })}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.floor(percent)}
