@@ -263,7 +263,7 @@ func (s *Service) IssueForOrganization(ctx context.Context, in OrganizationIssue
 		return nil, err
 	}
 
-	resetURL := linkBase + "/reset-password/" + token
+	resetURL := mail.AccountLink(linkBase, "/reset-password", token)
 	result := &OrganizationIssueResult{Delivery: in.Delivery, ExpiresAt: expiresAt}
 	if in.Delivery == DeliveryLink {
 		result.URL = resetURL

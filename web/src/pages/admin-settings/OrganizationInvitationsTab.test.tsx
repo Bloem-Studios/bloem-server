@@ -296,7 +296,7 @@ describe.each(["create", "resend"] as const)("%s invitation handoff cache lifeti
         fireEvent.click(screen.getByRole("button", { name: "Resend with a fresh link" }));
         fireEvent.click(screen.getByRole("button", { name: "Regenerate link" }));
       }
-      const url = `${window.location.origin}/invite/${token}`;
+      const url = `${window.location.origin}/invite#${token}`;
       await screen.findByText(url);
       if (phase === "dialog close") {
         fireEvent.click(screen.getByRole("button", { name: "Done" }));

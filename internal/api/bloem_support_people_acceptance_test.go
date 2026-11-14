@@ -217,7 +217,7 @@ func TestSupportPasswordResetAcceptance(t *testing.T) {
 	}
 	issued := body["reset"].(map[string]any)
 	resetURL, _ := issued["reset_url"].(string)
-	if !strings.HasPrefix(resetURL, "https://watch.example.test/reset-password/") || issued["delivery_status"] != "not_requested" {
+	if !strings.HasPrefix(resetURL, "https://watch.example.test/reset-password#") || issued["delivery_status"] != "not_requested" {
 		t.Fatalf("reset = %v", issued)
 	}
 	expires, _ := time.Parse(time.RFC3339, issued["expires_at"].(string))
@@ -227,7 +227,7 @@ func TestSupportPasswordResetAcceptance(t *testing.T) {
 	if got := f.revision(t, f.memberID); got != before || body["person"].(map[string]any)["security_revision"].(float64) != float64(before) {
 		t.Errorf("issuing a link changed the security revision: %d -> %d", before, got)
 	}
-	token := strings.TrimPrefix(resetURL, "https://watch.example.test/reset-password/")
+	token := strings.TrimPrefix(resetURL, "https://watch.example.test/reset-password#")
 	var stored int
 	if err := f.pool.QueryRow(context.Background(), `SELECT count(*) FROM password_reset_tokens WHERE user_id=$1`, f.memberID).Scan(&stored); err != nil || stored != 1 {
 		t.Fatalf("stored links = %d, %v", stored, err)
@@ -676,14 +676,14 @@ func TestSupportPasswordResetMail(t *testing.T) {
 		t.Fatalf("email reset = %v", issued)
 	}
 	messages := sender.waitFor(t, 1)
-	if len(messages) != 1 || messages[0].To[0] != "north-member@example.test" || !strings.Contains(messages[0].TextBody, "https://watch.example.test/reset-password/") {
+	if len(messages) != 1 || messages[0].To[0] != "north-member@example.test" || !strings.Contains(messages[0].TextBody, "https://watch.example.test/reset-password#") {
 		t.Fatalf("messages = %+v", messages)
 	}
 	expires, _ := time.Parse(time.RFC3339, issued["expires_at"].(string))
 	if until := time.Until(expires); until < 23*time.Hour {
 		t.Errorf("email link lifetime = %s, want 24h", until)
 	}
-	if strings.Contains(response.Body.String(), "reset-password/") {
+	if strings.Contains(response.Body.String(), "reset-password#") {
 		t.Error("the response to an email reset carries the link")
 	}
 

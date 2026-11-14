@@ -134,7 +134,7 @@ export function useCreateInvitation(context?: AdminContextSummary | null) {
           invitation: data.invitation,
           email_sent: false,
           claim_url: data.claim_token
-            ? `${window.location.origin}/invite/${encodeURIComponent(data.claim_token)}`
+            ? `${window.location.origin}/invite#${data.claim_token}`
             : undefined,
         };
       }
@@ -160,7 +160,7 @@ export function useResendInvitation(context?: AdminContextSummary | null) {
         return {
           invitation: data.invitation,
           email_sent: false,
-          claim_url: `${window.location.origin}/invite/${encodeURIComponent(data.claim_token)}`,
+          claim_url: `${window.location.origin}/invite#${data.claim_token}`,
         };
       }
       return outsideOrganization();

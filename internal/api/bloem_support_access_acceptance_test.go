@@ -252,7 +252,7 @@ func TestSupportAccessActsAsAnAdministratorAndIsVisible(t *testing.T) {
 	revision := f.revision(t, member)
 	reset := f.org(t, http.MethodPost, fmt.Sprintf("people/%d/password-reset", member), fmt.Sprintf(`{"expected_revision":%d,"delivery":"link"}`, revision), pass)
 	body := assertStatus(t, reset, http.StatusCreated, "reset a member under support access")
-	if url := body["reset"].(map[string]any)["reset_url"].(string); !strings.HasPrefix(url, "https://watch.example.test/reset-password/") {
+	if url := body["reset"].(map[string]any)["reset_url"].(string); !strings.HasPrefix(url, "https://watch.example.test/reset-password#") {
 		t.Errorf("reset_url = %s", url)
 	}
 	f.ageAudit(t)
