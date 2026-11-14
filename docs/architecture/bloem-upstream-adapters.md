@@ -2,8 +2,9 @@
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-09
 > and checked against `main` at `5a93e8b41`; its tenant identity section was added on
-> 2026-11-13 with the merge of Silo through `8d68c470d` (`e50da6f2d`), and its rekor compatibility
-> copy with the merge of Silo through `2e05489fb` (`c64e7ee95`). Adapters are Bloem's own: they are how Bloem changes Silo's
+> 2026-11-13 with the merge of Silo through `8d68c470d` (`e50da6f2d`), its rekor compatibility
+> copy with the merge of Silo through `2e05489fb` (`c64e7ee95`), and its profile writes and
+> stream-reference chains on 2026-11-14 with the merge of Silo through `feae205be` (`28f76229c`). Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
 > Its routes were checked again on 2026-11-11, after Silo retired its v1 API, and its
@@ -312,6 +313,18 @@ panics at package load when Silo's query no longer selects `FROM user_profiles` 
 its own line. Transactional reads (`ListProfilesInTransaction`) use
 `bloemAttachAllowedLibraries`, Silo's allowed-library read for a caller's executor.
 `internal/userstore/pgstore/profile_libraries.go` is Silo's file again.
+
+Profile writes need the organization and group too, and Silo's inserts are inline
+literals with no room for added columns. `createProfile` stamps them with
+`resolveProfileTenancy` and then, on a hook line, hands the row to `bloemCreateProfile`,
+Bloem's copy of Silo's insert with `organization_id` and `access_group_id` added; Silo's
+insert stays below the hook. `CreateRestoredProfileInTx` does the same through
+`bloemCreateRestoredProfileInTx` (`bloem_restored_profiles.go`), and `bloemListProfiles`
+is a copy of Silo's list select. A copy misses every column Silo adds later: Silo #2612
+added `requests_blocked`, and Bloem's list then failed every scan in Silo's
+`scanProfile`. `TestBloemProfileQueriesKeepSiloColumns` reads both source files and fails
+when a Silo column is missing from a copy, or when the list copy no longer starts with
+Silo's columns in Silo's order (`41dc0121f`).
 
 Silo's viewer gate can read the account, its access group, the profile and its
 viewer preferences as one batch (`WithSharedTables`, Silo #3453). Its queued reads
@@ -658,6 +671,20 @@ wraps that middleware with `bloemWithTenantIdentityGate` right after Silo define
 and both paths pass the gate once (`TestBloemNotificationDisplayRunsTenantIdentity`).
 When Silo restructures such a chain, the gate goes back on its own line around Silo's
 middleware, never inside Silo's lines.
+
+Silo's playback delivery operations (media, manifest, segment, subtitle and their HEAD
+forms) swap the first gate of their chain for `RequireStreamReferenceAuth`
+(`streamReferenceGateChain`, Silo #4060). In Bloem that first gate is the stream-token
+gate from `bloemAuthChain`, so on its own the swap drops it and every stream-token
+request answers 401. A line after Silo's swap in `classGate` calls
+`bloemStreamReferenceChain`, which rebuilds Bloem's prefix with
+`bloemStreamReferenceAuth` in the place of authentication and keeps the gates after it.
+Both read the same `st` parameter. A token the stream-token gate accepted keeps Bloem's
+path: viewer access scopes it from the token's own account and profile, and Silo's
+reference checks (a live playback attempt and an active login session) do not run. Any
+other request takes Silo's `RequireStreamReferenceAuth` unchanged (`9f3ab4d48`).
+`TestPlaybackDeliveryV2ScopedStreamToken` and the delivery-access tests in
+`internal/apiv2` fail without it.
 
 ### Rekor compatibility copy
 

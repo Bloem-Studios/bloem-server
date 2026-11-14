@@ -1,8 +1,9 @@
 # Bloem overlay: Native API contract: Huma and `/api/v2`
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`, and checked again on
-> 2026-11-11, after Silo retired its v1 API. It lists what Bloem
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`, checked again on
+> 2026-11-11, after Silo retired its v1 API, and on 2026-11-14 for Silo's stream
+> references (merge `28f76229c`). It lists what Bloem
 > adds to or replaces in Silo's
 > [`docs/architecture/api-contract.md`](../../../architecture/api-contract.md),
 > which stays exactly as Silo wrote it. The section-by-section changes are in the
@@ -86,6 +87,19 @@ arrives `proposed` with no owner and no `v2` target: it is a placeholder for a d
 decision, and the section PR still has to make it. Refreshing consumer evidence is a separate
 operation and is not part of this target -- it needs the sibling client trees at a named commit
 (see `scripts/apiv2-ledger/README.md`).
+
+---
+
+**Location:** section “Credential continuity”, after the paragraph beginning “The playback
+delivery routes (`getPlaybackMedia`, …) accept the plan's signed stream reference `st`”
+(Silo #4060, merged into Bloem in `28f76229c`). **Bloem adds:**
+
+On Bloem, the stream-token gate reads the same `st` first. A token it accepts (valid
+signature, not expired, naming the session in the path) authorizes delivery of that
+session's bytes, and viewer access then resolves the token's own account and profile;
+the attempt and login-session checks above do not run for it. Any other request with
+`st` goes through the reference check as described. See
+[tenant identity in Silo's own gate chains](../../../architecture/bloem-upstream-adapters.md#tenant-identity-in-silos-own-gate-chains).
 
 ---
 
