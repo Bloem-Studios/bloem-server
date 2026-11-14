@@ -239,4 +239,4 @@ tool golang.org/x/vuln/cmd/govulncheck
 
 replace github.com/zishang520/webtransport-go => ./internal/compat/zishang520-webtransport-go
 
-replace github.com/sigstore/rekor v1.5.2 => ./internal/compat/sigstore-rekor
+replace github.com/sigstore/rekor v1.5.2 => github.com/Bloem-Studios/sigstore-rekor-compat v1.5.2-bloem.1

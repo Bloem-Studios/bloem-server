@@ -668,12 +668,16 @@ CI's reachable-vulnerability scan; Silo's own scan fails on it too. Rekor v1.5.4
 that package to `github.com/ProtonMail/go-crypto`, later releases need Go 1.27, and
 requiring v1.5.4 would raise about thirty of Silo's module requirements. So Bloem keeps
 Silo's `require` lines and adds its own `replace github.com/sigstore/rekor v1.5.2 =>
-./internal/compat/sigstore-rekor`: rekor v1.5.2, trimmed to the packages the build and its
-tests import, with v1.5.4's `pgp.go` and `github.com/ProtonMail/go-crypto` v1.4.1 and
-`github.com/cloudflare/circl` v1.6.3 added to its `go.mod`. The replace names v1.5.2, so
-it stops applying when Silo requires another rekor version; then delete the directory,
-the replace line and the two indirect requirements it added. Its
-[README](../../internal/compat/sigstore-rekor/README.md) says what changed.
+github.com/Bloem-Studios/sigstore-rekor-compat v1.5.2-bloem.1`: rekor v1.5.2, trimmed to the
+packages the build and its tests import, with v1.5.4's `pgp.go` and
+`github.com/ProtonMail/go-crypto` v1.4.1 and `github.com/cloudflare/circl` v1.6.3 added to its
+`go.mod`. It is a published module, not a directory in this repository, because Silo's
+Dockerfiles copy only `go.mod`, `go.sum` and their own compatibility module before
+`go mod download`, and Silo's Dockerfiles stay as Silo has them. The replace names v1.5.2,
+so it stops applying when Silo requires another rekor version; then delete the replace line
+and the two indirect requirements it added, and archive the
+[module's repository](https://github.com/Bloem-Studios/sigstore-rekor-compat), whose README
+says what changed.
 
 ### Native audiobook boundary
 
