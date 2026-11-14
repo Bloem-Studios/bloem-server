@@ -1,7 +1,7 @@
 # How Bloem keeps up with Silo
 
 > **Provenance and status.** Bloem page, written on 2026-10-31, updated on 2026-11-14
-> and checked against `main` at `c30a65d79`. Bloem is a tracking fork of Silo Server.
+> and checked against `main` at `c2ff9da56`. Bloem is a tracking fork of Silo Server.
 > This page explains in plain language how Bloem takes in Silo's work and keeps its
 > own apart. The policy itself is in [how Bloem forks Silo](../../FORK.md), the
 > automation in [Bloem CI](../bloem/ci.md), and the technical rules in the
@@ -48,9 +48,9 @@ Until 2 November 2026 a daily GitHub job made clean merges by itself, and mainta
 merged the rest by hand. The job could not resolve a conflict or adapt Bloem's code,
 so it is switched off ([Bloem CI](../bloem/ci.md#how-silos-work-comes-in)).
 
-On 14 November 2026 Bloem's `main` had all of Silo's work through `1a99f7bef`, merged
-in `c30a65d79`, and production ran `c400e8c9f`: Silo through `4448e401b`, deployed by
-hand on 14 November 2026.
+On 14 November 2026 Bloem's `main` had all of Silo's work through `b644da12c`, merged
+in `c2ff9da56`, and production ran `f284cb957`: Silo through `1a99f7bef`, shipped by
+the daily deploy on 14 November 2026.
 
 ## Deploying a batch
 
