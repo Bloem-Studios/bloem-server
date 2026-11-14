@@ -343,7 +343,7 @@ func TestAttachAssetStoresAndServesArtwork(t *testing.T) {
 
 	// Standalone store: object written, nothing attached, checksum reported.
 	before := len(store.objects)
-	stored, err := svc.StoreAsset(ctx, StoreRequest{AssetID: "garden-asset-1", Kind: KindSeasonBanner, Data: pngBytesSized(t, 3)})
+	stored, err := svc.StoreAsset(ctx, StoreRequest{AssetID: "hq-asset-1", Kind: KindSeasonBanner, Data: pngBytesSized(t, 3)})
 	if err != nil || !IsAssetURL(stored.URL) || len(stored.Checksum) != 64 || stored.ContentType != "image/png" || len(store.objects) != before+1 {
 		t.Fatalf("store: %+v %v objects=%d", stored, err, len(store.objects))
 	}
@@ -351,22 +351,22 @@ func TestAttachAssetStoresAndServesArtwork(t *testing.T) {
 		t.Fatalf("standalone store must not touch packs: %+v", p.Assets)
 	}
 	// Retry with the same asset_id + checksum: same URL, no second object.
-	retry, err := svc.StoreAsset(ctx, StoreRequest{AssetID: "garden-asset-1", Kind: KindSeasonBanner, Data: pngBytesSized(t, 3)})
+	retry, err := svc.StoreAsset(ctx, StoreRequest{AssetID: "hq-asset-1", Kind: KindSeasonBanner, Data: pngBytesSized(t, 3)})
 	if err != nil || retry.URL != stored.URL || retry.Checksum != stored.Checksum || len(store.objects) != before+1 {
 		t.Fatalf("retry must be idempotent: %+v %v objects=%d", retry, err, len(store.objects))
 	}
 	var rows int
-	_ = pool.QueryRow(ctx, `SELECT count(*) FROM ambience_assets WHERE asset_id = 'garden-asset-1'`).Scan(&rows)
+	_ = pool.QueryRow(ctx, `SELECT count(*) FROM ambience_assets WHERE asset_id = 'hq-asset-1'`).Scan(&rows)
 	if rows != 1 {
 		t.Fatalf("one registry row per asset_id, got %d", rows)
 	}
 	// Same asset_id, different bytes: replaced.
-	replaced, err := svc.StoreAsset(ctx, StoreRequest{AssetID: "garden-asset-1", Kind: KindSeasonSprite, Data: pngBytesSized(t, 9)})
+	replaced, err := svc.StoreAsset(ctx, StoreRequest{AssetID: "hq-asset-1", Kind: KindSeasonSprite, Data: pngBytesSized(t, 9)})
 	if err != nil || replaced.URL == stored.URL || len(store.objects) != before+2 {
 		t.Fatalf("different checksum must replace: %+v %v objects=%d", replaced, err, len(store.objects))
 	}
 	var ref, kind string
-	_ = pool.QueryRow(ctx, `SELECT ref, kind FROM ambience_assets WHERE asset_id = 'garden-asset-1'`).Scan(&ref, &kind)
+	_ = pool.QueryRow(ctx, `SELECT ref, kind FROM ambience_assets WHERE asset_id = 'hq-asset-1'`).Scan(&ref, &kind)
 	if ref != replaced.Ref || kind != KindSeasonSprite {
 		t.Fatalf("registry row not replaced: ref=%s kind=%s", ref, kind)
 	}

@@ -308,10 +308,10 @@ func snowWire() ambience.Wire {
 	return ambience.Wire{ID: "pack-1", EffectID: "snow", Window: ambience.Window{StartsAt: ambienceStart, EndsAt: ambienceEnd}, Intensity: 0.5, Surfaces: []string{"all"}}
 }
 
-// gardenUpload mirrors the multipart shape the authoring side sends
-// (bloem-garden internal/engagement/assetsync.go): asset_id, kind, checksum,
+// hqUpload mirrors the multipart shape the authoring side sends
+// (bloem-hq internal/engagement/assetsync.go): asset_id, kind, checksum,
 // content_type fields plus a `file` part carrying the image's content type.
-func gardenUpload(t *testing.T, data []byte, checksum string) (*bytes.Buffer, string) {
+func hqUpload(t *testing.T, data []byte, checksum string) (*bytes.Buffer, string) {
 	t.Helper()
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
@@ -335,7 +335,7 @@ func TestAdminAmbienceStandaloneUploadReturnsPublicURL(t *testing.T) {
 	reg := &fakeAmbienceRegistry{storage: true}
 	h := &AmbienceHandler{registry: reg}
 
-	body, ct := gardenUpload(t, img.Bytes(), checksum)
+	body, ct := hqUpload(t, img.Bytes(), checksum)
 	r := httptest.NewRequest(http.MethodPost, "/admin/ambience/assets", body)
 	r.Header.Set("Content-Type", ct)
 	rec := httptest.NewRecorder()
@@ -352,7 +352,7 @@ func TestAdminAmbienceStandaloneUploadReturnsPublicURL(t *testing.T) {
 	}
 
 	// Checksum mismatch is rejected before storage.
-	body, ct = gardenUpload(t, img.Bytes(), "deadbeef")
+	body, ct = hqUpload(t, img.Bytes(), "deadbeef")
 	r = httptest.NewRequest(http.MethodPost, "/admin/ambience/assets", body)
 	r.Header.Set("Content-Type", ct)
 	rec = httptest.NewRecorder()
@@ -362,7 +362,7 @@ func TestAdminAmbienceStandaloneUploadReturnsPublicURL(t *testing.T) {
 	}
 
 	// Unsupported image type -> 415.
-	body, ct = gardenUpload(t, []byte("<svg/>"), "")
+	body, ct = hqUpload(t, []byte("<svg/>"), "")
 	r = httptest.NewRequest(http.MethodPost, "/admin/ambience/assets", body)
 	r.Header.Set("Content-Type", ct)
 	rec = httptest.NewRecorder()
@@ -373,7 +373,7 @@ func TestAdminAmbienceStandaloneUploadReturnsPublicURL(t *testing.T) {
 
 	// Oversized body -> 413 from the body cap, before anything is stored.
 	big := bytes.Repeat([]byte{0}, int(ambience.MaxAssetBytes)+(2<<20))
-	body, ct = gardenUpload(t, big, "")
+	body, ct = hqUpload(t, big, "")
 	r = httptest.NewRequest(http.MethodPost, "/admin/ambience/assets", body)
 	r.Header.Set("Content-Type", ct)
 	rec = httptest.NewRecorder()
@@ -384,7 +384,7 @@ func TestAdminAmbienceStandaloneUploadReturnsPublicURL(t *testing.T) {
 	}
 
 	// No storage -> 503.
-	body, ct = gardenUpload(t, img.Bytes(), checksum)
+	body, ct = hqUpload(t, img.Bytes(), checksum)
 	r = httptest.NewRequest(http.MethodPost, "/admin/ambience/assets", body)
 	r.Header.Set("Content-Type", ct)
 	rec = httptest.NewRecorder()

@@ -391,7 +391,7 @@ integration points through [owned integration adapters](../docs/architecture/blo
   the server web console, targeted to all viewers, roles, organizations,
   library access or explicit recipients. Messages carry severity, optional
   artwork/actions and expiry; the inbox shows their full text. Basic authoring
-  does not require Garden, a separate Bloem application. See
+  does not require Bloem HQ, a separate Bloem application. See
   [server announcements](../docs/architecture/admin-announcements.md).
 - **Promotional cards:** platform administrators create, edit and delete campaigns
   under **Campaigns & seasonal packs**, with audience/placement controls, schedules,
@@ -402,11 +402,11 @@ integration points through [owned integration adapters](../docs/architecture/blo
   artwork or muted video cards, with configurable duration, expiry, dismissal
   and a save-to-inbox action. Overlays respect playback controls and subtitle
   presentation and never pause content or take audio focus. The server web console
-  and Garden can author campaigns, and the web app renders them; native rendering
+  and Bloem HQ can author campaigns, and the web app renders them; native rendering
   belongs to each client. See [playback overlays](../docs/architecture/playback-overlays.md).
 - **Seasonal ambience:** an asset/pack registry, branding and capability
   projections, and annual schedules evaluated on the server in the selected
-  timezone. The server web console and Garden manage schedules; clients receive
+  timezone. The server web console and Bloem HQ manage schedules; clients receive
   concrete activation windows. Web snow and banner/sprite artwork honor expiry,
   reduced motion, playback suppression and a device-local off switch. Authenticated
   Home includes only public and current-organization packs; sign-in stays public-only.
