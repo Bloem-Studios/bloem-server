@@ -8,7 +8,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/sections"
 )
@@ -149,69 +148,6 @@ func dropPromotedSections(resolved []sections.ResolvedSection) []sections.Resolv
 		}
 	}
 	return out
-}
-
-// sectionItemResponse preserves the native and compatibility card union.
-type sectionItemResponse struct {
-	ContentID     string   `json:"content_id"`
-	PlayContentID string   `json:"play_content_id,omitempty"`
-	Type          string   `json:"type"`
-	Title         string   `json:"title"`
-	SeriesID      string   `json:"series_id,omitempty"`
-	SeriesTitle   string   `json:"series_title,omitempty"`
-	SeasonNumber  *int     `json:"season_number,omitempty"`
-	EpisodeNumber *int     `json:"episode_number,omitempty"`
-	Year          int      `json:"year,omitempty"`
-	Runtime       int      `json:"runtime,omitempty"`
-	Genres        []string `json:"genres"`
-	Keywords      []string `json:"keywords"`
-	Studios       []string `json:"studios,omitempty"`
-	Networks      []string `json:"networks,omitempty"`
-	ContentRating string   `json:"content_rating,omitempty"`
-	// AdvisoryAge and AdvisorySource carry the item's advisory to the
-	// v2 card renderer. json:"-" keeps this struct's wire shape as Silo's: the
-	// fields exist on the Go struct only, and apiv2 emits them under its own
-	// names.
-	AdvisoryAge            *int                   `json:"-"`
-	AdvisorySource         string                 `json:"-"`
-	Status                 string                 `json:"status"`
-	ShowStatus             string                 `json:"show_status,omitempty"`
-	RatingIMDB             *float64               `json:"rating_imdb,omitempty"`
-	RatingTMDB             *float64               `json:"rating_tmdb,omitempty"`
-	RatingRTCritic         *int                   `json:"rating_rt_critic,omitempty"`
-	RatingRTAudience       *int                   `json:"rating_rt_audience,omitempty"`
-	OriginalLanguage       string                 `json:"original_language,omitempty"`
-	Overview               string                 `json:"overview,omitempty"`
-	PositionSeconds        *float64               `json:"position_seconds,omitempty"`
-	DurationSeconds        *float64               `json:"duration_seconds,omitempty"`
-	ProgressUpdatedAt      *string                `json:"progress_updated_at,omitempty"`
-	PosterIsEpisodeStill   *bool                  `json:"-"`
-	BackdropIsEpisodeStill *bool                  `json:"-"`
-	PosterURL              string                 `json:"poster_url,omitempty"`
-	PosterThumbhash        string                 `json:"poster_thumbhash,omitempty"`
-	BackdropURL            string                 `json:"backdrop_url,omitempty"`
-	BackdropThumbhash      string                 `json:"backdrop_thumbhash,omitempty"`
-	LogoURL                string                 `json:"logo_url,omitempty"`
-	OverlaySummary         *models.OverlaySummary `json:"overlay_summary,omitempty"`
-	Badges                 []string               `json:"badges,omitempty"`
-	ItemSource             string                 `json:"item_source,omitempty"`
-	UserState              *itemUserStateResponse `json:"user_state,omitempty"`
-	UpcomingEvent          *upcomingEventResponse `json:"upcoming_event,omitempty"`
-	// PendingTranslationLanguage and MachineTranslatedFields reach the v2
-	// card only; v1 is frozen.
-	PendingTranslationLanguage string   `json:"-"`
-	MachineTranslatedFields    []string `json:"-"`
-	// Promo is the S-2 card variant carried by `promoted` sections; such
-	// items have type "promo" and content_id = the promotion id.
-	Promo *promotions.Card `json:"promo,omitempty"`
-
-	// ParentArtwork, ReleaseDate, LastAirDate and EpisodeRatingTMDB reach
-	// the v2 card only; v1 is frozen. EpisodeRatingTMDB is an episode's TMDB
-	// rating, kept apart from RatingTMDB so v1's rating_tmdb stays as it was.
-	ParentArtwork     EpisodeParentArtworkView `json:"-"`
-	ReleaseDate       *string                  `json:"-"`
-	LastAirDate       *string                  `json:"-"`
-	EpisodeRatingTMDB *float64                 `json:"-"`
 }
 
 // ConfigurePromotions installs owned promotion adapters on the reusable hooks.

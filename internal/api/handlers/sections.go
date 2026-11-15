@@ -25,6 +25,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/imagesize"
 	"github.com/Silo-Server/silo-server/internal/logredact"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/settingsresolve"
@@ -310,6 +311,69 @@ type upcomingEventResponse struct {
 	SeasonNumber  *int     `json:"season_number,omitempty"`
 	EpisodeNumber *int     `json:"episode_number,omitempty"`
 	Badges        []string `json:"badges"`
+}
+
+type sectionItemResponse struct {
+	ContentID     string   `json:"content_id"`
+	PlayContentID string   `json:"play_content_id,omitempty"`
+	Type          string   `json:"type"`
+	Title         string   `json:"title"`
+	SeriesID      string   `json:"series_id,omitempty"`
+	SeriesTitle   string   `json:"series_title,omitempty"`
+	SeasonNumber  *int     `json:"season_number,omitempty"`
+	EpisodeNumber *int     `json:"episode_number,omitempty"`
+	Year          int      `json:"year,omitempty"`
+	Runtime       int      `json:"runtime,omitempty"`
+	Genres        []string `json:"genres"`
+	Keywords      []string `json:"keywords"`
+	Studios       []string `json:"studios,omitempty"`
+	Networks      []string `json:"networks,omitempty"`
+	ContentRating string   `json:"content_rating,omitempty"`
+	// AdvisoryAge and AdvisorySource carry the item's advisory to the
+	// v2 card renderer. json:"-" because /api/v1 is frozen: the fields exist on
+	// the Go struct only, and apiv2 emits them under its own names.
+	AdvisoryAge            *int                   `json:"-"`
+	AdvisorySource         string                 `json:"-"`
+	Status                 string                 `json:"status"`
+	ShowStatus             string                 `json:"show_status,omitempty"`
+	RatingIMDB             *float64               `json:"rating_imdb,omitempty"`
+	RatingTMDB             *float64               `json:"rating_tmdb,omitempty"`
+	RatingRTCritic         *int                   `json:"rating_rt_critic,omitempty"`
+	RatingRTAudience       *int                   `json:"rating_rt_audience,omitempty"`
+	OriginalLanguage       string                 `json:"original_language,omitempty"`
+	Overview               string                 `json:"overview,omitempty"`
+	PositionSeconds        *float64               `json:"position_seconds,omitempty"`
+	DurationSeconds        *float64               `json:"duration_seconds,omitempty"`
+	ProgressUpdatedAt      *string                `json:"progress_updated_at,omitempty"`
+	PosterIsEpisodeStill   *bool                  `json:"-"`
+	BackdropIsEpisodeStill *bool                  `json:"-"`
+	PosterURL              string                 `json:"poster_url,omitempty"`
+	PosterThumbhash        string                 `json:"poster_thumbhash,omitempty"`
+	BackdropURL            string                 `json:"backdrop_url,omitempty"`
+	BackdropThumbhash      string                 `json:"backdrop_thumbhash,omitempty"`
+	LogoURL                string                 `json:"logo_url,omitempty"`
+	OverlaySummary         *models.OverlaySummary `json:"overlay_summary,omitempty"`
+	// Availability is the series poster fraction. json:"-" because /api/v1 is frozen.
+	Availability  *catalog.Availability  `json:"-"`
+	Badges        []string               `json:"badges,omitempty"`
+	ItemSource    string                 `json:"item_source,omitempty"`
+	UserState     *itemUserStateResponse `json:"user_state,omitempty"`
+	UpcomingEvent *upcomingEventResponse `json:"upcoming_event,omitempty"`
+	// PendingTranslationLanguage and MachineTranslatedFields reach the v2
+	// card only; v1 is frozen.
+	PendingTranslationLanguage string   `json:"-"`
+	MachineTranslatedFields    []string `json:"-"`
+	// Promo is Bloem's S-2 card variant carried by `promoted` sections; such
+	// items have type "promo" and content_id = the promotion id.
+	Promo *promotions.Card `json:"promo,omitempty"`
+
+	// ParentArtwork, ReleaseDate, LastAirDate and EpisodeRatingTMDB reach
+	// the v2 card only; v1 is frozen. EpisodeRatingTMDB is an episode's TMDB
+	// rating, kept apart from RatingTMDB so v1's rating_tmdb stays as it was.
+	ParentArtwork     EpisodeParentArtworkView `json:"-"`
+	ReleaseDate       *string                  `json:"-"`
+	LastAirDate       *string                  `json:"-"`
+	EpisodeRatingTMDB *float64                 `json:"-"`
 }
 
 // applyEpisodeCardMeta adds what the episode query loaded for the v2 card:
@@ -1031,14 +1095,16 @@ type episodeParentImageURLs struct {
 
 // buildSections renders sections for a viewer described by its context,
 // access filter and artwork size; it is what v1 and v2 share.
-func (h *SectionHandler) buildSections(ctx context.Context, withItems []sections.SectionWithItems, libraryID *int, viewerAccess catalog.AccessFilter, art imagesize.Request) homeSectionsResponse {
-	return h.buildSectionsWithUserStates(ctx, withItems, libraryID, viewerAccess, art, nil)
+// includeAvailability is only true for native /api/v2 callers: Availability is
+// json:"-" on the frozen v1 card shape.
+func (h *SectionHandler) buildSections(ctx context.Context, withItems []sections.SectionWithItems, libraryID *int, viewerAccess catalog.AccessFilter, art imagesize.Request, includeAvailability bool) homeSectionsResponse {
+	return h.buildSectionsWithUserStates(ctx, withItems, libraryID, viewerAccess, art, nil, includeAvailability)
 }
 
 // buildSectionsWithUserStates is buildSections reusing user states the caller
 // already loaded for these items (the Home hide-watched filter does); nil
 // loads them as buildSections does.
-func (h *SectionHandler) buildSectionsWithUserStates(ctx context.Context, withItems []sections.SectionWithItems, libraryID *int, viewerAccess catalog.AccessFilter, art imagesize.Request, knownUserStates map[string]*itemUserStateResponse) homeSectionsResponse {
+func (h *SectionHandler) buildSectionsWithUserStates(ctx context.Context, withItems []sections.SectionWithItems, libraryID *int, viewerAccess catalog.AccessFilter, art imagesize.Request, knownUserStates map[string]*itemUserStateResponse, includeAvailability bool) homeSectionsResponse {
 	deduplicateSectionItems(ctx, withItems)
 
 	contentIDs := make([]string, 0)
@@ -1102,6 +1168,7 @@ func (h *SectionHandler) buildSectionsWithUserStates(ctx context.Context, withIt
 	goSectionLookup(ctx, &wg, "image_urls", func() { imageURLs = h.resolveSectionItemImageURLs(ctx, withItems, art) })
 	goSectionLookup(ctx, &wg, "episode_meta", func() { episodeMeta = h.listSectionEpisodeItemMeta(ctx, withItems, viewerAccess) })
 	goSectionLookup(ctx, &wg, "manga_chapter_meta", func() { mangaChapterMeta = h.listSectionMangaChapterItemMeta(ctx, allItems) })
+	availability := h.startSectionAvailability(ctx, &wg, includeAvailability, viewerAccess, allItems)
 
 	wg.Wait()
 	h.resolveFallbackParentArtwork(ctx, withItems, episodeMeta, art, imageURLs)
@@ -1141,6 +1208,7 @@ func (h *SectionHandler) buildSectionsWithUserStates(ctx context.Context, withIt
 			TitleArgs:   s.TitleArgs,
 		})
 	}
+	availability.attach(ctx, resp.Sections)
 	return resp
 }
 

@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -24,7 +25,7 @@ func TestNativeVideoHeaderAuthenticatedTransportKeepsSessionRecipe(t *testing.T)
 				if delivery == playback.DeliveryRemuxProgressiveV3 {
 					method = playback.PlayRemux
 				}
-				result := playback.PlannerResultV3{PlayMethod: method, Plan: &playback.PlanV3{EffectiveMediaFileID: file.ID, Delivery: delivery}}
+				result := playback.PlannerResultV3{PlayMethod: method, Plan: &playback.PlanV3{EffectiveMediaFileID: file.ID, Delivery: delivery}, AdaptationReasons: []string{"bandwidth"}}
 				transport, failure := h.prepareNativeVideoTransportV3(httptest.NewRequest(http.MethodPost, "/", nil), session, file, result, mediaAuthModeV3{headerAuth: headerAuth}, config.DefaultPlaybackRoutingPolicy())
 				if failure != nil {
 					t.Fatal(failure)
@@ -42,6 +43,11 @@ func TestNativeVideoHeaderAuthenticatedTransportKeepsSessionRecipe(t *testing.T)
 				}
 				if card == nil || card.SessionID != session.ID || card.UserID != session.UserID || card.ProfileID != session.ProfileID || card.MediaFileID != file.ID || card.InputPath != file.FilePath || card.PlayMethod != method {
 					t.Fatalf("session recipe=%+v", card)
+				}
+				// Silo's recipe carries the committed plan's adaptation reasons, so a
+				// rebuilt session keeps them; the session still holds the old plan's.
+				if !slices.Equal(card.AdaptationReasons, result.AdaptationReasons) {
+					t.Fatalf("session recipe adaptation reasons=%v, want the plan's %v", card.AdaptationReasons, result.AdaptationReasons)
 				}
 			})
 		}
