@@ -86,7 +86,8 @@ describe("BloemNowListeningHero", () => {
     renderHero();
 
     expect(screen.queryByTestId("silo-now-listening")).toBeNull();
-    expect(screen.getByText("Chapter 4 of 4 · Chapter 04")).toBeInTheDocument();
+    expect(screen.getByText("Chapter 4 of 4")).toBeInTheDocument();
+    expect(screen.getByText("Chapter 04")).toBeInTheDocument();
     expect(screen.getByText("1 min left")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("link", { name: "Resume" }));
@@ -104,7 +105,8 @@ describe("BloemNowListeningHero", () => {
     );
     renderHero();
 
-    expect(screen.getByText("Chapter 2 of 2 · 02 - Middle")).toBeInTheDocument();
+    expect(screen.getByText("Chapter 2 of 2")).toBeInTheDocument();
+    expect(screen.getByText("02 - Middle")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("link", { name: "Resume" }));
     expect(started()).toEqual({ ids: [501, 502], at: 100 });
   });

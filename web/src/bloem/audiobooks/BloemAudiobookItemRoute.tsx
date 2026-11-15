@@ -85,12 +85,14 @@ function PresentationItemDetail({
 
   return (
     // The picker comes first for keyboard and screen-reader order, and is
-    // drawn between the hero and the supporting content. AudiobookContent's
-    // wrappers become `contents` so its hero and body are items of this
-    // column; if Silo's markup changes, the picker only moves on screen.
-    <div className="flex flex-col [&_.detail-supporting-content]:order-2">
+    // drawn above Silo's book grid (cover, title, Play), so the recording is
+    // chosen before Play. AudiobookContent's wrapper becomes `contents` so its
+    // back link, tint and grid are items of this column; the picker takes the
+    // grid's top spacing. If Silo's markup changes, the picker only moves on
+    // screen.
+    <div className="flex flex-col [&_.audiobook-detail-grid]:order-2 [&_.audiobook-detail-grid]:pt-6">
       <PresentationPicker
-        className="order-1"
+        className="order-1 pt-16 sm:pt-20 lg:pt-24"
         presentations={presentations}
         chosen={chosen}
         nativeAvailable={nativeAvailable}

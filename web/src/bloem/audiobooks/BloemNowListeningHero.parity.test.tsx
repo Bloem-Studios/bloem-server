@@ -27,17 +27,10 @@ vi.mock("@/hooks/useOverlayPrefs", () => ({ useOverlayPrefs: () => ({ prefs: {} 
 vi.mock("@/pages/audiobooks/player/audiobookPlaybackContext", () => ({
   useAudiobookPlaybackController: () => null,
 }));
-// The rest-of-deck cards need the watch player; both heroes import the same card.
-vi.mock("@/components/ContinueWatchingCard", () => ({
-  default: ({ sectionItem }: { sectionItem: { content_id: string } }) => (
-    <div data-card={sectionItem.content_id} />
-  ),
-}));
-
-vi.mock("@/components/MediaCarousel", () => ({
-  default: ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <section data-carousel={title}>{children}</section>
-  ),
+// Both heroes draw the same card menu beside each other book in progress; its
+// generated element ids count the hooks before it, which the two trees differ in.
+vi.mock("@/components/MediaItemMenu", () => ({
+  default: ({ contentId }: { contentId: string }) => <div data-menu={contentId} />,
 }));
 
 import BloemNowListeningHero from "./BloemNowListeningHero";

@@ -50,6 +50,10 @@ vi.mock("@/hooks/queries/libraryCollections", () => ({
 vi.mock("@/hooks/queries/sidebarPins", () => ({
   useSidebarPins: () => ({ pins: { "7": [{ type: "collection", id: "c1", label: "Pinned" }] } }),
 }));
+// The collection's current title, which differs from the label saved on the pin.
+vi.mock("@/hooks/queries/pinLabels", () => ({
+  usePinLabel: () => (pin: { label: string }) => `${pin.label} (renamed)`,
+}));
 vi.mock("@/pages/homeSurfaceRefresh", () => ({ useSectionRefreshSignal: () => ({ data: 0 }) }));
 vi.mock("@/hooks/useOverlayPrefs", () => ({ useOverlayPrefs: () => ({ prefs: {} }) }));
 vi.mock("@/hooks/useUICustomization", () => ({
@@ -188,7 +192,7 @@ describe("BloemLibraryRecommended parity with Silo's LibraryRecommended", () => 
     const markup = await compare("audiobooks");
     expect(markup).toContain('data-owner="bloem"');
     expect(markup).toContain('data-row="recent title"');
-    expect(markup).toContain('data-carousel="Pinned"');
+    expect(markup).toContain('data-carousel="Pinned (renamed)"');
   });
 
   it("keeps the cinematic banner for other featured sections", async () => {

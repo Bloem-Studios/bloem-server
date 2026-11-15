@@ -1,23 +1,25 @@
-import { useMemo, type MouseEvent } from "react";
+import { useMemo, useRef, type MouseEvent } from "react";
 import { Link } from "react-router";
 import { Info, Pause, Play } from "lucide-react";
 import type { ItemDetail, ResolvedSection } from "@/api/types";
 import { useBloemT } from "@/bloem/i18n";
-import ContinueWatchingCard from "@/components/ContinueWatchingCard";
-import MediaCarousel from "@/components/MediaCarousel";
+import MediaCardArtwork from "@/components/MediaCardArtwork";
+import MediaItemMenu from "@/components/MediaItemMenu";
 import NowListeningHero from "@/components/NowListeningHero";
 import ViewTransitionLink from "@/components/ViewTransitionLink";
 import { useCatalogItemDetail } from "@/hooks/queries/catalogRead";
+import { homeDismissalForCard } from "@/hooks/queries/homeDismissals";
 import { useAmbientColor } from "@/hooks/useAmbientColor";
-import { useOverlayPrefs } from "@/hooks/useOverlayPrefs";
 import { useT } from "@/i18n";
+import { joinList } from "@/lib/appLocale";
 import { buildChapterList, findChapterAt, totalAudiobookDuration } from "@/lib/audiobooks/chapters";
 import { formatHoursMinutes, formatListeningTimeLeft } from "@/lib/audiobooks/duration";
 import { audiobookFilesFromVersions } from "@/lib/audiobooks/files";
 import { buildItemHref, buildMediaPlayHref } from "@/lib/mediaNavigation";
 import { useSectionTitle } from "@/lib/sectionTitle";
-import { decodeThumbhash } from "@/lib/thumbhash";
+import { buildSectionCatalogHref } from "@/pages/catalogSearchParams";
 import { useAudiobookPlaybackController } from "@/pages/audiobooks/player/audiobookPlaybackContext";
+import "@/pages/audiobooks/audiobooks.css";
 import {
   itemAudiobookPresentations,
   itemForPresentation,
@@ -52,18 +54,94 @@ export default function BloemNowListeningHero({ section, libraryId }: BloemNowLi
   return <PresentationNowListeningHero section={section} libraryId={libraryId} detail={detail} />;
 }
 
+/** In-progress books listed beside the featured one before "Explore all". */
+const ALSO_LISTENING_LIMIT = 4;
+
 function namesFromPeople(people: Array<{ name?: string }> | undefined): string | undefined {
-  const names = (people ?? [])
-    .map((person) => person.name?.trim())
-    .filter(Boolean)
-    .join(", ");
+  const names = joinList(
+    (people ?? []).map((person) => person.name?.trim()).filter((name): name is string => !!name),
+  );
   return names || undefined;
+}
+
+function percentOf(position: number | undefined, duration: number | undefined): number {
+  if (!position || !duration || duration <= 0) return 0;
+  return Math.min(100, Math.max(0, (position / duration) * 100));
+}
+
+type SectionItem = ResolvedSection["items"][number];
+
+/**
+ * One of the other books in progress beside the hero: the book's link, a play
+ * control that resumes it, and the card menu with Remove from Continue
+ * Listening, as the Continue Listening card it replaces had.
+ */
+function AlsoListeningRow({ item, libraryId }: { item: SectionItem; libraryId?: number }) {
+  const t = useT();
+  const rowRef = useRef<HTMLDivElement>(null);
+  const left = formatListeningTimeLeft(item.position_seconds, item.duration_seconds);
+  return (
+    <div
+      ref={rowRef}
+      className="group/card media-card-longpress relative grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 rounded-xl p-1.5 transition-colors hover:bg-white/[0.06]"
+    >
+      <ViewTransitionLink
+        to={buildItemHref({ contentId: item.content_id, libraryId })}
+        className="grid min-w-0 grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-3 rounded-lg"
+      >
+        <span className="block overflow-hidden rounded-md">
+          <MediaCardArtwork
+            src={item.poster_url}
+            alt=""
+            mediaType="audiobook"
+            thumbhash={item.poster_thumbhash}
+            square
+            scrim="none"
+            lazy
+          />
+        </span>
+        <span className="grid min-w-0 gap-1">
+          <span className="truncate text-sm font-semibold">{item.title}</span>
+          {left && <span className="text-muted-foreground text-xs">{left}</span>}
+          <span className="h-[3px] w-full overflow-hidden rounded-full bg-white/12">
+            <span
+              className="bg-primary block h-full rounded-full"
+              style={{ width: `${percentOf(item.position_seconds, item.duration_seconds)}%` }}
+            />
+          </span>
+        </span>
+      </ViewTransitionLink>
+      <ViewTransitionLink
+        to={buildMediaPlayHref({ contentId: item.content_id, type: item.type, libraryId })}
+        aria-label={t("web.home.continueWatching.playTitle", { title: item.title })}
+        className="text-foreground grid size-9 place-items-center rounded-full transition-colors hover:bg-white/10"
+      >
+        {/* eslint-disable-next-line silo/no-physical-direction -- centres the play triangle, which doesn't mirror */}
+        <Play className="ml-0.5 h-4 w-4 fill-current" />
+      </ViewTransitionLink>
+      <div className="relative size-9">
+        <MediaItemMenu
+          contentId={item.content_id}
+          mediaType={item.type}
+          libraryId={libraryId}
+          userState={item.user_state}
+          showFavoriteShortcut={false}
+          dismissAction={homeDismissalForCard(item)}
+          hasPartialProgress
+          hasResumePosition={(item.position_seconds ?? 0) > 0}
+          longPressRef={rowRef}
+          itemTitle={item.title}
+        />
+      </div>
+    </div>
+  );
 }
 
 /**
  * Silo's NowListeningHero (components/NowListeningHero.tsx) with its detail
- * replaced by the chosen recording's view of it. Keep the markup identical;
- * BloemNowListeningHero.parity.test.tsx compares the two.
+ * replaced by the chosen recording's view of it. Keep the markup, and the
+ * helpers above, identical to Silo's; BloemNowListeningHero.parity.test.tsx
+ * compares the two.
  */
 function PresentationNowListeningHero({
   section,
@@ -74,7 +152,6 @@ function PresentationNowListeningHero({
   const t = useT();
   const deck = section.items[0]!;
   const rest = section.items.slice(1);
-  const { prefs: overlayPrefs, quickActionMode } = useOverlayPrefs();
   const sectionTitle = useSectionTitle();
   const audiobookPlayback = useAudiobookPlaybackController();
   const { chosen } = useAudiobookPresentationChoice(fullDetail);
@@ -110,21 +187,17 @@ function PresentationNowListeningHero({
   const author = namesFromPeople(detail.audiobook?.authors);
   const narrator = namesFromPeople(detail.audiobook?.narrators);
   const chapter = chapters.length > 0 ? findChapterAt(chapters, positionSeconds) : null;
-  const progressPercent =
-    durationSeconds > 0 ? Math.min((positionSeconds / durationSeconds) * 100, 100) : 0;
+  const progressPercent = percentOf(positionSeconds, durationSeconds);
   const timeLeft = formatListeningTimeLeft(positionSeconds, durationSeconds);
-  let chapterLine = durationSeconds > 0 ? formatHoursMinutes(durationSeconds) : "";
+  // Whether the chapter has a title of its own is decided on the English
+  // data, as Silo's hero does, not by comparing translated text.
+  let chapterTitle: string | undefined;
   if (chapter) {
-    const index = chapter.index;
-    const total = chapters.length;
-    // Whether the chapter has a title of its own is decided on the English
-    // data, as Silo's hero does, not by comparing translated text.
     const entry = chapters[chapter.index - 1];
     const englishLabel = entry && (entry.chapter.title || `Chapter ${entry.chapter.index + 1}`);
-    const titled = englishLabel && englishLabel !== `Chapter ${chapter.index}`;
-    chapterLine = titled
-      ? t("web.audiobooks.hero.chapterPositionTitled", { index, total, chapter: chapter.label })
-      : t("web.audiobooks.hero.chapterPosition", { index, total });
+    if (englishLabel && englishLabel !== `Chapter ${chapter.index}`) {
+      chapterTitle = chapter.label;
+    }
   }
 
   const playHref = buildMediaPlayHref({
@@ -133,7 +206,6 @@ function PresentationNowListeningHero({
     libraryId,
   });
   const itemHref = buildItemHref({ contentId: deck.content_id, libraryId });
-  const thumbhashUrl = deck.poster_thumbhash ? decodeThumbhash(deck.poster_thumbhash) : "";
 
   const handleResumeClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (isActive) {
@@ -149,6 +221,7 @@ function PresentationNowListeningHero({
         author,
         narrator,
         posterUrl: deck.poster_url,
+        posterThumbhash: deck.poster_thumbhash,
         files,
         initialPositionSeconds: positionSeconds > 0 ? positionSeconds : 0,
       });
@@ -163,79 +236,77 @@ function PresentationNowListeningHero({
       ? t("web.audiobooks.hero.resume")
       : t("web.audiobooks.hero.listen");
 
+  const alsoListening = rest.slice(0, ALSO_LISTENING_LIMIT);
+  const shownTitle = sectionTitle(section);
+  // The server can truncate the section (has_more), so a short payload can
+  // still hold more books than the panel shows.
+  const exploreHref =
+    rest.length > alsoListening.length || section.has_more
+      ? libraryId
+        ? buildSectionCatalogHref({
+            scope: "library",
+            libraryId,
+            sectionId: section.id,
+            title: shownTitle,
+          })
+        : buildSectionCatalogHref({ scope: "home", sectionId: section.id, title: shownTitle })
+      : undefined;
+
   return (
-    <>
-      <section
-        className="relative -mt-[96px] w-full overflow-hidden sm:-mt-[104px]"
-        aria-label={t("web.audiobooks.hero.ariaLabel")}
-      >
-        {/* The book's own cover, blurred, stands in for a backdrop and warms
-            the section with the cover's palette alongside the ambient glow. */}
-        <div
-          className="absolute inset-0"
-          style={
-            thumbhashUrl
-              ? { backgroundImage: `url(${thumbhashUrl})`, backgroundSize: "cover" }
-              : undefined
-          }
-        >
-          {deck.poster_url && (
-            <img
+    <section
+      className="relative isolate -mt-[96px] w-full sm:-mt-[104px]"
+      aria-label={t("web.audiobooks.hero.ariaLabel")}
+    >
+      <div aria-hidden="true" className="audiobook-tint" style={{ height: "100%" }} />
+
+      <div className="relative px-4 pt-28 pb-10 sm:px-6 sm:pt-32 sm:pb-12 lg:px-10 xl:px-12">
+        <div className="grid max-w-[1380px] grid-cols-[minmax(0,1fr)] items-center gap-6 sm:grid-cols-[12rem_minmax(0,1fr)] sm:gap-8 xl:grid-cols-[14rem_minmax(0,1fr)_19rem] xl:gap-10">
+          <ViewTransitionLink
+            to={itemHref}
+            className="block w-36 overflow-hidden rounded-2xl shadow-[0_26px_50px_-20px_rgb(0_0_0/0.85)] sm:w-48 xl:w-56"
+          >
+            <MediaCardArtwork
               src={deck.poster_url}
-              alt=""
-              aria-hidden="true"
-              className="h-full w-full scale-110 object-cover blur-3xl brightness-[0.45] saturate-[1.15]"
+              alt={deck.title}
+              mediaType="audiobook"
+              thumbhash={deck.poster_thumbhash}
+              square
+              scrim="none"
+              priority
             />
-          )}
-        </div>
-        <div className="hero-top-scrim" />
-        <div className="hero-gradient-strong" />
-        <div className="ambient-glow" />
+          </ViewTransitionLink>
 
-        <div className="relative z-10 px-4 pt-28 pb-10 sm:px-6 sm:pt-32 sm:pb-12 lg:px-10 xl:px-12">
-          <div className="flex max-w-[1380px] flex-col gap-6 sm:flex-row sm:items-center sm:gap-10">
-            <ViewTransitionLink
-              to={itemHref}
-              className="block w-36 shrink-0 self-start sm:w-48 sm:self-center lg:w-56"
-            >
-              <div
-                className="bg-muted aspect-square overflow-hidden rounded-2xl shadow-2xl"
-                style={
-                  thumbhashUrl
-                    ? { backgroundImage: `url(${thumbhashUrl})`, backgroundSize: "cover" }
-                    : undefined
-                }
-              >
-                {deck.poster_url && (
-                  <img
-                    src={deck.poster_url}
-                    alt={deck.title}
-                    className="h-full w-full object-cover"
-                  />
+          <div className="min-w-0">
+            {chapter && (
+              <p className="text-foreground/75 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-sm">
+                <span>
+                  {t("web.audiobooks.hero.chapterPosition", {
+                    index: chapter.index,
+                    total: chapters.length,
+                  })}
+                </span>
+                {chapterTitle && (
+                  <span className="text-foreground font-semibold">{chapterTitle}</span>
                 )}
-              </div>
-            </ViewTransitionLink>
-
-            <div className="min-w-0 flex-1">
-              <p className="hero-eyebrow mb-3">
-                <span className="hero-eyebrow-strong">{t("web.audiobooks.hero.eyebrow")}</span>
               </p>
-              <h1
-                className="font-display max-w-3xl text-3xl font-extrabold tracking-[-0.03em] text-balance sm:text-4xl lg:text-5xl"
-                style={{ textShadow: "var(--hero-text-shadow, none)" }}
-              >
-                {deck.title}
-              </h1>
-              {(author || narrator) && (
-                <p className="text-foreground/70 mt-2 max-w-2xl truncate text-sm sm:text-base">
-                  {author && narrator
-                    ? t("web.audiobooks.hero.authorAndNarrator", { author, narrator })
-                    : narrator
-                      ? t("web.audiobooks.hero.narratedBy", { narrator })
-                      : author}
-                </p>
-              )}
+            )}
+            <h1
+              className="font-display mt-2 max-w-3xl text-3xl font-extrabold tracking-[-0.03em] text-balance sm:text-4xl lg:text-[2.75rem] lg:leading-[1.06]"
+              style={{ textShadow: "var(--hero-text-shadow, none)" }}
+            >
+              {deck.title}
+            </h1>
+            {(author || narrator) && (
+              <p className="text-foreground/75 mt-2 max-w-2xl truncate text-sm sm:text-base">
+                {author && narrator
+                  ? t("web.audiobooks.hero.authorAndNarrator", { author, narrator })
+                  : narrator
+                    ? t("web.audiobooks.hero.narratedBy", { narrator })
+                    : author}
+              </p>
+            )}
 
+            {durationSeconds > 0 && (
               <div className="mt-6 max-w-xl">
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/15">
                   <div
@@ -244,51 +315,64 @@ function PresentationNowListeningHero({
                   />
                 </div>
                 <div className="mt-2 flex items-baseline justify-between gap-3 text-xs sm:text-sm">
-                  <span className="text-foreground/60 truncate">{chapterLine}</span>
-                  {timeLeft && <span className="text-foreground/85 shrink-0">{timeLeft}</span>}
+                  <span className="text-foreground/70 truncate">
+                    {positionSeconds > 0
+                      ? t("web.detail.audiobook.listenedProgress", {
+                          time: formatHoursMinutes(positionSeconds),
+                          percent: Math.round(progressPercent),
+                        })
+                      : formatHoursMinutes(durationSeconds)}
+                  </span>
+                  {timeLeft && positionSeconds > 0 && (
+                    <span className="text-foreground shrink-0 font-semibold">{timeLeft}</span>
+                  )}
                 </div>
               </div>
+            )}
 
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <Link
-                  to={playHref}
-                  onClick={handleResumeClick}
-                  className="pill pill-primary transition-colors duration-(--duration-fast)"
-                >
-                  {isActivePlaying ? (
-                    <Pause className="h-4 w-4 fill-current" />
-                  ) : (
-                    <Play className="h-4 w-4 fill-current" />
-                  )}
-                  {resumeLabel}
-                </Link>
-                <ViewTransitionLink
-                  to={itemHref}
-                  className="pill pill-glass transition-colors duration-(--duration-fast)"
-                >
-                  <Info className="h-4 w-4" />
-                  {t("web.audiobooks.hero.moreInfo")}
-                </ViewTransitionLink>
-              </div>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Link
+                to={playHref}
+                onClick={handleResumeClick}
+                className="pill pill-primary transition-colors duration-(--duration-fast)"
+              >
+                {isActivePlaying ? (
+                  <Pause className="h-4 w-4 fill-current" />
+                ) : (
+                  <Play className="h-4 w-4 fill-current" />
+                )}
+                {resumeLabel}
+              </Link>
+              <ViewTransitionLink
+                to={itemHref}
+                className="pill pill-glass transition-colors duration-(--duration-fast)"
+              >
+                <Info className="h-4 w-4" />
+                {t("web.audiobooks.hero.moreInfo")}
+              </ViewTransitionLink>
             </div>
           </div>
-        </div>
-      </section>
 
-      {rest.length > 0 && (
-        <MediaCarousel title={sectionTitle(section)}>
-          {rest.map((item) => (
-            <ContinueWatchingCard
-              key={item.content_id}
-              sectionItem={item}
-              libraryId={libraryId}
-              overlayPrefs={overlayPrefs}
-              quickActionMode={quickActionMode}
-              variant="poster"
-            />
-          ))}
-        </MediaCarousel>
-      )}
-    </>
+          {alsoListening.length > 0 && (
+            <aside className="bg-background/30 grid gap-1 self-center rounded-2xl border border-white/[0.07] p-3 backdrop-blur-md sm:col-span-2 sm:grid-cols-2 xl:col-span-1 xl:grid-cols-1 xl:content-start">
+              <div className="flex items-baseline justify-between gap-3 px-2 pt-1 pb-2 sm:col-span-2 xl:col-span-1">
+                <h3 className="text-sm font-bold">{t("web.audiobooks.hero.alsoListening")}</h3>
+                {exploreHref && (
+                  <Link
+                    to={exploreHref}
+                    className="text-muted-foreground hover:text-foreground text-xs font-semibold transition-colors"
+                  >
+                    {t("web.catalog.carousel.exploreAll")}
+                  </Link>
+                )}
+              </div>
+              {alsoListening.map((item) => (
+                <AlsoListeningRow key={item.content_id} item={item} libraryId={libraryId} />
+              ))}
+            </aside>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
