@@ -1,0 +1,19 @@
+/* Bloem: the phone header is an opaque bar across the full width. Page
+   content scrolls under it, and Silo's see-through, inset header lets that
+   content show through and around its controls. The rule is unlayered, so it
+   wins over Silo's Tailwind utilities and its glass-dark component class
+   while Silo's className line in Layout.tsx stays as Silo wrote it. */
+.mobile-header[data-sticky-header] {
+  margin: 0;
+  min-height: 3.5rem;
+  padding-top: env(safe-area-inset-top);
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+  padding-bottom: 0;
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: var(--background);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
