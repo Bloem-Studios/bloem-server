@@ -51,6 +51,7 @@ internal/ai/llm/transcribe.go  # verbose_json with top-level words and no segmen
 internal/api/handlers/access_groups_test.go
 internal/api/handlers/admin.go
 internal/api/handlers/admin_access_group_delete_test.go  # Run upstream group-delete callback tests through organization-aware interface
+internal/api/handlers/admin_apple_push_test.go  # the rotation test stores the signing secret the relay rotation key is derived from
 internal/api/handlers/admin_sections_service.go
 internal/api/handlers/admin_users_service.go
 internal/api/handlers/auth.go
@@ -180,6 +181,8 @@ internal/notifications/delivery_repo.go
 internal/notifications/dispatcher.go
 internal/notifications/display.go
 internal/notifications/interest_repo.go
+internal/notifications/relay_credentials.go  # one hook line: the relay rotation Idempotency-Key comes from a server secret (bloem_relay_rotation_key.go), so a leaked old capability cannot replay it
+internal/notifications/relay_credentials_test.go  # the rotation test stores the signing secret the key is derived from
 internal/notifications/release_types.go
 internal/notifications/settings.go
 internal/notifications/system.go

@@ -72,7 +72,7 @@ func TestRotateRelayCredentialReplaysLostResponseWithStableIdempotency(t *testin
 		ExpiresAt:    time.Now().Add(30 * 24 * time.Hour),
 		KeyPrefix:    "cap_v1_old",
 	}
-	store := &lockedRelaySettings{values: map[string]string{}}
+	store := &lockedRelaySettings{values: map[string]string{relayRotationSecretSetting: "test-signing-secret"}} // Bloem: rotation keys come from a server secret
 	settings := NewSettings(store)
 	var keys []string
 	calls := 0
