@@ -590,6 +590,9 @@ jobs:
       - name: Verify the Go test shards can leave Silo's database-list tests to the pins job
         run: make verify-db-list-skip
 
+      - name: Verify the Go test shards' retried tests
+        run: make verify-retried-tests
+
       - name: Save the Go cache
         if: success() && runner.environment == 'github-hosted' && github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request'
         uses: ./.github/actions/save-go-cache
@@ -741,7 +744,14 @@ jobs:
           # Silo's database-list tests run in Go database pins on a fresh
           # database, as Silo runs them; scripts/ci/bloem-db-list-skip.py says why.
           skip=$(python3 scripts/ci/bloem-db-list-skip.py)
-          GOFLAGS="$GOFLAGS -skip=$skip" make test-go GO_TEST_PACKAGES="$(paste -sd ' ' <<< "$packages")"
+          # The tests in scripts/ci/bloem-retried-tests.txt fail only under
+          # the shards' load: the suite skips them, then each runs on its own
+          # with up to two retries and still has to pass once.
+          retried=$(python3 scripts/ci/bloem-retried-tests.py skip)
+          status=0
+          GOFLAGS="$GOFLAGS -skip=$skip|$retried" make test-go GO_TEST_PACKAGES="$(paste -sd ' ' <<< "$packages")" || status=$?
+          python3 scripts/ci/bloem-retried-tests.py run $packages || status=$?
+          exit $status
 
       - name: Save the Go cache
         if: ${{ !cancelled() && matrix.shard == 1 && runner.environment == 'github-hosted' && github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request' }}

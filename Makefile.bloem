@@ -262,3 +262,13 @@ verify-db-list-skip:
 	python3 scripts/ci/bloem-db-list-skip_test.py
 	python3 scripts/ci/bloem-db-list-skip.py > /dev/null
 
+# Bloem CI's Go test shards skip the tests in scripts/ci/bloem-retried-tests.txt
+# and run each on its own with up to two retries (only tests that fail under
+# the shards' load and pass alone, by the owner's decision).
+# scripts/ci/bloem-retried-tests.py refuses a pattern, a missing test, or a name
+# that is also a test in another package.
+.PHONY: verify-retried-tests
+verify-retried-tests:
+	python3 scripts/ci/bloem-retried-tests_test.py
+	python3 scripts/ci/bloem-retried-tests.py skip > /dev/null
+
