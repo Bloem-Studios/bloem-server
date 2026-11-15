@@ -123,12 +123,26 @@ class LocalGateTest(unittest.TestCase):
         # instead of leaving -skip empty.
         for step in (s for s in self.gate.STEPS if s.phase == "go"):
             self.assertTrue(step.cmd.startswith("skip=$(python3 scripts/ci/bloem-db-list-skip.py) && "), step.cmd)
-            self.assertIn('-skip=$skip"', step.cmd)
+            self.assertIn('-skip=$skip|$retried"', step.cmd)
         block = next(b for b in run_blocks(WORKFLOW.read_text()) if "make test-go" in b)
         self.assertIn("\nskip=$(python3 scripts/ci/bloem-db-list-skip.py)\n", "\n" + "\n".join(
             line.strip() for line in block.split("\n")) + "\n")
         test_go = next(line for line in block.split("\n") if "make test-go" in line)
-        self.assertIn('GOFLAGS="$GOFLAGS -skip=$skip" make test-go', test_go)
+        self.assertIn('GOFLAGS="$GOFLAGS -skip=$skip|$retried" make test-go', test_go)
+
+    def test_go_shards_run_the_retried_tests_after_the_suite(self):
+        # scripts/ci/bloem-retried-tests.txt: tests that fail only under the
+        # shards' load. Both CI and the gate skip them in make test-go and
+        # then run them with retries, and a failure of either fails the step.
+        for step in (s for s in self.gate.STEPS if s.phase == "go"):
+            self.assertIn("retried=$(python3 scripts/ci/bloem-retried-tests.py skip)", step.cmd)
+            self.assertIn("python3 scripts/ci/bloem-retried-tests.py run $packages || status=$?", step.cmd)
+            self.assertTrue(step.cmd.endswith("exit $status"), step.cmd)
+        block = "\n".join(line.strip() for line in next(
+            b for b in run_blocks(WORKFLOW.read_text()) if "make test-go" in b).split("\n"))
+        self.assertIn("\nretried=$(python3 scripts/ci/bloem-retried-tests.py skip)\n", "\n" + block + "\n")
+        self.assertIn("make test-go GO_TEST_PACKAGES=", block)
+        self.assertIn("|| status=$?\npython3 scripts/ci/bloem-retried-tests.py run $packages || status=$?\nexit $status", block)
 
     def test_redis_steps_declare_their_disposable_server(self):
         # The browse Redis tests flush their server and accept only CI's fixed

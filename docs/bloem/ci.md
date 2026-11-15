@@ -1,7 +1,8 @@
 # How Bloem CI works
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-10
-> and checked against `main` at `f12b3c75f`, which includes Silo through `07f0ae21c`.
+> and checked against `main` at `f12b3c75f`, which includes Silo through `07f0ae21c`;
+> its retried-tests paragraph was added on 2026-11-15, on `main` at `2b63332aa`.
 > Since 2 November Silo's work comes in through the merge bot, and the GitHub upstream
 > sync is switched off. Bloem's CI, image and upstream-sync workflows are Bloem
 > additions; Silo's own `ci.yml` stays as Silo wrote it apart from one line. The
@@ -310,7 +311,7 @@ runners on October 26, 2026 (`52369dbad`, `5e6f9e407`):
 | Tenant stores race (1-4/4, disposable PostgreSQL) | `internal/tenancy` under the race detector, its tests split four ways. |
 | Native authentication (1-3/3, disposable PostgreSQL) | `internal/auth` with and without the race detector, its tests split three ways, and its vet (shard 1). |
 | Go lint | gofmt, `go vet ./...`, govulncheck, changed-line lint (`scripts/bloem-lint-changed-ci.sh`) and the full-tree router recovery lint (`make lint-router-recovery`). |
-| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, the seam ledger, the local gate's coverage of this workflow (`make verify-local-gate`), and the Go test shards' database-list skip (`make verify-db-list-skip`). |
+| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, the seam ledger, the local gate's coverage of this workflow (`make verify-local-gate`), the Go test shards' database-list skip (`make verify-db-list-skip`), and their retried tests (`make verify-retried-tests`). |
 | Go test (1-4/4) | `make test-go` on a database `cmd/bloem-testdb` prepared, its packages split four ways, four at a time per database. Silo's database-list tests are left to Go database pins (below). |
 | Go database pins | The database pins (`make test-db-pins`) and the upstream database regression gates. |
 | Go database regressions | Watch Party and history-import race tests, the Redis-backed native video grant and cover cache tests, and the library location and native storage pins (`scripts/ci/bloem-library-locations.txt`, built with `-tags=integration`). |
@@ -339,6 +340,23 @@ database, so the shards pass `-skip` with the pattern
 `scripts/ci/bloem-db-list-skip.py` prints. The script refuses a list name that
 is also a test in a package the lists do not name, because `-skip` matches
 names, not packages, and that test would then run nowhere.
+
+The shards also skip the few tests listed in
+`scripts/ci/bloem-retried-tests.txt` and then run each one on its own, in its
+package's shard, with up to two retries: one run and two more if it fails,
+and the step fails when all three do. The list holds only tests that fail
+under the shards' load and pass alone, added by the owner's decision, one test
+name per line with its reason and evidence; never a package or a pattern.
+`scripts/ci/bloem-retried-tests.py` prints the `-skip` names and runs the
+retries, refuses a listed name that is missing or also a test in another
+package, and is checked by `make verify-retried-tests`; the local gate runs
+the shards the same way. Its one entry, since November 15, 2026, is Silo's
+`TestSwapCleanupHasADeadline` in `internal/backup`: its 200 ms cleanup
+deadline also covers its `--recover` step, which failed twice in Go test
+shard 4 on `2b63332aa` ("context deadline exceeded" deleting a restored
+poster) with the temporary files already on a tmpfs. It passes alone ten
+times in a row, and the Silo merge through `c9ce328b5` that met it changes
+nothing in `internal/backup`. Silo's test code stays as Silo wrote it.
 
 The split jobs each run against their own PostgreSQL.
 `scripts/ci/deal.sh N I` deals lines round-robin to N shards so each lands in
