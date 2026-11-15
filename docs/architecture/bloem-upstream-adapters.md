@@ -275,12 +275,14 @@ whose video is above the cap is encoded instead of copied, a 4K source goes down
 never raises a client's own cap, never changes the request the attempt stores, and
 never reaches another output type or client.
 
-- **Seam.** One hook line at each of the two planner calls in
+- **Seams.** One hook line at each of the two planner calls in
   `planPlaybackWithCapabilitiesV3` (`internal/api/handlers/playback_v3.go`, already in the
   ledger). Every start and replan builds its planner input from the request in hand, so a
   route change re-plans from the new output: back on the device's own output the request
   is untouched and the normal plan returns. `TestPlanPlaybackWithCapabilitiesV3FollowsTheActiveOutput`
-  pins both directions through the handler.
+  pins both directions through the handler. The audio change below adds one more hook line in
+  `internal/playback/transcode.go` (two cases of `appendAudioArgs`, already in the ledger) and
+  one in `internal/playback/transformations_v3.go`, a new seam entry.
 - **Why 10 Mbps.** It is the planner's own top 1080p rung ("1080p High"), below the
   11.6 Mbps Apple lists for its lowest 4K HEVC variant in the HLS authoring specification,
   and above that specification's 6 and 7.8 Mbps 1080p H.264 variants. Apple publishes no
@@ -295,6 +297,20 @@ never reaches another output type or client.
 - **Limits.** A source with no bitrate in its metadata counts as above any cap, as for any
   client cap. A viewer's explicit menu rung is honored up to the cap; "original" and plain
   resolutions meet it.
+- **Audio.** Silo's plan converts audio only to AAC (`audio_to_aac`). Receivers and the
+  televisions behind them decode Dolby surround natively, so for an AirPlay output
+  `adaptAirPlayAudioV3` moves a 5.1 AAC conversion of a source HLS cannot carry as it is
+  (TrueHD, DTS, FLAC, PCM) to AC-3, or to E-AC-3 when the client lists only that. Two new
+  transformations, `audio_to_ac3` and `audio_to_eac3` at recipe version 1, name the encodes;
+  they are defined by `addDolbyAudioV3` after a smoke encode of a 7.1 input to 5.1, so
+  each transcode node's and proxy's capability report gains them (and its capability hash
+  changes once), and a pooled node offers them by advertising the same name and version,
+  which keeps the plan away from executors that predate them, and the transport check
+  refuses a plan whose transformation the executor does not advertise. The plan is used only when the client's HLS delivery lists the codec and
+  allows six channels, and a failed plan's key sends the replan on to E-AC-3 and then to
+  the AAC plan. Stereo and mono output, sources HLS carries as they are (AAC, AC-3,
+  E-AC-3) and every other output plan as before. The protocol side is in the
+  [playback protocol overlay](../bloem/overlays/architecture/playback-protocol-v3.md).
 
 ### Tenant group repository
 

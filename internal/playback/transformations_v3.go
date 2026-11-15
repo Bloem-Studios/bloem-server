@@ -71,6 +71,7 @@ func ProbeTransformationRegistryWithToneMapV3Result(ctx context.Context, ffmpegP
 		{Name: TransformationVideoToHEVCV3, RecipeVersion: TransformationVideoToHEVCRecipeVersionV3, Available: ffmpegErr == nil && hevcEncoderAvailableV3(encoders) && hevcRecipeErr == nil, RequiredCapability: "ffmpeg_encoder:hevc+ffmpeg_encode_smoke:main_8bit_sdr", PromisedDynamicRange: DynamicRangeSDRV3, ValidatedClaims: []string{ClaimHEVCDecodeV3}, TerminalReason: TerminalVideoConversionUnsupportedV3},
 		{Name: TransformationHDRToSDRToneMapV3, RecipeVersion: TransformationHDRToSDRToneMapRecipeVersionV3, Available: len(toneMapCapabilities) > 0, RequiredCapability: "ffmpeg_filter:hdr_to_sdr_tonemap", PromisedDynamicRange: DynamicRangeSDRV3, ValidatedClaims: []string{ClaimHDRMetadataRemovedV3, ClaimSDRBT709OutputV3}, TerminalReason: TerminalHDRTranscodeUnsupportedV3},
 	})
+	registry.addDolbyAudioV3(ctx, ffmpegPath, encoders, ffmpegErr == nil) // Bloem seam: bloem_airplay_v3.go
 	if hevcRecipeContextErr != nil ||
 		(!errors.Is(hevcRecipeErr, errHEVCEncoderUnavailableV3) && audioRecipeProbeInfrastructureError(hevcRecipeErr) != nil) {
 		// Keep baseline capabilities usable, but retry incomplete optional

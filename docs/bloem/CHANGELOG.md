@@ -12,8 +12,16 @@ the planner ignored the sink type, so a Blu-ray-class remux went to a television
 rate it went to the client's own speaker. The cap follows the output: a replan after a route
 change plans from the new one, and returning to the device's own output restores the normal
 plan. No other output type or client changes. One hook line at each of two planner calls in
-`internal/api/handlers/playback_v3.go`, a file already in the ledger, so the seam ledger
-stays at 327. See [AirPlay output planning](../architecture/bloem-upstream-adapters.md#airplay-output-planning).
+`internal/api/handlers/playback_v3.go`, a file already in the ledger.
+
+The same output now gets surround audio a television decodes. Where the planner would convert
+a source HLS cannot carry as it is (TrueHD, DTS, FLAC, PCM) to AAC 5.1, an AirPlay output gets
+AC-3 5.1 instead, or E-AC-3 when the client lists only that. Two new server transformations,
+`audio_to_ac3` and `audio_to_eac3`, name the encodes. A client that does not list the codec for
+HLS keeps AAC, stereo stays AAC, and a failed AC-3 plan falls to E-AC-3 and then to AAC on
+replan. Two more hook lines: `internal/playback/transcode.go` (already in the ledger) and
+`internal/playback/transformations_v3.go`, a new seam entry, so the ledger goes to 328.
+See [AirPlay output planning](../architecture/bloem-upstream-adapters.md#airplay-output-planning).
 
 ## November 15, 2026 — Silo's download quota lock
 

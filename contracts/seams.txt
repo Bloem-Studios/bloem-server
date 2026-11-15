@@ -200,8 +200,9 @@ internal/playback/testdata/protocol_v3/hls-subtitle-rendition-decision_response.
 internal/playback/testdata/protocol_v3/hls-subtitle-renditions-all-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 internal/playback/testdata/protocol_v3/learned-limit-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 internal/playback/testdata/protocol_v3/native-decision_response.json
-internal/playback/transcode.go
+internal/playback/transcode.go  # two hook lines in appendAudioArgs: the ac3 and eac3 encodes take the plan's channels and rate through appendDolbyAudioArgsV3 (bloem_airplay_v3.go)
 internal/playback/transcode_manager.go
+internal/playback/transformations_v3.go  # one hook line in the registry probe: it also defines the audio_to_ac3 and audio_to_eac3 transformations (addDolbyAudioV3 in bloem_airplay_v3.go) that an AirPlay output plans in place of 5.1 AAC; a new seam, 327 to 328
 internal/plugins/content.go
 internal/policy/action_parity_test.go
 internal/policy/decisionlog.go
