@@ -17,10 +17,18 @@ function canRetryResponse(policy: RequestPolicy, failures: number, status: numbe
   );
 }
 
-function canRetryTransport(policy: RequestPolicy, failures: number, error: unknown): boolean {
+function canRetryTransport(
+  policy: RequestPolicy,
+  failures: number,
+  error: unknown,
+  signal: AbortSignal | null | undefined,
+): boolean {
+  // An aborted signal (the caller's, or a read deadline's with its own reason)
+  // ends the request; a retry would only reject again.
   return (
     policy !== "none" &&
     failures < MAX_RETRYABLE_FAILURES &&
+    !signal?.aborted &&
     !(error instanceof DOMException && error.name === "AbortError")
   );
 }
@@ -43,7 +51,7 @@ export function createPolicyFetch(
       try {
         res = await fetch(url, init);
       } catch (error) {
-        if (!canRetryTransport(policy, failures, error)) throw error;
+        if (!canRetryTransport(policy, failures, error, init.signal)) throw error;
         failures += 1;
         continue;
       }
