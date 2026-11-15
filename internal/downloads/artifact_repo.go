@@ -25,7 +25,7 @@ const artifactColumns = `id, media_file_id, format, params_hash, container, code
 // ArtifactRepository provides CRUD + durable-queue operations for
 // download_artifacts.
 type ArtifactRepository struct {
-	pool *bloemQuotaPool
+	pool *pgxpool.Pool
 }
 
 // RemoteArtifactOrphan is a node-local cleanup candidate. The durable queue
@@ -42,7 +42,7 @@ type RemoteArtifactOrphan struct {
 
 // NewArtifactRepository creates an ArtifactRepository.
 func NewArtifactRepository(pool *pgxpool.Pool) *ArtifactRepository {
-	return &ArtifactRepository{pool: &bloemQuotaPool{Pool: pool}}
+	return &ArtifactRepository{pool: pool}
 }
 
 // scanArtifact decodes one artifact row from the repository query shape.

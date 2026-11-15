@@ -137,17 +137,14 @@ internal/config/admin_settings.go
 internal/config/config.go
 internal/config/db_loader.go
 internal/config/yaml_import.go
-internal/downloads/artifact_repo.go  # route quota-scoped artifact operations through the admission connection to prevent pool starvation
 internal/downloads/artifact_test.go
 internal/downloads/artifacts.go  # 2 hook lines: NewArtifactManager passes its preparer and file resolver through bloemNativeArtifacts, and encodeOne prepares through bloemPrepareFile (bloem_native_prepare.go), which reads a native input under a waiting download's authority; offline conversion of native-storage and .strm files, approved 2026-11-12
 internal/downloads/offline.go
 internal/downloads/policy.go
 internal/downloads/policy_action_test.go
-internal/downloads/repo.go  # preserve quota serialization on a single connection with bounded, fail-closed session-lock cleanup
 internal/downloads/repo_managed_test.go
 internal/downloads/service.go
 internal/downloads/subscription_mutations.go
-internal/downloads/subscription_page_test.go  # share the underlying fixture pool when the download repository uses its quota adapter
 internal/downloads/subscription_service.go
 internal/downloads/subscription_sync_page.go
 internal/ebooks/enrichment.go

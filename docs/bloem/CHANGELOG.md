@@ -3,6 +3,16 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 15, 2026 — Silo's download quota lock
+
+Download admission takes Silo's quota lock again. Bloem had replaced it with a session
+lock held on one connection that the admission's own statements shared, so a small pool
+never needed a second connection. Silo now polls with a transaction lock instead, so a
+waiting request holds no connection, and Silo's tests of a prepared download replaced
+under the lock expect exactly that. The lock key is unchanged, one per account, so a
+server on the old lock and one on the new still exclude each other during a deploy.
+Three Silo download files go back to Silo's, and the seam ledger drops to 327.
+
 ## November 13, 2026 — organization support
 
 An organization's administrators can now give support to their own people without the

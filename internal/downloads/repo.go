@@ -17,7 +17,7 @@ const downloadColumns = `id, user_id, profile_id, device_id, media_file_id, cont
 
 // Repository provides CRUD operations for the downloads table.
 type Repository struct {
-	pool *bloemQuotaPool
+	pool *pgxpool.Pool
 
 	// preparations is the latest preparation queue snapshot (see
 	// attachPreparations); prepMu also makes concurrent readers share one
@@ -28,7 +28,7 @@ type Repository struct {
 
 // NewRepository creates a new Repository backed by the given pool.
 func NewRepository(pool *pgxpool.Pool) *Repository {
-	return &Repository{pool: &bloemQuotaPool{Pool: pool}}
+	return &Repository{pool: pool}
 }
 
 // managedQueryer lets subscription registration use its monitor transaction.
@@ -55,9 +55,38 @@ const downloadQuotaLockClassID = 0x646c6f61 // "dloa"
 // before any of them inserts a row. The lock lives on a dedicated transaction
 // used only as its holder — fn's own statements run through the pool and
 // commit before the lock releases, so the next holder sees them.
-// Bloem: withBloemDownloadQuotaLock holds a session lock on one connection that fn's statements share.
 func (r *Repository) WithUserQuotaLock(ctx context.Context, userID int, fn func(ctx context.Context) error) error {
-	return withBloemDownloadQuotaLock(ctx, r.pool.Pool, userID, fn)
+	// Do not wait on pg_advisory_xact_lock while holding a pool connection.
+	// Concurrent callers would each occupy a connection while waiting, leaving
+	// the callback unable to acquire one from a small pool and deadlocking the
+	// quota path. Polling with pg_try_advisory_xact_lock releases the connection
+	// between attempts while preserving the transaction-scoped lock once won.
+	for {
+		tx, err := r.pool.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("begin download quota lock: %w", err)
+		}
+
+		var acquired bool
+		err = tx.QueryRow(ctx, `SELECT pg_try_advisory_xact_lock($1, $2)`, downloadQuotaLockClassID, userID).Scan(&acquired)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return fmt.Errorf("acquiring download quota lock for user %d: %w", userID, err)
+		}
+		if acquired {
+			defer func() { _ = tx.Rollback(ctx) }() //nolint:gocritic,revive // returns next; the lock transaction must outlive fn
+			return fn(ctx)
+		}
+		_ = tx.Rollback(ctx)
+
+		timer := time.NewTimer(10 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
 }
 
 // scanInto scans a single download row's columns (in downloadColumns order)
