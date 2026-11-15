@@ -372,7 +372,9 @@ python3 scripts/bloem/local-gate.py services down "$GATE_SERVICES_ID"
 ```
 
 - It starts one disposable `pgvector/pgvector:pg18` with CI's
-  `max_connections=300` and `max_locks_per_transaction=512`, and one Redis, on
+  `max_connections=300` and `max_locks_per_transaction=512`, and with `fsync`,
+  `synchronous_commit` and `full_page_writes` off, as CI's test databases are,
+  so their commits do not slow the tests' own file syncs; and one Redis, on
   free localhost ports under container names unique to the run, and removes
   both when the run ends. Each job that CI gives its own database gets a fresh
   database of the same name here, and the Go tests run in CI's four shards.

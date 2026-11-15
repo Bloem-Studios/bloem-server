@@ -280,6 +280,7 @@ def postgres_command(sid, port):
         "-e", f"POSTGRES_USER={PG_USER}", "-e", f"POSTGRES_PASSWORD={PG_PASSWORD}",
         "-p", f"127.0.0.1:{port}:5432", "--shm-size=1g", PG_IMAGE,
         "-c", "max_connections=300", "-c", "max_locks_per_transaction=512",
+        "-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off",
     ]
 
 

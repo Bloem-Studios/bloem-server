@@ -108,6 +108,7 @@ class LocalGateTest(unittest.TestCase):
         self.assertIn("pgvector/pgvector:pg18", argv)
         self.assertIn("max_connections=300", argv)
         self.assertIn("max_locks_per_transaction=512", argv)
+        self.assertIn("fsync=off", argv)
 
     def test_go_suite_is_dealt_to_four_shards_each_on_a_fresh_database(self):
         shards = [s for s in self.gate.STEPS if s.phase == "go"]
