@@ -3,6 +3,32 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 15, 2026 — Push relay rotation key
+
+Rotating the push relay credential now sends an `Idempotency-Key` that only this server can
+compute. Silo built the key from the deployment ID and the old capability alone, so anyone who held
+a superseded capability could compute it, repeat the rotation, and have the relay hand back the
+current capability (the relay answered any repeat of a rotation key for 24 hours). Rotating after a
+leak therefore did not close the leak. The key is now an HMAC of the deployment and the capability
+under the server's signing secret (`auth.jwt_secret`, encrypted at rest). A retry after a lost
+response still sends the same key, and the next generation gets a new one.
+
+If the secret is missing or unreadable, the rotation is refused (`relay_rotation_secret_unavailable`,
+reported as `relay_unavailable` with its message) and the relay is not contacted: the only key left
+would be one a leaked capability can reproduce.
+
+The relay half is a separate change in `bloem-push-relay`: a rotation record stops answering repeats
+once the new capability has been used, after 30 minutes, or once the deployment is revoked. Either
+half closes the replay for a server that has the other; together they cover a relay or a server that
+is behind. A rotation that was lost in flight across this upgrade sends a different key on its retry,
+the relay answers `401`, and the admin flow registers a fresh deployment, which is what it does for
+any other rejected capability.
+
+The logic is in `internal/notifications/bloem_relay_rotation_key.go`. The hook is one call in
+`RotateRelayCredential` in `internal/notifications/relay_credentials.go`, and the two tests that
+rotate (`relay_credentials_test.go`, `admin_apple_push_test.go`) store the signing secret in their
+settings fake. Three new seam entries, so the ledger goes to 331.
+
 ## November 15, 2026 — AirPlay output planning
 
 A client that reports an AirPlay receiver as its output (`output.sink_type`) is now planned

@@ -288,7 +288,10 @@ func RegisterRelayCredential(ctx context.Context, settings *Settings, client Rel
 }
 
 func RotateRelayCredential(ctx context.Context, settings *Settings, client RelayHTTPDoer, current PushRelayCredential) (RelayCredentialResult, error) {
-	key := RelayRotationIdempotencyKey(current.DeploymentID, current.APIKey)
+	key, err := bloemRelayRotationKey(ctx, settings, current) // Bloem: keyed by a server secret, not derivable from the capability alone
+	if err != nil {
+		return RelayCredentialResult{}, err
+	}
 	result, err := RequestRelayCredential(ctx, client, current.RelayURL, relayRotatePath, current.APIKey, key)
 	if err != nil {
 		return RelayCredentialResult{}, err

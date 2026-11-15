@@ -63,6 +63,7 @@ func TestRegisterNotificationRelayRotatesOrReplacesTheCapability(t *testing.T) {
 				notifications.SettingPushRelayAPIKey:       "existing.capability.value",
 				notifications.SettingPushRelayKeyPrefix:    "cap_v1_existing",
 				notifications.SettingPushRelayExpiresAt:    "2026-08-01T00:00:00Z",
+				"auth.jwt_secret":                          "test-signing-secret", // Bloem: the rotation Idempotency-Key is keyed by it
 			}}
 			var paths []string
 			var idempotencyKey string
