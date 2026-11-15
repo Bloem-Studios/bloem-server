@@ -262,6 +262,40 @@ Tenant identity, membership revision, protected profiles, library ceilings and q
 reservations remain mandatory host authority. Optional presentation plugins cannot
 disable those checks.
 
+### AirPlay output planning
+
+Silo's playback request carries the active output (`output.sink_type`, `current_sink`,
+`output_context_id`), and the planner used to ignore the sink type: an AirPlay receiver,
+often a television with its own HLS implementation, was planned the same stream as the
+client's own speaker. [`PlanPlaybackAirPlayAwareV3`](../../internal/playback/bloem_airplay_v3.go)
+wraps `PlanPlaybackV3` and, while the sink type is `AirPlay`, plans from a copy of the
+request whose bandwidth cap is lowered to `AirPlayBitrateCapKbpsV3` (10 Mbps). A source
+whose video is above the cap is encoded instead of copied, a 4K source goes down to
+1080p, and a source within the cap plans as before, including direct play. The cap
+never raises a client's own cap, never changes the request the attempt stores, and
+never reaches another output type or client.
+
+- **Seam.** One hook line at each of the two planner calls in
+  `planPlaybackWithCapabilitiesV3` (`internal/api/handlers/playback_v3.go`, already in the
+  ledger). Every start and replan builds its planner input from the request in hand, so a
+  route change re-plans from the new output: back on the device's own output the request
+  is untouched and the normal plan returns. `TestPlanPlaybackWithCapabilitiesV3FollowsTheActiveOutput`
+  pins both directions through the handler.
+- **Why 10 Mbps.** It is the planner's own top 1080p rung ("1080p High"), below the
+  11.6 Mbps Apple lists for its lowest 4K HEVC variant in the HLS authoring specification,
+  and above that specification's 6 and 7.8 Mbps 1080p H.264 variants. Apple publishes no
+  AirPlay-specific video ceiling, so the value is a judgement from those figures and the
+  ladder. Automatic quality lands on the 1080p class's 6 Mbps, which is what a stream
+  above the cap becomes.
+- **The cap is a preference.** When the capped request finds no route, as with an HLS
+  delivery that cannot decode the encode the cap forces, the request is planned as it came,
+  so AirPlay is never refused where the device's own output plays. A title with a lower
+  version keeps the capped refusal, so the handler's own lower-version fallback plays that
+  version first.
+- **Limits.** A source with no bitrate in its metadata counts as above any cap, as for any
+  client cap. A viewer's explicit menu rung is honored up to the cap; "original" and plain
+  resolutions meet it.
+
 ### Tenant group repository
 
 [`TenantGroupStore`](../../internal/access/bloem_group_store.go) owns

@@ -3,6 +3,18 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 15, 2026 — AirPlay output planning
+
+A client that reports an AirPlay receiver as its output (`output.sink_type`) is now planned
+under a 10 Mbps bitrate cap. A source above it is encoded instead of copied and a 4K source
+goes down to 1080p; a source within the cap, direct play included, plans as before. Until now
+the planner ignored the sink type, so a Blu-ray-class remux went to a television at the
+rate it went to the client's own speaker. The cap follows the output: a replan after a route
+change plans from the new one, and returning to the device's own output restores the normal
+plan. No other output type or client changes. One hook line at each of two planner calls in
+`internal/api/handlers/playback_v3.go`, a file already in the ledger, so the seam ledger
+stays at 327. See [AirPlay output planning](../architecture/bloem-upstream-adapters.md#airplay-output-planning).
+
 ## November 15, 2026 — Silo's download quota lock
 
 Download admission takes Silo's quota lock again. Bloem had replaced it with a session

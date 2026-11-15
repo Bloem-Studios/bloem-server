@@ -1475,7 +1475,7 @@ func (h *PlaybackHandler) planPlaybackWithCapabilitiesV3(ctx context.Context, in
 	if h.SubtitleTrackFacts != nil {
 		input.SubtitleTrackFacts = h.SubtitleTrackFacts.SubtitleTrackFacts(ctx, input.EffectiveFile)
 	}
-	result := playback.PlanPlaybackV3(input)
+	result := playback.PlanPlaybackAirPlayAwareV3(input) // Bloem seam: bloem_airplay_v3.go
 	// On-demand renditions fall back to the single pipeline rendition, which
 	// falls back to the sidecar.
 	for range 2 {
@@ -1487,7 +1487,7 @@ func (h *PlaybackHandler) planPlaybackWithCapabilitiesV3(ctx context.Context, in
 		// advertise. Marking the rendition attempted plans the next shape.
 		input.AttemptedKeys = append(slices.Clone(input.AttemptedKeys),
 			playback.PlanAttemptKeyV3(*result.Plan, input.Request.ClientPlaybackContext.Output.OutputContextID, nil))
-		result = playback.PlanPlaybackV3(input)
+		result = playback.PlanPlaybackAirPlayAwareV3(input) // Bloem seam: bloem_airplay_v3.go
 	}
 	if result.ToneMapDependentRefusal() {
 		return result, snapshot.capabilityError()
