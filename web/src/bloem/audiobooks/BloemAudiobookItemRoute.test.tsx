@@ -55,6 +55,15 @@ vi.mock("@/hooks/queries/useBloemCapabilities", () => ({
 vi.mock("@/hooks/useCurrentProfile", () => ({
   useCurrentProfile: () => ({ profile: { id: mocks.profileId } }),
 }));
+// Silo's AudiobookContent offers curation actions (Silo #4026); the listener here
+// is no curator, and the actions' query and dialogs stay out of these tests.
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { role: "user" } }) }));
+vi.mock("@/hooks/queries/items", () => ({
+  useRefreshItemMetadata: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+vi.mock("@/components/EditMetadataDialog", () => ({ default: () => null }));
+vi.mock("@/components/MatchItemDialog", () => ({ default: () => null }));
+vi.mock("@/components/RefreshMetadataDialog", () => ({ default: () => null }));
 vi.mock("@/pages/audiobooks/player/audiobookPlaybackContext", () => ({
   useAudiobookPlaybackController: () => mocks.controller,
 }));
