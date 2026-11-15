@@ -93,7 +93,7 @@ Cohorts** in an organization context. See
 | --- | --- |
 | Platform administrator | Creating, revising, cloning and archiving plans; applying them to organizations and direct accounts. |
 | Organization administrator | Moving their organization's people between revisions, under **People → Apply policy**. |
-| The storefront (Bloem Garden) | Listing plans and putting one account on a plan, with a platform administrator's API key. |
+| The storefront (Bloem HQ) | Listing plans and putting one account on a plan, with a platform administrator's API key. |
 
 ## Words used in the code
 

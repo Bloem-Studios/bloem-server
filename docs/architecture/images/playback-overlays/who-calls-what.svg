@@ -7,8 +7,8 @@
 <text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Two ways to write a campaign, one registry, and the routes a viewer's app reads.</text>
 <rect x="40" y="132" width="320" height="110" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
 <text x="58" y="164" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The storefront</text>
-<text x="58" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem Garden, a separate application,</text>
-<text x="58" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">with a platform administrator's API key.</text>
+<text x="58" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem HQ, a separate application, with a</text>
+<text x="58" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">platform administrator's API key.</text>
 <rect x="40" y="266" width="320" height="110" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
 <text x="58" y="298" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The web admin console</text>
 <text x="58" y="322" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Campaigns &amp; seasonal packs, in the</text>

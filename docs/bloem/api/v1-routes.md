@@ -34,7 +34,7 @@ Bloem calls these paths.**
 
 ## Who called them at the end
 
-- **The storefront (Bloem Garden)** and **the web app** had left them by 2026-11-01.
+- **The storefront (Bloem HQ)** and **the web app** had left them by 2026-11-01.
 - **Bloem's phone and TV apps** still called the viewer's campaign routes, remote control, and
   (on Apple) profile sign-in. Those calls now answer `410 Gone`.
 - A copy of an old `/api/v1/ambience/assets/...` artwork path kept outside Bloem's tables,

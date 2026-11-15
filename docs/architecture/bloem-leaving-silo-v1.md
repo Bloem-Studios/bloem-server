@@ -41,7 +41,7 @@ why Bloem moved off it first.
 
 ![A grid of callers against Silo's /api/v1, Silo's /api/v2 and Bloem's /api/bloem/v2, showing who called /api/v1 and that it now answers 410 Gone](images/leaving-silo-v1/callers.svg)
 
-- **The storefront (Bloem Garden)** left `/api/v1` on 2026-10-31. Organizations, accounts on
+- **The storefront (Bloem HQ)** left `/api/v1` on 2026-10-31. Organizations, accounts on
   plans, announcements, campaigns and seasonal packs now use Bloem's API; plain accounts,
   libraries and playback sessions use Silo's `/api/v2`.
 - **The web app** left on 2026-11-01. Campaign cards, announcements and the seasonal look of

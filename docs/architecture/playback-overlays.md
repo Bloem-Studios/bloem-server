@@ -18,7 +18,7 @@ and which apps show one.
 
 A card is artwork and a line or two of text, softly shadowed, floating straight over
 the picture with no panel around it. It belongs to a **campaign**: a promotion a
-platform administrator or the storefront (Bloem Garden) writes once and Bloem shows on
+platform administrator or the storefront (Bloem HQ) writes once and Bloem shows on
 one or more **surfaces**. Home, a title's page and the moment before playback are the
 other surfaces; a playback card is the campaign shown during playback.
 
@@ -79,7 +79,7 @@ sees it.
 | Who | What they manage |
 | --- | --- |
 | Platform administrator | Campaigns, including playback cards, under **Campaigns & seasonal packs** in the Platform context. |
-| The storefront (Bloem Garden) | The same campaigns, with a platform administrator's API key. |
+| The storefront (Bloem HQ) | The same campaigns, with a platform administrator's API key. |
 | Organization administrator | Nothing: they cannot publish campaigns. |
 | Viewer | Closing a card, saving it to the inbox. |
 

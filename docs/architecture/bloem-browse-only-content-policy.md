@@ -39,7 +39,7 @@ and even for a stream link handed out a moment earlier.
 
 ## Two kinds of preview
 
-The storefront (Bloem Garden) uses browse-only to let people look around before
+The storefront (Bloem HQ) uses browse-only to let people look around before
 they buy. Both kinds run on the protected **Preview** plan, which can never be
 loosened.
 
@@ -130,7 +130,7 @@ play. She clicks **Preview** and lands on the preview address as a guest.
 | Who | What they manage |
 | --- | --- |
 | Platform administrator | The preview's settings: on or off, the preview address, launch-link keys, capacity, wording and links, libraries, the age-rating ceiling, and free play on or off with its capacity. Ending every guest session. Done in the Platform context, or with an API key that has the `admin:preview` scope. |
-| The storefront (Bloem Garden) | Launch links, who gets free play and how much, personal preview accounts and when they end. |
+| The storefront (Bloem HQ) | Launch links, who gets free play and how much, personal preview accounts and when they end. |
 | A visitor | Looking around, free play when given, leaving. |
 
 ## Words used in the code
@@ -380,7 +380,7 @@ subscriber response handling keeps its original writer and body.
 
 The additive v2 account projection carries nullable preview display facts and
 `playback_allowed`. Guest end dates come from absolute session expiry. Personal
-end dates live in a separate Bloem table and are display metadata: Garden keeps
+end dates live in a separate Bloem table and are display metadata: Bloem HQ keeps
 account-expiration authority. Conversion removes preview facts on the next request,
 even when an old display-date row remains. Playback capability permission and CTA
 denial participate in the host's normal capability revision and validator hashing.
@@ -399,7 +399,7 @@ counts are written to `bloem_preview_event_counts`; no route reads them yet.
 
 A storefront may give a guest a free-play allowance: real video playback for a
 number of seconds, metered by the server. The storefront decides who gets one
-(Garden confirms an email address and refuses repeats); the server only
+(Bloem HQ confirms an email address and refuses repeats); the server only
 honours and meters signed allowances. Free play is off by default
 (`free_play_enabled`). The settings also carry the storefront's offer for guests
 without an allowance (`free_play_url`, `free_play_label`, `free_play_seconds`,
@@ -506,7 +506,7 @@ depth; it grants no authority beyond the server's preview gate.
 
 ### Follow-up
 
-Public showcase readiness still requires Garden launch/configuration integration.
+Public showcase readiness still requires Bloem HQ launch/configuration integration.
 Bloem Android and Apple preview banners, CTA and personal-control suppression are
 the separate native-client milestone. Their existing denied-operation behavior
 continues to enforce server policy.

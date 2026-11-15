@@ -14,7 +14,7 @@ reference is laid out and how to read one entry.
 
 ![Bloem's native API in four bands: public routes, viewer routes, account-only routes and administration](architecture/images/client-surface/route-map.svg)
 
-Bloem's apps, the web app and the storefront (Bloem Garden) talk to a Bloem server through two
+Bloem's apps, the web app and the storefront (Bloem HQ) talk to a Bloem server through two
 APIs: Silo's, for everything Silo has, and **`/api/bloem/v2`** for what Bloem adds: Live TV,
 organizations and their own web addresses, plans and previews, campaigns and seasonal packs,
 book requests, storage sources, and richer home and title documents. Apps built for Silo never
@@ -70,7 +70,7 @@ Riverside Club's administrator wants to rename the club's "Juniors" access group
 | Viewers, through the apps | System and client routes, the inbox, Live TV, campaigns, seasonal packs and book requests. |
 | Organization administrator | Organization and people administration, with an organization pass. |
 | Platform administrator | Platform administration, storage sources and the preview, with a platform pass. |
-| The storefront (Bloem Garden) | The storefront's platform routes, with a platform administrator's API key. |
+| The storefront (Bloem HQ) | The storefront's platform routes, with a platform administrator's API key. |
 
 ## Words used in the code
 
@@ -3264,7 +3264,7 @@ and handlers; they were added in the 2026-11-01 review.
 #### Storefront platform routes
 
 `mountBloemPlatformStorefront` (`internal/api/router_bloem_storefront.go`) mounts the platform
-administration a storefront (Bloem Garden) needs **outside** the `r.Route("/admin", …)`
+administration a storefront (Bloem HQ) needs **outside** the `r.Route("/admin", …)`
 subtree, behind its own gate: `bloemEitherPlatformCredential` sends a bearer `sa_` API key to
 `RequireAuth` and anything else to `AdminContextMiddleware.Require`, then
 `RequireBloemPlatformAdmin` (`internal/api/handlers/bloem_platform_admin_gate.go`) accepts only

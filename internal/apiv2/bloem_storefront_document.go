@@ -9,7 +9,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/notifications"
 )
 
-// The platform administration a storefront (Bloem Garden) drives with its API
+// The platform administration a storefront (Bloem HQ) drives with its API
 // key: reseller organizations (tenants) and their members, an account's
 // profiles, devices and sign-in sessions, and announcements
 // (api.mountBloemPlatformStorefront). The handlers are the ones behind the

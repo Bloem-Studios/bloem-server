@@ -70,7 +70,7 @@ revalidate it. A healthy server alone does not show that uploads work.
 | Who | What they manage |
 | --- | --- |
 | Platform administrator | The server's storage settings, campaign and seasonal uploads, and each organization's branding. |
-| The storefront (Bloem Garden) | Campaign and seasonal uploads, with a platform administrator's API key. |
+| The storefront (Bloem HQ) | Campaign and seasonal uploads, with a platform administrator's API key. |
 | Organization administrator | Storage sources for their own organization's libraries; not the Assets store. |
 
 ## Words used in the code

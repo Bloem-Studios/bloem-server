@@ -74,7 +74,7 @@ accounts to it.
 
 ![Five steps from clicking Preview on the storefront to signing up, and what keeps it safe](images/plans/preview.svg)
 
-The storefront (Bloem Garden) can let people look around before they buy:
+The storefront (Bloem HQ) can let people look around before they buy:
 
 1. **Click Preview.** The storefront hands the visitor a one-time link that works
    for one minute.

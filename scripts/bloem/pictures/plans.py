@@ -138,7 +138,7 @@ def preview():
             "address, the visitor browses without playing, free play if the storefront switched it on, and "
             "signing up on the storefront. Limits that protect the server are listed below.")
     s.header("A storefront visitor's preview",
-             "The storefront (Bloem Garden) lets people look around before they buy. Bloem keeps them in a "
+             "The storefront (Bloem HQ) lets people look around before they buy. Bloem keeps them in a "
              "locked room.")
     o, a, g, w, pl = TIERS["org"], TIERS["account"], TIERS["grey"], TIERS["warn"], TIERS["plan"]
     steps = [

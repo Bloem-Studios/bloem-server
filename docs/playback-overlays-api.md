@@ -15,7 +15,7 @@ app reads to show a card.
 
 ![The storefront and the web admin console write campaigns into one registry; the web app reads native routes, the Android apps' old routes on Silo's v1 API are retired, and Apple and Jellyfin apps show no cards](architecture/images/playback-overlays/who-calls-what.svg)
 
-- **Two ways to write a campaign.** The storefront (Bloem Garden), a separate
+- **Two ways to write a campaign.** The storefront (Bloem HQ), a separate
   application, and the web admin console's **Campaigns & seasonal packs** page both
   write into the same **campaign registry** on the Bloem server. A later save
   overwrites an earlier one.

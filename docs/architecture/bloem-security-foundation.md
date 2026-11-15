@@ -29,7 +29,7 @@ an organization's own web address, and how a server gets its first owner.
   account sign-in for one, and it lasts at most 15 minutes. A **platform pass** runs the whole
   platform; an **organization pass** runs one organization. A pass is never both, and it ends
   as soon as the sign-in it came from ends. The browser keeps it in memory only.
-- **An API key** is for programs such as the storefront (Bloem Garden). A key owned by a
+- **An API key** is for programs such as the storefront (Bloem HQ). A key owned by a
   platform administrator opens the storefront's platform routes. It cannot sign in or out,
   and it never opens an organization's administration.
 
@@ -131,7 +131,7 @@ Riverside Club is a reseller organization served on its own address, `watch.rive
 | --- | --- |
 | Platform administrator | With a platform pass: every organization, its owner (with their own password), memberships, domains and branding. The server Owner can also open a customer's organization with a stated reason, for at most four hours, shown to that organization's administrators ([break-glass access](bloem-organization-support.md#when-the-administrator-is-the-one-who-is-stuck)). |
 | Organization administrator | With an organization pass: their own organization only. Ordinary members: reset links (the administrator never sees a password), signing out everywhere, one session or one device, adding, renaming and removing profiles, clearing a forgotten PIN, stopping streams. The organization owner may also do this for the organization's other administrators; nobody does it to themselves ([who may act on whom](bloem-organization-support.md#who-may-do-it-to-whom)). |
-| The storefront (Bloem Garden) | Reseller organizations, accounts, domains and branding, using a platform administrator's API key. |
+| The storefront (Bloem HQ) | Reseller organizations, accounts, domains and branding, using a platform administrator's API key. |
 | An account's main profile | The household's profiles, PINs and profile sign-ins. Profile sign-ins also need the account password. |
 | The server's operator | Picking the owner of an upgraded server with several administrators, directly in the database. |
 

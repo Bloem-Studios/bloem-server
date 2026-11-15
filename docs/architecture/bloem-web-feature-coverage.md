@@ -98,7 +98,7 @@ Two sign-in rules show up in the web app:
 ### Scope and interpretation
 
 This inventory covers the web application embedded in **Bloem Server** (`web/`). The
-storefront (Bloem Garden), native-client implementation, billing and a replacement
+storefront (Bloem HQ), native-client implementation, billing and a replacement
 frontend are outside scope. Retain working Silo screens and APIs; native DTO
 availability alone does not justify replacing them.
 

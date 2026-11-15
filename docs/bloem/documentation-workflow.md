@@ -75,7 +75,7 @@ sections (see [overlays](#overlays) below).
 - Keep Bloem's words, and keep them distinct: **platform**, **organization**,
   **default organization**, **reseller organization**, **account**, **profile**,
   **plan**, **seat**, **platform administrator**, **organization administrator**,
-  and the **storefront** (Bloem Garden).
+  and the **storefront** (Bloem HQ).
 - Keep public text public. Never name private hostnames, IP addresses, container
   numbers, the production domain, customers, local folders or worktrees. Write "the
   server's public address" for the address people use. Link with
@@ -424,7 +424,7 @@ The first fifteen were first written down in October 2026, at `e852f92bf` and
   showcase. The server side of the preview principal, signed guest sessions,
   free play and catalogue hygiene is in this repository
   ([browse-only policy](../architecture/bloem-browse-only-content-policy.md));
-  the Garden launch flow lives in Garden's own repository and is not checked
+  the Bloem HQ launch flow lives in Bloem HQ's own repository and is not checked
   here. Verify both deployed revisions, preview-host configuration and the
   launch/exchange journey before describing a live prospect flow as enabled. The
   [October 15 receipt](../operations/2026-10-15-preview-server-deployment.md)

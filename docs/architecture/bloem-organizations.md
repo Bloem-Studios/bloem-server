@@ -30,7 +30,7 @@ someone presses play.
 ### Two kinds of organization
 
 - **The default organization** holds Bloem's own direct customers. The storefront
-  (Bloem Garden) or an administrator manages each of these accounts one by one. Every
+  (Bloem HQ) or an administrator manages each of these accounts one by one. Every
   server has exactly one default organization, and accounts from before organizations
   existed live there too. Each new platform library is granted to it automatically.
 - **A reseller organization** is sold through the storefront as a block of **seats**
@@ -159,7 +159,7 @@ not only when the title is listed.
 | --- | --- |
 | Platform administrator | Every organization: create, suspend, reactivate, transfer ownership, its domains and branding. Platform libraries and which organization gets them. Plans (entitlement templates). |
 | Organization administrator | Their own organization only: people, profiles, groups, invitations, its own libraries, and grants already made to it. |
-| The storefront (Bloem Garden) | Creating and retiring reseller organizations, their seats, conversions, domains and branding. Putting an account on a plan. It uses a platform administrator's API key. |
+| The storefront (Bloem HQ) | Creating and retiring reseller organizations, their seats, conversions, domains and branding. Putting an account on a plan. It uses a platform administrator's API key. |
 | An account's main profile | The household's profiles: who they are, PINs, age limits and libraries. |
 
 An account with the `admin` role is a platform administrator. An organization

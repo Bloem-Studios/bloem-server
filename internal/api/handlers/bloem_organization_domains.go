@@ -2,7 +2,7 @@ package handlers
 
 // Bloem-owned. An organization's domains and branding, managed from the
 // platform routes under /api/bloem/v2/admin/platform/tenants/{id}: by the
-// platform administrator's web pages and by the storefront (Bloem Garden)
+// platform administrator's web pages and by the storefront (Bloem HQ)
 // with its API key. See docs/architecture/bloem-organization-domains.md.
 
 import (
@@ -164,7 +164,7 @@ func (h *BloemOrganizationDomainsHandler) HandleListDomains(w http.ResponseWrite
 }
 
 // HandleAddDomain handles POST /admin/platform/tenants/{id}/domains. The
-// storefront's API key records the domain as Garden's; any other credential
+// storefront's API key records the domain as Bloem HQ's; any other credential
 // as the platform administrator's.
 func (h *BloemOrganizationDomainsHandler) HandleAddDomain(w http.ResponseWriter, r *http.Request) {
 	org, ok := h.organization(w, r)

@@ -31,7 +31,7 @@ def callers():
         s.text(x + col_w / 2, 168, sub, size=13, fill=MUTED, anchor="middle")
 
     rows = [
-        ("The storefront", "Bloem Garden",
+        ("The storefront", "Bloem HQ",
          [("no", "Left on 31 October 2026"), ("yes", "Accounts, libraries, sessions"),
           ("yes", "Organizations, plans, messages")]),
         ("The web app", "In the browser",

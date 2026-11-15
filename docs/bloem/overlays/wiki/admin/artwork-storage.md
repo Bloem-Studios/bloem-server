@@ -42,7 +42,7 @@ changing storage configuration.
 | Who | What they manage |
 | --- | --- |
 | Platform administrator | Uploading campaign and seasonal artwork; the server's storage settings. |
-| The storefront (Bloem Garden) | Uploading the same artwork, with a platform administrator's API key. |
+| The storefront (Bloem HQ) | Uploading the same artwork, with a platform administrator's API key. |
 
 ## Words used in the code
 

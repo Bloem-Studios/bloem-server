@@ -67,7 +67,7 @@ What it does not do:
 
 | Who | What they manage |
 | --- | --- |
-| The storefront (Bloem Garden) | Ending a reseller organization, which retires it. It uses a platform administrator's API key. |
+| The storefront (Bloem HQ) | Ending a reseller organization, which retires it. It uses a platform administrator's API key. |
 | Platform administrator | Retiring a reseller organization through the same route, and deleting libraries. |
 | Organization administrator | Nothing here: retirement and library deletion are platform work. |
 

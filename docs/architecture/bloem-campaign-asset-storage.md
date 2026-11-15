@@ -16,7 +16,7 @@ apps show it.
 ![Upload, check and name, store; which store is used; and the public route apps fetch pictures from](images/bloem-campaign-asset-storage/where-artwork-goes.svg)
 
 1. **Upload.** A platform administrator, in **Campaigns & seasonal packs**, or the
-   storefront (Bloem Garden) uploads a picture for a **campaign card**, a seasonal
+   storefront (Bloem HQ) uploads a picture for a **campaign card**, a seasonal
    **banner** or a seasonal **sprite** (a small picture that floats across the screen).
 2. **Check and name.** Bloem looks at the bytes themselves, not at what the file
    claims to be, and accepts a PNG, JPEG, WebP or GIF of at most 8 MiB. It names the
@@ -55,7 +55,7 @@ Uploading the same file again for another pack reuses the same name.
 | Who | What they manage |
 | --- | --- |
 | Platform administrator | Uploading artwork for campaigns and seasonal packs, in the Platform context. Choosing the server's storage (Silo's storage settings). |
-| The storefront (Bloem Garden) | Uploading the same artwork, with a platform administrator's API key. |
+| The storefront (Bloem HQ) | Uploading the same artwork, with a platform administrator's API key. |
 | Viewer | Nothing; their apps fetch the public pictures. |
 
 ## Words used in the code

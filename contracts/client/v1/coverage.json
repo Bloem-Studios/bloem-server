@@ -2715,23 +2715,23 @@
     },
     {
       "type": "internal/api/handlers.BloemLibraryFigure",
-      "reason": "Platform administration response for storefronts (Garden reads it with an administrator API key to publish live library figures); no Bloem app or generated native client decodes it."
+      "reason": "Platform administration response for storefronts (Bloem HQ reads it with an administrator API key to publish live library figures); no Bloem app or generated native client decodes it."
     },
     {
       "type": "internal/api/handlers.BloemLibraryFigures",
-      "reason": "Platform administration response for storefronts (Garden reads it with an administrator API key to publish live library figures); no Bloem app or generated native client decodes it."
+      "reason": "Platform administration response for storefronts (Bloem HQ reads it with an administrator API key to publish live library figures); no Bloem app or generated native client decodes it."
     },
     {
       "type": "internal/api/handlers.BloemNewArrival",
-      "reason": "Platform administration response for storefronts (Garden reads it with an administrator API key for its weekly new-arrivals email); no Bloem app or generated native client decodes it."
+      "reason": "Platform administration response for storefronts (Bloem HQ reads it with an administrator API key for its weekly new-arrivals email); no Bloem app or generated native client decodes it."
     },
     {
       "type": "internal/api/handlers.BloemNewArrivals",
-      "reason": "Platform administration response for storefronts (Garden reads it with an administrator API key for its weekly new-arrivals email); no Bloem app or generated native client decodes it."
+      "reason": "Platform administration response for storefronts (Bloem HQ reads it with an administrator API key for its weekly new-arrivals email); no Bloem app or generated native client decodes it."
     },
     {
       "type": "internal/notifications.UpgradePrompt",
-      "reason": "Platform administration request and response for storefronts (Garden reads and replaces the upgrade prompt with an administrator API key); viewers receive the prompt as an ordinary inbox alert, so no Bloem app or generated native client decodes this type."
+      "reason": "Platform administration request and response for storefronts (Bloem HQ reads and replaces the upgrade prompt with an administrator API key); viewers receive the prompt as an ordinary inbox alert, so no Bloem app or generated native client decodes this type."
     },
     {
       "type": "internal/api/handlers.AdminRateLimitSessionQuotaUpdate",

@@ -232,7 +232,7 @@ To add a domain:
 4. **Register the domain.** A platform administrator opens **Organizations**, picks
    the organization, and adds the domain in its **Domains** panel. The first domain
    becomes the primary; **Make it the primary domain** moves the primary to a later
-   one. The storefront (Bloem Garden) can register domains for its organizations too.
+   one. The storefront (Bloem HQ) can register domains for its organizations too.
    Set the name, logo and colours in the **Branding** panel next to it.
 5. **Provider callbacks.** Only if people sign in through the OAuth provider
    (Authentik): register the domain's two callback addresses at the provider, and
@@ -558,7 +558,7 @@ have all been checked.
 | --- | --- |
 | Whoever runs the host | `.env`, the Compose files and overrides, the image, backups, the reverse proxy, DNS, certificates, the OAuth provider's registered addresses, and Silo switching. |
 | Platform administrator | The public URL, trusted proxies, search, which compatibility apps may connect, and every organization's domains and branding. |
-| The storefront (Bloem Garden) | Registering domains for its organizations, with a platform administrator's API key. |
+| The storefront (Bloem HQ) | Registering domains for its organizations, with a platform administrator's API key. |
 | Organization administrator | Nothing on this page. Domains and branding are set by the platform. |
 
 ## Words used in the code

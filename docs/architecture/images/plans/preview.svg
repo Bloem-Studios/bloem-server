@@ -4,7 +4,7 @@
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="719" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">A storefront visitor's preview</text>
-<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The storefront (Bloem Garden) lets people look around before they buy. Bloem keeps them in a locked room.</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The storefront (Bloem HQ) lets people look around before they buy. Bloem keeps them in a locked room.</text>
 <rect x="40" y="128" width="204" height="236" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
 <circle cx="66" cy="156" r="13" fill="#6366F1"/>
 <text x="66" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>

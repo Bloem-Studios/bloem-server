@@ -27,7 +27,7 @@ just before the end.
 3. **Dates that do not exist are skipped.** A yearly window set on 29 February is
    skipped in years without one, and so is a time that a clock change skips.
 4. **The server keeps the calendar.** Seasons start and stop on time even when the
-   storefront (Bloem Garden) or the admin console is closed.
+   storefront (Bloem HQ) or the admin console is closed.
 
 ## From calendar to screen
 
@@ -75,7 +75,7 @@ and only after they sign in.
 | Who | What they manage |
 | --- | --- |
 | Platform administrator | Seasonal packs for everyone or for one organization, under **Campaigns & seasonal packs** in the Platform context. |
-| The storefront (Bloem Garden) | The same packs, from its Seasonal effects page, with a platform administrator's API key. |
+| The storefront (Bloem HQ) | The same packs, from its Seasonal effects page, with a platform administrator's API key. |
 | Organization administrator | Nothing: they cannot publish packs. |
 | Viewer | Switching effects off on a device. |
 

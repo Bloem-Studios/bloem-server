@@ -543,7 +543,7 @@ seasons and episodes. Playback, reading, downloads and personal changes are refu
 ordinary plan with playback switched off, the protected preview also limits credentials and
 catalog responses.
 
-For a public web preview, set up the library preview in the storefront (Bloem Garden, Bloem's
+For a public web preview, set up the library preview in the storefront (Bloem HQ, Bloem's
 companion application, outside this repository) with a separate preview address. Keep the normal
 subscriber address separate. The storefront hands out short-lived launch links, and the server
 exchanges each one once for a time-limited guest session. Setting up the server side uses the
@@ -1041,7 +1041,7 @@ or less, because of the address they used.
 | Platform administrator | The whole server in the Platform context: libraries, settings, plugins, nodes, Live TV, organizations with their domains and branding, plans, campaigns, seasonal packs and announcements. |
 | The server owner | Other administrators' accounts: only the server owner can change them. |
 | Organization administrator | Their own organization only: people, policy cohorts, access groups, libraries and grants already made to it, storage sources, invitations, policy decisions and activity. Not its domains or branding. |
-| The storefront (Bloem Garden) | Reseller organizations, accounts on plans, domains and branding, campaigns and preview links, using a platform administrator's API key. A domain it adds is marked as from the storefront. |
+| The storefront (Bloem HQ) | Reseller organizations, accounts on plans, domains and branding, campaigns and preview links, using a platform administrator's API key. A domain it adds is marked as from the storefront. |
 | A household's main profile | The household's profiles, PINs, Kids limits and profile sign-in credentials, the account password and its signed-in sessions. |
 
 ## Words used in the code

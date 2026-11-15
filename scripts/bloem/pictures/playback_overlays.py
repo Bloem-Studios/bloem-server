@@ -72,7 +72,7 @@ def who_calls_what():
              "Two ways to write a campaign, one registry, and the routes a viewer's app reads.")
     p, o, a, g = TIERS["platform"], TIERS["org"], TIERS["account"], TIERS["grey"]
 
-    box(s, 40, 132, 320, 110, g, "The storefront", "Bloem Garden, a separate application, with a platform "
+    box(s, 40, 132, 320, 110, g, "The storefront", "Bloem HQ, a separate application, with a platform "
         "administrator's API key.", size=14)
     box(s, 40, 266, 320, 110, g, "The web admin console", "Campaigns & seasonal packs, in the Platform "
         "administrative context.", size=14)

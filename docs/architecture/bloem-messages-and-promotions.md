@@ -27,7 +27,7 @@
 
 A platform administrator writes them in the admin console: announcements under
 **Integrations → Announcements**, campaigns and seasonal packs under **Campaigns &
-seasonal packs**. The storefront (Bloem Garden) can write campaigns and seasonal
+seasonal packs**. The storefront (Bloem HQ) can write campaigns and seasonal
 packs too. Bloem stores them all, so they keep working when the storefront is
 offline. Organization administrators can't publish them.
 

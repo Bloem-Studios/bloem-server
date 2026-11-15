@@ -140,7 +140,7 @@ and its blue accent colour.
 | Who | What they manage |
 | --- | --- |
 | Platform administrator | Every organization's domains and branding, in the organization's page in the admin console (Domains and Branding panels). The server's own branding, which is the default organization's, in the server's branding settings. |
-| The storefront (Bloem Garden) | A reseller organization's domains and branding, using a platform administrator's API key. A domain it registers is recorded as the storefront's. |
+| The storefront (Bloem HQ) | A reseller organization's domains and branding, using a platform administrator's API key. A domain it registers is recorded as the storefront's. |
 | Organization administrator | Nothing here: domains and branding are platform routes. |
 | Whoever runs the hosting | The address itself, its certificate, the proxy, and the Authentik registration. |
 

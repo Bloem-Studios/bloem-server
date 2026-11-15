@@ -171,7 +171,7 @@ values as revision 3 and moves the same accounts to it.
 | --- | --- |
 | Platform administrator | Creating, revising, cloning and archiving plans. Applying them to organizations and to direct accounts, alone or in bulk. Reading an organization's plan history. |
 | Organization administrator | Moving their own organization's people between revisions and cohorts, with the same preview and confirmation. |
-| The storefront (Bloem Garden) | Listing plans and putting one account on a plan, with a platform administrator's API key; also creating accounts and reseller organizations on a plan. |
+| The storefront (Bloem HQ) | Listing plans and putting one account on a plan, with a platform administrator's API key; also creating accounts and reseller organizations on a plan. |
 
 ## Words used in the code
 

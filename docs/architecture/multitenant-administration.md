@@ -117,7 +117,7 @@ Silo-style connections work as they do in Silo.
 | --- | --- |
 | Platform administrator | In the Platform context: create, rename, suspend and reactivate organizations, memberships, ownership transfers (after entering their password again), platform libraries and grants, plans, reseller organizations, and each organization's domains and branding. Any account's profiles and PINs, on the account's page in the admin console; only the Owner may change the Owner's or another administrator's. |
 | Organization administrator | In their organization's context: people, profiles, groups, grants already made, invitations, activity and policy explanations. |
-| The storefront (Bloem Garden) | Platform routes for reseller organizations and accounts, with a platform administrator's API key. It cannot open an administrative context. |
+| The storefront (Bloem HQ) | Platform routes for reseller organizations and accounts, with a platform administrator's API key. It cannot open an administrative context. |
 | An account's main profile | The household's profiles and PINs, through the account's own sign-in. |
 
 ## Words used in the code

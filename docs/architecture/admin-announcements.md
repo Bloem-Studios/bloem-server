@@ -34,7 +34,7 @@ organization.
 There are no saved drafts, no start time in the future and no editing after
 publishing. To change a message, withdraw it and publish a new one.
 
-The storefront (Bloem Garden) can publish announcements too, but it is not needed:
+The storefront (Bloem HQ) can publish announcements too, but it is not needed:
 Bloem stores and delivers them itself.
 
 ## Who receives it
@@ -73,7 +73,7 @@ every inbox by itself.
 | Who | What they manage |
 | --- | --- |
 | Platform administrator | Writing, publishing and withdrawing announcements, in the Platform context. |
-| The storefront (Bloem Garden) | The same, with a platform administrator's API key. |
+| The storefront (Bloem HQ) | The same, with a platform administrator's API key. |
 | Organization administrator | Nothing: they cannot publish announcements. |
 | Viewer | Reading, marking read and dismissing (not critical messages). |
 

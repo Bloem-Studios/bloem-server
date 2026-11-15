@@ -13,14 +13,14 @@ import (
 // MaxTicketLifetime bounds exp - iat (spec §6.4).
 const MaxTicketLifetime = 60 * time.Second
 
-// ticketLeeway absorbs clock skew between Garden and the server.
+// ticketLeeway absorbs clock skew between Bloem HQ and the server.
 const ticketLeeway = 5 * time.Second
 
 // ErrTicketInvalid wraps every ticket refusal. Clients only ever learn that
 // the ticket was refused, never why.
 var ErrTicketInvalid = errors.New("preview: ticket refused")
 
-// Expectation is what a ticket must name: Garden's operator, this server and
+// Expectation is what a ticket must name: Bloem HQ's operator, this server and
 // the preview host.
 type Expectation struct {
 	Issuer   string

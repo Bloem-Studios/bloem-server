@@ -141,7 +141,7 @@ def lifecycle():
              "Direct customers are accounts in the default organization. A reseller gets an organization of its own.")
     o, a, g, w = TIERS["org"], TIERS["account"], TIERS["grey"], TIERS["warn"]
     steps = [
-        ("A reseller buys", "a block of seats", ["On the storefront", "(Bloem Garden): a club,", "business or reseller", "with its own members."], None),
+        ("A reseller buys", "a block of seats", ["On the storefront", "(Bloem HQ): a club,", "business or reseller", "with its own members."], None),
         ("The storefront asks", "Bloem to create it", ["With its number of", "seats and shared video", "conversions."], ("Getting ready", g)),
         ("Bloem gives it", "starting libraries", ["The platform's starting", "set of libraries and", "plugins is granted."], None),
         ("The first admin", "account is added", ["The organization's", "own administrator."], ("Active", a)),

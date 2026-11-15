@@ -108,7 +108,7 @@ also end a session, with a reason.
 | Who | What they manage |
 | --- | --- |
 | Platform administrator | Whether Jellyfin and Audiobookshelf apps may connect, their addresses, local network announcement, remote control of any session in scope. Each organization's domains and branding. |
-| The storefront (Bloem Garden) | An organization's domains and branding, with a platform administrator's API key. |
+| The storefront (Bloem HQ) | An organization's domains and branding, with a platform administrator's API key. |
 | An account's main profile | Profile sign-ins, and remote control of the household's own sessions. |
 | Viewer | Which apps they sign in to. |
 

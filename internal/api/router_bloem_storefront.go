@@ -54,7 +54,7 @@ func newBloemPlatformStorefrontHandlers(deps Dependencies, admin *handlers.Admin
 }
 
 // mountBloemPlatformStorefront serves, under /api/bloem/v2/admin/platform, the
-// platform administration that a storefront (Bloem Garden) needs: reseller
+// platform administration that a storefront (Bloem HQ) needs: reseller
 // organizations (tenants) and their members, creating and updating an account
 // on a plan, an account's profiles, devices and sign-in sessions,
 // announcements, campaigns and seasonal packs. Each

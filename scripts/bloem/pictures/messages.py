@@ -38,7 +38,7 @@ def where_viewers_see():
     s.text(820, 406, "Who writes them", size=18, weight="700")
     para(s, 820, 436, "A platform administrator, in the admin console. Announcements are under Integrations; "
          "campaigns and seasonal packs under Campaigns & seasonal packs.", 320, size=14, gap=20)
-    para(s, 820, 528, "The storefront (Bloem Garden) can write campaigns and seasonal packs too. Bloem stores "
+    para(s, 820, 528, "The storefront (Bloem HQ) can write campaigns and seasonal packs too. Bloem stores "
          "them, so they keep working when the storefront is offline.", 320, size=14, gap=20)
     return s
 

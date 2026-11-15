@@ -14,7 +14,7 @@ import (
 )
 
 // AuthMethodPreviewGuest is a guest session on the shared preview account,
-// opened only by exchanging a Garden-signed preview ticket.
+// opened only by exchanging a Bloem HQ-signed preview ticket.
 const AuthMethodPreviewGuest = "preview_guest"
 
 // PreviewGuestSettings is the part of the preview configuration that decides
