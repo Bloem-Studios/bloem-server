@@ -27,7 +27,9 @@ func classifyEbookSkip(files []ebookSkipFile, path string, size int64, modifiedA
 	if file.path != path || file.size != size || file.modifiedAt == nil || !sameFileModifiedAt(file.modifiedAt, modifiedAt) {
 		return "", false, false
 	}
-	if file.contentID == "" {
+	// An unlinked file is reprocessed in full, as Silo's unchangedEbookFile
+	// does: the item lost its membership in the file's library.
+	if file.contentID == "" || !file.linked {
 		return "", false, false
 	}
 	if file.groupKeyVersion != ebookGroupKeyVersion || file.coverRetry {
