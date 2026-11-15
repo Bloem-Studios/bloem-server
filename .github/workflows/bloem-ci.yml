@@ -716,12 +716,27 @@ jobs:
           GOFLAGS: -count=1 -p=4
           SHARD: ${{ matrix.shard }}
         run: |
-          # Where the tests' temporary files live and how long one synced 1 MiB
-          # write takes there, for reading a timing failure against the disk.
-          tmp="${TMPDIR:-/tmp}"
-          echo "temp dir $tmp on $(findmnt -no FSTYPE -T "$tmp" || echo unknown)"
-          dd if=/dev/zero of="$tmp/bloem-sync-probe" bs=1M count=1 oflag=dsync 2>&1 | tail -n 1 || true
-          rm -f "$tmp/bloem-sync-probe"
+          # Bloem: one synced 1 MiB write took 0.2-0.45 s on the disposable
+          # runners' /tmp, so Silo tests with short file-sync deadlines
+          # (TestSwapCleanupHasADeadline's 200 ms cleanup) missed them. Put
+          # the tests' temporary files on a RAM-backed tmpfs when one has room,
+          # as the local gate's /tmp usually is; Go's build files stay on disk.
+          # The probe prints where they live and one synced write's time.
+          probe() {
+            echo "temp dir $1 on $(findmnt -no FSTYPE -T "$1" || echo unknown)"
+            dd if=/dev/zero of="$1/bloem-sync-probe" bs=1M count=1 oflag=dsync 2>&1 | tail -n 1 || true
+            rm -f "$1/bloem-sync-probe"
+          }
+          probe "${TMPDIR:-/tmp}"
+          shm_free_kb=$(df -k --output=avail /dev/shm 2>/dev/null | tail -n 1 | tr -d ' ' || true)
+          if [ "$(findmnt -no FSTYPE -T /dev/shm 2>/dev/null || true)" = tmpfs ] && [ "${shm_free_kb:-0}" -ge 4194304 ]; then
+            export GOTMPDIR="$RUNNER_TEMP/go-tmp" TMPDIR=/dev/shm/bloem-go-test
+            mkdir -p "$GOTMPDIR"
+            mkdir -p -m 755 "$TMPDIR"
+            probe "$TMPDIR"
+          else
+            echo "no tmpfs with 4 GiB free at /dev/shm; test temp files stay on disk"
+          fi
           packages=$(make -s --no-print-directory go-test-packages | scripts/ci/deal.sh 4 "$SHARD")
           # Silo's database-list tests run in Go database pins on a fresh
           # database, as Silo runs them; scripts/ci/bloem-db-list-skip.py says why.

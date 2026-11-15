@@ -282,6 +282,11 @@ What differs by runner:
   the libvips packages, the golangci-lint analysis cache, and the web check,
   TypeScript and pnpm caches. Two caches are used on both: the golangci-lint
   binary, and the Web test job's pnpm store.
+- On a runner with a tmpfs at `/dev/shm` that has 4 GiB free, the Go test
+  shards put the tests' temporary files there (`TMPDIR`) and Go's build files
+  on disk (`GOTMPDIR`). A synced write on the disposable runners' disk took
+  0.2 to 0.45 s, longer than some of Silo's file-sync deadlines. Each shard
+  prints where its temporary files live and how long one synced write takes.
 - "Keep the Go build cache on disk" runs only on GitHub-hosted runners, where
   Silo's setup action puts the Go build cache on a tmpfs that Bloem's suite
   outgrows.
