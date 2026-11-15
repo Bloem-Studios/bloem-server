@@ -28,11 +28,22 @@ const mocks = vi.hoisted(() => ({
   },
   sections: {} as Record<string, ResolvedSection | Error>,
   hasItems: true,
+  // What each page passed to the layout and section reads, compared below.
+  layoutOptions: [] as unknown[],
+  sectionReads: [] as string[],
 }));
 
 vi.mock("@/hooks/queries/sections", () => ({
-  useLibraryLayout: () => ({ ...mocks.layout, refetch: vi.fn(), isFetching: false }),
-  fetchLibrarySectionItems: async (_libraryId: number, sectionId: string) => {
+  useLibraryLayout: (_libraryId: number, options?: unknown) => {
+    mocks.layoutOptions.push(options);
+    return { ...mocks.layout, refetch: vi.fn(), isFetching: false };
+  },
+  fetchLibrarySectionItems: async (
+    _libraryId: number,
+    sectionId: string,
+    options?: { featured?: boolean },
+  ) => {
+    mocks.sectionReads.push(`${sectionId} featured=${options?.featured === true}`);
     const section = mocks.sections[sectionId];
     if (section instanceof Error) throw section;
     return { section };
@@ -49,6 +60,16 @@ vi.mock("@/hooks/queries/libraryCollections", () => ({
 }));
 vi.mock("@/hooks/queries/sidebarPins", () => ({
   useSidebarPins: () => ({ pins: { "7": [{ type: "collection", id: "c1", label: "Pinned" }] } }),
+}));
+// The collection's current title, which differs from the label saved on the pin.
+vi.mock("@/hooks/queries/pinLabels", () => ({
+  usePinLabel: () => (pin: { label: string }) => `${pin.label} (renamed)`,
+}));
+// Recently added rows drop items an earlier row already shows.
+vi.mock("@/lib/recipes", () => ({
+  fetchRecipeCatalog: async () => ({
+    categories: { discovery: [{ type: "recently_added", avoid_duplicates: true }] },
+  }),
 }));
 vi.mock("@/pages/homeSurfaceRefresh", () => ({ useSectionRefreshSignal: () => ({ data: 0 }) }));
 vi.mock("@/hooks/useOverlayPrefs", () => ({ useOverlayPrefs: () => ({ prefs: {} }) }));
@@ -75,10 +96,14 @@ vi.mock("@/components/ItemCard", () => ({
   default: ({ item }: { item: { content_id: string } }) => <div data-card={item.content_id} />,
 }));
 vi.mock("@/components/SectionRow", () => ({
-  default: ({ section }: { section: ResolvedSection }) => <div data-row={section.title} />,
+  default: ({ section, pinLabel }: { section: ResolvedSection; pinLabel?: string }) => (
+    <div data-row={section.title} data-cards={section.items.length} data-pin-label={pinLabel} />
+  ),
 }));
 vi.mock("@/components/HeroBanner", () => ({
-  default: ({ items }: { items: unknown[] }) => <div data-banner={items.length} />,
+  default: ({ items, onRefreshItems }: { items: unknown[]; onRefreshItems?: () => void }) => (
+    <div data-banner={items.length} data-refreshable={onRefreshItems ? "yes" : "no"} />
+  ),
 }));
 vi.mock("@/components/LibraryEmptyState", () => ({
   default: () => <div data-empty-library="" />,
@@ -106,7 +131,7 @@ function layoutSection(id: string, sectionType: string, featured = false): Layou
   return {
     id,
     section_type: sectionType,
-    title: `${id} title`,
+    title: `${id} layout title`,
     featured,
     item_limit: 10,
     is_custom: false,
@@ -114,13 +139,19 @@ function layoutSection(id: string, sectionType: string, featured = false): Layou
   };
 }
 
-function resolved(id: string, sectionType: string, count: number): ResolvedSection {
+function resolved(
+  id: string,
+  sectionType: string,
+  count: number,
+  itemPrefix = id,
+): ResolvedSection {
   return {
     id,
     section_type: sectionType,
     title: `${id} title`,
+    total_count: count,
     items: Array.from({ length: count }, (_, index) => ({
-      content_id: `${id}-${index}`,
+      content_id: `${itemPrefix}-${index}`,
       type: "audiobook",
       title: `${id} ${index}`,
     })),
@@ -130,8 +161,16 @@ function resolved(id: string, sectionType: string, count: number): ResolvedSecti
 async function renderMarkup(
   Component: typeof LibraryRecommended,
   libraryType: string,
-): Promise<{ markup: string; heroStates: boolean[] }> {
+  ready?: string,
+): Promise<{
+  markup: string;
+  heroStates: boolean[];
+  layoutOptions: unknown[];
+  sectionReads: string[];
+}> {
   const heroStates: boolean[] = [];
+  mocks.layoutOptions = [];
+  mocks.sectionReads = [];
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const { container } = render(
     <QueryClientProvider client={client}>
@@ -147,18 +186,26 @@ async function renderMarkup(
   // Settled once no section is still loading.
   await waitFor(() => {
     expect(container.querySelector('[data-loading="yes"]')).toBeNull();
+    if (ready) expect(container.querySelector(ready)).not.toBeNull();
   });
   await new Promise((resolve) => setTimeout(resolve, 0));
   const markup = container.innerHTML;
   cleanup();
-  return { markup, heroStates };
+  return {
+    markup,
+    heroStates,
+    layoutOptions: mocks.layoutOptions,
+    sectionReads: [...mocks.sectionReads].sort(),
+  };
 }
 
-async function compare(libraryType: string) {
-  const silo = await renderMarkup(LibraryRecommended, libraryType);
-  const bloem = await renderMarkup(BloemLibraryRecommended, libraryType);
+async function compare(libraryType: string, ready?: string) {
+  const silo = await renderMarkup(LibraryRecommended, libraryType, ready);
+  const bloem = await renderMarkup(BloemLibraryRecommended, libraryType, ready);
   expect(bloem.markup.replaceAll('data-owner="bloem"', 'data-owner="silo"')).toBe(silo.markup);
   expect(bloem.heroStates).toEqual(silo.heroStates);
+  expect(bloem.layoutOptions).toEqual(silo.layoutOptions);
+  expect(bloem.sectionReads).toEqual(silo.sectionReads);
   return bloem.markup;
 }
 
@@ -188,14 +235,32 @@ describe("BloemLibraryRecommended parity with Silo's LibraryRecommended", () => 
     const markup = await compare("audiobooks");
     expect(markup).toContain('data-owner="bloem"');
     expect(markup).toContain('data-row="recent title"');
-    expect(markup).toContain('data-carousel="Pinned"');
+    expect(markup).toContain('data-carousel="Pinned (renamed)"');
   });
 
   it("keeps the cinematic banner for other featured sections", async () => {
     mocks.layout.data = { sections: [layoutSection("recent", "recently_added", true)] };
     mocks.sections = { recent: resolved("recent", "recently_added", 2) };
 
-    expect(await compare("audiobooks")).toContain('data-banner="2"');
+    const markup = await compare("audiobooks");
+    expect(markup).toContain('data-banner="2"');
+    expect(markup).toContain('data-refreshable="yes"');
+  });
+
+  it("drops a later row's items that an earlier row already shows", async () => {
+    mocks.layout.data = {
+      sections: [
+        layoutSection("first", "recently_added"),
+        layoutSection("second", "recently_added"),
+      ],
+    };
+    mocks.sections = {
+      first: resolved("first", "recently_added", 2, "shared"),
+      second: resolved("second", "recently_added", 3, "shared"),
+    };
+
+    const markup = await compare("audiobooks", '[data-row="second title"][data-cards="1"]');
+    expect(markup).toContain('data-pin-label="second layout title"');
   });
 
   it("matches the layout failure and empty-library states", async () => {

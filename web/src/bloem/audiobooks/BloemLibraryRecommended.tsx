@@ -1,9 +1,10 @@
 // Silo's LibraryRecommended (pages/LibraryRecommended.tsx) with one change:
 // an audiobook library's continue-listening hero is BloemNowListeningHero,
 // which resumes only the chosen recording of a book. Keep everything else
-// identical to Silo; BloemLibraryRecommended.parity.test.tsx compares the two.
+// identical to Silo; LibraryRecommended.parity.test.tsx compares the two.
 import { buildLibraryCollectionCatalogHref } from "@/pages/catalogSearchParams";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSectionTitle } from "@/lib/sectionTitle";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { LayoutDashboard } from "lucide-react";
@@ -12,6 +13,7 @@ import { useLibraryHasItems } from "@/hooks/queries/catalog";
 import { useLibraryCollectionItems } from "@/hooks/queries/libraryCollections";
 import { fetchLibrarySectionItems, useLibraryLayout } from "@/hooks/queries/sections";
 import { useSidebarPins } from "@/hooks/queries/sidebarPins";
+import { usePinLabel } from "@/hooks/queries/pinLabels";
 import MediaCarousel from "@/components/MediaCarousel";
 import ItemCard from "@/components/ItemCard";
 import { useOverlayPrefs } from "@/hooks/useOverlayPrefs";
@@ -28,13 +30,13 @@ import { sectionKeys } from "@/hooks/queries/keys";
 import { planNextHomeSectionBatch } from "@/pages/homeSectionQueue";
 import { buildHomeSectionViewModel, type HomeSectionSlot } from "@/pages/homeSectionState";
 import { collectCachedHomeSections } from "@/pages/homeSectionCache";
+import { useDedupedSections } from "@/pages/sectionDedupe";
 import { isAudiobookLibraryType } from "@/pages/libraryPageSearchParams";
 import { useUICustomization } from "@/hooks/useUICustomization";
 import { carouselCardWidthClasses } from "@/lib/uiCustomization";
 import { useSectionRefreshSignal } from "@/pages/homeSurfaceRefresh";
 import { useIsActingAdmin } from "@/hooks/useIsActingAdmin";
 import { useT, type Translate } from "@/i18n";
-import { useSectionTitle } from "@/lib/sectionTitle";
 
 interface LibraryRecommendedProps {
   libraryId: number;
@@ -66,7 +68,10 @@ export default function BloemLibraryRecommended({
     error,
     refetch,
     isFetching: layoutFetching,
-  } = useLibraryLayout(libraryId);
+    // The library page owns this read and starts it on its own mount (see
+    // LibraryPage). A failure that landed while the page waited for its saved
+    // state is shown as it is, rather than starting a second deadline here.
+  } = useLibraryLayout(libraryId, { retryOnMount: false });
   const { data: sectionRefreshSignal = 0 } = useSectionRefreshSignal();
   const sectionTitle = useSectionTitle();
   const [loadedSections, setLoadedSections] = useState<Map<string, ResolvedSection>>(new Map());
@@ -133,10 +138,12 @@ export default function BloemLibraryRecommended({
     });
 
     nextIds.forEach((sectionId) => {
+      const featured = layout.some((section) => section.id === sectionId && section.featured);
       void queryClient
         .fetchQuery<HomeSectionItemsResponse>({
           queryKey: sectionKeys.libraryItems(libraryId, sectionId),
-          queryFn: ({ signal }) => fetchLibrarySectionItems(libraryId, sectionId, { signal }),
+          queryFn: ({ signal }) =>
+            fetchLibrarySectionItems(libraryId, sectionId, { signal, featured }),
           staleTime: SECTION_STALE_TIME,
         })
         .then((response) => {
@@ -186,9 +193,10 @@ export default function BloemLibraryRecommended({
     });
   }, [completedIds, inFlightIds, layout, libraryId, queryClient]);
 
+  const visibleSections = useDedupedSections(layout, loadedSections);
   const viewModel = buildHomeSectionViewModel({
     layout,
-    loadedSections,
+    loadedSections: visibleSections,
     failedIds,
   });
 
@@ -214,6 +222,25 @@ export default function BloemLibraryRecommended({
   const { data: libraryHasItems } = useLibraryHasItems(libraryId, {
     enabled: sectionsSettledEmpty,
   });
+
+  // Refetches one section in place through the regular loader, keeping its
+  // current items on screen; the Featured hero uses it while an on-view
+  // translation runs.
+  const refreshSection = (sectionId: string) => {
+    void queryClient
+      .invalidateQueries({
+        queryKey: sectionKeys.libraryItems(libraryId, sectionId),
+        refetchType: "none",
+      })
+      .then(() =>
+        setCompletedIds((prev) => {
+          if (!prev.has(sectionId)) return prev;
+          const next = new Set(prev);
+          next.delete(sectionId);
+          return next;
+        }),
+      );
+  };
 
   const retrySection = (sectionId: string) => {
     queryClient.removeQueries({ queryKey: sectionKeys.libraryItems(libraryId, sectionId) });
@@ -258,7 +285,7 @@ export default function BloemLibraryRecommended({
 
   return (
     <div className="space-y-10 sm:space-y-12">
-      {renderHeroSlot(t, viewModel.hero, retrySection, libraryId, libraryType)}
+      {renderHeroSlot(t, viewModel.hero, retrySection, refreshSection, libraryId, libraryType)}
       {/* A layout refetch (after playback, a library change, a reconnect)
           failed: the cached layout stays, and the layout can be retried. */}
       {isError ? (
@@ -281,7 +308,14 @@ export default function BloemLibraryRecommended({
           return null;
         }
         if (slot.state === "ready" && slot.section) {
-          return <SectionRow key={slot.layout.id} section={slot.section} libraryId={libraryId} />;
+          return (
+            <SectionRow
+              key={slot.layout.id}
+              section={slot.section}
+              libraryId={libraryId}
+              pinLabel={slot.layout.title}
+            />
+          );
         }
         if (slot.state === "error") {
           return (
@@ -305,6 +339,7 @@ function renderHeroSlot(
   t: Translate,
   hero: HomeSectionSlot | null,
   retrySection: (sectionId: string) => void,
+  refreshSection: (sectionId: string) => void,
   libraryId: number,
   libraryType: string,
 ) {
@@ -325,6 +360,7 @@ function renderHeroSlot(
         bleed
         reserveHeaderSpace
         libraryId={libraryId}
+        onRefreshItems={() => refreshSection(hero.layout.id)}
       />
     );
   }
@@ -418,9 +454,15 @@ function SectionErrorRow({ title, onRetry }: { title: string; onRetry: () => voi
 
 function PinnedCollections({ libraryId }: { libraryId: number }) {
   const { pins } = useSidebarPins();
-  const pinnedCollections = (pins[String(libraryId)] ?? []).filter(
-    (pin) => pin.type === "collection",
+  const pinnedCollections = useMemo(
+    () =>
+      (pins[String(libraryId)] ?? []).flatMap((pin) =>
+        pin.type === "collection" ? [{ ...pin, libraryId }] : [],
+      ),
+    [libraryId, pins],
   );
+  // Named like the sidebar names the pin: by the collection's current title.
+  const pinLabel = usePinLabel(pinnedCollections);
 
   return (
     <>
@@ -429,7 +471,7 @@ function PinnedCollections({ libraryId }: { libraryId: number }) {
           key={collection.id}
           libraryId={libraryId}
           collectionId={collection.id}
-          name={collection.label}
+          name={pinLabel(collection)}
         />
       ))}
     </>

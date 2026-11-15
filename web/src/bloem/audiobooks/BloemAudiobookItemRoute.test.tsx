@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -69,7 +68,6 @@ vi.mock("@/pages/audiobooks/player/audiobookPlaybackContext", () => ({
 }));
 vi.mock("@/pages/ItemDetail/useThemeMusic", () => ({ useThemeMusic: () => undefined }));
 vi.mock("@/components/AddToCollectionDialog", () => ({ default: () => null }));
-vi.mock("@/pages/audiobooks/components/NarratorCard", () => ({ NarratorCard: () => null }));
 vi.mock("@/pages/audiobooks/components/NarratorPicker", () => ({ NarratorPicker: () => null }));
 vi.mock("@/pages/audiobooks/components/RelatedRail", () => ({ RelatedRail: () => null }));
 vi.mock("@/pages/audiobooks/components/ChaptersSection", () => ({
@@ -82,17 +80,6 @@ vi.mock("@/pages/audiobooks/components/ChaptersSection", () => ({
       )}
     </ol>
   ),
-}));
-vi.mock("@/pages/ItemDetail/DetailHero", () => ({
-  default: ({ actions, metadata }: { actions?: ReactNode; metadata?: ReactNode }) => (
-    <section>
-      {metadata}
-      {actions}
-    </section>
-  ),
-}));
-vi.mock("@/pages/ItemDetail/components/MetadataBadges", () => ({
-  default: ({ duration }: { duration?: string }) => <p>Length {duration}</p>,
 }));
 
 import BloemAudiobookItemRoute from "./BloemAudiobookItemRoute";
@@ -108,6 +95,11 @@ function renderRoute(path = "/item/7301928374650001") {
       </Routes>
     </MemoryRouter>,
   );
+}
+
+// The book's length, as Silo's page lists it among the book's facts.
+function shownLength() {
+  return screen.getByText("Length").nextElementSibling?.textContent;
 }
 
 function startedFileIds() {
@@ -150,7 +142,7 @@ describe("BloemAudiobookItemRoute", () => {
       "data-state",
       "checked",
     );
-    expect(screen.getByText("Length 2m 30s")).toBeInTheDocument();
+    expect(shownLength()).toBe("3 min");
 
     await userEvent.click(screen.getByRole("button", { name: /Resume/ }));
     expect(startedFileIds()).toEqual({ ids: [601, 602], at: 100 });
@@ -160,7 +152,7 @@ describe("BloemAudiobookItemRoute", () => {
     renderRoute();
 
     await userEvent.click(screen.getByRole("radio", { name: /Local copy/ }));
-    expect(screen.getByText("Length 3m 30s")).toBeInTheDocument();
+    expect(shownLength()).toBe("4 min");
     expect(
       within(screen.getByRole("list", { name: "Chapters" }))
         .getAllByRole("listitem")
@@ -265,7 +257,9 @@ describe("BloemAudiobookItemRoute", () => {
       "data-state",
       "checked",
     );
-    expect(screen.getByText("Length 2s")).toBeInTheDocument();
+    // Silo's page rounds to minutes, so the 2 s recording and the 4 s item
+    // both read "1 min"; the files Listen starts prove which tracks it uses.
+    expect(shownLength()).toBe("1 min");
     await userEvent.click(screen.getByRole("button", { name: /Listen/ }));
     expect(startedFileIds().ids).toEqual([701]);
   });

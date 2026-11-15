@@ -6,7 +6,6 @@ import PageBack from "@/components/PageBack";
 import MetadataBadges from "@/pages/ItemDetail/components/MetadataBadges";
 import ScoreRow from "@/pages/ItemDetail/components/ScoreRow";
 import { RelatedRail } from "@/pages/audiobooks/components/RelatedRail";
-import { NarratorCard } from "@/pages/audiobooks/components/NarratorCard";
 import { useBloemT } from "@/bloem/i18n";
 import { useT } from "@/i18n";
 import { usePreviewMode } from "./usePreviewMode";
@@ -97,7 +96,15 @@ export default function PreviewBookDetail({
         }
       />
       <div className="page-shell detail-supporting-content space-y-10 py-10">
-        {narrator && <NarratorCard narrator={narrator} />}
+        {narrator && (
+          <p className="text-foreground/80 text-sm sm:text-base">
+            {t("web.detail.books.narratedBy", {
+              label: (chunks) => <span>{chunks}</span>,
+              name: (chunks) => <span className="text-foreground font-semibold">{chunks}</span>,
+              narrator,
+            })}
+          </p>
+        )}
         {chapters.length > 0 && (
           <section>
             <h2 className="mb-4 text-xl font-semibold">{bt("bloem.preview.book.chapters")}</h2>

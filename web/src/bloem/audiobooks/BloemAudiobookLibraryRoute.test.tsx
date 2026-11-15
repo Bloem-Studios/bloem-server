@@ -19,6 +19,14 @@ const mocks = vi.hoisted(() => ({
   heroRendered: false,
   /** What the stand-in Silo LibraryPage restores on mount, like its saved-state hydration. */
   restoreTo: null as string | null,
+  layoutReads: [] as unknown[][],
+}));
+
+vi.mock("@/hooks/queries/sections", () => ({
+  useLibraryLayout: (...args: unknown[]) => {
+    mocks.layoutReads.push(args);
+    return { data: undefined, isLoading: false, isError: false };
+  },
 }));
 
 vi.mock("@/hooks/queries/libraries", () => ({
@@ -108,6 +116,14 @@ describe("BloemAudiobookLibraryRoute", () => {
     expect(screen.queryByTestId("silo-library-page")).toBeNull();
     expect(screen.getByRole("tab", { name: "Home" })).toHaveAttribute("data-state", "active");
     expect(document.title).toContain("Audiobooks");
+  });
+
+  it("starts the home tab's layout read itself, as Silo's library page does", () => {
+    mocks.layoutReads = [];
+    renderRoute();
+    // The page's own observer refetches a failed layout when the tab is shown
+    // again; the home tab's sections read it without retrying on mount.
+    expect(mocks.layoutReads.some(([libraryId]) => libraryId === 5)).toBe(true);
   });
 
   it("delegates other libraries, loading and unavailable libraries to Silo's page", () => {
