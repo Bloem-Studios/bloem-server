@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/api"
+	"github.com/Silo-Server/silo-server/internal/audiobooks/abs"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/downloads"
 	"github.com/Silo-Server/silo-server/internal/jellycompat"
@@ -43,14 +44,67 @@ func newBloemCompatDownloadServer(svc *downloads.Service, pool *pgxpool.Pool) je
 }
 
 // bloemCompatDownloadsHook runs Silo's download-service hook, then replaces
-// the Jellyfin listener's download server with Bloem's per-profile one.
-func bloemCompatDownloadsHook(next func(*downloads.Service), target *jellycompat.DownloadServer, pool *pgxpool.Pool) func(*downloads.Service) {
+// the Jellyfin listener's download server with Bloem's per-profile one and
+// the Audiobookshelf listener's with one that resolves the account's tenant.
+func bloemCompatDownloadsHook(next func(*downloads.Service), target *jellycompat.DownloadServer, absH *abs.Handler, pool *pgxpool.Pool) func(*downloads.Service) {
 	return func(svc *downloads.Service) {
 		if next != nil {
 			next(svc)
 		}
 		*target = newBloemCompatDownloadServer(svc, pool)
+		if absH != nil {
+			absH.SetDownloads(newBloemABSDownloads(svc, pool))
+		}
 	}
+}
+
+// newBloemABSDownloads gives the Audiobookshelf listener the download
+// service under the account's validated tenant. Its requests carry no
+// tenant, and Bloem's tenant-scoped group policy refuses a download check
+// without one, so every account would be refused. The listener names no
+// profile to the download service, so the check is the account's, as in
+// Silo. A nil result refuses every download.
+func newBloemABSDownloads(svc *downloads.Service, pool *pgxpool.Pool) abs.Downloads {
+	if svc == nil || pool == nil {
+		return nil
+	}
+	store := tenancy.NewStore(pool)
+	return bloemABSDownloads{service: svc, tenants: tenancy.NewSubjectResolver(tenancy.NewResolver(store), store)}
+}
+
+type bloemABSDownloads struct {
+	service abs.Downloads
+	tenants compatDownloadTenants
+}
+
+func (d bloemABSDownloads) tenantContext(ctx context.Context, userID int) (context.Context, error) {
+	if tenant, ok := tenancy.FromContext(ctx); ok && tenant.AccountID == userID {
+		return ctx, nil
+	}
+	if d.service == nil || d.tenants == nil || userID <= 0 {
+		return ctx, downloads.ErrDownloadNotAllowed
+	}
+	tenant, err := d.tenants.ResolveSubjectTenant(ctx, userID, "")
+	if err != nil {
+		return ctx, fmt.Errorf("%w: resolve download tenant: %w", downloads.ErrDownloadNotAllowed, err)
+	}
+	return tenancy.WithContext(ctx, tenant), nil
+}
+
+func (d bloemABSDownloads) CheckDownloadAllowed(ctx context.Context, userID int) error {
+	ctx, err := d.tenantContext(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return d.service.CheckDownloadAllowed(ctx, userID)
+}
+
+func (d bloemABSDownloads) ServeDirect(ctx context.Context, w http.ResponseWriter, r *http.Request, userID, fileID int, format string, filter catalog.AccessFilter) error {
+	ctx, err := d.tenantContext(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return d.service.ServeDirect(ctx, w, r, userID, fileID, format, filter)
 }
 
 type bloemCompatDownloadServer struct {

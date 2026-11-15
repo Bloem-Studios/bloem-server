@@ -3962,7 +3962,7 @@ func main() {
 			absH.SetDownloads(svc)
 		}
 	}
-	deps.OnDownloadService = bloemCompatDownloadsHook(deps.OnDownloadService, &compatDownloads, deps.DB)
+	deps.OnDownloadService = bloemCompatDownloadsHook(deps.OnDownloadService, &compatDownloads, absH, deps.DB)
 	deps.NativeVideoCompat = api.NewNativeVideoCompat()
 
 	distFS, fsErr := fs.Sub(siloweb.DistFS, "dist")
