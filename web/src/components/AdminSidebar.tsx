@@ -30,7 +30,7 @@ import { usePrefetchAdminServerSettings } from "@/hooks/queries/admin/settings";
 import { cn } from "@/lib/utils";
 import AdminContextSwitcher from "@/components/admin/AdminContextSwitcher";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
-import { useT } from "@/i18n";
+import { numberText, useT } from "@/i18n";
 
 interface AdminSidebarProps {
   onNavigate?: () => void;
@@ -117,7 +117,7 @@ export default function AdminSidebar({
   const requestsBadge =
     pendingRequests > 0 ? (
       <span className="bg-primary text-primary-foreground rounded-full px-1.5 py-px text-[10px] font-semibold tabular-nums">
-        <span aria-hidden="true">{pendingRequests}</span>
+        <span aria-hidden="true">{numberText(pendingRequests)}</span>
         <span className="sr-only">
           {t("web.admin.shell.sidebar.pendingRequests", {
             count: pendingRequests,

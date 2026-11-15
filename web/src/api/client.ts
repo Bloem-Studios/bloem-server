@@ -4,6 +4,7 @@ import {
   guestRefreshToken,
   setGuestRefreshToken,
 } from "@/bloem/preview/session";
+import { t } from "@/i18n";
 import type { ApiError } from "./types";
 import type { components } from "./v2/schema";
 import { storage } from "../utils/storage";
@@ -404,7 +405,7 @@ function sharedRefresh(): { outcome: Promise<RefreshOutcome>; promise: Promise<b
  */
 export class SessionRefreshUnavailableError extends Error {
   constructor() {
-    super("The session could not be refreshed because the server did not answer.");
+    super(t("web.common.errors.sessionRefreshUnavailable"));
     this.name = "SessionRefreshUnavailableError";
   }
 }

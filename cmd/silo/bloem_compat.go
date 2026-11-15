@@ -42,6 +42,17 @@ func newBloemCompatDownloadServer(svc *downloads.Service, pool *pgxpool.Pool) je
 	return bloemCompatDownloadServer{service: svc, tenants: tenancy.NewSubjectResolver(tenancy.NewResolver(store), store)}
 }
 
+// bloemCompatDownloadsHook runs Silo's download-service hook, then replaces
+// the Jellyfin listener's download server with Bloem's per-profile one.
+func bloemCompatDownloadsHook(next func(*downloads.Service), target *jellycompat.DownloadServer, pool *pgxpool.Pool) func(*downloads.Service) {
+	return func(svc *downloads.Service) {
+		if next != nil {
+			next(svc)
+		}
+		*target = newBloemCompatDownloadServer(svc, pool)
+	}
+}
+
 type bloemCompatDownloadServer struct {
 	service *downloads.Service
 	tenants compatDownloadTenants

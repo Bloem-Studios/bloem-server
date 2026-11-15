@@ -214,6 +214,7 @@ func goMigrations() []*goose.Migration {
 		invalidIndexRebuildMigration(),
 		pushAttemptKeyScopeMigration(),
 		externalSubtitleNameBackfillMigration(),
+		blobGCQueueChapterFileIndexMigration(),
 	}
 }
 

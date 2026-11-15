@@ -329,7 +329,10 @@ func (s *Scanner) publishNativeAudioBookTx(ctx context.Context, tx pgx.Tx, page 
 	}
 	metadata := owned[item.ContentID] && !foreign && (provider || item.Status == "pending")
 	if metadata {
-		applyBookToMediaItem(item, book)
+		// The ownership check above already decides whether this book's metadata
+		// comes from storage. Silo's provider-match rule would count the ISBN
+		// this path records as a match, so it is not applied here.
+		applyBookToMediaItem(item, book, false)
 		item.SortTitle = titleutil.DeriveDefaultSortTitle(item.Title)
 		if provider {
 			item.Status = storagePublishedStatus

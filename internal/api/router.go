@@ -48,6 +48,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/httpstream"
 	"github.com/Silo-Server/silo-server/internal/intromarkers"
 	"github.com/Silo-Server/silo-server/internal/invitations"
+	"github.com/Silo-Server/silo-server/internal/jellycompat"
 	"github.com/Silo-Server/silo-server/internal/keptsub"
 	"github.com/Silo-Server/silo-server/internal/libraryingest"
 	"github.com/Silo-Server/silo-server/internal/literaryworks"
@@ -107,6 +108,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/internal/watchlist"
 	"github.com/Silo-Server/silo-server/internal/watchstate"
+	"github.com/Silo-Server/silo-server/internal/watchsync"
 	"github.com/Silo-Server/silo-server/internal/watchtogether"
 	"github.com/Silo-Server/silo-server/internal/webhooksync"
 )
@@ -1275,6 +1277,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 			// Ebook reading data lives there too.
 			profileHandler.EbookReaderPurger = handlers.NewPGEbookReaderProgressStore(deps.DB)
 			profileHandler.Connections = &connectionstore.Store{Pool: deps.DB}
+			// And Jellyfin-compatible sessions.
+			profileHandler.JellyfinSessionPurger = jellycompat.NewSessionRepository(deps.DB, deps.SecretCipher)
 		}
 		if watchlistRequestWithdrawer != nil {
 			profileHandler.WatchlistRequestWithdrawer = watchlistRequestWithdrawer
@@ -1307,6 +1311,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if watchlistTitles != nil {
 			personalDataHandler.SetWatchlistTitles(watchlistTitles)
 			watchlistTitles.SetEffects(personalDataHandler)
+			if watchSync, ok := deps.WatchProviderService.(interface {
+				SetWatchlistTitles(watchsync.WatchlistTitles)
+			}); ok {
+				watchSync.SetWatchlistTitles(watchlistTitles.WatchSync(nil))
+			}
 		}
 		personalDataHandler.EventsHub = deps.EventsHub
 		if dispatcher, ok := deps.WatchProviderService.(handlers.LocalListEventDispatcher); ok {
@@ -3389,6 +3398,14 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if watchlistRequests, ok := requestHandler.Service().(apiv2.WatchlistRequestService); ok && personalDataHandler != nil && watchlistTitles != nil {
 			v2deps.WatchlistTitles = personalDataHandler
 			v2deps.WatchlistRequests = watchlistRequests
+			// Titles watch provider sync adds are requested like ones added
+			// by hand.
+			syncRequests, requestsOK := watchlistRequests.(syncRequestService)
+			if watchSync, ok := deps.WatchProviderService.(interface {
+				SetWatchlistTitles(watchsync.WatchlistTitles)
+			}); ok && requestsOK {
+				watchSync.SetWatchlistTitles(watchlistTitles.WatchSync(watchlistSyncRequests{requests: syncRequests}))
+			}
 		}
 		// *requests.Service implements the usage read (pinned at the top of
 		// this file), so the assertion only fails for a test double.
