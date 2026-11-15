@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -106,8 +107,11 @@ func pastimeConnection(t *testing.T, ctx context.Context, pool *pgxpool.Pool, pr
 }
 
 // watchSyncRows fingerprints watch_provider_connections and every table with a
-// foreign key onto it: a row count and an md5 over the sorted row texts.
-func watchSyncRows(t *testing.T, ctx context.Context, pool *pgxpool.Pool) map[string]string {
+// foreign key onto it: a row count and an md5 over the sorted row texts. A
+// table named in columns is read through those columns only, so a column a
+// later Silo migration adds does not change the fingerprint of the rows that
+// were there; it returns the columns it read for each table.
+func watchSyncRows(t *testing.T, ctx context.Context, pool *pgxpool.Pool, columns map[string][]string) (map[string]string, map[string][]string) {
 	t.Helper()
 	rows, err := pool.Query(ctx, `SELECT 'watch_provider_connections'
 		UNION SELECT conrelid::regclass::text FROM pg_constraint
@@ -126,16 +130,29 @@ func watchSyncRows(t *testing.T, ctx context.Context, pool *pgxpool.Pool) map[st
 		}
 	}
 	fingerprint := make(map[string]string, len(tables))
+	read := make(map[string][]string, len(tables))
 	for _, table := range tables {
+		names, ok := columns[table]
+		if !ok {
+			rows, err := pool.Query(ctx, `SELECT quote_ident(attname) FROM pg_attribute
+				WHERE attrelid = $1::regclass AND attnum > 0 AND NOT attisdropped ORDER BY attnum`, table)
+			if err != nil {
+				t.Fatalf("columns of %s: %v", table, err)
+			}
+			if names, err = pgx.CollectRows(rows, pgx.RowTo[string]); err != nil {
+				t.Fatalf("columns of %s: %v", table, err)
+			}
+		}
+		read[table] = names
 		var count int
 		var digest string
 		if err := pool.QueryRow(ctx, `SELECT count(*), coalesce(md5(string_agg(r::text, E'\n' ORDER BY r::text)), '')
-			FROM `+table+` r`).Scan(&count, &digest); err != nil { // regclass text is quoted as needed
+			FROM (SELECT `+strings.Join(names, ", ")+` FROM `+table+`) r`).Scan(&count, &digest); err != nil { // regclass text and quote_ident are quoted as needed
 			t.Fatalf("fingerprint %s: %v", table, err)
 		}
 		fingerprint[table] = fmt.Sprintf("%d %s", count, digest)
 	}
-	return fingerprint
+	return fingerprint, read
 }
 
 // enterMirrored puts a database migrated to before the account policy moved
@@ -244,16 +261,18 @@ func TestPastimeRemovalKeepsSiloDataAndWritesInMirroredPhase(t *testing.T) {
 		VALUES ($1::uuid, $2, $3, 'pr-main', '{}', gen_random_uuid(), decode(repeat('00', 32), 'hex'), 'source', repeat('A', 43), 'fixture', 'personal', 'pr-list')`,
 		binding, install, user)
 
-	watchSyncBefore := watchSyncRows(t, ctx, pool)
+	watchSyncBefore, watchSyncColumns := watchSyncRows(t, ctx, pool, nil)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("apply the removal in the mirrored phase: %v", err)
 	}
 	assertNoPastimeObjects(t, ctx, pool)
 
-	// Every watch-provider connection and child row is exactly as it was. A
-	// child table a later migration creates (Silo's
-	// watch_provider_pending_watches) starts empty and holds no row to keep.
-	after := watchSyncRows(t, ctx, pool)
+	// Every watch-provider connection and child row is exactly as it was, in
+	// every column it had. A child table a later migration creates (Silo's
+	// watch_provider_pending_watches) starts empty and holds no row to keep,
+	// and a column a later migration adds (Silo's watchlist_titles_since) is
+	// Silo's own.
+	after, _ := watchSyncRows(t, ctx, pool, watchSyncColumns)
 	for table, fingerprint := range after {
 		if _, existed := watchSyncBefore[table]; !existed {
 			if fingerprint != "0 " {
