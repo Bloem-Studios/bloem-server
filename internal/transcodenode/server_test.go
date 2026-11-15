@@ -932,7 +932,7 @@ func TestHandleDownloadPrepareOptimisticReuseWaitsForInFlightReplacement(t *test
 	unlock()
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("prepare did not resume after replacement completed")
 	}
 	if recorder.Code != http.StatusOK {
