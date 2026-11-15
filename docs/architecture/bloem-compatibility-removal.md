@@ -1,7 +1,7 @@
 # How Bloem runs Silo's Jellyfin and Audiobookshelf servers
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
-> and checked against `main` at `3ab048c07`. The compatibility servers are Silo's; only the organization
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-15
+> and checked against `main` at `8e1d391d7`, the merge of Silo through `229a719b9`. The compatibility servers are Silo's; only the organization
 > wiring and the persistence notes are Bloem's. The file name still says "removal"
 > because the page was first written when Bloem removed the protocols; today they are
 > served. The technical rules are in the [For developers](#for-developers) section.
@@ -38,7 +38,9 @@ to. Where the Bloem server builds Silo's compatibility servers, it adds four rul
 - **Only the organization's libraries.** A session sees what its own organization may
   use, with its plan's and profile's limits.
 - **Downloads by Bloem's rules.** A Jellyfin download follows the **profile's**
-  download rules. A session whose organization can't be worked out is refused.
+  download rules. An Audiobookshelf download, and the feeds and offline saves an
+  Audiobookshelf app offers, follow the **account's** download rules inside its
+  organization. A session whose organization can't be worked out is refused.
 - **No files from storage sources.** Libraries read from S3 or Bookwarehouse have no
   file on disk for a Jellyfin app to open, so those files are hidden from it.
 - **Sign-outs reach it.** Signing an account out ends its compatibility sessions on
@@ -54,7 +56,7 @@ to. Where the Bloem server builds Silo's compatibility servers, it adds four rul
 | Moving the ports | Silo's bootstrap variables `JF_PORT` and `ABS_PORT` |
 | Bloem's wiring | `cmd/silo/bloem_compat.go`, and `newTenantAwareViewerResolver` in `cmd/silo/bloem_main.go` |
 | Only the organization's libraries | the scope resolvers wrapped in `newTenantAwareViewerResolver` |
-| Downloads by Bloem's rules | `newBloemCompatDownloadServer` |
+| Downloads by Bloem's rules | `newBloemCompatDownloadServer` (Jellyfin) and `newBloemABSDownloads` (Audiobookshelf), installed by `bloemCompatDownloadsHook` |
 | No files from storage sources | `bloemGuardNativeStorageFiles` |
 | A removed profile's sessions end | `bloemProfileSessionRevoker`, deleting `jellycompat_sessions` rows |
 
@@ -99,6 +101,17 @@ with the adapters in `cmd/silo/bloem_compat.go` and the tenant-aware resolver in
   profile, with the validated tenant on the context (`newBloemCompatDownloadServer`,
   installed through `deps.OnDownloadService`). The native per-profile download policy
   decides; a session without a resolvable tenant is refused.
+- Audiobookshelf downloads go through the same service: Silo checks the download rules
+  on `/api/items/{id}/file/{ino}/download`, on the sign-in and `/me` payloads'
+  `permissions.download`, and when an RSS feed opens or serves (Silo `6e8c2ed01`).
+  Those requests carry no tenant, and Bloem's tenant-scoped group policy
+  (`access.EffectivePolicyForRequest`) refuses a check without one, so
+  `newBloemABSDownloads` resolves the account's tenant first
+  (`tenancy.SubjectResolver.ResolveSubjectTenant` with no profile). The listener names no
+  profile to the download service, so the account's policy decides, as in Silo. A tenant
+  that does not resolve is a refusal (`downloads.ErrDownloadNotAllowed`, `403`), not a
+  server error. Both adapters are installed by `bloemCompatDownloadsHook`, on Bloem's own
+  line after Silo's `deps.OnDownloadService`, which it runs first.
 - Files in native storage locations are hidden from the Jellyfin handlers that need an
   OS filename (`bloemGuardNativeStorageFiles`, wrapping the compatibility
   `FileResolver`).

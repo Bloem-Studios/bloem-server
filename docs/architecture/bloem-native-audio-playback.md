@@ -1,7 +1,8 @@
 # How stored audiobooks play
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Native audiobooks are a Bloem addition, part of
+> `main` at `b6039036d`, and updated on 2026-11-15 for Silo's provider-match rule in
+> the merge `8e1d391d7`. Native audiobooks are a Bloem addition, part of
 > [native storage](bloem-native-storage.md): audiobooks kept in a storage source,
 > such as an S3 bucket or Bookwarehouse, scanned through a storage plugin and
 > played without a path on the server. They build on Silo's catalog, multi-part
@@ -173,7 +174,11 @@ empty presentation kind and zero part fields.
 The reserved group key is `bloem-storage:audiobook:` followed by a scoped SHA-256
 of location and directory identity. Native canonical and observed roots stay
 empty. Metadata publication respects locked fields, present local files and
-present files in another library. Joining native files add membership and
+present files in another library. Bloem's own ownership check decides when storage
+metadata applies, so publication calls Silo's `applyBookToMediaItem` with
+`providerMatched` false: Silo's provider-match rule (Silo `931517fac`) counts any
+provider ID other than an ASIN, which would include the ISBN this path records
+(merge `8e1d391d7`). Joining native files add membership and
 presentation rows without overwriting the existing owner's metadata. ISBN and
 ASIN identity locks converge concurrent publications; audiobook provider IDs
 remain distinct from ebook IDs.

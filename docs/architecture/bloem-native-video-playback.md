@@ -2,7 +2,8 @@
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against
 > `main` at `b6039036d`, checked again on 2026-11-11, after Silo retired its v1 API, and
-> updated on 2026-11-13 for the server log in the merge `06a12fb0c`.
+> updated on 2026-11-13 for the server log in the merge `06a12fb0c` and on 2026-11-15
+> for Silo's IDR primer in the merge `8e1d391d7`.
 > Native video is a Bloem addition: it plays movies kept in
 > [native storage](bloem-native-storage.md) (S3 buckets, for example) through
 > Silo's playback planner and delivery handlers, using Silo's
@@ -312,7 +313,11 @@ changes, through playback's context-scoped media host
   with ranges, HEAD and a revision ETag, and no redirect. Progressive remux
   (`ServeRemuxWithOptions`), local HLS (`StartTranscode`), copy seek anchors
   (`ResolveCopySeekAnchor`) and embedded text subtitles
-  (`ExtractSubtitleWithFormat`) read the host's pinned source. HDR tone-map
+  (`ExtractSubtitleWithFormat`) read the host's pinned source. Silo's IDR primer
+  for a seeked HEVC copy (`remuxIDRPrimer`) reads a local Matroska file's Cues; a
+  native input has none, so its remux (`internal/playback/bloem_native_tools.go`)
+  always serves the plain seeked copy, as Silo does for a source without usable
+  Cues (merge `8e1d391d7`). HDR tone-map
   validation of a local transcode goes through the source's own `Validate`,
   as for native API playback. The subtitle cache keys entries by a file's size
   and modification time; a native input is never a file, so nothing is cached
