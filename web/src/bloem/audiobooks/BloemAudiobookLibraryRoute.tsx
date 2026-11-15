@@ -5,6 +5,7 @@ import LibraryHeader from "@/components/LibraryHeader";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useUserLibraries } from "@/hooks/queries/libraries";
 import { useLibraryPageStatePreference } from "@/hooks/queries/libraryPageState";
+import { useLibraryLayout } from "@/hooks/queries/sections";
 import { useStartShuffle } from "@/hooks/queries/shuffles";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
@@ -88,6 +89,10 @@ function AudiobookLibraryHome({
     setHasRenderedHero(rendered);
   }, []);
   useDocumentTitle(library.name);
+  // As Silo's LibraryPage does: the home tab's layout read starts here, and
+  // this observer refetches a failed layout when the tab is shown again
+  // (BloemLibraryRecommended reads it without retrying on mount).
+  useLibraryLayout(library.id);
 
   const normalized = updateLibraryPageSearchParams(
     searchParams,
