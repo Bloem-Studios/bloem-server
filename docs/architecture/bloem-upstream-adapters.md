@@ -4,7 +4,7 @@
 > and checked against `main` at `5a93e8b41`; its tenant identity section was added on
 > 2026-11-13 with the merge of Silo through `8d68c470d` (`e50da6f2d`), its rekor compatibility
 > copy with the merge of Silo through `2e05489fb` (`c64e7ee95`), and its profile writes and
-> stream-reference chains on 2026-11-14 with the merge of Silo through `feae205be` (`28f76229c`). Adapters are Bloem's own: they are how Bloem changes Silo's
+> stream-reference chains on 2026-11-14 with the merge of Silo through `feae205be` (`28f76229c`), and its phone header, promo card and ebook cover-retry rules on 2026-11-15 with the merge of Silo through `c9ce328b5` (`0b6dd546a`). Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
 > Its routes were checked again on 2026-11-11, after Silo retired its v1 API, and its
@@ -247,6 +247,12 @@ field and wrapped Silo's arguments with it; that merge returned
 `TestBloemHomeReadsCarryPromotionOptIn` and
 `TestBloemHomeLayoutBundlingKeepsPromotionOptIn` pin the opt-in.
 
+The promoted row's card is Silo's `sectionItemResponse` with one added Bloem field,
+`Promo` (`promo` on the wire), in Silo's struct in `sections.go`;
+`promoSectionItem` in `bloem_sections_ext.go` fills it. Until the merge of Silo
+through `c9ce328b5` Bloem kept a whole copy of the struct in `bloem_sections_ext.go`,
+which missed Silo's new fields. Keep the one line instead.
+
 ### Playback tenant facts
 
 [`NewBloemPlaybackAdmissionDecider`](../../internal/policy/bloem_playback_adapter.go)
@@ -444,6 +450,17 @@ development and build outputs. Upstream changes to these explicit literals or pu
 paths require adapter review. Bloem administration and Live TV pages load through lazy
 routes (`web/src/bloem/lazyPages.ts`) so their code is not all part of the initial
 application load.
+
+Bloem restyles a Silo element from a Bloem stylesheet, never by editing Silo's
+`className` line. The phone header is the example: Silo's `Layout.tsx` keeps its
+inset, see-through `mobile-header` classes, and `web/src/bloem/mobile-header.css`,
+loaded by one added import line there, makes it an opaque bar across the full width
+that clears the safe areas. The rule is unlayered, so it wins over Silo's Tailwind
+utilities and its `glass-dark` component class; `web/src/bloem/mobile-header.test.ts`
+checks the import and the rule. Until the merge of Silo through `c9ce328b5` Bloem
+carried this as a changed class string in Silo's line, which conflicted when Silo
+changed it. `web/src/bloem/preview/preview.css` hides the header's account links in
+preview the same way.
 
 The launch bundle is checked by Silo's own `web/scripts/check-bundle-budget.mjs`,
 which reports its size without gating it; Bloem keeps no separate allowance. Seasonal
@@ -747,6 +764,21 @@ Audiobookshelf-compatible server runs beside them on its own port, as described 
 [protocol compatibility](bloem-compatibility-removal.md); it is not an extension point
 for new providers. Current native publication and playback invariants are in
 [bloem-native-audio-playback.md](bloem-native-audio-playback.md).
+
+### Ebook cover retries
+
+An ebook whose local cover failed to upload is listed in `ebook_cover_retries`, and
+the next scan reprocesses it as a local repair. Silo's skip-state preload,
+`loadEbookSkipState` in `internal/scanner/ebook_skip.go`, stays one query, which
+Silo's `TestEbookSkipPreloadPreservesEligibility` pins. Bloem's flag is one added
+field line, `coverRetry`, which `bloemWithEbookCoverRetries`
+(`internal/scanner/bloem_ebook_scan.go`) sets after the preload: added lines in the
+batch preload in `ebook_scan.go`, and Bloem's per-file `classifyEbookFileSkip`.
+`classifyEbookSkip` mirrors Silo's `unchangedEbookFile` (a file whose item lost its
+library membership is reprocessed in full) and adds the local-repair outcome;
+`TestClassifyEbookSkipReprocessesAnUnlinkedFile` and
+`TestEbookCoverRetryKeepsSiblingFormatGrouping` pin both. When Silo changes
+`unchangedEbookFile`, bring `classifyEbookSkip` in line.
 
 ### Related pages
 

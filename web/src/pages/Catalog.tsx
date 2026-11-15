@@ -681,6 +681,7 @@ function CatalogResults({
               selectionMode={isHistorySource && selectionMode}
               selectedIds={selectedIds}
               onToggleSelect={toggleHistorySelection}
+              posterAspect={mediaScope === "audiobook" ? "square" : "portrait"}
             />
           )}
         </WatchlistTabPanel>

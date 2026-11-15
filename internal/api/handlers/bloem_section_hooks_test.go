@@ -47,7 +47,7 @@ func TestSectionExtensionHooksSupportNonPromotion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	view := handler.buildSections(ctx, []sections.SectionWithItems{got}, nil, catalog.AccessFilter{}, imagesize.Request{})
+	view := handler.buildSections(ctx, []sections.SectionWithItems{got}, nil, catalog.AccessFilter{}, imagesize.Request{}, false)
 	if len(view.Sections) != 1 || len(view.Sections[0].Items) != 1 || view.Sections[0].Items[0].Title != "Host banner" || view.Sections[0].Items[0].Promo != nil {
 		t.Fatalf("generic projection: %+v", view)
 	}

@@ -110,6 +110,7 @@ type manifestIcon struct {
 }
 
 type webManifest struct {
+	ID              string         `json:"id"`
 	Name            string         `json:"name"`
 	ShortName       string         `json:"short_name"`
 	Icons           []manifestIcon `json:"icons"`
@@ -117,6 +118,7 @@ type webManifest struct {
 	BackgroundColor string         `json:"background_color"`
 	Display         string         `json:"display"`
 	StartURL        string         `json:"start_url"`
+	Scope           string         `json:"scope"`
 }
 
 // RenderManifest builds the dynamic web app manifest from the snapshot. When a
@@ -138,7 +140,10 @@ func RenderManifest(snap Snapshot) []byte {
 		}
 	}
 
+	// The SPA is always served from the origin root. A fixed id keeps an
+	// installed app's identity stable even if start_url changes.
 	m := webManifest{
+		ID:              "/",
 		Name:            snap.ServerName,
 		ShortName:       snap.ServerName,
 		Icons:           icons,
@@ -146,6 +151,7 @@ func RenderManifest(snap Snapshot) []byte {
 		BackgroundColor: snap.ThemeColor(),
 		Display:         "standalone",
 		StartURL:        "/",
+		Scope:           "/",
 	}
 	// Marshaling a fixed struct cannot fail.
 	b, _ := json.Marshal(m)

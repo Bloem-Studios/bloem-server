@@ -239,7 +239,7 @@ internal/routeinventory/source.go  # upstreamable: skips web/node_modules, whose
 internal/routeinventory/sweep.go  # upstreamable: consults the reached-set rather than the walk's recursion stack
 internal/routeinventory/testdata/fixtures/derived_router_bound/listener/router.go  # fixture for the r.With(...) binding above
 internal/scanner/ebook_scan.go
-internal/scanner/ebook_skip.go  # skip-state preload also reads ebook_cover_retries so a failed local cover is retried without per-file queries
+internal/scanner/ebook_skip.go  # one Bloem field, coverRetry, which the ebook scan sets after Silo's preload (bloemWithEbookCoverRetries) so a failed local cover is retried
 internal/scanner/file_repo.go  # native selected-target authorization boundary
 internal/scanner/file_repo_chapter_lock_db_test.go  # waits for a closed dedicated session to leave pg_stat_activity instead of racing its backend exit (flaked in CI; same race upstream)
 internal/scanner/scanner.go  # also two Bloem hooks: the video walk takes .strm files (bloemStrmFile) and probeFile hands them to probeBloemStrm

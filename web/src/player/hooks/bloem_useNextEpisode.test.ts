@@ -31,7 +31,7 @@ describe("useNextEpisode", () => {
     const onNavigate = vi.fn();
     const { result, rerender } = renderHook(
       ({ seriesContext }: { seriesContext: SeriesContext }) =>
-        useNextEpisode(null, seriesContext, 0, onNavigate),
+        useNextEpisode(null, seriesContext, 0, onNavigate, { autoPlay: true, playing: true }),
       { initialProps: { seriesContext: context } },
     );
 

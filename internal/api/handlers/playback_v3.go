@@ -3336,7 +3336,7 @@ func (h *PlaybackHandler) prepareIdentityTransportV3(r *http.Request, session *p
 	}
 	var sessionRecipe *playback.RecipeCard
 	if mode.headerAuth {
-		sessionRecipe = sessionRecipeCardV3(identityRecipeCard(&routeSession), session)
+		sessionRecipe = sessionRecipeCardV3(identityRecipeCard(&routeSession), session, result.AdaptationReasons)
 	}
 	return preparedTransportV3{
 		sessionRecipe:      sessionRecipe,
@@ -4442,7 +4442,7 @@ func (h *PlaybackHandler) prepareLocalTransportV3(r *http.Request, session *play
 	card.RoutingEgress = string(noderouting.EgressAPI)
 	var sessionRecipe *playback.RecipeCard
 	if mode.headerAuth {
-		sessionRecipe = sessionRecipeCardV3(card, session)
+		sessionRecipe = sessionRecipeCardV3(card, session, result.AdaptationReasons)
 	} else {
 		url = appendStreamToken(url, h.signSessionToken(card, mode.headerAuth))
 	}
@@ -4842,7 +4842,7 @@ func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla
 	}
 	var sessionRecipe *playback.RecipeCard
 	if mode.headerAuth {
-		sessionRecipe = sessionRecipeCardV3(card, session)
+		sessionRecipe = sessionRecipeCardV3(card, session, result.AdaptationReasons)
 	}
 	retainNativeGrant = true
 	nativeLockHeld = false // The prepared transport now owns commit/rollback unlock.
@@ -4991,6 +4991,7 @@ func (h *PlaybackHandler) v3SessionStreamState(ctx context.Context, session *pla
 		BasePlayMethod:                result.PlayMethod,
 		AudioTrackIndex:               plannedAudioTrackIndexV3(result, session.AudioTrackIndex),
 		TranscodeAudio:                result.TranscodeAudio,
+		AdaptationReasons:             result.AdaptationReasons,
 		RemuxDVMode:                   remuxDVModeForPlanV3(result.Plan),
 		RemuxResumeLeadingPictureDrop: result.RemuxResumeLeadingPictureDrop,
 		TranscodeHWAccel:              transport.hwAccel,
@@ -6275,6 +6276,11 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		transport = reusedHLSTransportV3(session, record.CurrentPlan.Stream.URL)
 		if mode.headerAuth {
 			transport.sessionRecipe = h.reusedSessionRecipeV3(r.Context(), session.ID, record.CurrentPlanID)
+			if transport.sessionRecipe != nil {
+				// The bytes are unchanged, but a subtitle change can change why
+				// the route adapts.
+				transport.sessionRecipe.AdaptationReasons = result.AdaptationReasons
+			}
 		}
 		slog.InfoContext(r.Context(), "protocol v3 replan reused active HLS A/V transport",
 			logComponentKey, playbackLogValueV3,

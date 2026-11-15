@@ -27,7 +27,9 @@ func classifyEbookSkip(files []ebookSkipFile, path string, size int64, modifiedA
 	if file.path != path || file.size != size || file.modifiedAt == nil || !sameFileModifiedAt(file.modifiedAt, modifiedAt) {
 		return "", false, false
 	}
-	if file.contentID == "" {
+	// An unlinked file is reprocessed in full, as Silo's unchangedEbookFile
+	// does: the item lost its membership in the file's library.
+	if file.contentID == "" || !file.linked {
 		return "", false, false
 	}
 	if file.groupKeyVersion != ebookGroupKeyVersion || file.coverRetry {
@@ -82,9 +84,47 @@ func (s *Scanner) classifyEbookFileSkip(ctx context.Context, folder *models.Medi
 		return "", false, false, nil
 	}
 	state, err := s.fileRepo.loadEbookSkipState(ctx, folder.ID, []string{filePath})
+	if err == nil {
+		state, err = s.fileRepo.bloemWithEbookCoverRetries(ctx, folder.ID, []string{filePath}, state)
+	}
 	if err != nil {
 		return "", false, false, err
 	}
 	contentID, unchanged, localRepair := classifyEbookSkip(state[filePath], filePath, size, modifiedAt)
 	return contentID, unchanged, localRepair, nil
+}
+
+// bloemWithEbookCoverRetries sets coverRetry on the preloaded skip state for
+// each file listed in ebook_cover_retries, and returns the state, or nil and
+// the error so the caller falls back as on a failed preload. The ebook scan
+// runs it after Silo's preload query rather than inside it, so Silo's query
+// stays as Silo wrote it, one query per batch; the table is normally empty.
+func (r *FileRepository) bloemWithEbookCoverRetries(ctx context.Context, folderID int, paths []string, state ebookSkipState) (ebookSkipState, error) {
+	rows, err := r.pool.Query(ctx, `
+  SELECT mf.observed_root_path, mf.file_path
+  FROM ebook_cover_retries cr
+  JOIN media_files mf ON mf.id = cr.media_file_id
+  WHERE mf.media_folder_id = $1 AND mf.observed_root_path = ANY($2)
+    AND mf.missing_since IS NULL
+ `, folderID, paths)
+	if err != nil {
+		return nil, fmt.Errorf("preload ebook cover retries: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var root, path string
+		if err := rows.Scan(&root, &path); err != nil {
+			return nil, fmt.Errorf("read ebook cover retries: %w", err)
+		}
+		files := state[root]
+		for i := range files {
+			if files[i].path == path {
+				files[i].coverRetry = true
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read ebook cover retries: %w", err)
+	}
+	return state, nil
 }
