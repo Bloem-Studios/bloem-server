@@ -397,7 +397,10 @@ Field notes:
   are mounted with both credential gates) and
   `organization_support_v1` (the organization support routes for password reset links,
   sessions and devices, profiles, streams and break-glass access are mounted with both
-  gates; see [How organization support works](architecture/bloem-organization-support.md)).
+  gates; see [How organization support works](architecture/bloem-organization-support.md)) and
+  `admin_push_v1` (the admin app push routes under `/admin/push/` are mounted and the operator
+  has push delivery on for a platform; asked on every probe; see
+  [Admin app push notifications](architecture/bloem-admin-push.md)).
 - `features.legacy_silo_v1` and `features.direct_profile_login` are `false` since Silo
   retired its v1 API; `shared_device_pairing` and `delegated_admin_roles` are always `false`.
 - `media_types`: the fixed vocabulary of `mediaTypesServed` — the item types *this build* can

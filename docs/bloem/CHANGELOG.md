@@ -3,6 +3,17 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 15, 2026 — Admin app push notifications
+
+The Bloem admin apps get push notifications from a Bloem server: a request waiting for approval
+(with Approve and Decline), a failed scan or unreachable library storage, a failed backup, an
+offline node and a failed plugin. Devices register per account, and only for the Apple topic
+`com.bloemstudios.admin` or the admin FCM app. Each device switches kinds on and off, and the server
+stops sending a switched-off kind. Text is fetched by the phone from this server after the push wakes it,
+so the relay never sees it. The server advertises `admin_push_v1`; a server without it is treated as plain
+Silo, which cannot push to these apps. One migration adds three tables and no Silo table changes; no new
+seam. See [Admin app push notifications](../architecture/bloem-admin-push.md).
+
 ## November 15, 2026 — AirPlay output planning
 
 A client that reports an AirPlay receiver as its output (`output.sink_type`) is now planned

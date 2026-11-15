@@ -5,7 +5,7 @@
 > Do not edit by hand: change the handler's OpenAPI declaration, run `make bloem-openapi`, then
 > the script. Shared conventions, credentials and the error body are on the [index](README.md).
 
-The native inbox, announcements, seasonal packs and their public artwork, the campaign cards a viewer sees, campaign authoring and the upgrade prompt.
+The native inbox, announcements, seasonal packs and their public artwork, the campaign cards a viewer sees, campaign authoring, the upgrade prompt and the admin apps' push notifications.
 
 For the plain-language picture, read the [Messages and promotions explainer](../../architecture/bloem-messages-and-promotions.md). The invariants are in:
 
@@ -14,8 +14,9 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 - [Seasonal scheduling](../../architecture/seasonal-scheduling.md)
 - [Presentation evaluators](../../architecture/bloem-presentation-evaluators.md)
 - [Campaign and seasonal asset storage](../../architecture/bloem-campaign-asset-storage.md)
+- [Admin app push notifications](../../architecture/bloem-admin-push.md)
 
-## Operations (24)
+## Operations (29)
 
 | Method and path | Summary |
 | --- | --- |
@@ -34,6 +35,11 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 | [`DELETE /api/bloem/v2/admin/platform/promotions/{id}`](#delete-apibloemv2adminplatformpromotionsid) | Delete a registry entry. |
 | [`GET /api/bloem/v2/admin/platform/upgrade-prompt`](#get-apibloemv2adminplatformupgrade-prompt) | Read the upgrade prompt. |
 | [`PUT /api/bloem/v2/admin/platform/upgrade-prompt`](#put-apibloemv2adminplatformupgrade-prompt) | Replace the upgrade prompt. |
+| [`GET /api/bloem/v2/admin/push/content/{delivery_id}`](#get-apibloemv2adminpushcontentdelivery_id) | Read the text and behavior of a notification pushed to this device. |
+| [`POST /api/bloem/v2/admin/push/devices`](#post-apibloemv2adminpushdevices) | Register an admin app installation for push. |
+| [`DELETE /api/bloem/v2/admin/push/devices/{device_id}`](#delete-apibloemv2adminpushdevicesdevice_id) | Remove one of the account's devices. |
+| [`PATCH /api/bloem/v2/admin/push/devices/{device_id}/kinds`](#patch-apibloemv2adminpushdevicesdevice_idkinds) | Switch notification kinds on or off for one device. |
+| [`POST /api/bloem/v2/admin/push/devices/{device_id}/retire`](#post-apibloemv2adminpushdevicesdevice_idretire) | Stop pushes to a device using its display token. |
 | [`GET /api/bloem/v2/ambience`](#get-apibloemv2ambience) | Read seasonal presentation for the current verified tenant viewer. |
 | [`GET /api/bloem/v2/ambience/assets/{ref}`](#get-apibloemv2ambienceassetsref) | Serve uploaded seasonal and campaign artwork. |
 | [`GET /api/bloem/v2/ambience/public`](#get-apibloemv2ambiencepublic) | List the active deployment-wide seasonal packs. |
@@ -359,6 +365,112 @@ Request body (required, `application/json`): [`UpgradePrompt`](#upgradeprompt).
 | 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_upgrade_prompt: a field is too long, the link is not https, or a prompt turned on lacks its title, button label or link. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | upgrade_prompt_unavailable: the database is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked. |
 
+### `GET /api/bloem/v2/admin/push/content/{delivery_id}`
+
+Read the text and behavior of a notification pushed to this device.
+
+Operation ID: `getBloemAdminPushContent`.
+Credentials: `bloemAdminPushDisplayToken`.
+
+Authenticated by the device's display token, not by a login: the iOS notification extension reads text while the phone is locked. The token opens only this device's own notifications and retire call. The push itself carries only an id; the relay never sees the text. A notification is visible only to a device it was sent to, for the account it was written for, until it expires (24 hours), and only while the account is still an enabled administrator.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `delivery_id` | path | string | yes | The delivery id a push carried, with or without its {device_id}. prefix. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemAdminPushContent`](#bloemadminpushcontent) | OK |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_display_token: the token is missing, unknown or replaced by a newer registration. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required: the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such notification for this device, or it expired. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
+
+### `POST /api/bloem/v2/admin/push/devices`
+
+Register an admin app installation for push.
+
+Operation ID: `registerBloemAdminPushDevice`.
+Credentials: `bloemAccountSession`.
+
+Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Registers or refreshes the installation named by installation_id and returns the device id and a display token. Registering again with the same installation_id keeps the device id and per-kind switches, replaces the token and mints a new display token. A token already held by another account or installation moves to this one. The Apple topic must be com.bloemstudios.admin.
+
+Request body (required, `application/json`): [`BloemAdminPushRegisterRequest`](#bloemadminpushregisterrequest).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemAdminPushRegistered`](#bloemadminpushregistered) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: the body is not valid JSON for this route, or exceeds 32 KiB. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: no valid access token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required: the account is not an enabled administrator; account_session_required: the token is an API key, impersonation or administrative-context token. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: a field is missing or malformed, the topic is not com.bloemstudios.admin, or a kind id is unknown. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
+
+### `DELETE /api/bloem/v2/admin/push/devices/{device_id}`
+
+Remove one of the account's devices.
+
+Operation ID: `deleteBloemAdminPushDevice`.
+Credentials: `bloemAccountSession`.
+
+Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Stops every push to the device. Use the retire route when no login is available.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `device_id` | path | string | yes | The device_id a registration returned. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: no valid access token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required or account_session_required, as for registration. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no device with this id belongs to the account. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
+
+### `PATCH /api/bloem/v2/admin/push/devices/{device_id}/kinds`
+
+Switch notification kinds on or off for one device.
+
+Operation ID: `setBloemAdminPushKinds`.
+Credentials: `bloemAccountSession`.
+
+Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. The server stops sending a switched-off kind to this device, including notifications already queued. Kinds not named keep their setting. The two reachability kinds are produced by the apps' own checks; their switches are stored here so they survive a reinstall.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `device_id` | path | string | yes | The device_id a registration returned. |
+
+Request body (required, `application/json`): [`BloemAdminPushKindsRequest`](#bloemadminpushkindsrequest).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemAdminPushKinds`](#bloemadminpushkinds) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: the body is not valid JSON for this route. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: no valid access token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required or account_session_required, as for registration. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no device with this id belongs to the account. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: a kind id is unknown. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
+
+### `POST /api/bloem/v2/admin/push/devices/{device_id}/retire`
+
+Stop pushes to a device using its display token.
+
+Operation ID: `retireBloemAdminPushDevice`.
+Credentials: `bloemAdminPushDisplayToken`.
+
+Authenticated by the device's display token, not by a login: the iOS notification extension reads text while the phone is locked. The token opens only this device's own notifications and retire call. Lets an app that has signed out, or whose session expired, remove its device.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `device_id` | path | string | yes | The device_id a registration returned. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_display_token: the token is missing, unknown, replaced by a newer registration, or not this device's. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
+
 ### `GET /api/bloem/v2/ambience`
 
 Read seasonal presentation for the current verified tenant viewer.
@@ -580,6 +692,14 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 
 ## Schemas
 
+### AdminPushKindState
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `enabled` | boolean | yes |  |
+| `kind` | string | yes |  |
+| `server_emitted` | boolean | yes |  |
+
 ### AlertBody
 
 | Field | Type | Required | Description |
@@ -638,6 +758,54 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | --- | --- | --- | --- |
 | `banner_url` | string |  |  |
 | `sprites` | array of string |  |  |
+
+### BloemAdminPushContent
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `actions` | array of string: `approve`, `decline` | yes | Buttons the notification offers. Empty for most kinds. |
+| `badge` | integer (int64) |  | Waiting items to show on the app icon. |
+| `body` | string | yes |  |
+| `channel` | string: `servers`, `requests`, `libraries`, `backups`, `nodes`, `plugins` | yes |  |
+| `created_at` | string (date-time) | yes |  |
+| `delivery_id` | string | yes |  |
+| `item_id` | string |  | The item on that page: a request id, library id, node id or plugin installation id. |
+| `kind` | string | yes |  |
+| `lock_screen` | string | yes | All a locked screen shows unless the device allows details. |
+| `page` | string |  | App link page a tap opens: requests, libraries, backups, nodes or plugins. |
+| `subject_type` | string |  |  |
+| `title` | string | yes |  |
+
+### BloemAdminPushKinds
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `kinds` | array of [`AdminPushKindState`](#adminpushkindstate) | yes |  |
+
+### BloemAdminPushKindsRequest
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `kinds` | object of boolean | yes | Kind id to enabled. Kinds not named keep their setting. |
+
+### BloemAdminPushRegisterRequest
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `apns_environment` | string: `production`, `sandbox` |  | Required for apple. |
+| `apns_topic` | string |  | Required for apple; must be com.bloemstudios.admin. |
+| `disabled_kinds` | array of string |  | Kind ids this device has switched off. Replaces the stored switches when present; omit to keep them. |
+| `installation_id` | string | yes | A key the app generates once per installation and keeps across token refreshes and sign-ins. |
+| `platform` | string: `apple`, `android` | yes |  |
+| `token` | string | yes | The APNs device token (hex) or the FCM registration token. |
+
+### BloemAdminPushRegistered
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `device_id` | string | yes | Prefixes every delivery id pushed to this device, so the app can tell which saved server a push came from: delivery_id is {device_id}.{delivery}. |
+| `display_token` | string | yes | Bearer token for reading this device's notification text and retiring it. Returned by every registration; a new one replaces the last. |
+| `kinds` | array of [`AdminPushKindState`](#adminpushkindstate) | yes |  |
 
 ### BloemAmbienceAttachForm
 

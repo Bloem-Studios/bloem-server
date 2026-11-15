@@ -1132,7 +1132,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		// on manual approve/decline. Fulfilled rides the reconcile service's
 		// fulfillment notifier instead.
 		if lifecycle := notifications.NewRequestLifecycleNotifier(deps.Notifications); lifecycle != nil {
-			requestSvc.SetLifecycleNotifier(lifecycle)
+			requestSvc.SetLifecycleNotifier(bloemAdminPushLifecycle(lifecycle, deps, requestsRepo))
 		}
 		requestHandler = handlers.NewRequestsHandler(requestSvc)
 

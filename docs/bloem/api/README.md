@@ -15,7 +15,7 @@ Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's ex
 | [Storage sources](storage.md) | 42 | [bloem-storage-sources.md](../../architecture/bloem-storage-sources.md) |
 | [Requests](requests.md) | 33 | [bloem-requests.md](../../architecture/bloem-requests.md) |
 | [Plans and preview](plans.md) | 34 | [bloem-plans.md](../../architecture/bloem-plans.md) |
-| [Messages and promotions](messages.md) | 24 | [bloem-messages-and-promotions.md](../../architecture/bloem-messages-and-promotions.md) |
+| [Messages and promotions](messages.md) | 29 | [bloem-messages-and-promotions.md](../../architecture/bloem-messages-and-promotions.md) |
 | [Apps and clients](apps.md) | 10 | [bloem-apps.md](../../architecture/bloem-apps.md) |
 | [Organizations and administration](organizations.md) | 112 | [bloem-organizations.md](../../architecture/bloem-organizations.md) |
 | [Retired v1 routes](v1-routes.md) | hand-written | |
@@ -40,6 +40,7 @@ Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's ex
 | `bearerAuth` | A session token or an API key in the Authorization header. The server decides which it holds. |
 | `bloemAccountSession` | A non-impersonated account access token backed by a login session. Direct-profile tokens, API keys and administrative-context tokens cannot manage profile credentials. Household management authority is checked separately. |
 | `bloemAdminLoginSession` | Account access token with a current login session and account incarnation, used only to exchange for an administrative context. API keys without a session are refused. |
+| `bloemAdminPushDisplayToken` | A bad_ display token returned by registering an admin app device. It reads that device's own notifications and retires that device, and opens nothing else. |
 | `bloemEntitlementAccountsKey` | Bearer sa_ API key owned by an enabled platform administrator, unscoped or carrying admin:entitlements:accounts. Accepted only by the listed catalog/per-account operations. |
 | `bloemEntitlementBulkKey` | Bearer sa_ API key owned by an enabled platform administrator, unscoped or carrying admin:entitlements:bulk. Accepted only by authoritative policy reads, snapshots, cohort reads and bulk operations. |
 | `bloemLiveTVDeliveryTicket` | Signed Live TV HLS delivery ticket from the session-start URL. Bound to playback ID, user/profile, expiry and purpose=bloem_livetv_hls. Current viewer authorization is re-resolved on every fetch. Does not authorize operations or the MPEG-TS session proxy. |

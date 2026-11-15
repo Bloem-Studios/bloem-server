@@ -161,6 +161,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			PromotionsViewer: bloemPromotionsViewerHandler(deps),
 			NativeStorage:    deps.NativeStorageManagement,
 			BookRequests:     newBloemBookRequests(deps),
+			AdminPush:        bloemAdminPushHandler(deps),
 		})
 }
 
@@ -190,6 +191,7 @@ type bloemRouteSurfaces struct {
 	ProfileCredentials     *handlers.BloemProfileCredentialsHandler
 	ProfileCredentialLimit func(http.Handler) http.Handler
 	NativeStorage          *handlers.BloemNativeStorageManagementHandler
+	AdminPush              *handlers.BloemAdminPushHandler
 }
 
 // mountBloemRoutes assembles every native route inside one chi subtree.
@@ -218,6 +220,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 		}
 
 		client.mount(r)
+		mountBloemAdminPush(r, surfaces.AdminPush, system, authMW)
 		mountBloemSeasonalViewer(r, surfaces.SeasonalViewer, client, system)
 		mountBloemPromotionsViewer(r, surfaces.PromotionsViewer, client, system)
 		mountBloemBookRequests(r, surfaces.BookRequests, client, system)
