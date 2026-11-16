@@ -7,10 +7,10 @@
 <text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Both can switch to Bloem and back. Checked on 31 October 2026 with Silo 32a2f63e1 and Bloem 4edbee99d.</text>
 <rect x="40" y="124" width="540" height="448" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
 <text x="64" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Separate containers</text>
-<text x="64" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's earlier Compose layout</text>
+<text x="64" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's Compose layout</text>
 <rect x="620" y="124" width="540" height="448" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
 <text x="644" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Silo's all-in-one container</text>
-<text x="644" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">What Silo's image is now</text>
+<text x="644" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's single image</text>
 <rect x="64" y="212" width="220" height="92" rx="12" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
 <text x="174" y="252" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Silo container</text>
 <text x="174" y="276" font-size="13.5" font-weight="normal" fill="#075985" text-anchor="middle">swap this →</text>

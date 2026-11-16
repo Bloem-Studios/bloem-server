@@ -66,7 +66,7 @@ def who_calls_what():
     s = Svg(1200, 676, "Who calls what for playback cards",
             "Left: the storefront and the web admin console write campaigns into one registry on the Bloem "
             "server through the native platform routes. Right: the web app reads the cards from Bloem's native "
-            "routes; the Android apps' old routes on Silo's v1 API are retired; Bloem's Apple apps and Jellyfin "
+            "routes; the Android apps do not read them yet; Bloem's Apple apps and Jellyfin "
             "apps show no playback cards.")
     s.header("Who calls what for playback cards",
              "Two ways to write a campaign, one registry, and the routes a viewer's app reads.")
@@ -96,15 +96,15 @@ def who_calls_what():
         "Native routes: list the cards for the title, save one to the inbox.", size=14)
     s.arrow(764, 214, 836, 190)
     box(s, 840, 252, 320, 104, a, "Android TV and phones",
-        "Their old routes on Silo's v1 API are retired; no cards until they move.", size=14)
+        "They do not read the native routes yet, so they show no cards.", size=14)
     s.arrow(764, 300, 836, 304)
     box(s, 840, 372, 320, 72, g, "Bloem's Apple apps", None, size=14)
     s.text(858, 428, "Never ask for playback cards yet.", size=14, fill=MUTED)
     box(s, 840, 460, 320, 72, g, "Jellyfin apps", None, size=14)
     s.text(858, 516, "Have no playback cards.", size=14, fill=MUTED)
 
-    para(s, 40, 580, "The phone apps read the cards from Bloem's old routes on Silo's v1 API, which Silo retired "
-         "on 2026-11-11; they now answer 410 Gone. The web app and the storefront call only native routes.", 1120,
+    para(s, 40, 580, "The web app and the storefront call only the native routes. The phone and TV apps read no "
+         "cards until they use them.", 1120,
          size=14.5, fill=INK)
     footer(s, "An app learns that the server has playback cards from playback_overlays_v1 in "
               "/api/bloem/v2/capabilities.", y=638, fill=MUTED)

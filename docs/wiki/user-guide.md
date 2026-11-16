@@ -536,8 +536,7 @@ closely. Silo's labels stay, for example "Silo app or website" on the Connect Ap
 - Live TV: Xtream VOD and series are not imported; watching and recording share the provider's
   configured connection budget. Reloading recordings does not resend the previous write. A
   completed recording without a library link needs its folder scanned into a library.
-- Signed-out seasonal packs come from `GET /api/bloem/v2/ambience/public`; the web app calls none
-  of Silo's retired v1 API ([leaving Silo's v1 API](../architecture/bloem-leaving-silo-v1.md)).
+- Signed-out seasonal packs come from `GET /api/bloem/v2/ambience/public`.
 - Compatibility apps sign in with `account#profile` and `#PIN` after the password, on ports `8096`
   (Jellyfin) and `13378` (Audiobookshelf) by default.
 

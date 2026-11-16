@@ -142,15 +142,15 @@ def deploy():
 
 def silo_wins():
     s = Svg(1200, 760, "When Silo and Bloem change the same lines",
-            "A real fix from 31 October 2026 in a household check. Left: Bloem's check folded into Silo's line. "
+            "An example from a household check. Left: Bloem's check folded into Silo's line. "
             "Right: Silo's line as Silo wrote it, and Bloem's check on its own lines above it. Below: where Bloem "
             "keeps its own work, and the seam list, which may only shrink.")
     s.header("When Silo and Bloem change the same lines",
-             "Silo always wins. A real example from 31 October 2026, in the household check.")
+             "Silo always wins. An example, in the household check.")
     st, a = TIERS["stop"], TIERS["account"]
 
     # Before.
-    s.text(40, 140, "Before: Bloem's check inside Silo's line", size=17, weight="700")
+    s.text(40, 140, "Not this: Bloem's check inside Silo's line", size=17, weight="700")
     s.rect(40, 156, 540, 250, "#0F172A", rx=14)
     _code(s, 64, 194, [
         ("// A remote-playback handoff never", "#94A3B8"),
@@ -163,7 +163,7 @@ def silo_wins():
     s.arrow(586, 280, 616, 280)
 
     # After.
-    s.text(620, 140, "After: Silo's line as Silo wrote it", size=17, weight="700")
+    s.text(620, 140, "This: Silo's line as Silo wrote it", size=17, weight="700")
     s.rect(620, 156, 540, 250, "#0F172A", rx=14)
     _code(s, 644, 194, [
         ("if bloemDirectProfileClaims(ctx) {", "#FDBA74"),

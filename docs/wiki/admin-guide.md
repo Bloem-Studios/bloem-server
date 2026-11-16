@@ -41,8 +41,7 @@ the [user guide](user-guide.md) instead.
 
 Bloem Server is a public **tracking fork** of [Silo Server](https://github.com/Silo-Server/silo-server).
 Bloem follows Silo's main line, merges it often, and keeps its own changes small and declared,
-so Silo's improvements keep arriving. [FORK.md](../../FORK.md) states the rules, and the
-[integration changelog](../bloem/CHANGELOG.md) records each merge.
+so Silo's improvements keep arriving. [FORK.md](../../FORK.md) states the rules.
 
 **Almost everything in this guide is Silo's:** the web app, the setup wizard, libraries and
 scanning, metadata, playback and transcoding, profiles and households, access groups, movie and
@@ -79,18 +78,9 @@ Each of these is covered below:
 - **Separate sign-in for a profile** in the Bloem apps ([user guide](user-guide.md#2-profiles)).
 - **A native API** for Bloem's own apps, `/api/bloem/v2` ([reference](../bloem-api-reference.md)).
 
-### What Bloem removed
+### Good to know
 
-Some earlier Bloem features are gone, and this guide no longer describes them: the music
-catalog, Pastime managed tracking (see [Pastime removal](../architecture/bloem-pastime-removal.md))
-and Bloem's companion enrollment for compatibility apps. Silo's own Jellyfin and Audiobookshelf
-servers came back in its place. Silo, for its part, removed the administrator's colour, font and
-custom-CSS controls and made Cinema Dark the only theme.
-
-### What changed recently
-
-The [integration changelog](../bloem/CHANGELOG.md) lists what each Bloem release changed. A few
-changes that affect the person running a server:
+A few things that affect the person running a server:
 
 - **Search can drop the most common words first.** On **Server → Search**, **When a search has
   several words** has the choice **Drop the most common words until something matches**
@@ -98,8 +88,7 @@ changes that affect the person running a server:
 - **Organization domains and branding** ([2.18](#218-organization-domains-and-branding)).
 - **Old sign-ins sign in again.** When an organization signs an account out, a sign-in from
   before that point is ended, and the app asks the person to sign in again.
-- **Silo's v1 API is gone.** Silo retired it in November 2026 and nothing in Bloem calls it.
-  Announcements now need the Platform context ([2.16](#216-campaigns-and-seasonal-packs)).
+- **Announcements need the Platform context** ([2.16](#216-campaigns-and-seasonal-packs)).
 - **Transcode nodes are thin.** A transcode node needs only the main server's address and its own
   key ([2.14](#214-nodes-and-distributed-deployments)).
 - **Docker:** `docker-compose.yml` is Silo's all-in-one stack and does not start Bloem. Bloem
@@ -937,7 +926,7 @@ Your media is not part of this backup; back it up however you already do.
 
 4. Follow the logs and let startup finish. Bloem migrates its own database on start, before it
    accepts connections.
-5. Check both `/api/v1/health` and `/api/v1/ready` afterwards.
+5. Check both `/api/v1/health` and `/api/v1/ready` afterwards (Silo's probes).
 
 Keep the same Compose project and override files for the update. For an image you built yourself,
 load it and select its exact tag before `up`; do not try to pull a tag that was never published.
@@ -1078,10 +1067,9 @@ or less, because of the address they used.
   `internal/api/middleware/bloem_viewer_session.go`, migration
   `20260923160000_bloem_org_session_revocations` and the
   [security foundation](../architecture/bloem-security-foundation.md).
-- Leaving Silo's v1 API: Silo retired it on 2026-11-11, and nothing in Bloem calls it. The web
-  app's signed-out seasonal layer reads `GET /api/bloem/v2/ambience/public`. Announcements use
-  `/api/bloem/v2/admin/platform/announcements` and need the platform context. See
-  [leaving Silo's v1 API](../architecture/bloem-leaving-silo-v1.md).
+- The web app's signed-out seasonal layer reads `GET /api/bloem/v2/ambience/public`.
+  Announcements use `/api/bloem/v2/admin/platform/announcements` and need the platform
+  context.
 
 ### Install, disk and Docker
 
@@ -1229,8 +1217,7 @@ Technical pages:
   [protocol compatibility](../architecture/bloem-protocol-compatibility.md).
 - [Docker deployment](../bloem/overlays/wiki/deployment/docker.md), the deployment reference this
   guide summarises.
-- [FORK.md](../../FORK.md) and the [integration changelog](../bloem/CHANGELOG.md): what Bloem adds
-  and when.
+- [FORK.md](../../FORK.md): what Bloem adds.
 
 ### Source references
 

@@ -145,8 +145,7 @@ in Jellyfin apps too; see [how `.strm` files play](bloem-strm.md).
 ### Contract
 
 Native video uses Silo's ordinary playback plan (protocol v3) and HTTP delivery
-contract, on Silo's `/api/v2` (the token path accepts only `/api/v2` since Silo retired its
-v1 API). Its catalog identity is an opaque
+contract, on Silo's `/api/v2` (the token path accepts only `/api/v2`). Its catalog identity is an opaque
 `bloem-storage:` reference. Provider URLs, headers, credentials and private tool
 inputs never become client stream URLs, catalog paths, durable recipes, source
 grants or log lines. Silo logs every FFmpeg start and restart command through

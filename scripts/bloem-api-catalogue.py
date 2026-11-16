@@ -61,7 +61,6 @@ def render(v2, native, inventory):
         "| --- | ---: | --- |",
         f"| Silo native `/api/v2` | {len(v2_operations)} | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |",
         f"| Bloem extensions `/api/bloem/v2` | {len(documented)} | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |",
-        "| Retired alpha v1 API (410 Gone except the health and ready probes) | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |",
         "",
         "OpenAPI documents typed operations, including separately described raw transports.",
         "The inventory also observes mount adapters and all-method chi handlers. A dispatcher",

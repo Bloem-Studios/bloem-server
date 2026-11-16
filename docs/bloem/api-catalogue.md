@@ -10,7 +10,6 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | --- | ---: | --- |
 | Silo native `/api/v2` | 958 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
 | Bloem extensions `/api/bloem/v2` | 293 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
-| Retired alpha v1 API (410 Gone except the health and ready probes) | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher

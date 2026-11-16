@@ -110,8 +110,8 @@ def two_layouts():
             "folder; switching swaps the image for Bloem built on the same all-in-one layer.")
     s.header("Two ways Silo is installed",
              "Both can switch to Bloem and back. Checked on 31 October 2026 with Silo 32a2f63e1 and Bloem 4edbee99d.")
-    for x, title, sub in [(40, "Separate containers", "Silo's earlier Compose layout"),
-                          (620, "Silo's all-in-one container", "What Silo's image is now")]:
+    for x, title, sub in [(40, "Separate containers", "Silo's Compose layout"),
+                          (620, "Silo's all-in-one container", "Silo's single image")]:
         s.rect(x, 124, 540, 448, "#FFFFFF", "#E5E7EB", rx=16)
         s.text(x + 24, 160, title, size=20, weight="700")
         s.text(x + 24, 184, sub, size=14, fill=MUTED)

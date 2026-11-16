@@ -11,7 +11,7 @@ app reads to show a card.
 
 ## Who calls what
 
-![The storefront and the web admin console write campaigns into one registry; the web app reads native routes, the Android apps' old routes on Silo's v1 API are retired, and Apple and Jellyfin apps show no cards](architecture/images/playback-overlays/who-calls-what.svg)
+![The storefront and the web admin console write campaigns into one registry; the web app reads native routes, the Android apps do not read them yet, and Apple and Jellyfin apps show no cards](architecture/images/playback-overlays/who-calls-what.svg)
 
 - **Two ways to write a campaign.** The storefront (Bloem HQ), a separate
   application, and the web admin console's **Campaigns & seasonal packs** page both
@@ -19,9 +19,8 @@ app reads to show a card.
   overwrites an earlier one.
 - **The web app** reads Bloem's own routes to list the cards for the title it plays
   and to save one to the inbox.
-- **Bloem's Android apps** read the cards from older routes on Silo's v1 API, which
-  Silo retired on 2026-11-11, so they show none until they move to the native routes.
-  Bloem's Apple apps do not ask for playback cards yet.
+- **Bloem's Android and Apple apps** do not read playback cards yet, so they show
+  none until they use the native routes.
 - **Announcements** are separate: a platform administrator publishes them from
   **Settings → Integrations → Announcements**, with no campaign rights and no storefront
   ([how announcements work](architecture/admin-announcements.md)).
@@ -39,8 +38,7 @@ app reads to show a card.
 ## For developers
 
 - **API:** [messages and promotions](bloem/api/messages.md) holds every route above with
-  its fields and error codes. The old routes are on
-  [Bloem's retired v1 routes](bloem/api/v1-routes.md#campaigns).
+  its fields and error codes.
 - **Lifetime and delivery rules:** [how playback cards work](architecture/playback-overlays.md)
   holds capability detection, placement fields, client lifetime rules and the
   save-to-inbox contract. Client rendering on the native apps is tracked there, not
@@ -55,11 +53,7 @@ app reads to show a card.
   Organization authority is refused (`403 insufficient_platform_authority`). The
   registry has no revision locking: a later save overwrites an earlier one.
 - The web console's page is `web/src/pages/admin-platform/EngagementPage.tsx`; the
-  storefront uses these routes
-  ([leaving Silo's v1 API](architecture/bloem-leaving-silo-v1.md)).
-- The legacy acting-admin CRUD on Silo's v1 API (`/admin/promotions`, mounted by
-  `mountBloemLegacyAdminV1`) went with that API on 2026-11-11. Nothing in Bloem called it
-  by then.
+  storefront uses these routes.
 
 ### Viewer routes
 
@@ -68,8 +62,6 @@ app reads to show a card.
   `mountBloemPromotionsViewer` (`internal/api/bloem_promotions_viewer.go`) and advertised
   as `promotions_viewer_v1`. They need a signed-in account, its organization, a
   selected and, where locked, PIN-verified profile.
-- The phone apps' v1 `GET /promotions` and `POST /promotions/{id}/save`
-  (`mountBloemPromotionsV1`) went with Silo's v1 API on 2026-11-11 and answer `410 Gone`.
 
 ### Artwork
 

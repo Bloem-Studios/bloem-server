@@ -85,11 +85,9 @@ Riverside Club's administrator wants to rename the club's "Juniors" access group
 ## For developers
 
 Everything from here on is the reference. Exact schemas are on the generated
-[API by topic](bloem/api/README.md) pages; the hand-written [retired v1 routes](bloem/api/v1-routes.md)
-page records where Bloem's former routes on Silo's v1 API moved. Related technical pages:
+[API by topic](bloem/api/README.md) pages; Related technical pages:
 [how Bloem's native API is organized](architecture/bloem-client-surface.md),
-[how Bloem's security foundation works](architecture/bloem-security-foundation.md),
-[leaving Silo's v1 API](architecture/bloem-leaving-silo-v1.md) and
+[how Bloem's security foundation works](architecture/bloem-security-foundation.md) and
 [organization domains and branding](architecture/bloem-organization-domains.md).
 
 ### Basis of this reference
@@ -98,15 +96,13 @@ This reference follows the route registrations in `internal/api/router_bloem*.go
 `internal/api/router_livetv.go`, the handlers named in each section, and the generated
 [`contracts/api/bloem/v2/openapi.json`](../contracts/api/bloem/v2/openapi.json). Every
 documented method and path exists in that OpenAPI document. It is a source review, not a
-record of calls against a running server. The API was mounted at `/api/v2` until Bloem moved
-it to `/api/bloem/v2` so that Silo could use `/api/v2` for its own API. Silo's own API is
+record of calls against a running server. Silo's own API is
 documented in Silo's `docs/*-api.md` pages, not here.
 
 ### Scope and boundaries
 
 This is a wire-level reference for `bloem-server`'s native `/api/bloem/v2` API surface: the
-Bloem-specific extensions beside Silo's `/api/v2`. Silo's alpha v1 API is retired: every
-route under it answers `410 Gone` except the health and ready probes. This maintained reference follows the mounted routes and
+Bloem-specific extensions beside Silo's `/api/v2`. This maintained reference follows the mounted routes and
 handlers in the current server source.
 
 **This is the Bloem-specific API.** It is distinct from Silo's stable-target `/api/v2`; its
@@ -201,8 +197,7 @@ Direct-profile sessions are admitted to `/api/bloem/v2` only for
 the audiobook and ebook request viewer routes (capability, history, filing,
 read and withdrawal). Authentication rejects them on every other native route
 before `RequireProfile` runs. The
-`direct_profile_login` capability field is `false`: Silo's v1 direct-profile sign-in was
-retired with the rest of its v1 API, and there is no native direct-profile sign-in.
+`direct_profile_login` capability field is `false`: there is no native direct-profile sign-in.
 
 Client handlers other than identity are conditionally assembled. A handler
 that is absent from the router returns `404`; this is not inferred from a
@@ -213,9 +208,8 @@ with no items.
 
 ### Known gaps / follow-ups surfaced while compiling this doc
 
-- Bloem's native progress sync is gone (see [Sync (native)](#sync-native)); an earlier review
-  found that `bloem-android`'s `HttpProgressSyncSource.kt` called Silo's now-retired v1 progress
-  route. Moving it to Silo's `POST /api/v2/sync/progress` is client work, not audited here.
+- Bloem has no native progress sync (see [Sync (native)](#sync-native)). A client moving to Silo's
+  `POST /api/v2/sync/progress` is client work, not audited here.
 - Two independent optimistic-concurrency revision counters exist in the Organization Administration
   surface (a group/invitation mutation checks the org's `tenant.PolicyRevision`; an entitlement
   mutation checks that entitlement row's own `security_revision`). The embedded web sends
@@ -319,8 +313,8 @@ direct-profile sessions are rejected elsewhere by the router's default-deny allo
 **Purpose.** The public, unauthenticated capability probe — "what does this server do", not
 "what may this caller do". It always returns `200`. Most fields are build constants; a few tokens
 are added only when the matching service is wired (below). The lifecycle-idempotency tokens
-(`lifecycle_idempotency_v1`, `lifecycle_idempotency_required_v1`) are no longer advertised: Bloem
-removed its receipt system; see [Retrying mutations](#retrying-mutations).
+(`lifecycle_idempotency_v1`, `lifecycle_idempotency_required_v1`) are not advertised: Bloem
+has no receipt system; see [Retrying mutations](#retrying-mutations).
 
 **Auth.** None. Mounted directly on `/api/bloem/v2`, ahead of any auth middleware.
 
@@ -395,8 +389,7 @@ Field notes:
   has push delivery on for a platform; asked on every probe; see
   [Admin app push notifications](architecture/bloem-admin-push.md)) with `admin_widget_wakes_v1` (the
   server also accepts the app's widget report and sends silent widget wakes).
-- `features.legacy_silo_v1` and `features.direct_profile_login` are `false` since Silo
-  retired its v1 API; `shared_device_pairing` and `delegated_admin_roles` are always `false`.
+- `features.legacy_silo_v1` and `features.direct_profile_login` are `false`; `shared_device_pairing` and `delegated_admin_roles` are always `false`.
 - `media_types`: the fixed vocabulary of `mediaTypesServed` — the item types *this build* can
   serve at all (a property of the software, not of what an operator's libraries happen to
   contain). A type absent from the list means the build cannot serve it; a client should not infer
@@ -408,7 +401,7 @@ Field notes:
   entries from; they do not prove that an optional route is mounted in a particular deployment.
   `watch_document_v1` is the schema token for the Watch documents below;
   `device_pairing_v1` covers TV pairing (protocol details on
-  `/auth/device/capability`, documented in the v1 reference); `declared_event_channels` covers the
+  `/auth/device/capability`, documented in Silo's reference); `declared_event_channels` covers the
   events-websocket declared-channel handshake (details on `/events/capability`).
 - Native-storage administration has its own authenticated capability document under
   each administrative scope. The public probe does not advertise backend admission;
@@ -421,9 +414,7 @@ Field notes:
 
 **Clients.** `bloem-apple`'s `ServerIdentityProbe.swift` calls `/api/bloem/v2/capabilities` (constant
 `Endpoints.capabilities`) alongside identity, as part of server-discovery/compatibility probing.
-No confirmed `bloem-android` call to this specific path was found in the source tree searched
-(android's compatibility probing lives in `SiloCompatibilityProbe.kt`, which targeted Silo's
-retired v1 surfaces at that review).
+No confirmed `bloem-android` call to this specific path was found in the source tree searched.
 
 ---
 
@@ -587,7 +578,7 @@ is the admin-elevation surface for the tenant/admin web UI, not the TV/phone Wat
 
 **Purpose.** The public, unauthenticated "which server is this, and can I log into it yet" probe a
 client calls before it holds any credentials — the first request of server discovery/pairing, and
-distinct in both scope and source from `GET /api/v1/health` (health's `server_name`/`server_id`
+distinct in both scope and source from Silo's health probe (its `server_name`/`server_id`
 come from the Jellyfin compatibility configuration as described by [protocol compatibility](architecture/bloem-protocol-compatibility.md), and are deliberately left untouched by this
 endpoint; the two must not be conflated even though both can carry a "server name"). Mounted
 unconditionally, even when no database is configured — see Errors for why the failure mode is
@@ -756,7 +747,7 @@ covering the union's requested content ids, `featured_content_id` chosen by the 
 **Clients.** Both. `bloem-apple`: `HTTPWatchCatalogSource.swift` (`Endpoints.home =
 "/api/bloem/v2/watch/home"`). `bloem-android`: `HttpWatchCatalogSource.kt` (`HOME_PATH =
 "/api/bloem/v2/watch/home"`); at that review its file comment placed the native client surface
-on Bloem's own API, beside Silo's v1 projection, which is now retired.
+on Bloem's own API, beside Silo's own API.
 
 ---
 
@@ -834,9 +825,7 @@ shape, deduplicated by `content_id` (keeping the first, best-ranked occurrence).
 
 #### Sync (native)
 
-The native `POST /api/bloem/v2/sync/progress` and its `progress_sync_v1` token were removed
-on 2026-11-11. The route was a duplicate of Silo's v1 progress sync, which Silo
-retired. Batch progress sync is Silo's `POST /api/v2/sync/progress`, documented in Silo's
+Bloem has no native `POST /api/bloem/v2/sync/progress` route or `progress_sync_v1` token. Batch progress sync is Silo's `POST /api/v2/sync/progress`, documented in Silo's
 [progress API](progress-api.md); live progress during playback is
 `POST /api/v2/playback/{session_id}/progress`. Bloem has no native replacement.
 
@@ -1233,13 +1222,13 @@ Type: `access.GroupDeletionImpact`. `default_group_id` is the group every reassi
   ]
 }
 ```
-Identical `invitationResponse` shape and `status` derivation (revoked > accepted > expired > pending, computed at read time) as the v1 `GET /admin/invitations/` response documented in the client-facing reference — see that entry for field-by-field detail. The only difference is this list is filtered to one organization explicitly rather than the legacy default-organization projection.
+Identical `invitationResponse` shape and `status` derivation (revoked > accepted > expired > pending, computed at read time) as Silo's invitations list response. The list is filtered to one organization explicitly rather than projected through the default organization.
 - Errors: `503 tenant_unavailable`.
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
 ##### POST /api/bloem/v2/admin/organization/invitations
-- Purpose: creates an invitation scoped to this organization. Unlike the v1 `POST /admin/invitations/`, this endpoint never sends email — it hands the caller the raw claim token to deliver however it chooses.
+- Purpose: creates an invitation scoped to this organization. This endpoint never sends email — it hands the caller the raw claim token to deliver however it chooses.
 - Auth required: organization-admin context.
 - Request body:
 ```json
@@ -1269,9 +1258,9 @@ Identical `invitationResponse` shape and `status` derivation (revoked > accepted
 
 #### Embedded web workflow adapters
 
-These are additive Bloem-native contracts. Existing Silo v1 projections and registry
-schemas remain unchanged. Operational Live TV consumers use `/api/bloem/v2/livetv`;
-there is no mounted v1 counterpart to restore and no Silo v2 Live TV contract.
+These are additive Bloem-native contracts. Silo's registry
+schemas are unchanged. Operational Live TV consumers use `/api/bloem/v2/livetv`;
+Silo's `/api/v2` has no Live TV contract.
 See [Live TV client access](architecture/live-tv-client-access.md).
 
 ##### POST /api/bloem/v2/livetv/tuners/xtream
@@ -1383,7 +1372,7 @@ The response is private and not cacheable. Direct-profile route admission is unc
 
 Signed-out pages stay public-only: the web app reads the deployment-wide packs from the
 public [`GET /api/bloem/v2/ambience/public`](#public-seasonal-packs). The `ambience` block of
-Silo's v1 branding route went with Silo's v1 API, so that route is the only signed-out source.
+That route is the only signed-out source.
 It never includes organization-targeted packs. The browser binds authenticated delivery to captured session,
 profile and PIN authority; opt-out, timing, reduced motion and playback suppression remain.
 
@@ -1511,7 +1500,7 @@ distinguishes them at more than one layer:
    admin-context token. Reachable by an organization's own `admin`-role member.
 2. **Platform admin** (`/api/bloem/v2/admin/platform/*`, this document) — cross-organization. It can
    list, create, suspend, reactivate, and transfer ownership of *any* organization on the
-   installation. Protocol companion administration has been removed.
+   installation.
 
 The distinction is not just routing sugar. Getting an admin-context token at all requires calling
 `POST /api/bloem/v2/admin/session` (`internal/api/handlers/bloem_admin_session.go`) with a body naming a
@@ -2011,13 +2000,12 @@ left without an eligible admin via this path.
 
 ---
 
-#### Retired compatibility applications
+#### Compatibility applications
 
-Bloem's Jellyfin/Audiobookshelf companion enrollment, credential exchange, gateway
-routing and their platform administration routes are removed. Older documents or
-generated bundles listing `/admin/platform/compatibility/*` describe that removed
-implementation. Silo's own Jellyfin and Audiobookshelf compatibility servers still
-run; see [protocol compatibility](architecture/bloem-protocol-compatibility.md).
+Bloem has no Jellyfin/Audiobookshelf companion enrollment, credential exchange, gateway
+routing or platform administration routes for them, so no `/admin/platform/compatibility/*`
+route exists. Silo's own Jellyfin and Audiobookshelf compatibility servers run; see
+[protocol compatibility](architecture/bloem-protocol-compatibility.md).
 
 #### Platform entitlement cohorts and bulk policy
 
@@ -2086,7 +2074,7 @@ Stable errors are `403 insufficient_platform_authority`, `404 not_found`, `409
 selection_expired`, `409 policy_confirmation_stale`, `409 idempotency_conflict`, `409
 job_not_cancellable`, `409 authorization_state_changed`, `422 validation_failed`, and `503
 entitlements_unavailable` (`writePlatformEntitlementBulkError` in
-`internal/api/handlers/entitlement_bulk.go`). These routes have no rate limit; a `429 rate_limited` answer that nothing produced was removed. Operational and storage errors are never
+`internal/api/handlers/entitlement_bulk.go`). These routes have no rate limit; none answers `429 rate_limited`. Operational and storage errors are never
 returned verbatim.
 
 ---
@@ -2556,8 +2544,7 @@ struct {
   after the change (so it reflects every profile on the account, not just the one touched).
 - **Errors**: `404 not_found` (bad group id, bad account, or profile not under that account),
   `409 authorization_state_changed`, `422 validation_failed`, `503 tenant_unavailable`.
-- **How this differs from Silo's profile update (`PATCH /api/v2/profiles/{id}`, formerly
-  `PUT` on Silo's retired v1 API)**: Silo's endpoint is a
+- **How this differs from Silo's profile update (`PATCH /api/v2/profiles/{id}`)**: Silo's endpoint is a
   self-service/household-manager path — auth is a plain account bearer token, callers may only
   ever act on profiles under their *own* account (a non-managing caller is further restricted to
   their own *active* profile matched via `X-Profile-Id`), and it can update a broad field set:
@@ -2943,7 +2930,7 @@ complete scanner/catalog/playback composition; source configuration alone
 cannot publish playable content. See [storage](architecture/bloem-native-storage.md),
 [video execution](architecture/bloem-native-video-playback.md) and
 [audiobook delivery](architecture/bloem-native-audio-playback.md). Native offline
-conversion/downloads are not implied. Retired protocol routes provide no
+conversion/downloads are not implied. Protocol compatibility routes provide no
 alternate file-delivery path.
 
 ### Ebook requests
@@ -3266,9 +3253,7 @@ subtree, behind its own gate: `bloemEitherPlatformCredential` sends a bearer `sa
 a Platform administrative context or the unscoped API key of an account with the `admin` role,
 and rechecks on every request that the account is still an enabled administrator. Scoped keys,
 organization contexts and account sessions get `403 insufficient_platform_authority`; a failed
-check is `503 tenant_unavailable`. The handlers are the ones that served Bloem's former routes on Silo's
-v1 API; those routes went with it (see
-[Bloem's retired v1 routes](bloem/api/v1-routes.md) for where each moved).
+check is `503 tenant_unavailable`.
 
 | Methods | Path under `/api/bloem/v2/admin/platform` | What it does |
 | --- | --- | --- |
@@ -3335,12 +3320,11 @@ Advertised by `promotions_viewer_v1` and mounted by `mountBloemPromotionsViewer`
 verification) and `RequireProfile`. The token is advertised only when the handler and all of
 those resolvers are wired. Direct-profile sessions are excluded by the default-deny route
 boundary.
-They replace Bloem's former campaign routes on Silo's v1 API and Home's `promoted` row.
 
 | Method and path | Contract |
 | --- | --- |
 | `GET /api/bloem/v2/promotions?surface=&content_id=` | The cards a profile sees on `home`, `detail`, `pre_playback` or `in_playback`. Home cards carry `home_position`, the row index the campaign row is shown at. Cards the profile dismissed on that surface are left out. `content_id` is required for `in_playback`, narrows `detail` and `pre_playback`, and is ignored for `home`. |
-| `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}` | Stop showing a campaign to the profile on a surface; writes the same per-profile dismissal (surface `promo:{surface}`) as the home dismissal of Silo's retired v1 API; Silo's `/api/v2` dismissals do not take `promo:` surfaces. Idempotent; `204`. A campaign ID longer than 64 bytes is `400`. |
+| `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}` | Stop showing a campaign to the profile on a surface; writes the same per-profile dismissal (surface `promo:{surface}`) as Home's dismissal; Silo's `/api/v2` dismissals do not take `promo:` surfaces. Idempotent; `204`. A campaign ID longer than 64 bytes is `400`. |
 | `POST /api/bloem/v2/promotions/{id}/save?content_id=` | Save a current `in_playback` card with a call to action for `content_id` to the profile's inbox. The delivery ID is derived from the profile and campaign, so a retry does not add a second copy. `200 {status}`; `404 not_found` when the campaign is no longer available to the profile. |
 
 Errors follow the seasonal viewer route: `400 bad_request`, `401`, `403 viewer_required` or
@@ -3354,8 +3338,7 @@ operation `getBloemPublicAmbience`) needs no credential: it returns `200 {ambien
 the deployment-wide seasonal packs active now, always an array and empty when none are active.
 Organization-targeted packs are never included; a profile's own seasonal presentation is the
 authenticated [`GET /api/bloem/v2/ambience`](#get-apibloemv2ambience). The web app's signed-out
-seasonal layer reads it (`web/src/components/seasonal/SeasonalLayer.tsx`). The `ambience`
-block of Silo's v1 branding route, which carried the same packs, went with Silo's v1 API. It is mounted beside the public artwork route `GET /api/bloem/v2/ambience/assets/{ref}`,
+seasonal layer reads it (`web/src/components/seasonal/SeasonalLayer.tsx`). It is mounted beside the public artwork route `GET /api/bloem/v2/ambience/assets/{ref}`,
 which serves content-addressed, immutable images with the ref as `ETag` (`304` on a matching
 `If-None-Match`).
 
@@ -3403,8 +3386,7 @@ routes and with the same gate. They are the organization-scoped counterparts of 
 
 Bodies are strict JSON (unknown fields and trailing JSON rejected, 32 KiB limit). The selection
 comes from `POST .../people/selections`, described under People Administration. The OpenAPI
-description of the job route still mentions `503 lifecycle_request_pending`; that response
-belonged to the lifecycle receipts removed in October 2026 and no handler returns it.
+description of the job route mentions `503 lifecycle_request_pending`, which no handler returns.
 
 #### Platform library figures
 

@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">When Silo and Bloem change the same lines</title>
-<desc id="d">A real fix from 31 October 2026 in a household check. Left: Bloem's check folded into Silo's line. Right: Silo's line as Silo wrote it, and Bloem's check on its own lines above it. Below: where Bloem keeps its own work, and the seam list, which may only shrink.</desc>
+<desc id="d">An example from a household check. Left: Bloem's check folded into Silo's line. Right: Silo's line as Silo wrote it, and Bloem's check on its own lines above it. Below: where Bloem keeps its own work, and the seam list, which may only shrink.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="759" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">When Silo and Bloem change the same lines</text>
-<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Silo always wins. A real example from 31 October 2026, in the household check.</text>
-<text x="40" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Before: Bloem's check inside Silo's line</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Silo always wins. An example, in the household check.</text>
+<text x="40" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Not this: Bloem's check inside Silo's line</text>
 <rect x="40" y="156" width="540" height="250" rx="14" fill="#0F172A" stroke="none" stroke-width="1.5"/>
 <text x="64" y="194" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#94A3B8" xml:space="preserve">// A remote-playback handoff never</text>
 <text x="64" y="221" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#94A3B8" xml:space="preserve">// manages the household.</text>
@@ -14,7 +14,7 @@
 <text x="64" y="302" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#E2E8F0" xml:space="preserve">    return false, nil, nil</text>
 <text x="64" y="329" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#E2E8F0" xml:space="preserve">}</text>
 <line x1="586" y1="280" x2="616" y2="280" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
-<text x="620" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">After: Silo's line as Silo wrote it</text>
+<text x="620" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">This: Silo's line as Silo wrote it</text>
 <rect x="620" y="156" width="540" height="250" rx="14" fill="#0F172A" stroke="none" stroke-width="1.5"/>
 <text x="644" y="194" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#FDBA74" xml:space="preserve">if bloemDirectProfileClaims(ctx) {</text>
 <text x="644" y="220" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#FDBA74" xml:space="preserve">    return false, nil, nil</text>
