@@ -17,13 +17,12 @@ def workflows():
     s = Svg(1200, 740, "What runs, and when",
             "Top, every change: a pull request, a push to main, the Monday run or a manual run starts Bloem CI. "
             "When Bloem CI passes on a push to main, Bloem Image builds the server image tagged with that commit, "
-            "and moves latest if the commit is still main's newest. No workflow deploys: the merge bot deploys "
-            "each Silo batch once Bloem CI passes it, and a person starts every other deployment. "
-            "Bottom, every day, only when switched on (off since November 2, 2026): the upstream sync merges Silo's "
+            "and moves edge if the commit is still main's newest. No workflow deploys a server. "
+            "Bottom, every day, only when switched on (off by default): the upstream sync merges Silo's "
             "main into a branch and opens a pull request; Bloem CI checks it; the merge gate lands it on main. A "
             "sync with conflicts opens as a draft that a person resolves.")
     s.header("What runs, and when",
-             "Four Bloem workflows. Bloem CI is the gate for everything that reaches main.")
+             "Bloem CI is the gate for everything that reaches main.")
     a, p, g, w, o = TIERS["account"], TIERS["plan"], TIERS["grey"], TIERS["warn"], TIERS["org"]
 
     # Every change.
@@ -50,13 +49,13 @@ def workflows():
     s.text(940, 192, "The image", size=17, weight="700")
     _mono(s, 940, 222, "bloem-server:", size=13, fill=INK)
     _mono(s, 940, 242, "<full commit SHA>", size=13, fill=INK)
-    para(s, 940, 274, "latest moves to it only while that commit is still main's newest.", 200, size=14,
+    para(s, 940, 274, "edge moves to it only while that commit is still main's newest.", 200, size=14,
          gap=19)
     s.rect(640, 370, 520, 48, "#FFFFFF", "#9CA3AF", rx=12, sw=1.4, dash="6 5")
-    s.text(660, 400, "No workflow deploys. The merge bot deploys its Silo batches.", size=14.5, fill=MUTED)
+    s.text(660, 400, "No workflow deploys a server.", size=14.5, fill=MUTED)
 
     # Every day.
-    s.text(40, 468, "Every day, only when switched on (off since November 2, 2026)", size=17, weight="700")
+    s.text(40, 468, "Every day, only when switched on (off by default)", size=17, weight="700")
     row_y, row_h = 484, 116
     steps = [
         (g, 210, "Upstream sync", "05:20 UTC: merges Silo's main into a new branch."),
@@ -176,64 +175,4 @@ def merge_gate():
     return s
 
 
-def _line(s, x1, y1, x2, y2, color="#9CA3AF"):
-    """A connector without an arrowhead, for the shared part of a branch."""
-    s.add(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" stroke-width="2"/>')
-
-
-def merge_bot():
-    s = Svg(1200, 700, "How the merge bot waits for Bloem CI",
-            "The batch thread pushes a Silo batch to main and hands it to the bot, which waits for Bloem CI on that "
-            "exact commit. If CI passed, the bot sends the merged message, and the daily deploy ships the newest "
-            "commit CI passed. If a job failed, the bot reruns the failed jobs once and reads CI again. If a newer "
-            "push to main cancelled the run, it follows CI to main's new tip, which still holds its commit. If the "
-            "same failure comes back, the bot stops the batch and sends the stuck message; the owner can send the "
-            "thread back to fix a test that also fails alone, on Bloem's own lines, at most three times. No new "
-            "batch starts until the owner answers or releases it.")
-    s.header("How the merge bot waits for Bloem CI",
-             "Only a commit Bloem CI passed gets the merged message. Anything else stops the batch for the owner.")
-    a, p, g, w, st = TIERS["account"], TIERS["plan"], TIERS["grey"], TIERS["warn"], TIERS["stop"]
-
-    box(s, 40, 124, 240, 124, g, "Pushed to main", "The thread pushes, hands the commit to the bot and ends.",
-        size=14)
-    s.arrow(284, 186, 316, 186)
-    box(s, 320, 124, 260, 124, p, "Bloem CI", "Runs on exactly that commit, like any other push.", size=14)
-    s.arrow(584, 186, 606, 186)
-    s.add(f'<path d="M680,128 L750,186 L680,244 L610,186 Z" fill="{w["fill"]}" stroke="{w["stroke"]}" '
-          'stroke-width="1.8"/>')
-    s.text(680, 192, "Passed?", size=15, weight="700", anchor="middle")
-    s.arrow(754, 186, 796, 186)
-    s.text(775, 176, "Yes", size=13, weight="700", fill=a["label"], anchor="middle")
-    box(s, 800, 124, 360, 124, a, "Merged",
-        "The bot sends one message. The daily deploy at 10:00 ships the newest commit CI passed.", size=14)
-
-    _line(s, 680, 248, 680, 282)
-    s.text(692, 272, "No", size=13, weight="700", fill=st["label"])
-    _line(s, 220, 282, 980, 282)
-    for cx in (220, 600, 980):
-        s.arrow(cx, 282, cx, 306)
-    cases = [
-        (w, "A job failed", "The bot reruns the failed jobs once, then reads Bloem CI again."),
-        (g, "Cancelled by a newer push", "Someone pushed to main. The bot follows Bloem CI to main's new tip, "
-                                         "which still holds its commit."),
-        (st, "Failed again", "The bot stops. Sent back by the owner, the thread fixes a test that also fails "
-                             "alone, on Bloem's own lines, and pushes again. At most three times."),
-    ]
-    x = 40
-    for c, t, b in cases:
-        box(s, x, 310, 360, 156, c, t, b, size=14.5)
-        x += 380
-
-    s.arrow(980, 470, 980, 520, color=st["stroke"], dash="6 5")
-    s.text(992, 500, "red twice, or cannot fix", size=12.5, weight="700", fill=st["label"])
-    s.rect(40, 524, 1120, 110, st["fill"], st["stroke"], rx=14, sw=1.8)
-    s.text(64, 558, "Stopped", size=17, weight="700")
-    para(s, 64, 586, "The bot sends the stuck message with a link to the batch's thread. No new batch starts "
-         "until the owner answers in that thread or releases it. Nobody pushes an empty commit to start CI "
-         "again.", 1072, size=14.5, fill=INK)
-    footer(s, "Bloem CI retries a few known flaky tests itself (scripts/ci/bloem-retried-tests.txt) before it "
-              "reports them.", y=668, fill=MUTED)
-    return s
-
-
-PICTURES = [("workflows", workflows), ("runners", runners), ("merge-bot", merge_bot), ("merge-gate", merge_gate)]
+PICTURES = [("workflows", workflows), ("runners", runners), ("merge-gate", merge_gate)]
