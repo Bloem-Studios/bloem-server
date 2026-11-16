@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -76,6 +77,26 @@ type transcodeExecutionInput struct {
 	input       TranscodeInput
 	childJoined chan error
 	joined      chan error
+	// stderr keeps the tail of this run's FFmpeg diagnostics only to classify
+	// its failure (classifyFFmpegFailure), so a GPU decoder rejection takes
+	// Silo's CPU-decode retry. The text can name the private source argument:
+	// it never reaches an error, a log, a receipt or a response.
+	stderr *boundedTailBuffer
+}
+
+// classificationStderr is the FFmpeg stderr writer of a run with a source
+// input: the private tail, and nothing that persists or logs it.
+func (i *transcodeExecutionInput) classificationStderr() io.Writer {
+	return i.stderr
+}
+
+// classify marks err as Silo's startup paths would from FFmpeg's whole
+// retained stderr, leaving its message unchanged.
+func (i *transcodeExecutionInput) classify(err error) error {
+	if i == nil || err == nil {
+		return err
+	}
+	return classifyFFmpegFailure(err, i.stderr.String())
 }
 
 type transcodeInputFailure struct{ cause error }
@@ -119,7 +140,7 @@ func prepareTranscodeInput(ctx context.Context, opts TranscodeOpts) (context.Con
 	if input == nil {
 		return nil, opts, nil, &transcodeInputFailure{errors.New("missing source input")}
 	}
-	owner := &transcodeExecutionInput{input: input, childJoined: make(chan error, 1), joined: make(chan error, 1)}
+	owner := &transcodeExecutionInput{input: input, childJoined: make(chan error, 1), joined: make(chan error, 1), stderr: newBoundedTailBuffer(stderrTailMaxBytes)}
 	ready := make(chan transcodeInputOffer, 1)
 	go func() {
 		owner.joined <- input.Run(func(runCtx context.Context, argument string) error {
@@ -148,9 +169,12 @@ func prepareTranscodeInput(ctx context.Context, opts TranscodeOpts) (context.Con
 
 // bloemFinishExecutionInput ends a transcode run's source input once its FFmpeg
 // has been waited for: what is left of the process group is killed and the
-// source is joined, with their errors added to waitErr. A run without a source
-// input keeps waitErr. monitorFFmpeg calls it right after cmd.Wait, before done
-// closes, so no restart has replaced the run's input yet.
+// source is joined, with their errors added to waitErr. FFmpeg's exit error is
+// classified from the run's private stderr tail first, so the session's
+// startup and manifest errors carry Silo's decoder-rejection mark without its
+// text. A run without a source input keeps waitErr. monitorFFmpeg calls it
+// right after cmd.Wait, before done closes, so no restart has replaced the
+// run's input yet.
 func (s *TranscodeSession) bloemFinishExecutionInput(cmd *exec.Cmd, waitErr error) error {
 	s.mu.Lock()
 	input := s.executionInput
@@ -158,7 +182,7 @@ func (s *TranscodeSession) bloemFinishExecutionInput(cmd *exec.Cmd, waitErr erro
 	if input == nil {
 		return waitErr
 	}
-	return input.complete(errors.Join(waitErr, finishTranscodeInputProcess(cmd)))
+	return input.complete(errors.Join(input.classify(waitErr), finishTranscodeInputProcess(cmd)))
 }
 
 func (i *transcodeExecutionInput) complete(childErr error) error {

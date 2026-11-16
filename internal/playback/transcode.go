@@ -626,7 +626,7 @@ func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession,
 	if input == nil {
 		cmd.Stderr = s.newStderrWriter(ctx)
 	} else {
-		cmd.Stderr = io.Discard
+		cmd.Stderr = input.classificationStderr() // Bloem: a private tail that only classifies the failure (bloem_native_input.go)
 	}
 	cmd.WaitDelay = 3 * time.Second
 
@@ -4110,7 +4110,7 @@ func (s *TranscodeSession) restart(
 	if input == nil {
 		cmd.Stderr = s.newStderrWriter(ctx)
 	} else {
-		cmd.Stderr = io.Discard
+		cmd.Stderr = input.classificationStderr() // Bloem: a private tail that only classifies the failure (bloem_native_input.go)
 	}
 	cmd.WaitDelay = 3 * time.Second
 
