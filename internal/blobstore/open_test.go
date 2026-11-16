@@ -423,10 +423,15 @@ func TestOpenRecordedS3ForwardsSharedClientFenceAndOptionalInterfaces(t *testing
 		if err != nil {
 			t.Fatal(err)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(fenceResumeTimeout):
 		t.Fatal("direct client write did not resume")
 	}
 }
+
+// fenceResumeTimeout only guards against a write that never resumes. The test
+// waits on the write's own completion, which needs a real file or HTTP round
+// trip; a tight bound failed whenever a loaded CI machine took over a second.
+const fenceResumeTimeout = 30 * time.Second
 
 // A local backend shares one root between the assets and operational stores.
 // Open must fence it before sharing it, or operational writes (avatars,
@@ -464,7 +469,7 @@ func TestOpenLocalFencesSharedOperationalStore(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(fenceResumeTimeout):
 		t.Fatal("operational write did not resume after the fence was released")
 	}
 }

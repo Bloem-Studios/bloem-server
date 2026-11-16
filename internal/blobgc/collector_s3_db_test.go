@@ -100,6 +100,7 @@ func TestCollectorDeletesSingleImagesS3DB(t *testing.T) {
 	if err := blobgc.NewQueue(pool).Schedule(t.Context(), keys, 0); err != nil {
 		t.Fatal(err)
 	}
+	collectFirst(t, t.Context(), pool, keys)
 	stats, err := blobgc.NewCollector(pool, store, chapterthumbs.ImageBlobNamespace()).Collect(t.Context(), len(keys))
 	if err != nil || stats.Deleted != len(keys) || stats.Objects != len(keys) {
 		t.Fatalf("single-image collection: stats=%+v err=%v", stats, err)

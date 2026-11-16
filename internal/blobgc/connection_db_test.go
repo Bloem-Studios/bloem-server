@@ -43,6 +43,18 @@ func singleConnectionPool(t *testing.T, prefixes []string) *pgxpool.Pool {
 	return pool
 }
 
+// collectFirst makes the collector claim these queue rows before any other.
+// The queue is shared with every other package that runs against the test
+// database at the same time, and Collect claims the oldest due row whoever
+// queued it. A foreign due row would take one of the limited claims and leave
+// a test that counts its own deletions one short.
+func collectFirst(t *testing.T, ctx context.Context, pool *pgxpool.Pool, prefixes []string) {
+	t.Helper()
+	if _, err := pool.Exec(ctx, `UPDATE public.blob_gc_queue SET not_before = '-infinity' WHERE prefix = ANY($1::text[])`, prefixes); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func assertCollected(t *testing.T, ctx context.Context, store *blobstore.Filesystem, keys []string) {
 	t.Helper()
 	for _, key := range keys {
@@ -79,6 +91,7 @@ func TestCollectorUsesOneConnectionDB(t *testing.T) {
 	if err := blobgc.NewQueue(pool).Schedule(ctx, prefixes, 0); err != nil {
 		t.Fatal(err)
 	}
+	collectFirst(t, ctx, pool, prefixes)
 	collector := blobgc.NewCollector(pool, store,
 		chapterthumbs.ImageBlobNamespace(), chapterthumbs.BlobNamespace(), trickplay.BlobNamespace())
 	stats, err := collector.Collect(ctx, len(prefixes))
@@ -121,6 +134,7 @@ func TestSweeperUsesOneConnectionDB(t *testing.T) {
 			}
 		}
 	}
+	collectFirst(t, ctx, pool, prefixes)
 	stats, err := blobgc.NewCollector(pool, store, namespaces...).Collect(ctx, len(prefixes))
 	if err != nil || stats.Deleted != len(prefixes) {
 		t.Fatalf("collect swept prefixes: stats=%+v err=%v", stats, err)

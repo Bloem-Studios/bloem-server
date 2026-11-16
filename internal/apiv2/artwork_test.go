@@ -27,7 +27,9 @@ func TestArtworkNestedKeyBytesAndRanges(t *testing.T) {
 	signer := artworkurl.NewSigner("test-secret", time.Hour)
 	h := NewHandler(Dependencies{ArtworkStore: store, ArtworkSigner: signer})
 	u, expires := signer.Sign(key, time.Now())
+	before := time.Now()
 	got := do(t, h, http.MethodGet, u, "", nil)
+	after := time.Now()
 	if got.Code != 200 || got.Body.String() != "0123456789" {
 		t.Fatalf("GET: %d %s", got.Code, got.Body.String())
 	}
@@ -36,9 +38,17 @@ func TestArtworkNestedKeyBytesAndRanges(t *testing.T) {
 	if _, err := fmt.Sscanf(cache, "private, max-age=%d, immutable", &maxAge); err != nil {
 		t.Fatalf("cache = %q", cache)
 	}
+	// The handler reads the clock once, somewhere between before and after, and
+	// reports whole seconds, so max-age must lie between the lifetime left at
+	// each end. Comparing with the lifetime left when the test gets here would
+	// fail whenever a loaded machine let a second tick over in between.
+	if lo, hi := expires.Unix()-after.Unix(), expires.Unix()-before.Unix(); maxAge < lo || maxAge > hi {
+		t.Fatalf("max-age = %d, want %d..%d (URL expires %d, request ran %d..%d)",
+			maxAge, lo, hi, expires.Unix(), before.Unix(), after.Unix())
+	}
 	// Allow a few seconds around the UTC issuance-window boundary.
-	if remaining := int64(time.Until(expires).Seconds()); maxAge < 3600-5 || maxAge > remaining+1 {
-		t.Fatalf("max-age = %d, URL remaining lifetime = %ds", maxAge, remaining)
+	if maxAge < 3600-5 {
+		t.Fatalf("max-age = %d, want at least the URL lifetime less a few seconds", maxAge)
 	}
 	head := do(t, h, http.MethodHead, u, "", nil)
 	if head.Code != 200 || head.Body.Len() != 0 || head.Header().Get("Content-Length") != "10" {

@@ -88,6 +88,7 @@ internal/api/router.go  # Bloem route/service integration; fallback Live TV serv
 internal/api/testdata/media_routes.txt
 internal/apiv2/admin_subtitle_metadata_test.go  # reviewed test-only exception: canonical API language projection preserves raw legacy row
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
+internal/apiv2/artwork_test.go  # TestArtworkNestedKeyBytesAndRanges checks max-age against the lifetime left at the start and the end of its request instead of at a later instant; the later reading failed in Bloem CI whenever a loaded runner let a clock second tick over in between (2026-11-16)
 internal/apiv2/device_login_test.go  # expected server_name follows branding.DefaultServerName, which Bloem sets to "Bloem"
 internal/apiv2/docsui/swagger-ui-bundle.js.LICENSE.txt
 internal/apiv2/document_test.go
@@ -119,7 +120,9 @@ internal/backup/service.go  # three calls: a Bloem backup's dump leaves out ever
 internal/backup/swap.go  # three calls: a user-data backup cannot replace the live database (bloem_user_data_backup.go); the live-database connection checks wait for a just-closed connection to end (bloem_closing_connections.go)
 internal/backup/users_apply.go  # a restored account is created in its organization, a restored profile carries its group name (bloem_restore_tenancy.go)
 internal/backup/users_plan.go  # one call: the planner names the organization an account is restored into, so its group is matched there (bloem_restore_tenancy.go)
-internal/blobgc/collector_s3_db_test.go  # added lines: collect the test's own queue row first; dbpins runs listed packages at once and another may hold an older due row (failed in Bloem CI on 2026-11-02)
+internal/blobgc/collector_s3_db_test.go  # added lines: collect the test's own queue rows first (collectFirst); dbpins runs listed packages at once and another may hold an older due row (failed in Bloem CI on 2026-11-02, and again for the single-image test on 2026-11-16)
+internal/blobgc/connection_db_test.go  # collectFirst helper and two calls: the one-connection collector and sweeper tests claim their own queue rows before any other package's due row, which took one of their limited claims and left the deleted count short under CI load (2026-11-16)
+internal/blobstore/open_test.go  # the two fence tests wait up to 30 s, not 1 s, for a write to resume after the fence is released (fenceResumeTimeout); a real file or HTTP round trip took longer on a loaded runner (2026-11-16)
 internal/branding/branding.go
 internal/branding/render.go
 internal/branding/render_test.go
@@ -306,7 +309,7 @@ web/src/lib/documentTitle.ts
 web/src/lib/episodeCardLabels.ts  # no placeholder 'Episode N' title above the episode code; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/lib/loginSessionDevice.ts  # recognizes Bloem client user agents as the app
 web/src/pages/AdminAccessGroups.tsx
-web/src/pages/AdminHomeRows.libraryCopies.test.tsx  # four lookups: the 100-page limit test finds its checkboxes by label, as its own loop already does, instead of by role, which recomputed 100+ accessible names per lookup and ran past the 30 s timeout under CI load (owner's decision, 2026-11-16)
+web/src/pages/AdminHomeRows.libraryCopies.test.tsx  # the 100-page limit test looks its 101 checkboxes up once by label instead of querying per click, and its hang guard is 120 s: per-click role or label queries plus a full-list re-render per click ran past the 30 s timeout under CI load (owner's decision, 2026-11-16)
 web/src/pages/AdminLibraries.tsx  # shows a storage library's source instead of paths
 web/src/pages/AdminPlugins.tsx  # Storage tab for storage sources inside an administrative context
 web/src/pages/Catalog.tsx  # empty search field at the top on phones; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges

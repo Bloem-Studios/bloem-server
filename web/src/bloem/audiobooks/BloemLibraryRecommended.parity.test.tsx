@@ -158,6 +158,19 @@ function resolved(
   } as unknown as ResolvedSection;
 }
 
+// The distinct options a page passed, in first-use order. How many times a hook
+// ran depends on how many renders the page made before it settled, which moves
+// with scheduling; what the page asked for does not.
+function distinctOptions(calls: unknown[]): unknown[] {
+  const seen = new Set<string>();
+  return calls.filter((options) => {
+    const key = JSON.stringify(options) ?? "undefined";
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 async function renderMarkup(
   Component: typeof LibraryRecommended,
   libraryType: string,
@@ -194,7 +207,7 @@ async function renderMarkup(
   return {
     markup,
     heroStates,
-    layoutOptions: mocks.layoutOptions,
+    layoutOptions: distinctOptions(mocks.layoutOptions),
     sectionReads: [...mocks.sectionReads].sort(),
   };
 }
@@ -204,6 +217,8 @@ async function compare(libraryType: string, ready?: string) {
   const bloem = await renderMarkup(BloemLibraryRecommended, libraryType, ready);
   expect(bloem.markup.replaceAll('data-owner="bloem"', 'data-owner="silo"')).toBe(silo.markup);
   expect(bloem.heroStates).toEqual(silo.heroStates);
+  // Both pages must have read the layout, and asked for the same thing.
+  expect(silo.layoutOptions.length).toBeGreaterThan(0);
   expect(bloem.layoutOptions).toEqual(silo.layoutOptions);
   expect(bloem.sectionReads).toEqual(silo.sectionReads);
   return bloem.markup;

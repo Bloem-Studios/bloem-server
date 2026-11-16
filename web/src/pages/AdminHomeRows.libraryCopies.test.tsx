@@ -228,22 +228,30 @@ describe("Add to these library pages", () => {
     mocks.libraries = manyLibraries(100);
     const form = await pickTrending();
     const group = pagesGroup(form);
-    // getByLabelText instead of getByRole: role queries over 100+ checkboxes
-    // compute every accessible name each time and push this test past CI's timeout.
-    for (let id = 100; id < 199; id++)
-      fireEvent.click(within(group).getByLabelText(`Library ${id}`));
-    expect(within(group).getByLabelText("Library 199")).toBeDisabled();
+    // Look the 101 checkboxes up once, by their label text. A query per click
+    // (by role, which computes every accessible name, or by label) cost several
+    // seconds over the loop, and each click re-renders the whole list, so under
+    // CI load the test ran past its timeout. The timeout below is only a hang guard.
+    const boxes = new Map(
+      within(group)
+        .getAllByRole("checkbox")
+        .map((box) => [(box as HTMLInputElement).labels?.[0]?.textContent ?? "", box]),
+    );
+    expect(boxes.size).toBe(101);
+    const library = (id: number) => boxes.get(`Library ${id}`)!;
+    for (let id = 100; id < 199; id++) fireEvent.click(library(id));
+    expect(library(199)).toBeDisabled();
     expect(within(form).getByText(LIMIT_NOTE)).toBeInTheDocument();
     // Dropping one page frees a place again.
-    fireEvent.click(within(group).getByLabelText("Library 100"));
-    expect(within(group).getByLabelText("Library 199")).toBeEnabled();
+    fireEvent.click(library(100));
+    expect(library(199)).toBeEnabled();
     expect(within(form).queryByText(LIMIT_NOTE)).toBeNull();
-    fireEvent.click(within(group).getByLabelText("Library 100"));
+    fireEvent.click(library(100));
 
     await userEvent.click(within(form).getByRole("button", { name: "Add to 100 pages" }));
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(writes[0]!.args.body!.library_ids).toHaveLength(100);
-  }, 30_000);
+  }, 120_000);
 });
 
 describe("Add to other libraries…", () => {
