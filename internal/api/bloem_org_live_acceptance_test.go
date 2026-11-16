@@ -170,13 +170,6 @@ func TestOrganizationLiveAcceptance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("canal dial: %v", err)
 	}
-	// A used ticket opens nothing.
-	replay, err := dialOrgLive(t, server, northTicket)
-	if err != nil {
-		t.Fatalf("replay dial: %v", err)
-	}
-	replay.closedWith(t, handlers.OrgLiveCloseInvalidTicket)
-
 	for _, socket := range []*orgLiveClient{north, canal} {
 		socket.send(t, map[string]any{"op": "subscribe", "channels": []string{"org.people", "org.activity", "org.streams"}, "resume": nil})
 	}
@@ -198,6 +191,15 @@ func TestOrganizationLiveAcceptance(t *testing.T) {
 			t.Fatalf("%s subscribe answered resyncs %v and %d errors", name, resyncs, errs)
 		}
 	}
+
+	// A used ticket opens nothing. Only now is north's ticket known to be used:
+	// the handshake completes before the server consumes the ticket, so a replay
+	// sent straight after north's dial can reach the server first and take it.
+	replay, err := dialOrgLive(t, server, northTicket)
+	if err != nil {
+		t.Fatalf("replay dial: %v", err)
+	}
+	replay.closedWith(t, handlers.OrgLiveCloseInvalidTicket)
 
 	// North's owner signs a member out everywhere: it raises the member's
 	// security revision and writes an audit entry. North hears about the
