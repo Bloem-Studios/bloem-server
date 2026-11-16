@@ -2,10 +2,7 @@
 # scripts/bloem/verify-no-v1.py (make verify-no-v1). One path or shell glob per
 # line, with its reason. Keep this short: everything else uses Silo's /api/v2
 # or Bloem's /api/bloem/v2.
-docs/operations/20*                 # dated records keep the facts of their day
 docs/bloem/CHANGELOG.md             # integration history, written as it happened
-docs/superpowers/*                  # frozen historical plans
-.superpowers/*                      # frozen historical plans
 migrations/sql/20261031234831_bloem_native_ambience_asset_paths.sql  # moved stored paths off /api/v1; never edited
 migrations/bloem_native_ambience_asset_paths_test.go                 # tests that migration's old values
 migrations/sql/20261111215029_bloem_api_v2_ambience_asset_paths.sql  # moves stored /api/bloem/v1 and /api/v1 paths to v2
