@@ -13,7 +13,7 @@ keeps its own work.
 
 ## Each Silo batch
 
-![A merge bot takes each batch: Silo's main has new commits; twice a day, at 04:00 and 16:00 Amsterdam time, a free check starts one batch at a time in its own thread; the merge takes Silo's side of every conflict; if Bloem still works, the merge is pushed to main and the thread ends, the bot waits for Bloem CI on that commit and sends one message, and the daily deploy ships the newest commit CI passed. If not, Bloem adapts on its own lines, or the bot stops for the owner and blocks the next batch](images/following-silo/daily-flow.svg)
+![A merge bot takes each batch: Silo's main has new commits; twice a day, at 04:00 and 16:00 Amsterdam time, a free check starts one batch at a time in its own thread; the merge takes Silo's side of every conflict; if Bloem still works, the merge is pushed to main and the thread ends, the bot waits for Bloem CI on that commit and sends one message, and the daily deploy ships the newest commit CI passed. If not, Bloem adapts on its own lines, or the bot stops for a maintainer and blocks the next batch](images/following-silo/daily-flow.svg)
 
 A **merge bot** on Bloem's build machine takes each Silo **batch**: everything on
 Silo's `main` when the bot starts work on it.
@@ -25,7 +25,7 @@ Silo's `main` when the bot starts work on it.
    production moves once a day. One batch runs at a time: a batch still running when
    a slot comes means no new batch that slot, and commits that land later wait for
    the next one.
-2. **One thread per batch.** The bot works each batch in its own T3 thread, in its
+2. **One thread per batch.** The bot works each batch in its own thread, in its
    own copy of the repository. A maintainer can watch it live and answer it.
 3. **The merge.** Every conflict takes Silo's side, word for word. Where Silo's
    change would break Bloem, Bloem's behavior goes back on Bloem's own lines or in
@@ -56,7 +56,7 @@ in `c1c7de503`, and production ran `43a551a45`: Silo through `abd85d0ca`, deploy
 
 ## Deploying a batch
 
-![Three steps: a snapshot of the server and a restore point in the database, a restart of about a minute with migrations, then the checks. Three outcomes: every check passes and the batch is deployed; a check fails and the previous image goes back, whether or not migrations ran; the server stops answering during the restart and the bot stops for the owner. The bot never restores the database](images/following-silo/deploy.svg)
+![Three steps: a snapshot of the server and a restore point in the database, a restart of about a minute with migrations, then the checks. Three outcomes: every check passes and the batch is deployed; a check fails and the previous image goes back, whether or not migrations ran; the server stops answering during the restart and the bot stops for a maintainer. The bot never restores the database](images/following-silo/deploy.svg)
 
 1. **Safety first.** Before the restart there is a snapshot of the server and a
    **restore point** in the database: a marked moment the database can be taken back

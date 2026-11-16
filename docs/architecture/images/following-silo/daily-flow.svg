@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">How Bloem keeps up with Silo</title>
-<desc id="d">A merge bot takes each batch of Silo's work. Silo's main has new commits; twice a day, at 04:00 and 16:00 Amsterdam time, a free check starts one batch, each in its own T3 thread the owner can watch and answer; the merge takes Silo's side of every conflict. If Bloem still works, after the review list and the fast local checks, the merge is pushed to Bloem's main and the thread ends. The bot waits for Bloem CI to run the full suite on that exact commit and sends one message; the daily deploy at 10:00 ships the newest commit CI passed. If not, Bloem adapts on its own lines with a test. When a check cannot be fixed, Bloem cannot keep working without editing Silo's lines, or CI stays red, the bot stops for the owner and blocks the next batch.</desc>
+<desc id="d">A merge bot takes each batch of Silo's work. Silo's main has new commits; twice a day, at 04:00 and 16:00 Amsterdam time, a free check starts one batch, each in its own thread a maintainer can watch and answer; the merge takes Silo's side of every conflict. If Bloem still works, after the review list and the fast local checks, the merge is pushed to Bloem's main and the thread ends. The bot waits for Bloem CI to run the full suite on that exact commit and sends one message; the daily deploy at 10:00 ships the newest commit CI passed. If not, Bloem adapts on its own lines with a test. When a check cannot be fixed, Bloem cannot keep working without editing Silo's lines, or CI stays red, the bot stops for a maintainer and blocks the next batch.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="739" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How Bloem keeps up with Silo</text>
@@ -18,8 +18,8 @@
 <line x1="590" y1="216" x2="608" y2="216" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="612" y="156" width="260" height="120" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
 <text x="630" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">One thread per batch</text>
-<text x="630" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Its own T3 thread, which the</text>
-<text x="630" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">owner can watch and answer.</text>
+<text x="630" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Its own thread, which a</text>
+<text x="630" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">maintainer can watch and answer.</text>
 <line x1="876" y1="216" x2="894" y2="216" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="898" y="156" width="260" height="120" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
 <text x="916" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The merge</text>
@@ -67,8 +67,8 @@
 <line x1="603.0" y1="458" x2="603.0" y2="510" stroke="#EF4444" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
 <text x="613.0" y="490" font-size="12.5" font-weight="700" fill="#B91C1C" text-anchor="start">stays red</text>
 <rect x="460" y="514" width="700" height="166" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
-<text x="478" y="546" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Stops for the owner</text>
+<text x="478" y="546" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Stops for a maintainer</text>
 <text x="478" y="570" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">The bot stops and sends the stuck message; its thread says what failed, what it tried and</text>
-<text x="478" y="590" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">what it suggests. No new batch starts until the owner answers in that thread or releases</text>
+<text x="478" y="590" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">what it suggests. No new batch starts until a maintainer answers in that thread or releases</text>
 <text x="478" y="610" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">it. A change to Silo's lines is never the way out.</text>
 </svg>

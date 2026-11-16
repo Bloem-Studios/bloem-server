@@ -142,8 +142,8 @@ def own_domain_sign_in():
         s.text(cx + 22, 290, label.upper(), size=11.5, weight="700", fill=color["label"], spacing="0.8")
         para(s, cx + 22, 322, body, cw - 44, size=14.5, fill=INK, gap=21)
 
-    para(s, 40, 426, "An organization without a domain signs in at the server's public address. In production "
-         "there is one organization, the default one, and the server's public address is its primary domain.",
+    para(s, 40, 426, "An organization without a domain signs in at the server's public address. A server "
+         "with only the default organization can register its public address as its primary domain.",
          1120, size=14.5, fill=INK, gap=21)
 
     # OAuth.

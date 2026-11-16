@@ -23,13 +23,13 @@ def _line(s, x1, y1, x2, y2, color=LINE, dash=None):
 def daily_flow():
     s = Svg(1200, 740, "How Bloem keeps up with Silo",
             "A merge bot takes each batch of Silo's work. Silo's main has new commits; twice a day, at 04:00 and "
-            "16:00 Amsterdam time, a free check starts one batch, each in its own T3 thread the owner can watch and "
+            "16:00 Amsterdam time, a free check starts one batch, each in its own thread a maintainer can watch and "
             "answer; the merge takes Silo's side of every conflict. If Bloem still works, after the review list and "
             "the fast local checks, the merge is pushed to Bloem's main and the thread ends. The bot waits for Bloem "
             "CI to run the full suite on that exact commit and sends one message; the daily deploy at 10:00 ships "
             "the newest commit CI passed. If not, Bloem adapts on its own lines with a test. When a check cannot be "
-            "fixed, Bloem cannot keep working without editing Silo's lines, or CI stays red, the bot stops for the "
-            "owner and blocks the next batch.")
+            "fixed, Bloem cannot keep working without editing Silo's lines, or CI stays red, the bot stops for a "
+            "maintainer and blocks the next batch.")
     s.header("How Bloem keeps up with Silo",
              "A merge bot takes in each batch of Silo's work and checks that Bloem still works.")
     g, a, w, p, st = TIERS["grey"], TIERS["account"], TIERS["warn"], TIERS["plan"], TIERS["stop"]
@@ -38,7 +38,7 @@ def daily_flow():
     first = [
         (SILO, "Silo's main", "New commits. The batch is all of it, once 10 minutes quiet."),
         (g, "The check", "At 04:00 and 16:00, Amsterdam time. One batch at a time."),
-        (BLOEM, "One thread per batch", "Its own T3 thread, which the owner can watch and answer."),
+        (BLOEM, "One thread per batch", "Its own thread, which a maintainer can watch and answer."),
         (g, "The merge", "Silo wins every conflict, word for word."),
     ]
     x = 40
@@ -84,9 +84,9 @@ def daily_flow():
     for cx, label in ((centers[1], "stays red"),):
         s.arrow(cx, 458, cx, 510, color=st["stroke"], dash="6 5")
         s.text(cx + 10, 490, label, size=12.5, weight="700", fill=st["label"])
-    box(s, 460, 514, 700, 166, st, "Stops for the owner",
+    box(s, 460, 514, 700, 166, st, "Stops for a maintainer",
         "The bot stops and sends the stuck message; its thread says what failed, what it tried and what it "
-        "suggests. No new batch starts until the owner answers in that thread or releases it. A change to "
+        "suggests. No new batch starts until a maintainer answers in that thread or releases it. A change to "
         "Silo's lines is never the way out.", size=14.5)
     return s
 
@@ -98,7 +98,7 @@ def deploy():
             "check passes, so the batch is deployed and the bot writes the receipt and sends deployed; a check "
             "fails, so the previous image goes back on the server and both transcode nodes and the bot sends rolled "
             "back, whether or not migrations ran; or the server stops answering during the restart, so nothing "
-            "more is tried and the bot stops for the owner. The bot never restores the database.")
+            "more is tried and the bot stops for a maintainer. The bot never restores the database.")
     s.header("How a batch is deployed",
              "Only a commit Bloem CI passed. The image can go back by itself; the database never does.")
     g, a, w, p, st = TIERS["grey"], TIERS["account"], TIERS["warn"], TIERS["plan"], TIERS["stop"]
@@ -126,7 +126,7 @@ def deploy():
         (st, "A check fails", "The previous image goes back on the server and both transcode nodes, by itself, "
                               "migrations or not. The bot sends “rolled back” and stops."),
         (w, "The server stops answering", "During the restart the bot cannot reach it, so nothing more is "
-                                          "tried. The bot stops for the owner."),
+                                          "tried. The bot stops for a maintainer."),
     ]
     x = 40
     for c, t, b in outcomes:
@@ -135,7 +135,7 @@ def deploy():
 
     s.rect(40, 530, 1120, 86, INK, rx=14)
     s.text(64, 564, "The bot never restores the database.", size=17, weight="700", fill="#FFFFFF")
-    s.text(64, 592, "That would undo what people did since the restore point, so it is the owner's decision.",
+    s.text(64, 592, "That would undo what people did since the restore point, so a maintainer decides.",
            size=14.5, fill="#E5E7EB")
     return s
 

@@ -30,8 +30,8 @@
 <text x="822" y="322" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Signed in. An IP address or a home-network</text>
 <text x="822" y="343" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">name always works, so an administrator can</text>
 <text x="822" y="364" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">reach the server.</text>
-<text x="40" y="426" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">An organization without a domain signs in at the server's public address. In production there is one organization, the default one, and the server's</text>
-<text x="40" y="447" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">public address is its primary domain.</text>
+<text x="40" y="426" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">An organization without a domain signs in at the server's public address. A server with only the default organization can register its public address as</text>
+<text x="40" y="447" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">its primary domain.</text>
 <text x="40" y="494" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Signing in or out through the OAuth provider (Authentik)</text>
 <rect x="40" y="514" width="340" height="112" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
 <text x="58" y="546" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Start on a domain</text>
