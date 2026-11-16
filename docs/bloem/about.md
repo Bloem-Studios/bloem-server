@@ -94,7 +94,7 @@ merging it. Each removal is forward-only. [FORK.md](../../FORK.md#what-bloem-rem
 
 - **The Jellyfin and Audiobookshelf removal, undone.** Bloem removed both in October 2026, then went back to running
   Silo's servers as Silo ships them, because carrying the removal cost hundreds of changed files at every merge. They
-  run on their own ports. See [protocol compatibility](../architecture/bloem-compatibility-removal.md).
+  run on their own ports. See [protocol compatibility](../architecture/bloem-protocol-compatibility.md).
 - **Companion-application enrollment and the compatibility gateway.** Both went with the first removal and stayed out.
 - **Pastime managed tracking.** It needed private triggers and direct writes into Silo's tables. Pastime may return
   only as an ordinary plugin. See [Pastime removal](../architecture/bloem-pastime-removal.md).

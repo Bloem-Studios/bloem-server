@@ -1,29 +1,20 @@
-# How Bloem runs Silo's Jellyfin and Audiobookshelf servers
-
-The compatibility servers are Silo's; only the organization wiring and the persistence notes are Bloem's. The
-file name still says "removal" because Bloem first removed the protocols; today they are served. The technical rules
-are in the [For developers](#for-developers) section.
+# How protocol compatibility works
 
 Jellyfin apps and Audiobookshelf apps can use a Bloem server as if it were their own
-kind of server. This page walks through how Bloem took that ability out and brought
-Silo's version back, how a session from one of those apps stays inside its
-organization, and what is deliberately left out.
+kind of server. Bloem runs Silo's Jellyfin-compatible and Audiobookshelf-compatible
+servers exactly as Silo ships them, each on its own port. The only Bloem parts are the
+organization wiring and the persistence notes below. The technical rules are in the
+[For developers](#for-developers) section.
 
-## Removed, then restored
+## Each protocol has its own port
 
-![A timeline: Bloem's own version before 13 October 2026, both protocols removed on 13 October, Silo's servers back unchanged on 18 October; the gateway, companion-app enrollment and Live TV through Jellyfin stayed out](images/protocol-compatibility/removed-and-restored.svg)
+A **port** is a numbered door on the server. Jellyfin apps use 8096 and Audiobookshelf
+apps use 13378 (Silo's bootstrap variables `JF_PORT` and `ABS_PORT` move them). Neither
+protocol is served on the server's public address.
 
-1. **Before 13 October 2026** Bloem ran Silo's compatibility code with three
-   additions of its own: a **gateway** that served both protocols on the server's
-   public address, enrollment for companion apps, and Live TV through Jellyfin apps.
-2. **On 13 October** Bloem removed Jellyfin and Audiobookshelf compatibility. Silo's
-   data stayed in the database, but deleting Silo's code meant 852 changed Silo files,
-   and every daily merge fought them.
-3. **On 18 October** Bloem brought back Silo's own servers, exactly as Silo ships them.
-   Bloem's three additions stayed out.
-
-Today each protocol has its own **port**, a numbered door on the server: Jellyfin apps
-use 8096 and Audiobookshelf apps 13378. Neither is on the server's public address.
+Three things are not part of Bloem: a gateway that serves both protocols on the public
+address, enrollment for companion apps, and Live TV through Jellyfin apps. Bloem's Live
+TV is in the web app and Bloem's own apps ([How Live TV works](bloem-live-tv.md)).
 
 ## How a session stays inside its organization
 
@@ -69,16 +60,13 @@ to. Where the Bloem server builds Silo's compatibility servers, it adds four rul
 
 Bloem runs upstream Silo's Jellyfin-compatible server (`internal/jellycompat`) and
 Audiobookshelf-compatible server (`internal/audiobooks/abs`,
-`internal/audiobooks/abssocket`) as Silo ships them. Each binds its own configured
-port: `jellyfin_compat.listen` (default `:8096`) and, when
-`audiobookshelf_compat.enabled` is on (the default), `:13378`. Silo's bootstrap
-variables `JF_PORT` and `ABS_PORT` move them. Neither is served on the public port.
-
-Bloem removed both on 2026-10-13 and restored them on 2026-10-18, so that Silo's code
-merges without hundreds of deletion seams. Bloem's own additions from before the
-removal stay removed: the companion-application enrollment, the same-origin
-compatibility gateway on the public port, and Live TV through the Jellyfin surface. Do
-not restore them ([BLOEM_AGENTS.md](../../BLOEM_AGENTS.md#jellyfin-and-audiobookshelf-compatibility)).
+`internal/audiobooks/abssocket`) as Silo ships them, so Silo's code merges without
+Bloem-side deletions. Each binds its own configured port: `jellyfin_compat.listen`
+(default `:8096`) and, when `audiobookshelf_compat.enabled` is on (the default),
+`:13378`. Neither is served on the public port. Companion-application enrollment, a
+same-origin compatibility gateway on the public port and Live TV through the Jellyfin
+surface are not part of Bloem
+([BLOEM_AGENTS.md](../../BLOEM_AGENTS.md#jellyfin-and-audiobookshelf-compatibility)).
 
 ### Tenant integration
 
@@ -126,20 +114,14 @@ Organization domains don't apply on these ports: the Jellyfin address is server-
 
 ### Persistence
 
-Migration `20261013161500_remove_bloem_compatibility.sql` dropped only Bloem's own
-tables: application enrollment, credentials, audit and the Live TV compatibility
-streams. Silo's Jellyfin and Audiobookshelf tables, the author-count view and their
-settings were kept, so the restore needs no PostgreSQL migration. That migration's Down
-still refuses rollback.
-
-Bloem's earlier SQLite cleanups (shipped as user-store versions 32 and 34) dropped
-`jellycompat_displayprefs` and its settings. Bloem's SQLite repair step recreates the
-table; the deleted preferences do not return. See
-[SQLite user-store versions](bloem-upstream-adapters.md#sqlite-user-store-versions).
+Silo's Jellyfin and Audiobookshelf tables, the author-count view and their settings
+are part of Bloem's PostgreSQL schema as Silo defines them, and no Bloem migration
+changes them. Bloem's SQLite repair step recreates the `jellycompat_displayprefs`
+table. See [SQLite user-store versions](bloem-upstream-adapters.md#sqlite-user-store-versions).
 
 ### Upstream merges
 
-Take Silo's compatibility code as it is; there are no deletion seams to preserve.
+Take Silo's compatibility code as it is.
 When upstream changes how `main.go` builds either server, keep the tenant wiring above.
 `TestProductionViewerResolversUseBloemTenancy`
 (`cmd/silo/bloem_viewer_tenancy_wiring_test.go`) fails when a production

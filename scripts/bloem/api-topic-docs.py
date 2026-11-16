@@ -68,7 +68,7 @@ TOPICS = [
     ("apps", "Apps and clients", "bloem-apps.md",
      [("Bloem native client surface", "bloem-client-surface.md"),
       ("SDK compatibility and contract generation", "bloem-sdk-compatibility.md"),
-      ("Protocol compatibility", "bloem-compatibility-removal.md")],
+      ("Protocol compatibility", "bloem-protocol-compatibility.md")],
      [r"^/(capabilities|server|watch|sync|persons|catalog|profile-credentials)(/|$)"],
      "What Bloem's own apps read beyond Silo's API: capabilities, server identity, the composed Watch "
      "documents, progress sync, people, item collections and profile sign-in credentials."),
@@ -296,8 +296,7 @@ def render_index(spec, counts):
         "",
         "> **Generated** by `scripts/bloem/api-topic-docs.py` from",
         "> [`contracts/api/bloem/v2/openapi.json`](../../../contracts/api/bloem/v2/openapi.json); do not edit",
-        "> by hand. The routes Bloem once added to Silo's retired alpha v1 API, which now answer `410 Gone`,",
-        "> are recorded on the hand-written [retired v1 routes](v1-routes.md) page.",
+        "> by hand.",
         "",
         "Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's explainer pages. The",
         "[wire reference](../../bloem-api-reference.md) adds behavior that does not fit a schema, and the",
@@ -308,7 +307,6 @@ def render_index(spec, counts):
     ]
     for t in TOPICS:
         lines.append(f"| [{t[1]}]({t[0]}.md) | {counts[t[0]]} | [{t[2]}](../../architecture/{t[2]}) |")
-    lines.append("| [Retired v1 routes](v1-routes.md) | hand-written | |")
     lines += [
         "",
         "## Conventions",

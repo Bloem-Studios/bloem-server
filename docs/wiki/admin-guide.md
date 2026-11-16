@@ -1136,7 +1136,7 @@ or less, because of the address they used.
   administration API. Source publication alone does not configure hosts or enable the preview.
 - Requests carry the acting organization, and their administration is bounded by it.
 - Compatibility: Bloem wraps the Jellyfin and Audiobookshelf servers' access checks with its
-  organization scope; see [protocol compatibility](../architecture/bloem-compatibility-removal.md)
+  organization scope; see [protocol compatibility](../architecture/bloem-protocol-compatibility.md)
   for the tenant wiring and persistence boundary. Sign-in is `account#profile`, with `#PIN` after
   the password (`internal/jellycompat/login.go`, `internal/audiobooks/abs/login.go`).
 - Playback: a profile can report progress for and stop only its own playback; another profile's
@@ -1226,7 +1226,7 @@ Technical pages:
 - [How storage sources work](../architecture/bloem-storage-sources.md) and
   [native storage](../architecture/bloem-native-storage.md).
 - [How apps connect](../architecture/bloem-apps.md) and
-  [protocol compatibility](../architecture/bloem-compatibility-removal.md).
+  [protocol compatibility](../architecture/bloem-protocol-compatibility.md).
 - [Docker deployment](../bloem/overlays/wiki/deployment/docker.md), the deployment reference this
   guide summarises.
 - [FORK.md](../../FORK.md) and the [integration changelog](../bloem/CHANGELOG.md): what Bloem adds
@@ -1234,7 +1234,7 @@ Technical pages:
 
 ### Source references
 
-- `docs/architecture/bloem-compatibility-removal.md`, `docs/architecture/invitations-onboarding.md`,
+- `docs/architecture/bloem-protocol-compatibility.md`, `docs/architecture/invitations-onboarding.md`,
   `docs/architecture/notifications.md`, `docs/architecture/ai-provider-authentication.md`
 - `docs/livetv-tuner-discovery.md`, `docs/bloem/overlays/s3-storage-setup.md`
 - `web/src/lib/adminNavigation.ts`, `web/src/lib/bloemAdminNavigation.ts` and

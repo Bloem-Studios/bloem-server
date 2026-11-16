@@ -2,8 +2,7 @@
 
 > **Generated** by `scripts/bloem/api-topic-docs.py` from
 > [`contracts/api/bloem/v2/openapi.json`](../../../contracts/api/bloem/v2/openapi.json); do not edit
-> by hand. The routes Bloem once added to Silo's retired alpha v1 API, which now answer `410 Gone`,
-> are recorded on the hand-written [retired v1 routes](v1-routes.md) page.
+> by hand.
 
 Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's explainer pages. The
 [wire reference](../../bloem-api-reference.md) adds behavior that does not fit a schema, and the
@@ -18,7 +17,6 @@ Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's ex
 | [Messages and promotions](messages.md) | 30 | [bloem-messages-and-promotions.md](../../architecture/bloem-messages-and-promotions.md) |
 | [Apps and clients](apps.md) | 10 | [bloem-apps.md](../../architecture/bloem-apps.md) |
 | [Organizations and administration](organizations.md) | 114 | [bloem-organizations.md](../../architecture/bloem-organizations.md) |
-| [Retired v1 routes](v1-routes.md) | hand-written | |
 
 ## Conventions
 

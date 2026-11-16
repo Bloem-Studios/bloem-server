@@ -86,7 +86,7 @@ the capability route and the native `/api/bloem/v2/livetv` mount
 (`internal/api/router_livetv.go`, mounted from `internal/api/router_bloem_client.go`).
 Delivery requires the playback grant as well, and a browse-only preview scope clears both
 grants (see [browse-only content policy](bloem-browse-only-content-policy.md)). Bloem's Live
-TV on the Jellyfin surface was removed ([protocol compatibility](bloem-compatibility-removal.md)).
+TV on the Jellyfin surface was removed ([protocol compatibility](bloem-protocol-compatibility.md)).
 
 ### The permission
 
@@ -183,7 +183,7 @@ implemented.
 Native Live TV uses freshly resolved account/profile authority. Live TV is not served
 through Silo's Jellyfin-compatible server; Bloem's former compatibility streams and
 gateway are removed, and their former tests do not establish native coverage. See
-[protocol compatibility](bloem-compatibility-removal.md). Native delivery still requires
+[protocol compatibility](bloem-protocol-compatibility.md). Native delivery still requires
 both effective Live TV and playback permission, including after revocation.
 
 The web viewer consumes the native capability for its sidebar and guide/watch route

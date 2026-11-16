@@ -183,7 +183,7 @@ the identity fields silently absent.
 Silo's retained v1 health probe answers `server_name` and `server_id` from the Jellyfin compatibility
 configuration, as upstream does. Health fields are not a scope key; the native identity
 endpoint remains authoritative for that purpose. See
-[protocol compatibility](bloem-compatibility-removal.md).
+[protocol compatibility](bloem-protocol-compatibility.md).
 
 ### Progress sync
 

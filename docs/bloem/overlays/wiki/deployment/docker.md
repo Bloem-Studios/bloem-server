@@ -690,7 +690,7 @@ Silo's Jellyfin- and Audiobookshelf-compatible servers listen on ports of their 
 and only while `jellyfin_compat.enabled` or `audiobookshelf_compat.enabled` (both
 default on; changing either needs a restart) allows them. Bloem's companion
 enrollment is removed; see
-[protocol compatibility](../../../../architecture/bloem-compatibility-removal.md).
+[protocol compatibility](../../../../architecture/bloem-protocol-compatibility.md).
 
 ### Organization domains
 
@@ -1091,7 +1091,7 @@ Technical pages:
 - [How organizations work](../../../../architecture/bloem-organizations.md).
 - [Secret encryption at rest](../../../../architecture/secret-encryption.md).
 - [Silo backend switching](../../../../architecture/silo-backend-switching.md).
-- [Protocol compatibility](../../../../architecture/bloem-compatibility-removal.md).
+- [Protocol compatibility](../../../../architecture/bloem-protocol-compatibility.md).
 - [SQLite bridge preflight](../../../../architecture/sqlite-bridge-preflight.md).
 - [Policy-array migration](../../../../architecture/core-id-range.md#apply-and-rollback).
 - [Xtream upgrade and coverage](../../../../architecture/xtream-live-tv.md#upgrade-and-coverage).

@@ -86,7 +86,7 @@ column and must not be restarted against the migrated database.
 
 Bloem runs Silo's Jellyfin- and Audiobookshelf-compatible servers as Silo ships
 them, so the upstream coverage, including their session tokens and signing key,
-applies unchanged; see [protocol compatibility](../../../architecture/bloem-compatibility-removal.md).
+applies unchanged; see [protocol compatibility](../../../architecture/bloem-protocol-compatibility.md).
 Bloem also encrypts Xtream username/password envelopes with tuner/origin binding
 and no plaintext fallback (*Bloem Xtream credentials* above).
 

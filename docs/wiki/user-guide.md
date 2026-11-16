@@ -14,7 +14,7 @@ related:
   - admin-guide.md
   - ../architecture/bloem-apps.md
   - ../architecture/bloem-organization-domains.md
-  - ../architecture/bloem-compatibility-removal.md
+  - ../architecture/bloem-protocol-compatibility.md
   - ../../FORK.md
 ---
 
@@ -544,7 +544,7 @@ closely. Silo's labels stay, for example "Silo app or website" on the Connect Ap
 Technical pages:
 
 - [How apps connect](../architecture/bloem-apps.md) and
-  [protocol compatibility](../architecture/bloem-compatibility-removal.md): the Jellyfin and
+  [protocol compatibility](../architecture/bloem-protocol-compatibility.md): the Jellyfin and
   Audiobookshelf compatibility servers.
 - [Organization domains and branding](../architecture/bloem-organization-domains.md).
 - [How Live TV works](../architecture/bloem-live-tv.md).

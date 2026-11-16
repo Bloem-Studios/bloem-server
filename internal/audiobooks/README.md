@@ -129,7 +129,7 @@ removed, so those Silo files stay deleted.
 Bloem once removed both Silo compatibility servers, then restored Silo's versions so
 that Silo's code merges without deletion seams. Bloem's earlier additions, the companion credential enrollment and the
 same-origin compatibility gateway, stay removed. See
-[protocol compatibility](../../docs/architecture/bloem-compatibility-removal.md).
+[protocol compatibility](../../docs/architecture/bloem-protocol-compatibility.md).
 
 ### Related contracts
 
@@ -140,7 +140,7 @@ same-origin compatibility gateway, stay removed. See
   location identity. Metadata or provider support does not by itself make an item
   playable.
 - Before changing the persistence boundary of the Audiobookshelf stores, read
-  [protocol compatibility](../../docs/architecture/bloem-compatibility-removal.md) and
+  [protocol compatibility](../../docs/architecture/bloem-protocol-compatibility.md) and
   [Silo switching](../../docs/architecture/silo-backend-switching.md), which describes
   moving one database between Silo and Bloem images.
 - Silo's scope decision for books: [1.0 scope](../../docs/architecture/v1-scope.md#library-scope-books-deferred).
@@ -148,7 +148,7 @@ same-origin compatibility gateway, stay removed. See
 Technical pages:
 
 - [How apps connect](../../docs/architecture/bloem-apps.md).
-- [Protocol compatibility](../../docs/architecture/bloem-compatibility-removal.md).
+- [Protocol compatibility](../../docs/architecture/bloem-protocol-compatibility.md).
 - [How organizations work](../../docs/architecture/bloem-organizations.md).
 
 The picture is an SVG file under `docs/architecture/images/audiobooks/`, drawn by

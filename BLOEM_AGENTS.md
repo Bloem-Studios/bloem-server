@@ -24,7 +24,7 @@ Take upstream's code in merges.
 Bloem's tenant wiring lives in `cmd/silo/main.go`, `cmd/silo/bloem_compat.go` and the
 tenant-aware resolver in `cmd/silo/bloem_main.go`.
 Bloem's companion-application enrollment and compatibility gateway stay removed; do
-not restore them. See [protocol compatibility](docs/architecture/bloem-compatibility-removal.md).
+not restore them. See [protocol compatibility](docs/architecture/bloem-protocol-compatibility.md).
 
 ## Naming
 

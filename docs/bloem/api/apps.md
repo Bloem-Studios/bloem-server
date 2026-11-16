@@ -11,7 +11,7 @@ For the plain-language picture, read the [Apps and clients explainer](../../arch
 
 - [Bloem native client surface](../../architecture/bloem-client-surface.md)
 - [SDK compatibility and contract generation](../../architecture/bloem-sdk-compatibility.md)
-- [Protocol compatibility](../../architecture/bloem-compatibility-removal.md)
+- [Protocol compatibility](../../architecture/bloem-protocol-compatibility.md)
 
 ## Operations (10)
 

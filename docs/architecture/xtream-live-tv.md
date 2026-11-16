@@ -104,7 +104,7 @@ an attributed AGPL adaptation of Prairie Server; see
 (migration `20260919133349_bloem_xtream_sources.sql`), in Bloem-owned files
 (`internal/livetv/bloem_xtream_*.go`) plus the route `POST /tuners/xtream` in
 `internal/api/router_livetv.go`. Live TV is not delivered through the Jellyfin compatibility
-surface (see [protocol compatibility](bloem-compatibility-removal.md)).
+surface (see [protocol compatibility](bloem-protocol-compatibility.md)).
 Cross-replica lease behavior is summarized in
 [cluster media](bloem-cluster-media.md#xtream-physical-connections). An "Xtream"
 provider is an IPTV service that speaks the Xtream Codes `player_api.php` protocol.

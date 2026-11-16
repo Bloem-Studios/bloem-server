@@ -149,7 +149,7 @@ and their settings for Silo. Bloem now runs
 both servers again as Silo ships them, so whichever backend is serving reads and writes
 those tables. The Jellyfin setting `jellyfin_compat.server_id` (the server identity
 that Jellyfin clients recognise) also supplies `server_id` on `GET /api/v1/health` in
-both backends, as in Silo. See [protocol compatibility](bloem-compatibility-removal.md).
+both backends, as in Silo. See [protocol compatibility](bloem-protocol-compatibility.md).
 
 ### Operating rules
 

@@ -146,7 +146,7 @@ also end a session, with a reason.
   under Silo's retired v1 API.
 - [SDK compatibility and contract generation](bloem-sdk-compatibility.md): the
   generated Kotlin and Swift types.
-- [Protocol compatibility](bloem-compatibility-removal.md): Silo's Jellyfin and
+- [Protocol compatibility](bloem-protocol-compatibility.md): Silo's Jellyfin and
   Audiobookshelf servers in Bloem.
 - [Admin remote control](admin-remote-control.md) and the
   [LAN service advertisement](../specs/lan-service-advertisement.md).

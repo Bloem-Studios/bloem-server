@@ -216,7 +216,7 @@ and conditional replies still require fresh publication and viewer authority.
 ### Compatibility and limits
 
 Native content remains behind current host publication and playback authority.
-Silo's Jellyfin and Audiobookshelf servers run again (see [protocol compatibility](bloem-compatibility-removal.md)). Bloem
+Silo's Jellyfin and Audiobookshelf servers run again (see [protocol compatibility](bloem-protocol-compatibility.md)). Bloem
 hides native-storage files (catalog paths starting `bloem-storage:`) from the
 Jellyfin handlers that need an operating-system file name
 (`bloemGuardNativeStorageFiles` in `cmd/silo/bloem_compat.go`). No native-file

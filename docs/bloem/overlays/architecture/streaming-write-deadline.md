@@ -42,7 +42,7 @@ prevent response-controller traversal of the writer chain.
 
 Bloem's former same-origin Audiobookshelf gateway and its in-process dispatch
 marker were removed; the Audiobookshelf server runs only on its own port. See
-[protocol compatibility](../../../architecture/bloem-compatibility-removal.md).
+[protocol compatibility](../../../architecture/bloem-protocol-compatibility.md).
 
 Silo's exact-route compressor bypass (`skipNativeMediaCompression`, mounted with
 `httpstream.CompressWithExclusions` in `internal/api/router.go`) names only

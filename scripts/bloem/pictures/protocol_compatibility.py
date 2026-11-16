@@ -1,49 +1,8 @@
-"""Pictures for docs/architecture/bloem-compatibility-removal.md (protocol compatibility)."""
-from kit import INK, LINE, MUTED, SOFT, TIERS, Svg, box, footer, no_mark, para, yes_mark
+"""Pictures for docs/architecture/bloem-protocol-compatibility.md (protocol compatibility)."""
+from kit import INK, TIERS, Svg, box, footer, no_mark, para, yes_mark
 
 SILO = {"fill": "#F0F9FF", "stroke": "#0284C7", "label": "#075985"}
 BLOEM = {"fill": "#FFF4EC", "stroke": "#FA6400", "label": "#C2410C"}
-
-
-def removed_and_restored():
-    s = Svg(1200, 590, "Removed, then restored as Silo ships it",
-            "A timeline. Before 13 October 2026 Bloem ran Jellyfin and Audiobookshelf compatibility with additions "
-            "of its own: a gateway on the public port, companion-app enrollment and Live TV through Jellyfin. On 13 "
-            "October Bloem removed both protocols, which needed 852 seams. On 18 October it brought back Silo's own "
-            "servers, unchanged, on their own ports 8096 and 13378, and the seam list fell to 388. Bloem's own "
-            "additions stayed out.")
-    s.header("Removed, then restored as Silo ships it",
-             "Bloem now runs Silo's Jellyfin and Audiobookshelf servers unchanged, on their own ports.")
-    g, st, a = TIERS["grey"], TIERS["stop"], TIERS["account"]
-
-    # Timeline line.
-    s.add(f'<line x1="80" y1="170" x2="1120" y2="170" stroke="{LINE}" stroke-width="3"/>')
-    marks = [(200, "Before 13 October", g), (600, "13 October 2026", st), (1000, "18 October 2026", a)]
-    for x, label, c in marks:
-        s.add(f'<circle cx="{x}" cy="170" r="11" fill="{c["stroke"]}"/>')
-        s.text(x, 146, label, size=16, weight="700", anchor="middle")
-
-    box(s, 40, 204, 340, 180, g, "Bloem's own version",
-        "Silo's compatibility code, plus three Bloem additions: a gateway that served both protocols on the public "
-        "port, enrollment for companion apps, and Live TV through Jellyfin apps.", size=14.5)
-    box(s, 430, 204, 340, 180, st, "Both protocols removed",
-        "Bloem took out Jellyfin and Audiobookshelf compatibility. Silo's tables and settings stayed in the "
-        "database. Deleting Silo's code needed 852 seams, and every merge fought them.", size=14.5)
-    box(s, 820, 204, 340, 180, a, "Silo's servers back",
-        "Silo's own Jellyfin and Audiobookshelf servers, exactly as Silo ships them, each on its own port. Bloem "
-        "adds only the organization wiring. The seam list fell to 388.", size=14.5)
-    s.arrow(384, 294, 426, 294)
-    s.arrow(774, 294, 816, 294)
-
-    s.text(40, 436, "Stayed out after 18 October", size=17, weight="700")
-    x = 40
-    for t in ["The gateway on the public port", "Companion-app enrollment", "Live TV through Jellyfin apps"]:
-        no_mark(s, x + 12, 470, r=11)
-        s.text(x + 32, 475, t, size=15, fill=INK)
-        x += 370
-    footer(s, "Jellyfin apps use port 8096 and Audiobookshelf apps port 13378 (JF_PORT and ABS_PORT move them). "
-              "Neither is served on the public port.", y=546, fill=INK)
-    return s
 
 
 def organization_wiring():
@@ -94,4 +53,4 @@ def organization_wiring():
     return s
 
 
-PICTURES = [("removed-and-restored", removed_and_restored), ("organization-wiring", organization_wiring)]
+PICTURES = [("organization-wiring", organization_wiring)]

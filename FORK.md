@@ -241,7 +241,7 @@ merge cost. Each removal is forward-only; the linked pages record what stays in 
 
 | Removed | When | Why, and where it is recorded |
 | --- | --- | --- |
-| Companion-application enrollment and the same-origin compatibility gateway | October 13, 2026; not restored on October 18 | Removed with Bloem's first removal of Jellyfin and Audiobookshelf compatibility. When Bloem went back to running Silo's compatibility servers as Silo ships them, its own gateway stayed out. See [protocol compatibility](docs/architecture/bloem-compatibility-removal.md). |
+| Companion-application enrollment and the same-origin compatibility gateway | October 13, 2026; not restored on October 18 | Removed with Bloem's first removal of Jellyfin and Audiobookshelf compatibility. When Bloem went back to running Silo's compatibility servers as Silo ships them, its own gateway stayed out. See [protocol compatibility](docs/architecture/bloem-protocol-compatibility.md). |
 | Pastime managed tracking | October 14, 2026 | The bridge, broker and host hooks needed private triggers and writes into Silo tables. Pastime may return only as an ordinary plugin. See [Pastime removal](docs/architecture/bloem-pastime-removal.md). |
 | Header-authenticated media deployment gate | October 9, 2026 | Bloem negotiates header-authenticated media whenever a client asks, as Silo does. |
 | Membership-owned account policy and its rollout phases | October 26, 2026 | Policy is back on `users`, where Silo keeps it. See the [changelog](docs/bloem/CHANGELOG.md#october-26-2026--account-policy-back-on-users). |

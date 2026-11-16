@@ -361,7 +361,7 @@ Each was checked against the code when it was written down.
 - Silo's Jellyfin and Audiobookshelf compatibility servers run on their own ports
   (removed by Bloem on October 13, restored on October 18);
   Bloem's companion applications and compatibility gateway stay removed. See
-  [protocol compatibility](../architecture/bloem-compatibility-removal.md).
+  [protocol compatibility](../architecture/bloem-protocol-compatibility.md).
 - Pastime managed tracking is removed (migration
   `20261013231500_remove_pastime_managed_tracking`). Do not restore its
   API/setup guidance; any future ordinary plugin integration has its own

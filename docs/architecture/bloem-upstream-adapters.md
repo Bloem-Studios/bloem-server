@@ -576,7 +576,7 @@ callers; Bloem's own callers that fail closed use `BloemOnUserSessionsRevoked`
 (`internal/api/bloem_dependencies.go`). Jellyfin-compatible sessions follow Silo's
 account-wide revocation, and `bloemProfileSessionRevoker` in
 `cmd/silo/bloem_compat.go` ends those bound to profiles an organization removes (see
-[protocol compatibility](bloem-compatibility-removal.md)).
+[protocol compatibility](bloem-protocol-compatibility.md)).
 
 Both invitation acceptance paths preserve the organization stored on the invitation.
 Link invitations can receive an email at acceptance; supersession of another
@@ -745,7 +745,7 @@ says what changed.
 
 Native audiobook scanning and direct playback remain in the host. Silo's
 Audiobookshelf-compatible server runs beside them on its own port, as described in
-[protocol compatibility](bloem-compatibility-removal.md); it is not an extension point
+[protocol compatibility](bloem-protocol-compatibility.md); it is not an extension point
 for new providers. Current native publication and playback invariants are in
 [bloem-native-audio-playback.md](bloem-native-audio-playback.md).
 
@@ -773,7 +773,7 @@ library membership is reprocessed in full) and adds the local-repair outcome;
   still serve.
 - [Organization domains and branding](bloem-organization-domains.md): the domain
   adapters in full.
-- [Protocol compatibility](bloem-compatibility-removal.md): the Jellyfin and
+- [Protocol compatibility](bloem-protocol-compatibility.md): the Jellyfin and
   Audiobookshelf wiring.
 
 The pictures are SVG files under `images/upstream-adapters/`, drawn by

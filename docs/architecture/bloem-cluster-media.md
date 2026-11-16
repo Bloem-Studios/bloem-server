@@ -112,7 +112,7 @@ compatibility surface are removed. Silo's Jellyfin server itself is served again
 as Silo's unchanged code, which has no Live TV routes. Native
 session ownership remains the authority for retained Live TV routes; historical
 protocol tables do not provide an alternate content path. See
-[protocol compatibility](bloem-compatibility-removal.md).
+[protocol compatibility](bloem-protocol-compatibility.md).
 
 Apply the cluster-route migration before deploying the new binary. Sessions
 opened by an older binary have no process owner and retain local-only routing;
