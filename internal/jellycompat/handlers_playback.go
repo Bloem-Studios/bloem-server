@@ -2011,8 +2011,8 @@ func (h *PlaybackHandler) startRemoteTranscodeWithToneMapMode(
 		if err := nodeauth.SignTranscode(httpReq, transcodeNodeURL, h.NodeKeys); err != nil {
 			return transcodenode.TranscodeStartResponse{}, 0, false, fmt.Errorf("sign transcode request: %w", err)
 		}
-		if err := playback.SealContextWorkerStart(requestCtx, transcodeNodeURL, body); err != nil {
-			return transcodenode.TranscodeStartResponse{}, 0, false, fmt.Errorf("seal worker start: %w", err)
+		if err := playback.RefuseContextRemoteStart(requestCtx, body); err != nil {
+			return transcodenode.TranscodeStartResponse{}, 0, false, fmt.Errorf("remote transcode start: %w", err)
 		}
 		resp, err := telemetry.DoTrustedNode(transcodeproxy.NodeClient(), httpReq, "transcode_start")
 		if err != nil {

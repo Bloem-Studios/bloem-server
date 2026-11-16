@@ -188,7 +188,7 @@ STEPS = [
         "native-video-redis",
         "SILO_TEST_DATABASE_URL=" + _pg("bloem_regress_test")
         + " SILO_TEST_REDIS_URL=@REDIS@ SILO_TEST_REDIS_DISPOSABLE_ADDR=@REDIS_ADDR@ go test -race -count=1"
-        " -run '^(TestNativeVideoWorker.*|TestNativeVideoBindingSurvivesRedisRoundTrip|TestRedisCoverCacheRoundTrip)$'"
+        " -run '^(TestNativeVideo(Remote|NodeOnly|LocalStop|StopHistory).*|TestNativeVideoBindingSurvivesRedisRoundTrip|TestRedisCoverCacheRoundTrip)$'"
         " ./internal/api/handlers/ ./internal/nativestorage/",
         _needs("pg", "redis"),
     ),

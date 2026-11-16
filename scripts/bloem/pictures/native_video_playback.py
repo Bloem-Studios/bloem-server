@@ -5,14 +5,14 @@ SOURCE = {"fill": "#F5F3FF", "stroke": "#8B5CF6", "label": "#6D28D9"}
 
 
 def routes():
-    s = Svg(1200, 700, "Four ways a stored movie plays",
+    s = Svg(1200, 700, "Three ways a stored movie plays",
             "On the left, the storage source and its plugin. In the middle, the API server reads the movie in "
-            "checked one-mebibyte blocks and plays it by direct play, by repackaging it as MP4, or as HLS segments; "
-            "a worker can also make the HLS segments with its own copy of the plugin, and they reach the app "
-            "through the API server. On the right, the app gets ordinary playback addresses. Bytes leave only "
-            "while the latest access check is less than a second old.")
-    s.header("Four ways a stored movie plays",
-             "Every route reads the same pinned revision, and every route keeps checking the viewer.")
+            "checked one-mebibyte blocks and plays it by direct play, by repackaging it as MP4, or as HLS segments. "
+            "Below, the transcoding nodes, crossed out: they read only files the API server grants them by path, "
+            "so a stored movie never goes there. On the right, the app gets ordinary playback addresses. Bytes "
+            "leave only while the latest access check is less than a second old.")
+    s.header("Three ways a stored movie plays",
+             "All on the API server: every route reads the same pinned revision and keeps checking the viewer.")
     o, a, pl, p, g = TIERS["org"], TIERS["account"], TIERS["plan"], TIERS["platform"], TIERS["grey"]
 
     # Storage on the left.
@@ -39,12 +39,10 @@ def routes():
         s.text(404, y + 49, b, size=13.5, fill=MUTED)
         s.arrow(830, y + 31, 896, y + 31)
 
-    # Worker below.
-    box(s, 330, 540, 520, 112, g, "4. HLS on a worker", "Runs its own copy of the plugin and keeps checking "
-        "the viewer. Its segments go to the app through the API server.", size=14.5)
-    s.path("M 155 294 L 155 604 L 326 604")
-    s.path("M 590 536 L 590 512")
-    s.text(604, 528, "relayed", size=13, fill=SOFT)
+    # Transcoding nodes below, not used.
+    box(s, 330, 540, 520, 112, g, "Transcoding nodes: not used", "They read only files the API server grants "
+        "them by path. A stored movie is not one, so its HLS stays on the API server.", size=14.5)
+    no_mark(s, 820, 566, r=12)
 
     # The app on the right.
     box(s, 900, 254, 260, 222, a, "The app", "Gets Silo's usual playback plan with ordinary addresses on "
@@ -52,7 +50,7 @@ def routes():
 
     s.rect(900, 500, 260, 168, "#FFFFFF", "#E5E7EB", rx=14)
     s.text(920, 530, "Not yet", size=16, weight="700")
-    for i, t in enumerate(["Jellyfin apps", "Downloads", "Series from storage"]):
+    for i, t in enumerate(["Transcoding nodes", "Series from storage", "Switching files mid-play"]):
         y = 564 + i * 28
         no_mark(s, 932, y - 5, r=10)
         s.text(952, y, t, size=14.5, fill=INK)

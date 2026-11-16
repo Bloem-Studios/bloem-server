@@ -3545,7 +3545,7 @@ func (h *PlaybackHandler) putNodeRecipeV3(ctx context.Context, transportID strin
 }
 
 // putRequiredNodeRecipeV3 persists the active authority for a progressive
-// remux or native HLS executed by a transcode node. Unlike the reconstruction-only write
+// remux executed by a transcode node. Unlike the reconstruction-only write
 // above, this one is part of route admission: the node checks the record before
 // every new remux request, and stop deletes it, so a still-valid stream token
 // cannot resurrect FFmpeg after a node replacement.
@@ -3563,15 +3563,7 @@ func (h *PlaybackHandler) putRequiredNodeRecipeV3(ctx context.Context, transport
 // store's TTL is only the backstop for the paths that never run (a crashed API
 // process); every deliberate teardown deletes here.
 func (h *PlaybackHandler) deleteNodeRecipeV3(ctx context.Context, transportID string) {
-	if h == nil || transportID == "" {
-		return
-	}
-	if h.NativeVideo != nil && h.NativeVideo.WorkerGrants.Enabled() {
-		if err := h.NativeVideo.WorkerGrants.RevokeTransport(context.WithoutCancel(ctx), transportID); err != nil {
-			slog.WarnContext(ctx, "failed to revoke native video transport", "component", "api", "transport", transportID, "error", err)
-		}
-	}
-	if h.NodeRecipeStore == nil {
+	if h == nil || h.NodeRecipeStore == nil || transportID == "" {
 		return
 	}
 	if err := h.NodeRecipeStore.Delete(context.WithoutCancel(ctx), transportID); err != nil {
@@ -4673,23 +4665,6 @@ func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla
 		req.ToneMapDVBLPresent = sourceMetadata.ToneMapDVBLPresent
 		req.ToneMapDVRPUPresent = sourceMetadata.ToneMapDVRPUPresent
 	}
-	nativeGrant := NativeVideoSupported(file)
-	retainNativeGrant := false
-	if nativeGrant {
-		if h.NativeVideo == nil || h.NativeVideo.WorkerGrants == nil {
-			return preparedTransportV3{}, &transportErrorV3{reason: "source_unavailable", message: "Native worker source authority is unavailable."}
-		}
-		routeSession := *session
-		routeSession.MediaFileID = file.ID
-		if err := h.NativeVideo.WorkerGrants.Prepare(r.Context(), node.ID, h.NativeVideo, &routeSession, req); err != nil {
-			return preparedTransportV3{}, &transportErrorV3{reason: "source_unavailable", message: "Native worker source authority is unavailable.", cause: err}
-		}
-		defer func() {
-			if !retainNativeGrant {
-				h.deleteNodeRecipeV3(r.Context(), transportID)
-			}
-		}()
-	}
 	remoteStartAt := time.Now()
 	nodeResp, status, err := h.startRemotePlaybackTransport(r.Context(), node.URL, req)
 	remoteOutcome := transportStartupReadyV3
@@ -4772,20 +4747,6 @@ func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla
 		card.RoutingEgress = string(noderouting.EgressProxy)
 		card.RoutingEgressNodeID = nodePlan.ProxyNode.ID
 	}
-	if nativeGrant {
-		if err := h.NativeVideo.WorkerGrants.Accept(r.Context(), node.ID, transportID, card); err != nil {
-			h.tm.StopRemoteTranscode(transportID, node.URL)
-			return preparedTransportV3{}, &transportErrorV3{reason: "source_unavailable", message: "Native worker source authority could not be accepted.", cause: err}
-		}
-	}
-	if nativeGrant && mode.headerAuth {
-		// Every native worker GET needs this accepted serving recipe, including
-		// the first manifest. Persist it before publishing any proxy authority.
-		if err := h.putRequiredNodeRecipeV3(r.Context(), transportID, card); err != nil {
-			h.tm.StopRemoteTranscode(transportID, node.URL)
-			return preparedTransportV3{}, &transportErrorV3{reason: "source_unavailable", message: "Native worker serving authority could not be persisted.", cause: err}
-		}
-	}
 	confirmedHWAccel := card.EffectiveEncoderHWAccel()
 	url := fmt.Sprintf("/playback/transcode/%s/master.m3u8", session.ID)
 	// Either URL builder only returns an absolute proxy URL when a proxy was
@@ -4804,7 +4765,7 @@ func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla
 	case mode.proxyEgress:
 		url, servedByProxy, priorGrant = h.grantManifestURLV3(r.Context(), card, nodePlan.ProxyNode, accessPath)
 	}
-	if mode.headerAuth && !nativeGrant {
+	if mode.headerAuth {
 		// No client-visible URL carries a stream token in this mode, so neither the
 		// client nor the API relay can hand the node its recipe back after the node
 		// restarts. Store it for the node to fetch. Both sub-modes need it: the
@@ -4885,7 +4846,6 @@ func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla
 	if mode.headerAuth {
 		sessionRecipe = sessionRecipeCardV3(card, session, result.AdaptationReasons)
 	}
-	retainNativeGrant = true
 	nativeLockHeld = false // The prepared transport now owns commit/rollback unlock.
 	return preparedTransportV3{sessionRecipe: sessionRecipe, url: url, nodeURL: node.URL, transportID: transportID, hwAccel: confirmedHWAccel, toneMapMode: confirmedToneMapMode,
 		routingWorkload: routingWorkloadV3(result), routingExecution: noderouting.ExecutionTranscode, routingExecutorID: node.ID, routingExecutorURL: node.URL,

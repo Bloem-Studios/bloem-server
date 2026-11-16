@@ -2645,9 +2645,9 @@ No production backend is certified by these flags.
 
 `native_video_playback` reports native API video composition.
 `native_movie_libraries` additionally requires the configured native movie
-scanner and library attachment readiness. `native_video_remote_execution`
-reports shared HLS worker grants and serving-recipe composition; each worker
-still needs its own approved runtime and retained provider identity.
+scanner and library attachment readiness. `native_video_remote_execution` is
+always false: native video runs only on the API servers, because a transcode node
+reads its sources only through a core source grant, which names a file path.
 `native_video_downloads` follows `native_video_playback`: native videos download
 as the original file and as copies converted for offline use.
 `native_video_jellyfin` remains false.

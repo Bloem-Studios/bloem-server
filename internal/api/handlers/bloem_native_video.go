@@ -92,7 +92,6 @@ type NativeVideoService struct {
 	// current request's source and credential policy on locally served reads.
 	AuthorizeBound func(context.Context, NativeVideoBinding) error
 	Bindings       NativeVideoBindings
-	WorkerGrants   *NativeVideoWorkerGrantStore
 	Sessions       SessionManagerInterface
 	Deny           *playback.StreamDeny
 	// Sidecars lists the subtitle sidecars of native files as their external
@@ -100,10 +99,6 @@ type NativeVideoService struct {
 	// authority, rechecked as the bound video's around every provider read.
 	Sidecars    NativeSidecarStore
 	OpenSidecar func(context.Context, *models.MediaFile, NativeVideoBinding, storagesource.PersistedRef) (NativeVideoFile, error)
-
-	// WorkerReadiness remembers which workers can read native storage; nil
-	// sends native HLS to no worker.
-	WorkerReadiness *NativeVideoWorkerReadiness
 
 	// Downloads serves native videos as original downloads; nil serves none.
 	Downloads *NativeVideoDownloads
@@ -299,7 +294,7 @@ func (s *NativeVideoService) openBound(ctx context.Context, session *playback.Se
 	}
 	if !delegated && s.AuthorizeBound != nil {
 		lifetime, cancel := context.WithCancel(opened.Context())
-		guard := &nativeVideoWorkerFile{NativeVideoFile: opened, ctx: lifetime, cancel: cancel, check: func(check context.Context) error {
+		guard := &nativeVideoGuardedFile{NativeVideoFile: opened, ctx: lifetime, cancel: cancel, check: func(check context.Context) error {
 			return s.AuthorizeBound(check, expected)
 		}}
 		guard.watchCancellation()

@@ -4187,7 +4187,6 @@ func main() {
 			// are shared with the native API. Nil when rate limiting is off.
 			RateLimit: deps.RateLimitMW,
 		}
-		compatDeps.RecipeNodeStore = bloemCompatNativeRecipes(compatDeps.RecipeNodeStore, deps.NativeVideoCompat)
 
 		// Wire direct dependencies when DB is available.
 		if deps.DB != nil {

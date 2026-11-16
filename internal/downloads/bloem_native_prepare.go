@@ -2,14 +2,12 @@ package downloads
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"sync/atomic"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/downloadprepare"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
@@ -26,9 +24,9 @@ type NativePreparation interface {
 	// BeginPreparation authorizes one preparation attempt (attemptID) of the
 	// artifact artifactID of file for requester, a download waiting for it.
 	// The returned context carries the source as a context-scoped media input
-	// (playback.WithContextMediaHost) and the means to grant a worker that
-	// one attempt (playback.SealContextWorkerStart). end withdraws the
-	// attempt's authority; call it once the attempt has finished.
+	// (playback.WithContextMediaHost); the attempt runs on this server. end
+	// withdraws the attempt's authority; call it once the attempt has
+	// finished.
 	BeginPreparation(ctx context.Context, artifactID, attemptID string, requester *Download, file *models.MediaFile) (prepared context.Context, end func(), err error)
 }
 
@@ -52,7 +50,6 @@ type nativePreparationBox struct{ NativePreparation }
 // resolver for native inputs (see SetNativePreparation). Until a preparation
 // is installed both behave exactly as given.
 func bloemNativeArtifacts(preparer EncodePreparer, files FileResolver) (EncodePreparer, FileResolver) { //nolint:iface // the manager keeps Silo's FileResolver field
-	preparer = bloemSealNativeWorkerStarts(preparer)
 	if files == nil {
 		return preparer, nil
 	}
@@ -120,7 +117,7 @@ func (m *ArtifactManager) bloemPrepareFile(ctx context.Context, attemptID string
 			refusals = errors.Join(refusals, err)
 			continue
 		}
-		result, err := m.preparer.PrepareFile(prepared, attemptID, opts, a.OutputPath)
+		result, err := m.prepareNativeHere(prepared, attemptID, opts, a.OutputPath)
 		end()
 		return result, err
 	}
@@ -167,56 +164,14 @@ func (r *Repository) bloemPreparingDownloads(ctx context.Context, artifactID str
 	return scanDownloads(rows)
 }
 
-// bloemSealNativeWorkerStarts lets a pooled preparer send a native
-// preparation to a worker: before the request is sent, the preparation's
-// context grants that worker exactly this request. A worker that cannot read
-// native storage is refused before anything is sent, so the preparer falls
-// back to preparing on this server. Other preparers are returned unchanged.
-func bloemSealNativeWorkerStarts(preparer EncodePreparer) EncodePreparer {
-	pooled, ok := preparer.(*NodeAwarePreparer)
-	if !ok || pooled.remote == nil {
-		return preparer
+// prepareNativeHere prepares a native input on this server. A pooled
+// preparer would send it to a transcode node, which reads its sources only
+// through a core source grant naming a file path; a native input is not one.
+// The pooled preparer's local path still applies its local fallback setting
+// and storage gate.
+func (m *ArtifactManager) prepareNativeHere(ctx context.Context, attemptID string, opts playback.TranscodeOpts, outputPath string) (PreparedArtifact, error) {
+	if pooled, ok := m.preparer.(*NodeAwarePreparer); ok {
+		return pooled.prepareLocally(ctx, attemptID, opts, outputPath)
 	}
-	switch pooled.remote.(type) {
-	case nativeSealingRemote, nativeSealingProgressRemote:
-		return preparer
-	}
-	sealing := nativeSealingRemote{pooled.remote}
-	if progress, ok := pooled.remote.(remoteProgressReader); ok {
-		pooled.remote = nativeSealingProgressRemote{sealing, progress}
-	} else {
-		pooled.remote = sealing
-	}
-	return preparer
-}
-
-type nativeSealingRemote struct {
-	downloadprepare.RemotePreparer
-}
-
-// nativeSealingProgressRemote keeps a remote's progress reports visible
-// through the sealing wrapper.
-type nativeSealingProgressRemote struct {
-	nativeSealingRemote
-	progress remoteProgressReader
-}
-
-func (r nativeSealingProgressRemote) Progress(ctx context.Context, nodeURL, jwtSecret, artifactID string) (downloadprepare.Progress, error) {
-	return r.progress.Progress(ctx, nodeURL, jwtSecret, artifactID)
-}
-
-func (r nativeSealingRemote) Prepare(ctx context.Context, nodeURL, jwtSecret string, req downloadprepare.Request) (downloadprepare.Result, error) {
-	if storagesource.IsNativeLocation(req.InputPath) {
-		if !playback.HasContextMediaHost(ctx) {
-			return downloadprepare.Result{}, errNativePreparationRefused
-		}
-		start, err := json.Marshal(req)
-		if err != nil {
-			return downloadprepare.Result{}, err
-		}
-		if err := playback.SealContextWorkerStart(ctx, nodeURL, start); err != nil {
-			return downloadprepare.Result{}, fmt.Errorf("worker cannot prepare a native source: %w", err)
-		}
-	}
-	return r.RemotePreparer.Prepare(ctx, nodeURL, jwtSecret, req)
+	return m.preparer.PrepareFile(ctx, attemptID, opts, outputPath)
 }

@@ -110,7 +110,7 @@ func nativeVideoFakeRedis(t *testing.T) *redis.Client {
 func TestNativeVideoBindingSurvivesRedisRoundTrip(t *testing.T) {
 	clients := map[string]func(*testing.T) *redis.Client{"fake": nativeVideoFakeRedis}
 	if os.Getenv("SILO_TEST_REDIS_URL") != "" {
-		clients["redis"] = nativeVideoGrantRedis
+		clients["redis"] = nativeVideoRedis
 	}
 	for name, client := range clients {
 		t.Run(name, func(t *testing.T) {

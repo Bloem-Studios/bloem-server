@@ -19,7 +19,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
-	"github.com/Silo-Server/silo-server/internal/transcodenode"
 )
 
 const preparationAttempt = "artifact-1-6f1b7a64-3a60-4f0c-9c1a-3d8e0f5b2c11"
@@ -116,47 +115,10 @@ func TestNativeVideoPreparationRefusesOtherAttempts(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer end()
-	other, _ := json.Marshal(downloadprepare.Request{ArtifactID: "artifact-9-6f1b7a64-3a60-4f0c-9c1a-3d8e0f5b2c11", InputPath: file.FilePath})
-	if err := playback.SealContextWorkerStart(ctx, "http://worker", other); !errors.Is(err, storagesource.ErrReferenceConflict) {
-		t.Fatalf("sealed another attempt: %v", err)
-	}
+	// The attempt prepares on the API server: a pooled preparer that would
+	// send it to a transcode node is refused by the preparation's host.
 	own, _ := json.Marshal(downloadprepare.Request{ArtifactID: preparationAttempt, InputPath: file.FilePath})
-	if err := playback.SealContextWorkerStart(ctx, "http://worker", own); err == nil {
-		t.Fatal("sealed a worker grant without a grant store")
-	}
-}
-
-// A worker grant for a download preparation admits only the exact request
-// the API sealed it for.
-func TestNativeVideoWorkerPreparationRequiresExactRequest(t *testing.T) {
-	client := nativeVideoGrantRedis(t)
-	s, session, start, _ := nativeVideoGrantFixture(t, client)
-	store := NewNativeVideoWorkerGrantStore(client)
-	transport := session.ID
-	request := downloadprepare.Request{ArtifactID: "artifact-1-" + transport, InputPath: start.InputPath, TargetCodecVideo: "h264", TargetCodecAudio: "aac", TargetBitrateKbps: 3000, AudioTrackIndex: -1}
-	if err := store.PrepareDownload(t.Context(), 7, s, session, transport, request); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = store.RevokeTransport(context.Background(), transport) })
-	candidate := transcodenode.NativeExecutionRequest{WorkerID: 7, TransportID: transport, InputPath: request.InputPath, Prepare: &request}
-	if grant, err := store.Resolve(t.Context(), candidate, s); err != nil || grant.TransportID != transport {
-		t.Fatalf("sealed preparation refused: %v", err)
-	}
-	changed := request
-	changed.TargetBitrateKbps = 20000
-	for _, other := range []transcodenode.NativeExecutionRequest{
-		{WorkerID: 7, TransportID: transport, InputPath: request.InputPath, Prepare: &changed},
-		{WorkerID: 8, TransportID: transport, InputPath: request.InputPath, Prepare: &request},
-		{WorkerID: 7, TransportID: transport, InputPath: request.InputPath},
-	} {
-		if _, err := store.Resolve(t.Context(), other, s); err == nil {
-			t.Fatalf("grant admitted %+v", other)
-		}
-	}
-	if err := store.RevokeTransport(t.Context(), transport); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := store.Resolve(t.Context(), candidate, s); err == nil {
-		t.Fatal("revoked preparation grant admitted")
+	if err := playback.RefuseContextRemoteStart(ctx, own); !errors.Is(err, playback.ErrContextInputStaysLocal) {
+		t.Fatalf("remote preparation = %v, want it kept on the API server", err)
 	}
 }

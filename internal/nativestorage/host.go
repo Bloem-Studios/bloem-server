@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
+	"github.com/Silo-Server/silo-server/internal/nativeredact"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
@@ -112,6 +113,8 @@ func NewHost(pool *pgxpool.Pool, cipher *secret.Cipher, installRoot, approvalPat
 	}
 	h := &Host{Registry: registry, Manager: storageplugin.NewManager(storageplugin.Config{})}
 	h.covers.slots = make(chan struct{}, maxConcurrentCovers)
+	// The scanner's probes and playback hand FFmpeg tool input arguments.
+	nativeredact.Register()
 	return h, nil
 }
 

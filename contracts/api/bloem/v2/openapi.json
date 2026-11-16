@@ -3715,7 +3715,7 @@
             "type": "boolean"
           },
           "native_video_remote_execution": {
-            "description": "Shared worker grants and header-auth serving recipes are composed for remote HLS; the selected worker still needs its own approved runtime and retained provider identity.",
+            "description": "Always false: native video runs only on the API servers, because a transcode node reads its sources only through a core source grant, which names a file path.",
             "type": "boolean"
           },
           "retained_namespace_reinstall": {

@@ -2,6 +2,7 @@ package playback
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -276,27 +277,32 @@ func contextTranscodeInput(ctx context.Context, opts TranscodeOpts) (TranscodeOp
 	return opts, nil
 }
 
-// ContextWorkerStartSealer is an optional ContextMediaHost capability: it
-// gives a transcode worker the authority to read a context-scoped input
-// before the start request (its exact JSON body) is sent to nodeURL.
-type ContextWorkerStartSealer interface {
-	SealWorkerStart(ctx context.Context, nodeURL string, start []byte) error
-}
+// ErrContextInputStaysLocal refuses to send a context-scoped input to a
+// transcode node. A node reads its sources only through a core source grant,
+// which names a file path; a context-scoped input is not one, so it runs on
+// this server.
+var ErrContextInputStaysLocal = errors.New("this source plays only on the API server")
 
-// SealContextWorkerStart is the remote transcode start's hook: within a
-// request whose host can seal worker starts, it does so before the start is
-// sent. Elsewhere it does nothing, and a worker refuses an input it has no
-// authority for.
-func SealContextWorkerStart(ctx context.Context, nodeURL string, start []byte) error {
+// RefuseContextRemoteStart is the remote start's hook, called with the start
+// request's exact JSON body (a transcode start or a download preparation,
+// both naming their input as input_path). Within a request whose host handles
+// that input it returns ErrContextInputStaysLocal, so the caller moves on to
+// another candidate or to this server. Elsewhere it does nothing.
+func RefuseContextRemoteStart(ctx context.Context, start []byte) error {
 	media, _ := ctx.Value(contextMediaKey{}).(*contextMedia)
 	if media == nil {
 		return nil
 	}
-	sealer, ok := media.host.(ContextWorkerStartSealer)
-	if !ok {
-		return nil
+	var request struct {
+		InputPath string `json:"input_path"`
 	}
-	return sealer.SealWorkerStart(ctx, nodeURL, start)
+	if err := json.Unmarshal(start, &request); err != nil {
+		return ErrContextInputStaysLocal
+	}
+	if media.host.Handles(request.InputPath) {
+		return ErrContextInputStaysLocal
+	}
+	return nil
 }
 
 // ContextMediaStatus maps a host error to a response status. A host error

@@ -108,7 +108,7 @@ func (h *StreamHandler) serveNativeVideoRemux(w http.ResponseWriter, r *http.Req
 	return playback.ServeSourceRemux(w, r, playback.TranscodeOpts{InputPath: file.FilePath, InputSource: source, InputFormat: format, SessionID: session.ID, FFmpegPath: h.ffmpegPath(), AudioTrackIndex: session.AudioTrackIndex, SeekSeconds: seek}, "mp4", session.TranscodeAudio, file.PrimaryDVProfile(), playback.RemuxServeOptions{DVMode: session.RemuxDVMode, FFmpegPath: h.ffmpegPath(), DropResumeLeadingPictures: session.RemuxResumeLeadingPictureDrop, ContentType: playback.RemuxContentType(false), AudioOnly: false, Abort: abort, SourceAudioChannels: session.SourceAudioChannels, TargetAudioChannels: session.TargetAudioChannels, TargetAudioBitrateKbps: session.TargetAudioBitrateKbps, CopyAudioCodec: session.TargetAudioCodec})
 }
 
-// A native worker stop must revoke shared authority before the session can
+// A native stop must revoke the session's source binding before the session can
 // disappear; recovery deliberately permits an absent in-memory session.
 func (h *PlaybackHandler) revokeRequiredNativeVideoAuthority(ctx context.Context, session *playback.Session) error {
 	if h == nil || h.NativeVideo == nil || session == nil {
@@ -139,16 +139,7 @@ func (h *PlaybackHandler) revokeRequiredNativeVideoAuthority(ctx context.Context
 	if h.NativeVideo.Bindings == nil {
 		return nativeVideoUnavailable()
 	}
-	if err := h.NativeVideo.Bindings.RevokeSession(revokeCtx, session.ID); err != nil {
-		return err
-	}
-	if session.TranscodeTransportID == "" {
-		return nil
-	}
-	if !h.NativeVideo.WorkerGrants.Enabled() {
-		return nativeVideoUnavailable()
-	}
-	return h.NativeVideo.WorkerGrants.RevokeTransport(revokeCtx, session.TranscodeTransportID)
+	return h.NativeVideo.Bindings.RevokeSession(revokeCtx, session.ID)
 }
 
 func (h *PlaybackHandler) prepareNativeVideoTransportV3(r *http.Request, session *playback.Session, file *models.MediaFile, result playback.PlannerResultV3, mode mediaAuthModeV3, policy config.PlaybackRoutingPolicy) (preparedTransportV3, *transportErrorV3) {
