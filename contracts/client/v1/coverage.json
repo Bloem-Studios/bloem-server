@@ -2126,6 +2126,18 @@
       "reason": "Upstream Silo notified-series listing (API v2, synced 2026-10-18); Bloem native clients do not decode it yet."
     },
     {
+      "type": "internal/apiv2.NotificationSeriesMuteRequest",
+      "reason": "Upstream Silo many-series notification mute and unmute (API v2, synced 2026-11-16); Bloem native clients do not mute series in bulk yet."
+    },
+    {
+      "type": "internal/apiv2.NotificationSeriesMuteResult",
+      "reason": "Upstream Silo many-series notification mute and unmute (API v2, synced 2026-11-16); Bloem native clients do not mute series in bulk yet."
+    },
+    {
+      "type": "internal/apiv2.NotificationSeriesMuteResults",
+      "reason": "Upstream Silo many-series notification mute and unmute (API v2, synced 2026-11-16); Bloem native clients do not mute series in bulk yet."
+    },
+    {
       "type": "internal/apiv2.ServerIdentity",
       "reason": "Upstream Silo server identity/connection discovery document (API v2, synced 2026-09-23); Bloem native clients use their own LAN/identity path and do not decode it yet."
     },
