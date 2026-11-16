@@ -323,6 +323,16 @@ Go lint builds golangci-lint from source at the pinned `GOLANGCI_LINT_VERSION`
 the one it was built with. It caches the binary and reuses it only when it was
 built with the current toolchain.
 
+Locally, `make lint-changed` and `make lint` run on the Go version `go.mod`
+names (the `LINT_GOTOOLCHAIN` variable in `Makefile.bloem`), the same version CI
+builds with, whatever Go the machine has by default. golangci-lint's
+staticcheck builds IR for the standard library, and under a newer default
+toolchain (Go 1.27.1 so far) it panics in `buildir` before reporting anything.
+The pin applies only to those two targets and only when `GOTOOLCHAIN` is not
+already set; set `GOTOOLCHAIN` (for example to `local`) to choose another one,
+or `LINT_GOTOOLCHAIN` to change the version for lint alone. The first run may
+download that toolchain.
+
 Changed-line lint reports only findings on lines that changed in the push or
 pull request and that differ from Silo's copy of the file, so Silo's own lint
 debt does not fail Bloem. An upstream sync merge is linted only on its

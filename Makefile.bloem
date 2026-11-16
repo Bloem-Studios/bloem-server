@@ -2,6 +2,18 @@
 
 .PHONY: bloem-openapi verify-bloem-openapi migrate-continuum-check verify-upstream-sync-merge settings-bindings-native client-dtos verify-client-dtos client-digest verify-client-digest verify-client-coverage verify-seams test-db-prepare test-bloem-library-locations client-copies client-copies-settings client-copies-dtos silo-switch-check silo-switch-check-all-in-one
 
+# Local lint runs on the Go version go.mod names (CI builds with that version
+# too). golangci-lint's staticcheck builds IR for the standard library it finds,
+# and with a newer default toolchain (Go 1.27.1 at the time of writing) it
+# panics inside buildir. The target-specific export below reaches lint and
+# lint-changed without editing the Silo-owned Makefile. Set GOTOOLCHAIN yourself
+# (even to "local") to choose another one, or LINT_GOTOOLCHAIN to pick the
+# version for these targets only.
+LINT_GOTOOLCHAIN ?= go$(shell sed -n 's/^go[[:space:]][[:space:]]*\([0-9][0-9.]*\)[[:space:]]*$$/\1/p' go.mod)
+ifeq ($(origin GOTOOLCHAIN),undefined)
+lint lint-changed: export GOTOOLCHAIN := $(LINT_GOTOOLCHAIN)
+endif
+
 # Generators and helper scripts run Python; never leave __pycache__ behind in
 # the tree (or in the sibling client repositories).
 export PYTHONDONTWRITEBYTECODE := 1
