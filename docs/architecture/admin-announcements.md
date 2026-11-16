@@ -1,7 +1,8 @@
 # How announcements work
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against
-> `main` at `b6039036d` and checked again on 2026-11-11, after Silo retired its v1 API.
+> `main` at `b6039036d`, checked again on 2026-11-11, after Silo retired its v1 API, and
+> on 2026-11-16 at the Silo merge `c1c7de503`, which moved the inbox rows.
 > Announcements are a Bloem addition: Silo has the
 > notification inbox but no way to write a message to it. This page explains them in
 > plain language; the technical rules are in the [For developers](#for-developers)
@@ -191,10 +192,15 @@ native platform routes; see [leaving Silo's v1 API](bloem-leaving-silo-v1.md).
 - Client-side checks: links must be `https:` or `bloem:` without credentials, images
   `https:`; an action needs both label and link; an expiry must be in the future;
   account IDs must be positive integers.
-- The web notification inbox (`web/src/pages/Notifications.tsx`, a recorded seam in
-  `contracts/seams.txt`) renders announcement titles, full messages and severity with
-  the existing read/unread controls. Read status is separate from banner dismissal.
-  The inbox is Silo's ([notifications](notifications.md)).
+- The web notification inbox (`web/src/components/notifications/NotificationInbox.tsx`,
+  a recorded seam in `contracts/seams.txt`) renders announcement titles, full messages
+  and severity with the existing read/unread controls, on Bloem's own added lines that
+  call `web/src/bloem/notifications/` (`AnnouncementDetails`, `AnnouncementPoster`).
+  An announcement is never folded into a series group: only `episode.available` rows
+  group. Read status is separate from banner dismissal. The inbox is Silo's
+  ([notifications](notifications.md)); Silo moved its rows out of
+  `web/src/pages/Notifications.tsx` in #4383, and the seam moved with them in the
+  merge `c1c7de503` (2026-11-16).
 
 ### Storage
 
