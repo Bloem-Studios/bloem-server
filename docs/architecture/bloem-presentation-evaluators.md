@@ -1,9 +1,8 @@
 # How Bloem picks which campaigns and seasonal packs to show
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Campaigns and seasonal packs are Bloem additions with no Silo
-> counterpart. This page explains how the server chooses what to show, in plain
-> language; the technical rules are in the [For developers](#for-developers) section.
+Campaigns and seasonal packs are Bloem additions with no Silo counterpart. This page explains
+how the server chooses what to show, in plain language; the technical rules are in the
+[For developers](#for-developers) section.
 
 When a viewer opens Home, a title's page or the player, Bloem decides which campaign
 cards and seasonal effects to show. This page walks through who decides what, what
@@ -41,10 +40,10 @@ logs what it gave the evaluator.
 
 ## Why it runs inside the server
 
-From 5 to 26 October 2026 the evaluators ran as two separate worker processes. They
+Until 26 October 2026 the evaluators ran as two separate worker processes. They
 ran only Bloem's own reviewed code, with no sandbox or resource limits, so the extra
-processes added start-up time and new ways to fail without protecting anything. Since
-26 October 2026 they run inside the server again.
+processes added start-up time and new ways to fail without protecting anything. They now
+run inside the server.
 
 ## Who can change what
 
@@ -70,17 +69,6 @@ processes added start-up time and new ways to fail without protecting anything. 
   [messages and promotions](../bloem/api/messages.md) page. Schedules and delivery are
   described in [seasonal scheduling](seasonal-scheduling.md) and
   [playback cards](playback-overlays.md).
-
-### History
-
-Promotion cards (`internal/promotions`, `3ae12d9f2`) and ambience packs
-(`internal/ambience`, `54ace4675`) both arrived on 2026-09-01, specified as "S-2" and "S-3" of Bloem's September client engagement spec (removed on
-2026-11-01; its rules are on [how playback cards work](playback-overlays.md) and
-[how seasonal packs are scheduled](seasonal-scheduling.md)). On 2026-10-05 (`85ba110f2`)
-Bloem moved their evaluation into two bundled worker processes; the
-[cutover receipt](../operations/2026-10-05-presentation-plugin-cutover.md) records that
-step. This page was created by `310c545f9` (2026-10-26), which brought evaluation back
-in-process and replaced the earlier `bloem-presentation-plugins.md`.
 
 ### Host authority
 
@@ -123,7 +111,7 @@ The promoted Home row reaches Silo's sections handler through
 `configureBloemSectionExtensions` (`internal/api/router_bloem_engagement.go`). The
 shared section integration uses reusable extension hooks with feature adapters and
 projections in owned files. Core tenancy, profiles and progress remain core authority.
-The seam ledger (`contracts/seams.txt`, 304 entries at `b6039036d`) measures actual
+The seam ledger (`contracts/seams.txt`) measures actual
 upstream-file differences; moving a service alone is not evidence that a shared seam
 disappeared.
 

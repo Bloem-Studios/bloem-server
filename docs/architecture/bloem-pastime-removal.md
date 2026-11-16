@@ -1,10 +1,5 @@
 # How Pastime tracking was removed
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. This is the current record of a completed removal of a Bloem
-> addition; Silo never had it. The migration's boundaries, the upgrade constraints and
-> the tests are in the [For developers](#for-developers) section.
-
 **Pastime** is a separate service that keeps track of what people watch. For a few
 days in October 2026 Bloem connected to it through machinery of its own, called
 **managed tracking**. That machinery is gone. This page walks through why, what the
@@ -71,15 +66,12 @@ meantime stay in Silo's watch history, and a later version can catch up from it.
   see Silo's [watch provider plugins](watch-provider-plugins.md).
 
 History: Bloem integrated Pastime through a Bloem-only "managed tracking" broker between
-2026-10-11 (`272ff0e38`) and 2026-10-13 (list collections, `c2bf1f7cd`). The code went
-in `e4bcbddc5` (2026-10-13) because it reached into Silo's plugin host and wrote
-directly into Silo tables. The database objects went in migration
-`20261013231500_remove_pastime_managed_tracking.sql` (`1903f5eb8`, 2026-10-13), and
-`a17109cd7` (2026-10-14) changed it to keep the watch-sync connections; the removal
-merged in `4835a698e` (2026-10-14). The "mirrored" Silo-switching phase named below no
-longer exists: since `c60b7008e` (2026-10-26) switching is a single flag (see
-[Silo backend switching](silo-backend-switching.md)). The evidence test still reaches
-that phase by migrating to a version before
+2026-10-11 and 2026-10-13. The code and the database objects were removed on 2026-10-13
+because they reached into Silo's plugin host and wrote directly into Silo tables; a
+follow-up change on 2026-10-14 made the migration keep the watch-sync connections. The
+"mirrored" Silo-switching phase named below no longer exists: since 2026-10-26 switching
+is a single flag (see [Silo backend switching](silo-backend-switching.md)). The evidence
+test still reaches that phase by migrating to a version before
 `20261026003000_bloem_account_policy_on_users.sql`.
 
 Bloem no longer carries a Pastime integration. The managed-tracking bridge and its

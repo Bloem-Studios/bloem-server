@@ -1,12 +1,8 @@
 # How the search mirror works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-11 and checked against
-> `main` at `691b148e2` with the search mirror's own commits on top, which land
-> together with this page. The search mirror is a Bloem addition: Silo has one
-> Meilisearch and no second copy of its index. The mirror is off unless an operator
-> turns it on. The technical rules are in the [For developers](#for-developers)
-> section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+The search mirror is a Bloem addition: Silo has one Meilisearch and no second copy of
+its index. The mirror is off unless an operator turns it on. The technical rules are in
+the [For developers](#for-developers) section.
 
 Bloem can keep a second Meilisearch, the **mirror**, up to date with the catalog
 search index. Every change that reaches the main search index reaches the mirror a
@@ -294,7 +290,7 @@ server are therefore its identity marker and the removal of its own copy leftove
 ### Two Silo copies run together for a while
 
 During a move, the old copy keeps running for a short while after the new one serves.
-In measured moves that was 24 to 62 seconds. The old copy reconnects to the new
+In testing that was 24 to 62 seconds. The old copy reconnects to the new
 database primary, so its tasks keep running. Its unmodified main sync takes the same
 lock and reads the same outbox, but writes to *its* search server, which is now the
 old main. Rows the swap step reopened, or new rows, can be sent to the wrong server
@@ -581,6 +577,7 @@ Every new line is in a `bloem_*` file, a Bloem-owned file or an existing seam.
 | Retry timing, split, dead-letters | `internal/catalog/bloem_search_mirror_failures.go` |
 | `SearchMirror`: construction, `RunOnce`, `ForceFullCopy`, lease loop | `internal/catalog/bloem_search_mirror.go` |
 | Cleanup wrapper | `internal/catalog/bloem_search_mirror_prune.go` |
+| Removing leftover copy indexes from the main server | `internal/catalog/bloem_search_mirror_mainclean.go` |
 | Metrics | `internal/catalog/bloem_search_mirror_metrics.go` |
 | Admin status | `internal/catalog/bloem_search_mirror_status.go`, `internal/api/handlers/bloem_search_mirror.go`, `internal/api/router_bloem_search_mirror.go`, `internal/apiv2/bloem_search_mirror_document.go` |
 | The two tasks | `internal/taskmanager/tasks/bloem_search_mirror.go` |
@@ -611,9 +608,10 @@ Every new line is in a `bloem_*` file, a Bloem-owned file or an existing seam.
 - The same migration adds `catalog_search_index_state.bloem_mirror jsonb`, which holds
   the bookmark snapshot, the resume point, the state, both servers' identities, the
   copy progress, the last error and since when, and the lag cap. It also creates
-  `bloem_search_mirror_dead_letters` and `bloem_search_mirror_processes`. The lease
-  table also holds `main_target`, the id of the identity marker of the main server the
-  process talks to, which the settle replay reads.
+  `bloem_search_mirror_dead_letters` and `bloem_search_mirror_processes`.
+- `migrations/sql/20261111111001_bloem_search_mirror_process_main.sql` adds
+  `main_target` to the lease table: the id of the identity marker of the main server
+  the process talks to, which the settle replay reads.
 - `migrations/sql/20261111083321_bloem_search_mirror_tx_index.sql` builds
   `idx_catalog_search_index_events_tx` on `(tx_id, id)` with `CREATE INDEX
   CONCURRENTLY`, in a no-transaction migration, after dropping an invalid leftover of
@@ -635,7 +633,7 @@ Every new line is in a `bloem_*` file, a Bloem-owned file or an existing seam.
   column and never by its text, so `idx_catalog_search_index_events_tx` serves each
   page and the page stops at its size. The resume point `(tx_id, id)` is saved with
   the page. The bookmark moves only when the window is drained, so a restart
-  in the middle of a catch-up, such as the daily deploy while the mirror is hours behind,
+  in the middle of a catch-up, such as a routine deploy while the mirror is hours behind,
   continues exactly where it stopped and skips no row.
 - The page size is the live sync batch size. Documents go in payload batches
   (`catalogSearchDocumentPayloadBatches`, bounded by `meilisearchMaxDocumentPayloadBytes`),
@@ -800,9 +798,11 @@ index.
     and the dead-letters, and nothing outside a Platform context) and
     `web/src/hooks/queries/admin/searchMirror.test.tsx` (the query runs only in a
     Platform context, bound to its authority).
+- The cleanup of leftover copy indexes on the main server
+  (`bloem_search_mirror_mainclean_db_test.go`): only the mirror's own side indexes are
+  deleted, an active copy name is kept, and a run performs the cleanup.
 - Following, full copies, failover, settle, what the cleanup does with a mirror row,
-  failure handling, the metrics and the status route have no tests yet. That was a
-  deliberate decision for this release, not an oversight.
+  failure handling, the metrics and the status route have no tests yet.
 
 ### Related pages
 

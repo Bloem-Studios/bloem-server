@@ -1,12 +1,9 @@
 # How plans, previews and upgrades work
 
-> **Provenance and status.** Bloem page, written on 2026-10-31, updated on
-> 2026-11-01 and checked against `main` at `b6039036d`. Plans (entitlement
-> templates), the storefront preview and the upgrade prompt are Bloem additions.
-> Silo has the per-account settings and access groups that plans are built on.
-> This page explains them in plain language; the technical pages and the API are
-> in the [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+Plans (entitlement templates), the storefront preview and the upgrade prompt are
+Bloem additions. Silo has the per-account settings and access groups that plans are
+built on. The technical pages and the API are in the
+[For developers](#for-developers) section.
 
 A **plan** decides what an account gets: which libraries, how many screens at
 once, video conversions, picture quality, downloads and requests. This page
@@ -138,11 +135,9 @@ the link are the administrator's.
   organization with `POST /api/bloem/v2/admin/platform/tenants`
   ([organizations API](../bloem/api/organizations.md)). Nothing in Bloem calls
   Silo's retired v1 API ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
-- [Entitlement templates guide](../wiki/admin/entitlement-templates.md) and
-  [managing entitlement templates](../operations/entitlement-templates.md): the
-  built-in plans, policy fields, key rules, confirmation and audit.
-- [Bulk policy cohorts](../operations/bulk-policy-cohorts.md) and the
-  [release runbook](../operations/bulk-policy-cohorts-runbook.md).
+- [Entitlement templates guide](../wiki/admin/entitlement-templates.md): the
+  built-in plans, policy fields, key rules, confirmation and audit. Bulk moves and
+  policy cohorts are in the [plans and preview API](../bloem/api/plans.md).
 - [How browse-only access and the preview work](bloem-browse-only-content-policy.md):
   the delivery checks, preview principals, guest sessions, preview administration
   and free play.

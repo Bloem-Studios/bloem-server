@@ -1,14 +1,8 @@
 # How Bloem's adapters over Silo work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-09
-> and checked against `main` at `5a93e8b41`; its tenant identity section was added on
-> 2026-11-13 with the merge of Silo through `8d68c470d` (`e50da6f2d`), its rekor compatibility
-> copy with the merge of Silo through `2e05489fb` (`c64e7ee95`), and its profile writes and
-> stream-reference chains on 2026-11-14 with the merge of Silo through `feae205be` (`28f76229c`), and its phone header, promo card and ebook cover-retry rules on 2026-11-15 with the merge of Silo through `c9ce328b5` (`0b6dd546a`). Adapters are Bloem's own: they are how Bloem changes Silo's
-> behavior without editing Silo's files. Every adapter, hook and invariant is in the
-> [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API, and its
-> home-section hooks after the v1 leftovers were deleted the same day.
+Adapters are Bloem's own: they are how Bloem changes Silo's behavior without editing
+Silo's files. Every adapter, hook and invariant is in the
+[For developers](#for-developers) section.
 
 Bloem adds its features to Silo's code without rewriting it, so that Silo's work can
 be merged in every day. This page walks through the two ways Bloem does that, where
@@ -26,7 +20,7 @@ each adapter sits, and what an adapter must never do.
 2. **A seam** is a Silo file that Bloem still changes, usually by one **hook** line
    that calls Bloem's code in a file of its own. Bloem uses a seam only when no
    wrapper can do the job. Every seam is listed in `contracts/seams.txt` with its
-   reason. On 1 November 2026 the list held 304. It may only get shorter.
+   reason. The list may only get shorter.
 
 Each seam conflicts again whenever Silo changes that file, and Silo changes every day.
 An adapter costs nothing at a merge unless Silo changes the function it wraps.
@@ -84,14 +78,9 @@ These adapters preserve upstream call shapes; they do not grant access when a pr
 or organization policy denies it. Prefer the same pattern for later upstream changes
 rather than widening every shared interface and test double.
 
-History of this page: first written in `e2e55f15e` (2026-09-30); adapter-centred
-since `ae85b85b0` (2026-10-05). Several October 26 changes retired adapters that
-earlier versions described: `c60b7008e` (account policy back on `users`, one
-membership per account), `d064644a8` (membership created by the account repository),
-`b017bfe84` (lifecycle receipts removed), `0deddcf59` and `99a62d19f` (download
-profile from context, unreachable code removed). Silo's Jellyfin and Audiobookshelf
-servers came back on 2026-10-18 (`2393c41ee`). The Silo merge `68070f04b`
-(2026-10-27) changed the session lookups Bloem wraps.
+Account policy lives on `users`, with one membership per account; Bloem's lifecycle
+receipts are gone; and Silo's Jellyfin and Audiobookshelf servers run as Silo ships them.
+The sections below describe the current wiring.
 
 ### Migration filesystem
 
@@ -113,11 +102,11 @@ differences. The adapted files are `20260926181741_request_group_limits`,
 `20260919095615_bloem_policy_library_ids_bigint` and
 `20261006162336_add_login_session_device`.
 
-From 2026-08-29 to 2026-10-26 Bloem kept live account policy on
+Until 2026-10-26 Bloem kept live account policy on
 `organization_memberships`, through a phased authority recorded in
 `membership_policy_authority` (`compatibility` and `finalized`, with `mirrored` added
 on 2026-10-09 for Silo switching). Migration
-`20261026003000_bloem_account_policy_on_users.sql` (`c60b7008e`) moved that policy back
+`20261026003000_bloem_account_policy_on_users.sql` moved that policy back
 onto `users` and retired the phases. The adapters below still matter because they
 rewrite older Silo migrations, which an older database runs while it is still in one
 of those phases. When upstream migration `20260926181741` converts legacy blocked
@@ -134,16 +123,14 @@ adapter fails with "upstream statement changed" otherwise). An upstream edit the
 requires review. Do not renumber migrations, mutate the version ledger to skip a
 failure, or run the unadapted SQL on a finalized Bloem database.
 
-A database shared with Silo keeps Silo switching enabled (the single flag
-`public.bloem_silo_switching` since `c60b7008e`; before it, the `mirrored` phase). An
+A database shared with Silo keeps Silo switching enabled (the flag `public.bloem_silo_switching`; before 2026-10-26 it was the `mirrored` phase). An
 upstream merge that adds a Silo write to a table Bloem constrains needs a switching
 test beside the existing ones and a passing `make silo-switch-check` against that
 upstream build. See [Silo backend switching](silo-backend-switching.md).
 
 Fresh empty-database migrations do not exercise a finalized-schema upgrade. The
 request-group regression that built that state
-(`TestBloemRequestGroupMigrationAfterPolicyFinalization`) was deleted with the phases
-in `c60b7008e`. The migration adapters' database tests are now
+(`TestBloemRequestGroupMigrationAfterPolicyFinalization`) was deleted with the phases. The migration adapters' database tests are now
 `TestBloemProfileLimitsMigration`, `TestBloemLibraryPruningMigration` and
 `TestBloemLibraryPolicyWidthRejectsOverflow` in `internal/database`, and the
 `TestAccountPolicy*` tests in `migrations/bloem_account_policy_on_users_test.go`,
@@ -188,12 +175,11 @@ apply an adapter twice.
 - [`SetProfileLimitProvider`](../../internal/playback/bloem_profile_limits.go)
   supplies profile-aware playback limits while the upstream `SetLimitProvider`
   signature stays available to ordinary Silo callers.
-- Download policy keeps Silo's account-only helper signatures. Since `0deddcf59`
-  (2026-10-26) Bloem's [download policy](../../internal/downloads/bloem_policy.go)
+- Download policy keeps Silo's account-only helper signatures. Bloem's [download policy](../../internal/downloads/bloem_policy.go)
   takes the request's verified profile from the context when it belongs to the account
   being served, so Silo's v1 download handler and v2 download capability call Silo's
   `ServeDirect`, `ResolveDirectFile` and `Capability` unchanged. The former
-  `downloads.CapabilityForProfile` extension was removed in `99a62d19f`. Tenant-aware
+  `downloads.CapabilityForProfile` extension is gone. Tenant-aware
   group providers still require the validated request tenant. Ordinary Silo group
   providers retain their account policy and explicit user overrides without tenant
   context.
@@ -204,8 +190,7 @@ apply an adapter twice.
 - Silo's own `CheckAction` lines in `internal/downloads/policy.go` stay as Silo wrote
   them. Where the action input needs the request tenant's facts, Bloem sets
   `input.Tenant` on its own line just before Silo's call, with
-  `bloemBindDownloadTenant` (the served-quality check of an original download, since
-  the merge of Silo through `2d5f22e7d`). A missing tenant, or one for another
+  `bloemBindDownloadTenant` (the served-quality check of an original download). A missing tenant, or one for another
   account, is `ErrDownloadNotAllowed` before the decider runs
   (`TestDownloadPolicyRejectsMissingTenantFactsBeforeEvaluation`,
   `TestDownloadPolicyRejectsTenantForDifferentAccount`).
@@ -218,7 +203,7 @@ apply an adapter twice.
   available when only transcoding is denied; server settings and the service's cached
   configuration are not mutated.
 - Account and profile policy continue to be evaluated in the acting organization (an
-  account has exactly one since `c60b7008e`). Server ownership, organization
+  account has exactly one). Server ownership, organization
   ownership, and a household's primary profile are different authority boundaries.
 - The household profile limit is Bloem's. Silo's `householdProfileLimit`
   (`internal/api/handlers/profiles.go`, Silo #3656) feeds both `CreateProfile` and the
@@ -240,18 +225,14 @@ Silo's three calls in `internal/apiv2/home.go`. The v1 counterpart in
 `internal/api/handlers/sections.go` went with Silo's v1 API on 2026-11-11, and its
 helper `withRequestSectionOptions` was deleted after it. The transform lines in
 `home_views_service.go` read the options with `sectionOptions(ctx)`
-([hooks](../../internal/api/handlers/bloem_section_hooks.go)). Until the merge of Silo
-through `2d5f22e7d` (2026-11-05) Bloem carried the opt-in in a `SectionViewer.Extensions`
-field and wrapped Silo's arguments with it; that merge returned
-`internal/api/handlers/library_views_service.go` to Silo's bytes.
+([hooks](../../internal/api/handlers/bloem_section_hooks.go)). Bloem used to carry the opt-in in a `SectionViewer.Extensions` field and wrap Silo's arguments with it; `internal/api/handlers/library_views_service.go` is now Silo's bytes.
 `TestBloemHomeReadsCarryPromotionOptIn` and
 `TestBloemHomeLayoutBundlingKeepsPromotionOptIn` pin the opt-in.
 
 The promoted row's card is Silo's `sectionItemResponse` with one added Bloem field,
 `Promo` (`promo` on the wire), in Silo's struct in `sections.go`;
-`promoSectionItem` in `bloem_sections_ext.go` fills it. Until the merge of Silo
-through `c9ce328b5` Bloem kept a whole copy of the struct in `bloem_sections_ext.go`,
-which missed Silo's new fields. Keep the one line instead.
+`promoSectionItem` in `bloem_sections_ext.go` fills it. Bloem used to keep a whole copy of the struct in `bloem_sections_ext.go`,
+which missed Silo's new fields. Keep the one added field instead.
 
 ### Playback tenant facts
 
@@ -328,8 +309,7 @@ wiring, background policy readers and scenario execution must select
 `internal/access/group_store.go`, ahead of Silo's own read, to
 `bloemAccountGroupPolicy`, which reads the account's `users.access_group_id` within
 the account's organization and always reports the read handled. Silo's read below
-the hook stays as Silo wrote it (since the merge of Silo through `b8114188f`,
-`c1aae06b2`). It is not a substitute for the profile-scoped `TenantGroupStore`. Tenant policy writes have one
+the hook stays as Silo wrote it . It is not a substitute for the profile-scoped `TenantGroupStore`. Tenant policy writes have one
 canonical owned implementation; migrations and encrypted settings are unchanged.
 
 [`TenantGroup`](../../internal/access/bloem_group_model.go) retains the common upstream
@@ -349,8 +329,7 @@ wrapper provenance. The availability guard does not replace authentication.
 
 Group updates preserve existing invalidation of accounts with assigned profiles;
 accounts assigned only at account level retain their authorization revision. Deletion
-moves and invalidates both the accounts and the profiles on the group. (Before
-`c60b7008e` the account-level assignment was a membership column.) Empty updates
+moves and invalidates both the accounts and the profiles on the group. (Before 2026-10-26 the account-level assignment was a membership column.) Empty updates
 preserve the configuration revision; a nonempty same-value write advances it through
 the existing timestamp trigger while retaining unchanged authorization revisions.
 These are compatibility semantics, not new optional plugin behavior.
@@ -380,14 +359,14 @@ is a copy of Silo's list select. A copy misses every column Silo adds later: Sil
 added `requests_blocked`, and Bloem's list then failed every scan in Silo's
 `scanProfile`. `TestBloemProfileQueriesKeepSiloColumns` reads both source files and fails
 when a Silo column is missing from a copy, or when the list copy no longer starts with
-Silo's columns in Silo's order (`41dc0121f`).
+Silo's columns in Silo's order .
 
 Silo's viewer gate can read the account, its access group, the profile and its
 viewer preferences as one batch (`WithSharedTables`, Silo #3453). Its queued reads
 take Bloem's hooks too: `QueueGroupPolicy` goes to `bloemQueueAccountGroupPolicy`,
 which queues `bloemAccountGroupPolicy`'s read for the default organization, and
 `QueueProfile` goes to `bloemQueueProfile`, which queues `bloemGetProfile`'s read
-(`b436fdc79`). Silo's `TestViewerResolverBatchedReadsMatchEachDB` pins that the batch
+. Silo's `TestViewerResolverBatchedReadsMatchEachDB` pins that the batch
 answers what one-at-a-time reads answer. Silo's batch reads the account's group
 without the request tenant, where Bloem tenancy resolves the profile's own group
 (`access.EffectivePolicyForRequest`), so under `WithBloemTenancy` a hook line at the
@@ -407,9 +386,9 @@ through `withBloemViewerTenancy` (`internal/api/router_bloem_wiring.go`), which
 panics on any resolver it cannot apply it to.
 `TestProductionViewerResolversUseBloemTenancy` accepts that line and nothing else in
 between, and `TestViewerResolverBloemTenancyKeepsRepositoryReads` proves Silo's batch
-stays off (`7d5f8b586`, `0462cd353`, `76c2b64d7`). The policy package's tests run on their own
+stays off . The policy package's tests run on their own
 prepared database (`bloemtestdb.RunIsolatedSuite`), because Silo's database tests
-there seed accounts and profiles directly (`9202011e1`).
+there seed accounts and profiles directly .
 
 ### Owned startup helpers
 
@@ -473,9 +452,7 @@ inset, see-through `mobile-header` classes, and `web/src/bloem/mobile-header.css
 loaded by one added import line there, makes it an opaque bar across the full width
 that clears the safe areas. The rule is unlayered, so it wins over Silo's Tailwind
 utilities and its `glass-dark` component class; `web/src/bloem/mobile-header.test.ts`
-checks the import and the rule. Until the merge of Silo through `c9ce328b5` Bloem
-carried this as a changed class string in Silo's line, which conflicted when Silo
-changed it. `web/src/bloem/preview/preview.css` hides the header's account links in
+checks the import and the rule. Bloem used to carry this as a changed class string in Silo's line, which conflicted whenever Silo changed it. `web/src/bloem/preview/preview.css` hides the header's account links in
 preview the same way.
 
 The launch bundle is checked by Silo's own `web/scripts/check-bundle-budget.mjs`,
@@ -497,8 +474,7 @@ included, keeps Silo's page (`web/bloem-preview-plugin.test.ts`).
 The web app calls none of Silo's retired v1 API. It reaches Silo's `/api/v2` through
 Silo's own web functions (`web/src/api/v2/`), and `/api/bloem/v2` through `nativeApi`
 or `nativeApiWithProfileRequestContext` (`web/src/api/bloemClient.ts`). The former
-v1 helpers `bloemV1Api` and `bloemV1ApiWithProfileRequestContext` were removed
-in `3eb77be33` ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)). Silo's lint
+v1 helpers `bloemV1Api` and `bloemV1ApiWithProfileRequestContext` are gone ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)). Silo's lint
 rule against `api<T>()` and `apiWithProfileRequestContext<T>()` stays meaningful for
 routes that have a v2 contract; do not alias the native helpers to `api`.
 
@@ -519,10 +495,7 @@ later Silo version.
 
 ### Realtime socket tickets
 
-Until Silo retired its v1 API on 2026-11-11, the v1 events, watch-together and
-playback-control sockets ran Silo's handshake unchanged (since `a7436b4e5`,
-2026-10-25): the ordinary login credential authenticated the socket, and Silo's v1
-`POST /events/ws-ticket` bound the profile and its PIN proof. The v2 events and playback-control sockets keep Silo's ticket store and add
+Silo's v1 sockets went with its v1 API on 2026-11-11. The v2 events and playback-control sockets keep Silo's ticket store and add
 Bloem's tenant authority through Silo's `Validate` hook
 ([`bloem_socket_authority.go`](../../internal/api/handlers/bloem_socket_authority.go)).
 
@@ -537,7 +510,7 @@ wraps it in `newTenantAwareViewerResolver` like every other viewer resolver;
 
 A watch-provider sync matches a whole-series marker only to episodes the connection's
 profile may open, through a viewer resolver Silo builds inline in `cmd/silo/main.go`
-(Silo `4018816da`). Bloem's own line straight after Silo's reassigns it through
+. Bloem's own line straight after Silo's reassigns it through
 `withBloemViewerTenancy` (`cmd/silo/bloem_main.go`), which wraps it in
 `newTenantAwareViewerResolver`, because a sync runs without a request tenant, and
 panics on any other resolver. Without it a marker could mark, and a later export
@@ -559,24 +532,23 @@ build, or deployment probe as evidence that a contract gate passed.
 
 ### External sign-in and invitation transactions
 
-Since `c60b7008e` (2026-10-26) Silo's account resolver and identity management service
-(`account_resolution.go`, `identity_service.go`) are Silo's bytes again: account policy
+Silo's account resolver and identity management service
+(`account_resolution.go`, `identity_service.go`) are Silo's own files: account policy
 is on `users`, so they read it as Silo does. The earlier `userSource` projection over
 the membership join is gone.
 
-Since `d064644a8` (2026-10-26) the account repository creates an account's one
+The account repository creates an account's one
 membership itself (`linkAccountMembership` in `internal/auth/bloem_repository.go`). It
 uses the organization the creating flow names, else the organization that owns the
 account's access group, else the default organization. Silo's account provisioner and
 its external sign-in providers (OIDC and directory) therefore need no Bloem hook. The
 earlier membership-aware provisioner and `CreateAccountWithMembershipInTransaction`
-(whose identifiers fed the lifecycle receipts removed in `b017bfe84`) are gone.
+(whose identifiers fed the lifecycle receipts, since removed) are gone.
 Invitation acceptance keeps one hook, in the seam `internal/invitations/service.go`: it
 creates the account with `CreateAccountForOrganizationInTransaction` in the
 invitation's stored organization (`internal/invitations/bloem_service.go`).
 
-Upstream's current-role session check also applies to Bloem. Since the Silo merge
-`68070f04b` (Silo #3140) it also binds a token to its session's account:
+Upstream's current-role session check also applies to Bloem. Since Silo #3140 it also binds a token to its session's account:
 `SessionRepository.ActiveSession` takes the account the credential names. Bloem's
 preview-aware lookups, the administrative-context middleware and the native-video
 recheck pass that account too, and Silo's own `IsValid` again backs
@@ -588,7 +560,7 @@ refresh-chain fields coexist with Bloem's device, profile, credential revision, 
 authentication-method bindings.
 
 A sign-in that started before its organization revoked the account cannot select any
-of the account's profiles. Since `25129bcbd` (2026-11-01) the viewer-access gate ends
+of the account's profiles. The viewer-access gate ends
 that session and answers `401 session_invalid` (`session_expired` on `/api/v2`), so
 the client signs in again instead of showing `404` "Profile not found". The hook is one
 call in the seam `internal/api/middleware/viewer_access.go` to
@@ -609,9 +581,7 @@ account-wide revocation, and `bloemProfileSessionRevoker` in
 Both invitation acceptance paths preserve the organization stored on the invitation.
 Link invitations can receive an email at acceptance; supersession of another
 invitation remains scoped to the inviting organization (the organization filter is in
-`internal/invitations/bloem_repository.go`). Since `b017bfe84` the v1 invitation and
-registration handlers are Silo's bytes again. Bloem's lifecycle path, which had its
-own server-settings advisory lock, is gone. The local-password check inside the
+`internal/invitations/bloem_repository.go`). Bloem's earlier lifecycle path for invitations, which had its own server-settings advisory lock, is gone. The local-password check inside the
 acceptance transaction is Silo's `EnsureLocalPasswordLoginAllowedInTransaction`.
 
 The upstream user-detail page remains unchanged after its component split. Bloem's
@@ -645,8 +615,8 @@ A Bloem rule that must also hold for sessions Silo's lines create goes into the
 repository, on Bloem's lines in the seam `internal/auth/session.go`. The
 organization-domain check is the example: `SetSignInDomainCheck` gives the service a
 copy of its repository carrying `bloemSignInCheck`, and `createWithQuerier` runs it.
-Since `56a71e430` (2026-11-06). Before it, Bloem's interfaces replaced Silo's field types,
-and Silo's database tests that use the concrete repositories did not compile.
+(Bloem's interfaces used to replace Silo's field types, and Silo's database tests that
+use the concrete repositories did not compile.)
 
 ### Network sign-in metadata
 
@@ -655,7 +625,7 @@ The October 2026 integration imports network identity authentication ratified in
 admin plugin operations add `network` to their sign-in-mode response enum. Their
 pre-lock breaking-change approvals referenced that upstream ratification (`approved_in`
 pointed at Silo's pull request, not a Bloem one); Silo dropped them from
-`contracts/api/v2/breaking-approvals.json` once consumed (`063a6884c`, 2026-10-03), so
+`contracts/api/v2/breaking-approvals.json` once consumed, so
 the file no longer lists them. No wildcard approvals or baseline changes were used.
 
 Generated Android and Apple plugin DTOs store `sign_in_mode` as a string, so the
@@ -675,8 +645,7 @@ Bloem operators use `.env.bloem.example`, linked by the maintained Docker guide.
 selects Silo's multi-container `docker-compose.advanced.yml`, because Silo's default
 `docker-compose.yml` starts Silo's own all-in-one image. The upstream `.env.example`
 remains unchanged and selects the upstream image. Moving the sample does not change a
-deployed environment or encrypted settings. Since `2393c41ee` (2026-10-18) both
-samples document Silo's `JF_PORT` and `ABS_PORT` for the restored compatibility
+deployed environment or encrypted settings. Both samples document Silo's `JF_PORT` and `ABS_PORT` for the restored compatibility
 listeners. The route-prefix constants and same-origin gateway controls of Bloem's
 removal-era runtime are not active configuration and should not be restored.
 
@@ -691,8 +660,7 @@ through the public-address outbound client, stores it in the artifact store and
 records its key and SHA-256 (`SourceSHA256`), so the job reads that artifact and
 checks its digest. The job request never carries `RemoteURL`, so the runner's
 remote branch, which Silo kept, is not reached. The synchronous import uses
-Silo's guarded download as Silo ships it (since the merge of Silo through
-`cb4f45d0c`).
+Silo's guarded download as Silo ships it .
 
 ### Preparing Silo contributions
 
@@ -749,7 +717,7 @@ request answers 401. A line after Silo's swap in `classGate` calls
 Both read the same `st` parameter. A token the stream-token gate accepted keeps Bloem's
 path: viewer access scopes it from the token's own account and profile, and Silo's
 reference checks (a live playback attempt and an active login session) do not run. Any
-other request takes Silo's `RequireStreamReferenceAuth` unchanged (`9f3ab4d48`).
+other request takes Silo's `RequireStreamReferenceAuth` unchanged .
 `TestPlaybackDeliveryV2ScopedStreamToken` and the delivery-access tests in
 `internal/apiv2` fail without it.
 

@@ -1,12 +1,8 @@
 # How apps reach Live TV
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
-> and checked against `main` at `209447445`, the merge of Silo through `56e6f871c`, with
-> its Bloem fixes. Silo has no Live TV. Bloem's tuner, guide and recording code
-> is adapted from Prairie Server; the access rules on this page are Bloem's own. Every
-> route, field, error code and invariant is in the [For developers](#for-developers)
-> section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+Silo has no Live TV. Bloem's tuner, guide and recording code is adapted from Prairie
+Server; the access rules on this page are Bloem's own. Every route, field, error code and
+invariant is in the [For developers](#for-developers) section.
 
 Live TV is only in the web app and Bloem's own apps. This page walks through who may
 watch, how an app finds out what it may show, how it tunes in to a channel and lets go
@@ -83,19 +79,14 @@ recordings folder to a library and scans it.
 - **API:** [Live TV](../bloem/api/live-tv.md): every route under
   `/api/bloem/v2/livetv`, with its credentials, fields and error codes.
 
-History: Bloem's Live TV, OTA tuner, guide and DVR subsystem is adapted from Prairie
-Server (`ef2d38171`, 2026-08-13; see [FORK.md](../../FORK.md#prairie-server-live-tv)).
-The access contract on this page is Bloem's own: the `watch_live_tv` permission
-(`internal/permissioncatalog`), `access.LiveTVAllowed`, the capability route and the
-native `/api/bloem/v2/livetv` mount (`internal/api/router_livetv.go`, mounted from
-`internal/api/router_bloem_client.go`). The contract was added in `8c612bd96`,
-`31b857b2b` and `fdb002310` (all 2026-09-05). The web workflows came in `53534d9f0`
-(2026-09-18) and the Xtream capability bit in `23ee4c1ac` (2026-09-19). Since
-`61fc3cfd5` (2026-10-13), delivery requires the playback grant as well, and a
-browse-only preview scope clears both grants (see
-[browse-only content policy](bloem-browse-only-content-policy.md)). Bloem's Live TV on
-the Jellyfin surface was removed on 2026-10-13
-([protocol compatibility](bloem-compatibility-removal.md)).
+Bloem's Live TV, OTA tuner, guide and DVR subsystem is adapted from Prairie Server (see
+[FORK.md](../../FORK.md#prairie-server-live-tv)). The access contract on this page is Bloem's
+own: the `watch_live_tv` permission (`internal/permissioncatalog`), `access.LiveTVAllowed`,
+the capability route and the native `/api/bloem/v2/livetv` mount
+(`internal/api/router_livetv.go`, mounted from `internal/api/router_bloem_client.go`).
+Delivery requires the playback grant as well, and a browse-only preview scope clears both
+grants (see [browse-only content policy](bloem-browse-only-content-policy.md)). Bloem's Live
+TV on the Jellyfin surface was removed ([protocol compatibility](bloem-compatibility-removal.md)).
 
 ### The permission
 
@@ -115,9 +106,8 @@ The permission joins Silo's assignable set rather than sitting beside it.
 every `internal/permissioncatalog` entry to Silo's `assignablePermissions` map at init,
 so `auth.NormalizePermissions` accepts `watch_live_tv` and `auth.AssignablePermissions`,
 which the frozen v1 account body lists for an enabled admin, names it. v2
-`Account.permissions` lists only an admin's explicitly assigned permissions, as in Silo
-(`243d7e0da`). `TestAssignablePermissionsListTheBloemCatalog` pins the registry
-(`631730bb4`, 2026-11-02).
+`Account.permissions` lists only an admin's explicitly assigned permissions, as in Silo.
+`TestAssignablePermissionsListTheBloemCatalog` pins the registry.
 
 ### Capability
 
@@ -216,15 +206,10 @@ manual, guide and cancel actions blocked until an explicit Reload recordings act
 succeeds, including active filtered lists; background refresh alone cannot clear the
 block. Older list reads are cancelled so they cannot replace the reconciled result.
 Recovery does not resend the write. The guard lives in the current QueryClient, so it
-does not provide exactly-once execution across reloads, tabs or other clients. Rebuilt
-browser acceptance passed real disposable scheduling and cancellation with readback,
-including committed writes whose browser responses were dropped. Nine deliberately
-injected GET `503`s verified that failed reads and failed explicit reload kept actions
-blocked; successful explicit reload cleared the block and required a fresh manual
-draft. The run observed two POSTs and two DELETEs, cancelled both created rows,
-preserved captured authority and reported no browser runtime errors. This validates
-reconciliation against the real backend, not exactly-once execution or actual tuner,
-recording or Safari playback.
+does not provide exactly-once execution across reloads, tabs or other clients. Browser acceptance against a real disposable backend covered scheduling and cancellation
+with readback, including committed writes whose browser responses were dropped, and failed
+reads and failed explicit reloads that kept actions blocked. That validates reconciliation,
+not exactly-once execution or actual tuner, recording or Safari playback.
 
 Rule removal requires confirmation; it does not cancel existing scheduled recordings.
 There is no rule-update operation, and stored `keep_last` does not enforce retention.
@@ -235,10 +220,8 @@ explains that an administrator must scan a recording folder through a library.
 Server-owned Kotlin/Swift bindings include additive optional/default-false
 `xtream_supported`; sibling v3 client integration remains separate work. Native
 session/DVR ownership overrides require the primary admin profile; child, unknown and
-unresolvable profiles keep owner-only access. The
-[September 19 deployment](../operations/2026-09-19-xtream-deployment.md) passed
-health/readiness and login smoke checks, not real-provider or device playback
-acceptance.
+unresolvable profiles keep owner-only access. Real-provider and device playback
+acceptance of Xtream Live TV has not been done.
 
 Normal URL validation and dial-time SSRF guards reject loopback tuner destinations. Use
 a permitted isolated network for media acceptance; never disable those guards to make a

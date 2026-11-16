@@ -1,10 +1,8 @@
 # How Xtream Live TV providers work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Silo has no Live TV. Bloem's Live TV is an attributed
-> adaptation of Prairie Server, and Xtream providers are Bloem's own addition to it.
-> Every route, limit and invariant is in the [For developers](#for-developers)
-> section.
+Silo has no Live TV. Bloem's Live TV is an attributed adaptation of Prairie Server, and Xtream
+providers are Bloem's own addition to it. Every route, limit and invariant is in the
+[For developers](#for-developers) section.
 
 An **Xtream provider** is a paid IPTV service on the internet that speaks the Xtream
 Codes protocol. Bloem can use one as a source of live channels, next to tuners on the
@@ -100,18 +98,13 @@ match ends, its lease is released and the tablet can tune in.
 - **API:** [Live TV](../bloem/api/live-tv.md), including
   `POST /api/bloem/v2/livetv/tuners/xtream` and the guide-source routes.
 
-History: Bloem's Live TV subsystem (`internal/livetv`: HDHomeRun tuners, guides,
-streaming and DVR) is an attributed AGPL adaptation of Prairie Server, integrated in
-`ef2d38171` (2026-08-13); see [FORK.md](../../FORK.md#prairie-server-live-tv). Xtream
-providers were added in `23ee4c1ac` (2026-09-19) with migration
-`20260919133349_bloem_xtream_sources.sql`, in Bloem-owned files
+Bloem's Live TV subsystem (`internal/livetv`: HDHomeRun tuners, guides, streaming and DVR) is
+an attributed AGPL adaptation of Prairie Server; see
+[FORK.md](../../FORK.md#prairie-server-live-tv). Xtream providers are Bloem's own addition
+(migration `20260919133349_bloem_xtream_sources.sql`), in Bloem-owned files
 (`internal/livetv/bloem_xtream_*.go`) plus the route `POST /tuners/xtream` in
-`internal/api/router_livetv.go`. This page followed in `cc4b2ed98` the same day.
-`5a05c52aa` (2026-09-23) changed guide sync so that one invalid programme no longer
-fails the whole sync (see [Guide and rescan behavior](#guide-and-rescan-behavior)). On
-2026-10-13 Bloem removed its Live TV delivery through the Jellyfin compatibility
-surface, and it did not come back when Silo's Jellyfin server was restored on
-2026-10-18 (see [protocol compatibility](bloem-compatibility-removal.md)).
+`internal/api/router_livetv.go`. Live TV is not delivered through the Jellyfin compatibility
+surface (see [protocol compatibility](bloem-compatibility-removal.md)).
 Cross-replica lease behavior is summarized in
 [cluster media](bloem-cluster-media.md#xtream-physical-connections). An "Xtream"
 provider is an IPTV service that speaks the Xtream Codes `player_api.php` protocol.
@@ -217,8 +210,7 @@ one-based. Artwork URLs are ignored. Simple external DTD declarations are accept
 without fetching them; internal entity declarations are refused.
 
 Only structural problems fail a sync: a response that is not XMLTV, a malformed or
-oversized document, entity declarations or a hard limit. Since `5a05c52aa`
-(2026-09-23), an individual programme with an invalid timestamp or duration, a missing
+oversized document, entity declarations or a hard limit. An individual programme with an invalid timestamp or duration, a missing
 title, oversized metadata or a conflicting duplicate identity is skipped and counted,
 and each sync logs one summary warning that gives only the counts. A feed in which
 every programme is invalid still fails, with the skip counts in `last_error`. The XMLTV
@@ -244,15 +236,7 @@ overlapping sources retains the inherited recurring-DVR duplicate-scheduling
 limitations; normal refresh stability does not resolve every DVR lifecycle case.
 Automatic recording import and enforced `keep_last` remain unsupported.
 
-### Deployment and acceptance
-
-Commit `418a18b7d` was deployed on September 19, 2026, with both the policy-array and
-Xtream migrations applied after a scoped restored-backup rehearsal. Health, readiness
-and unauthenticated login smoke checks passed. No provider was configured; these checks
-do not establish provider or decoded-media acceptance. The
-[deployment record](../operations/2026-09-19-xtream-deployment.md) records the exact
-revision, preserved-data checks, rollback limits and explicitly approved scenario
-CI-timeout exception. That CI run remains failed.
+### Upgrade and coverage
 
 Migration `20260919133349_bloem_xtream_sources.sql` adds the credential and lease
 tables. Upgrade the complete API/worker fleet before configuring providers; older nodes

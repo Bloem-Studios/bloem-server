@@ -1,16 +1,14 @@
 # How `.strm` files play
 
-> **Provenance and status.** Bloem page, written on 2026-11-12 and checked against
-> `main` at `bf0fde82f` plus the `.strm` changes. `.strm` support is a Bloem addition:
-> Silo refuses `.strm` files ([Bloem's non-goals](../bloem/overlays/non-goals.md#strm-files-are-in-scope)).
-> It covers scanning from library folders and storage sources, playback in the web
-> app and Bloem's apps on the API server and, for HLS, on a transcode node with core
-> source access (since 2026-11-16; see [where native inputs run](bloem-native-video-playback.md#where-native-inputs-run)), subtitle files
-> beside a `.strm` file, rescans that skip unchanged files, and the private-address
-> switch in the admin settings. Jellyfin apps play `.strm` items, with their subtitles,
-> through the Jellyfin media host for stored movies (checked on 2026-11-12), and ffmpeg
-> and ffprobe never open a `.strm` file itself (checked on 2026-11-12). The
-> technical rules are in the [For developers](#for-developers) section.
+`.strm` support is a Bloem addition: Silo refuses `.strm` files
+([Bloem's non-goals](../bloem/overlays/non-goals.md#strm-files-are-in-scope)). It covers scanning
+from library folders and storage sources, playback in the web app and Bloem's apps (on the API
+server and, for HLS, on a transcode node with core source access; see
+[where native inputs run](bloem-native-video-playback.md#where-native-inputs-run)), subtitle
+files beside a `.strm` file, rescans that skip unchanged files, and the private-address switch
+in the admin settings. Jellyfin apps play `.strm` items, with their subtitles, through the
+Jellyfin media host for stored movies, and ffmpeg and ffprobe never open a `.strm` file itself.
+The technical rules are in the [For developers](#for-developers) section.
 
 A **`.strm` file** is a small text file in a library whose content is the web address
 of a video somewhere else. This page covers how Bloem finds such a file, what it keeps,

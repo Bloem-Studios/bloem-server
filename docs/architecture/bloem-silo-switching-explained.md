@@ -1,13 +1,8 @@
 # Switching between Silo and Bloem
 
-> **Provenance and status.** Bloem page, written on 2026-10-31, updated on 2026-11-01
-> and checked against `main` at `b6039036d`. Silo switching is a Bloem addition: Silo
-> knows nothing about it. On 2026-11-01 both switch checks passed with Silo
-> `63ef34b23` and Bloem `59616c4af`, the release production runs. This page explains it in
-> plain language; the technical page,
-> [Silo backend switching](silo-backend-switching.md), holds the commands and
-> invariants.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+Silo switching is a Bloem addition: Silo knows nothing about it. This page explains it in plain
+language; the technical page, [Silo backend switching](silo-backend-switching.md), holds the
+commands and invariants.
 
 A Silo installation can try Bloem on the same database and go back to Silo
 later, without losing or corrupting anything. This is what lets someone move to

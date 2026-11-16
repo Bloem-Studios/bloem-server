@@ -1,12 +1,9 @@
 # How tenant authorization works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. The policy engine (OPA, the Open Policy Agent), access groups
-> and the policy rules come from Silo; Bloem adds the tenant layer, which feeds
-> organizations, memberships, ownership and grants into Silo's engine. This page
-> explains it in plain language; the technical rules, the failure handling and the
-> verification commands are in the [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+The policy engine (OPA, the Open Policy Agent), access groups and the policy rules come from
+Silo. Bloem adds the tenant layer, which feeds organizations, memberships, ownership and grants
+into Silo's engine. This page explains it in plain language; the technical rules, the failure
+handling and the verification commands are in the [For developers](#for-developers) section.
 
 Every time someone browses, searches or presses play, Bloem decides what they may
 reach. This page walks through how that decision is made, what an organization's
@@ -120,8 +117,7 @@ returned scope to catalog and playback reads.
 ### Shipped boundary
 
 `GET /api/bloem/v2/capabilities` advertises `organization_memberships` and
-`tenant_bounded_media_scope` as `true`. Since Silo retired its v1 API (merged in
-`26cf9b3e4`) it advertises `legacy_silo_v1` and direct-profile login
+`tenant_bounded_media_scope` as `true`. Since Silo retired its v1 API it advertises `legacy_silo_v1` and direct-profile login
 (`direct_profile_login`) as `false`: the profile sign-in route lived only on
 Silo's v1 API. That capability does not admit direct sessions to the native namespace or the browser's
 Silo v2 calls. Shared-device profile pairing (`shared_device_pairing`) and delegated
@@ -132,7 +128,7 @@ management has its own capability and account/PIN/reauthentication boundary; see
 Native administration is additive under `/api/bloem/v2/admin`: an authenticated
 account exchanges its session for one short-lived Platform or Organization context
 token. Every request that carries the token re-checks the login session it was
-exchanged from (`internal/api/middleware/admin_context.go`). Since `68070f04b` that
+exchanged from (`internal/api/middleware/admin_context.go`). That
 check passes the token's account to Silo's `SessionRepository.ActiveSession`, so a
 session that belongs to another account, or a revoked or remote-playback session, is
 refused with `authorization_state_stale`. Platform routes operate on the
@@ -161,7 +157,7 @@ default group; it never creates an ungrouped, account-only profile.
 Authorization-affecting group changes bump every assigned account's policy revision
 in the same transaction. Resolution qualifies the profile, account, and group by the
 server-resolved organization. The account's own `users.access_group_id` (Silo's
-column, which again holds the account's group since `c60b7008e`) is used only for
+column, which holds the account's group) is used only for
 profile-less legacy resolution in the default organization.
 
 Snapshot-based services use `access.TenantGroupPolicyInTransaction` with the exact
@@ -174,9 +170,8 @@ profile. Callers remain responsible for loading and validating the other authori
 facts in that snapshot.
 
 `auth.UserRepository.GetByID` returns the account's `users` row, Silo's
-account-shaped projection. Since `c60b7008e` and `d064644a8` (2026-10-26) an account
-has exactly one membership (`organization_memberships` is unique on `account_id`), so
-the earlier "default or earliest membership" selection no longer exists. The row is
+account-shaped projection. An account has exactly one membership (`organization_memberships` is unique on `account_id`), so
+there is no "which membership" selection. The row is
 still not a substitute for the profile's group and the tenant's revisions when
 assembling a transactional authorization snapshot.
 
@@ -250,19 +245,6 @@ The same job also runs `TestBloemFunctionRebrandPreservesCanonicalNamesOnRollbac
 `./internal/database`. The race tests for `./internal/tenancy` run in a separate job,
 "Tenant stores race", split across four shards (`scripts/ci/go-test-shard.sh`), each
 with its own disposable PostgreSQL.
-
-### History
-
-The embedded OPA engine, access groups and the vendor Rego bundle are Silo's (Silo
-#282, `42602b789`, 2026-07-05). The tenant layer and the first version of this page
-date from the tenant foundation of 2026-08-13 (`94f88cc9c`, `fed275c71`,
-`0e6f7f03d`). Later changes that matter: `654301e56` (2026-09-09) made the
-transactional group read subject-bound, and `b14f34552` (2026-10-05) moved that read
-into the Bloem-owned `access.TenantGroupPolicyInTransaction`, which returned Silo's
-`GroupPolicyInTransaction` to its account-level form. `c60b7008e` and `d064644a8`
-(2026-10-26) gave each account exactly one membership and moved its account policy
-back onto `users`, where Silo keeps it. The Silo merge `68070f04b` (2026-10-27) binds
-the administrative context check to the token's account.
 
 Technical pages:
 

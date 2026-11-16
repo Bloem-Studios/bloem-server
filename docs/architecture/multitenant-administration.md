@@ -1,11 +1,8 @@
 # How multitenant administration works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
-> and checked against `main` at `747960b29`. Multitenant administration is a Bloem addition: Silo has one
-> set of accounts per server and one kind of administrator. This page explains it in
-> plain language; the technical rules are in the [For developers](#for-developers)
-> section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+Multitenant administration is a Bloem addition: Silo has one set of accounts per server and one
+kind of administrator. This page explains it in plain language; the technical rules are in the
+[For developers](#for-developers) section.
 
 Bloem's admin console serves two kinds of administrator, one who runs the whole
 platform and one who runs a single organization. This page walks through the two
@@ -158,7 +155,7 @@ and security revisions. Organization authority never comes from a path, query,
 request body, or caller-selected membership ID.
 
 The token is bound to the login session it was exchanged from, so a credential
-without a login session (an API key) cannot open a context. Since `68070f04b` the
+without a login session (an API key) cannot open a context. The
 context middleware also requires that login session to belong to the account the
 token names (Silo's `ActiveSession` account binding).
 
@@ -268,9 +265,8 @@ The resulting contract, pinned by `TestSiloClientSubjectResolutionMatrix` in
 | Member of an organization (a tenant or the default organization) | its organization | the same organization |
 | No membership at all | the pre-tenancy default-organization answer | n/a |
 
-Before `c60b7008e` (2026-10-26) an account could hold memberships in several
-organizations, and the matrix carried rows for that case. The constraint
-`organization_memberships_one_per_account` now allows one.
+An account holds at most one membership (the constraint
+`organization_memberships_one_per_account`), so the matrix has no multi-organization rows.
 
 Two invariants hold this together:
 
@@ -279,21 +275,19 @@ Two invariants hold this together:
 - **One notion of "the account's organization".** `Store.AccountOrganization`
   answers with the account's one active membership, and the account's policy lives on
   Silo's `users` row, so entitlements and content come from the same organization.
-  (Until `c60b7008e` a separate account-policy projection had to apply the same
-  precedence rule; two independent rules would eventually have disagreed.)
 
 `catalog.AccessFilter` carries a resolved library list rather than an organization,
 so a client sees one organization's libraries and never a union across them.
 
 #### Keeping it that way
 
-Silo retired its v1 API on 11 November 2026 (Silo #3200, merged into Bloem in
-`26cf9b3e4`), so there is no longer a v1 route contract to keep.
+Silo retired its v1 API on 11 November 2026 (Silo #3200), so there is no longer a v1
+route contract to keep.
 `TestV1RouteSurfaceWithADatabaseIsUnchanged` now holds the v1 prefix to exactly Silo's
 tombstone, so a Bloem route added there fails.
 
 Behaviour needs its own guard, because the route surface cannot see it. A client
-broke once during this work with no route change at all: it browsed before the viewer
+broke once with no route change at all: it browsed before the viewer
 picked a profile, and the profile-less subject resolved through the deployment
 default organization rather than the account's own tenant, so a tenant's end user
 was told its tenant did not exist. That class of regression is what
@@ -309,10 +303,8 @@ default group itself cannot be deleted. Profiles reference their group through
 `user_profiles_organization_access_group_fkey` on `(organization_id, access_group_id)`,
 which has no `ON DELETE` action, so a group that still holds a profile cannot be
 dropped: the constraint is the proof that the reassignment covered every profile, not
-a workflow the operator is expected to hit. Until `c60b7008e` (2026-10-26) a
-membership column, `organization_memberships.access_group_id`, had an
-`ON DELETE RESTRICT` key that played the same role for accounts; that column was
-dropped when account policy returned to `users`.
+a workflow the operator is expected to hit. Account policy lives on `users`, so no membership column holds a group
+any more.
 
 This is a deliberate divergence from upstream Silo, which declares
 `users.access_group_id REFERENCES access_groups(id) ON DELETE SET NULL` (that key is
@@ -360,20 +352,6 @@ keyboard context switching, live announcements, semantic people headers and
 controls, bulk counts, the full-height narrow detail sheet, destructive confirmation
 copy, and stable desktop/narrow DOM snapshots for Organizations, Organization
 Overview, People, and Access Groups.
-
-### History
-
-The UI isolation tests and the first version of this page date from `0e6f7f03d`
-(2026-08-13); the Silo client compatibility matrix and the access-group deletion
-ruling from 2026-08-30 (`e566633db`, `c3b815996`, `4f5a8af62`). Later changes that
-matter: the v1 sockets moved onto Silo's tickets (`a7436b4e5`, 2026-10-25); account
-policy moved back onto Silo's `users` table and each account got at most one
-membership (`c60b7008e`, 2026-10-26); Silo's token binding (#3140, merged in
-`68070f04b`, 2026-10-27) also checks the administrative context's login session
-against its account; a session predating its organization's revocation is ended
-with `401 session_invalid` (`25129bcbd`, 2026-11-01); Silo's admin profile
-management (#3516, merged in `747960b29`, 2026-11-05) takes the account's own
-organization for a profile write on another account (`7768bb4a7`).
 
 Technical pages:
 

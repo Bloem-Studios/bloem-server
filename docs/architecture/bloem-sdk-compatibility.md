@@ -1,11 +1,8 @@
 # How Bloem's SDKs and generated contracts fit together
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against `main`
-> at `b6039036d`. Silo owns the public plugin runtime and the `/api/v2` generators; the
-> storage-provider protocol, the plugin-author SDK and the Kotlin and Swift client contracts
-> are Bloem additions. The technical rules are in the [For developers](#for-developers)
-> section; its dated refresh paragraphs are history.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+Silo owns the public plugin runtime and the `/api/v2` generators. The storage-provider
+protocol, the plugin-author SDK and the Kotlin and Swift client contracts are Bloem additions.
+The technical rules are in the [For developers](#for-developers) section.
 
 Three things that work together ship on their own: the Bloem server, the SDK plugin authors
 build with, and the generated types Bloem's apps use. This page explains what each one is, how
@@ -82,23 +79,12 @@ A developer adds an optional `artwork_style` field to a server response that the
   [API by topic](../bloem/api/README.md); the [API catalogue](../bloem/api-catalogue.md) checks
   the OpenAPI documents against the mounted routes.
 
-### History
-
-First written in `9a427dc19` (2026-10-07) when native storage introduced a Bloem
-storage-provider protocol beside Silo's public plugin SDK, and kept current with each contract
-refresh. Later changes that matter: presentation evaluation returned in-process (`310c545f9`,
-2026-10-26); the client contract was regenerated in the Silo merge `68070f04b` and its digest
-re-pinned in `422a51fed` (2026-10-27); regenerated again in the Silo merge `4edbee99d`
-(2026-10-31, Silo through `32a2f63e1`).
-
 ### Server and public plugin runtime
 
-The current source includes Silo through `63ef34b23` and pins the public
-`github.com/Silo-Server/silo-plugin-sdk` module at `v0.31.0` in `go.mod`. Host builds use
-`GOWORK=off`; no private SDK module replacement is required. The
-[October 7 deployment record](../operations/2026-10-07-native-storage-deployment.md) is a
-historical checkpoint with an older SDK pin. Source contracts and live application revisions
-must be checked separately.
+The server pins the public `github.com/Silo-Server/silo-plugin-sdk` module (currently
+`v0.31.0`) in `go.mod`. Host builds use `GOWORK=off`; no private SDK module replacement is
+required. Source contracts and the revision a running server was built from must be checked
+separately.
 
 Native storage uses the separate `bloem.plugin.v1.StorageProvider` protocol. The host owns
 generated bindings under `internal/storageproto/bloem/plugin/v1` from
@@ -107,11 +93,10 @@ descriptors and runtime compatibility. Coordinate private schema field numbers, 
 original `go_package` descriptor and host bindings with the provider SDK; changing a module
 import is not a protocol migration.
 
-Promotions and ambience evaluate inside the server process. From `85ba110f2` (2026-10-05) to
-`310c545f9` (2026-10-26) they ran as bundled worker binaries over a local JSON bridge; that
-bridge is gone (see [presentation evaluators](bloem-presentation-evaluators.md)). They were
-never catalog-installable SDK capabilities, and the SDK must not gain host database, tenant,
-profile or quota authority merely to package presentation code.
+Promotions and ambience evaluate inside the server process (see
+[presentation evaluators](bloem-presentation-evaluators.md)). They are not catalog-installable
+SDK capabilities, and the SDK must not gain host database, tenant, profile or quota authority
+merely to package presentation code.
 
 ### Plugin-author SDK
 
@@ -122,11 +107,11 @@ pinned public SDK, while keeping private storage registration and Bloem plugin i
 restrictions. Public-runtime currency alone does not publish a storage provider or approve an
 executable artifact on a server.
 
-The plugin-author release verified on October 15 is
+The plugin-author release the server's tests use is
 [`v0.27.0`](https://github.com/Bloem-Studios/bloem-plugin-sdk/releases/tag/v0.27.0). It adds
-private audiobook/audio metadata and directory-only listing declarations. The earlier
-`v0.26.0` synchronized public protocols with Silo SDK `v0.24.0`, while `v0.25.0` introduced
-ebook metadata and incremental listing. The host now uses Silo SDK `v0.31.0`; a release
+private audiobook/audio metadata and directory-only listing declarations. `v0.26.0`
+synchronized public protocols with Silo SDK `v0.24.0`, and `v0.25.0` introduced ebook
+metadata and incremental listing. The host uses a newer Silo SDK (`v0.31.0`), so a release
 number alone does not prove all optional public services match. Check descriptors and host
 runtime assembly for the services a plugin uses.
 
@@ -189,41 +174,30 @@ spelling, opaque identifiers, int64 revisions and scope-specific requests. Do no
 fields that the HTTP handler omits. A new server wire type needs an entry, or a reason, in
 `contracts/client/v1/coverage.json`.
 
-The October 7 contract refresh covers native-storage capabilities, sanitized source and
-library states, binding/scan receipts, revision commands and recovery errors, beside upstream
-shuffle, episode-series-poster and network-password-retention additions. These are
-descriptions of the existing wire contract, not authorization changes or new runtime routes.
-Native storage remains capability-gated and `backend_verified` remains false.
+The contract covers native-storage capabilities, sanitized source and library states,
+binding and scan receipts, revision commands and recovery errors, source browsing and atomic
+library selections, and audiobook acquisition setup, admin status, candidate approval and
+validated decisions. These describe the existing wire contract; they are not authorization
+changes or new runtime routes. Native storage remains capability-gated and
+`backend_verified` remains false.
 
-The October 12 refresh includes source browsing and atomic library selections, plus audiobook
-acquisition setup, admin status, candidate approval and validated decisions. The audiobook
-roots use the Bloem dialect and `audiobook_requests_v1` gate. That capability advertises the
-mounted request lane; it does not promise that an acquisition provider is configured or ready.
-Provider receipts and frozen dispatch identities remain internal and are explained in the
-coverage allowlist. Browse and selection roots keep their native-storage capability gates.
+The audiobook roots use the Bloem dialect and the `audiobook_requests_v1` gate. That
+capability advertises the mounted request lane; it does not promise that an acquisition
+provider is configured or ready. Provider receipts and frozen dispatch identities remain
+internal and are explained in the coverage allowlist. Browse and selection roots keep their
+native-storage capability gates.
 
-The October 14 refresh adds the audiobook connection edit body
-(`AudiobookRequestConnectionUpdate`, `audiobook_requests_v1` gate) and the ungated
-`RequestIntegrationTestResult` shared by the ebook and audiobook connection tests.
-`AudiobookIntegrationSummary` gains the optional `plugin_config` and `stored_credentials`
-fields, which only the setup listing fills, and only for a platform administrator; credential
-values never appear on the wire.
+`AudiobookRequestConnectionUpdate` (the audiobook connection edit body, `audiobook_requests_v1`
+gate) and the ungated `RequestIntegrationTestResult` (shared by the ebook and audiobook
+connection tests) are part of the contract. `AudiobookIntegrationSummary` has optional
+`plugin_config` and `stored_credentials` fields, which only the setup listing fills, and only
+for a platform administrator; credential values never appear on the wire.
 
-The October 14 integration artifacts carried source revision
-`294df15ea03dd58ee3adc509aecb23452e30f176` and normalized graph digest
-`sha256:9d096c83e1a0e9e38aca1eaa48696732191e05f1a8975932e60db513a2a421f4`. At `5fc698915` the
-generated headers carried source revision `8ec6855d5f524b94c72f5351621bc6ece9aa6cb2`
-(regenerated in that Silo merge for Silo's episode card artwork, dates and ratings) and digest
-`sha256:3f29a33fa47303343c9fed8f5635b135b4f5a28072e10ae4202a247f39523ddd`, which the same
-merge pinned after adding Silo's eight admin Discover types to the coverage allowlist. At `b6039036d` the
-generated Kotlin/Swift headers carry source revision
-`030a8cf002e1928f32f2dd4d0c155e3dfdd256be` and `contracts/client/v1/digest.txt` pins contract
-digest `sha256:6a044ceb39c341966514b17592a1949b6442e4a6af2f91bdfbca5f8cb2aa8a2f`; both were
-regenerated in the Silo merge `4edbee99d` (2026-10-31), which added Silo's additive
-`series_status`, `series_statuses` and `exclude_series_statuses`. `digest.txt` also pins the
-digest of the pre-lock removals table in [v1 scope](v1-scope.md). `digest.txt` and the
-generated headers are the authority. A later documentation-only commit does not require a new
-graph digest or a new source stamp.
+`contracts/client/v1/digest.txt` pins the contract digest (and the digest of the pre-lock
+removals table in [v1 scope](v1-scope.md)), and the generated Kotlin and Swift headers carry
+the source revision they were generated from. Those files are the authority; this page does
+not copy their values. A documentation-only commit does not require a new graph digest or a
+new source stamp.
 
 The merged DTO graph adopts nullable account `max_profiles` and removal of the upstream
 administrator styling fields. Both native client releases still need explicit bundle adoption
@@ -231,8 +205,7 @@ and runtime checks. See the [contract transition](bloem-contract-adjudications.m
 
 #### Reproduce and verify
 
-Use the Go toolchain declared in the server's `go.mod` (now `1.26.11`; the October 14
-integration used `1.26.9`). Go `1.27.1` changes standard-library JSON alias representation
+Use the Go toolchain declared in the server's `go.mod` (currently `1.26.11`). Go `1.27.1` changes standard-library JSON alias representation
 and is not the validated generation environment. Commands assume the repository root is the
 cwd:
 
@@ -247,7 +220,7 @@ GOWORK=off make verify-settings-bindings verify-bloem-openapi verify-apiv2-opena
 ```
 
 The native-storage path/method check (`TestNativeStorageDocumentMatchesMountedOperations`)
-walks the production registrar and requires all 40 mounted operations to be documented.
+walks the production registrar and requires every mounted operation (42 at the time of writing) to be documented.
 Book-request and other conditional groups also have focused mount checks. Generate the route
 inventory after router changes, then consult [API coverage](../bloem/api-catalogue.md): the
 inventory includes dispatchers, and typed native coverage remains incomplete. No single route
@@ -271,8 +244,8 @@ server DTOs are generated.
 
 `/api/bloem/v2` is Bloem's native extension surface. `/api/v2` remains the supported
 Silo-compatible native API. Silo retired its alpha v1 API on 2026-11-11: every v1 route
-answers `410 Gone` with `client_upgrade_required`, except the health and readiness probes. Check the relevant committed OpenAPI document before implementing a
-route.
+answers `410 Gone` with `client_upgrade_required`, except the health and readiness probes.
+Check the relevant committed OpenAPI document before implementing a route.
 
 Native-storage administration requires a signed platform or organization administrative-context
 token. Ordinary account tokens, profile headers and v2 mutation conventions are not

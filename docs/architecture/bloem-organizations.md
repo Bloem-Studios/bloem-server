@@ -1,11 +1,8 @@
 # How organizations work
 
-> **Provenance and status.** Bloem page, written on 2026-10-31, updated on
-> 2026-11-01 and checked against `main` at `b6039036d`. Organizations are a Bloem
-> addition: Silo has one set of accounts per server. This page explains the model in
-> plain language. The technical pages linked at the end hold the invariants.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API. The
-> section on invitations was added on 2026-11-16.
+Organizations are a Bloem addition: Silo has one set of accounts per server. This page
+explains the model in plain language. The technical pages linked at the end hold the
+invariants.
 
 Bloem is built in four tiers. Each tier lives inside the one above it, and each one
 can only narrow what the tier above it allows. This page walks through who is who,
@@ -41,8 +38,8 @@ someone presses play.
   conversions** for all of its members together. It can own libraries of its own.
 
 A platform administrator can also create an organization by hand in the admin
-console. In production on 2026-11-01, the default organization is the only one,
-and every account is in it.
+console. A server with no reseller organizations has only the default one, and every
+account is in it.
 
 ### Its own address and look
 
@@ -51,8 +48,8 @@ name, logo and colours. On its domains the sign-in page and the web app show its
 branding, and its emails link to its **primary domain**. An account that signs in on
 another organization's domain is told where to sign in instead. A domain changes
 only what people see, never what they can reach. The default organization uses the
-server's own branding, and in production the server's public address is registered
-as its primary domain. See
+server's own branding, and the server's public address is registered as its
+primary domain. See
 [how organization domains and branding work](bloem-organization-domains.md).
 
 ## What can someone watch?
@@ -122,7 +119,7 @@ invitation**, with its note so the administrator can tell links apart.
 
 ## Example: a reseller
 
-This example is made up. On 2026-10-31 production had no reseller organizations.
+This example is made up.
 
 Riverside Club, a football club, resells Bloem to its members. It buys **10 seats**
 and **2 shared video conversions** on the storefront. Early on, eight seats are taken.
@@ -221,13 +218,12 @@ it.
   (`/api/bloem/v2/admin/platform/tenants`), their domains and branding
   (`/api/bloem/v2/admin/platform/tenants/{id}/domains` and `/branding`, capability
   `organization_domains_v1`), member accounts and account create and update. Plans
-  are on the [plans and preview](../bloem/api/plans.md) page. The storefront left
-  Silo's v1 API on 2026-10-31 and the web app on 2026-11-01, before Silo retired it on
-  2026-11-11
+  are on the [plans and preview](../bloem/api/plans.md) page. Bloem's callers no longer
+  use Silo's v1 API, which Silo retired on 2026-11-11
   ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
 
 - **Organization invitations:** `POST /api/bloem/v2/admin/organization/invitations`
-  takes Silo's optional `delivery` field (Silo #1788, `4a0cff41f`), advertised by
+  takes Silo's optional `delivery` field (Silo #1788), advertised by
   the `organization_invitation_links_v1` capability token. `link` creates an
   invitation with no `email` (sending one is a 422 on `email`); the invitee enters
   their address at accept, through Silo's own lookup (`email_required`) and accept.

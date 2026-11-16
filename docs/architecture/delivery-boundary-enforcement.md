@@ -1,11 +1,9 @@
 # How access is checked as content leaves the server
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Delivery boundary enforcement is a Bloem addition: Silo has
-> no organizations, no standalone-proxy source recheck and no notification
-> delivery check. The checks live in Bloem-owned files; their call sites in Silo
-> files are recorded seams. The technical rules are in the
-> [For developers](#for-developers) section.
+Delivery boundary enforcement is a Bloem addition: Silo has no organizations, no
+standalone-proxy source recheck and no notification delivery check. The checks live in
+Bloem-owned files; their call sites in Silo files are recorded seams. The technical rules are
+in the [For developers](#for-developers) section.
 
 Bloem decides what someone may watch when they browse and press play (see
 [how organizations work](bloem-organizations.md#what-happens-when-someone-presses-play)).
@@ -87,9 +85,9 @@ account, so a viewer reaches the same libraries whichever address they use.
 - **API:** these checks add no route; they guard Silo's playback, stream, download
   and notification routes and the standalone proxy.
 
-### The existing ceiling (not built by this work)
+### The organization ceiling
 
-The organization ceiling already existed before this change. `ViewerResolver`
+The organization ceiling comes from the policy layer, not from the delivery guards. `ViewerResolver`
 loads the tenant's available media folders and the policy engine intersects
 them into every resolved scope:
 
@@ -112,15 +110,13 @@ them into every resolved scope:
 The consequence is what makes the rest of this document possible:
 `access.Scope.AllowedLibraryIDs` is already tenant-bounded everywhere it is
 read. A delivery guard that rechecks library membership against that scope
-is, by construction, also rechecking the tenant. Nothing added here needed
-to re-derive organization membership; it only needed to make sure the scope
-was actually being consulted at each delivery point. The tenant ceiling is
+is, by construction, also rechecking the tenant. The delivery guards do not re-derive
+organization membership; they only make sure the scope is consulted at each delivery point. The tenant ceiling is
 described in [OPA tenant authorization](opa-tenant-authorization.md).
 
-### What this work added
+### What the delivery guards cover
 
-Six paths never consulted the resolved scope at all. Each now rechecks
-library membership immediately before serving:
+These paths recheck library membership immediately before serving:
 
 - Native media delivery: file bytes, subtitles, subtitle fonts, HLS
   manifests and segments, and signed restart recipes
@@ -135,12 +131,11 @@ library membership immediately before serving:
 The delivery guard also had to be connected to a real scope on the one
 request shape that skipped viewer-access resolution entirely: a bearer-less
 `?st=` stream-token request (how a native player replays a `stream_url`,
-since it cannot attach an `Authorization` header). Before this change,
-`RequireViewerAccess` skipped on that path and `AccessFilterFromContext`
-fell back to a zero-value filter, which the guard read as "no library
-restriction": revoking a library entitlement did not stop delivery.
+since it cannot attach an `Authorization` header). `RequireViewerAccess` skips that path, and `AccessFilterFromContext`
+falls back to a zero-value filter, which a guard would read as "no library
+restriction", so a revoked library entitlement would not stop delivery.
 `requireStreamTokenViewerAccess` in `internal/api/middleware/viewer_access.go`
-now resolves a real, organization-bounded scope from the token's own `uid`/`pid`
+therefore resolves a real, organization-bounded scope from the token's own `uid`/`pid`
 (lookup keys only, re-verified against live policy) instead of skipping.
 
 ### Seams
@@ -149,14 +144,13 @@ The checks live in Bloem-owned files (`playback_library_access.go`,
 `internal/proxy/source_access.go`, `internal/notifications/delivery_access.go`,
 `internal/catalog/bloem_access_filter.go`, `internal/policy/bloem_viewer_resolver.go`,
 `internal/policy/tenant_viewer_resolver.go`). The Silo files that call them or
-carry the ceiling are recorded seams in `contracts/seams.txt` (304 entries on
-2026-11-01):
+carry the ceiling are recorded seams in `contracts/seams.txt` (`make verify-seams`
+checks the list):
 `internal/api/handlers/playback.go`, `internal/api/handlers/stream.go`,
 `internal/downloads/offline.go`, `internal/api/middleware/viewer_access.go`,
 `internal/policy/viewer_resolver.go`, `internal/policy/vendor/scope.rego`,
 `internal/proxy/server.go`, `internal/notifications/delivery_repo.go` and
-`cmd/silo/main.go`. Earlier versions of this page cited exact line numbers, which
-later Silo merges invalidated; the references here name files and symbols instead.
+`cmd/silo/main.go`. This page names files and symbols rather than line numbers, which Silo merges invalidate.
 
 The queued-delivery recheck fails closed, so a Silo test that sends a queued
 notification finds no delivery row unless its recipient is a profile in an active
@@ -167,8 +161,7 @@ fixture called by one added line, a recorded test seam:
 `internal/notifications/webpush_login_session_db_test.go`, whose tests run on a
 private schema, gets schema-local `organizations` and `user_profiles` tables with
 one active organization (`seedSchemaTenantProfiles` in
-`bloem_schema_tenant_fixture_test.go`, added with the Silo merge through
-`fcd546a04`). Never loosen the predicate for a test.
+`bloem_schema_tenant_fixture_test.go`). Never loosen the predicate for a test.
 
 ### Invariants
 
@@ -222,11 +215,9 @@ These are rules a future change must not break.
   account as a profile-less subject (`SubjectResolver.ResolveSubjectTenant`
   with no profile): through the organization its active membership is in, or
   the deployment's default organization for an account with no membership.
-  Until `a6d342390` (2026-10-27) it always resolved the default organization.
-  That was enough while an account could belong to several organizations, but
-  since `c60b7008e` (2026-10-26) each account has exactly one membership, so a
-  member of a hosted organization got `404` for every source in its own
-  libraries. `TestProxySourceAccessResolvesTheAccountsOwnOrganization`
+  Resolving the default organization instead would give a member of a hosted
+  organization `404` for every source in its own libraries, because each account
+  has exactly one membership. `TestProxySourceAccessResolvesTheAccountsOwnOrganization`
   (`cmd/silo/bloem_proxy_source_access_test.go`) covers both organizations,
   cross-organization reads, a suspended member and an account without a
   membership.
@@ -243,9 +234,7 @@ These are rules a future change must not break.
   item identity used to inherit eligibility silently.
   `TestEveryDeliveryTypeConstantIsClassified`
   (`internal/notifications/delivery_type_classification_test.go`) parses every
-  top-level `DeliveryType*` constant in the package's non-test files (four
-  files declare them today: `alert_body.go`, `release_types.go`,
-  `request_notifier.go` and `webhook_types.go`) and fails by name if a constant
+  top-level `DeliveryType*` constant in the package's non-test files and fails by name if a constant
   is missing from either `accountLevelDeliveryTypes` or the test's own
   `notAccountLevelDeliveryTypes` set. The account-level types today are
   `request.approved`, `request.declined`, `webhook.auto_disabled`,
@@ -307,18 +296,7 @@ unchanged by the domain. See [organization domains](bloem-organization-domains.m
   an artifact, not who may keep it queued for preparation.
 - **Restored-backup delivery-revocation acceptance remains open.** The revocation
   and revision-bump behavior described above has not been exercised against
-  a database restored from a backup. The separate
-  [September 19 policy-array/Xtream migration rehearsal](../operations/2026-09-19-xtream-deployment.md#database-and-recovery-evidence)
-  checked schema and data preservation, not these delivery-revocation semantics.
-
-### History
-
-Bloem added the delivery rechecks on 2026-09-12: `017938946` (handlers),
-`b643a84e9` (standalone proxy), `3c0305b73` and `b4ae360f4` (notifications), and
-this page (`e6eba2ac4`). Since `c60b7008e` (2026-10-26) an account belongs to
-exactly one organization, and `a6d342390` (2026-10-27) made the proxy resolve the
-account's own organization. `25129bcbd` (2026-11-01) ends a session its
-organization revoked with `401`.
+  a database restored from a backup.
 
 ### Related pages
 

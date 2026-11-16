@@ -1,12 +1,9 @@
 # How request rules apply to organizations and profiles
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
-> and checked against `main` at `1430c3769`. The movie and series request service, its limits and its
-> routing are Silo's (`internal/requests`; see Silo's
-> [media requests](media-requests.md)). Bloem adds adapters that tie them to its
-> organizations and to the profile that asks. The technical rules are in the
-> [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+The movie and series request service, its limits and its routing are Silo's
+(`internal/requests`; see Silo's [media requests](media-requests.md)). Bloem adds adapters
+that tie them to its organizations and to the profile that asks. The technical rules are in
+the [For developers](#for-developers) section.
 
 When a viewer asks for a movie or a series, Silo's request service decides
 whether they may ask, how many requests they have left and whether a request
@@ -125,7 +122,7 @@ account-group resolution.
 
 With the provider installed (`EnableTenantRequestPolicy`), Silo's `resolvePolicy`
 (`internal/requests/service.go`) returns at once into `bloemResolvePolicy`, on
-lines Bloem added at its top (since the merge of Silo through `cb4f45d0c`). It
+lines Bloem added at its top. It
 layers the settings, the group's limits and the account's own limits through
 Silo's `LayeredPolicy` and counts usage as `resolvePolicy` does, so Silo's
 account-group resolution (`viewerRequestAccess`) is never consulted.
@@ -176,15 +173,6 @@ profile policies, membership and user-limit overrides, account consumption,
 internal request enrichment, foreign groups, stale authority, production
 listener composition, real v2 requests, and ordinary Silo compatibility. The
 tests sit beside the adapters (`internal/requests/bloem_*_test.go`).
-
-### History
-
-The profile and quota binding was added in `f167e85be` (2026-10-10) and the
-platform guard on server-global routing in `1da67971e` (2026-10-10); routing
-rules came with Silo #1632 (`9d63465bf`). `c60b7008e` (2026-10-26) moved an
-account's policy (its request override and access group) back onto `users`,
-where Silo keeps it, and limited an account to one organization. `b017bfe84`
-(2026-10-26) removed the lifecycle-receipt dependency.
 
 Technical pages:
 

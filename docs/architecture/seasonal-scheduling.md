@@ -1,10 +1,8 @@
 # How seasonal packs are scheduled
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Seasonal packs are a Bloem addition; Silo has nothing like
-> them. This page explains how they switch on and off and who sees them, in plain
-> language; the technical rules are in the [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+Seasonal packs are a Bloem addition; Silo has nothing like them. This page explains how they
+switch on and off and who sees them, in plain language; the technical rules are in the
+[For developers](#for-developers) section.
 
 A **seasonal pack** is a light decoration on Home and the sign-in page: falling snow,
 a banner or a few small pictures for a season or an occasion. This page walks through
@@ -100,25 +98,6 @@ and only after they sign in.
   The legacy registry routes are on
   [Bloem's retired v1 routes](../bloem/api/v1-routes.md#seasonal-packs).
 
-### History
-
-Seasonal ambience is "S-3" of Bloem's September client engagement spec, which first
-shipped in `feat/s3-ambience` (migration `20260901192510_ambience_packs.sql`). The spec
-was removed on 2026-11-01; its rules still in force are on this page.
-Annual schedules, migration `20260905090908_ambience_annual_schedule.sql` and the web
-snow renderer arrived in `f764adad8` (2026-09-05). `53534d9f0` (2026-09-18) added the
-embedded web authoring page (`web/src/pages/admin-platform/EngagementPage.tsx`), the
-platform-context routes `/api/bloem/v2/admin/platform/ambience` (then in
-`internal/api/router_bloem_engagement.go`; since `3eb77be33` mounted by
-`mountBloemPlatformStorefront` in `internal/api/router_bloem_storefront.go`), the
-viewer route `GET /api/bloem/v2/ambience` (`internal/api/bloem_seasonal_viewer.go`) and
-the configured-S3 acceptance recorded below. Since `310c545f9` (2026-10-26) the
-ambience evaluator runs inside the server rather than as a bundled worker process; see
-[presentation evaluators](bloem-presentation-evaluators.md). On 2026-11-01
-(`45abcda81`) the web app's signed-out layer moved from the `ambience` block of Silo's
-v1 branding route to `GET /api/bloem/v2/ambience/public`. On 2026-11-11 Silo retired its v1
-API, and the legacy payloads and routes below went with it.
-
 ### Authoring
 
 - Platform administrators manage the registry on the embedded web's **Campaigns &
@@ -144,8 +123,7 @@ API, and the legacy payloads and routes below went with it.
 - `intensity` is within 0.0 to 1.0 and defaults to 1.0. `surfaces` come from `all`,
   `home`, `login`, default `["all"]`; `all` absorbs the rest.
 - Asset URLs are absolute `https://` URLs or server paths under
-  `/api/bloem/v2/ambience/assets/` (`ambience.AssetURLBase`, the only accepted prefix since
-  2026-11-11). A pack
+  `/api/bloem/v2/ambience/assets/` (`ambience.AssetURLBase`, the only accepted prefix). A pack
   holds at most 32 sprites.
 
 ### Yearly occurrences
@@ -179,9 +157,6 @@ API, and the legacy payloads and routes below went with it.
   organization; while it is still initializing they receive deployment-wide packs
   only. The default-deny route boundary excludes direct-profile sessions. Responses
   use `Cache-Control: private, no-store`.
-- The phone apps read the `ambience` block of Silo's v1 branding route (public packs)
-  and the packs echoed on the v1 notification capability. Both went with Silo's v1 API on
-  2026-11-11.
 - Publication or removal is visible on the next client refresh. Scheduled expiry does
   not require another network response. This matters when the storefront or the
   media server becomes unreachable.
@@ -212,14 +187,6 @@ A pack goes out in one shape wherever it appears (`Pack.Wire`):
 - A pack is active while `starts_at <= now < ends_at`, evaluated against the sections'
   seasonal clock (`recipes.Clock`). The window is still sent, so apps honour its
   bounds locally.
-- The legacy payloads the phone apps read until Silo retired its v1 API on 2026-11-11:
-  the `ambience` array on the public v1 `GET /theme/branding` held active deployment-wide
-  packs only, always present
-  and `[]` when none is active, the registry is not wired or it fails (an organization's
-  pack never shows before sign-in). The same array on the authenticated
-  v1 `GET /notifications/capability` added the active packs of every active
-  organization the account is an active member of. There, a present key means the
-  feature exists, `[]` means nothing is active, and a missing key means it is off.
 - **Rendering rules for apps.** Effect names are an open set: an app renders the ones
   it knows; an unknown `effect_id` with assets gets a generic artwork renderer; an
   unknown one without assets is ignored. Intensity is a hint, and a local "reduce
@@ -227,8 +194,8 @@ A pack goes out in one shape wherever it appears (`Pack.Wire`):
 
 ### Admin routes
 
-The registry routes (native under `/api/bloem/v2/admin/platform/ambience`; the legacy v1
-routes went with Silo's v1 API) use `handlers.AdminAmbienceHandler`:
+The registry routes under `/api/bloem/v2/admin/platform/ambience` use
+`handlers.AdminAmbienceHandler`:
 
 - `GET` lists every pack, soonest window first, with `storage_available` and
   `yearly_scheduling`.
@@ -301,19 +268,17 @@ Profile. This server change implements no new native-client delivery.
 Seasonal asset upload uses Silo's catalog **Assets** blob store, the store branding
 uses, so it works on local artwork storage as well as S3. `bloemWireServices`
 (`cmd/silo/bloem_main.go`) falls back to the public S3 client only when no Assets store
-is configured; this has been so since `f293cce0d` (2026-09-23), and earlier versions of
-this page said public S3 was required. With no store at all, authoring still supports
+is configured. With no store at all, authoring still supports
 HTTPS artwork references, but the registry reports uploads unavailable and the upload
 endpoint returns `503`. See
 [campaign and seasonal asset storage](bloem-campaign-asset-storage.md).
 
 ### Acceptance
 
-Configured-S3 acceptance passed for banner and sprite uploads and decoded Home images,
-exact image bytes, MIME types and dimensions, ETag revalidation, input rejection and
-current-organization versus public filtering. Temporary assets and storage
-configuration were removed and the original settings restored. This does not imply
-that every deployment has S3 configured; see
+Uploads of banner and sprite artwork were exercised end to end against a configured S3
+store: decoded Home images, exact image bytes, MIME types and dimensions, ETag
+revalidation, input rejection and current-organization versus public filtering. This
+does not imply that every deployment has S3 configured; see
 [storage setup](../bloem/overlays/s3-storage-setup.md) and the
 [coverage evidence](bloem-web-feature-coverage.md#acceptance-evidence-and-limits).
 

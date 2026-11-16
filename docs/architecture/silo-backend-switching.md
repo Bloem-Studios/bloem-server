@@ -1,12 +1,9 @@
 # How Silo backend switching works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-06
-> and checked against `main` at `8e7435562`. Silo switching is a Bloem addition: Silo knows nothing about
-> it. Its job is to keep a database that Bloem serves readable and writable by an
-> unmodified Silo image. The commands, database rules and checks are in the
-> [For developers](#for-developers) section; the plain-language tour is
-> [switching between Silo and Bloem](bloem-silo-switching-explained.md).
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+Silo switching is a Bloem addition: Silo knows nothing about it. Its job is to keep a database
+that Bloem serves readable and writable by an unmodified Silo image. The commands, database
+rules and checks are in the [For developers](#for-developers) section; the plain-language tour
+is [switching between Silo and Bloem](bloem-silo-switching-explained.md).
 
 A database can be served by Silo or by Bloem, one at a time, and the person running
 the server can switch between them in either direction without losing or corrupting
@@ -81,30 +78,6 @@ servers.
 - **API:** none. The switch is a database contract, not an API: neither server calls
   the other.
 
-History: introduced on 2026-10-09 (`474782ef1` for this page; migrations
-`20261009131027_bloem_membership_policy_mirrored.sql` and
-`20261009131835_bloem_silo_switching_writes.sql`; `ac79641f0` for profiles, roles and
-ungrouped admins). `fc688aca3` (2026-10-13) kept Silo's compatibility data, and
-`c84b4f3f8` (2026-10-14) restored the v1 health identity. The current single-flag
-design comes from `c60b7008e` (2026-10-26, migration
-`20261026003000_bloem_account_policy_on_users.sql`), which moved account policy back
-onto `users` and removed the earlier three-phase membership-policy rollout.
-`2393c41ee` (2026-10-18) restored Silo's Jellyfin and Audiobookshelf servers in Bloem.
-`3b9e96939` (2026-10-31) added the all-in-one check and moved the check's driver to
-Silo's `/api/v2`.
-
-**Last verified on 2026-11-01:** both checks below passed, all four steps each, with
-Silo `63ef34b23` against `bloem-server:release-59616c4af`, the release production runs:
-`make silo-switch-check` with Silo's `63ef34b236b88dc77acca1a9a3ed90235377691f-base`
-image (`sha256:4b601e36bcdf88bfc927a485f2a0abb3f1912d20cb55e6eb096e9b908d535f5f`), and
-`make silo-switch-check-all-in-one` with its all-in-one image
-(`sha256:8b652b0be194081936889b8ce48d5fc25cd8f71269d376a51170aada75678d07`). That run
-covers the November 1 merge of Silo through `63ef34b23`, which brought no Silo
-migrations but changed two `omnibus/` start scripts (the `NODE_URL` check moved from
-`init-config` into Silo itself, and `init-envfile` refuses to start without root), and
-Bloem's `20261101055208_bloem_organization_domains`, which adds two Bloem-only tables.
-The previous run, on 2026-10-31, used Silo `32a2f63e1` and Bloem `4edbee99d`.
-
 ### The switch
 
 Account policy lives on `users`, where Silo keeps it, so both servers read and write
@@ -122,8 +95,8 @@ database.
 
 `public.bloem_silo_switching_enabled()` reads the flag; every guard and placement
 trigger below checks it. A database that was in the `mirrored` membership-policy phase
-before `20261026003000_bloem_account_policy_on_users` kept switching enabled through
-that migration.
+before migration `20261026003000_bloem_account_policy_on_users` (which moved account
+policy back onto `users`) kept switching enabled through that migration.
 
 ### Invariants while switchable
 
@@ -151,7 +124,7 @@ that migration.
   with pending trigger events.
 - **`auth_sessions.device_id` is Silo's nullable column.** NULL means the client
   reported no device, as in Silo, whose push retention reads NULL as "this login names
-  no device". Bloem stored `''` there from 2026-10-09 until migration
+  no device". Earlier Bloem versions stored `''` there; migration
   `20261106203909_bloem_auth_session_device_id_null.sql` turned those rows back into
   NULL; it applies whether or not switching is on. Bloem's own writes use NULL too,
   and every read coalesces it to `''`.
@@ -171,8 +144,8 @@ database and work again when Bloem serves it. Silo answers every host with the
 server-wide branding and public URL.
 
 Silo's Jellyfin and Audiobookshelf compatibility servers are shared, not Bloem-only.
-Bloem removed both protocols on 2026-10-13 and kept their tables, the author-count view
-and their settings for Silo (`fc688aca3`). Since `2393c41ee` (2026-10-18) Bloem runs
+Bloem once removed both protocols but kept their tables, the author-count view
+and their settings for Silo. Bloem now runs
 both servers again as Silo ships them, so whichever backend is serving reads and writes
 those tables. The Jellyfin setting `jellyfin_compat.server_id` (the server identity
 that Jellyfin clients recognise) also supplies `server_id` on `GET /api/v1/health` in
@@ -189,7 +162,7 @@ both backends, as in Silo. See [protocol compatibility](bloem-compatibility-remo
   not adapted to; an older one can expect a schema that a later Silo migration changed.
   For example, `20261019181724_hash_api_key_verifiers.sql` replaces the raw
   `api_keys.api_key` column with sha256 verifiers in `key_hash`, which a Silo image
-  from before that migration cannot read. From Silo's `c3115d493` (#3319) on, a commit
+  from before that migration cannot read. From Silo #3319 on, a commit
   tag names Silo's all-in-one image, which runs Silo as `PUID` (911 unless set) rather
   than root. Its `<full SHA>-base` tag is the image Silo published before, which runs
   as root.
@@ -223,7 +196,7 @@ docker exec -e PATH=/command:/usr/local/bin:/usr/bin:/bin <container> \
 shell does not have on its `PATH`. The container environment holds `DATABASE_URL` and
 is readable only by root, and the bundled PostgreSQL admits only the `silo` account, so
 the command starts as root and drops to `silo`. `silo-switching status` works the same
-way. The image's init scripts need root: since Silo's `01cb809f7` (#3338) a container
+way. The image's init scripts need root: since Silo #3338 a container
 started as another user stops at `init-envfile`.
 
 The bundled Redis keeps its data in `/config/redis`, which both images would share.
@@ -247,7 +220,7 @@ it from the Bloem image you deploy.
 all-in-one layer takes it over.
 
 The steps talk to both servers through Silo's `/api/v2` (`cmd/bloem-silo-switch-check`),
-so Silo's retirement of its v1 API on 2026-11-11 did not affect the check. The scripts still wait on
+so Silo's retirement of its v1 API did not affect the check. The scripts still wait on
 `/api/v1/ready`, the operational probe Silo keeps.
 
 Run both whenever a change touches a table that both servers write. Run them too after

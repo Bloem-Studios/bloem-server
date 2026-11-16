@@ -1,12 +1,9 @@
 # How library ownership and grants work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`; the starting set parts were updated on 2026-11-10, when new
-> platform libraries started joining it. Resource tenancy is a Bloem addition: Silo has no resource
-> owners, organizations or grants, and every library belongs to the whole server.
-> This page explains it in plain language; the technical rules, the checking queries
-> and the rollback boundary are in the [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+Resource tenancy is a Bloem addition: Silo has no resource owners, organizations or grants, and
+every library belongs to the whole server. This page explains it in plain language; the technical
+rules, the checking queries and the rollback boundary are in the [For developers](#for-developers)
+section.
 
 Every library and plugin in Bloem has an owner, and an organization may only use
 what it owns or what the platform has granted it. This page walks through who owns
@@ -149,7 +146,7 @@ entitlement per member, with `granted_by_service` set to
 `resource-tenancy-migration`.
 
 A bundle revision changes in two ways only, both since
-`20261110123408_bloem_library_starting_set.sql` (2026-11-10):
+migration `20261110123408_bloem_library_starting_set.sql`:
 
 - A platform-owned `media_folders` row joins the active revision of the
   creation-default bundle when its creating transaction commits. The
@@ -203,9 +200,8 @@ does not, and adding it for future organizations needs a new bundle version.
 No caller can use these compatibility paths to select an organization owner.
 Organization-private library and plugin creation exists only through the
 native-storage administration paths: native-storage library creation assigns the
-creating organization as owner (`internal/nativestorage/library_mutations.go`,
-`a62162cc5`, 2026-10-12), and organization administrators can add
-organization-owned S3 sources (`ccce9b1ee`, 2026-10-15). Those paths remove the
+creating organization as owner (`internal/nativestorage/library_mutations.go`), and organization administrators can add
+organization-owned S3 sources. Those paths remove the
 compatibility grant from the new row before they assign the organization owner.
 
 ### Verification queries
@@ -327,26 +323,14 @@ media-folder and plugin-installation rows and columns.
 Organization-private resources now exist (see
 [compatibility-created roots](#compatibility-created-roots)), so on any database that
 has used them, schema Down is not a valid rollback. Roll back the application image
-and restore the named predeployment database snapshot; never discard ownership rows
+and restore the database snapshot taken before the deployment; never discard ownership rows
 to force the old schema to accept private resources.
 
 ### Row-level security
 
-The plan of 2026-08-13 was for the next slice to move library/catalog repository
-reads and writes onto required typed tenant/service scopes and lock parity with Silo's then-current v1 API,
-with row-level security disabled until executable repository/RLS decisions matched
-exactly. Row-level security is still not enabled at `b6039036d` (no migration enables
-it); tenant scope is applied by the policy engine and SQL predicates (see
+Row-level security is not enabled (no migration enables it). Tenant scope is applied by the
+policy engine and SQL predicates (see
 [delivery boundary enforcement](delivery-boundary-enforcement.md)).
-
-### History
-
-The migration (`56e8cdf74`) and the first version of this page (`3189d96ea`) date
-from 2026-08-13. Organization-owned roots arrived with native storage (`a62162cc5`,
-2026-10-12; `ccce9b1ee`, 2026-10-15). `b43fb65e0` (2026-10-26) grants each new
-organization the creation-default bundle. `20261110123408` (2026-11-10) makes a new
-platform library join the active revision and a deleted library leave every revision,
-after production's original book libraries could not be deleted.
 
 Technical pages:
 

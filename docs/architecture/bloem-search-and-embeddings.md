@@ -1,11 +1,9 @@
 # How search finds titles by words and by meaning
 
-> **Provenance and status.** Bloem page, written on 2026-11-10, updated on 2026-11-11
-> against `main` at `e2806cad4` and on 2026-11-13 against the merge of Silo through
-> `8d68c470d` (`e50da6f2d`). Search and embeddings are Silo's. Bloem adds three
-> things, carried until Silo has them: task labels for the `gemini-embedding-2` model, a
-> choice to drop the most common words of a search first, and a names-first query in
-> every hybrid search. The technical rules are in the [For developers](#for-developers) section.
+Search and embeddings are Silo's. Bloem adds three things, carried until Silo has them: task
+labels for the `gemini-embedding-2` model, a choice to drop the most common words of a search
+first, and a names-first query in every hybrid search. The technical rules are in the
+[For developers](#for-developers) section.
 
 When someone types into the search box, Bloem looks for titles in two ways at once: by
 the words typed and by what they mean. This page walks through the two halves of a
@@ -31,7 +29,7 @@ With **Meilisearch** as the search engine, a search runs like this:
    lie close to it.
 3. **Mixing.** Bloem merges the two lists. The **meaning-based share** sets how much
    each counts: 0 ranks by words only, 1 by meaning only, and the default is 0.5.
-   Bloem's production uses 0.6. The meaning list keeps only titles whose vectors lie
+   The measurements below favour 0.6 over 0.5 for descriptions. The meaning list keeps only titles whose vectors lie
    close enough to the search's, so a search of a few words no longer brings back the
    whole library.
 4. **Names first.** Bloem also looks for the search's words in the titles' names alone,
@@ -61,7 +59,7 @@ half drops until something matches:
   the end, so a description ends up matched on its first, usually ordinary, words.
 - **Drop the most common words until something matches** is Bloem's addition. It drops
   words like "the", "a" and "finds" first and keeps the rarer words that pick out a story.
-  Bloem's production uses it.
+  It did best in the measurements below.
 - **Require every word** returns only titles with all of the search's words.
 
 Whatever the setting, a search of exactly two words needs both words and looks only at
@@ -91,8 +89,8 @@ the plain text. The text Bloem stores beside each vector stays plain.
    comes back once 85% of that kind has a vector from the new model. Until then the
    words half answers alone, and recommendations fill in as vectors arrive.
 
-On a big catalog this takes a while. On November 10, 2026, Bloem's production embedded
-about 66,000 titles an hour with Gemini, about a day for 1.7 million titles. Changing the
+On a big catalog this takes a while. In one run with Gemini, about 66,000 titles an hour were
+embedded, about a day for 1.7 million titles. Changing the
 task labels is the same as changing the model: every vector made with the old labels
 has to be made again.
 
@@ -157,7 +155,7 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   at or above 0.85 of its eligible items carrying a vector from the locked model, and the
   query vector arrives. Query vectors are cached for 15 minutes (1,024 entries). A failed
   query embed puts the node in a cooldown during which searches run keyword-only.
-- Since Silo `784c406b6` (#4058) every hybrid search is a federated multi-search
+- Since Silo's change #4058 every hybrid search is a federated multi-search
   (`buildFederatedSearchRequest`): a keyword query weighted `1 - r` for a semantic ratio
   `r`, a meaning-only query (empty `q`, ratio 1) weighted `r` with a
   `rankingScoreThreshold` for a cosine of 0.3 (`meilisearchSemanticScoreFloor`), and,
@@ -180,7 +178,7 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   built earlier gets it from a one-time settings update.
 - Silo's keyword episode query gets the same title twins. Its weight already is the
   keyword share; a keyword-only query beside a hybrid query that mixes keyword and
-  meaning itself (ratio below 1, the form before `784c406b6`) is still multiplied by
+  meaning itself (ratio below 1, the form before #4058) is still multiplied by
   `(1 - r) / r` for `r` above 0.5. If Meilisearch refuses the federated request with a
   4xx, the original request runs unchanged; a timeout or 5xx is returned as it is.
 - `timeout_ms` (default 800) bounds the search call. A search that fails or runs out of
@@ -191,10 +189,10 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   the searchable attributes in the order listed above, Meilisearch's default ranking
   rules and typo tolerance, no synonyms or stop words.
 - `frequency` is accepted by `NormalizeAdminSetting` (admin writes) and
-  `CatalogSearchSettingsFromMap` (startup and the indexer) since `7acd2c7e0`. A server
-  built before that rejects the stored value: its search falls back to PostgreSQL at
-  startup and its indexer skips every sync. Before rolling the image back past
-  `7acd2c7e0`, set the strategy to `last` or `all`.
+  `CatalogSearchSettingsFromMap` (startup and the indexer) since commit `7acd2c7e0`
+  (2026-11-10). A server built before that rejects the stored value: its search falls back
+  to PostgreSQL at startup and its indexer skips every sync. Before rolling back past that
+  commit, set the strategy to `last` or `all`.
 
 ### Embeddings and task labels
 
@@ -215,32 +213,30 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
 - The same text embedded with and without labels gives vectors with a cosine of about
   0.85, so a change to the labels needs every vector made again. Pass 1 re-embeds rows
   whose `model` differs from the configured one. Setting the `model` of the rows to
-  redo to another value queues them; production used `gemini-embedding-2-unlabeled` on
-  November 10.
+  redo to another value, for example `gemini-embedding-2-unlabeled`, queues them.
 - Rewriting `recommendations.embedding_lock` to the new model in SQL, instead of the
   reset, also works: Pass 1 replaces rows of the old model over time and nothing is
   deleted. Until the pass finishes, similar-title, taste and cluster comparisons mix
-  vectors from two models. Production switched to `gemini-embedding-2` this way on
-  November 9 ([receipt](../operations/2026-11-10-search-and-embeddings-deployment.md)).
+  vectors from two models.
 
 ### Measurements
 
 - **Task labels, November 9.** 6,432 catalog titles: 200 targets (80 movies, 40 series,
   40 ebooks, 40 audiobooks), 232 movies from 60 franchises and 6,000 random others. Gemini
-  Flash wrote 200 searches that describe a target without naming it; production keeps no
-  search history. Mean reciprocal rank of the target: 0.774 unlabelled, 0.923 labelled;
+  Flash wrote 200 searches that describe a target without naming it; there is no
+  search history to sample. Mean reciprocal rank of the target: 0.774 unlabelled, 0.923 labelled;
   first place 68.5% to 87.0%; top 10 92.5% to 99.0%. Labelling the titles alone gave most
   of the gain (0.890). The franchise test was too easy to separate the formats (99.4% and
   99.7%), and the two formats share half of each title's ten nearest titles.
-- **Matching strategy, November 10.** The same 200 searches, keyword only, against the
-  live index of 2.79 million documents, episodes excluded. Target in the top 50: `last`
+- **Matching strategy, November 10.** The same 200 searches, keyword only, against an
+  index of 2.79 million documents, episodes excluded. Target in the top 50: `last`
   16.5%, `frequency` 36.5%, `all` 1.0%. Exact titles found first 73.5% under every
   strategy; titles with one typo 62.5% under `last` and 63.0% under `frequency`.
 - **Meaning-based share and names first, November 11.** These measurements predate
   Silo's split into keyword and meaning-only queries (November 13), which gives the
   keyword queries the same `1 - r` to `r` share. After the re-embed, the same
-  searches against the live index, limited to the 163 targets still in the catalog (37
-  books were in libraries deleted on November 10). Meilisearch's mix behaves like a
+  searches against the index, limited to the 163 targets still in the catalog (37
+  books were in libraries deleted since). Meilisearch's mix behaves like a
   switch: up to a share of 0.57 a strong keyword hit wins, and from 0.6 the list is the
   meaning-only list. Target in the top 10:
 
@@ -274,10 +270,10 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   Meaning scores sit high enough that a keyword query weighted 0.5 never reaches the top
   50, so the episode name query is what keeps episodes findable. The 16 left are all
   episodes named with the typed words, such as "Time Travel" and "Murder Mystery".
-- **Short-word typos, November 11.** A scratch Meilisearch with the 1.27 million
-  non-episode documents and production's settings, merged with production's hybrid
-  results the way federation merges them (head to head by weighted score; 603 of 608
-  top results matched production). Target in the top 10, one-typo minimum word length
+- **Short-word typos, November 11.** A scratch Meilisearch with 1.27 million
+  non-episode documents and the same settings, merged with the hybrid results the way
+  federation merges them (head to head by weighted score; 603 of 608 top results matched
+  the real index). Target in the top 10, one-typo minimum word length
   5 / 4 / 3 / 3 with the finished-word title query: typo in a 3-4 letter word (129
   searches) 60.5% / 70.5% / 79.1% / 86.8%; typo in a long word 91.3% / 92.0% / 92.0% /
   92.0%; exact titles 98.2% throughout; well-known titles typed right 94.9% throughout;
@@ -292,16 +288,16 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   0.5 GB, so the index stays compressed for now.
 - **Search time.** Meilisearch's request logs for November 3 to 9: 613 searches, median
   23 ms, 90th percentile 634 ms, slowest 1.53 s (Meilisearch's default search cutoff is
-  1.5 s). Production's query timeout is 3,000 ms; the 800 ms default would have sent 56
-  of them (9%) to PostgreSQL.
+  1.5 s). A 3,000 ms query timeout answered all of them with Meilisearch; the 800 ms
+  default would have sent 56 of them (9%) to PostgreSQL.
 
 ### Temporary seams
 
 Listed in `contracts/seams.txt`, to drop when Silo has the change:
 `internal/recommendations/embeddings/client.go` and
-`internal/recommendations/search_query_vector.go` (labels, `9df39cadb`);
+`internal/recommendations/search_query_vector.go` (labels);
 `internal/catalog/search_meilisearch_provider.go`, `internal/catalog/search_provider.go`
-and `web/src/pages/admin-settings/SearchSettings.tsx` (`frequency`, `7acd2c7e0`);
+and `web/src/pages/admin-settings/SearchSettings.tsx` (`frequency`);
 `internal/catalog/search_meilisearch_client.go` (names first);
 `internal/catalog/search_indexer.go` (typo tolerance from three letters).
 `internal/config/admin_settings.go` was already a seam.

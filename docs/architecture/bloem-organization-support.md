@@ -1,10 +1,9 @@
 # How organization support works
 
-> **Provenance and status.** Bloem page, written on 2026-11-13 and checked against the
-> `feat/organization-support-routes` branch before its merge. Organization support is a
-> Bloem addition: Silo has one set of administrators per server. This page explains what an
-> organization's administrators can do to help their own people, and what the server
-> operator can do to help an administrator. The technical rules are in "For developers".
+Organization support is a Bloem addition: Silo has one set of administrators per server.
+This page explains what an organization's administrators can do to help their own people,
+and what the server operator can do to help an administrator. The technical rules are in
+"For developers".
 
 An organization looks after its own people. When a member cannot sign in, forgets a PIN, or
 shares a screen by mistake, the organization's administrator helps. This page covers what

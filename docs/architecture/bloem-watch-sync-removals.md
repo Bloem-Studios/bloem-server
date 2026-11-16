@@ -1,10 +1,8 @@
 # How removing a title in a tracker clears its watch history
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-04, updated on 2026-11-09
-> and checked against `main` at `39b1e9d6a`, which includes Silo through `4018816da`. Watched removals are a
-> Bloem addition to Silo's watch-sync contract, proposed to Silo and carried in Bloem
-> until Silo has them. The technical rules are in the [For developers](#for-developers)
-> section.
+Watched removals are a Bloem addition to Silo's watch-sync contract, proposed to Silo and carried
+in Bloem until Silo has them. The technical rules are in the [For developers](#for-developers)
+section.
 
 A **tracker** such as Pastime keeps a person's viewing record and stays in step with
 Bloem through a **watch-sync connection**. This page walks through what happens when
@@ -88,8 +86,7 @@ Rules:
 - A removal carries `media` (MOVIE, EPISODE or SERIES), `play_count` 0 and the removal
   time in `last_watched_at`. Anything else is reported as a sync warning and skipped.
 - A SERIES removal expands to the profile's local episodes through the same leaf
-  matcher as Silo's whole-series watched marker (Silo accepts SERIES watched state
-  since `4018816da`). The match uses the connection profile's `ProfileAccess`, as
+  matcher as Silo's whole-series watched marker (Silo accepts SERIES watched state). The match uses the connection profile's `ProfileAccess`, as
   Silo's marker does: a SERIES removal reaches only episodes in the profile's allowed
   libraries that it may open, and a movie or episode removal matches only in those
   libraries. Bloem's tenancy narrows that access to the organization's libraries
@@ -104,8 +101,7 @@ Rules:
 - `ImportWatchedResult.Removed` counts removed items; a run with removals reports a
   recommendation-signal change like an import does.
 - Silo keeps a watch that matched no library item in `watch_provider_pending_watches`
-  and retries it on every sync (`retryPendingWatches`, since Silo `67d0936f3`). Since
-  `4018816da` it also keeps a whole-series marker after it matches, with the episodes
+  and retries it on every sync (`retryPendingWatches`). It also keeps a whole-series marker after it matches, with the episodes
   it covered (`PendingWatch.AppliedEpisodes`), and applies it again when they change.
   `ImportWatched` marks a removed row's kind and key as returned this sync (`fresh`),
   so the kept watch is not retried in the same sync, and `applyWatchedRemovals` calls

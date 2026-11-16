@@ -1,12 +1,9 @@
 # How storage sources work
 
-> **Provenance and status.** Bloem page, written on 2026-10-31, updated on
-> 2026-11-01 and checked against `main` at `b6039036d`. Silo's libraries read files
-> from paths on the server. Bloem adds **native storage**: libraries that also read
-> from S3 buckets and the Bookwarehouse book service, through approved storage
-> plugins. It is experimental. This page explains it in plain language; the
-> technical pages and the API are linked in the [For developers](#for-developers)
-> section.
+Silo's libraries read files from paths on the server. Bloem adds **native
+storage**: libraries that also read from S3 buckets and the Bookwarehouse book
+service, through approved storage plugins. It is experimental. The technical pages
+and the API are linked in the [For developers](#for-developers) section.
 
 This page covers where a library's files can live, how a bucket becomes titles on
 the screen, and who can change what. What happens during a scan, and how stored

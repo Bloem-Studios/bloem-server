@@ -1,11 +1,8 @@
 # How playback cards work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Campaigns and playback cards are a Bloem addition with no
-> Silo counterpart. This page explains them in plain language; the technical rules,
-> including the client lifetime rules every app must follow, are in the
-> [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+Campaigns and playback cards are a Bloem addition with no Silo counterpart. This page explains
+them in plain language; the technical rules, including the client lifetime rules every app must
+follow, are in the [For developers](#for-developers) section.
 
 A **playback card** is a short campaign message that floats over a film or episode
 for a few seconds while it plays, such as "New season, Friday". This page walks
@@ -102,25 +99,9 @@ sees it.
   under `/api/bloem/v2/admin/platform/promotions`, and the viewer routes
   `GET /api/bloem/v2/promotions`, `POST /api/bloem/v2/promotions/{id}/save` and
   `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}` (`promotions_viewer_v1`).
-  The [old v1 routes](../bloem/api/v1-routes.md#campaigns) went with Silo's v1 API on
-  2026-11-11.
+  The [old v1 routes](../bloem/api/v1-routes.md#campaigns) went with Silo's v1 API.
   The [playback overlays API](../playback-overlays-api.md) page summarises who calls
   which route.
-
-### History
-
-Promotion cards (`internal/promotions`) arrived in `3ae12d9f2` (2026-09-01), as "S-2"
-of Bloem's September client engagement spec (migration `20260901200121_promotions.sql`).
-The spec was removed on 2026-11-01; its rules still in force are in the sections
-below. Timed playback
-overlays and the first version of this page came in `eaa0b3a6b` (2026-09-06); the
-embedded-web authoring and Home placements in `53534d9f0` (2026-09-18). Campaign
-evaluation ran in a bundled worker from `85ba110f2` (2026-10-05) and returned
-in-process in `310c545f9` (2026-10-26); see
-[presentation evaluators](bloem-presentation-evaluators.md). On 2026-10-31 and
-2026-11-01 (`3eb77be33`) the storefront and the web app moved to the native routes,
-and `playback_overlays_v1` replaced the v1 capability check for them. The client
-rendering and verification notes below date from September 2026.
 
 ### Authoring
 
@@ -142,7 +123,7 @@ rendering and verification notes below date from September 2026.
   (`video_url requires pip and HTTPS`).
 - `placement.duration_seconds` configures a 5 to 60 second lifecycle, defaulting to 10
   when a playback style is set; it is refused without one.
-- The approved presentation (2026-09-05) floats artwork and softly shadowed text
+- The presentation floats artwork and softly shadowed text
   directly over the video, with no enclosing panel. These are playback cards, not
   Home hero decorations. Display time is editable from 5 to 60 seconds, with a
   ten-second default, including both fades. Keep soft fades and deliberate focus.
@@ -165,8 +146,8 @@ lifecycle below.
 
 - `/api/bloem/v2/capabilities` lists `playback_overlays_v1` when the campaign registry
   is wired (`SetPlaybackOverlaysAvailable`, `internal/api/router_bloem.go`). The
-  `promotions.playback_overlay` field of the v1 notification capability
-  (`internal/api/handlers/bloem_notifications_ext.go`) went with Silo's v1 API.
+  `promotions.playback_overlay` field of the old v1 notification capability went with
+  Silo's v1 API.
 - `GET /api/bloem/v2/promotions?surface=in_playback&content_id=…` returns the card
   projection with `playback_style`, `video_url`, `duration_seconds` and an exclusive
   `expires_at`. `content_id` is required for `in_playback`.
@@ -256,23 +237,15 @@ treats nothing as dismissed and logs it.
 
 ### Dismissals and discovery
 
-- Legacy viewer routes, retired with Silo's v1 API on 2026-11-11: v1
-  `GET /promotions?surface=detail|pre_playback|in_playback&content_id=…` answered `{"surface": "…", "promotions": [<card>, …]}` (`[]` when nothing applies);
-  `surface=home` and unknown surfaces are `400 bad_request`, since Home rides on the
-  section; no service is `503 unavailable`. A dismissal is
-  `PUT /home/dismissals/promo:<surface>/<promotion id>` with `{}`, undone with `DELETE`
-  on the same path (`validHomeSurface` accepts the `promo:` surfaces); dismissals are
-  per profile and per surface. The native equivalents are listed under the API link
-  above.
-- The v1 notification capability carried `"promotions": {"surfaces": ["home",
-  "detail", "pre_playback"]}`, plus `playback_overlay` for in-playback cards. Today an app
-  reads `promotions_viewer_v1` and `playback_overlays_v1` on
+- A dismissal is `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}`; dismissals
+  are per profile and per surface. The Home row's dismissals reuse the same store under
+  `promo:<surface>`. The old v1 viewer routes went with Silo's v1 API.
+- An app reads `promotions_viewer_v1` and `playback_overlays_v1` on
   `GET /api/bloem/v2/capabilities`, and opts in to the Home row with `promoted=1`.
 
 ### Admin routes
 
-The registry routes (native under `/api/bloem/v2/admin/platform/promotions`; the legacy v1 routes went with
-Silo's v1 API) use `handlers.AdminPromotionsHandler`:
+The registry routes under `/api/bloem/v2/admin/platform/promotions` use `handlers.AdminPromotionsHandler`:
 `GET` lists `{"promotions": [...], "surfaces": [...]}`, highest priority first; `POST`
 answers `201`; `PUT /{id}` is a full replacement (`200`); `DELETE /{id}` answers `204`
 or `404 not_found`. An `organization_id` naming no organization is `400 bad_request`
@@ -361,11 +334,9 @@ unchanged.
 
 ### Verification
 
-Verification covers validation, child and unknown-profile exclusion, chapter gates,
-web focus and lifetime behaviour, the existing web player tests, storefront authoring
-and native builds. A browser preview exercised the real web component against fixtures
-and a moving sample video. Production publication, database-backed push delivery and
-device playback still require integration testing against a deployed server with this
+Tests cover validation, child and unknown-profile exclusion, chapter gates, and the web
+focus and lifetime behaviour. Production publication, database-backed push delivery and
+device playback still need integration testing against a deployed server with this
 capability.
 
 ### Related pages

@@ -1,13 +1,9 @@
 # How Bloem's security foundation works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
-> and checked against `main` at `209447445`, the merge of Silo through `56e6f871c`, with
-> its Bloem fixes. The tenant foundation (organizations, memberships, platform
-> ownership, administrator passes and the native `/api/bloem/v2` namespace) is a Bloem
-> addition: Silo has one set of accounts, profiles and sign-ins per server. The technical
-> rules are in the [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API, and its
-> technical pages the same day.
+The tenant foundation (organizations, memberships, platform ownership, administrator passes
+and the native `/api/bloem/v2` namespace) is a Bloem addition: Silo has one set of accounts,
+profiles and sign-ins per server. The technical rules are in the
+[For developers](#for-developers) section.
 
 Bloem keeps each organization's people, libraries and settings apart, on one server. This
 page walks through the kinds of sign-in and what each may do, what Bloem checks on every
@@ -21,7 +17,7 @@ an organization's own web address, and how a server gets its first owner.
 - **An account sign-in** is what an app gets from an email address and password, the same
   sign-in Silo's apps use. It acts for the account. The app names a **profile** on each
   request, and enters the profile's PIN where it has one.
-- **A profile sign-in** (dormant since 2026-11-11, see below) goes straight into one profile,
+- **A profile sign-in** (dormant, see below) goes straight into one profile,
   with that profile's own email address and password. The household's main profile sets it up. It can browse, play, and keep its own
   progress, settings and book requests. It cannot manage the household or administer
   anything.
@@ -82,7 +78,7 @@ logo and colours. Its emails link to its **primary domain**.
 - **An address decides how Bloem looks, never what an account can reach.** Access always
   comes from the account's organization.
 
-On 2026-11-01 production has one organization, the default one, with the server's public
+A server with no reseller organizations has only the default one, with the server's public
 address registered as its primary domain. See
 [organization domains and branding](bloem-organization-domains.md).
 
@@ -163,17 +159,16 @@ Riverside Club is a reseller organization served on its own address, `watch.rive
 
 ### History
 
-Written with the tenant foundation in `c02d2445b` (2026-08-13). Later changes that matter: v2
-socket tickets bound to tenant authority (`9ab044057`, `6d52b1a0d`, 2026-10-09/11); account
-policy back on Silo's `users` table with one membership per account (`c60b7008e`,
-2026-10-26); lifecycle receipts removed (`b017bfe84`, 2026-10-26); Silo's session-to-account
-token binding and playback ownership rules applied to Bloem's paths (Silo merge `68070f04b`,
-2026-10-27); a sign-in older than its organization's revocation ended with `401
-session_invalid` (`25129bcbd`, 2026-11-01); organization domains (migration
-`20261101055208_bloem_organization_domains`, 2026-11-01); the login response's policy
+The tenant foundation was written in August 2026. Later changes that matter: v2 socket
+tickets bound to tenant authority (October 2026); account policy back on Silo's `users`
+table with one membership per account (26 October); lifecycle receipts removed (26
+October); Silo's session-to-account token binding and playback ownership rules applied to
+Bloem's paths (27 October); a sign-in older than its organization's revocation ended with
+`401 session_invalid` (1 November); organization domains (migration
+`20261101055208_bloem_organization_domains`, 1 November); the login response's policy
 resolved in the account's own tenant again after Silo's account payload began reporting
-group-masked permissions (`5a044930c`, 2026-11-02). The [Rollback](#rollback) procedure
-applies only to the August 2026 foundation release.
+group-masked permissions (2 November). The [Rollback](#rollback) procedure applies only to
+the August 2026 foundation release.
 
 ### The native namespace and capabilities
 
@@ -234,7 +229,7 @@ administrator gate.
 mounted with both gates, and `GET /api/bloem/v2/admin/organization/support-capabilities` says
 which of them this server can serve.
 
-Profile sign-in is dormant since 2026-11-11: its sign-in route lived only on Silo's v1 API, which Silo retired (Silo #3200, merged into Bloem in `26cf9b3e4`). The credential routes are not mounted, `profile_credential_management_v1` and `direct_profile_login` are not advertised, and the web hides the credentials panel and the Profile passwords setting. The code stays; it comes back with a native profile sign-in route under `/api/bloem/v2`. Until then, the rest of
+Profile sign-in is dormant since 2026-11-11: its sign-in route lived only on Silo's v1 API, which Silo retired (Silo #3200). The credential routes are not mounted, `profile_credential_management_v1` and `direct_profile_login` are not advertised, and the web hides the credentials panel and the Profile passwords setting. The code stays; it comes back with a native profile sign-in route under `/api/bloem/v2`. Until then, the rest of
 this section describes how it worked: direct-profile login was implemented on
 Silo's v1 `POST /auth/profile-login` when its dependencies were wired. The default-deny direct-session route
 allowlist (`internal/api/direct_profile_routes.go`) still rejects Silo v2 and the native Bloem
@@ -271,8 +266,8 @@ Clients must not infer features from version strings. `/api/v10/*` is not an ali
   non-secret context key. A context requires a login session: a token without one is
   `401 tenant_session_required`, and a session that is revoked, expired, another account's or
   a remote-playback handoff is `401 authorization_state_stale`.
-- Session checks are bound to the account the credential names. Since the Silo merge
-  `68070f04b` (2026-10-27; Silo #3140), Silo's `ActiveSession` takes that account, and so do
+- Session checks are bound to the account the credential names. Since Silo #3140
+  (merged 2026-10-27), Silo's `ActiveSession` takes that account, and so do
   Bloem's preview-aware lookups (`ActivePreviewSession`, `ActiveSessionAuthority` in
   `internal/auth/bloem_preview_principal.go`), which the auth middleware and the plugin router
   use, the administrative context middleware (`internal/api/middleware/admin_context.go`) and
@@ -322,8 +317,7 @@ waiting contender finds the winner's account and gets `ErrSetupAlreadyComplete`.
 inside the caller's transaction (`ClaimInitialSetupInTransaction`,
 `internal/auth/bloem_setup_claim.go`), then creates the account (marked `is_owner` and
 `break_glass`), the optional profile, the ownership activation and the login session in that
-one transaction; failure before commit rolls all of it back. (Until `b017bfe84`, 2026-10-26, a
-separate lifecycle-receipt path wrapped setup in its own transaction.) The Bloem ownership
+one transaction; failure before commit rolls all of it back. The Bloem ownership
 adapter and notification-decorated user store must preserve the transactional extensions;
 unsupported backing stores fail closed, never emulate a separate commit. When a default
 profile is requested, both account transaction entrypoints check the provider's
@@ -355,7 +349,7 @@ only an enabled account whose legacy account role and organization membership ro
 Organization-specific account creation creates the membership and assigns the account a
 default access group only in the selected organization. It must not silently add a
 default-organization membership; an account holds at most one membership
-(`organization_memberships_one_per_account`, since `c60b7008e`). The membership provisioner
+(`organization_memberships_one_per_account`). The membership provisioner
 can adopt the exact active, same-role row seeded by identity creation in the same transaction;
 it cannot reactivate an invited or suspended row, change its role, or increment its revisions
 as a side effect. Organization provisioning uses `FOR NO KEY UPDATE`
@@ -366,7 +360,7 @@ transaction retry substitutes for that lock compatibility.
 
 Password-login responses resolve the authenticated account's default-organization viewer
 policy before reporting `download_allowed` and the group-masked permissions (v2
-`Account.permissions`), which Silo's `effectiveAccountPolicy` computes since Silo `243d7e0da`.
+`Account.permissions`), which Silo's `effectiveAccountPolicy` computes.
 The login request cannot select a tenant through headers or an ambient profile context: two
 Bloem lines in Silo's `AuthHandler.Login` bind the account's own tenant
 (`bloemLoginPolicyContext`, `internal/api/handlers/bloem_login_policy.go`) before Silo's line
@@ -510,8 +504,7 @@ Re-run the verification queries afterward.
 > Several later Bloem migrations are forward-only and refuse `Down` (for example
 > `20261013161500_remove_bloem_compatibility.sql` and
 > `20261026003000_bloem_account_policy_on_users.sql`), so a current deployment rolls back by
-> restoring a backup taken before the migration, as the deployment receipts describe (for
-> example [October 27](../operations/2026-10-27-main-deployment.md#rollback)).
+> restoring a backup taken before the migration.
 
 Rollback is allowed only before operators or later phases start writing non-default
 organizations, organization-specific profile group assignments, resource ownership, or
@@ -567,10 +560,9 @@ credential-bearing URLs. UI writes capture account/profile/PIN identity and requ
 reconciliation after uncertain outcomes, never replay. `xtream_supported` is installed
 support, not a grant or proof of encryption readiness.
 
-Mounted authority, storage and encoder regressions are separate from the
-[September 19 deployment smoke checks](../operations/2026-09-19-xtream-deployment.md). Neither
-certifies actual provider playback, every browser or the unfinished scenario suite. No
-authorization or secret-disclosure rule was relaxed for CI.
+Mounted authority, storage and encoder regressions are tests of the server's own rules.
+They do not certify actual provider playback or every browser. No authorization or
+secret-disclosure rule was relaxed for CI.
 
 ### Native seasonal delivery and events authority
 

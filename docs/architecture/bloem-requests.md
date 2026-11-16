@@ -1,11 +1,9 @@
 # How requests work
 
-> **Provenance and status.** Bloem page, written on 2026-10-31, updated on
-> 2026-11-01 and checked against `main` at `b6039036d`. Movie and series requests
-> are Silo's request service; Bloem adds organization and profile checks to it,
-> and two request lanes of its own, for audiobooks and ebooks. This page explains
-> them in plain language; the technical pages and the API are in the
-> [For developers](#for-developers) section.
+Movie and series requests are Silo's request service; Bloem adds organization and
+profile checks to it, and two request lanes of its own, for audiobooks and ebooks.
+The technical pages and the API are in the [For developers](#for-developers)
+section.
 
 A **request** is a viewer asking for something the library doesn't have yet.
 Bloem has three kinds, each with its own queue and its own count. This page
