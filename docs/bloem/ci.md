@@ -4,7 +4,7 @@
 > and checked against `main` at `f12b3c75f`, which includes Silo through `07f0ae21c`;
 > its retried-tests paragraph was added on 2026-11-15, on `main` at `2b63332aa`, and
 > extended to Go database pins on 2026-11-16, on `main` at `ffe90dc09`, when the merge
-> bot's schedule and CI wait were updated too.
+> bot's schedule and CI wait were updated too, and to the web test shards the same day.
 > Since 2 November Silo's work comes in through the merge bot, and the GitHub upstream
 > sync is switched off. Bloem's CI, image and upstream-sync workflows are Bloem
 > additions; Silo's own `ci.yml` stays as Silo wrote it apart from one line. The
@@ -319,7 +319,7 @@ runners on October 26, 2026 (`52369dbad`, `5e6f9e407`):
 | Go database pins | The database pins (`make test-db-pins`, with the listed flaky pins retried) and the upstream database regression gates. |
 | Go database regressions | Watch Party and history-import race tests, the Redis-backed native video grant and cover cache tests, and the library location and native storage pins (`scripts/ci/bloem-library-locations.txt`, built with `-tags=integration`). |
 | Web (build, checks) | ESLint and format, typecheck and build, the launch bundle budget, the web settings binding and v2 types, and `make verify-local-paths`, which first runs the upstream sync merge helper's tests. On a push to `main` or `apiv2`, the build part uploads `frontend-dist-<sha>`, which Bloem Image publishes. |
-| Web test (1-4/4) | Vitest in four shards. |
+| Web test (1-4/4) | Vitest in four shards, with the listed flaky tests retried alone. |
 
 Go lint builds golangci-lint from source at the pinned `GOLANGCI_LINT_VERSION`
 (`v2.12.2` at `b6039036d`), because a released binary refuses a Go newer than
@@ -384,6 +384,18 @@ wait on the chapter thumbnail worker under a ten-second deadline, both failed
 with "context deadline exceeded" in the job on `ffe90dc09`, and the job's
 rerun passed on the same commit. The local gate runs the job the same way.
 
+The web test shards have their own list, `scripts/ci/bloem-retried-web-tests.txt`,
+one Vitest test per line as Vitest names it in a failure
+(`<file> > <describe> > <test>`). Every test still runs in its shard:
+`python3 scripts/ci/bloem-retried-tests.py web` runs `make test-web` with a JSON
+report, and only when every failed test is listed does it run each one alone
+(`vitest run <file> -t` with its exact name) up to two more times; the report must
+show the test ran and passed. Any other failure, a file that fails outside its tests,
+or a missing report fails the shard as before. Since November 16, 2026 the list
+holds Silo's `WatchPlaybackChrome.shuffle` test "shows the shuffle's next pick when
+a shuffled movie nears its end", which failed in Web test (2/4) on `a8d3877ae` and on
+`87b8756d8`, a push that changed no web code, and passes alone.
+
 The split jobs each run against their own PostgreSQL.
 `scripts/ci/deal.sh N I` deals lines round-robin to N shards so each lands in
 exactly one: Go test deals `make go-test-packages` with it, and
@@ -444,7 +456,7 @@ python3 scripts/bloem/local-gate.py services down "$GATE_SERVICES_ID"
 
 ### Failures and re-runs
 
-Apart from the few listed tests the Go jobs retry ([above](#jobs)),
+Apart from the few listed tests the Go and web test jobs retry ([above](#jobs)),
 nothing in the workflows retries a failed test or job. The merge bot's one re-run of
 a batch it pushed is its own ([below](#the-merge-bot)). When a job fails
 for a reason that has nothing to do with the change, such as a flaky test or a lost

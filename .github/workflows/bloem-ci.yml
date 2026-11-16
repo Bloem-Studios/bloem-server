@@ -1041,6 +1041,9 @@ jobs:
       # Includes the appearance-cache ownership tests, which are the regression
       # guard for cross-account leaks in the localStorage warm start. The
       # suite is split across four runners; vitest assigns files to a shard
-      # deterministically, so every file runs exactly once.
+      # deterministically, so every file runs exactly once. The test-web
+      # target runs it; a failure of a test listed in
+      # scripts/ci/bloem-retried-web-tests.txt (and no other) runs that test
+      # alone, up to two more times.
       - name: Test
-        run: make test-web WEBTEST_ARGS="--shard=${{ matrix.shard }}/4 --maxWorkers=4"
+        run: python3 scripts/ci/bloem-retried-tests.py web --shard=${{ matrix.shard }}/4 --maxWorkers=4

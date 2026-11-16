@@ -14,7 +14,10 @@ message, or stops the batch for the owner when CI stays red.
 Bloem CI's Go database pins job now retries the pins listed in
 `scripts/ci/bloem-retried-tests.txt`, as the Go test shards already did: Silo's two
 `internal/chapterthumbs` tests that timed out under the job's load on `ffe90dc09` run
-alone after the other pins, with up to two retries, and still fail on a skip.
+alone after the other pins, with up to two retries, and still fail on a skip. The
+web test shards do the same for `scripts/ci/bloem-retried-web-tests.txt`: when the
+only failures in a shard are listed tests, each runs again alone, up to two more
+times. It lists Silo's `WatchPlaybackChrome.shuffle` "next pick" test.
 
 - **Pages.** [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md),
   [How Bloem CI works](ci.md#the-merge-bot), [FORK.md](../../FORK.md#taking-upstream-changes)

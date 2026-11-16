@@ -82,7 +82,7 @@ def _go_shard(n):
 
 
 def _web_shard(n):
-    return Step("web", f"test-{n}", f'make test-web WEBTEST_ARGS="--shard={n}/4 --maxWorkers=4"')
+    return Step("web", f"test-{n}", f"python3 scripts/ci/bloem-retried-tests.py web --shard={n}/4 --maxWorkers=4")
 
 
 STEPS = [

@@ -7,6 +7,8 @@
 
     python3 scripts/ci/bloem-retried-tests.py db-pins
 
+    python3 scripts/ci/bloem-retried-tests.py web --shard=1/4 --maxWorkers=4
+
 Commands assume the repository root is the cwd.
 
 A few Silo tests fail only under the load of Bloem CI's Go test shards, or of
@@ -22,11 +24,22 @@ failed run is retried twice; the step fails when all three runs fail. The list
 names one test per line, never a pattern, and each entry carries its reason
 and evidence.
 
+The web shards use their own list, scripts/ci/bloem-retried-web-tests.txt,
+one Vitest test per line as Vitest names it in a failure
+(`src/file.test.tsx > describe > test`). `web` runs `make test-web` with the
+given arguments and a JSON report. Every test still runs in its shard. When
+the shard fails and every failed test is listed, each runs again alone
+(`vitest run <file> -t '^<full name>$'`), up to two more times, and has to
+pass there; its JSON report must show it ran. Any other failure, a file that
+failed without a failed test, or a missing report fails the shard with no
+retry.
+
 `skip` prints the -skip pattern. `go test -skip` matches test names, not
 packages, so a listed name that is also a test in another package is refused
 (that test would then run nowhere), as is a listed test that no longer exists.
 """
 
+import json
 import os
 import re
 import subprocess
@@ -35,6 +48,9 @@ import tempfile
 from pathlib import Path
 
 LIST = "scripts/ci/bloem-retried-tests.txt"
+WEB_LIST = "scripts/ci/bloem-retried-web-tests.txt"
+WEB_DIR = "web"
+JS_REGEX_SPECIAL = set("\\^$.*+?()[]{}|/")
 DB_LISTS = ("scripts/ci/db-pins.txt", "scripts/ci/db-contracts.txt")
 ATTEMPTS = 3  # one run and two retries
 TEST_FUNC = re.compile(r"^func (Test[A-Za-z0-9_]*)\(t \*testing\.T\)", re.M)
@@ -127,9 +143,9 @@ def run_command(argv):
     return subprocess.run(argv).returncode
 
 
-def retry(package, name, argv, runner):
-    """Run argv up to ATTEMPTS times until it passes; True when one run passed."""
-    for attempt in range(1, ATTEMPTS + 1):
+def retry(package, name, argv, runner, first=1):
+    """Run argv until it passes, as runs first..ATTEMPTS; True when one run passed."""
+    for attempt in range(first, ATTEMPTS + 1):
         print(f"bloem-retried-tests: {name} in {package}, run {attempt} of {ATTEMPTS}", flush=True)
         if runner(argv) == 0:
             break
@@ -196,6 +212,113 @@ def run_db_pins(root, workdir, runner=run_command):
     return ok
 
 
+def web_entries(root):
+    """(file under web/, (describe titles..., test title)) for every web entry, checked."""
+    root = Path(root)
+    entries = []
+    for line in (root / WEB_LIST).read_text().splitlines():
+        text = line.strip()
+        if not text or text.startswith("#"):
+            continue
+        parts = text.split(" > ")
+        if len(parts) < 2 or not parts[0].endswith((".test.ts", ".test.tsx")):
+            raise ListError(f"{WEB_LIST}: expected '<file>.test.tsx > <describe> > <test>', got {line!r}")
+        path = root / WEB_DIR / parts[0]
+        if not path.is_file():
+            raise ListError(f"{WEB_LIST}: {parts[0]} does not exist under {WEB_DIR}/")
+        source = path.read_text(errors="replace")
+        for title in parts[1:]:
+            if not any(f"{q}{title}{q}" in source for q in "\"'`"):
+                raise ListError(f"{WEB_LIST}: {parts[0]} no longer names {title!r}")
+        entries.append((parts[0], tuple(parts[1:])))
+    if not entries:
+        raise ListError(f"{WEB_LIST} names no tests")
+    return entries
+
+
+def js_exact(name):
+    """A JavaScript regular expression that matches exactly this test name."""
+    return "^" + "".join("\\" + c if c in JS_REGEX_SPECIAL else c for c in name) + "$"
+
+
+def web_failures(report, web_dir):
+    """(failed tests as (file, titles), problems no retry can clear) from a Vitest JSON report."""
+    if report is None:
+        return [], ["no Vitest JSON report"]
+    failed, problems = [], []
+    for result in report.get("testResults", []):
+        name = Path(result.get("name", ""))
+        try:
+            rel = name.resolve().relative_to(Path(web_dir).resolve()).as_posix()
+        except ValueError:
+            rel = name.as_posix()
+        failures = [a for a in result.get("assertionResults", []) if a.get("status") == "failed"]
+        for a in failures:
+            failed.append((rel, tuple(a.get("ancestorTitles", [])) + (a.get("title", ""),)))
+        if result.get("status") == "failed" and not failures:
+            problems.append(f"{rel} failed outside its tests: {(result.get('message') or '').strip()[:200]}")
+    if not failed and not problems:
+        problems.append("Vitest failed without a failed test (an unhandled error?)")
+    return failed, problems
+
+
+def read_report(path):
+    try:
+        return json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def ran_and_passed(report, titles):
+    """Whether the report shows this test ran and passed (a run that selects nothing exits 0)."""
+    for result in (report or {}).get("testResults", []):
+        for a in result.get("assertionResults", []):
+            if tuple(a.get("ancestorTitles", [])) + (a.get("title", ""),) == tuple(titles):
+                return a.get("status") == "passed"
+    return False
+
+
+def run_in(cwd):
+    def runner(argv):
+        return subprocess.run(argv, cwd=cwd).returncode
+    return runner
+
+
+def run_web(root, args, workdir, shard_runner=run_command, test_runner=None):
+    """A web test shard, with the listed tests retried alone; True when it passes."""
+    root, workdir = Path(root), Path(workdir)
+    web_dir = root / WEB_DIR
+    test_runner = test_runner or run_in(web_dir)
+    listed = set(web_entries(root))
+    shard_report = workdir / "shard.json"
+    extra = f"--reporter=default --reporter=json --outputFile.json={shard_report}"
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        # Vitest adds its annotations reporter only when no reporter is named.
+        extra += " --reporter=github-actions"
+    if shard_runner(["make", "test-web", f"WEBTEST_ARGS={' '.join([*args, extra])}"]) == 0:
+        return True
+    failed, problems = web_failures(read_report(shard_report), web_dir)
+    unlisted = [f"{f} > {' > '.join(t)}" for f, t in failed if (f, t) not in listed]
+    if problems or unlisted:
+        for line in problems + [f"not in {WEB_LIST}, so not retried: {u}" for u in unlisted]:
+            print(f"bloem-retried-tests: {line}", flush=True)
+        return False
+    ok = True
+    for index, (file, titles) in enumerate(sorted(set(failed))):
+        report = workdir / f"retry-{index}.json"
+        argv = ["pnpm", "exec", "vitest", "run", file, "-t", js_exact(" ".join(titles)),
+                "--reporter=default", "--reporter=json", f"--outputFile.json={report}"]
+
+        def alone(argv, report=report, titles=titles):
+            report.unlink(missing_ok=True)
+            code = test_runner(argv)
+            return code if code != 0 or ran_and_passed(read_report(report), titles) else 1
+
+        # The shard was run 1; up to two more, alone.
+        ok = retry(file, " > ".join(titles), argv, alone, first=2) and ok
+    return ok
+
+
 def main(argv):
     try:
         if argv[1:] == ["skip"]:
@@ -203,12 +326,15 @@ def main(argv):
             return 0
         if len(argv) >= 2 and argv[1] == "run":
             return 0 if run_retried(Path.cwd(), argv[2:]) else 1
+        if len(argv) >= 2 and argv[1] == "web":
+            with tempfile.TemporaryDirectory(prefix="bloem-web-tests-") as workdir:
+                return 0 if run_web(Path.cwd(), argv[2:], workdir) else 1
         if argv[1:] == ["db-pins"]:
             with tempfile.TemporaryDirectory(prefix="bloem-db-pins-") as workdir:
                 return 0 if run_db_pins(Path.cwd(), workdir) else 1
     except ListError as err:
         sys.exit(f"bloem-retried-tests: {err}")
-    sys.exit("usage: bloem-retried-tests.py skip | run PACKAGE... | db-pins")
+    sys.exit("usage: bloem-retried-tests.py skip | run PACKAGE... | db-pins | web VITEST_ARG...")
 
 
 if __name__ == "__main__":

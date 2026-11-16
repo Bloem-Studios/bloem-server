@@ -1,0 +1,17 @@
+# Web tests Bloem CI's web test shards run again, alone, when they fail in
+# the shard: up to two more runs, and each still has to pass once.
+# scripts/ci/bloem-retried-tests.py web reads this list. Every test still runs
+# in its shard; only a failure of a listed test is retried, and any other
+# failure fails the shard as before. Only the owner adds an entry, for a test
+# that fails only under CI's load, with the evidence above it. One test per
+# line, as Vitest names it in a failure:
+#
+# <file under web/> > <describe> > <test>
+
+# Silo's test. Under load, "Shuffling Movies" had not appeared yet when the
+# test looked for it. It failed in Web test (2/4) on a8d3877ae (2026-11-15,
+# run 43721770133 attempt 1) and on 87b8756d8 (2026-11-16, run 43930767141
+# attempt 1), a push that changed no web code. It passes alone; the file last
+# changed on 2026-11-11. Retried by the owner's decision of 2026-11-16; Silo's
+# test code stays as Silo wrote it.
+src/playback/WatchPlaybackChrome.shuffle.test.tsx > WatchPlaybackHost shuffle > shows the shuffle's next pick when a shuffled movie nears its end
