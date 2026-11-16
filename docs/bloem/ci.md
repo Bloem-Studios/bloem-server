@@ -27,8 +27,9 @@ Bloem has four workflows of its own:
    and the web tests. A newer run for the same branch cancels an older one.
 2. **Bloem Image** builds the **server image**, the package a server runs. It starts
    only after Bloem CI passes on a push to `main`, and tags the image with that
-   commit. It also moves the `latest` tag, but only while that commit is still the
-   newest on `main`.
+   commit. It also moves the `edge` tag, but only while that commit is still the
+   newest on `main`. The image is public. `latest` is what Bloem's production
+   runs: **Bloem Release** moves it after a deploy passes its checks.
 3. **Upstream sync** merges Silo's latest work into a new branch every morning and
    opens a pull request, when it is switched on. It is off since November 2, 2026
    ([below](#how-silos-work-comes-in)).
@@ -130,7 +131,7 @@ This example is made up.
 2. At 10:04 she pushes a typo fix. A new Bloem CI run starts for `main`, and the
    10:00 run is cancelled.
 3. At 10:30 the second run passes. Bloem Image builds an image tagged with the
-   second commit and moves `latest` to it, because that commit is still the newest
+   second commit and moves `edge` to it, because that commit is still the newest
    on `main`.
 4. The 10:00 commit gets no image of its own. Its changes are in the 10:04 image,
    which contains both commits.
@@ -152,6 +153,7 @@ This example is made up.
 | --- | --- |
 | Bloem CI | `.github/workflows/bloem-ci.yml`, workflow name "Bloem CI" |
 | Bloem Image | `.github/workflows/bloem-image.yml`, workflow name "Bloem Image" |
+| Bloem Release | `.github/workflows/bloem-release.yml`, workflow name "Bloem Release"; the merge bot's deploy starts it |
 | The merge bot | runs on Bloem's build machine; its configuration, scripts and prompts live in Bloem's private infrastructure repository |
 | Review list | `scripts/bloem/silo-merge-review.py` |
 | Local gate | `scripts/bloem/local-gate.py` |
@@ -159,8 +161,8 @@ This example is made up.
 | Upstream sync merge, the merge gate | `.github/workflows/upstream-sync-merge.yml` and `scripts/verify-upstream-sync-merge.sh` |
 | The switch for both | the repository variable `BLOEM_UPSTREAM_SYNC`; `true` turns them on, anything else (unset today) keeps them off |
 | Disposable runner | a self-hosted runner with the labels `bloem-linux`, `bloem-run-<run id>-<attempt>` and `bloem-job-<job id>` |
-| GitHub's runners | `ubuntu-24.04` (Bloem CI) and `ubuntu-latest` (the other three workflows) |
-| Server image | `ghcr.io/bloem-studios/bloem-server:<full commit SHA>`, and `latest` |
+| GitHub's runners | `ubuntu-24.04` (Bloem CI) and `ubuntu-latest` (the other four workflows) |
+| Server image | `ghcr.io/bloem-studios/bloem-server:<full commit SHA>`, `edge`, `latest` and dated tags such as `2026.11.17`; public since 2026-11-16 |
 | The web bundle | the `frontend-dist-<sha>` artifact from the Web (build) job |
 | Seam | a Silo file Bloem edits, listed in `contracts/seams.txt` and checked by `make verify-seams` |
 | Changed-line lint | `scripts/bloem-lint-changed-ci.sh` |
@@ -188,7 +190,8 @@ Terms used below:
 | Workflow | File | Runs on | What it does | Origin |
 |---|---|---|---|---|
 | Bloem CI | `bloem-ci.yml` | Pull requests; pushes to `main` and `apiv2`; Mondays at 04:23 UTC; manual | Runs every Bloem gate ([Jobs](#jobs)) | Bloem, 2026-10-26 (`dcbd1c525`) |
-| Bloem Image | `bloem-image.yml` | A Bloem CI run on `main` completing; manual | Publishes `ghcr.io/bloem-studios/bloem-server:<full sha>` ([Bloem Image](#bloem-image)) | Bloem, 2026-10-11 (`04a69c0fe`) |
+| Bloem Image | `bloem-image.yml` | A Bloem CI run on `main` completing; manual | Publishes `ghcr.io/bloem-studios/bloem-server:<full sha>` and moves `edge` ([Bloem Image](#bloem-image)) | Bloem, 2026-10-11 (`04a69c0fe`) |
+| Bloem Release | `bloem-release.yml` | Manual, with a commit; the merge bot's deploy starts it after a verified deploy | Points `latest` and a dated tag at that commit's image ([Bloem Release](#bloem-release)) | Bloem, 2026-11-16 |
 | Upstream sync | `upstream-sync.yml` | Daily at 05:20 UTC, but its job runs only when `BLOEM_UPSTREAM_SYNC` is `true`; manual, with a dry run, always | Merges Silo's `main` on a branch and opens a pull request | Bloem, 2026-08-26 (`af2be39f1`); switched off 2026-11-02 |
 | Upstream sync merge | `upstream-sync-merge.yml` | Any Bloem CI run completing; acts only when `BLOEM_UPSTREAM_SYNC` is `true` | Merges a sync pull request whose exact head passed Bloem CI | Bloem, 2026-08-26 (`af2be39f1`); switched off 2026-11-02 |
 | CI | `ci.yml` | As in Silo | Nothing on Bloem: its one job runs only in Silo's repository ([below](#silos-ciyml)) | Silo's file; a one-line seam |
@@ -536,8 +539,8 @@ job gets `contents: read`, `actions: read` and `packages: write`, and a
    - build arguments `BUILD_REVISION=<sha>`, `BUILD_DIRTY=false` and
      `BUILD_DATE`, which the Dockerfile links into `internal/buildinfo`, so
      the server's system info reports the revision.
-5. Point `latest` at that image, but only if the commit is still `main`'s head
-   (added in `6d0adcfe9`, 2026-10-27).
+5. Point `edge` at that image, but only if the commit is still `main`'s head
+   (added in `6d0adcfe9`, 2026-10-27, for `latest`; `edge` since 2026-11-16).
 
 **How the web bundle gets in.** Silo's `Dockerfile`, which Bloem does not
 change, has a `frontend_dist` stage. By default that stage holds the bundle
@@ -552,12 +555,13 @@ day.
 **What it does not do.**
 
 - It publishes no `build-<n>` or short-SHA tag and no arm64 image. A late run
-  for an older commit leaves `latest` for the newer commit's own run, so
-  `latest` never moves backwards. If the newest commit's CI fails, `latest`
+  for an older commit leaves `edge` for the newer commit's own run, so
+  `edge` never moves backwards. If the newest commit's CI fails, `edge`
   stays on the last image published while its commit was the head.
+- It does not move `latest`; [Bloem Release](#bloem-release) does.
   `.env.bloem.example` sets `SILO_IMAGE` to `latest` for
   `docker-compose.advanced.yml`; deployments that must be attributable pin a
-  full-SHA tag
+  dated or full-SHA tag
   ([deployment guide](overlays/wiki/deployment/docker.md#container-image-selection)).
 - It builds Bloem's server image only. It does not build Silo's all-in-one
   image, which bundles PostgreSQL, Redis and Meilisearch.
@@ -571,6 +575,26 @@ day.
   was built ([release versioning overlay](overlays/release-versioning.md#bloem-deployment-records)).
 - The image's Go build stage uses the Dockerfile's floating `golang:1.26` tag
   (Silo's choice), not the exact patch `go.mod` names, which the CI jobs use.
+
+### Bloem Release
+
+`.github/workflows/bloem-release.yml` makes the public `latest` tag mean what
+Bloem's own production runs (2026-11-16). The merge bot's deploy (`bloem-deploy`)
+starts it with `gh workflow run bloem-release.yml -f sha=<full sha>` after a deploy,
+blue/green or in place, passes its checks; a dry run, a refused deploy or a rollback
+starts nothing, and a failure to start it never changes the deploy's outcome. A
+person can also start it by hand for a commit production runs.
+
+1. Check the input is a full 40-character SHA and that the commit is on `main`.
+2. Wait up to 45 minutes for Bloem Image to have published that commit's image:
+   the daily deploy can ship a commit whose image is still being pushed.
+3. Point `latest` and a dated tag at that image with
+   `docker buildx imagetools create`, which copies the manifest unchanged. The
+   dated tag is the UTC date, `YYYY.MM.DD`; a second, different release that day
+   gets `.2`, then `.3`. A dated tag never moves, and a rerun for the same image
+   reuses its tag.
+
+It builds nothing, and it runs one at a time (`concurrency: bloem-release`).
 
 ### Tools on the Go runners
 

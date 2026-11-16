@@ -519,12 +519,11 @@ You need Docker with Compose 2.24+, Git and OpenSSL, and a folder of media.
 > [!WARNING]
 > **Choose the image first.** `.env.bloem.example` selects Silo's
 > multi-container Compose file (`COMPOSE_FILE=docker-compose.advanced.yml`) and
-> sets `SILO_IMAGE` to `ghcr.io/bloem-studios/bloem-server:latest`, which follows
-> `main` since October 27, 2026. Keep both: Silo's default `docker-compose.yml`
-> starts Silo's own all-in-one image, not Bloem. On that date the container package was not publicly
-> pullable, so without access to it, build the image from this checkout. For a
-> server you need to roll back or attribute, pin a full-SHA tag rather than
-> `latest`. See
+> sets `SILO_IMAGE` to `ghcr.io/bloem-studios/bloem-server:latest`, the public
+> image Bloem's own production runs (since November 16, 2026; `edge` follows
+> `main`). Keep both: Silo's default `docker-compose.yml` starts Silo's own
+> all-in-one image, not Bloem. For a server you need to roll back or attribute,
+> pin a dated or full-SHA tag rather than `latest`. See
 > [container image selection](overlays/wiki/deployment/docker.md#container-image-selection).
 
 ```sh
@@ -855,11 +854,12 @@ How Bloem is built, tested, released and deployed, and how to contribute.
   builds that commit with the web bundle CI built and uploaded
   (`frontend-dist-<sha>`) and pushes one tag, the full 40-character commit SHA:
   `ghcr.io/bloem-studios/bloem-server:<sha>`, for `linux/amd64`, with the
-  revision in the image labels. Since `6d0adcfe9` (October 27, 2026) it then
-  points `latest` at the same image if that commit is still `main`'s head, so
-  `latest` follows `main` as Silo's does; before that, `latest` was a September
-  24 build nothing moved. Silo's own image workflow follows Silo's CI and does
-  not run here.
+  revision in the image labels. It then points `edge` at the same image if that
+  commit is still `main`'s head (from October 27 until November 16, 2026 it moved
+  `latest` that way). Since November 16 the image is public and `latest` is what
+  Bloem's production runs: the deploy starts Bloem Release, which points `latest`
+  and a dated tag at the deployed commit's image. Silo's own image workflow follows
+  Silo's CI and does not run here.
 
 See [Bloem CI](ci.md) for the job list and tool pins.
 

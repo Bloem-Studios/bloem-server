@@ -70,8 +70,8 @@ container runtime support.
 
 3. Check two lines the example already sets. Keep
    `COMPOSE_FILE=docker-compose.advanced.yml`: Silo's default `docker-compose.yml`
-   starts Silo, not Bloem. And check `SILO_IMAGE`: the default `latest` follows
-   `main`, and pulling it may need GitHub access (see
+   starts Silo, not Bloem. And check `SILO_IMAGE`: the default `latest` is what
+   Bloem's own production runs (see
    [Container image selection](#container-image-selection)).
 4. Start everything:
 
@@ -94,8 +94,16 @@ The **image** is the packaged Bloem program that Docker runs. `SILO_IMAGE` in `.
 chooses it. Bloem keeps Silo's name for the variable so Silo's Compose files still
 work. Bloem's example sets it to `ghcr.io/bloem-studios/bloem-server:latest`.
 
-- **`latest`** is always the newest `main` commit that passed Bloem's tests. It
-  changes often.
+The images are public: anyone can pull them without signing in to GitHub.
+
+- **`latest`** is the image Bloem's own production runs. It moves at most once a
+  day, after a deploy of that commit passed its checks on Bloem's servers
+  (since 2026-11-16; the first move is the next daily deploy).
+- **A dated tag** (`ghcr.io/bloem-studios/bloem-server:2026.11.17`, or
+  `2026.11.17.2` for a second release that day) names one of those releases and
+  never moves. Pin one to choose when you update.
+- **`edge`** is the newest `main` commit that passed Bloem's tests. It changes
+  several times a day, before Bloem's production has run it.
 - **A full commit tag** (`ghcr.io/bloem-studios/bloem-server:<full sha>`) never
   changes. Use it, or the image digest, when you must be able to roll back or name
   exactly what runs:
@@ -105,8 +113,7 @@ work. Bloem's example sets it to `ghcr.io/bloem-studios/bloem-server:latest`.
   ```
 
 - **Your own build.** Run `docker build -t bloem-server:local .` in the checkout (the
-  Dockerfile builds the web app itself) and set `SILO_IMAGE=bloem-server:local`. Do
-  this if you cannot pull the published image.
+  Dockerfile builds the web app itself) and set `SILO_IMAGE=bloem-server:local`.
 
 > [!WARNING]
 > **Use `docker-compose.advanced.yml` for Bloem.** `docker-compose.yml` is Silo's
@@ -625,17 +632,23 @@ against `81c26179c` (Silo through `288f58200`), when Bloem's image was started w
   after Bloem CI passes on a push to `main`, builds that exact commit and pushes it
   under the full 40-character commit SHA: `ghcr.io/bloem-studios/bloem-server:<full sha>`.
   It never creates a `build-N` or short-SHA tag. See [CI additions](../../../ci.md).
-- Since `6d0adcfe9` (2026-10-27) the workflow also points `latest` at that image if
-  the commit is still `main`'s head, so `latest` follows `main`, and a late run for an
-  older commit cannot move `latest` backwards. Before that change nothing moved
-  `latest`: it was `build-152`, a September 24, 2026 image left from the earlier
-  publishing path.
+- Since 2026-11-16 the workflow points `edge` at that image if the commit is still
+  `main`'s head, so `edge` follows `main`, and a late run for an older commit cannot
+  move `edge` backwards. From `6d0adcfe9` (2026-10-27) until then it moved `latest`
+  that way; before that nothing moved `latest`, which was `build-152`, a September 24,
+  2026 image left from the earlier publishing path.
+- Since 2026-11-16 `latest` is what Bloem's production runs. After a deploy passes
+  its checks, the deploy starts the
+  [Bloem Release workflow](../../../../../.github/workflows/bloem-release.yml) with
+  that commit. It waits for the commit's image, then points `latest` and a dated tag
+  (`YYYY.MM.DD`, then `.2`, `.3` for later releases the same day) at it. A dated tag
+  never moves.
 - Silo's `Docker Image` workflow, which produces the `build-N`, `latest` and short-SHA
   tags that Silo's [release versioning](../../../../release-versioning.md) describes,
   follows Silo's `CI` workflow, and that runs only in Silo's own repository. In Bloem
   both are skipped.
-- On 2026-10-27 the container package was private, so pulling it needed a GitHub
-  account with access to it. Without access, build the image from the checkout.
+- The container package was private until 2026-11-16, so pulling it needed a GitHub
+  account with access to it. It is public since then.
 
 ### Compose files
 

@@ -1,0 +1,96 @@
+name: Bloem Release
+
+# The public image a newcomer gets as `latest` is the one Bloem's own production runs. After a deploy
+# passes verification, the deploy (silo-merge-bot's bloem-deploy) starts this workflow with that
+# commit: its image, published by Bloem Image, becomes `latest` and gets a dated tag such as
+# `2026.11.17` (`2026.11.17.2` for a second release that day) that can be pinned. Bloem Image moves
+# `edge` to every commit that passes Bloem CI.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Full commit SHA on main that production now runs
+        required: true
+        type: string
+
+concurrency:
+  group: bloem-release
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  release:
+    if: github.repository == 'Bloem-Studios/bloem-server' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/bloem-studios/bloem-server
+      SHA: ${{ inputs.sha }}
+    steps:
+      - name: Check the commit is on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::sha must be a full 40-character commit SHA"
+            exit 1
+          fi
+          status=$(gh api "repos/$GH_REPO/compare/$SHA...main" --jq .status)
+          case "$status" in
+            identical|ahead) ;;
+            *) echo "::error::$SHA is not on main (compare status: $status)"; exit 1 ;;
+          esac
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The deploy can finish before Bloem Image has published the commit's image.
+      - name: Wait for the commit's image
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 45); do
+            if docker buildx imagetools inspect "$IMAGE:$SHA" >/dev/null 2>&1; then
+              exit 0
+            fi
+            echo "$IMAGE:$SHA is not published yet ($i/45)"
+            sleep 60
+          done
+          echo "::error::$IMAGE:$SHA was not published within 45 minutes"
+          exit 1
+
+      - name: Tag it latest and dated
+        run: |
+          set -euo pipefail
+          digest() { docker buildx imagetools inspect --raw "$1" | sha256sum | cut -d' ' -f1; }
+          want=$(digest "$IMAGE:$SHA")
+          day=$(date -u +%Y.%m.%d)
+          tag=$day
+          n=1
+          # A dated tag never moves: a rerun for the same image reuses its tag, another image gets .2, .3...
+          while docker buildx imagetools inspect "$IMAGE:$tag" >/dev/null 2>&1; do
+            if [[ "$(digest "$IMAGE:$tag")" == "$want" ]]; then
+              break
+            fi
+            n=$((n + 1))
+            tag="$day.$n"
+          done
+          docker buildx imagetools create --tag "$IMAGE:latest" --tag "$IMAGE:$tag" "$IMAGE:$SHA"
+          {
+            echo "### Released \`$tag\`"
+            echo
+            echo "\`$IMAGE:latest\` and \`$IMAGE:$tag\` now point at \`$SHA\`."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -26,27 +26,18 @@ A Bloem server can take over an existing Silo installation on the same database 
 
 ## Run it
 
-You need Docker with Compose 2.24 or newer, Git, OpenSSL and a folder of media. Bloem's container image is not public,
-so build it from this repository:
+You need Docker with Compose 2.24 or newer, Git, OpenSSL and a folder of media.
 
 ```sh
 git clone https://github.com/Bloem-Studios/bloem-server.git
 cd bloem-server
-docker build -t bloem-server:local .
 cp .env.bloem.example .env
 chmod 600 .env
 printf '\nPOSTGRES_PASSWORD=%s\nSECRET_KEY=%s\n' \
   "$(openssl rand -hex 24)" "$(openssl rand -base64 48)" >> .env
 ```
 
-Open `.env` and change two lines: point `MEDIA_ROOT` at the absolute path of your media, and use the image you built:
-
-```dotenv
-MEDIA_ROOT=/path/to/your/media
-SILO_IMAGE=bloem-server:local
-```
-
-Then start it:
+Open `.env`, point `MEDIA_ROOT` at the absolute path of your media, then start it:
 
 ```sh
 docker compose up -d
@@ -55,6 +46,11 @@ docker compose up -d
 Open <http://localhost:8090> and the setup wizard creates the administrator account and the first library. Keep a copy
 of `SECRET_KEY` somewhere other than the server: it encrypts every stored credential, and a database backup does not
 contain it.
+
+The image is public: `ghcr.io/bloem-studios/bloem-server`. `.env.bloem.example` uses `latest`, the image Bloem's own
+production runs, which moves at most once a day. Pin a dated tag such as `2026.11.17` to choose when you update, or use
+`edge` for every commit that passes CI. To build your own instead, run `docker build -t bloem-server:local .` and set
+`SILO_IMAGE=bloem-server:local`.
 
 `.env.bloem.example` selects Silo's multi-container Compose file (`docker-compose.advanced.yml`); keep that line, because
 Silo's default `docker-compose.yml` starts Silo's own image instead. The
