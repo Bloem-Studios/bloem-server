@@ -4,7 +4,8 @@
 > `main` at `b6039036d`, checked again on 2026-11-11, after Silo retired its v1 API, and
 > updated on 2026-11-13 for the server log in the merge `06a12fb0c`, on 2026-11-15
 > for Silo's IDR primer in the merge `8e1d391d7`, and on 2026-11-16 for Silo's thin
-> transcode nodes (merge `fb187cab2`): stored movies no longer play on a node.
+> transcode nodes (merge `fb187cab2`), and again on 2026-11-16 for stored movies on
+> transcode nodes through Silo's core source access.
 > Native video is a Bloem addition: it plays movies kept in
 > [native storage](bloem-native-storage.md) (S3 buckets, for example) through
 > Silo's playback planner and delivery handlers, using Silo's
@@ -28,7 +29,7 @@ nothing special for stored movies.
 
 ## Three ways a stored movie plays
 
-![Three routes from a stored movie to the app, all on the API server: direct play, repackaging and HLS, each reading in checked one-mebibyte blocks; the transcoding nodes are not used](images/native-video-playback/routes.svg)
+![Three routes from a stored movie to the app: direct play, repackaging and HLS on the API server, each reading in checked one-mebibyte blocks, and HLS on a transcode node with core source access, which reads the bytes from the API server](images/native-video-playback/routes.svg)
 
 1. **Direct play.** Bloem sends the file's bytes as they are, in the ranges the
    player asks for.
@@ -38,25 +39,37 @@ nothing special for stored movies.
 
 ## Where native inputs run
 
-All three run on the API servers. A **native input** is a movie Bloem reads
-through its own reader instead of a file: a movie in a storage source, or a
-[`.strm` item](bloem-strm.md), whose video lives at a web address.
+A **native input** is a movie Bloem reads through its own reader instead of a
+file: a movie in a storage source, or a [`.strm` item](bloem-strm.md), whose video
+lives at a web address. Direct play and repackaging run on the API servers. HLS,
+and converting a copy for offline use, can also run on a **transcode node**, the
+machines with GPUs that convert video for the API servers.
 
-Silo's **transcoding nodes**, the machines that convert video for the API servers,
-keep no database and no keys. Since Silo's change of November 2026 they read a
-movie only by asking the API server for one file by its path, which the API server
-approves with a short-lived **source grant**. A native input has no such path: a
-stored movie is a reference into a storage source, and a `.strm` file's path is
-the small text file holding the web address, not the video. So a native input
-never goes to a node. When the delivery settings allow the API server to convert,
-it converts there; when they allow only the nodes, the start is refused.
+A transcode node runs only Silo's code and keeps no database and no keys. Each
+node reads its movies in one of two ways, set per node as its **source access**:
 
-Ordinary library files are not affected: they still go to the nodes as Silo
-decides. Before 16 November 2026 Bloem sent stored movies to nodes that ran their
-own copy of the storage plugin; Silo's thin nodes cannot, and that code is gone.
+- **local**: the node reads the movie from its own copy of the library folders.
+- **core**: the node asks the API servers for the movie's bytes, under a
+  short-lived **source grant** the API server gave it with the job.
 
-A delivery policy that asks for a stored movie only on a node or only through the
-standalone proxy is refused.
+A native input has no file in a library folder, so it goes only to a node with
+core source access. The API server gives that node a Bloem source grant, opens
+the movie itself (the storage service, or the `.strm` file's web address, with the
+same checks as any playback) and sends the node the bytes. The node never sees
+the storage service, its keys or the web address. A node with local source
+access never gets a native input: Bloem picks another node, or the API server
+when the delivery settings allow it.
+
+**What an operator needs:** for stored movies and `.strm` items to convert on the
+GPUs, at least one transcode node must have source access set to `core`. Without
+one, they convert on the API server, or, when the delivery settings allow only
+the nodes, the start is refused. A start that burns in a subtitle stays on the
+API server, because a node reading through the API servers cannot burn one in.
+
+Ordinary library files are not affected: they go to the nodes as Silo decides.
+
+A delivery policy that asks for a stored movie only through the standalone proxy
+is refused.
 
 ## What Bloem checks
 
@@ -92,16 +105,20 @@ The saved file is named after the title, never after where it is stored.
 
 Bloem's apps and the web app can also download a copy converted for offline use:
 a smaller copy at one of the bitrate presets, or a copy the device can play when
-it cannot play the original. Bloem prepares the copy on the API server, reading the
-movie under the authority of the download waiting for it. When the setting that
-lets the API server convert downloads is off, the copy cannot be made. Cancelling or removing that download,
+it cannot play the original. Bloem prepares the copy on a transcode node with core
+source access, or on the API server, reading the movie under the authority of the
+download waiting for it. When the node Silo picks reads its own library folders,
+the copy is made on the API server; when the setting that lets the API server
+convert downloads is also off, the copy cannot be made. Cancelling or removing that download,
 or withdrawing the viewer's access, stops the preparation within about a second.
 Jellyfin apps download only the original, as with Silo.
 
 ## What does not work yet
 
-- Playing or converting on a transcoding node (see
-  [where native inputs run](#where-native-inputs-run)).
+- Converting on a transcode node for Jellyfin apps: Jellyfin HLS of a stored
+  movie runs on the API server.
+- A transcode node that restarts mid-play: the app has to start again, because
+  the node's rebuild cannot get a grant for a stored movie.
 - Attached fonts and bitmap subtitles in Jellyfin apps.
 - Series from storage.
 - Switching to another file mid-play needs a fresh start.
@@ -119,11 +136,12 @@ in Jellyfin apps too; see [how `.strm` files play](bloem-strm.md).
 | Direct play | `original_http` |
 | Repackaging | progressive MP4 remux |
 | Transcoding node | Silo's `MODE=transcode` process ([transcode nodes](transcode-nodes.md)) |
-| Source grant | `nodesource.Grant`, minted by the API server |
+| Source grant | `nodesource.Grant` (Silo's), or a Bloem grant for a native input (`NativeNodeSources`), minted by the API server |
+| Source access | `stream_nodes.source_access`, `local` or `core` |
 | Read ahead in blocks | `nativestorage.ReadAhead` |
 | Private tool address | `nativestorage.ToolInput`, redacted as `native source` by `nativeredact` |
 | Checked mode | `connection.revision_mode: "checked-etag"` |
-| Capability | `native_video_playback`, `native_video_downloads` in the native-storage capability document; `native_video_remote_execution` is always false |
+| Capability | `native_video_playback`, `native_video_downloads` in the native-storage capability document; `native_video_remote_execution` when native inputs can go to core-access nodes |
 
 ## For developers
 
@@ -210,8 +228,8 @@ The API releases movie library attachment only when the scanner readiness flag
 and native playback composition both exist (`attachNativeVideoReadiness` in
 `internal/api/bloem_native_storage_capabilities.go`). Its native-storage
 capability document reports this composition (`native_movie_libraries` and
-`native_video_playback`; `native_video_remote_execution` stays in the document and
-is always false). It does not certify any live source.
+`native_video_playback`; `native_video_remote_execution` adds the node source
+grants, `NativeNodeSources.Ready`). It does not certify any live source.
 
 ### Execution and ownership
 
@@ -293,38 +311,93 @@ preserves the previous route.
 
 ### Where native inputs run
 
-Native inputs run only on the API servers. Silo's transcode nodes
-([transcode nodes](transcode-nodes.md)) hold no database, Redis, cipher or token
-secret, and every job input on a node goes through a source grant
-(`nodesource.Grant`) that names an absolute, fspath-encoded catalog path and that
-`sources/open` and the source bytes route check against `fspath`. A
-`bloem-storage:` reference is not an absolute path, so `nodesource.Grants` refuses
-to mint one (`ErrInvalidGrant`), and the source bytes route opens the granted path
-as an `*os.File` (`openGrantedSource`), which a native input never is. A local
-`.strm` file is an absolute path, but its grant would name the text file. Serving
-native bytes through core access would mean changing Silo's grant format and its
-source bytes route, so Bloem keeps native inputs off the nodes instead:
+Native inputs run on Silo's transcode nodes through Silo's core source access
+([transcode nodes](transcode-nodes.md#core-source-access)), with no Bloem code on
+the node and no storage credentials there. Silo's grants
+(`nodesource.Grant`) name an absolute path that `sources/open` and the source
+bytes route stat and open as a file, which a native input never is, so Bloem
+mints its own grant and answers both routes for it, in Bloem-owned code
+(`internal/api/handlers/bloem_native_node_source.go`,
+`internal/api/bloem_native_node_sources.go`):
 
-- Native API starts: `nativeVideoWorkerAdmissionV3`
-  (`internal/api/handlers/bloem_native_video_api_only.go`) refuses every transcode
-  node for a native file before a grant is minted or a start is sent, as an
-  ineligible executor (`route_capability_unavailable`), so the route loop excludes
-  the node and falls back to the API server when the policy allows it.
-- Jellyfin starts: Silo's remote start calls `playback.RefuseContextRemoteStart`
-  (the declared seam in `internal/jellycompat/handlers_playback.go`), which refuses
-  a start whose `input_path` the request's media host handles; the candidate loop
-  moves on.
-- Offline conversion: `ArtifactManager.bloemPrepareFile` prepares a native input
-  through `prepareNativeHere`, the pooled preparer's local path, which still applies
-  the local fallback setting and storage gate. The preparation's host also refuses
-  a remote start (`RefuseContextRemoteStart`).
+- **Grant.** `NativeNodeSources.Granter` wraps Silo's `nodesource.FileGranter`.
+  An ordinary file gets Silo's grant, unchanged. A native file gets a Bloem
+  grant: `bloem-native-grant.v1.` and an AES-GCM-sealed payload with the node id,
+  media file id, catalog reference, the binding key (playback session or download
+  preparation), the bound revision, size and modification time, issue time and
+  expiry. Its key is derived by HKDF from the server secret Silo's grants use,
+  under its own label. It lasts `nodesource.GrantLifetime` and at most
+  `nodesource.MaxGrantAge`. The node cannot read it. Mint refuses a node whose
+  `source_access` is not `core` (`errNativeNodeLocalAccess`) and a file without a
+  binding for the named session.
+- **Which binding.** The mint names the native video binding (`NativeVideoBinding`)
+  the reads go through: the playback session of a v3 start
+  (`nativeNodeGrantRequest`, a Bloem line in `prepareRemoteTransportV3`), the
+  download preparation's binding (`BeginPreparation`), the recipe card of a node's
+  resolve, or the playback session of the stream token the request carries (a
+  move off an unreachable node). Anything else gets no grant.
+- **Routes.** `NodeSelfMiddleware` sits inside Silo's `/api/internal/nodes/self`
+  routes after `nodecontrol.RequireNode`, and answers `sources/open` for a Bloem
+  grant under Silo's per-node playback budget (`LimitNodePlayback`).
+  `SourceBytesMiddleware`, in the base middleware, takes the source bytes route
+  for a Bloem grant and authenticates the node with `nodecontrol.RequireNode`
+  itself. Silo grants, and every other request, reach Silo's handlers untouched.
+- **Open.** Each `sources/open` and each byte request verifies the grant and that
+  it names the calling node, rechecks the node's source access (at open), the
+  catalog row (same id and reference, not missing), the binding and the bound
+  revision, and opens the file with `NativeVideoService.OpenDelegated`, which
+  rechecks the viewer's or download's sealed authority as every delegated read
+  does. `sources/open` answers Silo's `nodesource.OpenResponse` with a renewed
+  grant, the opaque path `/bloem-native/<file id>/<digest>`, the size,
+  modification time and an entity tag `"bloem-<file id>-<size>-<digest>"`; the
+  digest hashes the reference and revision. The node treats the path as opaque.
+- **Bytes.** The bytes route serves through `nativestorage.ReadAhead`
+  (`nativeVideoToolReadAhead`), so the authority is rechecked at least once a
+  second while it reads, with Silo's semantics: single and suffix ranges, `If-Match`
+  on the entity tag (412 otherwise), 416 with the size and entity tag, multipart
+  ranges refused, other conditions dropped, `no-store` on every answer, a rolling
+  write deadline, a cut at shutdown, and 429 over 128 responses per node. Silo's
+  source metrics are unexported and do not count native reads.
+- **Refusals.** 403 for a grant that does not verify, another node's grant, a
+  local-access node, a withdrawn authority, a stopped playback (its binding is
+  revoked) or an address the `.strm` guard refuses; 410 for a row that is gone;
+  412 for another revision; 503 otherwise, which the node retries. Refusals are
+  logged with the node, file and status, never the error, which can name a
+  storage location or an address. The `.strm` guard runs on every fetch and
+  redirect of the API server's open, so the private-address setting applies to a
+  node's reads as to the API server's.
+- **Silo grants never open a native file.** `bloemNativeNodeControl` wraps
+  nodecontrol's catalog check (`FileCatalog`) so a native path is never active for
+  Silo's `sources/open`: a Silo grant of a `.strm` file, which trickplay, chapter
+  images or subtitle sync could mint, would otherwise serve the text that names
+  the address. Only a node's resolve finds a native row active, and its grant
+  issuer (`GrantIssuer`) then mints a Bloem grant from the recipe card's playback
+  session.
+- **Placement.** `nativeVideoWorkerAdmissionV3` admits a native input only to a
+  node with `source_access=core`, and only without subtitle burn-in, which a
+  core-access node refuses (409); a refusal is an ineligible executor, so the
+  route loop moves to another node or the API server as the policy allows. A move
+  off an unreachable node (`moveTranscodeOffNodeV3`) gets no grant for a
+  local-access node and tries the next one.
+- **Downloads.** `prepareNativeHere` hands a native input to Silo's pooled
+  preparer. A core-access node gets a Bloem grant for the preparation's binding;
+  for a local-access node the grant is refused and Silo's preparer falls back to
+  the API server under its local fallback setting.
+- **Not on nodes.** Jellyfin starts keep `playback.RefuseContextRemoteStart` (the
+  declared seam in `internal/jellycompat/handlers_playback.go`) and run on the API
+  server: jellycompat takes the concrete `*nodesource.Grants`, so wrapping its
+  granter needs a new seam. Progressive remux and direct play stay on the API
+  servers. Trickplay, chapter images and subtitle sync keep Silo's granter; a
+  node job for a native file fails at `sources/open` (410).
 
-Tests: `TestNativeVideoRemoteStartNeverReachesATranscodeNode`,
-`TestNativeVideoNodeOnlyPolicyHasNoRoute`,
-`TestNativeJellyfinRemoteStartStaysOnTheAPIServer`,
-`TestRefuseContextRemoteStartKeepsHostInputsLocal`,
-`TestNativePreparationRunsOnTheAPIServer` and
-`TestNativeVideoPreparationRefusesOtherAttempts`.
+Tests: `TestNativeNodeGrantOpensAndServesBytes`,
+`TestNativeNodeSourceThroughSilosOpenerAndRelay` (Silo's own `nodesource.Opener`,
+loopback relay and `nodecontrol.Client`), `TestNativeNodeRefusesALocalAccessNode`,
+`TestNativeNodeLeavesSiloGrantsToSilo`, `TestNativeVideoRemoteStartNeedsACoreAccessNode`
+(`internal/api/handlers`), `TestStrmNodeSourceKeepsTheAddressGuard`
+(`internal/api`), `TestNativePreparationGoesThroughThePooledPreparer`
+(`internal/downloads`), `TestNativeVideoNodeOnlyPolicyHasNoRoute` and
+`TestNativeJellyfinRemoteStartStaysOnTheAPIServer`.
 
 ### Recovery
 
@@ -379,7 +452,8 @@ written and the binding is revoked.
 
 Remote HLS: Silo's Jellyfin server refuses to send a native input to a transcode
 node (`playback.RefuseContextRemoteStart`) and runs it on the API server, see
-[where native inputs run](#where-native-inputs-run).
+[where native inputs run](#where-native-inputs-run); native API playback does use
+core-access nodes.
 
 `.strm` items take the same path: `Handles` takes every native location, and the
 host opens a `.strm` item's recorded URL as native API playback does. Subtitle

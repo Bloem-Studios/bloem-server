@@ -1,7 +1,7 @@
 # Bloem overlay: Transcode nodes
 
 > **Provenance and status.** Bloem page, written on 2026-11-16 and checked against
-> the merge `fb187cab2`, which brings Silo through `699f84ecf` (Silo #4337, #4338). It
+> the merge `fb187cab2`, updated the same day for native inputs on core-access nodes, which brings Silo through `699f84ecf` (Silo #4337, #4338). It
 > lists what Bloem adds to Silo's
 > [`docs/architecture/transcode-nodes.md`](../../../architecture/transcode-nodes.md),
 > which stays exactly as Silo wrote it. Bloem replaces nothing; Silo's design applies
@@ -15,10 +15,13 @@ ships them, with no Bloem code on them.
 
 ## What Bloem changes
 
-- **Movies Bloem reads itself stay on the API servers.** A movie in a storage
-  source, or a `.strm` item whose video lives at a web address, is not a file the
-  API server can hand a node by its path. Bloem never sends one to a node; it plays
-  and converts them on the API servers, as the delivery settings allow.
+- **Movies Bloem reads itself go only to nodes with core source access.** A movie
+  in a storage source, or a `.strm` item whose video lives at a web address, is not
+  a file in a library folder. Bloem sends its HLS and download conversion only to a
+  node whose source access is `core`, and the API servers send that node the bytes
+  under a Bloem source grant. A node that reads its own library folders never gets
+  one. For these movies to convert on the GPUs, set at least one node's source
+  access to `core`.
 - **Every other movie goes to the nodes as Silo decides.**
 - **Bloem's private source addresses never reach a log.** Silo logs the FFmpeg
   command it runs; on the API servers Bloem makes that log name a native input as
@@ -29,17 +32,18 @@ ships them, with no Bloem code on them.
 | On this page | In the code |
 | --- | --- |
 | A movie Bloem reads itself | a native input, `storagesource.IsNativeLocation` |
-| Asking for one file by its path | a source grant, `nodesource.Grant` |
+| Asking for one file by its path | a source grant, `nodesource.Grant`; Bloem's own for a native input (`handlers.NativeNodeSources`) |
 | Bloem's private source address | a `nativestorage.ToolInput` argument |
 
 ## For developers
 
-- Placement: `nativeVideoWorkerAdmissionV3` refuses every node for a native input
-  on the native API, `playback.RefuseContextRemoteStart` refuses Jellyfin and
-  download-preparation remote starts whose input the request's media host handles,
-  and `ArtifactManager.prepareNativeHere` prepares native downloads on the API
-  server. [Where native inputs run](../../../architecture/bloem-native-video-playback.md#where-native-inputs-run)
-  explains why Silo's core source access cannot serve them.
+- Placement and grants: `nativeVideoWorkerAdmissionV3` admits a native input only
+  to a node with `source_access=core` and no subtitle burn-in;
+  `NativeNodeSources` mints the Bloem grant and answers `sources/open` and the
+  source bytes route for it in front of Silo's handlers; Jellyfin remote starts of
+  a native input stay refused (`playback.RefuseContextRemoteStart`).
+  [Where native inputs run](../../../architecture/bloem-native-video-playback.md#where-native-inputs-run)
+  has the design.
 - Redaction: `nativeredact.Register` wraps the registered `fspath.RelayedSources`
   (`fspath.RegisteredRelayedSources`, a Bloem file in Silo's package) and adds the
   tool input address to its `Redact`, so `fspath.RedactRelayed`, which Silo's FFmpeg

@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">Three ways a stored movie plays</title>
-<desc id="d">On the left, the storage source and its plugin. In the middle, the API server reads the movie in checked one-mebibyte blocks and plays it by direct play, by repackaging it as MP4, or as HLS segments. Below, the transcoding nodes, crossed out: they read only files the API server grants them by path, so a stored movie never goes there. On the right, the app gets ordinary playback addresses. Bytes leave only while the latest access check is less than a second old.</desc>
+<desc id="d">On the left, the storage source and its plugin. In the middle, the API server reads the movie in checked one-mebibyte blocks and plays it by direct play, by repackaging it as MP4, or as HLS segments. Below, a transcode node with core source access can make the HLS segments too: it reads the bytes from the API server under a source grant, and a node that reads its own library folders gets no stored movie. On the right, the app gets ordinary playback addresses. Bytes leave only while the latest access check is less than a second old.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Three ways a stored movie plays</text>
-<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">All on the API server: every route reads the same pinned revision and keeps checking the viewer.</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Every route reads the same pinned revision and keeps checking the viewer; HLS can run on a node.</text>
 <rect x="40" y="150" width="230" height="140" rx="14" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.8"/>
 <text x="58" y="182" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Storage source</text>
 <text x="58" y="206" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A bucket or book service,</text>
@@ -34,12 +34,13 @@
 <text x="404" y="443" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">HLS here</text>
 <text x="404" y="465" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">ffmpeg makes short segments.</text>
 <line x1="830" y1="447" x2="896" y2="447" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="330" y="540" width="520" height="112" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
-<text x="348" y="572" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Transcoding nodes: not used</text>
-<text x="348" y="596" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">They read only files the API server grants them by path. A stored</text>
-<text x="348" y="616" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">movie is not one, so its HLS stays on the API server.</text>
-<circle cx="820" cy="566" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
-<path d="M814.6,560.6 L825.4,571.4 M825.4,560.6 L814.6,571.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="330" y="540" width="520" height="112" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="348" y="572" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Transcode node, core source access</text>
+<text x="348" y="596" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">HLS on the GPU: the node reads the bytes from the API server under</text>
+<text x="348" y="616" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">a source grant. Local-access nodes get no stored movie.</text>
+<circle cx="820" cy="566" r="12" fill="#10B981"/>
+<path d="M814.6,566.24 L818.8,570.56 L826.0,561.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="590" y1="512" x2="590" y2="536" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="900" y="254" width="260" height="222" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
 <text x="918" y="286" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The app</text>
 <text x="918" y="310" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Gets Silo's usual playback</text>
@@ -50,7 +51,7 @@
 <text x="920" y="530" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Not yet</text>
 <circle cx="932" cy="559" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
 <path d="M927.5,554.5 L936.5,563.5 M936.5,554.5 L927.5,563.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
-<text x="952" y="564" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Transcoding nodes</text>
+<text x="952" y="564" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Jellyfin HLS on a node</text>
 <circle cx="932" cy="587" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
 <path d="M927.5,582.5 L936.5,591.5 M936.5,582.5 L927.5,591.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
 <text x="952" y="592" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Series from storage</text>

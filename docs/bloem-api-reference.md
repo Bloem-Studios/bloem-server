@@ -2645,9 +2645,11 @@ No production backend is certified by these flags.
 
 `native_video_playback` reports native API video composition.
 `native_movie_libraries` additionally requires the configured native movie
-scanner and library attachment readiness. `native_video_remote_execution` is
-always false: native video runs only on the API servers, because a transcode node
-reads its sources only through a core source grant, which names a file path.
+scanner and library attachment readiness. `native_video_remote_execution`
+reports that remote HLS and download preparation of native video can run on Silo's
+transcode nodes with `source_access=core`, which read the source through the API
+servers under a Bloem source grant; a node that reads its own library mount never
+gets a native input.
 `native_video_downloads` follows `native_video_playback`: native videos download
 as the original file and as copies converted for offline use.
 `native_video_jellyfin` remains false.
