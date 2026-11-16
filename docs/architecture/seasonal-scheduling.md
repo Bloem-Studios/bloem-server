@@ -95,8 +95,6 @@ and only after they sign in.
 - **API:** [messages and promotions](../bloem/api/messages.md): the registry under
   `/api/bloem/v2/admin/platform/ambience`, `GET /api/bloem/v2/ambience`,
   `GET /api/bloem/v2/ambience/public` and `GET /api/bloem/v2/ambience/assets/{ref}`.
-  The legacy registry routes are on
-  [Bloem's retired v1 routes](../bloem/api/v1-routes.md#seasonal-packs).
 
 ### Authoring
 
@@ -255,7 +253,6 @@ answers the same body and stores nothing new.
   `GET /api/bloem/v2/ambience/public` without credentials; that answer is never taken
   for an authenticated one. Requests and cached results are bound to session, profile
   and PIN authority.
-- The web app calls none of Silo's retired v1 API.
 
 ### Android
 

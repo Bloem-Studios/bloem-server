@@ -384,15 +384,12 @@ property has a default, so apps compile and decode unchanged.
 #### 7.2 Breaking changes and the digest
 
 A rename, removal or type change of a field removes or retypes a public property and
-moves `CONTRACT_DIGEST`. Before Silo's API locks these are allowed, coordinated with both
-apps and recorded in the pre-lock removals table ("Breaking removals taken before lock") of
-`docs/architecture/v1-scope.md`.
+moves `CONTRACT_DIGEST`; coordinate it with both apps.
 `contracts/client/v1/digest.txt` pins two digests: the contract digest of the normalised
-type graph (`internal/graph/digest.go`) and a digest of that removals table at the time.
+type graph (`internal/graph/digest.go`) and a digest of Silo's table of breaking removals.
 `TestDigestPinMatchesTree` (`internal/digestfile/realtree_test.go`) fails when the
-contract moves without a new removals-table line, and names the missing step; then
-re-pin with `make client-digest`. After the lock, the same test is to allow only
-additions. The digest ignores the order of `bloem_fields` and is canonical
+contract moves without a matching table line, and names the missing step; then
+re-pin with `make client-digest`. The digest ignores the order of `bloem_fields` and is canonical
 (`TestDigestIsDeterministicAndCanonical`, `TestDigestIgnoresBloemFieldOrder`,
 `TestDigestSensitivity`).
 

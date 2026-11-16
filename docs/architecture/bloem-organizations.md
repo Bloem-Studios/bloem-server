@@ -194,7 +194,7 @@ it.
 | Platform | the one `platform` row in `resource_owners` |
 | Organization | `organizations` (a "tenant" in `internal/tenancy`) |
 | Default organization | the organization with `is_default` |
-| Reseller organization | an organization with an `external_service_id`, created through the tenants API (`/api/bloem/v2/admin/platform/tenants`; the legacy v1 tenants API went with Silo's v1 API on 2026-11-11) |
+| Reseller organization | an organization with an `external_service_id`, created through the tenants API (`/api/bloem/v2/admin/platform/tenants`) |
 | Seats | `organizations.slots`; each seat is one `organization_memberships` row |
 | Shared video conversions | `organizations.transcodes`, a pool shared by every member |
 | Getting ready, active, suspended | `organizations.status`: `initializing`, `active`, `suspended`, with `suspension_reason` `quota` or `admin` |
@@ -218,9 +218,7 @@ it.
   (`/api/bloem/v2/admin/platform/tenants`), their domains and branding
   (`/api/bloem/v2/admin/platform/tenants/{id}/domains` and `/branding`, capability
   `organization_domains_v1`), member accounts and account create and update. Plans
-  are on the [plans and preview](../bloem/api/plans.md) page. Bloem's callers no longer
-  use Silo's v1 API, which Silo retired on 2026-11-11
-  ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
+  are on the [plans and preview](../bloem/api/plans.md) page.
 
 - **Organization invitations:** `POST /api/bloem/v2/admin/organization/invitations`
   takes Silo's optional `delivery` field (Silo #1788), advertised by

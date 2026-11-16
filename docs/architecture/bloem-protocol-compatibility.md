@@ -106,7 +106,7 @@ with the adapters in `cmd/silo/bloem_compat.go` and the tenant-aware resolver in
   `bloemProfileSessionRevoker` deletes those profiles' `jellycompat_sessions` rows and
   announces the revocation so replicas drop cached copies.
 
-`GET /api/v1/health` answers `server_name` and `server_id` from the Jellyfin
+Silo's health probe answers `server_name` and `server_id` from the Jellyfin
 compatibility configuration, as upstream does.
 
 Organization domains don't apply on these ports: the Jellyfin address is server-wide

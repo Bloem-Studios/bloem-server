@@ -133,8 +133,7 @@ the link are the administrator's.
   [messages](../bloem/api/messages.md) (the upgrade prompt). The storefront puts a
   new account on a plan with `POST /api/bloem/v2/admin/platform/accounts`, and an
   organization with `POST /api/bloem/v2/admin/platform/tenants`
-  ([organizations API](../bloem/api/organizations.md)). Nothing in Bloem calls
-  Silo's retired v1 API ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
+  ([organizations API](../bloem/api/organizations.md)).
 - [Entitlement templates guide](../wiki/admin/entitlement-templates.md): the
   built-in plans, policy fields, key rules, confirmation and audit. Bulk moves and
   policy cohorts are in the [plans and preview API](../bloem/api/plans.md).

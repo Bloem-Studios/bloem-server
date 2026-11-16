@@ -84,7 +84,7 @@ What it does not do:
 
 - **API:** retiring is `DELETE /api/bloem/v2/admin/platform/tenants/{id}` on the
   [organizations and administration](../bloem/api/organizations.md#delete-apibloemv2adminplatformtenantsid)
-  page. The legacy v1 tenant delete went with Silo's v1 API on 2026-11-11. Library
+  page. Library
   deletion is Silo's `DELETE /api/v2/libraries/{id}`, with Bloem's guard described
   in the [libraries API overlay](../bloem/overlays/libraries-api.md).
 

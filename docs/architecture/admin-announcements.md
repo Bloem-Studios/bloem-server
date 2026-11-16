@@ -89,10 +89,7 @@ every inbox by itself.
 - **API:** [messages and promotions](../bloem/api/messages.md):
   `GET`, `POST /api/bloem/v2/admin/platform/announcements` and
   `DELETE /api/bloem/v2/admin/platform/announcements/{id}`, with the `Announcement`,
-  `AnnouncementInput` and `AlertBody` schemas. The old routes on Silo's
-  v1 API, `GET`/`POST /admin/notifications/announcements` and `DELETE …/{id}`, were retired
-  on 2026-11-11; [Bloem's retired v1 routes](../bloem/api/v1-routes.md#announcements)
-  records them.
+  `AnnouncementInput` and `AlertBody` schemas.
 
 ### Routes and authority
 
@@ -103,8 +100,6 @@ every inbox by itself.
   request that the account is still an enabled `admin`. Organization contexts, scoped
   keys and ordinary sessions get `403 insufficient_platform_authority`; when the check
   cannot run, `503 tenant_unavailable`.
-- The legacy v1 announcement routes are gone: Silo's v1 API answers `410 Gone` since
-  2026-11-11. Nothing in Bloem called them by then.
 - The native routes use `handlers.AdminAnnouncementsHandler`
   (`internal/api/handlers/admin_announcements.go`). The author recorded on the
   publication is the Platform context's account, or the request's user

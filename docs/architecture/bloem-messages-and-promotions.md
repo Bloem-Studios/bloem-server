@@ -96,10 +96,7 @@ the catalog's artwork, on local disk or S3
   hiding one and saving one to the inbox are under `/api/bloem/v2/promotions`
   (`promotions_viewer_v1`). Signed-out pages read the packs for everyone from the
   public `GET /api/bloem/v2/ambience/public`; signed-in Home reads
-  `GET /api/bloem/v2/ambience`. Silo has retired its v1 API, and with it go Bloem's
-  [old v1 campaign routes](../bloem/api/v1-routes.md#campaigns) and the `ambience`
-  block of Silo's v1 branding route; nothing in Bloem calls them
-  ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
+  `GET /api/bloem/v2/ambience`.
 - [How announcements work](admin-announcements.md),
   [how playback cards work](playback-overlays.md) (with the
   [routes map](../playback-overlays-api.md)) and

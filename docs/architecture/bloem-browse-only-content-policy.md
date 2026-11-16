@@ -162,7 +162,7 @@ or theme-song descriptions from an otherwise accessible catalogue.
 The native listener enforces these boundaries:
 
 - The composed native ebook reader checks current playback permission before
-  resolving a file. This covers v1 and v2 GET/HEAD, local ebook/comic/manga files,
+  resolving a file. This covers `/api/v2` GET/HEAD, local ebook/comic/manga files,
   native storage, ranges, conditional requests and conversion. Reading is a
   playback permission; download permission is independent.
 - The v2 operation gate refuses trickplay manifests and theme playback
@@ -228,7 +228,7 @@ binding. Per-account and profile overrides cannot restore the denied
 permissions. The lookup keeps remote-playback purpose and its approved profile,
 so preview restrictions and handoff restrictions both apply. Guest activity and
 expiry are checked in that same database snapshot. Conversion therefore affects
-existing credentials on their next request, including v1 websocket tickets
+existing credentials on their next request, including websocket tickets
 minted before it. API keys owned by preview principals are refused.
 
 Two short-lived credentials are not classified: a direct-download link (`dl`) and
@@ -237,7 +237,7 @@ principal, so they rely on the policy checks behind them. A preview principal
 cannot mint either. One minted before a conversion still meets the downloads
 policy (downloads are off) or can only read notification text.
 
-Authenticated v1 and native routes use the exact method/route allowlist in
+Authenticated native routes use the exact method/route allowlist in
 `internal/api/bloem_preview_routes.go`. Delegated v2 routes use the operation
 allowlist in `internal/apiv2/bloem_preview_gate.go`. Unlisted operations are
 denied by default, including new upstream operations. Preview refusals carry
@@ -436,7 +436,7 @@ real allowance.
   stopped and refused.
 - **Stream tokens.** Plan URLs carry a stream token, which skips bearer
   authentication and the preview gate. `bloemStreamTokenAuth` therefore judges
-  every stream token of the shared preview account on v1 and v2: only
+  every stream token of the shared preview account: only
   `/playback/transcode/{session}/` playlists and segments and
   `/stream/{session}/subtitles/` pass, for a session bound to a live grant,
   and the request is marked so the stream-token viewer resolver narrows scope

@@ -139,13 +139,11 @@ acceptance; that remains untested.
 ### Playback stop and capacity
 
 Both native stop entry points use the existing durable attempt stop/receipt
-mechanism. The v1 bridge falls back to legacy in-memory behavior only when no
-durable attempt exists. A storage error must not be treated as a missing attempt.
+mechanism. A storage error must not be treated as a missing attempt.
 Ownership is checked before any stop or history mutation. The durable stop in `internal/api/handlers/bloem_playback_stop.go`
 applies Silo's `ownsPlaybackSession` rule: both the account and the acting
 profile must match the attempt, so a sibling profile on the same account gets
-`403` and cannot stop another profile's playback. Silo's v1 progress and stop
-handlers apply the same rule (Silo #3133).
+`403` and cannot stop another profile's playback.
 
 The transition to a non-null `playback_v3_attempts.stopped_at` releases Bloem's
 fleet capacity reservation transactionally under the same account advisory lock

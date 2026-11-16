@@ -99,7 +99,6 @@ sees it.
   under `/api/bloem/v2/admin/platform/promotions`, and the viewer routes
   `GET /api/bloem/v2/promotions`, `POST /api/bloem/v2/promotions/{id}/save` and
   `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}` (`promotions_viewer_v1`).
-  The [old v1 routes](../bloem/api/v1-routes.md#campaigns) went with Silo's v1 API.
   The [playback overlays API](../playback-overlays-api.md) page summarises who calls
   which route.
 
@@ -145,9 +144,7 @@ lifecycle below.
 ### Delivery
 
 - `/api/bloem/v2/capabilities` lists `playback_overlays_v1` when the campaign registry
-  is wired (`SetPlaybackOverlaysAvailable`, `internal/api/router_bloem.go`). The
-  `promotions.playback_overlay` field of the old v1 notification capability went with
-  Silo's v1 API.
+  is wired (`SetPlaybackOverlaysAvailable`, `internal/api/router_bloem.go`).
 - `GET /api/bloem/v2/promotions?surface=in_playback&content_id=…` returns the card
   projection with `playback_style`, `video_url`, `duration_seconds` and an exclusive
   `expires_at`. `content_id` is required for `in_playback`.
@@ -239,7 +236,7 @@ treats nothing as dismissed and logs it.
 
 - A dismissal is `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}`; dismissals
   are per profile and per surface. The Home row's dismissals reuse the same store under
-  `promo:<surface>`. The old v1 viewer routes went with Silo's v1 API.
+  `promo:<surface>`.
 - An app reads `promotions_viewer_v1` and `playback_overlays_v1` on
   `GET /api/bloem/v2/capabilities`, and opts in to the Home row with `promoted=1`.
 

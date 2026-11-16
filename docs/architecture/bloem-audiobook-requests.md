@@ -418,8 +418,7 @@ fail their status checks; the web editor warns before such a save.
 Silo's generic request-integration editor keeps a saved `api_key_ref` whenever
 `base_url` is unchanged. Audiobook connections keep `base_url` empty and their
 URLs in `plugin_config`, so that rule never fires for them. The host refuses
-generic updates (`PUT /api/v2/admin/request-integrations/{id}`; the v1 twin went
-with Silo's v1 API) and option probes of any connection whose saved or submitted media types
+generic updates (`PUT /api/v2/admin/request-integrations/{id}`) and option probes of any connection whose saved or submitted media types
 include `audiobook`, or whose installation is `bloem.requests.audiobooks`
 (`internal/requests/bloem_lane_integration_guard.go`). The refusal is a form
 validation error naming Bloem's audiobook setup. Generic creation stays open

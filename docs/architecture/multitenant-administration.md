@@ -176,12 +176,7 @@ refresh is then refused as revoked, and the client signs in again. See
 
 ### Websocket credentials
 
-The v1 bridge sockets went with Silo's v1 API on 2026-11-11. They used Silo's handshake
-unchanged: the socket authenticated with the ordinary login credential, and Silo's v1
-`POST /events/ws-ticket` (profile required) bound only the profile. Bloem added no v1
-ticket routes.
-
-The v2 events and playback-control sockets use Silo's socket tickets with a Bloem
+The events and playback-control sockets use Silo's socket tickets with a Bloem
 adapter (`internal/api/handlers/bloem_socket_authority.go`) on Silo's `Validate`
 hook. Minting binds the caller's organization, membership and revisions to the
 ticket server-side, and the handshake and periodic checks revalidate that same
@@ -281,17 +276,10 @@ so a client sees one organization's libraries and never a union across them.
 
 #### Keeping it that way
 
-Silo retired its v1 API on 11 November 2026 (Silo #3200), so there is no longer a v1
-route contract to keep.
-`TestV1RouteSurfaceWithADatabaseIsUnchanged` now holds the v1 prefix to exactly Silo's
-tombstone, so a Bloem route added there fails.
-
 Behaviour needs its own guard, because the route surface cannot see it. A client
-broke once with no route change at all: it browsed before the viewer
-picked a profile, and the profile-less subject resolved through the deployment
-default organization rather than the account's own tenant, so a tenant's end user
-was told its tenant did not exist. That class of regression is what
-`TestSiloClientSubjectResolutionMatrix` above exists to catch.
+that browses before the viewer picks a profile must resolve its subject through the
+account's own tenant, not the deployment default organization, or a tenant's end user is
+told its tenant does not exist. `TestSiloClientSubjectResolutionMatrix` above guards that.
 
 ### Access group deletion
 
@@ -326,8 +314,7 @@ See [Silo backend switching](silo-backend-switching.md).
 
 ### Compatibility and audit
 
-The Silo bridge keeps its recorded contracts and
-[reviewed Bloem exceptions](v1-scope.md), using the account/profile projection
+Silo's clients keep Silo's recorded contracts, using the account/profile projection
 described above. Legacy clients retain account login and profile switching; they do
 not receive administrative context claims.
 

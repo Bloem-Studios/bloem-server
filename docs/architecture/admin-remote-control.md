@@ -1,11 +1,9 @@
 # How remote control works
 
-> **Dormant since 2026-11-11.** Remote control's routes (`/admin/remote/...`, the
-> household command route and `PUT /devices/{id}/remote-control`) lived only on Silo's
-> alpha v1 API, which Silo retired (Silo #3200). It is parked: the HTTP handler went with the routes, no remote
-> observer is wired, and the notification capability reports `remote_control` as off.
-> The service, its store and the playback hooks stay, and it comes back with native
-> routes under `/api/bloem/v2`. The rest of this page describes how it worked.
+> **Dormant.** Remote control has no routes. No remote observer is wired, and the
+> notification capability reports `remote_control` as off. The service, its store and
+> the playback hooks are in place, and the feature needs native routes under
+> `/api/bloem/v2`. The rest of this page describes how it is designed to work.
 
 Remote control is a Bloem addition: Silo's playback connection carries the commands, and Bloem adds who may send
 them, the app's list of accepted commands, and the record of each one. This page explains it in plain language;
@@ -86,17 +84,10 @@ that cap, and keeps it until the session ends.
 
 ## For developers
 
-- **API:** none today. The routes were retired with Silo's v1 API on 2026-11-11 and
-  answer `410 Gone`; [Bloem's retired v1 routes](../bloem/api/v1-routes.md#remote-control)
-  records `PUT /devices/{device_id}/remote-control`, `GET /admin/remote/sessions`,
-  `POST /admin/remote/sessions/{session_id}/commands`,
-  `POST /profiles/household/sessions/{session_id}/commands`,
-  `GET /admin/remote/commands/{command_id}` and `GET /admin/remote/audit`, with their
-  bodies and error codes. The web app uses Silo's `/api/v2` session commands. Native
-  routes, and remote-control discovery in `/api/bloem/v2/capabilities`, come back with the
-  feature ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)). The `remote_control` block
-  (`admin`, `household`) was part of the v1 notification capability and went with it;
-  Silo's `GET /api/v2/notifications/capabilities` has no such block.
+- **API:** none today. The web app uses Silo's `/api/v2` session commands. Native
+  routes, and remote-control discovery in `/api/bloem/v2/capabilities`, belong to the
+  feature when it ships. Silo's `GET /api/v2/notifications/capabilities` has no
+  `remote_control` block.
 
 `internal/remote` and `remote_control.go` are Bloem's; Silo's playback control socket (`session_ws.go`, a ledgered seam
 in `contracts/seams.txt`) carries the commands. The hello filter is in
@@ -110,15 +101,14 @@ not implemented; a device may already advertise its command names.
 Server-issued commands to client apps: the sender side lives in `internal/remote`,
 delivery rides the per-session playback control socket
 (`internal/api/handlers/session_ws.go`), and the admin and household endpoints are in
-`internal/api/handlers/remote_control.go`, which since 2026-11-11 keeps only the
-inert playback hooks. The admin routes were mounted by `mountBloemLegacyAdminV1` and the
-household and device routes sat in Silo's router; both went with Silo's v1 API.
+`internal/api/handlers/remote_control.go`, which keeps only the
+inert playback hooks; no admin, household or device route is mounted.
 
 ### Rules
 
 - **No capability row, not controllable.** A device receives a command only if it
   advertised that command's name, either through
-  the former `PUT /devices/{device_id}/remote-control` (the device must be registered to the
+  a device registration (the device must be registered to the
   calling profile) or through the control socket's `hello.capabilities.commands`. The
   advertisement is stored in `remote_device_capabilities` keyed by
   `(user_id, profile_id, device_id)`; forgetting the device deletes it. A command the
@@ -189,8 +179,7 @@ are never queued"), not ignored.
 `{"name": "replan", "payload": {"overrides": {"transcode": "auto|direct",
 "max_bitrate_kbps": n, "video_codec": "…", "audio_codec": "…", "container": "…"},
 "reason": "…"}}`. `transcode` is required; `max_bitrate_kbps` is 0..1,000,000. A
-`force` override, retired on 2026-10-25 so the planner stays Silo's, is refused as an
-invalid payload.
+`force` override is refused as an invalid payload, so the planner stays Silo's.
 
 1. The server pins `playback.PlanOverridesV3` on the session and sends
    `plan_invalidated` (`reason: admin_replan`, `plan_id` = the current plan) with the
@@ -214,10 +203,10 @@ invalid payload.
 
 ### Command contract
 
-The former `POST /admin/remote/sessions/{session_id}/commands` (and the household route)
-took `{"name": "seek", "payload": {"position_ms": 90000}, "reason": "skip recap"}` and
-answers `201` with the command row, the same shape `GET /admin/remote/commands/{id}`
-and each audit row return:
+A session command (an administrator's, or the household's) takes
+`{"name": "seek", "payload": {"position_ms": 90000}, "reason": "skip recap"}` and
+answers `201` with the command row, the same shape a command lookup and each audit row
+return:
 
 ```json
 {"command_id": "5f1c…", "scope": "session", "session_id": "sess-…", "device_id": "device-1",
@@ -238,8 +227,8 @@ Errors: `400 invalid_payload | unknown_command | reason_required | bad_request`,
 `403 forbidden | command_not_allowed`, `404 not_found`, `409 session_not_connected |
 replan_unavailable`, `429 rate_limited`.
 
-The former `PUT /devices/{device_id}/remote-control` took `{"version": 1, "commands":
-[...]}` and answers `200 {"device_id", "version", "commands"}` with the names sorted.
+A device announcing its commands sends `{"version": 1, "commands":
+[...]}` and gets `200 {"device_id", "version", "commands"}` with the names sorted.
 Names must be ones the server knows, the device-rail names included, so an app can
 announce its full list today. The session's device is `X-Silo-Device-Id` at
 `/playback/start` (else the session claims' `device_id`), recorded as

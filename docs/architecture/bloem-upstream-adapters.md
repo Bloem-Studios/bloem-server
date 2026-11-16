@@ -177,9 +177,8 @@ apply an adapter twice.
   signature stays available to ordinary Silo callers.
 - Download policy keeps Silo's account-only helper signatures. Bloem's [download policy](../../internal/downloads/bloem_policy.go)
   takes the request's verified profile from the context when it belongs to the account
-  being served, so Silo's v1 download handler and v2 download capability call Silo's
-  `ServeDirect`, `ResolveDirectFile` and `Capability` unchanged. The former
-  `downloads.CapabilityForProfile` extension is gone. Tenant-aware
+  being served, so Silo's download handler and `/api/v2` download capability call Silo's
+  `ServeDirect`, `ResolveDirectFile` and `Capability` unchanged. Tenant-aware
   group providers still require the validated request tenant. Ordinary Silo group
   providers retain their account policy and explicit user overrides without tenant
   context.
@@ -221,11 +220,9 @@ Bloem's home transformers (the promoted row, delivered only on `promoted=1`) rea
 options from the context, never from Silo's `SectionViewer`, which has no Bloem field.
 On `/api/v2` the line
 `ctx = bloemHomePromotionContext(ctx, in.BloemHomePromotionInput)` does the same before
-Silo's three calls in `internal/apiv2/home.go`. The v1 counterpart in
-`internal/api/handlers/sections.go` went with Silo's v1 API on 2026-11-11, and its
-helper `withRequestSectionOptions` was deleted after it. The transform lines in
+Silo's three calls in `internal/apiv2/home.go`. The transform lines in
 `home_views_service.go` read the options with `sectionOptions(ctx)`
-([hooks](../../internal/api/handlers/bloem_section_hooks.go)). Bloem used to carry the opt-in in a `SectionViewer.Extensions` field and wrap Silo's arguments with it; `internal/api/handlers/library_views_service.go` is now Silo's bytes.
+([hooks](../../internal/api/handlers/bloem_section_hooks.go)). `internal/api/handlers/library_views_service.go` is Silo's bytes.
 `TestBloemHomeReadsCarryPromotionOptIn` and
 `TestBloemHomeLayoutBundlingKeepsPromotionOptIn` pin the opt-in.
 
@@ -471,10 +468,9 @@ which adds the audiobook and ebook request tabs around Silo's page, in place of
 Silo's `pages/Requests`. Every other importer, Silo's own `pages/Requests` test
 included, keeps Silo's page (`web/bloem-preview-plugin.test.ts`).
 
-The web app calls none of Silo's retired v1 API. It reaches Silo's `/api/v2` through
+The web app reaches Silo's `/api/v2` through
 Silo's own web functions (`web/src/api/v2/`), and `/api/bloem/v2` through `nativeApi`
-or `nativeApiWithProfileRequestContext` (`web/src/api/bloemClient.ts`). The former
-v1 helpers `bloemV1Api` and `bloemV1ApiWithProfileRequestContext` are gone ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)). Silo's lint
+or `nativeApiWithProfileRequestContext` (`web/src/api/bloemClient.ts`). Silo's lint
 rule against `api<T>()` and `apiWithProfileRequestContext<T>()` stays meaningful for
 routes that have a v2 contract; do not alias the native helpers to `api`.
 
@@ -484,18 +480,16 @@ Silo owns the SQLite user-store version numbers in
 [`internal/userdb/migrate.go`](../../internal/userdb/migrate.go), and a store ends at
 Silo's `schemaVersion`. Bloem's idempotent repair step lives in
 [`bloem_migrate.go`](../../internal/userdb/bloem_migrate.go) and runs inside Silo's
-migration transaction without a version of its own. Bloem once shipped a compatibility
-cleanup as version 32, before Silo claimed 32, and then as version 34. A store Bloem
-left at 32 skipped Silo's version 32, so the repair adds `user_devices.custom_name`
-when it is missing. Both cleanups dropped the Jellyfin display-preference table, which
-the repair recreates. A store Bloem left at its former version 34 or 35 has not run
-Silo's 34 or 35, so `bloemSQLiteResumeVersion` resumes it after version 33 and Silo's
+migration transaction without a version of its own. The repair adds
+`user_devices.custom_name` when it is missing and recreates the Jellyfin
+display-preference table. A store recorded at version 34 or 35 may not have run Silo's
+34 or 35, so `bloemSQLiteResumeVersion` resumes it after version 33 and Silo's
 idempotent steps run. With no number of its own, the repair cannot collide with a
 later Silo version.
 
 ### Realtime socket tickets
 
-Silo's v1 sockets went with its v1 API on 2026-11-11. The v2 events and playback-control sockets keep Silo's ticket store and add
+The events and playback-control sockets keep Silo's ticket store and add
 Bloem's tenant authority through Silo's `Validate` hook
 ([`bloem_socket_authority.go`](../../internal/api/handlers/bloem_socket_authority.go)).
 

@@ -84,7 +84,7 @@ leaves the rules exactly as they were.
   their shape.
 
 "Native listeners" below means the routers that serve Silo's API: the
-`/api/v2` listener, and until Silo retired its v1 API on 2026-11-11 the v1 router.
+`/api/v2` listener.
 
 ### Composition
 

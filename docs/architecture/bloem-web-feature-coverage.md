@@ -43,8 +43,6 @@ account.
   playback and settings, through Silo's own web code.
 - **Bloem's `/api/bloem/v2`** for Bloem's features. Signed-out pages read the seasonal
   packs for everyone from its public `ambience/public` route.
-- **None of Silo's v1 API** since 2026-11-01. Silo retired it on 2026-11-11, and every
-  v1 route now answers `410 Gone`.
 
 Two sign-in rules show up in the web app:
 
@@ -99,11 +97,10 @@ availability alone does not justify replacing them.
 The tables describe the routes and components in the current source. Mounted routes and
 observed behaviour outrank older docs. The "Boundaries / evidence" column records what
 browser and test runs showed; it is not a certification of every feature, browser or
-role. Bloem removed its own Jellyfin and Audiobookshelf compatibility on 2026-10-13 and
-Silo's came back on 2026-10-18; Bloem's companion enrollment and compatibility gateway
-stay removed (see [Protocol compatibility](bloem-protocol-compatibility.md)). The upstream
-profile theme editor has been retired; Bloem campaign and seasonal presentation remains
-separate.
+role. Silo's Jellyfin and Audiobookshelf compatibility servers run as Silo ships them;
+Bloem has no companion enrollment or compatibility gateway (see
+[Protocol compatibility](bloem-protocol-compatibility.md)). The web app has no upstream
+profile theme editor; Bloem campaign and seasonal presentation is separate.
 
 [README](../../.github/README.md) and the [operator guide](../wiki/admin-guide.md)
 provide the product and operational entry points.
@@ -185,13 +182,13 @@ network.
 | E01 | Announcements / platform admin | **Present.** Existing announcement targeting, preview, publish and withdraw settings. The page calls `/api/bloem/v2/admin/platform/announcements` and requires the Platform context ([announcements](admin-announcements.md)). | ID-based targets retained; no organization-admin publication authority invented. | Existing UI. |
 | E02 | Alerts/announcements / viewer | **Present.** Existing Notifications page and realtime consumer retained. | The Bloem adapter captures and revalidates the original principal and tenant through the shared ticket store; PostgreSQL/race regressions pass. The rebuilt browser received a real v2 socket hello and remained healthy for 18 seconds, beyond periodic authority revalidation, with no relevant HTTP/runtime errors. | Owned adapter + optional shared ticket identity field. |
 | E03 | In-playback campaigns / viewer | **Present.** Existing `PlaybackEngagement` in the Silo player. It reads `GET /api/bloem/v2/promotions?surface=in_playback` and saves through `POST /api/bloem/v2/promotions/{id}/save` ([playback cards](playback-overlays.md)). | Retained cadence/control suppression and existing player lifecycle. | Existing UI/player SEAM. |
-| E04 | Home/detail/pre-playback campaigns / viewer | **Present.** `BloemHome`, `CampaignPlacements`, item wrapper and pre-playback chrome integration. Cards come from `GET /api/bloem/v2/promotions` (Home with `home_position`) and hiding one writes `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}`, advertised as `promotions_viewer_v1`. | Live publication → opted-in home delivery passed. Home defaults off; children suppressed; dismissals nonreplayed; immediate Continue remains available and admitted playback stays mounted. Failure/profile-switch behavior has component coverage. The acceptance ran before the web app moved off Silo's v1 API. | UI + narrow home/detail/player SEAMs. |
+| E04 | Home/detail/pre-playback campaigns / viewer | **Present.** `BloemHome`, `CampaignPlacements`, item wrapper and pre-playback chrome integration. Cards come from `GET /api/bloem/v2/promotions` (Home with `home_position`) and hiding one writes `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}`, advertised as `promotions_viewer_v1`. | Live publication → opted-in home delivery passed. Home defaults off; children suppressed; dismissals nonreplayed; immediate Continue remains available and admitted playback stays mounted. Failure/profile-switch behavior has component coverage. | UI + narrow home/detail/player SEAMs. |
 | E05 | Campaign authoring / platform admin | **Present.** `/admin/platform/engagement`: typed targets/placements, UTC dates, review, publish/edit/delete and artwork upload. | Rebuilt create/edit/delete and readback passed (201/200/204). Configured public S3 acceptance passed: PNG upload 201, exact bytes/MIME/dimensions, anonymous 200/ETag 304 and decoded Home artwork. Deployment and explicit-profile inclusion/exclusion passed. Native adapter reuses the registry; no revision-locking contract exists and the editor says so. | UI + native authority API + route/nav SEAM. |
-| E06 | Seasonal presentation / viewer | **Present.** `SeasonalLayer`: snow, banner/sprite artwork, timing, opt-out, reduced motion and playback suppression. | Rebuilt current-organization delivery returned 200 and public branding excluded the targeted pack; earlier opt-out passed. `seasonal_viewer_v1` identifies mounted authenticated native `/ambience`, which requires a verified current-tenant profile. Single-snapshot filtering excludes other memberships, including concurrent retargeting. Login and fallback stay public-only and read `GET /api/bloem/v2/ambience/public`. Requests and caches bind session/profile/PIN generation. | Bloem UI, existing shell SEAM. |
+| E06 | Seasonal presentation / viewer | **Present.** `SeasonalLayer`: snow, banner/sprite artwork, timing, opt-out, reduced motion and playback suppression. | Rebuilt current-organization delivery returned 200 and public branding excluded the targeted pack; opt-out passed. `seasonal_viewer_v1` identifies mounted authenticated native `/ambience`, which requires a verified current-tenant profile. Single-snapshot filtering excludes other memberships, including concurrent retargeting. Login and fallback stay public-only and read `GET /api/bloem/v2/ambience/public`. Requests and caches bind session/profile/PIN generation. | Bloem UI, existing shell SEAM. |
 | E07 | Seasonal authoring / platform admin | **Present.** Engagement page pack editor, schedules, annual repeat when supported and asset upload. | Rebuilt create/edit/delete and readback passed (201/200/204). Configured public S3 banner/sprite uploads, public delivery/cache validation, decoded Home images and organization/public filters passed. MIME, size and declared-dimension rejection passed. Uploads use the catalog Assets store, local or S3 (see [asset storage](bloem-campaign-asset-storage.md)). Registry concurrency remains last-write-wins. | UI + native authority API + route/nav SEAM. |
-| E08 | Compatibility applications | **Removed (Bloem's).** Companion enrollment and the protocol gateway are absent; Silo's Jellyfin compatibility settings and status are present. | Native audiobook/ebook and device pairing remain separate. | [Protocol compatibility](bloem-protocol-compatibility.md). |
+| E08 | Compatibility applications | **Absent (Bloem's).** Companion enrollment and the protocol gateway are not part of Bloem; Silo's Jellyfin compatibility settings and status are present. | Native audiobook/ebook and device pairing remain separate. | [Protocol compatibility](bloem-protocol-compatibility.md). |
 | E09 | Branding/LAN/playback deployment controls / platform admin | **Present.** Build-time identity, Silo's **Show on the local network** toggle (`server.lan_discovery`, which publishes Silo's `_silo._tcp`) and existing Playback controls. Bloem's own `_bloem._tcp` setting, `lan.advertisement_enabled`, has no web control ([LAN service advertisement](../specs/lan-service-advertisement.md)). | Header-authenticated media is not a general multi-replica switch. Deployment prerequisites remain explicit. | Existing settings/branding SEAMs. |
-| E10 | Fleet and shared media / viewers/admins | **Shared; acceptance incomplete.** Retain Silo catalog, player, requests, downloads, readers, nodes and plugins. Bloem's music catalog was removed on 2026-10-26. | No replacement frontend. A real database/policy regression covers active/suspended/restored/withdrawn grants, campaign delivery and denied-library 404. Rebuilt reads completed all five v2 home sections with 200, including one promoted item. No home blocker was observed in that fixture. Actual media/encoder/fleet acceptance needs appropriate fixtures. | Existing Silo consumers; investigate concrete integration failures separately. |
+| E10 | Fleet and shared media / viewers/admins | **Shared; acceptance incomplete.** Retain Silo catalog, player, requests, downloads, readers, nodes and plugins. Bloem has no music catalog. | No replacement frontend. A real database/policy regression covers active/suspended/restored/withdrawn grants, campaign delivery and denied-library 404. Rebuilt reads completed all five v2 home sections with 200, including one promoted item. No home blocker was observed in that fixture. Actual media/encoder/fleet acceptance needs appropriate fixtures. | Existing Silo consumers; investigate concrete integration failures separately. |
 
 ### Implementation and authority invariants
 
@@ -233,10 +230,8 @@ network.
 - Campaign and season adapters reuse existing registries under native platform
   context, preserving the actor. They do not invent revision locks or organization
   publishing.
-- The web app calls none of Silo's retired v1 API: its Bloem client no longer has the helper
-  (`bloemV1Api`) that reached it, and the signed-out seasonal layer fetches
-  `/api/bloem/v2/ambience/public` without credentials
-  ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
+- The signed-out seasonal layer fetches `/api/bloem/v2/ambience/public` without
+  credentials.
 - Setup remains atomic. `cmd/silo/bloem_setup_transaction.go` forwards transactional
   ownership activation; `internal/notifications/bloem_profile_transaction.go` preserves
   transactional profile creation through decoration, failing closed if unavailable.
@@ -263,7 +258,7 @@ Bloem-owned implementations:
   `internal/api/handlers/bloem_seasonal_viewer.go`,
   `internal/api/handlers/bloem_public_ambience.go`, `internal/ambience/bloem_viewer.go`.
 - Existing native Live TV mounting: `internal/api/router_bloem_client.go` and
-  `internal/api/router_livetv.go`. Do not restore unmounted v1 routes to fix a consumer.
+  `internal/api/router_livetv.go`.
 
 Shared seams are recorded in `contracts/seams.txt`: route and navigation registration,
 request policy, optional home supplemental rows, pre-playback placement, and the
@@ -273,11 +268,11 @@ adapters; the shared account provisioner adds the early provider check above. Sh
 test seams cover migrated invitation fixtures, platform capability expectations, tenant
 reseeding and catalog execution prerequisites. Additive executor helpers, including
 lifecycle and local-avatar fixtures, do not modify files present in upstream; their
-shared runner hooks are ledgered. No module-path rename, replacement player or new Silo v1 business route was introduced.
+shared runner hooks are ledgered. Bloem keeps Silo's module path and player.
 
 Native Apple and Android implementation is outside this page. Additive management
 tokens and native routes are documented for future clients; existing clients ignore
-unknown capabilities. The retired Jellyfin playback and DVR adapter is absent. Do not
+unknown capabilities. Live TV is not served through Jellyfin. Do not
 advertise browser direct-profile sign-in, shared-device pairing or enforced DVR
 retention.
 
@@ -308,7 +303,6 @@ credentials, generated browser states, screenshots and local fixture scripts out
 - [Playback cards](playback-overlays.md)
 - [Seasonal scheduling](seasonal-scheduling.md)
 - [Organization domains and branding](bloem-organization-domains.md)
-- [Leaving Silo's v1 API](bloem-leaving-silo-v1.md)
 - [Protocol compatibility](bloem-protocol-compatibility.md)
 
 The picture is an SVG file under `images/bloem-web-feature-coverage/`, drawn by

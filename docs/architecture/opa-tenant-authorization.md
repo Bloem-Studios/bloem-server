@@ -117,9 +117,8 @@ returned scope to catalog and playback reads.
 ### Shipped boundary
 
 `GET /api/bloem/v2/capabilities` advertises `organization_memberships` and
-`tenant_bounded_media_scope` as `true`. Since Silo retired its v1 API it advertises `legacy_silo_v1` and direct-profile login
-(`direct_profile_login`) as `false`: the profile sign-in route lived only on
-Silo's v1 API. That capability does not admit direct sessions to the native namespace or the browser's
+`tenant_bounded_media_scope` as `true`. It advertises direct-profile login
+(`direct_profile_login`) as `false`: no profile sign-in route is mounted. That capability does not admit direct sessions to the native namespace or the browser's
 Silo v2 calls. Shared-device profile pairing (`shared_device_pairing`) and delegated
 administrative roles (`delegated_admin_roles`) remain `false`. Household credential
 management has its own capability and account/PIN/reauthentication boundary; see
@@ -138,7 +137,7 @@ redacted activity pages, and policy-decision explanations. Grant changes check t
 grant security revision; invitation mutations check the organization policy
 revision. See [multitenant administration](multitenant-administration.md).
 
-Silo's `/api/v2` is the Silo-compatible surface; its alpha v1 API is retired. Existing users and profiles are
+Silo's `/api/v2` is the Silo-compatible surface. Existing users and profiles are
 backfilled into the default organization without changing profile IDs, PINs, login
 payloads, profile switching, or legacy token claims. Legacy account requests ignore
 caller-supplied organization headers and use the server's account/profile tenant

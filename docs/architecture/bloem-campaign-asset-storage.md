@@ -74,8 +74,6 @@ Uploading the same file again for another pack reuses the same name.
   `POST /api/bloem/v2/admin/platform/ambience/{id}/assets` (upload and attach), and the
   public `GET /api/bloem/v2/ambience/assets/{ref}`. Native platform authoring reuses this
   service; see the [native API](../bloem-api-reference.md#platform-campaign-and-seasonal-authoring).
-  The legacy routes on Silo's v1 API were retired on 2026-11-11; they are recorded on
-  [Bloem's retired v1 routes](../bloem/api/v1-routes.md#seasonal-packs).
 
 ### Store selection
 
@@ -115,11 +113,10 @@ Uploading the same file again for another pack reuses the same name.
 
 - `GET /api/bloem/v2/ambience/assets/{ref}` is mounted by `mountBloemPlatformStorefront`
   (`internal/api/router_bloem_storefront.go`). It is the only artwork route and
-  `ambience.AssetURLBase` the only accepted path prefix: the older v1 artwork route went
-  with Silo's v1 API on 2026-11-11, and migration
+  `ambience.AssetURLBase` the only accepted path prefix. Migration
   `20261111215029_bloem_api_v2_ambience_asset_paths` moved the paths stored in Bloem's
-  tables to it. A copy of an old path kept outside those tables, such as a campaign card
-  saved to an inbox earlier, no longer loads.
+  tables to it. A copy of a path kept outside those tables, such as a campaign card
+  saved to an inbox, does not load.
 - A `ref` must match `^[0-9a-f]{16}\.(png|webp|jpg|gif)$`, which keeps the path free of
   traversal; anything else, or a missing object, is `404 not_found`. No store is
   `503 unavailable`.

@@ -13,8 +13,7 @@ A Bloem server must keep working for apps built for Silo, which will never learn
 value or route that only Bloem has. So Bloem never changes Silo's routes. It puts everything
 of its own under **`/api/bloem/v2`**: Live TV, organizations, plans, campaigns, seasonal packs,
 book requests, storage sources, and richer home and title documents for its apps. Silo's
-alpha v1 API is retired and answers `410 Gone`, so nothing goes there either (see
-[leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
+features stay on Silo's own `/api/v2`.
 
 ## How it is laid out
 
@@ -34,8 +33,7 @@ The routes fall into four groups, by what a caller must show:
    organization. The storefront's platform routes also take a platform administrator's API
    key. See [how Bloem's security foundation works](bloem-security-foundation.md).
 
-A **profile sign-in** (straight into one profile, dormant since Silo retired its v1 API, where
-its sign-in route lived) reaches only the book request routes on Bloem's API. Everything else there needs an account sign-in.
+A **profile sign-in** (straight into one profile; dormant, as no sign-in route is mounted) reaches only the book request routes on Bloem's API. Everything else there needs an account sign-in.
 
 ## How an app finds out what a server can do
 
@@ -53,8 +51,7 @@ They are separate on purpose: if the first could fail, an app would be back to g
 ## Progress uploads
 
 An app that was offline uploads its saved positions in one batch to Silo's
-`POST /api/v2/sync/progress`. Bloem had its own upload route until 2026-11-11; it answered
-in a finer way than Silo's v1 route, and it went when Silo retired that route.
+`POST /api/v2/sync/progress`.
 
 ## Example: a TV app starting up
 
@@ -75,7 +72,7 @@ This example is made up.
 
 | Who | What they manage |
 | --- | --- |
-| Bloem developers | New Bloem routes go under `/api/bloem/v2` with an OpenAPI declaration and, for a new feature, a feature token. A test pins that only Silo's `410` tombstone sits under Silo's retired v1 API. |
+| Bloem developers | New Bloem routes go under `/api/bloem/v2` with an OpenAPI declaration and, for a new feature, a feature token. |
 | App developers | Reading feature tokens instead of versions, ignoring fields they do not know, and adopting the generated Kotlin and Swift types on purpose ([SDKs and generated contracts](bloem-sdk-compatibility.md)). |
 
 ## Words used in the code
@@ -89,7 +86,6 @@ This example is made up.
 | Which server it is | `GET /api/bloem/v2/server/identity` (`internal/api/handlers/server_identity.go`) |
 | Home and title documents | Watch documents, `watch_document_v1` (`internal/watchdoc`) |
 | Progress upload | Silo's `POST /api/v2/sync/progress` |
-| The v1 route test | `internal/api/v1_route_surface_test.go` |
 
 ## For developers
 
@@ -100,21 +96,10 @@ This example is made up.
 
 ### Namespace rule
 
-`/api/bloem/v2` is the native Bloem API, distinct from upstream Silo's `/api/v2`. (Bloem's native routes were
-first served on `/api/v2` and moved when Silo took that prefix for its own, unrelated API.) Silo's
-alpha v1 API is retired. New Bloem-only features belong under `/api/bloem/v2`, because
+`/api/bloem/v2` is the native Bloem API, distinct from upstream Silo's `/api/v2`.
+New Bloem-only features belong under `/api/bloem/v2`, because
 a deployment must stay usable by upstream Silo clients that will never learn a Bloem-only
 field, value or route.
-
-That rule is enforced: `internal/api/v1_route_surface_test.go` walks the mounted route tree
-and compares the routes under Silo's retired v1 prefix against golden lists
-(`internal/api/testdata/v1_routes_*.txt`); since 2026-11-11 they hold only Silo's tombstone
-and its health and ready probes. A route added there fails with the route named. Regenerate
-the goldens only when Silo changes the tombstone:
-
-```bash
-BLOEM_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
-```
 
 ### Routes
 
@@ -151,12 +136,12 @@ Live TV capability discovery adds optional `xtream_supported` for installed live
 support, not permission, encryption readiness or playback success. Server-owned Kotlin/Swift
 bindings include this field with absent/false handling. The embedded web uses
 `POST /api/bloem/v2/livetv/tuners/xtream` with an authenticated administrator's selected
-primary profile and required PIN proof. No Silo v1/v2 alias or sibling-client provider
+primary profile and required PIN proof. No Silo `/api/v2` alias or sibling-client provider
 administration is supplied. See [Xtream boundaries](xtream-live-tv.md).
 
 The viewer routes use ordinary account sessions and require `X-Profile-Id`. Direct-profile
 sessions are limited by the router's allowlist (`internal/api/direct_profile_routes.go`),
-which since Silo retired its v1 API admits only the audiobook and ebook request viewer
+which admits only the audiobook and ebook request viewer
 routes under `/api/bloem/v2`; everything else is rejected before native viewer
 middleware runs. The browser's Silo v2 calls are also outside that allowlist: credential
 management does not imply direct-profile browser login.
@@ -180,17 +165,15 @@ legitimately answers `503`, and its `setup_complete` flips exactly once, so it i
 `no-store`. Folding the two together would either make the capability probe fallible or leave
 the identity fields silently absent.
 
-Silo's retained v1 health probe answers `server_name` and `server_id` from the Jellyfin compatibility
+Silo's health probe answers `server_name` and `server_id` from the Jellyfin compatibility
 configuration, as upstream does. Health fields are not a scope key; the native identity
-endpoint remains authoritative for that purpose. See
+endpoint is authoritative for that purpose. See
 [protocol compatibility](bloem-protocol-compatibility.md).
 
 ### Progress sync
 
-Bloem's native `POST /sync/progress` and its `progress_sync_v1` token were removed on
-2026-11-11. The route took Silo's v1 request body and reported `updated`,
-`ignored` or `error` where Silo's v1 route reported `ok`. Clients upload offline progress to
-Silo's `POST /api/v2/sync/progress`, which reports `success` or `failure` per item.
+Clients upload offline progress to Silo's `POST /api/v2/sync/progress`, which reports
+`success` or `failure` per item. Bloem has no progress-sync route or token of its own.
 
 ### Response and dependency behavior
 
@@ -220,7 +203,6 @@ Technical pages:
 
 - [How Bloem's security foundation works](bloem-security-foundation.md): sign-ins,
   administrator passes and tenant checks.
-- [Leaving Silo's v1 API](bloem-leaving-silo-v1.md).
 - [Live TV client access](live-tv-client-access.md).
 - [How apps connect](bloem-apps.md).
 - [Server identity](server-identity.md).

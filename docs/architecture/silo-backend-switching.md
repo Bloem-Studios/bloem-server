@@ -144,12 +144,10 @@ database and work again when Bloem serves it. Silo answers every host with the
 server-wide branding and public URL.
 
 Silo's Jellyfin and Audiobookshelf compatibility servers are shared, not Bloem-only.
-Bloem once removed both protocols but kept their tables, the author-count view
-and their settings for Silo. Bloem now runs
-both servers again as Silo ships them, so whichever backend is serving reads and writes
-those tables. The Jellyfin setting `jellyfin_compat.server_id` (the server identity
-that Jellyfin clients recognise) also supplies `server_id` on `GET /api/v1/health` in
-both backends, as in Silo. See [protocol compatibility](bloem-protocol-compatibility.md).
+Bloem runs both servers as Silo ships them, so whichever backend is serving reads and
+writes their tables, the author-count view and their settings. The Jellyfin setting
+`jellyfin_compat.server_id` (the server identity that Jellyfin clients recognise) also
+supplies `server_id` on Silo's health probe in both backends, as in Silo. See [protocol compatibility](bloem-protocol-compatibility.md).
 
 ### Operating rules
 
@@ -219,9 +217,9 @@ it from the Bloem image you deploy.
 `/config` volume: Silo's all-in-one image creates it, and Bloem wrapped in the
 all-in-one layer takes it over.
 
-The steps talk to both servers through Silo's `/api/v2` (`cmd/bloem-silo-switch-check`),
-so Silo's retirement of its v1 API did not affect the check. The scripts still wait on
-`/api/v1/ready`, the operational probe Silo keeps.
+The steps talk to both servers through Silo's `/api/v2` (`cmd/bloem-silo-switch-check`).
+The scripts wait on Silo's readiness probe (see the
+[Docker guide](../bloem/overlays/wiki/deployment/docker.md)).
 
 Run both whenever a change touches a table that both servers write. Run them too after
 merging upstream changes that add Silo writes to tables Bloem constrains, or that change

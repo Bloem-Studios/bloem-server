@@ -136,7 +136,7 @@ Riverside Club is a reseller organization served on its own address, `watch.rive
 | On this page | In the code and database |
 | --- | --- |
 | Account sign-in | an account login session (`auth_sessions` row) and its access token |
-| Profile sign-in | a direct-profile session, from the retired v1 `POST /auth/profile-login` (dormant); credentials at `/api/bloem/v2/profile-credentials/{id}` |
+| Profile sign-in | a direct-profile session, dormant, as no sign-in route is mounted; credentials at `/api/bloem/v2/profile-credentials/{id}` |
 | Administrator pass | an administrative context token (`auth.AdminContextClaims`, `internal/auth/admin_context.go`) from `POST /api/bloem/v2/admin/session` |
 | Platform pass, organization pass | scope `platform` (`AdminScopePlatform`) or `organization` (`AdminScopeOrganization`) |
 | API key | an `sa_` bearer key |
@@ -173,7 +173,7 @@ the August 2026 foundation release.
 ### The native namespace and capabilities
 
 Bloem keeps Silo's own `/api/v2` account login, profile picker, PIN unlock, token
-refresh and administration; Silo's alpha v1 API, which carried them before, is retired. The native `/api/bloem/v2` namespace is a separate
+refresh and administration. The native `/api/bloem/v2` namespace is a separate
 additive boundary. Its discovery and administration surface exposes:
 
 - public `GET /api/bloem/v2/capabilities`;
@@ -182,8 +182,7 @@ additive boundary. Its discovery and administration surface exposes:
 - administrative context exchange and management routes under `/api/bloem/v2/admin`;
 - the native client surface in [how Bloem's native API is organized](bloem-client-surface.md).
 
-The capability response is the source of truth. It advertises legacy v1 compatibility,
-organization membership discovery and tenant-bounded media scope, beside the media types this
+The capability response is the source of truth. It advertises organization membership discovery and tenant-bounded media scope, beside the media types this
 build serves and the feature tokens clients match against. This is an illustrative subset,
 not an exhaustive token list; consult the runtime response and the
 [wire reference](../bloem-api-reference.md#get-apibloemv2capabilities):
@@ -193,7 +192,6 @@ not an exhaustive token list; consult the runtime response and the
   "api": "bloem/v2",
   "identity_schema": 1,
   "features": {
-    "legacy_silo_v1": false,
     "organization_memberships": true,
     "tenant_bounded_media_scope": true,
     "direct_profile_login": false,
@@ -229,9 +227,8 @@ administrator gate.
 mounted with both gates, and `GET /api/bloem/v2/admin/organization/support-capabilities` says
 which of them this server can serve.
 
-Profile sign-in is dormant since 2026-11-11: its sign-in route lived only on Silo's v1 API, which Silo retired (Silo #3200). The credential routes are not mounted, `profile_credential_management_v1` and `direct_profile_login` are not advertised, and the web hides the credentials panel and the Profile passwords setting. The code stays; it comes back with a native profile sign-in route under `/api/bloem/v2`. Until then, the rest of
-this section describes how it worked: direct-profile login was implemented on
-Silo's v1 `POST /auth/profile-login` when its dependencies were wired. The default-deny direct-session route
+Profile sign-in is dormant: no sign-in route is mounted. The credential routes are not mounted, `profile_credential_management_v1` and `direct_profile_login` are not advertised, and the web hides the credentials panel and the Profile passwords setting. The code stays; it needs a native profile sign-in route under `/api/bloem/v2`. Until then, the rest of
+this section describes how it is designed to work. The default-deny direct-session route
 allowlist (`internal/api/direct_profile_routes.go`) still rejects Silo v2 and the native Bloem
 namespace (apart from the audiobook and ebook request viewer routes), so the embedded browser
 must use account login. A profile password follows the server's password sign-in policy
@@ -255,7 +252,7 @@ Clients must not infer features from version strings. `/api/v10/*` is not an ali
 
 ### Security invariants
 
-- Existing v1 JWTs remain valid and carry no organization authority.
+- Account JWTs carry no organization authority.
 - Legacy account requests ignore organization-selection headers and project into the account's
   own organization: its one active membership, which is the default organization for upgraded
   accounts. Direct-profile sessions instead revalidate their explicit organization, membership
@@ -274,7 +271,7 @@ Clients must not infer features from version strings. `/api/v10/*` is not an ali
   native video's login-session check (`internal/api/bloem_native_video.go`). A token whose
   login session belongs to another account is refused.
 - Playback progress and stop belong to the acting profile, not just the account. Silo's
-  `ownsPlaybackSession` (#3133) guards v1 progress and stop, and Bloem's durable stop
+  `ownsPlaybackSession` (#3133) guards progress and stop, and Bloem's durable stop
   (`internal/api/handlers/bloem_playback_stop.go`) applies the same rule, so a sibling profile
   on the same account cannot stop another profile's playback
   (`TestBloemBridgeStopRefusesASiblingProfile`).
@@ -286,7 +283,7 @@ Clients must not infer features from version strings. `/api/v10/*` is not an ali
 - Organization listing occurs before selection. It returns only the account's active
   memberships in active organizations and omits owners, member counts and other
   organizations.
-- V1 retains the legacy account ceiling for profile-less default-organization requests. A
+- Legacy account sign-in keeps the account ceiling for profile-less default-organization requests. A
   selected profile resolves its canonical access group from the profile's required
   organization-qualified assignment; a group from another organization never resolves.
   Deleting a non-default group reassigns its profiles to that organization's default group in
@@ -372,13 +369,13 @@ still enforce their own authority. `TestBloemLoginReportsTheAccountGroupPolicyDB
 real login against Postgres; `TestBloemLoginPolicyUsesAuthenticatedAccountTenant` covers each
 way the tenant can be refused.
 
-The v1 account-password capability and mutation routes preserve profileless account
+The account-password capability and mutation routes preserve profileless account
 administration. A selected profile first resolves tenant authority, then passes the shared
 ownership/PIN viewer guard. Direct-profile sessions remain rejected before either lookup.
 
 Logout revokes a login session, not an API key. The shared handler refuses API-key or
 sessionless claims before invoking session revocation; valid account and admitted
-direct-profile sessions keep self-logout. v1 invitation acceptance hides unknown, expired,
+direct-profile sessions keep self-logout. Invitation acceptance hides unknown, expired,
 revoked and consumed invitations behind `404 not_found`; a pending invitation's
 duplicate-account conflict remains `409 already_used`.
 
@@ -432,12 +429,12 @@ users receive active memberships, profiles keep their IDs and policy fields, and
 access groups and profiles attach to the default organization. Unassigned profiles are
 backfilled to their organization's default group, after which every profile has exactly one
 canonical group. Existing media folders become platform-owned and the default platform catalog
-is materialized as active default-organization entitlements, so upgraded v1 users keep their
+is materialized as active default-organization entitlements, so upgraded users keep their
 prior library visibility.
 
 When several enabled legacy administrators exist, migrations deliberately set
 `ownership_resolution_required=true`, leave both owners null, and keep the default
-organization initializing (`20260812190000_tenant_identity_foundation`). V1 login and profile
+organization initializing (`20260812190000_tenant_identity_foundation`). Account login and profile
 switching remain available; native organization-bound requests do not.
 
 #### Resolve multiple-admin ambiguity
@@ -500,15 +497,13 @@ Re-run the verification queries afterward.
 
 ### Rollback
 
-> **Historical.** This procedure belongs to the August 2026 tenant-foundation release.
-> Several later Bloem migrations are forward-only and refuse `Down` (for example
-> `20261013161500_remove_bloem_compatibility.sql` and
-> `20261026003000_bloem_account_policy_on_users.sql`), so a current deployment rolls back by
+> Several Bloem migrations are forward-only and refuse `Down` (for example
+> `20261026003000_bloem_account_policy_on_users.sql`), so a deployment rolls back by
 > restoring a backup taken before the migration.
 
 Rollback is allowed only before operators or later phases start writing non-default
 organizations, organization-specific profile group assignments, resource ownership, or
-entitlements that cannot be represented by v1. Take a tested backup, stop Bloem, and roll back
+entitlements that the earlier schema cannot represent. Take a tested backup, stop Bloem, and roll back
 the application binary and schema together. Keeping a new binary against the old schema is
 unsupported.
 
@@ -532,7 +527,7 @@ crossed; restore the tested backup instead.
 Before enabling native tenant administration in an environment:
 
 1. run migration up/down/up tests on a disposable database;
-2. run the v1 compatibility suite for setup, login, profile list, PIN unlock, admin
+2. run the account-login compatibility suite for setup, login, profile list, PIN unlock, admin
    projection and refresh;
 3. confirm legacy account login tokens do not acquire administrative-context authority, and
    direct-profile sessions keep their explicit tenant binding;
@@ -616,8 +611,6 @@ Technical pages:
 - [Organization domains and branding](bloem-organization-domains.md).
 - [How organizations work](bloem-organizations.md) and
   [how Bloem's native API is organized](bloem-client-surface.md).
-- Silo's household and API key authority acceptance pages were deleted with its v1 API
-  (Silo #3200, 2026-11-11).
 
 The pictures are SVG files under `images/security-foundation/`, drawn by
 `scripts/bloem/draw-pictures.py`. Redraw them there, not by hand.

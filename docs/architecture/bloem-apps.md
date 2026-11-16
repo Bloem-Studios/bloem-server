@@ -13,7 +13,7 @@ A Bloem server has three entrances:
 
 - **The main address** serves the web app, Bloem's Android and Apple apps, and
   Silo's own apps. It speaks Silo's API (`/api/v2`) plus Bloem's own extras under
-  `/api/bloem/v2`. Silo's alpha v1 API is retired and answers `410 Gone`. In Bloem's Docker setup it is port 8090.
+  `/api/bloem/v2`. In Bloem's Docker setup it is port 8090.
 - **The Jellyfin entrance** (port 8096) serves Jellyfin apps such as Infuse,
   Findroid and Swiftfin. They get no Live TV and no files from storage sources.
 - **The Audiobookshelf entrance** (port 13378) serves Audiobookshelf apps for
@@ -23,7 +23,7 @@ Silo's apps work with Bloem as they do with Silo. They see everything Silo has
 and none of Bloem's extras, because Bloem never changes what Silo's API means.
 Bloem's own apps use the extras: Live TV, profile sign-ins, richer title pages
 and server-side search. The web app uses only Silo's `/api/v2` and Bloem's
-`/api/bloem/v2`. Silo retired its v1 API on 2026-11-11, so nothing in Bloem calls it.
+`/api/bloem/v2`.
 
 Whichever entrance an app uses, a session sees only its own organization's
 libraries, with its plan's and profile's limits. Apps find the server by its
@@ -39,11 +39,10 @@ Every way in ends in one profile of one account:
 - **Bloem's apps, Silo's apps and the web app** sign in to the account with
   email and password, then ask who is watching, then ask for that profile's PIN
   if it has one.
-- **A profile sign-in** (dormant). The household's main profile could give a
-  profile a sign-in of its own, and apps that support it signed straight into
-  that one profile. Its sign-in route lived only on Silo's v1 API, which Silo
-  retired on 2026-11-11, so it is parked: the setting and the credentials panel
-  are hidden until a native sign-in route exists. The browser always signs in to
+- **A profile sign-in** (dormant). The household's main profile can give a
+  profile a sign-in of its own, for apps that sign straight into that one
+  profile. It is parked: no sign-in route is mounted, and the setting and the
+  credentials panel are hidden until a native sign-in route exists. The browser always signs in to
   the account.
 - **Jellyfin and Audiobookshelf apps** have one username box and one password
   box, so the profile goes in the username as `account#profile` (for example
@@ -86,10 +85,9 @@ sign-in page.
 
 ## Remote control
 
-Remote control is dormant since 2026-11-11: its routes lived only on Silo's
-v1 API, which Silo retired, so nothing can send a command and the server
-advertises it as off. The code is parked until native routes are built; the
-rest of this section describes how it worked.
+Remote control is dormant: it has no routes, so nothing can send a command and the
+server advertises it as off. The code is parked until native routes are built; the
+rest of this section describes how it is designed to work.
 
 Bloem lets an administrator, or a household's main profile, control a playing
 app: pause, resume, seek, stop, change volume or audio and subtitle tracks, or
@@ -128,9 +126,7 @@ also end a session, with a reason.
   identity, Watch documents, people, item collections and profile
   credentials. Domains and branding are on the
   [organizations API](../bloem/api/organizations.md) page. Remote control and profile
-  sign-in have no routes since Silo retired its v1 API
-  ([Bloem's retired v1 routes](../bloem/api/v1-routes.md#remote-control),
-  [leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
+  sign-in have no routes.
 - [Organization domains and branding](bloem-organization-domains.md): host
   resolution, the sign-in check (`409 wrong_organization_domain`, "This account signs
   in at https://<primary domain>."), the OAuth callbacks and post-logout `/login` each
@@ -142,8 +138,7 @@ also end a session, with a reason.
   `session_invalid` (`session_expired` on `/api/v2`), so its refresh is refused and the
   client signs in again (`internal/api/bloem_org_session_revocation.go`).
 - [Bloem native client surface](bloem-client-surface.md): why Bloem-only features
-  live under `/api/bloem/v2`, and the golden check that keeps only Silo's `410` tombstone
-  under Silo's retired v1 API.
+  live under `/api/bloem/v2`.
 - [SDK compatibility and contract generation](bloem-sdk-compatibility.md): the
   generated Kotlin and Swift types.
 - [Protocol compatibility](bloem-protocol-compatibility.md): Silo's Jellyfin and

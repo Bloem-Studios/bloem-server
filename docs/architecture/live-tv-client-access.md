@@ -86,7 +86,7 @@ the capability route and the native `/api/bloem/v2/livetv` mount
 (`internal/api/router_livetv.go`, mounted from `internal/api/router_bloem_client.go`).
 Delivery requires the playback grant as well, and a browse-only preview scope clears both
 grants (see [browse-only content policy](bloem-browse-only-content-policy.md)). Bloem's Live
-TV on the Jellyfin surface was removed ([protocol compatibility](bloem-protocol-compatibility.md)).
+TV is not served on the Jellyfin surface ([protocol compatibility](bloem-protocol-compatibility.md)).
 
 ### The permission
 
@@ -105,7 +105,7 @@ The permission joins Silo's assignable set rather than sitting beside it.
 `internal/auth/permissions.go` stays Silo's: `internal/auth/bloem_permissions.go` adds
 every `internal/permissioncatalog` entry to Silo's `assignablePermissions` map at init,
 so `auth.NormalizePermissions` accepts `watch_live_tv` and `auth.AssignablePermissions`,
-which the frozen v1 account body lists for an enabled admin, names it. v2
+which the account body lists for an enabled admin, names it. v2
 `Account.permissions` lists only an admin's explicitly assigned permissions, as in Silo.
 `TestAssignablePermissionsListTheBloemCatalog` pins the registry.
 
@@ -128,7 +128,7 @@ distinguish denial, unsupported servers and network errors.
 ### Routes and their gates
 
 Channel, guide, session, DVR and tuner-administration endpoints are mounted under
-`/api/bloem/v2/livetv`, not under Silo's `/api/v2` (and never under Silo's retired v1 API). The embedded web uses
+`/api/bloem/v2/livetv`, not under Silo's `/api/v2`. The embedded web uses
 this native prefix for reads, mutations, lease renewal and teardown. The app-facing
 route group enforces the grant: without it, `RequireLiveTVAccess` answers
 `403 live_tv_forbidden`. Delivery routes (`/sessions/{sessionId}/stream` and

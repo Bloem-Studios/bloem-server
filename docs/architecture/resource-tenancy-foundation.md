@@ -183,7 +183,7 @@ its activation are a reviewed database change.
 
 ### Compatibility-created roots
 
-Silo's create inputs (on `/api/v2`, and on its v1 API until Silo retired it on 2026-11-11)
+Silo's create inputs (on `/api/v2`)
 do not contain ownership fields and remain unchanged.
 During this expand phase:
 

@@ -193,15 +193,15 @@ connection tests) are part of the contract. `AudiobookIntegrationSummary` has op
 `plugin_config` and `stored_credentials` fields, which only the setup listing fills, and only
 for a platform administrator; credential values never appear on the wire.
 
-`contracts/client/v1/digest.txt` pins the contract digest (and the digest of the pre-lock
-removals table in [v1 scope](v1-scope.md)), and the generated Kotlin and Swift headers carry
+`contracts/client/v1/digest.txt` pins the contract digest (and a second digest the
+generator checks), and the generated Kotlin and Swift headers carry
 the source revision they were generated from. Those files are the authority; this page does
 not copy their values. A documentation-only commit does not require a new graph digest or a
 new source stamp.
 
 The merged DTO graph adopts nullable account `max_profiles` and removal of the upstream
-administrator styling fields. Both native client releases still need explicit bundle adoption
-and runtime checks. See the [contract transition](bloem-contract-adjudications.md).
+administrator styling fields. Both native client releases need explicit bundle adoption
+and runtime checks.
 
 #### Reproduce and verify
 
@@ -243,9 +243,7 @@ server DTOs are generated.
 ### API surfaces and adoption limits
 
 `/api/bloem/v2` is Bloem's native extension surface. `/api/v2` remains the supported
-Silo-compatible native API. Silo retired its alpha v1 API on 2026-11-11: every v1 route
-answers `410 Gone` with `client_upgrade_required`, except the health and readiness probes.
-Check the relevant committed OpenAPI document before implementing a route.
+Silo-compatible native API. Check the relevant committed OpenAPI document before implementing a route.
 
 Native-storage administration requires a signed platform or organization administrative-context
 token. Ordinary account tokens, profile headers and v2 mutation conventions are not
