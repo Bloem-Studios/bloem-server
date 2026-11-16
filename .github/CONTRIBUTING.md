@@ -1,98 +1,50 @@
-# Contributing to Bloem Server
+# Working on Bloem Server
 
-Hey, thanks for wanting to contribute!
+Bloem Server is a public tracking fork of [Silo Server](https://github.com/Silo-Server/silo-server) (see
+[FORK.md](../FORK.md)). It is offered without support: issues are turned off and pull requests are not accepted, as the
+[front page](README.md) says. You are free to fork it under the AGPL v3. This file is for people working in a fork or
+checkout, and for the AI agents that do most of the work here.
 
-Bloem Server is a public tracking fork of [Silo Server](https://github.com/Silo-Server/silo-server)
-(see [FORK.md](../FORK.md)) — this file covers contributing to Bloem-specific
-work in *this* repository. A change that belongs in Silo's own scanner,
-catalog, playback, or plugin runtime is generally better sent upstream to
-Silo directly, where it benefits every downstream project rather than just
-this fork.
+A change that belongs in Silo's own scanner, catalog, playback or plugin runtime is better sent to Silo directly, where
+it benefits every downstream project. Silo's rules apply there.
 
-Let's be real: this project is built almost entirely with AI assistance. Claude, Codex, whatever you've got — we're not pretending otherwise. But there's a big difference between *using AI well* and *submitting AI slop*. We care a lot about the first one, and we'll push back hard on the second.
+## Which repository owns what
 
-- AI-generated code is fine. AI slop is not.
-- You are responsible for everything you submit, even if an AI wrote it.
-- Actually read the code. Actually run the tests. Actually understand what it does.
-- Don't send big changes without talking about them first.
+This repository owns the backend, the embedded web app, the native APIs, the wiring of Silo's Jellyfin and
+Audiobookshelf compatibility servers, the plugin host and Bloem's storage-provider protocol (`proto/bloem/plugin/v1`).
+Client-only work belongs in `bloem-apple` or `bloem-android`. The host runs on Silo's public plugin SDK
+(`github.com/Silo-Server/silo-plugin-sdk`, pinned in `go.mod`), so a change to the public plugin contract belongs in
+Silo's SDK. Bloem's plugin-author SDK is `Bloem-Studios/bloem-plugin-sdk`, and provider behaviour belongs in the
+individual plugin repository. Name every affected repository when a change crosses them.
 
-## Things Are Moving Fast
+## Using AI well
 
-Bloem is in heavy active development. Features get rewritten, APIs shift, whole sections get reworked — sometimes day to day. **If you want to work on something, reach out first.** Open an issue or drop a message so:
+Most of the code here is written with AI assistance, and that is fine. Submitting output nobody understood is not.
 
-- You don't build on something that's already been rewritten locally but not pushed yet.
-- I can avoid breaking something you're actively working on.
-- We can check the area is stable enough to be worth building on right now.
+1. Read every line of your diff. If you cannot explain it, do not ship it.
+2. Run the tests, and do not trust them blindly: they were also written with AI and have blind spots.
+3. Run the app and try the thing you changed.
+4. Review your own diff adversarially with whatever tooling you have, and note what it found and what you did about it.
+5. Look for AI-introduced bugs: silent behaviour changes, dead code, subtle regressions.
 
-## Before You Start
-
-Small stuff (typo fixes, minor bugs) — just open a merge request. No ceremony.
-
-Choose the repository that owns the behavior before implementation begins.
-This repository owns the backend, the embedded web app, the native APIs, the
-wiring of Silo's Jellyfin and Audiobookshelf compatibility servers, the plugin
-host and Bloem's storage-provider protocol (`proto/bloem/plugin/v1`). Client-only
-work belongs in `bloem-apple` or `bloem-android`. The host runs on Silo's public
-plugin SDK (`github.com/Silo-Server/silo-plugin-sdk`, pinned in `go.mod`), so a
-change to the public plugin contract belongs in Silo's SDK; Bloem's plugin-author
-SDK is `Bloem-Studios/bloem-plugin-sdk`, and provider behavior belongs in the
-individual plugin repository. Cross-repository changes should identify all
-affected repositories in the issue and pull request.
-
-For anything bigger, start with an issue first. New features, API changes, schema migrations, large refactors, behavior changes — talk about it before writing code. Tracked records under `docs/superpowers/` are historical examples, not current implementation instructions; new working plans remain untracked.
-
-## Don't Submit AI Slop
-
-AI writes most of the code here. That's fine. What's not fine is copy-pasting output without understanding it.
-
-1. **Read every line of your diff.** If you can't explain it, don't submit it.
-2. **Run the tests** — but don't blindly trust them. The tests were also AI-written and they have blind spots.
-3. **Test the app yourself locally.** Spin it up, click around, try the thing you changed. There is no substitute for this.
-4. **Run code-review** on your own work before submitting. `superpowers:requesting-code-review` or whatever tooling you have.
-5. **Watch for AI-introduced bugs.** Silent behavior changes, dead code, subtle regressions — look for them.
-6. **Understand the bigger picture.** A change that looks fine in isolation can break something three layers away.
-
-"The AI suggested it" is not an acceptable answer in review. You should be able to explain the reasoning and tradeoffs.
-
-## AI Disclosure (Required)
-
-Every PR and every issue needs to say what AI was involved: the tool, the exact model ID, and the involvement level. "No AI" is a perfectly fine answer. Just say so.
+Say what AI was involved in a change you publish: the tool, the exact model ID and the level of involvement.
 
 ```md
 ### AI Disclosure
 - Tool(s): e.g. Claude Code, Codex CLI, Cursor — or "none"
-- Model(s): exact model ID(s), e.g. claude-fable-5, gpt-5.4 — or "n/a"
+- Model(s): exact model ID(s) — or "n/a"
 - Involvement: fully AI-generated | AI-assisted | human-written, AI-reviewed | none
 - Adversarial review: what your own AI review of the diff found, and how you resolved it
 ```
 
-The exact model matters. This project is developed with frontier models. If a PR was generated by an older or weaker model, the fastest honest response may be for me to re-implement the idea with a current model instead of reviewing the diff line by line. Disclosing the model lets that call happen quickly. "Thanks, the idea is accepted, but the implementation will be redone" is a possible outcome; see [Be Realistic](#be-realistic).
+## Development setup
 
-Before submitting, run an adversarial review of your own diff with whatever AI tooling you have, and summarize what it found and what you did about it. "It found nothing" is only credible for tiny diffs.
-
-Undisclosed AI use that is discovered later gets the PR closed on the spot. Repeat offenses get you blocked. The offense is the non-disclosure, not the AI use.
-
-Fabricated content is an immediate block, first offense. Invented APIs, repro steps that never happened, AI-imagined vulnerabilities, and "bugs" nobody actually observed all count. This is the curl-style rule for hallucinated reports.
-
-For issues, logs must be raw copy-paste, never AI-paraphrased. You must have actually reproduced the problem yourself on a real deployment before filing.
-
-## Merge Requests
-
-A good MR answers: what problem does this solve, why this approach, how was it tested, anything to watch out for. For non-trivial changes, link the issue and note any migration/compatibility concerns. Screenshots for UI changes.
-
-Small, well-explained MRs get reviewed fast. Big unexplained ones sit.
-
-AI disclosure is mandatory for every MR; use the required block in [AI Disclosure (Required)](#ai-disclosure-required).
-
-## Development Setup
-
-See the [Bloem README](README.md) and [development overlay](../docs/bloem/overlays/DEVELOPMENT.md) for setup. The frontend uses pnpm 10.32.1, as pinned in
-`web/package.json`; do not substitute Bun commands.
+See the [development overlay](../docs/bloem/overlays/DEVELOPMENT.md) for setup. The frontend uses pnpm 10.32.1, as
+pinned in `web/package.json`; do not substitute Bun commands.
 
 ## Validate your change
 
-Run the applicable focused checks while iterating. Before opening a merge
-request, install the documented prerequisites and run the same build, format,
+Run the applicable focused checks while iterating. Before sending a change on, install the documented prerequisites and run the same build, format,
 vet, vulnerability, test, lint, and generated-artifact checks that CI uses:
 
 ```sh
@@ -157,38 +109,26 @@ separately maintained SDK.
 
 ## Documentation and upstream ownership
 
-GitHub displays `.github/README.md` and uses `.github/CONTRIBUTING.md` for this
-repository. Keep Bloem's guide links there and in `docs/bloem/README.md`; keep root
-Silo documents close to upstream. Put additions in owned documents or overlays,
-and retain dated records as historical evidence rather than rewriting their results.
+GitHub displays `.github/README.md` and uses this file for the repository. Keep Bloem's guide links there and in
+`docs/bloem/README.md`, and keep root Silo documents close to upstream. Put additions in Bloem-owned documents or
+overlays. Public pages say what is true now, in plain language, with no personal names, private hostnames or addresses;
+`docs/bloem/CHANGELOG.md` is the history record.
 
-For a documentation-only change, check relative links and section anchors,
-`git diff --check`, `make verify-local-paths` and `make verify-seams`. A full
-application build is unnecessary unless runtime or generated contracts changed.
-If documentation participates in a contract digest, regenerate and review the
-affected artifact rather than bypassing its check.
-
-Deployment evidence lives in dated receipts under `docs/operations/`; the newest
-is the [October 27 receipt](../docs/operations/2026-10-27-main-deployment.md).
-A successful focused test or healthy deployment does not resolve historical
-failures or certify new providers and client workflows.
-Use the [SDK guide](../docs/architecture/bloem-sdk-compatibility.md) when refreshing
+For a documentation-only change, check relative links and section anchors, `git diff --check`,
+`make verify-local-paths` and `make verify-seams`. A full application build is unnecessary unless runtime or generated
+contracts changed. If documentation participates in a contract digest, regenerate and review the affected artifact
+rather than bypassing its check. Use the [SDK guide](../docs/architecture/bloem-sdk-compatibility.md) when refreshing
 plugin protocols, generated contracts or sibling client copies.
 
 ## Style
 
-- One thing per MR. Don't mix unrelated changes.
+- One thing per change. Do not mix unrelated work.
 - Follow existing patterns.
-- Comments for non-obvious things only.
+- Comment only what is not obvious.
 
-## For AI Agents
+## For AI agents
 
-If you're an LLM working on this codebase: read `AGENTS.md` (`CLAUDE.md` is a symlink to it) for Silo's project instructions, architecture reference and verification requirements, and [BLOEM_AGENTS.md](../BLOEM_AGENTS.md) for Bloem's overrides, which win where the two differ. The rules in this file apply to you too — especially the parts about not submitting slop and running verification before declaring work complete.
-
-## Be Realistic
-
-Opening a merge request doesn't create an obligation on my side. I might close it, ignore it, ask you to shrink it, or reimplement the idea myself later. The codebase is moving fast and sometimes the best response to a good PR is "thanks, but I already went a different direction."
-
-If you're fine with that, welcome aboard.
-
-If you're not sure whether something is in scope, open an issue and ask. Always better than building something that needs to be reshaped.
+Read `AGENTS.md` (`CLAUDE.md` is a symlink to it) for Silo's project instructions, architecture reference and
+verification requirements, and [BLOEM_AGENTS.md](../BLOEM_AGENTS.md) for Bloem's overrides, which win where the two
+differ. The rules in this file apply to you too: do not ship what you have not understood, and run verification before
+declaring work complete.
