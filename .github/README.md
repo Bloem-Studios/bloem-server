@@ -12,6 +12,32 @@ Bloem Server is a self-hosted media server for films, series, audiobooks, ebooks
 moves instead of copying it once, so most of what you run is Silo: the scanner, the catalog, playback (direct play,
 remux, hardware transcoding), the web app and the plugin runtime.
 
+## Built on Silo
+
+**Bloem Server would not exist without [Silo Server](https://github.com/Silo-Server/silo-server) and the people who
+build it. Thank you.** Nearly everything you use when you run Bloem is their work:
+
+- the scanner that turns folders into a library, and the catalog and metadata plugins behind it;
+- playback: direct play, remux, hardware transcoding and transcode nodes;
+- the web app, the admin console, and households with their own profiles and watch history;
+- the plugin runtime and its SDK;
+- Jellyfin and Audiobookshelf compatibility, so the apps people already use keep working.
+
+Silo is one of the best things in self-hosted media right now. It is built on a modern foundation (PostgreSQL, Redis,
+S3), it stays fast on large libraries, it is carefully designed, and it gets better every day. Bloem takes in Silo's
+work twice a day, so a Bloem server gets Silo's fixes and features within hours of them landing. When we fix a bug in
+Silo's own code, we send the fix to Silo as a pull request as well.
+
+If Bloem is useful to you, the thanks belong to Silo first:
+
+- **Run Silo.** If you don't need Bloem's organizations, Live TV or storage plugins, [Silo](https://siloserver.org) is
+  the original, and it is excellent.
+- **Sponsor Silo** on [GitHub Sponsors](https://github.com/sponsors/quick104).
+- **Join Silo's community** on [Discord](https://discord.gg/siloserver) and read the
+  [Silo manual](https://siloserver.org/docs): most of it applies to Bloem too.
+- **Keep Bloem's problems away from Silo.** Silo's developers don't support Bloem. Report a bug to Silo only if it also
+  happens on an unmodified Silo server.
+
 ## What Bloem adds
 
 - **Organizations.** One server can host several organizations, each with its own people, profiles, libraries, plans,
@@ -74,12 +100,11 @@ Report a vulnerability privately through
 [GitHub's private vulnerability reporting](https://github.com/Bloem-Studios/bloem-server/security/advisories/new). Do not
 put it anywhere public.
 
-## Licence, trademarks and credit
+## Licence and trademarks
 
 Bloem Server is licensed under the GNU Affero General Public License v3.0 or later, like Silo; see [LICENSE](../LICENSE).
-Most of its code is Silo's, carried forward with Silo's licence and copyright notices intact. If you find it useful, the
-credit, and any support you would like to give, belongs first to the people building
-[Silo](https://github.com/sponsors/quick104).
+Most of its code is Silo's, carried forward with Silo's licence and copyright notices intact. Bloem's Live TV is an
+attributed adaptation of [Prairie Server](https://github.com/Prairie-Server/prairie-server).
 
 The Silo name, logo and wordmark are trademarks of Silo Media L.L.C. and are not covered by the AGPL. Bloem Server is not
 Silo and is not made or endorsed by Silo's developers; it carries Bloem's own name and artwork, as

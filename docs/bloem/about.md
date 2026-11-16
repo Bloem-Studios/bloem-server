@@ -39,9 +39,9 @@ interfaces. They are not forks of Silo's apps and are not released yet.
 ### Credit
 
 The scanner, catalog, playback pipeline, plugin runtime and most of the day-to-day behaviour are Silo's own design and
-work, carried forward with its licence and copyright notices intact. If you find Bloem useful, the credit, and any
-support you would like to give, belongs first to the people building Silo:
-<https://github.com/sponsors/quick104>. Live TV is an attributed adaptation of
+work, carried forward with its licence and copyright notices intact. Bloem would not exist without Silo and the people
+who build it; [Built on Silo](../../.github/README.md#built-on-silo) on the front page says how to thank them, starting
+with [sponsoring Silo](https://github.com/sponsors/quick104). Live TV is an attributed adaptation of
 [Prairie Server](https://github.com/Prairie-Server/prairie-server); the
 [source manifest](../livetv/prairie-source-manifest.tsv) lists every adapted file.
 
