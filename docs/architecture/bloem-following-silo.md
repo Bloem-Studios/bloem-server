@@ -46,9 +46,8 @@ Silo's `main` when the bot starts work on it.
    commit on `main` that Bloem CI passed, with every batch merged since the last one;
    the deploy refuses any other commit. A maintainer can override the CI check by hand.
 
-Until 2 November 2026 a daily GitHub job made clean merges by itself, and maintainers
-merged the rest by hand. The job could not resolve a conflict or adapt Bloem's code,
-so it is switched off ([Bloem CI](../bloem/ci.md#how-silos-work-comes-in)).
+The daily GitHub job cannot resolve a conflict or adapt Bloem's code, so it is switched
+off ([Bloem CI](../bloem/ci.md#how-silos-work-comes-in)).
 
 On 16 November 2026 Bloem's `main` had all of Silo's work through `17d5376ce`, merged
 in `c1c7de503`, and production ran `43a551a45`: Silo through `abd85d0ca`, deployed on

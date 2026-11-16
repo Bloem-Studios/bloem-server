@@ -75,8 +75,8 @@ make verify-local-paths
 
 `make build` installs the pinned frontend dependencies and builds the embedded
 web bundle, which `pnpm run budget:check` then measures with Silo's report-only
-checker (`web/scripts/check-bundle-budget.mjs`; Bloem has carried no allowance
-of its own since October 26, 2026). In CI, the client coverage, client digest and
+checker (`web/scripts/check-bundle-budget.mjs`; Bloem has no allowance
+of its own). In CI, the client coverage, client digest and
 committed v2 artifact checks also run as Go tests inside `make test-go`, and
 `make verify-settings-bindings-all` is split between the contract-check and web
 jobs; see [Bloem CI](../docs/bloem/ci.md#jobs) for which job runs what. `make lint` runs the full local Go and frontend linters; CI scopes

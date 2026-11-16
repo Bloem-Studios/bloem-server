@@ -5,8 +5,7 @@ This overlay covers Silo's
 which stays exactly as Silo wrote it. Bloem replaces nothing; Silo's design applies
 to Bloem as written.
 
-A transcoding node converts video for the API servers. Since Silo's change of
-November 2026 a node keeps no database and no keys: it reads each movie by asking
+A transcoding node converts video for the API servers. A node keeps no database and no keys: it reads each movie by asking
 the API server for one file by its path. Bloem runs those nodes exactly as Silo
 ships them, with no Bloem code on them.
 

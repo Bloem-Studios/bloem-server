@@ -10,7 +10,7 @@ happens when the choice fails, and why the choosing code now runs inside the ser
 
 ## Who decides what
 
-![Inside one Bloem server: load what is allowed, the evaluator picks, the host checks the answer, show it; and where the evaluator ran before and after 26 October 2026](images/bloem-presentation-evaluators/host-and-evaluator.svg)
+![Inside one Bloem server: load what is allowed, the evaluator picks, the host checks the answer, show it; and why the evaluator runs in the server](images/bloem-presentation-evaluators/host-and-evaluator.svg)
 
 Two parts of the server share the work:
 
@@ -40,10 +40,9 @@ logs what it gave the evaluator.
 
 ## Why it runs inside the server
 
-Until 26 October 2026 the evaluators ran as two separate worker processes. They
-ran only Bloem's own reviewed code, with no sandbox or resource limits, so the extra
-processes added start-up time and new ways to fail without protecting anything. They now
-run inside the server.
+The evaluators run inside the server, not as separate worker processes. A worker
+process would run only Bloem's own reviewed code, with no sandbox or resource limits, so
+it would add start-up time and new ways to fail without protecting anything.
 
 ## Who can change what
 

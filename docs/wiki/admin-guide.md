@@ -794,7 +794,7 @@ AI features are optional and Silo's. **Integrations → AI Services** has three 
   removed. A ChatGPT plan can be signed in instead, for the text model only.
 - **Models.** Each job picks a provider and a model from that list: the **Text model** (subtitle
   and description translation), **Speech-to-text** (subtitles made from audio) and **Embeddings**.
-  Speech-to-text no longer falls back to the text provider.
+  Speech-to-text does not fall back to the text provider.
 - **Features.** Translate subtitles, create subtitles from audio, translate descriptions, and the
   limits for each. A feature stays off until its model is set up.
 
@@ -1047,14 +1047,13 @@ or less, because of the address they used.
 
 ### Where Bloem comes from
 
-- Removed by Bloem in October 2026: the music catalog; Pastime managed tracking; Bloem's
-  companion enrollment for compatibility apps. Silo's own Jellyfin and Audiobookshelf servers
-  came back in their place.
-- Removed by Silo: the administrator's colour, font and custom-CSS controls (Silo #2413);
-  Cinema Dark became the only theme (Silo #1534).
+- Bloem has no music catalog, Pastime managed tracking or companion enrollment for
+  compatibility apps. Silo's own Jellyfin and Audiobookshelf servers run as Silo ships them.
+- Silo has one theme, Cinema Dark, with no administrator colour, font or custom-CSS
+  controls (Silo #2413, #1534).
 - Silo refuses `MODE=proxy` without `NODE_URL` (`internal/config/bootstrap.go`). A transcode node
   starts from `SILO_CORE_URL` and `SILO_NODE_KEY` alone.
-- Silo changes that reached Bloem in autumn 2026: password changes can sign out other devices
+- Silo behaviour Bloem inherits: password changes can sign out other devices
   (Silo #2925); the access-token default is `8h` (Silo #3250, `auth.access_token_expiry`); hourly
   request quota per sign-in session and the dashboard API clients card (Silo #3075); egress split
   by proxy node (Silo #3256); home rows load 20 cards (Silo #3276); audiobook runtimes from files
@@ -1130,8 +1129,8 @@ or less, because of the address they used.
 - Playback: a profile can report progress for and stop only its own playback; another profile's
   request is refused with `403`. The automatic audio choice is in
   `internal/playback/audio_select_v3.go`.
-- Silo reorganised AI Services in October 2026 (Silo #3106); embeddings moved to **Integrations →
-  Recommendations** (Silo #3107).
+- Embeddings are chosen under **Integrations →
+  Recommendations** (Silo #3106, #3107).
 
 ### Organization domains and branding
 

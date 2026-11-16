@@ -370,8 +370,7 @@ Field notes:
   `internal/api/handlers/bloem_system.go`). The first seventeen are Silo's v3 playback tokens,
   taken from `playback.ServerFeaturesV3()`, so a Silo merge can change them. `organization_activity_v1`,
   `organization_invitation_lifecycle_v1` and `platform_engagement_authoring_v1`
-  identify the embedded-web adapters below. `organization_invitation_links_v1` (added
-  2026-11-16) says the organization invitation create accepts Silo's `delivery: "link"`
+  identify the embedded-web adapters below. `organization_invitation_links_v1` says the organization invitation create accepts Silo's `delivery: "link"`
   for an invitation without an address. Conditional tokens are appended only when the
   matching service is wired: `native_audiobook_presentations_v1` (native audio ready),
   `profile_credential_management_v1` (credential management, separate from

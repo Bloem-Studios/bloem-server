@@ -47,10 +47,6 @@ takes it out of all of them:
    starting set, removes the library itself, and recounts series that live on in
    other libraries. Records of past grant changes are kept.
 
-Until November 10, 2026, Bloem refused to delete a library that any version of the
-starting set named, and nothing could take a library out of it. Such a library could
-never be deleted.
-
 What it does not do:
 
 - A large library is not deleted in one transaction. If a deletion fails part way,

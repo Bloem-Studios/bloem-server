@@ -15,7 +15,7 @@ invitation or a plan may use.
   database. Code that writes them must use Silo's size.
 - **Bloem's plans have lists too.** Plan revisions and policy cohort revisions keep
   library lists of the same size.
-- **An account's limits live on the account.** Since October 26, 2026, an
+- **An account's limits live on the account.** An
   organization membership holds no limits of its own; it only links an account to
   its one organization.
 

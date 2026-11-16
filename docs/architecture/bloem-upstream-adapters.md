@@ -605,7 +605,7 @@ repositories.)
 
 ### Network sign-in metadata
 
-The October 2026 integration imports network identity authentication ratified in
+Bloem carries network identity authentication ratified in
 [Silo pull request 1828](https://github.com/Silo-Server/silo-server/pull/1828). Eight
 admin plugin operations add `network` to their sign-in-mode response enum. Their
 breaking-change approvals referenced that upstream ratification, and the approvals

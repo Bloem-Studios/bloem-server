@@ -47,10 +47,9 @@ belongs to that organization ([native storage](bloem-native-storage.md)).
 5. Moving to a newer version changes only what later organizations receive. Grants
    already made stay as they are.
 
-When organizations were first introduced, version 1 of the starting set held every
-library and plugin the server had, and the default organization was granted all of
-them. On November 10, 2026 the platform libraries added since then joined the active
-version too.
+Version 1 of the starting set holds every library and plugin the server had when
+organizations were introduced, and the default organization is granted all of them. The
+platform libraries added since then are in the active version too.
 
 ## Libraries added later
 

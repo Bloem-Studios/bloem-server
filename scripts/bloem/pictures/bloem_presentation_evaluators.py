@@ -10,7 +10,7 @@ def host_and_evaluator():
             "is allowed to see and fixes one moment in time. The evaluator, a pure function, picks what to show "
             "from those facts alone. The host checks every answer against what it loaded and rebuilds the "
             "result from its own copy. If the evaluator fails, the page shows nothing extra and carries on. "
-            "Below, before and after 26 October 2026: two worker processes, then in-process.")
+            "Below, why it runs in-process rather than in a worker process.")
     s.header("Who decides what", "The server decides who may see something; the evaluator only picks what to show.")
     p, a, g, st = TIERS["platform"], TIERS["account"], TIERS["grey"], TIERS["stop"]
 
@@ -38,14 +38,12 @@ def host_and_evaluator():
 
     # Before and after.
     s.text(40, 456, "Where the evaluator runs", size=18, weight="700")
-    box(s, 40, 476, 540, 148, g, "5 October to 26 October 2026",
-        "Two bundled worker processes behind a JSON-over-stdio bridge. They ran only Bloem's own reviewed code, "
-        "with no sandbox or resource limits, so the extra process added start-up time and new ways to fail "
-        "without isolating anything.", size=14)
-    box(s, 620, 476, 540, 148, a, "Since 26 October 2026",
+    box(s, 40, 476, 540, 148, g, "Not a worker process",
+        "A worker process would run only Bloem's own reviewed code, with no sandbox or resource limits, so it "
+        "would add start-up time and new ways to fail without isolating anything.", size=14)
+    box(s, 620, 476, 540, 148, a, "Inside the server",
         "Inside the server, as plain Go code: promotions.Engine and ambience.Engine. Tests can swap in another "
         "evaluator to watch it or make it fail.", size=14)
-    s.arrow(584, 550, 616, 550)
     footer(s, "Membership, profile and PIN, library access, dismissals and artwork access always stay with "
               "the host.", y=660, fill=INK)
     return s

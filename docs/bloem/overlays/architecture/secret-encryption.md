@@ -60,7 +60,7 @@ Prefer HTTPS: at-rest encryption does not protect an HTTP request to the provide
 from network observers.
 See [Xtream live providers](../../../architecture/xtream-live-tv.md) for the complete boundary.
 
-The September 19 migration adds credential storage, not key rotation. Atomic cipher
+The credential-storage migration adds storage, not key rotation. Atomic cipher
 publication during service wiring is not a runtime key-rotation mechanism. Preserve
 `SECRET_KEY` across upgrades and restores. There is no credential-editing UI;
 provider removal/re-creation deletes linked channel/guide/DVR database entries,

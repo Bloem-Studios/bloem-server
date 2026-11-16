@@ -250,8 +250,8 @@ Clients must not infer features from version strings. `/api/v10/*` is not an ali
   non-secret context key. A context requires a login session: a token without one is
   `401 tenant_session_required`, and a session that is revoked, expired, another account's or
   a remote-playback handoff is `401 authorization_state_stale`.
-- Session checks are bound to the account the credential names. Since Silo #3140
-  (merged 2026-10-27), Silo's `ActiveSession` takes that account, and so do
+- Session checks are bound to the account the credential names. Since Silo #3140,
+  Silo's `ActiveSession` takes that account, and so do
   Bloem's preview-aware lookups (`ActivePreviewSession`, `ActiveSessionAuthority` in
   `internal/auth/bloem_preview_principal.go`), which the auth middleware and the plugin router
   use, the administrative context middleware (`internal/api/middleware/admin_context.go`) and

@@ -13,7 +13,7 @@ records one layer it removed.
 - **Bloem's media follows Silo's rules.** Files kept in Bloem's native storage
   (ebooks, video and audiobooks) are served through Silo's own media routes and
   must keep the same time limits and checks.
-- **Bloem's own Audiobookshelf gateway is gone.** Bloem runs Silo's
+- **No Audiobookshelf gateway.** Bloem runs Silo's
   Audiobookshelf-compatible server, on its own port, exactly as Silo ships it.
 
 ## Words used in the code

@@ -70,13 +70,13 @@ account and organization, and the viewer resolver
 (`internal/api/bloem_org_session_revocation.go`) refuses a profile selection by a
 session created before it.
 
-Since November 1, 2026 that refusal ends the session and the viewer-access
+That refusal ends the session and the viewer-access
 gate answers `401 session_invalid` (`session_expired` on `/api/v2`), the answer of
 any ended session (`internal/api/middleware/bloem_viewer_session.go`). The
 session's refresh is then refused as revoked, which is the answer clients sign
-out on. Before, the gate answered `404 "Profile not found"` and left the session
-alive, so the web app kept refreshing it and showed a broken home page with no
-sign-in prompt. The refusal, `apimw.ErrSessionRevokedByOrganization`, still wraps
+out on; answering `404 "Profile not found"` instead would leave the session alive, and
+the web app would keep refreshing it and show a broken home page with no sign-in
+prompt. The refusal, `apimw.ErrSessionRevokedByOrganization`, still wraps
 `access.ErrProfileNotFound`, so callers outside the gate keep refusing the
 profile. Only sessions are checked: an API key has no `auth_sessions` row, and a
 direct-profile session is already bound to its profile and revision.
@@ -87,7 +87,7 @@ direct-profile session is already bound to its profile and revision.
 busy to check a password”, after the paragraph beginning “The refusal is `503`
 with `Retry-After: 1`…”. **Bloem adds:**
 
-Since October 25, 2026, Bloem's own password hashing and checks run under
+Bloem's own password hashing and checks run under
 Silo's admission limit (`internal/auth/passwordhash`). The following answer a
 busy refusal with Silo's `503 service_unavailable` and `Retry-After`:
 
@@ -97,7 +97,7 @@ Two account-password re-checks also run under the limit, but any failure there,
 busy included, answers `503` without `Retry-After`: the check before a
 profile-credential write (`unavailable`) and the check before an organization
 ownership transfer (`tenant_unavailable`). Setup, signup and invitation
-acceptance run Silo's handlers unchanged (since October 26, 2026), now on
+acceptance run Silo's handlers unchanged, on
 `/api/v2`. All of them answer as described above.
 
 ---
