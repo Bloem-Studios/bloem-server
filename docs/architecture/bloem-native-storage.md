@@ -1,8 +1,10 @@
 # How native storage works
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
-> and checked against `main` at `1430c3769`. Native storage is a Bloem addition:
-> Silo's libraries read files from paths on the server, and Bloem adds libraries
+> and checked against `main` at `1430c3769`; where the native installation root lives
+> was updated on 2026-11-16 for Silo's thin transcode nodes, merged through
+> `699f84ecf`. Native storage is a Bloem addition: Silo's libraries read files from
+> paths on the server, and Bloem adds libraries
 > that read from S3 buckets and the Bookwarehouse book service through approved
 > storage plugins. It builds on Silo's plugin runtime (`internal/plugins`),
 > scanner and catalog. It is experimental, and no storage service is certified
@@ -332,7 +334,9 @@ from the installation ID under `state/s3/installation-<id>/index.db` within the
 host's native installation root.
 
 The native installation root is `native-storage` inside Silo's plugin cache
-directory, on the API host, the proxy host and the native video worker alike. That
+directory, on the API host and the proxy host alike. Transcode nodes hold none: they
+run no storage plugin, and read a native source's bytes through the API servers
+([How stored movies play](bloem-native-video-playback.md)). That
 directory is `SILO_PLUGIN_CACHE_DIR` when set (the operator secures it), otherwise
 `silo-plugins` under the operating system's temporary directory. Since the Silo merge
 `68070f04b` (Silo #3138) a Unix server refuses to start with that default when another

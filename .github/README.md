@@ -14,7 +14,8 @@
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
 > and checked against `main` at `f12b3c75f`, with Silo merged through `07f0ae21c`; its
-> API paths were checked again on 2026-11-11, after Silo retired its v1 API.
+> API paths were checked again on 2026-11-11, after Silo retired its v1 API, and its
+> server roles on 2026-11-16 against Silo through `699f84ecf`.
 > This page says what Bloem is, where it comes from and how to run it, in plain
 > language; the technical parts for people changing the code are in the
 > [For developers](#for-developers) section.
@@ -560,7 +561,7 @@ below is described in more depth in the
 **Operating it**
 
 - **Fast setup** — one `docker compose up -d` brings up the whole stack; everything else is configured in the admin UI.
-- **Server roles** — run everything on one machine (`integrated`) or split into `api`, `transcode` and `proxy` nodes sharing one database, with a Nodes page showing each worker's GPU, scratch disk and load.
+- **Server roles** — run everything on one machine (`integrated`) or split into `api` servers and `proxy` nodes sharing one database, plus `transcode` nodes that need only the API's address and a key of their own, with a Nodes page showing each worker's GPU, scratch disk and load.
 - **Object storage** for artwork and downloads on S3, MinIO or Cloudflare R2.
 - **Tasks, logs, diagnostics, maintenance and stats** — every background job with progress and history, a filterable server log, a one-click diagnostics bundle with credentials scrubbed, safe housekeeping tasks, and playback history that shows whether each play was direct or transcoded.
 - **Self-migrating updates and PostgreSQL auto-tuning** — an `integrated` or `api` server applies pending migrations when it starts, the image is one `SILO_IMAGE` line away, and the bundled PostgreSQL can be tuned to the host (see Configuration below).
@@ -765,7 +766,7 @@ through the admin UI after first launch.
 | `integrated` | Full server: API + frontend + scanner + transcode (default) |
 | `api` | Primary/control role; configured local transcode fallback may still be used |
 | `proxy` | Stream proxy node that connects to the shared deployment database and Redis |
-| `transcode` | HLS and prepared-download worker node that connects to the shared deployment database and Redis |
+| `transcode` | HLS and prepared-download worker node that starts with only `SILO_CORE_URL` and `SILO_NODE_KEY`, with no database or Redis; it reads media from its own library mount or through the API servers |
 
 ### PostgreSQL Auto-Tuning
 

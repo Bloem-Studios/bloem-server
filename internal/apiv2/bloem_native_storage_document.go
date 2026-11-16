@@ -46,8 +46,8 @@ type BloemNativeStorageCapabilities struct {
 	NativeMovieLibraries        bool `json:"native_movie_libraries" doc:"Movie attachment and scanning are composed with native video playback; individual sources still require admission under their retained read policy."`
 	NativeSeriesLibraries       bool `json:"native_series_libraries" doc:"TV (series) library attachment and scanning are composed with native video playback, as native_movie_libraries is for movies; each selected source must declare the series media kind."`
 	NativeVideoPlayback         bool `json:"native_video_playback" doc:"Native API video playback is composed; this does not certify a backend or client runtime."`
-	NativeVideoRemoteExecution  bool `json:"native_video_remote_execution" doc:"Shared worker grants and header-auth serving recipes are composed for remote HLS; the selected worker still needs its own approved runtime and retained provider identity."`
-	NativeVideoDownloads        bool `json:"native_video_downloads" doc:"Downloads of native video are composed with native video playback: the original file, and copies converted for offline use (bitrate presets, and originals a device cannot play), prepared on the API server or on a worker that can read native storage."`
+	NativeVideoRemoteExecution  bool `json:"native_video_remote_execution" doc:"Remote HLS of native video runs on Silo's transcode nodes: the API servers open the native source and serve its bytes to the node under a short-lived source grant, and the node holds no storage credentials and runs no Bloem code."`
+	NativeVideoDownloads        bool `json:"native_video_downloads" doc:"Downloads of native video are composed with native video playback: the original file, and copies converted for offline use (bitrate presets, and originals a device cannot play), prepared on the API server or on a transcode node that reads the source through the API servers."`
 	NativeVideoJellyfin         bool `json:"native_video_jellyfin" enum:"false"`
 	RetainedNamespaceReinstall  bool `json:"retained_namespace_reinstall" enum:"false"`
 	Enable                      bool `json:"enable" enum:"false"`
