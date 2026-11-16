@@ -19,7 +19,7 @@ import (
 // nativeRetryPrivateArgument stands in for the private address a native
 // input hands FFmpeg. The fake FFmpeg names it on stderr, as a real one does
 // when it fails to open or decode an input.
-const nativeRetryPrivateArgument = "http://10.20.30.40:41234/private-source-token"
+const nativeRetryPrivateArgument = "http://192.0.2.40:41234/private-source-token"
 
 // nativeRetryInput is a TranscodeInput whose Run hands its consumer
 // nativeRetryPrivateArgument under the execution lifetime it was opened with.
@@ -132,7 +132,7 @@ func readNativeRetryInvocations(t *testing.T, path string) []string {
 
 func assertNoNativeRetryPrivateArgument(t *testing.T, where, text string) {
 	t.Helper()
-	if strings.Contains(text, nativeRetryPrivateArgument) || strings.Contains(text, "10.20.30.40") {
+	if strings.Contains(text, nativeRetryPrivateArgument) || strings.Contains(text, "192.0.2.40") {
 		t.Fatalf("%s carries the private input address: %q", where, text)
 	}
 }
