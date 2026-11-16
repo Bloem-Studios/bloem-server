@@ -1,11 +1,8 @@
 # How a scan reads a stored file
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. The scan reader is part of Bloem's
-> [native storage](bloem-native-storage.md), a Bloem addition: Silo's scanner
-> reads files from paths on the server. It does not certify that a storage service
-> keeps bytes unchanged. The technical rules are in the
-> [For developers](#for-developers) section.
+The scan reader is part of Bloem's [native storage](bloem-native-storage.md), a Bloem addition: Silo's scanner
+reads files from paths on the server. It does not certify that a storage service keeps bytes unchanged. The
+technical rules are in the [For developers](#for-developers) section.
 
 During a scan, Bloem sometimes has to look inside a stored file: to read an
 ebook's details, or to learn a movie's or an audiobook track's streams and length.
@@ -138,16 +135,6 @@ the opened entries; see [native probe](bloem-native-probe.md),
 page is admitted for reads only when one of its tracks must be opened. The reader
 does not certify a backend's immutability: immutable versions or verified
 snapshots remain required for content reads.
-
-### History
-
-`nativestorage.ScanReader` and this page arrived together in `ded34edfa`
-(2026-10-10) as a prerequisite with no consumer: as first committed it wired no
-probe or scanner consumer, kept admission to ebooks and enabled no native video
-playback. Native storage movies (`b781ac3ff`, 2026-10-11) and audiobooks
-(`8b8943320`, 2026-10-12) made it the reader for the movie and audiobook scan
-paths. Parallel audiobook directories (`f045f1808`), the shared authority check
-(`41ff1bb00`) and the lock-free lease read (`24c1f3354`) followed on 2026-10-28.
 
 ### Related pages
 

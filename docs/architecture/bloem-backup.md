@@ -1,11 +1,8 @@
 # How backups work in Bloem
 
-> **Provenance and status.** Bloem page, written on 2026-11-06, updated on 2026-11-12
-> against `main` at `94a2a9fcb`. Backup and restore are Silo's feature, merged
-> from Silo through `cecd5b9bc`; this page covers what Bloem changes. The nightly
-> backup is switched off on Bloem's production server (`backup.enabled` is false);
-> "Back up now" and each person's "Your data" export still work. Silo's
-> [backup reference](backups.md) holds the full design.
+Backup and restore are Silo's feature; this page covers what Bloem changes. The nightly backup can be switched
+off (`backup.enabled`); "Back up now" and each person's "Your data" export work either way. Silo's
+[backup reference](backups.md) holds the full design.
 
 A backup is a copy an administrator can bring back later. On Bloem it holds **user
 data only**: the accounts and their profiles, everything each profile keeps (watch
@@ -15,8 +12,7 @@ restoring them is matched against: the libraries, and the server's collections a
 home rows a profile's page layouts name. The catalog, the recommendations'
 embeddings, the scan state, the plugins, the server's settings and the server's other
 files (subtitles, branding) are left out: they are most of the server, and the server
-rebuilds them or keeps them itself. A production backup is a few hundred megabytes,
-most of it collection artwork, instead of the whole database.
+rebuilds them or keeps them itself. A backup is far smaller than a copy of the whole database; most of its size is collection artwork.
 
 Recovering the whole server is not what a backup is for on Bloem. The database's
 point-in-time recovery does that, so a Bloem backup refuses to replace the live
@@ -38,7 +34,7 @@ the access group of every profile.
   backup recorded there, else the account's group, else the organization's default
   group.
 - A restored profile that becomes its account's primary keeps no library limit: the
-  primary inherits its account's libraries, as in Silo since `df9f55019` (#3915).
+  primary inherits its account's libraries, as in Silo.
   `bloemCreateRestoredProfileInTx` applies the same rule as Silo's
   `CreateRestoredProfileInTx` and reports the primary the same way.
 
@@ -70,7 +66,7 @@ compared for it.
 
 | Word | Meaning |
 | --- | --- |
-| `restoredDataTables`, `serverStateTables`, `loggedTables` | The data, server-state and log groups of the table above |
+| `restoredDataTables`, `serverStateTables`, `loggedTables` | The data, server-state and log groups of the whole-server classification below |
 | `secretTables` | Tables holding a sign-in or a credential, each left out, carried from the live server, or restored with a reason |
 | `stricterFlags` | Switches a restore keeps at the stricter of the backup's and the live value |
 | `restoredFlagColumns` | Other true/false columns, each with why the backup's value is safe |

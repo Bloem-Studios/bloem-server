@@ -1,11 +1,8 @@
 # How messages and promotions work
 
-> **Provenance and status.** Bloem page, written on 2026-10-31, brought up to date on
-> 2026-11-01, checked against `main` at `b6039036d` and checked again on 2026-11-11,
-> after Silo retired its v1 API. Silo has the notification
-> inbox. Bloem adds announcements, campaigns, playback cards, seasonal packs and the
-> upgrade prompt. This page explains them in plain language; the technical rules are
-> in the [For developers](#for-developers) section and the pages it links.
+Silo has the notification inbox. Bloem adds announcements, campaigns, playback cards, seasonal packs and the
+upgrade prompt. This page explains them in plain language; the technical rules are in the
+[For developers](#for-developers) section and the pages it links.
 
 ## Five ways Bloem talks to viewers
 
@@ -99,7 +96,7 @@ the catalog's artwork, on local disk or S3
   hiding one and saving one to the inbox are under `/api/bloem/v2/promotions`
   (`promotions_viewer_v1`). Signed-out pages read the packs for everyone from the
   public `GET /api/bloem/v2/ambience/public`; signed-in Home reads
-  `GET /api/bloem/v2/ambience`. Silo's v1 API is retired, and with it Bloem's
+  `GET /api/bloem/v2/ambience`. Silo has retired its v1 API, and with it go Bloem's
   [old v1 campaign routes](../bloem/api/v1-routes.md#campaigns) and the `ambience`
   block of Silo's v1 branding route; nothing in Bloem calls them
   ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)).

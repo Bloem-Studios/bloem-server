@@ -1,13 +1,9 @@
 # How apps connect
 
-> **Provenance and status.** Bloem page, written on 2026-10-31, brought up to date on
-> 2026-11-01, checked against `main` at `b6039036d` and checked again on 2026-11-11,
-> after Silo retired its v1 API. Silo's API and its Jellyfin
-> and Audiobookshelf servers run in Bloem as Silo ships them. Bloem adds its own API,
-> `/api/bloem/v2`, for its own apps, scopes every entrance to an organization, and
-> adds organization domains, profile sign-ins and remote control. This page explains
-> it in plain language; the technical rules are in the
-> [For developers](#for-developers) section and the pages it links.
+Silo's API and its Jellyfin and Audiobookshelf servers run in Bloem as Silo ships them. Bloem adds its own API,
+`/api/bloem/v2`, for its own apps, scopes every entrance to an organization, and adds organization domains,
+profile sign-ins and remote control. This page explains it in plain language; the technical rules are in the
+[For developers](#for-developers) section and the pages it links.
 
 ## Which apps connect, and where
 
@@ -82,9 +78,8 @@ its own name, logo and colours. Its emails link to its **primary domain**.
 
 A domain decides only how pages look and where links point, never what an account
 can reach: that always comes from the account's organization, and a refusal on the
-wrong domain only sends the person to their own. In
-production there is one organization, the default one, and the server's public
-address is registered as its primary domain.
+wrong domain only sends the person to their own. A server
+with only the default organization can register its public address as that organization's primary domain.
 
 Bloem's phone and TV apps keep using the server's public address for their device
 sign-in page.

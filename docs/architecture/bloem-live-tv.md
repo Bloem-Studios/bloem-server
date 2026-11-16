@@ -1,12 +1,8 @@
 # How Live TV works
 
-> **Provenance and status.** Bloem page, written on 2026-10-31, updated on 2026-11-01
-> and checked against `main` at `b6039036d`. Silo has no Live TV and lists it as a
-> non-goal; Bloem
-> maintains it (see [BLOEM_AGENTS.md](../../BLOEM_AGENTS.md)). The tuner, guide and
-> recording code is an attributed adaptation of Prairie Server, and Xtream
-> providers are Bloem's own addition. This page explains Live TV in plain
-> language. The technical pages linked at the end hold the invariants.
+Silo has no Live TV and lists it as a non-goal; Bloem maintains it (see [BLOEM_AGENTS.md](../../BLOEM_AGENTS.md)).
+The tuner, guide and recording code is an attributed adaptation of Prairie Server, and Xtream providers are Bloem's
+own addition. This page explains Live TV in plain language. The technical pages linked at the end hold the invariants.
 
 Live TV lets viewers watch channels as they are broadcast, follow a programme
 guide and record programmes. This page covers where the channels come from, what
