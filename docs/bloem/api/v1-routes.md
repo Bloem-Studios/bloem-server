@@ -1,15 +1,11 @@
 # Bloem routes on Silo's `/api/v1`
 
-> **Gone since 2026-11-11.** Silo retired `/api/v1` (Silo #3200, merged into Bloem in
-> `26cf9b3e4`), and every route on this page now answers `410 Gone` with
+> **Gone since 2026-11-11.** Silo retired `/api/v1` (Silo #3200), and every route on this page now answers `410 Gone` with
 > `client_upgrade_required`. The page records what they were and where each one moved.
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 from the handlers at
-> `b6039036d`, and brought up to date on 2026-11-11, when these routes were retired. They
-> were Bloem additions to Silo's `/api/v1`; no OpenAPI document described them, so this page
-> is written by hand and names the retired paths as history. The technical record is in the
-> [For developers](#for-developers) section. The typed `/api/bloem/v2` operations are on the
-> [generated topic pages](README.md).
+The typed `/api/bloem/v2` operations are on the [generated topic pages](README.md). No OpenAPI
+document described the retired routes, so this page is written by hand and names them as
+history. The technical record is in the [For developers](#for-developers) section.
 
 Before Bloem had its own API, it added some routes to Silo's `/api/v1`. Silo retired
 `/api/v1` on 2026-11-11, and these routes went with it. This page says what they were, where
