@@ -316,9 +316,9 @@ a committed higher generation runs.
 A pinned S3 catalog row uses the statically approved manifest; the release's served
 `manifest.json` is only a sanity check of plugin ID, version and checksum. A release
 serves one `manifest.json` for all its platforms, so it names one platform's binary:
-since 2026-11-01 any binary checksum of the same release passes
+any binary checksum of the same release passes
 (`storageCatalogRelease.hasChecksum`), so the linux/arm64 row of S3 0.4.0 is offered
-too. Before that, only the platform the served manifest named was offered.
+too.
 
 The `bloem.storage.s3` provider, installed from the catalog when its digest is pinned
 in the host's static approvals or from a manually approved artifact, needs a durable
@@ -831,7 +831,7 @@ uses its own generated bindings in `internal/storageproto`.
 1.36.11 and protoc-gen-go-grpc 1.6.1; `--check` verifies the generated files.
 
 Hosts request at most 512 entries and 1 MiB per page with a 30-second deadline.
-The plugin session's 10-second default RPC bound used to cut that short; a listing call asks for its full 30 seconds
+The plugin session's 10-second default RPC bound would cut that short, so a listing call asks for its full 30 seconds
 (`storageplugin.RPCLimit`), and every other call keeps the 10-second bound.
 `Read` delivers exactly the requested range (at most 8 MiB) in ordered chunks
 of at most 128 KiB and must end with status OK; a partial read is discarded.

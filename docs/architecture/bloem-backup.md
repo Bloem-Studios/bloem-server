@@ -38,8 +38,8 @@ the access group of every profile.
   `bloemCreateRestoredProfileInTx` applies the same rule as Silo's
   `CreateRestoredProfileInTx` and reports the primary the same way.
 
-A backup taken before 6 November 2026 does not record organizations, so its
-accounts come back in the default organization.
+A backup that does not record organizations restores its
+accounts in the default organization.
 
 Restoring accounts takes no extra backup first. Silo copies the whole server before
 every restore so it can be undone; on Bloem, point-in-time recovery of the database

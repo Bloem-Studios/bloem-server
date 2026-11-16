@@ -125,8 +125,8 @@ access-group move, the bulk jobs) use the same rule. A bulk job skips a protecte
 `target_protected`.
 
 Moving a profile to another access group (one at a time or in a bulk job) advances the
-account's `access_policy_revision` and no longer raises the membership's `security_revision`.
-It used to, which ended the member's older sign-ins through the organization revocation
+account's `access_policy_revision` and does not raise the membership's `security_revision`.
+Raising it would end the member's older sign-ins through the organization revocation
 trigger; a group move is an ordinary support action and must not sign anyone out.
 
 Stream stop and message have a narrower rule (`adminpeople.JudgeStream`): the actor's own

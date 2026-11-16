@@ -40,8 +40,7 @@ native routes and to Silo's Audiobookshelf-compatible listener. Playback, ranges
 their normal host authority and delivery checks; streaming telemetry must not
 prevent response-controller traversal of the writer chain.
 
-Bloem's former same-origin Audiobookshelf gateway and its in-process dispatch
-marker were removed; the Audiobookshelf server runs only on its own port. See
+The Audiobookshelf server runs only on its own port, with no same-origin gateway or in-process dispatch marker. See
 [protocol compatibility](../../../architecture/bloem-protocol-compatibility.md).
 
 Silo's exact-route compressor bypass (`skipNativeMediaCompression`, mounted with

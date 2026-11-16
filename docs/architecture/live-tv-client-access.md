@@ -181,8 +181,7 @@ implemented.
 ### Integration status
 
 Native Live TV uses freshly resolved account/profile authority. Live TV is not served
-through Silo's Jellyfin-compatible server; Bloem's former compatibility streams and
-gateway are removed, and their former tests do not establish native coverage. See
+through Silo's Jellyfin-compatible server, and compatibility tests do not establish native coverage. See
 [protocol compatibility](bloem-protocol-compatibility.md). Native delivery still requires
 both effective Live TV and playback permission, including after revocation.
 

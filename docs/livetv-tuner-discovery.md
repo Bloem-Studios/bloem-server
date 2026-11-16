@@ -155,8 +155,8 @@ What the override does:
 The override needs that multi-container layout: Silo's all-in-one image keeps its
 PostgreSQL on a socket inside the container, which `127.0.0.1` cannot reach.
 
-You can combine it with a hardware-acceleration override of your own (Silo no longer
-ships `docker-compose.nvidia.yml`; see
+You can combine it with a hardware-acceleration override of your own (Silo ships no
+`docker-compose.nvidia.yml`; see
 [Bloem's Docker guide](bloem/overlays/wiki/deployment/docker.md#hardware-acceleration)):
 
 ```sh

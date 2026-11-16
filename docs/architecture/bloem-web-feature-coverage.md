@@ -9,7 +9,7 @@ words in the tables mean, and how far each feature has been tested.
 
 ## What is in the web app
 
-![Three columns of screens for viewers, organization administrators and platform administrators, with Silo's own screens in grey; below, the two APIs the web app calls and the one it no longer calls](images/bloem-web-feature-coverage/web-app-map.svg)
+![Three columns of screens for viewers, organization administrators and platform administrators, with Silo's own screens in grey; below, the two APIs the web app calls](images/bloem-web-feature-coverage/web-app-map.svg)
 
 - **For viewers:** Home with campaign cards, seasonal effects, Live TV with its guide
   and recordings, playback cards in the player, and Silo's catalog,
@@ -58,7 +58,7 @@ Two sign-in rules show up in the web app:
 - **Partial:** it works, but the named piece is missing.
 - **Boundary:** the server does not support it, so no button can supply it.
 - **Shared:** Silo's own screen, kept; only Bloem's changed meaning is checked.
-- **Removed:** Bloem's version is gone.
+- **Absent:** Bloem has no version of it.
 
 ## Who can change what
 
@@ -80,7 +80,7 @@ Two sign-in rules show up in the web app:
 | Seasonal effects | `SeasonalLayer` (`web/src/components/seasonal/SeasonalLayer.tsx`) |
 | Campaigns & seasonal packs page | `EngagementPage` (`web/src/pages/admin-platform/EngagementPage.tsx`), route `/admin/platform/engagement` |
 | Domains and branding panels | `OrganizationDomainsPanel` on `OrganizationDetailPage` (`web/src/pages/admin-platform/`) |
-| Status words | Present, Partial, Boundary, Shared, Removed in the tables below |
+| Status words | Present, Partial, Boundary, Shared, Absent in the tables below |
 
 ## For developers
 
@@ -186,7 +186,7 @@ network.
 | E05 | Campaign authoring / platform admin | **Present.** `/admin/platform/engagement`: typed targets/placements, UTC dates, review, publish/edit/delete and artwork upload. | Rebuilt create/edit/delete and readback passed (201/200/204). Configured public S3 acceptance passed: PNG upload 201, exact bytes/MIME/dimensions, anonymous 200/ETag 304 and decoded Home artwork. Deployment and explicit-profile inclusion/exclusion passed. Native adapter reuses the registry; no revision-locking contract exists and the editor says so. | UI + native authority API + route/nav SEAM. |
 | E06 | Seasonal presentation / viewer | **Present.** `SeasonalLayer`: snow, banner/sprite artwork, timing, opt-out, reduced motion and playback suppression. | Rebuilt current-organization delivery returned 200 and public branding excluded the targeted pack; opt-out passed. `seasonal_viewer_v1` identifies mounted authenticated native `/ambience`, which requires a verified current-tenant profile. Single-snapshot filtering excludes other memberships, including concurrent retargeting. Login and fallback stay public-only and read `GET /api/bloem/v2/ambience/public`. Requests and caches bind session/profile/PIN generation. | Bloem UI, existing shell SEAM. |
 | E07 | Seasonal authoring / platform admin | **Present.** Engagement page pack editor, schedules, annual repeat when supported and asset upload. | Rebuilt create/edit/delete and readback passed (201/200/204). Configured public S3 banner/sprite uploads, public delivery/cache validation, decoded Home images and organization/public filters passed. MIME, size and declared-dimension rejection passed. Uploads use the catalog Assets store, local or S3 (see [asset storage](bloem-campaign-asset-storage.md)). Registry concurrency remains last-write-wins. | UI + native authority API + route/nav SEAM. |
-| E08 | Compatibility applications | **Absent (Bloem's).** Companion enrollment and the protocol gateway are not part of Bloem; Silo's Jellyfin compatibility settings and status are present. | Native audiobook/ebook and device pairing remain separate. | [Protocol compatibility](bloem-protocol-compatibility.md). |
+| E08 | Compatibility applications | **Absent.** Companion enrollment and the protocol gateway are not part of Bloem; Silo's Jellyfin compatibility settings and status are present. | Native audiobook/ebook and device pairing remain separate. | [Protocol compatibility](bloem-protocol-compatibility.md). |
 | E09 | Branding/LAN/playback deployment controls / platform admin | **Present.** Build-time identity, Silo's **Show on the local network** toggle (`server.lan_discovery`, which publishes Silo's `_silo._tcp`) and existing Playback controls. Bloem's own `_bloem._tcp` setting, `lan.advertisement_enabled`, has no web control ([LAN service advertisement](../specs/lan-service-advertisement.md)). | Header-authenticated media is not a general multi-replica switch. Deployment prerequisites remain explicit. | Existing settings/branding SEAMs. |
 | E10 | Fleet and shared media / viewers/admins | **Shared; acceptance incomplete.** Retain Silo catalog, player, requests, downloads, readers, nodes and plugins. Bloem has no music catalog. | No replacement frontend. A real database/policy regression covers active/suspended/restored/withdrawn grants, campaign delivery and denied-library 404. Rebuilt reads completed all five v2 home sections with 200, including one promoted item. No home blocker was observed in that fixture. Actual media/encoder/fleet acceptance needs appropriate fixtures. | Existing Silo consumers; investigate concrete integration failures separately. |
 

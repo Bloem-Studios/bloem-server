@@ -351,13 +351,12 @@ Home and library layouts filter personalized and social recipes before row looku
 so a preview may read both (`getHomeLayout`, `getLibraryLayout`). Box sets
 (`searchCatalogBoxSets`, `getCatalogBoxSet`, `getCatalogItemBoxSet`), the poster
 overlay settings (`getOverlayConfig`) and the row-type catalog (`listSectionRecipes`)
-are reads with nothing personal in them, allowed since 2026-11-11.
+are reads with nothing personal in them, and are allowed.
 Continue Watching, Next Up, Favorites and Watchlist are excluded explicitly because
 the recipe gallery categorizes them as library staples. Profile-owned collection
 rows are excluded too; hidden row IDs cannot be read through section queries.
 Preview catalogue and native Watch search never call a semantic provider. With
-Meilisearch configured they use it by keyword only (`internal/catalog/bloem_preview_search.go`,
-since 2026-11-11): no query embedding, and the ranking of the words half of a
+Meilisearch configured they use it by keyword only (`internal/catalog/bloem_preview_search.go`): no query embedding, and the ranking of the words half of a
 subscriber's search. Search ranking sessions, at most 16 per account, are kept per
 login session instead, because every guest shares one account. Without Meilisearch,
 previews keep PostgreSQL keyword retrieval, which they used for everything before:

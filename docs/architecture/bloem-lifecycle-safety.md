@@ -101,8 +101,8 @@ individual tenant-member removal (`MemberService.DeleteInTransaction`):
 - Preserve accounts that own another organization (`organizations.owner_account_id`),
   own the platform (`platform_security.owner_account_id`), or have the administrator
   role. An account has at most one membership
-  (`organization_memberships_one_per_account`), so "another membership" no longer
-  occurs.
+  (`organization_memberships_one_per_account`), so "another membership" does not
+  occur.
 - Delete an otherwise unowned account through the account provisioner.
 - Update ownership before deleting an owner account: the first other active, enabled
   member becomes owner, or none.
@@ -133,13 +133,9 @@ after a later member fails
 A library's bundle memberships, in every revision, go with it:
 `entitlement_bundle_members_media_folder_fkey` is `ON DELETE CASCADE`
 (`20261110123408_bloem_library_starting_set.sql`), so the final transaction's
-`DELETE FROM media_folders` removes them. Before that migration the key was
-`ON DELETE RESTRICT`. Finding the reference only at the end would have destroyed
-media and watch-state records while leaving the library behind, so Bloem refused the
-deletion up front (`CheckDeletionAllowed`, `409 conflict` "Library is retained by an
-entitlement bundle") and again before the first batch. No code removed a member, so a
-library in any revision could never be deleted. A revision therefore no longer keeps
-every library it once named; the organizations' grant history is in
+`DELETE FROM media_folders` removes them. A deleted library leaves every bundle
+revision, so a revision does not keep every library it once named; the organizations'
+grant history is in
 `organization_entitlements` and the entitlement audit events.
 
 The worker acquires the canonical `bloem_lock_media_folder_bundle_reference(bigint)`

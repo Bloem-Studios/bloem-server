@@ -63,9 +63,8 @@ library is gone, so nothing can add the library to an entitlement bundle meanwhi
 The final step otherwise follows Silo: a collection that also covers another library
 moves to it, and series that survive elsewhere recompute their membership, in the
 same guarded transaction that releases the library's organization grants and
-removes it from every bundle revision. Before 2026-11-10,
-`DELETE /api/v2/libraries/{id}` answered `409` ("Library is retained by an
-entitlement bundle") for a library any bundle revision named. See
+removes it from every bundle revision, so a library that a bundle revision names can
+be deleted. See
 [library deletion](../../architecture/bloem-lifecycle-safety.md#library-deletion).
 
 `createLibrary` adds a platform-owned library to the active revision of the

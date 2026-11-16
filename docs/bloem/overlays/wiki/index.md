@@ -16,7 +16,7 @@ related: []
 # Bloem guides for operators and viewers
 
 This is Bloem's index of the guides for people who run a Bloem server and people who watch
-on one. Silo no longer keeps these guides in its repository, so this index is Bloem's own
+on one. Silo's repository does not keep these guides, so this index is Bloem's own
 edition.
 
 This page lists the guides by who they are for: viewers first, then the person running the

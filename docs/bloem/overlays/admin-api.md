@@ -45,10 +45,9 @@ files in Bloem's native storage.
 
 Silo's two modes describe files in library folders. A file in Bloem's
 [native storage](../../architecture/bloem-native-storage.md) is not in a library
-folder: it is read through its storage source. Before Silo's thin nodes a
-transcode node read such a file under a worker grant kept in Redis; a thin node
-has no Redis, so that path no longer applies. How a native-storage file reaches a
-transcode node now is on
+folder: it is read through its storage source. A thin transcode node has no Redis,
+so it takes no worker grant kept there. How a native-storage file reaches a
+transcode node is on
 [native video playback](../../architecture/bloem-native-video-playback.md).
 
 ---

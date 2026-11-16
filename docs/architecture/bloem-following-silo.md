@@ -88,12 +88,11 @@ people watching are not reasons to stop.
 
 ## When Silo and Bloem change the same lines
 
-![A real fix: Bloem's check folded into Silo's line, then Silo's line restored with Bloem's check beside it](images/following-silo/silo-wins.svg)
+![An example: Bloem's check folded into Silo's line, and Silo's line as Silo wrote it with Bloem's check beside it](images/following-silo/silo-wins.svg)
 
-**Silo always wins.** On 31 October 2026 a merge had folded Bloem's check into
-one of Silo's lines in the household code. The behavior was right, but every
-time Silo touched that line it would conflict again. The fix put Silo's line back
-exactly as Silo wrote it, with Bloem's check on its own lines just above.
+**Silo always wins.** In the household code, for example, Bloem's check sits on its own
+lines just above Silo's line, and Silo's line stays exactly as Silo wrote it. Folding
+the check into Silo's line would conflict again every time Silo touched it.
 
 Bloem keeps its own work in three places:
 
@@ -129,7 +128,7 @@ This example is made up.
 | --- | --- |
 | A maintainer | Answering a stopped batch, pausing the bot or releasing a batch, every deploy the bot does not make, and any database restore. |
 | The merge bot | Merging each Silo batch with Silo winning, fixing Bloem on Bloem's own lines, pushing to `main`, waiting for Bloem CI, and deploying once a day the newest commit Bloem CI passed. |
-| A repository administrator | Switching the old daily GitHub sync back on, with the repository variable `BLOEM_UPSTREAM_SYNC`. |
+| A repository administrator | Switching the daily GitHub sync on, with the repository variable `BLOEM_UPSTREAM_SYNC`. |
 | Silo | Its own files, which Bloem takes in as Silo wrote them. |
 
 ## Words used in the code
@@ -150,7 +149,7 @@ This example is made up.
 ## For developers
 
 - [How Bloem forks Silo](../../FORK.md#taking-upstream-changes): the merge policy,
-  the steps each batch follows, seams and overlays, and what Bloem adds and removed.
+  the steps each batch follows, seams and overlays, and what Bloem adds.
 - [Bloem CI](../bloem/ci.md#upstream-sync-merges): the merge bot's schedule, CI
   wait and deploy rules, the local gate, the switched-off daily sync and its merge gate, and
   the image.

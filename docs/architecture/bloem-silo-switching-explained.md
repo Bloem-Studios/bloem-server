@@ -63,9 +63,9 @@ must not serve the database again.
 ![Separate containers on the left, Silo's all-in-one container on the right](images/silo-switching/two-layouts.svg)
 
 - **Separate containers.** Silo, PostgreSQL and Redis each run in their own
-  container, as in Silo's earlier Compose layout. Stop the Silo container and
+  container, as in Silo's multi-container Compose layout. Stop the Silo container and
   start Bloem's ordinary image with the same database address and secret key.
-- **Silo's all-in-one container.** Silo's image now carries its own PostgreSQL
+- **Silo's all-in-one container.** Silo's image carries its own PostgreSQL
   and Redis, with their data in one `/config` folder that only that container
   can open. To switch, build Bloem in the same all-in-one layer, using Silo's own
   recipe that Bloem carries unchanged, and start it on the same `/config`. Empty

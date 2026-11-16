@@ -49,8 +49,7 @@ invitations with role `user` only, in the console's organization, either bound
 to an email address or, with Silo's `delivery: "link"`, with no address for the
 invitee to enter at accept. That flow never sends mail: the create and resend
 responses return the claim token once and the administrator delivers the link.
-Those rows are stored with `delivery` `link`. Rows created before 2026-11-16 have
-`delivery` NULL, which Silo reports as `unknown`. See [organization invitation links](../invitations-api.md#bloem-organization-invitation-links).
+Those rows are stored with `delivery` `link`. Rows with `delivery` NULL are reported by Silo as `unknown`. See [organization invitation links](../invitations-api.md#bloem-organization-invitation-links).
 
 ---
 

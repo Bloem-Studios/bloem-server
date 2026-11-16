@@ -107,11 +107,9 @@ the owner dies, the client must open a new Live TV session; existing stale-sessi
 cleanup releases the dead tuner allocation. Forwarding is routing, not encoder
 failover.
 
-Bloem's former Live TV stream mapping and opener-token path on the Jellyfin
-compatibility surface are removed. Silo's Jellyfin server itself is served again
-as Silo's unchanged code, which has no Live TV routes. Native
-session ownership remains the authority for retained Live TV routes; historical
-protocol tables do not provide an alternate content path. See
+Silo's Jellyfin server runs as Silo's unchanged code, which has no Live TV routes. Native
+session ownership is the authority for Live TV routes; protocol tables do not provide an
+alternate content path. See
 [protocol compatibility](bloem-protocol-compatibility.md).
 
 Apply the cluster-route migration before deploying the new binary. Sessions
@@ -161,7 +159,7 @@ outage delays reconciliation rather than guessing that a session has stopped.
 Silo's existing stream-deny and progress-stop checks remain in force.
 
 No native Apple/Android protocol change is required: clients retain their
-existing native stream URLs, stop calls and status handling. Removed protocol
+existing native stream URLs, stop calls and status handling. Protocol
 parity tests do not establish native acceptance. These changes neither add a new
 endpoint nor alter the successful response schema.
 

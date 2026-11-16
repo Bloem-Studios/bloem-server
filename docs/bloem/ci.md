@@ -523,7 +523,7 @@ with `ffmpeg`.
 - **ripgrep:** the script can still install it, for
   `scripts/generate-bloem-storage-proto_test.sh`, which matches the
   generator's output with `rg`. No CI step or Go test runs that script, so CI
-  no longer asks for ripgrep.
+  does not ask for ripgrep.
 
 FFmpeg is Jellyfin's build, the family the runtime image ships. CI pins
 `jellyfin-ffmpeg7`, while the image ships `jellyfin-ffmpeg8` (the Dockerfile's

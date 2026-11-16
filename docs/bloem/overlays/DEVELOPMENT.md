@@ -157,7 +157,7 @@ Run `make verify-seams` after an upstream merge. Bloem currently declares 339
 seams (modified or deleted upstream files); additions belong in owned
 modules wherever possible. CI's changed-line lint gate, `scripts/bloem-lint-changed-ci.sh`,
 reports a finding only on a line that changed in the push and differs from Silo's
-copy of the file, so lines a Silo merge brings in, or a file restored to Silo's
+copy of the file, so lines a Silo merge brings in, or a file at Silo's
 text, do not count against Bloem; Bloem's own changed lines, in any file, still do.
 `pnpm run budget:check` runs Silo's `web/scripts/check-bundle-budget.mjs`: it
 reports the eager launch bundle's brotli size without gating it, and fails when

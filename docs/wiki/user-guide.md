@@ -509,8 +509,7 @@ closely. Silo's labels stay, for example "Silo app or website" on the Connect Ap
   the device login service, so the domain check does not see it.
 - An account-login session created before its profile's organization revoked the account is
   ended; the viewer-access gate answers `401` with reason `session_invalid` (`session_expired` on
-  `/api/v2`), the refresh is refused, and the web app returns to sign-in. It used to answer
-  `404` "Profile not found". See `internal/api/bloem_org_session_revocation.go`,
+  `/api/v2`), the refresh is refused, and the web app returns to sign-in. See `internal/api/bloem_org_session_revocation.go`,
   `internal/api/middleware/bloem_viewer_session.go` and the
   [security foundation](../architecture/bloem-security-foundation.md).
 - **Sign out of other devices** ends the account's other sign-ins; the current device stays signed

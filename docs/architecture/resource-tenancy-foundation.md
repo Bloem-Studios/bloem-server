@@ -158,8 +158,8 @@ migration `20261110123408_bloem_library_starting_set.sql`:
 - A deleted library's rows go from every revision:
   `entitlement_bundle_members_media_folder_fkey` is `ON DELETE CASCADE`.
 
-The migration also added every platform library missing from the active revision.
-A revision therefore no longer records exactly what an organization received when it
+The migration adds every platform library missing from the active revision.
+A revision therefore does not record exactly what an organization received when it
 was created; that record is the organization's `organization_entitlements` rows and
 their `source_bundle_revision`. Changing `active_revision` does not rewrite
 entitlements previously materialized from an older revision. Creating an

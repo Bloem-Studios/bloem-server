@@ -99,11 +99,10 @@ run inside the server.
 - Presentation is optional: an evaluator error omits promotions or ambience instead of
   blocking browsing, login or playback, and the host never logs evaluator payloads.
   Caller cancellation is propagated.
-- Until 26 October 2026 the same engines ran in two bundled worker processes behind a
-  JSON-over-stdio bridge (`internal/bloempresentation`, since removed). The workers ran
-  only this reviewed code, with no operating-system sandbox or resource limits, so the
-  process boundary added start-up cost and failure modes without isolating anything
-  the server does not already trust.
+- The engines run in the server process, not in worker processes. A separate process
+  would run only this reviewed code, with no operating-system sandbox or resource limits,
+  so it would add start-up cost and failure modes without isolating anything the server
+  does not already trust.
 
 ### Scope
 

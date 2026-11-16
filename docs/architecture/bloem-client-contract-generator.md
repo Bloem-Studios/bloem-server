@@ -90,10 +90,10 @@ summarised; every rule still in force is kept.
 `make verify-client-dtos` (`.github/workflows/bloem-ci.yml`). Vendoring into the apps is
 work in the app repositories.
 
-### 2. Why the output shape differs from the earlier client
+### 2. Why the output shape is fixed
 
-The server is the single source of the apps' wire types, and the current apps share no substantive code with
-any earlier client except wire strings. The output shape is therefore a provenance
+The server is the single source of the apps' wire types, and the apps share no substantive code with
+the server except wire strings. The output shape is therefore a provenance
 requirement, enforced by generator tests (§8):
 
 1. Property names come from the Go field name by the generator's own rule (§4.3), never
@@ -127,8 +127,8 @@ type TimelineV3 struct {
 }
 ```
 
-The earlier hand-written client called it `PlaybackTimelineV3`, put each `@SerialName`
-inline, and chose defaults (`canSeekAnywhere = true`,
+A hand-written client would call it `PlaybackTimelineV3`, put each `@SerialName`
+inline, and choose defaults (`canSeekAnywhere = true`,
 `seekRestoration = "player_position"`). The generator emits:
 
 ```kotlin
@@ -440,7 +440,7 @@ active).
 Apps replace hand-written types by verification strength: the playback protocol first
 (golden fixtures and conformance tests already fence it), then the Bloem-only engagement
 types, then the handler-backed catalog surface, one domain per commit, deleting the
-replaced file in the same commit. The earlier client's model files are listed in the
+replaced file in the same commit. The apps' hand-written model files are listed in the
 coverage allowlist with their posture (`TestSpecFilesArePinned`).
 
 #### 9.2 What the apps write themselves

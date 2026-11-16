@@ -157,19 +157,6 @@ Riverside Club is a reseller organization served on its own address, `watch.rive
   Silo's own authentication model is in [API contract](api-contract.md) and
   [external sign-in](external-sign-in.md).
 
-### History
-
-The tenant foundation was written in August 2026. Later changes that matter: v2 socket
-tickets bound to tenant authority (October 2026); account policy back on Silo's `users`
-table with one membership per account (26 October); lifecycle receipts removed (26
-October); Silo's session-to-account token binding and playback ownership rules applied to
-Bloem's paths (27 October); a sign-in older than its organization's revocation ended with
-`401 session_invalid` (1 November); organization domains (migration
-`20261101055208_bloem_organization_domains`, 1 November); the login response's policy
-resolved in the account's own tenant again after Silo's account payload began reporting
-group-masked permissions (2 November). The [Rollback](#rollback) procedure applies only to
-the August 2026 foundation release.
-
 ### The native namespace and capabilities
 
 Bloem keeps Silo's own `/api/v2` account login, profile picker, PIN unlock, token

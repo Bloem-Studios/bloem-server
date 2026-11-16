@@ -230,8 +230,8 @@ These are rules a future change must not break.
   exception, so a new type must classify itself.**
   `accountLevelDeliveryTypes` in `internal/notifications/delivery_access.go`
   replaced a fallback that excluded only
-  `request.fulfilled` by name: a new delivery type with no library and no
-  item identity used to inherit eligibility silently.
+  `request.fulfilled` by name, which let a new delivery type with no library and no
+  item identity inherit eligibility silently.
   `TestEveryDeliveryTypeConstantIsClassified`
   (`internal/notifications/delivery_type_classification_test.go`) parses every
   top-level `DeliveryType*` constant in the package's non-test files and fails by name if a constant

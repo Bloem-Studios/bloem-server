@@ -688,8 +688,8 @@ migrating user state to PostgreSQL instead of performing repeated handoffs.
 
 Silo's Jellyfin- and Audiobookshelf-compatible servers listen on ports of their own,
 and only while `jellyfin_compat.enabled` or `audiobookshelf_compat.enabled` (both
-default on; changing either needs a restart) allows them. Bloem's companion
-enrollment is removed; see
+default on; changing either needs a restart) allows them. Bloem has no companion
+enrollment; see
 [protocol compatibility](../../../../architecture/bloem-protocol-compatibility.md).
 
 ### Organization domains

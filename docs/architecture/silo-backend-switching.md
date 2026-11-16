@@ -227,8 +227,8 @@ merging upstream changes that add Silo writes to tables Bloem constrains, or tha
 `internal/tenancy/silo_switching_writes_test.go`,
 `internal/auth/bloem_repository_switching_test.go`,
 `migrations/bloem_account_policy_on_users_test.go` and
-`migrations/auth_session_device_id_null_test.go`; the Pastime removal's switching
-test is `internal/tenancy/bloem_pastime_removal_switching_test.go`.
+`migrations/auth_session_device_id_null_test.go` and
+`internal/tenancy/bloem_pastime_removal_switching_test.go`.
 
 ### Related pages
 

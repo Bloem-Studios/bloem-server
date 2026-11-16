@@ -78,8 +78,8 @@ These adapters preserve upstream call shapes; they do not grant access when a pr
 or organization policy denies it. Prefer the same pattern for later upstream changes
 rather than widening every shared interface and test double.
 
-Account policy lives on `users`, with one membership per account; Bloem's lifecycle
-receipts are gone; and Silo's Jellyfin and Audiobookshelf servers run as Silo ships them.
+Account policy lives on `users`, with one membership per account; Bloem has no lifecycle
+receipts; and Silo's Jellyfin and Audiobookshelf servers run as Silo ships them.
 The sections below describe the current wiring.
 
 ### Migration filesystem
@@ -102,14 +102,11 @@ differences. The adapted files are `20260926181741_request_group_limits`,
 `20260919095615_bloem_policy_library_ids_bigint` and
 `20261006162336_add_login_session_device`.
 
-Until 2026-10-26 Bloem kept live account policy on
-`organization_memberships`, through a phased authority recorded in
-`membership_policy_authority` (`compatibility` and `finalized`, with `mirrored` added
-on 2026-10-09 for Silo switching). Migration
-`20261026003000_bloem_account_policy_on_users.sql` moved that policy back
-onto `users` and retired the phases. The adapters below still matter because they
-rewrite older Silo migrations, which an older database runs while it is still in one
-of those phases. When upstream migration `20260926181741` converts legacy blocked
+Live account policy is on `users`, as in Silo. Migration
+`20261026003000_bloem_account_policy_on_users.sql` puts it there for a database that
+still carries a membership-owned policy phase (`membership_policy_authority`). The
+adapters below rewrite Silo's migrations, which such a database runs while it is still
+in one of those phases. When upstream migration `20260926181741` converts legacy blocked
 request limits on a finalized database, the adapter updates
 `organization_memberships.requests_allowed` instead. The legacy request limit applies
 to the account across its memberships; the migration preserves that scope, increments
@@ -123,14 +120,12 @@ adapter fails with "upstream statement changed" otherwise). An upstream edit the
 requires review. Do not renumber migrations, mutate the version ledger to skip a
 failure, or run the unadapted SQL on a finalized Bloem database.
 
-A database shared with Silo keeps Silo switching enabled (the flag `public.bloem_silo_switching`; before 2026-10-26 it was the `mirrored` phase). An
+A database shared with Silo keeps Silo switching enabled (the flag `public.bloem_silo_switching`). An
 upstream merge that adds a Silo write to a table Bloem constrains needs a switching
 test beside the existing ones and a passing `make silo-switch-check` against that
 upstream build. See [Silo backend switching](silo-backend-switching.md).
 
-Fresh empty-database migrations do not exercise a finalized-schema upgrade. The
-request-group regression that built that state
-(`TestBloemRequestGroupMigrationAfterPolicyFinalization`) was deleted with the phases. The migration adapters' database tests are now
+Fresh empty-database migrations do not exercise a finalized-schema upgrade. The migration adapters' database tests are
 `TestBloemProfileLimitsMigration`, `TestBloemLibraryPruningMigration` and
 `TestBloemLibraryPolicyWidthRejectsOverflow` in `internal/database`, and the
 `TestAccountPolicy*` tests in `migrations/bloem_account_policy_on_users_test.go`,
@@ -146,8 +141,7 @@ Set `SILO_TEST_DATABASE_URL` to a disposable test database first. The fixtures c
 and drop their own child databases; never point them at a deployed catalog.
 
 Silo's library access lists use `integer[]`. Bloem follows that representation through
-tenant memberships, groups, entitlement revisions and rollback snapshots. The former
-downstream widening migration is adapted to retain the upstream width. Existing
+tenant memberships, groups, entitlement revisions and rollback snapshots. The downstream widening migration is adapted to retain the upstream width. Existing
 widened databases converge through `20261014233826_bloem_silo_policy_alignment.sql`;
 any out-of-range value aborts the transaction before data can be narrowed. No policy
 ID is clamped or discarded to make a conversion succeed.
@@ -228,8 +222,7 @@ Silo's three calls in `internal/apiv2/home.go`. The transform lines in
 
 The promoted row's card is Silo's `sectionItemResponse` with one added Bloem field,
 `Promo` (`promo` on the wire), in Silo's struct in `sections.go`;
-`promoSectionItem` in `bloem_sections_ext.go` fills it. Bloem used to keep a whole copy of the struct in `bloem_sections_ext.go`,
-which missed Silo's new fields. Keep the one added field instead.
+`promoSectionItem` in `bloem_sections_ext.go` fills it. Keep the one added field rather than a copy of the struct, which would miss Silo's new fields.
 
 ### Playback tenant facts
 
@@ -249,7 +242,7 @@ disable those checks.
 ### AirPlay output planning
 
 Silo's playback request carries the active output (`output.sink_type`, `current_sink`,
-`output_context_id`), and the planner used to ignore the sink type: an AirPlay receiver,
+`output_context_id`), and Silo's planner ignores the sink type: an AirPlay receiver,
 often a television with its own HLS implementation, was planned the same stream as the
 client's own speaker. [`PlanPlaybackAirPlayAwareV3`](../../internal/playback/bloem_airplay_v3.go)
 wraps `PlanPlaybackV3` and, while the sink type is `AirPlay`, plans from a copy of the
@@ -326,7 +319,7 @@ wrapper provenance. The availability guard does not replace authentication.
 
 Group updates preserve existing invalidation of accounts with assigned profiles;
 accounts assigned only at account level retain their authorization revision. Deletion
-moves and invalidates both the accounts and the profiles on the group. (Before 2026-10-26 the account-level assignment was a membership column.) Empty updates
+moves and invalidates both the accounts and the profiles on the group. Empty updates
 preserve the configuration revision; a nonempty same-value write advances it through
 the existing timestamp trigger while retaining unchanged authorization revisions.
 These are compatibility semantics, not new optional plugin behavior.
@@ -391,8 +384,8 @@ there seed accounts and profiles directly .
 
 [`cmd/silo/bloem_main.go`](../../cmd/silo/bloem_main.go) owns native service
 composition and shared-worker shutdown plumbing. The shared entry point retains
-listener ownership, route registration and shutdown call order. Retired protocol
-gateway constructors are not part of the current composition. Worker fencing precedes
+listener ownership, route registration and shutdown call order. Protocol
+gateway constructors are not part of the composition. Worker fencing precedes
 joins, and cleanup follows only successful shutdown. Concrete nil pointers are
 normalized before interface conversion. Tenant, authentication and quota enforcement
 remain host authority, regardless of optional presentation evaluation.
@@ -449,7 +442,7 @@ inset, see-through `mobile-header` classes, and `web/src/bloem/mobile-header.css
 loaded by one added import line there, makes it an opaque bar across the full width
 that clears the safe areas. The rule is unlayered, so it wins over Silo's Tailwind
 utilities and its `glass-dark` component class; `web/src/bloem/mobile-header.test.ts`
-checks the import and the rule. Bloem used to carry this as a changed class string in Silo's line, which conflicted whenever Silo changed it. `web/src/bloem/preview/preview.css` hides the header's account links in
+checks the import and the rule. `web/src/bloem/preview/preview.css` hides the header's account links in
 preview the same way.
 
 The launch bundle is checked by Silo's own `web/scripts/check-bundle-budget.mjs`,
@@ -528,16 +521,14 @@ build, or deployment probe as evidence that a contract gate passed.
 
 Silo's account resolver and identity management service
 (`account_resolution.go`, `identity_service.go`) are Silo's own files: account policy
-is on `users`, so they read it as Silo does. The earlier `userSource` projection over
-the membership join is gone.
+is on `users`, so they read it as Silo does.
 
 The account repository creates an account's one
 membership itself (`linkAccountMembership` in `internal/auth/bloem_repository.go`). It
 uses the organization the creating flow names, else the organization that owns the
 account's access group, else the default organization. Silo's account provisioner and
-its external sign-in providers (OIDC and directory) therefore need no Bloem hook. The
-earlier membership-aware provisioner and `CreateAccountWithMembershipInTransaction`
-(whose identifiers fed the lifecycle receipts, since removed) are gone.
+its external sign-in providers (OIDC and directory) therefore need no Bloem hook. Bloem has no
+membership-aware provisioner and no `CreateAccountWithMembershipInTransaction`.
 Invitation acceptance keeps one hook, in the seam `internal/invitations/service.go`: it
 creates the account with `CreateAccountForOrganizationInTransaction` in the
 invitation's stored organization (`internal/invitations/bloem_service.go`).
@@ -575,7 +566,7 @@ account-wide revocation, and `bloemProfileSessionRevoker` in
 Both invitation acceptance paths preserve the organization stored on the invitation.
 Link invitations can receive an email at acceptance; supersession of another
 invitation remains scoped to the inviting organization (the organization filter is in
-`internal/invitations/bloem_repository.go`). Bloem's earlier lifecycle path for invitations, which had its own server-settings advisory lock, is gone. The local-password check inside the
+`internal/invitations/bloem_repository.go`). The local-password check inside the
 acceptance transaction is Silo's `EnsureLocalPasswordLoginAllowedInTransaction`.
 
 The upstream user-detail page remains unchanged after its component split. Bloem's
@@ -609,18 +600,16 @@ A Bloem rule that must also hold for sessions Silo's lines create goes into the
 repository, on Bloem's lines in the seam `internal/auth/session.go`. The
 organization-domain check is the example: `SetSignInDomainCheck` gives the service a
 copy of its repository carrying `bloemSignInCheck`, and `createWithQuerier` runs it.
-(Bloem's interfaces used to replace Silo's field types, and Silo's database tests that
-use the concrete repositories did not compile.)
+(Replacing Silo's field types would break Silo's database tests that use the concrete
+repositories.)
 
 ### Network sign-in metadata
 
 The October 2026 integration imports network identity authentication ratified in
 [Silo pull request 1828](https://github.com/Silo-Server/silo-server/pull/1828). Eight
 admin plugin operations add `network` to their sign-in-mode response enum. Their
-pre-lock breaking-change approvals referenced that upstream ratification (`approved_in`
-pointed at Silo's pull request, not a Bloem one); Silo dropped them from
-`contracts/api/v2/breaking-approvals.json` once consumed, so
-the file no longer lists them. No wildcard approvals or baseline changes were used.
+breaking-change approvals referenced that upstream ratification, and the approvals
+file lists none of them. No wildcard approvals or baseline changes are used.
 
 Generated Android and Apple plugin DTOs store `sign_in_mode` as a string, so the
 additional value does not require a decoding change. This is source inspection, not
@@ -639,9 +628,8 @@ Bloem operators use `.env.bloem.example`, linked by the maintained Docker guide.
 selects Silo's multi-container `docker-compose.advanced.yml`, because Silo's default
 `docker-compose.yml` starts Silo's own all-in-one image. The upstream `.env.example`
 remains unchanged and selects the upstream image. Moving the sample does not change a
-deployed environment or encrypted settings. Both samples document Silo's `JF_PORT` and `ABS_PORT` for the restored compatibility
-listeners. The route-prefix constants and same-origin gateway controls of Bloem's
-removal-era runtime are not active configuration and should not be restored.
+deployed environment or encrypted settings. Both samples document Silo's `JF_PORT` and `ABS_PORT` for the compatibility
+listeners. Bloem has no route-prefix constants or same-origin gateway controls.
 
 ### Remote catalog seeds
 

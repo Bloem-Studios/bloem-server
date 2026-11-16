@@ -46,9 +46,9 @@ audiobooks through the main address, as described in
   package code stays Silo's.
 - **One small change to retry counting.** When looking up a book's details keeps finding
   no match, Bloem counts the attempts so that earlier repair attempts are not forgotten.
-- **Nothing else.** Bloem once removed this server and later put Silo's version back
-  unchanged, so Silo's updates to it merge cleanly. Bloem's earlier extras (a separate
-  sign-in for compatibility apps, and serving them on the main address) stay removed.
+- **Nothing else.** The server is Silo's, unchanged, so Silo's updates to it merge
+  cleanly. Bloem has no separate sign-in for compatibility apps and does not serve
+  them on the main address.
 
 ## Who can change what
 
@@ -124,11 +124,11 @@ tests for it are `bloem_outcome_attempts_test.go` and
 Bloem test helpers; the first copies fixtures from Silo tests that upstream has since
 removed, so those Silo files stay deleted.
 
-### History
+### Compatibility servers
 
-Bloem once removed both Silo compatibility servers, then restored Silo's versions so
-that Silo's code merges without deletion seams. Bloem's earlier additions, the companion credential enrollment and the
-same-origin compatibility gateway, stay removed. See
+Bloem runs both Silo compatibility servers as Silo ships them, so that Silo's code merges
+without deletion seams. It has no companion credential enrollment and no same-origin
+compatibility gateway. See
 [protocol compatibility](../../docs/architecture/bloem-protocol-compatibility.md).
 
 ### Related contracts

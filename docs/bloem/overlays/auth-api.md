@@ -110,9 +110,8 @@ Setting or clearing a profile credential (`PUT` and `DELETE`
 `/api/bloem/v2/profile-credentials/{id}`) checks the account password and spends
 the `password_change` budget; reading the status spends none. A budget must be one
 `ratelimit.DefaultConfig` defines, because an unknown name gets no endpoint limit
-and cannot be configured: until 2026-11-10 these routes used the undefined names
-`profile_login` and `profile_credentials`. `TestAuthEndpointBudgetsAreDefined`
-(`internal/api/bloem_rate_limit_budget_test.go`) now refuses an undefined name.
+and cannot be configured. `TestAuthEndpointBudgetsAreDefined`
+(`internal/api/bloem_rate_limit_budget_test.go`) refuses an undefined name.
 
 ---
 
