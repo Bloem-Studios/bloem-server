@@ -774,6 +774,7 @@ func TestSwapCleanupHasADeadline(t *testing.T) {
 		}
 	}
 	f.ctl.hang = ""
+	swapCleanupTimeout = previous // Bloem: the 200 ms bound proved the timed-out rollback above; --recover gets the real one (contracts/seams.txt)
 	if err, _ := f.recover(); err != nil {
 		t.Fatalf("recover: %v\n%s", err, f.output.String())
 	}

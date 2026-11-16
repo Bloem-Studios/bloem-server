@@ -111,6 +111,7 @@ internal/auth/service.go
 internal/auth/session.go
 internal/backup/backuptest/backuptest.go  # one call: the template gets Bloem's fixture-compatibility triggers (bloem_fixture_compat.go), because Silo's backup tests seed profiles and libraries with bare SQL
 internal/backup/credentials_authority_test.go  # two guards: Bloem's access-policy and profile fields are decided in bloem_coverage_test.go
+internal/backup/swap_test.go  # one line: TestSwapCleanupHasADeadline's --recover step gets the real cleanup deadline back; Silo's 200 ms bound still proves the timed-out rollback, but under CI load it also cut the recovery short (owner's decision, 2026-11-16)
 internal/backup/restoreset_users.go  # two fields and two calls: a restore set records each account's organization and each profile's access group (bloem_restore_tenancy.go)
 internal/backup/restoreset_write.go  # one call: a user-data backup's restore set leaves the plugins and settings out (bloem_user_data_backup.go)
 internal/backup/selective_apply.go  # one call: a restore of accounts only is marked, so it takes no backup first (bloem_user_data_backup.go)
