@@ -1,11 +1,8 @@
 # Leaving Silo's `/api/v1`
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against `main`
-> at `b6039036d`, and brought up to date on 2026-11-11, the day Silo retired `/api/v1`
-> (Silo #3200, merged into Bloem in `26cf9b3e4`). It records the owner's decision of
-> 2026-10-31 that Bloem should not depend on Silo's `/api/v1`, how Bloem left it, and what
-> happened to the routes Bloem still had there. It names the retired paths as history. The
-> technical rules are in the [For developers](#for-developers) section.
+Bloem decided not to depend on Silo's `/api/v1`, and Silo retired it on 2026-11-11. This page records how Bloem
+left it and what happened to the routes Bloem still had there. It names the retired paths as history. The technical
+rules are in the [For developers](#for-developers) section.
 
 Silo has retired its oldest API. Every route there answers `410 Gone` with
 `client_upgrade_required`; only the health and readiness probes stay. Bloem's own routes
@@ -69,7 +66,7 @@ answers `410 Gone`.
 
 | Who | What they manage |
 | --- | --- |
-| The owner | The decision to leave `/api/v1`, and which dormant feature gets native routes next. |
+| Bloem maintainers | Which dormant feature gets native routes next. |
 | Bloem developers | New routes go under `/api/bloem/v2`, never on `/api/v1`; a test fails if a `/api/v1` route is added, and `make verify-no-v1` fails if a Bloem line names a retired path. |
 | App developers (storefront, web, phone) | Calling only Silo's `/api/v2` and Bloem's API. |
 
@@ -94,7 +91,7 @@ answers `410 Gone`.
 ### Why, in detail
 
 Silo's `/api/v1` was a frozen alpha contract. A maintainer decision (Silo issue #886)
-retired it in Silo #3200, merged into Bloem in `26cf9b3e4` on 2026-11-11: the main listener
+retired it in Silo #3200 on 2026-11-11: the main listener
 answers every `/api/v1` route except `/api/v1/health` and `/api/v1/ready` with `410 Gone`
 and the `client_upgrade_required` problem code (see Silo's [API contract](api-contract.md)).
 Silo wins every merge, so every Bloem route mounted beside it went too, along with the Silo
@@ -186,7 +183,7 @@ then they answer `410 Gone` like the rest of `/api/v1`.
 | `POST /api/v1/auth/profile-login`, `GET /api/v1/profiles/{id}` | Bloem's Apple app (profile sign-in) | none: profile sign-in is dormant ([security foundation](bloem-security-foundation.md)) |
 | Bloem's fields on `/api/v1/notifications/capability` | the phone apps' remote-control discovery | none; `/api/bloem/v2/capabilities` gains them with the remote-control routes |
 | `GET /api/v1/admin/host-stats` | Bloem's mobile admin apps | none; Silo's `GET /api/v2/admin/system/resources` reports the same measurements |
-| `POST /api/v1/sync/progress` and Bloem's native `POST /sync/progress` | Android | Silo's `POST /api/v2/sync/progress`; Bloem's native duplicate and its `progress_sync_v1` token went too (`862d0fec2`) |
+| `POST /api/v1/sync/progress` and Bloem's native `POST /sync/progress` | Android | Silo's `POST /api/v2/sync/progress`; Bloem's native duplicate and its `progress_sync_v1` token went too |
 
 The dormant features had no native home on purpose: only the phone apps used them, and their
 routes are built when the apps move, so a route nobody calls is not left to drift. Silo's own

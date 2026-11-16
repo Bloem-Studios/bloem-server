@@ -1,10 +1,8 @@
 # How Bloem looks inside a stored file
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
-> and checked against `main` at `3ab048c07`. Probing stored files is part of Bloem's
-> [native storage](bloem-native-storage.md), a Bloem addition built on Silo's
-> ffprobe-based scanner (`internal/scanner`, `internal/mediaprobe`). The technical
-> rules are in the [For developers](#for-developers) section.
+Probing stored files is part of Bloem's [native storage](bloem-native-storage.md), a Bloem addition built on
+Silo's ffprobe-based scanner (`internal/scanner`, `internal/mediaprobe`). The technical rules are in the
+[For developers](#for-developers) section.
 
 To list a movie or an audiobook track, Bloem needs to know its format, its
 streams, how long it lasts and, for audiobooks, its chapters. For a file on the
@@ -174,17 +172,6 @@ promises plugins 1,024. A book-level rejection prevents partial publication; a
 failure that is the track's own rejects only its book, while authority failures
 and a run of unavailable books stop the scan. See
 [native audiobook presentations](bloem-native-audio-playback.md).
-
-### History
-
-`ProbeNative` and this page were added in `d3d2c8f72` (2026-10-10), with no
-consumer, and `4e73aa7aa` (2026-10-11) added the teardown rule. Native movies
-became the first consumer in `b781ac3ff` (2026-10-11), and audiobooks followed
-through `ProbeNativeAudio` (`17ca70d9b` and `d5d02a00e`, 2026-10-12). Audio probes
-moved to 1 MiB reads in `2538b6e41` and accepted up to 10,000 chapters in
-`396dd92e9` (both 2026-10-28). The merge of Silo through `2d5f22e7d` (2026-11-05)
-brought Silo's Matroska subtitle language pass (Silo #3081) to the native probe in
-`b0537be3c`.
 
 ### Related pages
 

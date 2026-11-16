@@ -1,12 +1,8 @@
 # How retiring an organization and deleting a library stay safe
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`; the library deletion parts were updated on 2026-11-10, when
-> deleting a library started taking it out of the starting set, and the routes checked
-> again on 2026-11-11, after Silo retired its v1 API. Organizations, their retirement and the starting set are
-> Bloem additions; library deletion and its job runner are Silo's, and Bloem's guard
-> wraps them. This page explains both in plain language; the technical rules are in
-> the [For developers](#for-developers) section.
+Organizations, their retirement and the starting set are Bloem additions; library deletion and its job runner are
+Silo's, and Bloem's guard wraps them. This page explains both in plain language; the technical rules are in the
+[For developers](#for-developers) section.
 
 Two things in Bloem remove a lot at once: retiring an organization and deleting a
 library. This page walks through how each one decides what to keep, what happens
@@ -130,9 +126,7 @@ Regression coverage includes shared identities with a second organization's prof
 (`TestTenantOrganizationDeletePreservesOtherOrganizations`) and retirement rollback
 after a later member fails
 (`TestTenantRetirementFailureRollsBackAllMembersAndOrganization`), in
-`internal/api/handlers`. The exclusive-account numeric-ID reuse fixture lived in
-`admin_tenant_organization_lifecycle_test.go`, which `b017bfe84` deleted with the
-lifecycle receipts; no retirement test has replaced it.
+`internal/api/handlers`.
 
 ### Library deletion
 
@@ -209,21 +203,6 @@ Tests are in `internal/catalog/bloem_folder_deletion_test.go` (for example
 (`TestDeletingALibraryRemovesItFromEveryStartingSetRevision`,
 `TestDeleteLibraryAcceptsAStartingSetLibrary`) and
 `internal/adminjob/bloem_library_deletion_runner_test.go`.
-
-### History
-
-The page was first written with two fixes of 2026-10-10: tenant retirement that
-preserves shared accounts (`cadc2f312`) and library deletion that preserves
-bundle-retained libraries (`5436ed812`, migration
-`20261010210634_bloem_media_folder_bundle_deletion_fence.sql`). `b017bfe84`
-(2026-10-26) removed Bloem's lifecycle receipts (an `Idempotency-Key` replay layer),
-and with them this page's sections on keyed retirement and encrypted invitation
-receipts. `c60b7008e` (2026-10-26) limited each account to one membership. The
-storefront moved to the native tenant routes on 2026-10-31
-([leaving Silo's v1 API](bloem-leaving-silo-v1.md)). On 2026-11-10 production's
-original Audio Books and Electronic Books libraries could not be deleted because the
-starting set named them; `20261110123408_bloem_library_starting_set.sql` made deletion
-take a library out of the starting set instead of refusing.
 
 Technical pages:
 
