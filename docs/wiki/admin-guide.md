@@ -9,7 +9,7 @@ tags:
   - deployment
 audience:
   - operator
-last_reviewed: 2026-11-01
+last_reviewed: 2026-11-16
 related:
   - ../bloem/overlays/wiki/deployment/docker.md
   - ../architecture/media-naming.md
@@ -25,13 +25,10 @@ related:
 
 # Bloem Server admin guide
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`; the search and embedding parts were updated on 2026-11-10 against
-> `7acd2c7e0`. It is the task guide for the person who runs a Bloem server.
-> Most of what it describes is Silo's; organizations and their domains, plans, Live TV,
-> campaigns, previews and storage sources are Bloem additions. The technical rules,
-> file names and commit references are in the [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+This is the task guide for the person who runs a Bloem server. Most of what it describes is
+Silo's; organizations and their domains, plans, Live TV, campaigns, previews and storage sources
+are Bloem additions. The technical rules and file names are in the
+[For developers](#for-developers) section.
 
 This guide takes you from a blank machine to a household watching its own library, and
 then keeps the server healthy. Part 1 gets a server running; you can read it in an
@@ -88,56 +85,26 @@ Some earlier Bloem features are gone, and this guide no longer describes them: t
 catalog, Pastime managed tracking (see [Pastime removal](../architecture/bloem-pastime-removal.md))
 and Bloem's companion enrollment for compatibility apps. Silo's own Jellyfin and Audiobookshelf
 servers came back in its place. Silo, for its part, removed the administrator's colour, font and
-custom-CSS controls and made Cinema Dark the only theme. The dates and commits are in
-[For developers](#where-bloem-comes-from-1).
+custom-CSS controls and made Cinema Dark the only theme.
 
-### What changed most recently
+### What changed recently
 
-Bloem's own changes on November 10, 2026:
+The [integration changelog](../bloem/CHANGELOG.md) lists what each Bloem release changed. A few
+changes that affect the person running a server:
 
 - **Search can drop the most common words first.** On **Server → Search**, **When a search has
-  several words** has a new choice, **Drop the most common words until something matches**. A
-  search that describes a story finds the right title far more often with it
+  several words** has the choice **Drop the most common words until something matches**
   ([2.7](#27-settings)).
-- **Task labels for `gemini-embedding-2`.** With that embedding model, Bloem labels titles and
-  searches the way Google recommends, which finds the right title more often
-  ([2.17](#217-ai-services-and-recommendation-embeddings)).
-
-On November 1, 2026, Bloem merged Silo through `63ef34b23`. For the person running the server:
-
-- **Audit records** now cover sign-ins, sessions, profiles and API keys.
-- **Download bandwidth budgets** are shared across servers.
-- **The container can start without root**, through Silo's `silo` entrypoint.
-- **Fixes** to subtitles and AI errors, collections, autoscan, seasonal rows and password reset.
-- **Transcode and proxy nodes** must now say their own address (`NODE_URL`) or they refuse to
-  start ([2.14](#214-nodes-and-distributed-deployments)).
-
-Bloem's own changes on November 1:
-
 - **Organization domains and branding** ([2.18](#218-organization-domains-and-branding)).
 - **Old sign-ins sign in again.** When an organization signs an account out, a sign-in from
-  before that point is ended, and the app asks the person to sign in again. Before, the web app
-  showed a broken home page.
-- **The web app and the storefront no longer call Silo's v1 API** (which Silo retired on
-  2026-11-11). Announcements now need the
-  Platform context ([2.16](#216-campaigns-and-seasonal-packs)).
-
-Earlier merges on October 31 brought these from Silo:
-
-- **Password changes** can sign out the account's other devices.
-- **Sign-ins last longer:** the access token now lasts 8 hours by default instead of 1.
-- **API usage:** each sign-in session has an hourly request quota, and the dashboard has an
-  API clients card. Egress on the dashboard is split by proxy node.
-- **Home rows** load 20 cards at a time.
-- **Audiobook runtimes** are worked out from the audio files themselves.
+  before that point is ended, and the app asks the person to sign in again.
+- **Silo's v1 API is gone.** Silo retired it in November 2026 and nothing in Bloem calls it.
+  Announcements now need the Platform context ([2.16](#216-campaigns-and-seasonal-packs)).
+- **Transcode nodes are thin.** A transcode node needs only the main server's address and its own
+  key ([2.14](#214-nodes-and-distributed-deployments)).
 - **Docker:** `docker-compose.yml` is Silo's all-in-one stack and does not start Bloem. Bloem
-  runs on `docker-compose.advanced.yml`, which `.env.bloem.example` selects. Silo removed its
-  separate GPU overlay files ([1.6](#16-hardware-transcoding-optional-recommended)).
-
-Bloem's own changes since October 29: library preview free play; per-library figures and a
-new-arrivals list for storefronts; an upgrade prompt when a plan's screen limit is reached;
-guided S3 setup with all-bucket sources; and AI subtitles for Chinese and Japanese without
-stray spaces. The [changelog](../bloem/CHANGELOG.md) has each one.
+  runs on `docker-compose.advanced.yml`, which `.env.bloem.example` selects
+  ([1.3](#13-install)).
 
 ---
 
@@ -175,16 +142,15 @@ it is not a mistake.
   small household. Hardware transcoding ([1.6](#16-hardware-transcoding-optional-recommended))
   needs an Intel, AMD or NVIDIA GPU the machine can see.
 - **Docker.** Docker Engine on Linux, or Docker Desktop on Mac or Windows, with Docker Compose
-  2.24 or newer. This guide installs Bloem with Docker. Building from source is possible but not
-  covered here.
+  2.24 or newer. This guide runs Bloem from its public image. Building from source is possible but
+  not covered here.
 - **Your media, organized.** A folder tree Bloem can read, laid out as
   [Supported Media Folder Structures and Naming](../architecture/media-naming.md) (Silo's page)
   describes. The most common reason films do not show up is a folder layout the scanner cannot
   make sense of, so read that page before you scan.
 - **Somewhere to keep the server's own data:** its database and the artwork it downloads. This
   is separate from your media, and it must be on storage that survives container restarts.
-- **Git and OpenSSL** on the machine, for the commands below.
-- **Access to a Bloem image.** See "Choose the image" in [1.3](#13-install) before you start.
+- **OpenSSL** on the machine, for the commands below.
 
 You do *not* need a domain name or a public IP address to start. Everything below works on a
 home network first. Making the server reachable from outside comes later, and is optional.
@@ -194,16 +160,16 @@ home network first. Making the server reachable from outside comes later, and is
 Copy these commands one block at a time. Each block is explained underneath.
 
 ```sh
-git clone https://github.com/bloem-studios/bloem-server.git
-cd bloem-server
-cp .env.bloem.example .env
+mkdir bloem && cd bloem
+curl -fsSL -o docker-compose.advanced.yml https://raw.githubusercontent.com/Bloem-Studios/bloem-server/main/docker-compose.advanced.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/Bloem-Studios/bloem-server/main/.env.bloem.example
 chmod 600 .env
 ```
 
-This downloads the deployment files and creates your settings file, `.env`, from Bloem's
-example. Use `.env.bloem.example`, not `.env.example`: `.env.example` is Silo's file, unchanged,
-and its `SILO_IMAGE` line selects Silo's image instead of Bloem's. The `chmod` makes the file
-readable only by you, because it is about to hold secrets.
+This makes an empty folder, downloads Bloem's Compose file into it and saves Bloem's settings
+template as your settings file, `.env`. Use this template, not Silo's `.env.example`: its
+`SILO_IMAGE` line selects Silo's image instead of Bloem's. The `chmod` makes the file readable
+only by you, because it is about to hold secrets.
 
 ```sh
 printf '\nPOSTGRES_PASSWORD=%s\nSECRET_KEY=%s\n' \
@@ -228,17 +194,15 @@ Use an absolute path, one that starts with `/`. This folder is mounted read-only
 container at `/mnt/media`, so Bloem sees your files without copying them.
 
 **Keep the Compose file.** `.env.bloem.example` sets `COMPOSE_FILE=docker-compose.advanced.yml`.
-Leave it. The repository's default `docker-compose.yml` is Silo's all-in-one stack and would
-start Silo, not Bloem.
+Leave it. Silo's own `docker-compose.yml` is an all-in-one stack and would start Silo, not Bloem.
 
 **Choose the image.** `.env.bloem.example` sets
-`SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:latest`. Bloem's CI publishes each tested `main`
-commit under its full commit SHA and moves `latest` to the newest one, so `latest` changes
-whenever `main` does. To know which revision you run, and to roll back to it, set `SILO_IMAGE`
-to a full-SHA tag instead, or build the image yourself, as
-[Container image selection](../bloem/overlays/wiki/deployment/docker.md#container-image-selection)
-describes. That page also notes that pulling the image may need a GitHub account with access to
-the package.
+`SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:latest`. The images are public. `latest` is the
+image Bloem's own production runs; it moves at most once a day, and
+`docker compose pull && docker compose up -d` updates to it. To choose when you update, set
+`SILO_IMAGE` to a dated tag such as `2026.11.17`; `edge` follows every commit that passes
+Bloem's tests, and a full-SHA tag names one exact build. See
+[Container image selection](../bloem/overlays/wiki/deployment/docker.md#container-image-selection).
 
 ```sh
 docker compose up -d
@@ -561,7 +525,7 @@ Silo's settings pages sit in the admin sidebar under the topic they belong to; t
 | Configure → Server | **General** | Server name and login subtitle, **Silo public URL**, **Show on the local network** (Silo's LAN advertisement), local network address, trusted proxies, database connections, Redis. |
 | Configure → Server | **Appearance** | Logos and icons, favicon, login background, accent colour, server-wide poster-badge defaults and title-art default. There are no theme, font or custom-CSS controls. |
 | Configure → Server | **Storage** | Where artwork and uploads are stored: local disk or S3 ([S3 storage setup](../bloem/overlays/s3-storage-setup.md)). |
-| Configure → Server | **Search** | Built-in PostgreSQL search or Meilisearch ([Optional Meilisearch](../bloem/overlays/wiki/deployment/docker.md#optional-meilisearch)). Values set through `SILO_SEARCH_PROVIDER` and related variables lock these fields. With Meilisearch, set **When a search has several words** to **Drop the most common words until something matches**, and keep the **Query timeout** above the slowest searches (Bloem's production uses 3,000 ms): [How search finds titles by words and by meaning](../architecture/bloem-search-and-embeddings.md). |
+| Configure → Server | **Search** | Built-in PostgreSQL search or Meilisearch ([Optional Meilisearch](../bloem/overlays/wiki/deployment/docker.md#optional-meilisearch)). Values set through `SILO_SEARCH_PROVIDER` and related variables lock these fields. With Meilisearch, set **When a search has several words** to **Drop the most common words until something matches**, and keep the **Query timeout** above your slowest searches: [How search finds titles by words and by meaning](../architecture/bloem-search-and-embeddings.md). |
 | Configure → Server | **Network Access** | Overlay-network providers such as Tailscale. |
 | Configure → Sign-in & Security | **Sign-in** | Silo passwords, public sign-ups, self-service password reset, single sign-on (with the **Redirect URI** and **Post-logout redirect URI** to register at the provider), network sign-in. |
 | Configure → Sign-in & Security | **Security** | Which local servers the server may contact, rate limiting, API key tiers. |
@@ -771,12 +735,15 @@ Bloem can also split into roles:
 |---|---|
 | `integrated` | Everything on one machine (the default). |
 | `api` | The primary, control role in a custom distributed layout. |
-| `transcode` | A worker that transcodes and prepares downloads, sharing the same database. |
+| `transcode` | A worker that transcodes and prepares downloads. It asks the main server for everything and has no database of its own. |
 | `proxy` | A node that delivers streams and source downloads. |
 
 You would do this to put transcoding on the machine with the GPU while the database lives
-somewhere quieter. A `transcode` or `proxy` node must be given its own address in `NODE_URL`,
-which matches it to its entry on the main server; without it, the node refuses to start.
+somewhere quieter. Add a transcode node under **Playback → Nodes**, which issues it a key, and
+start it with `SILO_CORE_URL` (the main server's address) and `SILO_NODE_KEY` (that key); it
+needs no database, Redis or `SECRET_KEY`. A `proxy` node must be given its own address in
+`NODE_URL`, which matches it to its entry on the main server; without it, the node refuses to
+start.
 
 **Playback → Nodes** shows each worker, its GPU, its scratch disk and its load, and holds the
 routing choices for direct play, remux and transcoding.
@@ -853,8 +820,7 @@ the model, so the same model through another provider needs no reset. See
 [recommendations](../architecture/recommendations.md) (Silo's pages).
 
 **Changing the embedding model** means embedding the whole catalog again: choose the new model,
-restart, then press **Reset embeddings**. On a catalog of 1.7 million titles that takes about a
-day with Gemini. Meaning-based search for each kind of title comes back once 85% of that kind
+restart, then press **Reset embeddings**. On a large catalog this can take many hours. Meaning-based search for each kind of title comes back once 85% of that kind
 has new vectors; until then search matches words only. With `gemini-embedding-2`, Bloem puts a
 short task label in front of each title and each search, as Google recommends; other models get
 the plain text. [How search finds titles by words and by
@@ -881,9 +847,6 @@ Bloem's addition. For the rules behind it, read
   public address.
 - **A domain decides what visitors see, never what an account can reach.** An account's
   organization comes from the account, whatever address it arrives on.
-
-In production on 2026-11-01, the default organization is the only one, and the server's public
-address is registered as its primary domain.
 
 **Adding a domain, step by step:**
 
@@ -963,11 +926,10 @@ Your media is not part of this backup; back it up however you already do.
 1. Record the image you run (`docker compose images silo`) and take a database backup.
 2. Read the [integration changelog](../bloem/CHANGELOG.md). If it mentions a migration, test the
    update on a copy first.
-3. Set `SILO_IMAGE` in `.env` to the new full-SHA tag, and update only the application service:
+3. Pull the new image and update only the application service. With `latest`, that is the
+   newest release; to choose the version, set `SILO_IMAGE` in `.env` to a dated tag first.
 
    ```sh
-   cd bloem-server
-   git pull --ff-only
    docker compose pull silo
    docker compose up -d --no-deps silo
    docker compose logs -f silo
@@ -981,10 +943,9 @@ Keep the same Compose project and override files for the update. For an image yo
 load it and select its exact tag before `up`; do not try to pull a tag that was never published.
 
 Some migrations need every application, worker and scanner process stopped first, on every node,
-so do not do a rolling upgrade across them. The native storage onboarding migration is one. The
-[October 7 record](../operations/2026-10-07-native-storage-deployment.md) documents one such
-rollout, and [Backups and updates](../bloem/overlays/wiki/deployment/docker.md#backups-and-updates)
-lists the preparation for each release.
+so do not do a rolling upgrade across them. The native storage onboarding migration is one.
+[Backups and updates](../bloem/overlays/wiki/deployment/docker.md#backups-and-updates) lists the
+preparation for each release.
 
 ### 3.3 When something is wrong
 
@@ -994,7 +955,7 @@ lists the preparation for each release.
 | An item has the wrong artwork or title | Open it, choose **Match Item**, and pick the right match. |
 | Playback stutters or buffers | **Playback → History**: is it converting? If so, does the machine have a GPU, and is hardware acceleration set to *Auto*? |
 | Hardware transcoding does not start | Check that the GPU override file is in use, and that the host driver (and, for NVIDIA, the container toolkit) is installed: [Hardware acceleration](../bloem/overlays/wiki/deployment/docker.md#hardware-acceleration). |
-| A transcode or proxy node will not start | Set `NODE_URL` to the node's own address ([2.14](#214-nodes-and-distributed-deployments)). |
+| A transcode or proxy node will not start | A transcode node needs `SILO_CORE_URL` and `SILO_NODE_KEY`; a proxy node needs `NODE_URL`, its own address ([2.14](#214-nodes-and-distributed-deployments)). |
 | A Jellyfin or Audiobookshelf app cannot connect | Check that the app uses the compatibility port (`8096` or `13378`), not 8090; that the switch under **Integrations → Compatibility** is on and the server was restarted; and that the username is `account#profile`. |
 | Nobody can log in | Check that **Silo public URL** under **Server → General** matches what people type, including `http` or `https`. |
 | Someone is told "This account signs in at …" | They are on another organization's address. Send them to the address the message names ([2.18](#218-organization-domains-and-branding)). |
@@ -1002,7 +963,7 @@ lists the preparation for each release.
 | A viewer is suddenly sent back to the sign-in page | Their organization ended a sign-in from before it changed their access or signed them out. They sign in again. |
 | The web app is slow to search | Switch on Meilisearch under **Server → Search**: [Optional Meilisearch](../bloem/overlays/wiki/deployment/docker.md#optional-meilisearch). |
 | The log warns "postgres restart required" on every start | The server could not read `pg_file_settings`, or PostgreSQL's configuration files have errors, so it lists every restart-only setting it tuned; the warning then does not prove a restart is needed. Otherwise it names only settings PostgreSQL has yet to apply, so restart PostgreSQL and Bloem once. See [the restart warning](../bloem/overlays/wiki/deployment/docker.md#the-restart-required-warning). With a PostgreSQL you manage yourself, set `POSTGRES_TUNE=off`. |
-| The pulled image is old or missing features | Before October 27, 2026, `latest` was a September 24 build that Bloem's CI did not move. Pull again, or pin `SILO_IMAGE` to a full-SHA tag ([image selection](../bloem/overlays/wiki/deployment/docker.md#container-image-selection)). |
+| The update did not bring a new version | `latest` moves at most once a day, and Compose reuses the image it already has until you run `docker compose pull`. Or pin `SILO_IMAGE` to a dated tag ([image selection](../bloem/overlays/wiki/deployment/docker.md#container-image-selection)). |
 
 When you ask for help, give the image tag you run, the steps that fail, and a filtered extract of
 **Monitor → Logs → Server Log** around the failure.
@@ -1011,7 +972,7 @@ When you ask for help, give the image tag you run, the steps that fail, and a fi
 
 ## Example: giving a reseller its own address
 
-This example is made up. On 2026-11-01, production had no reseller organizations.
+This example is made up.
 
 Riverside Club, a football club, resells Bloem to its members as a reseller organization. It wants
 its members to see "Riverside TV" at `watch.riverside.example`, not the server's own name.
@@ -1019,7 +980,6 @@ its members to see "Riverside TV" at `watch.riverside.example`, not the server's
 1. The club's DNS points `watch.riverside.example` at the proxy, which gets a certificate for it
    and routes it to Bloem.
 2. The server signs people in through Authentik, so the platform administrator registers
-   `https://watch.riverside.example/api/v1/auth/oauth/<installation>/callback`,
    `https://watch.riverside.example/api/v2/auth/oauth/<installation>/callback` and
    `https://watch.riverside.example/login` at the provider.
 3. In **Platform → Organizations → Riverside Club**, the administrator adds the domain. It is the
@@ -1028,8 +988,7 @@ its members to see "Riverside TV" at `watch.riverside.example`, not the server's
    colour and the club's wordmark.
 
 Now the coach's invitations link to `watch.riverside.example`, and the sign-in page there says
-Riverside TV. The server's public address is registered to the default organization, as in
-production, so when Sam, a club member, signs in there, Sam is told "This account signs in at
+Riverside TV. The server's public address stays registered to the default organization, so when Sam, a club member, signs in there, Sam is told "This account signs in at
 https://watch.riverside.example." A viewer from the default organization who signs in on the
 club's address is told to sign in at the server's public address. Nobody can watch anything more,
 or less, because of the address they used.
@@ -1097,33 +1056,21 @@ or less, because of the address they used.
   (see [native storage administration](../bloem-api-reference.md#native-storage-administration)
   and [preview guest sessions](../bloem-api-reference.md#preview-guest-sessions)).
 
-### Review basis
-
-- This rewrite was checked on 2026-11-01 against Bloem `main` at `b6039036d`, which contains Silo
-  through `63ef34b23`: the web routes, navigation and page labels in `web/src/`, the Compose files
-  and the server code named below. The previous review was on 2026-10-27 at `e852f92bf` (Silo
-  through `3e2d306b2`).
-- It is a source review. It is not a record of a browser, device or playback test, and it does
-  not describe any particular deployment. The guide was first written in `15f7ada52`
-  (2026-09-05).
-
 ### Where Bloem comes from
 
-- Removed by Bloem: the music catalog (`f9e1447f3`, 2026-10-26); Pastime managed tracking
-  (2026-10-13); Bloem's companion enrollment for compatibility apps (`b8ddec9bf`, 2026-10-13).
-  Silo's own Jellyfin and Audiobookshelf servers came back on 2026-10-18 in `2393c41ee`.
-- Removed by Silo: the administrator's colour, font and custom-CSS controls (`3173b22a1`, #2413,
-  2026-10-13); Cinema Dark became the only theme (`39a554717`, #1534).
-- November 1 merge: `f14332386` merges Silo `main` through `63ef34b23` (57 Silo commits, no
-  migrations). Silo now refuses `MODE=transcode` or `MODE=proxy` without `NODE_URL`
-  (`internal/config/bootstrap.go`).
-- October 31 merges: Silo through `07c05cad6`, then `288f58200`, then `fbe0e89ca` and
-  `32a2f63e1`. Password changes can sign out other devices (Silo #2925); the access-token default
-  is `8h` (Silo #3250, `auth.access_token_expiry`); hourly request quota per sign-in session and
-  the dashboard API clients card (Silo #3075); egress split by proxy node (Silo #3256); home rows
-  load 20 cards (Silo #3276); audiobook runtimes from files (Silo migration
-  `20261028150609_audiobook_runtime_from_files`); signed stream and download tokens masked in the
-  server log (Silo #3137).
+- Removed by Bloem in October 2026: the music catalog; Pastime managed tracking; Bloem's
+  companion enrollment for compatibility apps. Silo's own Jellyfin and Audiobookshelf servers
+  came back in their place.
+- Removed by Silo: the administrator's colour, font and custom-CSS controls (Silo #2413);
+  Cinema Dark became the only theme (Silo #1534).
+- Silo refuses `MODE=proxy` without `NODE_URL` (`internal/config/bootstrap.go`). A transcode node
+  starts from `SILO_CORE_URL` and `SILO_NODE_KEY` alone.
+- Silo changes that reached Bloem in autumn 2026: password changes can sign out other devices
+  (Silo #2925); the access-token default is `8h` (Silo #3250, `auth.access_token_expiry`); hourly
+  request quota per sign-in session and the dashboard API clients card (Silo #3075); egress split
+  by proxy node (Silo #3256); home rows load 20 cards (Silo #3276); audiobook runtimes from files
+  (migration `20261028150609_audiobook_runtime_from_files`); signed stream and download tokens
+  masked in the server log (Silo #3137).
 - Old sign-ins: an account-login session created before its profile's organization revoked the
   account is ended, and the viewer-access gate answers `401` with reason `session_invalid`
   (`session_expired` on `/api/v2`), so the client signs in again instead of getting `404` "Profile
@@ -1138,18 +1085,20 @@ or less, because of the address they used.
 
 ### Install, disk and Docker
 
-- Docker Compose 2.24 or newer. `.env.bloem.example`, not Silo's `.env.example`, whose
-  `SILO_IMAGE` selects Silo's image. `chmod 600 .env`.
+- Docker Compose 2.24 or newer. The quick start downloads `docker-compose.advanced.yml` and
+  `.env.bloem.example` (as `.env`), not Silo's `.env.example`, whose `SILO_IMAGE` selects Silo's
+  image. `chmod 600 .env`.
 - Secrets: `POSTGRES_PASSWORD` (`openssl rand -hex 24`) and `SECRET_KEY`
   (`openssl rand -base64 48`). The server refuses to start without `SECRET_KEY`.
 - `MEDIA_ROOT` is an absolute host path, mounted read-only at `/mnt/media`.
 - `COMPOSE_FILE=docker-compose.advanced.yml` (Silo's multi-container file, which takes
   `SILO_IMAGE`); `docker-compose.yml` is Silo's all-in-one stack and ignores `SILO_IMAGE`.
 - `SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:latest`. `.github/workflows/bloem-image.yml`
-  publishes each tested `main` commit as `ghcr.io/bloem-studios/bloem-server:<full SHA>` and,
-  since October 27, 2026, moves `latest` to it unless `main` has moved on.
+  publishes each tested `main` commit as `ghcr.io/bloem-studios/bloem-server:<full SHA>` and moves
+  `edge` to it unless `main` has moved on; `.github/workflows/bloem-release.yml` points `latest`
+  and a dated tag at the image production runs after a verified deploy.
 - The container listens on `8080`; Compose publishes `${PORT:-8090}:8080`, `${JF_PORT:-8096}` and
-  `${ABS_PORT:-13378}`. Silo made `ABS_PORT` configurable from the environment on 2026-10-26.
+  `${ABS_PORT:-13378}`. 
 - `SILO_DATA_ROOT` defaults to `/opt/silo`; the database is in `/opt/silo/postgres`.
 - GPU: an override file of the operator's own, for example `compose.gpu.yml`, with
   `COMPOSE_FILE=docker-compose.advanced.yml:compose.gpu.yml`. VA-API and Quick Sync need `/dev/dri`;
@@ -1191,10 +1140,10 @@ or less, because of the address they used.
   for the tenant wiring and persistence boundary. Sign-in is `account#profile`, with `#PIN` after
   the password (`internal/jellycompat/login.go`, `internal/audiobooks/abs/login.go`).
 - Playback: a profile can report progress for and stop only its own playback; another profile's
-  request is refused with `403` (Silo `e852571bb`). The automatic audio choice is Silo
-  `e7605afe2`, merged 2026-10-27 (`internal/playback/audio_select_v3.go`).
-- AI Services was reorganised by Silo on 2026-10-26 (`c27acf246`, #3106), merged by Bloem on
-  2026-10-27; embeddings moved to **Integrations → Recommendations** (Silo `39913c51d`, #3107).
+  request is refused with `403`. The automatic audio choice is in
+  `internal/playback/audio_select_v3.go`.
+- Silo reorganised AI Services in October 2026 (Silo #3106); embeddings moved to **Integrations →
+  Recommendations** (Silo #3107).
 
 ### Organization domains and branding
 
@@ -1250,15 +1199,14 @@ or less, because of the address they used.
 
 ### Live TV, campaigns and the rest of Part 2
 
-- Live TV adapts Prairie Server (`ef2d38171`, 2026-08-13; see
-  [FORK.md](../../FORK.md#prairie-server-live-tv)); Xtream consumption is Bloem's (2026-09-19).
+- Live TV adapts Prairie Server (see [FORK.md](../../FORK.md#prairie-server-live-tv)); Xtream
+  consumption is Bloem's.
   Xtream needs a build that advertises support and the existing `SECRET_KEY`; the connection budget
   defaults to 1, at most 64, capped by a positive provider limit, shared by watching and recording
   across replicas, and not counting the account's use outside Bloem. At most three enabled guide
   sources across types, one Xtream guide per provider. Removal is refused while physical streams
   are active and deletes credentials, guide configuration, channels and related DVR entries, not
-  recorded files. Loopback destinations are rejected by the normal URL and connection checks. See
-  the [September 19 deployment record](../operations/2026-09-19-xtream-deployment.md).
+  recorded files. Loopback destinations are rejected by the normal URL and connection checks.
 - Campaign artwork: PNG, JPEG, WebP or GIF up to 8 MiB (`internal/ambience/assets.go`); refused
   with no artwork store configured. The campaign and seasonal registries have no revision locking.
 - Real-time monitoring uses inotify on Linux local folders; network shares are not watched.

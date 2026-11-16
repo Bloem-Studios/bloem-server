@@ -32,7 +32,7 @@ def install():
              "Part 1 in six steps. Each one has its own section below.")
     o, a = TIERS["org"], TIERS["account"]
     steps = [
-        (o, "Get the files", "Clone the repository and copy Bloem's example settings, .env.bloem.example, to .env.", "1.3"),
+        (o, "Get the files", "Download the Compose file and Bloem's settings template, .env.bloem.example, as .env.", "1.3"),
         (o, "Add two secrets", "A database password, and SECRET_KEY, which encrypts every credential the server stores.", "1.3"),
         (o, "Point at your media", "Set MEDIA_ROOT to your media folder. Bloem reads it and never writes to it.", "1.3"),
         (o, "Start it", "docker compose up -d starts Bloem, PostgreSQL and Redis. The first start takes a few minutes.", "1.3"),
@@ -159,7 +159,6 @@ def new_domain():
     s.text(64, 324, "At the provider, for each domain", size=17, weight="700")
     s.text(360, 324, "Made-up domain: watch.riverside.example", size=14, fill=MUTED)
     rows = [
-        ("Redirect URI", "https://watch.riverside.example/api/v1/auth/oauth/<installation>/callback", ""),
         ("Redirect URI", "https://watch.riverside.example/api/v2/auth/oauth/<installation>/callback", ""),
         ("Post-logout", "https://watch.riverside.example/login", "when signing out at the provider is on"),
     ]

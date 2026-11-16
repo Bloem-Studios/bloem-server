@@ -1,13 +1,8 @@
 # Bloem artwork storage
 
-> **Provenance and status.** Bloem overlay page, rewritten on 2026-11-01 and checked
-> against `main` at `b6039036d` (Silo through `63ef34b23`). It overlays Silo's former
-> operator page `docs/wiki/admin/artwork-storage.md`, which Silo deleted in
-> `42b39765b` (#1635, 2026-09-28) with the rest of its in-repository wiki. Silo's
-> current reference for catalog, branding and avatar storage is
-> [blob storage](../../../../architecture/blob-storage.md), which applies to Bloem as
-> written. This page adds only Bloem's campaign and seasonal artwork, a Bloem addition;
-> the technical rules are in the [For developers](#for-developers) section.
+Silo's current reference for catalog, branding and avatar storage is
+[blob storage](../../../../architecture/blob-storage.md), which applies to Bloem as
+written. This page adds only Bloem's campaign and seasonal artwork.
 
 An *overlay* is a Bloem-owned page that records Bloem's additions to, or replacements
 of, a Silo-owned document; Silo's files stay exactly as Silo wrote them (see the
@@ -61,12 +56,8 @@ changing storage configuration.
 - Store selection: the catalog Assets store when configured, else the public S3
   client; with neither, `storage_available: false` and multipart upload `503`, while an
   HTTPS artwork URL can still be authored. Private avatar storage is never used.
-- Campaign cards and seasonal packs are Bloem features (`internal/ambience`, since
-  `54ace4675`, 2026-09-01). Bloem's note moved out of the Silo page into this overlay in
-  `47ea7c889` (2026-09-23).
-- The review on 2026-10-27 (against Silo `3e2d306b2` and Bloem `main` at `e852f92bf`)
-  corrected the earlier claim that these uploads require a public S3 bucket. They have
-  used the catalog Assets store since `f293cce0d` (2026-09-23).
+- Campaign cards and seasonal packs are Bloem features (`internal/ambience`). They use the
+  catalog Assets store; a public S3 bucket is not required.
 
 Related pages: [Bloem documentation](../../../README.md),
 [S3 storage notes](../../s3-storage-setup.md) and Silo's

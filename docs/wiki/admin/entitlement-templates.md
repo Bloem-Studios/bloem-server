@@ -9,29 +9,25 @@ tags:
   - organizations
 audience:
   - operator
-last_reviewed: 2026-11-01
+last_reviewed: 2026-11-16
 related:
   - /admin/platform/entitlement-templates
   - ../admin-guide.md
-  - ../../operations/entitlement-templates.md
   - ../../architecture/bloem-browse-only-content-policy.md
 ---
 
 # Entitlement templates
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Entitlement templates (plans) are a Bloem addition; Silo's
-> own access control is the per-account policy and access groups described in the
-> [admin guide](../admin-guide.md#25-access-groups). This is the short guide for a
-> platform administrator. The technical rules are in the
-> [For developers](#for-developers) section.
+Entitlement templates (plans) are a Bloem addition; Silo's own access control is the
+per-account policy and access groups described in the
+[admin guide](../admin-guide.md#25-access-groups). This is the short guide for a platform
+administrator. The technical rules are in the [For developers](#for-developers) section.
 
 An **entitlement template** is a plan: access policy you define once and apply,
 as one exact revision, to an organization or to a direct account. This page walks
 through what a plan controls, the plans Bloem starts with, and the safe way to
-change one. The full procedure is
-[managing entitlement templates](../../operations/entitlement-templates.md), and
-the plain explanation is [how plans work](../../architecture/bloem-plans.md).
+change one. The plain explanation is
+[how plans work](../../architecture/bloem-plans.md).
 
 ## What a plan controls
 
@@ -85,7 +81,7 @@ made itself are kept when you apply a plan to the organization.
 To move a reviewed set of existing accounts between exact revisions, use policy
 cohorts and bulk jobs: **Change Many Accounts** for direct accounts, **Policy
 Cohorts** in an organization context. See
-[bulk policy cohorts](../../operations/bulk-policy-cohorts.md).
+[how plans work](../../architecture/bloem-plans.md).
 
 ## Who can change what
 
@@ -109,8 +105,8 @@ Cohorts** in an organization context. See
 
 - **API:** [plans and preview](../../bloem/api/plans.md) and the older
   [native API reference](../../bloem-api-reference.md#entitlement-template-administration).
-- Operations, troubleshooting and API automation:
-  [managing entitlement templates](../../operations/entitlement-templates.md).
+- Plans, revisions and cohorts in plain language:
+  [how plans work](../../architecture/bloem-plans.md).
 
 Source references:
 
@@ -121,9 +117,3 @@ Source references:
   `migrations/sql/20261014120000_bloem_preview_template.sql`
 - `web/src/pages/admin-platform/EntitlementTemplatesPage.tsx`,
   `web/src/pages/admin-platform/EntitlementTemplateEditor.tsx`
-
-History: Bloem added templates in `3ec1650d7` (2026-08-21, migration
-`20260821170000_entitlement_templates.sql`) so a platform administrator could give
-many organizations and accounts the same policy without editing each one, and
-this page in `dbe8323d7` the same day. The protected **Preview** template
-followed in `25062b4df` (2026-10-14).

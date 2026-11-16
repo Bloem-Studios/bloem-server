@@ -1,14 +1,6 @@
 # Installing and running Bloem with Docker
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which contains Silo through `63ef34b23`; the Meilisearch steps were
-> updated on 2026-11-10 against `7acd2c7e0`, the API paths checked again on
-> 2026-11-11, after Silo retired its v1 API, and the server roles on 2026-11-16 against
-> Silo through `699f84ecf`. This is Bloem's own
-> installation guide. It began as Silo's Docker guide, which Silo has since removed;
-> Bloem runs Silo's code on Silo's multi-container Compose file, and serving an
-> organization on its own domain is a Bloem addition. The technical rules are in the
-> [For developers](#for-developers) section. Index: [Bloem documentation](../../../README.md).
+Index: [Bloem documentation](../../../README.md).
 
 This page walks through installing Bloem with Docker Compose: what runs, how to
 start it, which image to use, where the data lives, how to put it safely on the
@@ -40,48 +32,48 @@ servers for streaming and converting video.
 
 ## Requirements
 
-- Docker Engine or Docker Desktop
-- Docker Compose 2.24 or newer
-- Git and OpenSSL for the commands below
+- Docker Engine or Docker Desktop, with Docker Compose 2.24 or newer
+- OpenSSL, for the commands below
 - The full path, on the host, of the folder that holds your media
 
 For hardware acceleration, the host also needs the right graphics driver and
-container runtime support.
+container runtime support. Bloem runs from its public image, so there is nothing to
+build and no source to download.
 
 ## Install
 
-1. Get the code and make your settings file, `.env`, from Bloem's example. The last
-   command adds a database password and the **secret key**, both freshly generated:
+1. In an empty folder, download the Compose file and the settings template as `.env`,
+   and add a database password and the **secret key**, both freshly generated:
 
    ```sh
-   git clone https://github.com/bloem-studios/bloem-server.git
-   cd bloem-server
-   cp .env.bloem.example .env
+   mkdir bloem && cd bloem
+   curl -fsSL -o docker-compose.advanced.yml https://raw.githubusercontent.com/Bloem-Studios/bloem-server/main/docker-compose.advanced.yml
+   curl -fsSL -o .env https://raw.githubusercontent.com/Bloem-Studios/bloem-server/main/.env.bloem.example
    chmod 600 .env
    printf '\nPOSTGRES_PASSWORD=%s\nSECRET_KEY=%s\n' \
      "$(openssl rand -hex 24)" "$(openssl rand -base64 48)" >> .env
    ```
 
-2. Tell Bloem where your media is, in `.env`:
+2. Open `.env` and point `MEDIA_ROOT` at the absolute path of your media:
 
    ```dotenv
    MEDIA_ROOT=/path/to/your/media
    ```
 
-3. Check two lines the example already sets. Keep
-   `COMPOSE_FILE=docker-compose.advanced.yml`: Silo's default `docker-compose.yml`
-   starts Silo, not Bloem. And check `SILO_IMAGE`: the default `latest` is what
-   Bloem's own production runs (see
-   [Container image selection](#container-image-selection)).
+3. Check two lines the template already sets. Keep
+   `COMPOSE_FILE=docker-compose.advanced.yml`: Silo's own `docker-compose.yml` starts
+   Silo, not Bloem. And check `SILO_IMAGE`: the default `latest` is the image Bloem's
+   own production runs (see [Container image selection](#container-image-selection)).
 4. Start everything:
 
    ```sh
    docker compose up -d
    ```
 
-5. Open <http://localhost:8090> and finish the setup in the browser. Compose has
-   already connected PostgreSQL and Redis. Everything else (libraries, users,
-   providers, storage, search, playback) is set in the admin console.
+5. Open <http://localhost:8090> and finish the setup in the browser: it creates the
+   administrator account and the first library. Compose has already connected
+   PostgreSQL and Redis. Everything else (libraries, users, providers, storage,
+   search, playback) is set in the admin console.
 
 > [!CAUTION]
 > `SECRET_KEY` is the master key for the passwords and keys Bloem stores. Keep it
@@ -92,13 +84,13 @@ container runtime support.
 
 The **image** is the packaged Bloem program that Docker runs. `SILO_IMAGE` in `.env`
 chooses it. Bloem keeps Silo's name for the variable so Silo's Compose files still
-work. Bloem's example sets it to `ghcr.io/bloem-studios/bloem-server:latest`.
+work. The template sets it to `ghcr.io/bloem-studios/bloem-server:latest`.
 
 The images are public: anyone can pull them without signing in to GitHub.
 
-- **`latest`** is the image Bloem's own production runs. It moves at most once a
-  day, after a deploy of that commit passed its checks on Bloem's servers
-  (since 2026-11-16; the first move is the next daily deploy).
+- **`latest`** is the image Bloem's own production runs. It moves at most once a day,
+  after a deploy of that commit has passed its checks. Update with
+  `docker compose pull && docker compose up -d`.
 - **A dated tag** (`ghcr.io/bloem-studios/bloem-server:2026.11.17`, or
   `2026.11.17.2` for a second release that day) names one of those releases and
   never moves. Pin one to choose when you update.
@@ -112,8 +104,10 @@ The images are public: anyone can pull them without signing in to GitHub.
   SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:<full commit sha>
   ```
 
-- **Your own build.** Run `docker build -t bloem-server:local .` in the checkout (the
-  Dockerfile builds the web app itself) and set `SILO_IMAGE=bloem-server:local`.
+- **Your own build.** Clone the repository
+  (`git clone https://github.com/Bloem-Studios/bloem-server.git`), run
+  `docker build -t bloem-server:local .` in it (the Dockerfile builds the web app
+  itself) and set `SILO_IMAGE=bloem-server:local`.
 
 > [!WARNING]
 > **Use `docker-compose.advanced.yml` for Bloem.** `docker-compose.yml` is Silo's
@@ -122,9 +116,9 @@ The images are public: anyone can pull them without signing in to GitHub.
 > PostgreSQL and Redis in separate containers and reads `SILO_IMAGE`. Its own default
 > is Silo's image too, so keep `SILO_IMAGE` set.
 
-Bloem's tags and its one prerelease are in the
-[release-versioning overlay](../../release-versioning.md). How the image is built and
-tagged is under [Image publishing](#image-publishing).
+How the tags are made is in the
+[release-versioning overlay](../../release-versioning.md) and under
+[Image publishing](#image-publishing).
 
 ## Storage and state
 
@@ -226,9 +220,6 @@ without a domain uses the server's public address and the server's own look.
 A domain only decides what people see. It never decides who may sign in or what they
 may watch: an account belongs to one organization wherever it signs in.
 
-In production on 2026-11-01 there is one organization, the default one, and the
-server's public address is registered as its primary domain.
-
 To add a domain:
 
 1. **DNS.** Point the domain at your reverse proxy.
@@ -243,7 +234,7 @@ To add a domain:
    one. The storefront (Bloem HQ) can register domains for its organizations too.
    Set the name, logo and colours in the **Branding** panel next to it.
 5. **Provider callbacks.** Only if people sign in through the OAuth provider
-   (Authentik): register the domain's two callback addresses at the provider, and
+   (Authentik): register the domain's callback address at the provider, and
    its `/login` page as a post-logout redirect address when provider sign-out is on.
    The exact addresses are under
    [Organization domains](#organization-domains). Do this before members use provider
@@ -275,7 +266,6 @@ see its own name and colours.
    **Domains** panel, where it becomes the primary, and uploads the club's logo in
    **Branding**.
 4. The club's members sign in through Authentik, so the administrator registers
-   `https://watch.riverside.example/api/v1/auth/oauth/<installation>/callback`,
    `https://watch.riverside.example/api/v2/auth/oauth/<installation>/callback` and
    `https://watch.riverside.example/login` at the provider.
 
@@ -288,9 +278,9 @@ https://watch.riverside.example."
 
 The default stack uses only the processor, so it starts on hosts without a graphics
 card. Silo's Compose files carry the graphics settings as commented lines in the
-`silo` service. Uncommenting them edits a Silo file that the next `git pull` updates,
-so put them in a small override file of your own instead, for example
-`compose.gpu.yml`, and add it to `COMPOSE_FILE`:
+`silo` service. Rather than editing that file, put them in a small override file of
+your own, for example `compose.gpu.yml`, so a newer copy of the Compose file does not
+overwrite them, and add it to `COMPOSE_FILE`:
 
 ```dotenv
 COMPOSE_FILE=docker-compose.advanced.yml:compose.gpu.yml
@@ -455,8 +445,9 @@ Every setting the tuner reads is listed under [Inputs](#inputs).
 Before an update:
 
 1. Note the image that is running now (`docker compose images silo`), in case you
-   need to go back. `latest` will not identify it later, and an older image does not
-   necessarily work with database changes made by the new one.
+   need to go back, and write down its digest or pin a dated tag: `latest` will not
+   identify it later. An older image does not necessarily work with database changes
+   made by the new one.
 2. Dump PostgreSQL and check that the dump can be read:
 
    ```sh
@@ -524,9 +515,9 @@ on the same data; only one runs at a time. See
 
 1. Back up the database, or snapshot the volume or container that holds it. This is
    the way back from the takeover itself.
-2. Pin Silo's image by digest to the Silo release Bloem last merged (at the time of
-   writing, `63ef34b23`):
-   `SILO_IMAGE=ghcr.io/silo-server/silo-server@sha256:...`. Do not leave Silo on
+2. Pin Silo's image by digest to a Silo release that Bloem has already merged
+   ([how Bloem follows Silo](../../../../architecture/bloem-following-silo.md) names the
+   current one): `SILO_IMAGE=ghcr.io/silo-server/silo-server@sha256:...`. Do not leave Silo on
    `latest`. Which image to pin, and why, is under
    [Silo switching details](#silo-switching-details).
 3. Give Bloem Silo's `DATABASE_URL` and the same `SECRET_KEY` (encrypted settings are
@@ -604,66 +595,47 @@ have all been checked.
   distributed download delivery in the
   [Downloads API](../../../../downloads-api.md#411-distributed-proxy-delivery).
 
-### Where this guide came from
+### Where this guide fits
 
-This is Bloem's maintained Docker guide, a complete Bloem edition rather than a
-section-by-section overlay. It began as Silo's own operator guide,
-`docs/wiki/deployment/docker.md`. Bloem edited that guide in place from August 2026
-(SQLite single-node fencing, Bloem image names, Bloem deployment records) and moved its
-edition here in `47ea7c889` (2026-09-23), so the Silo file could return to upstream
-verbatim. Silo then deleted its guide in `42b39765b` (#1635, 2026-09-28) when it moved
-operator guides out of the server repository, so there is no current Silo page to read
-alongside this one. Bloem runs on Silo's multi-container Compose file,
-[`docker-compose.advanced.yml`](../../../../../docker-compose.advanced.yml), with Silo's
-[`.env.example`](../../../../../.env.example) and Silo's code; Bloem's own template is
-[`.env.bloem.example`](../../../../../.env.bloem.example). Silo's default
+This is Bloem's own Docker guide, a complete Bloem edition rather than a section-by-section
+overlay. Silo has no current Docker guide in its repository to read alongside it. Bloem runs
+Silo's code on Silo's multi-container Compose file,
+[`docker-compose.advanced.yml`](../../../../../docker-compose.advanced.yml), with Bloem's own
+settings template, [`.env.bloem.example`](../../../../../.env.bloem.example). Silo's default
 [`docker-compose.yml`](../../../../../docker-compose.yml) does not start Bloem.
-
-It was reviewed on 2026-10-27 against `e852f92bf` (Silo through `3e2d306b2`); the
-Compose file, image selection and hardware acceleration sections again on 2026-10-31
-against `81c26179c` (Silo through `288f58200`), when Bloem's image was started with
-`docker-compose.advanced.yml`; and the whole page on 2026-11-01 against `b6039036d`
-(Silo through `63ef34b23`).
 
 ### Image publishing
 
-- Since `04a69c0fe` (2026-10-11) Bloem images are published only by the
+- Bloem images are published only by the
   [Bloem Image workflow](../../../../../.github/workflows/bloem-image.yml). It runs
   after Bloem CI passes on a push to `main`, builds that exact commit and pushes it
   under the full 40-character commit SHA: `ghcr.io/bloem-studios/bloem-server:<full sha>`.
   It never creates a `build-N` or short-SHA tag. See [CI additions](../../../ci.md).
-- Since 2026-11-16 the workflow points `edge` at that image if the commit is still
-  `main`'s head, so `edge` follows `main`, and a late run for an older commit cannot
-  move `edge` backwards. From `6d0adcfe9` (2026-10-27) until then it moved `latest`
-  that way; before that nothing moved `latest`, which was `build-152`, a September 24,
-  2026 image left from the earlier publishing path.
-- Since 2026-11-16 `latest` is what Bloem's production runs. After a deploy passes
-  its checks, the deploy starts the
-  [Bloem Release workflow](../../../../../.github/workflows/bloem-release.yml) with
-  that commit. It waits for the commit's image, then points `latest` and a dated tag
-  (`YYYY.MM.DD`, then `.2`, `.3` for later releases the same day) at it. A dated tag
+- The same workflow points `edge` at that image if the commit is still `main`'s head,
+  so `edge` follows `main`, and a late run for an older commit cannot move `edge`
+  backwards.
+- `latest` is what Bloem's production runs. After a deploy passes its checks, the
+  deploy starts the [Bloem Release workflow](../../../../../.github/workflows/bloem-release.yml)
+  with that commit. It waits for the commit's image, then points `latest` and a dated
+  tag (`YYYY.MM.DD`, then `.2`, `.3` for later releases the same day) at it. A dated tag
   never moves.
 - Silo's `Docker Image` workflow, which produces the `build-N`, `latest` and short-SHA
   tags that Silo's [release versioning](../../../../release-versioning.md) describes,
   follows Silo's `CI` workflow, and that runs only in Silo's own repository. In Bloem
   both are skipped.
-- The container package was private until 2026-11-16, so pulling it needed a GitHub
-  account with access to it. It is public since then.
 
 ### Compose files
 
-- Since Bloem's October 29 merge (`d562d7628`), `docker-compose.yml` is Silo's file
-  again. It ignores `SILO_IMAGE`, reads `SILO_OMNIBUS_IMAGE`, and starts
-  `ghcr.io/silo-server/silo-server:latest`: Silo's all-in-one image with PostgreSQL
-  and Redis inside, which runs Silo as `PUID`:`PGID` rather than root (Silo #3319).
-  The image's own default is 911; Silo's Compose files pass `${PUID:-1000}` and
+- `docker-compose.yml` is Silo's file. It ignores `SILO_IMAGE`, reads `SILO_OMNIBUS_IMAGE`,
+  and starts `ghcr.io/silo-server/silo-server:latest`: Silo's all-in-one image with
+  PostgreSQL and Redis inside, which runs Silo as `PUID`:`PGID` rather than root. The
+  image's own default is 911; Silo's Compose files pass `${PUID:-1000}` and
   `${PGID:-1000}`.
-- `docker-compose.advanced.yml` (named `docker-compose.split.yml` before Silo #3319)
-  runs the application, PostgreSQL (`pgvector/pgvector:pg18`) and Redis
-  (`redis:alpine`) in separate containers and takes `SILO_IMAGE`, defaulting to Silo's
-  image. It passes `PUID` and `PGID` too; Bloem's image, built from the repository's
-  `Dockerfile` (the same file as Silo's), has no `USER` and its entrypoint is the
-  `silo` binary, so it ignores them and runs as root.
+- `docker-compose.advanced.yml` runs the application, PostgreSQL (`pgvector/pgvector:pg18`)
+  and Redis (`redis:alpine`) in separate containers and takes `SILO_IMAGE`, defaulting to
+  Silo's image. It passes `PUID` and `PGID` too; Bloem's image, built from the repository's
+  `Dockerfile` (the same file as Silo's), has no `USER` and its entrypoint is the `silo`
+  binary, so it ignores them and runs as root.
 - The `silo` service sets `stop_grace_period: 2m` so a stopping server can fail
   readiness, keep serving for `SILO_SHUTDOWN_DELAY` (default 5s) and finish in-flight
   requests. A single server with no load balancer in front can set
@@ -681,9 +653,9 @@ against `81c26179c` (Silo through `288f58200`), when Bloem's image was started w
   refuses to start without `MEILI_MASTER_KEY`. `MEILI_UPGRADE_DB` defaults to
   `false`. `MEILISEARCH_HOST` (default `127.0.0.1`) and `MEILISEARCH_PORT` (default
   `7700`) choose where it is published.
-- Silo removed its `docker-compose.vaapi.yml` and `docker-compose.nvidia.yml`
-  overlays (Silo #3279, merged in `8065e5746`); its Compose files now carry the same
-  settings as commented lines in the `silo` service.
+- Silo's former `docker-compose.vaapi.yml` and `docker-compose.nvidia.yml` overlays are
+  gone; the Compose file carries the same settings as commented lines in the `silo`
+  service.
 - `.env.bloem.example` sets `COMPOSE_FILE=docker-compose.advanced.yml` and
   `SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:latest`.
 
@@ -784,9 +756,6 @@ capability `organization_domains_v1`.
   server address apps are told (`/api/v2/system/identity`) stay on the public URL, and
   a device-code sign-in is not checked against the domain. The Jellyfin address and the
   email sender are server-wide.
-- **Production.** On 2026-11-01 the server's public address was registered to the
-  default organization as its primary domain (source `platform`); see the
-  [November 1 deployment record](../../../../operations/2026-11-01-organization-domains-deployment.md).
 
 ### Node metrics
 
@@ -909,11 +878,8 @@ in the [Downloads API](../../../../downloads-api.md#411-distributed-proxy-delive
 The tuner is Silo's and Bloem runs it unchanged: the recommendations and `ALTER SYSTEM`
 calls are in Silo's
 [`internal/database/postgres_tune.go`](../../../../../internal/database/postgres_tune.go)
-(added upstream in `dc0392dee`, 2026-06-03), and the start-up call is Silo's
-`maybeApplyPostgresTuning` in [`cmd/silo/main.go`](../../../../../cmd/silo/main.go).
-This section began as the tuning section of Silo's former Docker guide. On 2026-10-27
-it was corrected against that code, and on 2026-11-01 the restart warning was corrected
-for Silo's `63ef34b23` merge.
+and the start-up call is Silo's `maybeApplyPostgresTuning` in
+[`cmd/silo/main.go`](../../../../../cmd/silo/main.go).
 
 The bundled
 [`docker-compose.advanced.yml`](../../../../../docker-compose.advanced.yml) turns the
@@ -970,7 +936,7 @@ The candidates are the restart-only settings the run wrote or reset, those whose
 `shared_buffers`, `wal_buffers`, `huge_pages` and `max_worker_processes`; on PostgreSQL
 17 and earlier, `autovacuum_max_workers` takes the place of `io_method`.
 
-Since Silo's `63ef34b23` merge (`postgresSettingsPendingRestart`), the server keeps only
+The server (`postgresSettingsPendingRestart`) keeps only
 the candidates PostgreSQL has yet to apply: it re-reads the configuration files through
 `pg_file_settings`, and a setting is pending when the last file entry for it carries an
 error (PostgreSQL cannot apply it without a restart), or, when no file sets it any more,
@@ -979,7 +945,6 @@ setting given on the postgres command line (`-c`) is never pending. With nothing
 pending, no warning is logged. When the role cannot read `pg_file_settings`, or the
 configuration files contain errors, the full candidate list is logged, and then the
 warning appears on every start and is not evidence that a restart is still needed.
-Before that merge the full list was logged on every start.
 
 To check yourself, ask PostgreSQL:
 
@@ -1021,19 +986,12 @@ application container tuning a 12-CPU database writes `max_worker_processes = 32
 of 12, 12 and the defaults of 3 and 3.
 
 For an external database, keep `POSTGRES_TUNE=off` and tune the database directly, out
-of band, with a separate administrative credential. Silo's former guide gave the same
+of band, with a separate administrative credential. Silo's own guide gave the same
 advice. The server uses its one `DATABASE_URL` identity for normal operation and for
 tuning, so turning tuning on means granting the application credential `ALTER SYSTEM`.
 If that credential is compromised, it can then change server-wide configuration. Enable
 tuning against an external database only in a trusted deployment that accepts that
 risk, with `POSTGRES_TUNE_CPUS` and `POSTGRES_TUNE_MEMORY` set as above.
-
-**Bloem's production** runs its database in a separate container from the application
-server. Since 2026-10-27 it runs with `POSTGRES_TUNE=off` and tunes that database
-container directly. Until a correction earlier that morning, the tuner had sized the
-database's CPU-based settings for the application container. The values it last wrote,
-sized for the database container, remain in that container's `postgresql.auto.conf`.
-See the [October 27 deployment record](../../../../operations/2026-10-27-main-deployment.md#follow-up-postgresql-tuning-sized-for-the-database-container).
 
 #### Inputs
 
@@ -1060,8 +1018,7 @@ A server with tuning off logs no tuning lines and leaves `postgresql.auto.conf` 
 ### Migrations and the health check
 
 Bloem applies pending migrations during startup, under a database lock, before it opens
-its HTTP listener. The image's health check (Silo's `Dockerfile`, since Silo's
-`8d212bb79`, 2026-10-08) gives startup a 20-minute start period, matching the default
+its HTTP listener. The image's health check (Silo's `Dockerfile`) gives startup a 20-minute start period, matching the default
 migration timeout; checks run every 15 seconds with a 5-second timeout and three
 retries, against `/api/v1/health`. Failed checks inside the start period do not count,
 and the first passing check marks the container healthy. A migration that runs past the
@@ -1080,50 +1037,44 @@ update. The release notes name the releases that carry a migration like this.
 
 `health` reports process liveness. `ready` also checks required dependencies, including
 PostgreSQL and configured S3 storage. Both are retained operational probes: they kept
-their paths when Silo retired its v1 API on 2026-11-11, so probe configuration did not
+their paths when Silo retired its v1 API (November 2026), so probe configuration did not
 change. Apart from these probes, every v1 route answers `410 Gone`, and nothing in
 Bloem calls one; see
 [leaving Silo's v1 API](../../../../architecture/bloem-leaving-silo-v1.md).
 
 ### Release-specific steps
 
-- **September 19 policy-array and Xtream migrations.** Quiesce all application writers,
-  allow table/index rewrite headroom and adequate migration time, then recycle
+- **Policy-array and Xtream migrations (September 2026).** Quiesce all application
+  writers, allow table/index rewrite headroom and adequate migration time, then recycle
   application pools. Upgrade every API/worker binary before adding Xtream providers. A
-  migration lock alone does not quiesce other application writers. The
-  [deployment record](../../../../operations/2026-09-19-xtream-deployment.md) documents
-  one completed rollout, not a substitute for these checks on your installation.
-  Rollback is image/config first, retaining additive schema and data. Older binaries
-  must not administer Xtream providers. Policy Down refuses out-of-range values, and
-  Xtream Down refuses remaining provider, guide, credential or lease state. Any explicit
-  schema downgrade or backup restore needs a separately reviewed recovery plan.
-  Bootstrap compatibility does not certify every older workflow.
+  migration lock alone does not quiesce other application writers. Rollback is
+  image/config first, retaining additive schema and data. Older binaries must not
+  administer Xtream providers. Policy Down refuses out-of-range values, and Xtream Down
+  refuses remaining provider, guide, credential or lease state. Any explicit schema
+  downgrade or backup restore needs a separately reviewed recovery plan. Bootstrap
+  compatibility does not certify every older workflow.
 - **Native-storage onboarding, migration `20261006145307`,** explicitly requires an
   offline upgrade. Stop and drain every API, worker, autoscan, administrative job and
   direct scanner on every node before applying it. Verify that application processes and
   their database connections have ended; empty scan/job tables alone do not prove
   quiescence. Start the replacement Bloem binary only after this check. Keep PostgreSQL
   and Redis available. Native Down migrations refuse retained state, and restarting an
-  older binary is not an automatic recovery strategy. The
-  [October 7 deployment record](../../../../operations/2026-10-07-native-storage-deployment.md)
-  records the executed checks and the rollout-specific decision to omit a database
-  backup; that decision does not change the general backup guidance above.
-- **September 30 integration.** The binary also supplies an owned adapter for upstream
+  older binary is not an automatic recovery strategy. Take a database backup first, as
+  above.
+- **Upstream request-group migration.** The binary also supplies an owned adapter for upstream
   request-group migration on finalized Bloem membership databases. Use the built Bloem
-  binary for migration commands; raw upstream SQL is not equivalent. See
-  [the integration record](../../../../operations/2026-09-30-upstream-deployment.md) and
+  binary for migration commands; raw upstream SQL is not equivalent. See the
   [migration adapter](../../../../architecture/bloem-upstream-adapters.md#migration-filesystem).
 
 ### Silo switching details
 
 - Pin Silo's image by digest to the release Bloem last merged. A newer upstream can
   apply database changes Bloem has not adapted to. An older one may not read a schema a
-  later Silo migration changed: a Silo image from before Silo's `ba2de9827` (#2715)
-  cannot read API keys stored as verifiers. See the
+  later Silo migration changed: a Silo image from before Silo #2715 cannot read API
+  keys stored as verifiers. See the
   [Silo version pin](../../../../architecture/silo-backend-switching.md#operating-rules).
-- From Silo's `c3115d493` (build-1875) on, a Silo commit tag, `build-N` and `latest`
-  name the all-in-one image, which bundles PostgreSQL and Redis. It runs Silo as
-  `PUID`/`PGID` (911 when unset) instead of root, re-owns Silo's bind-mounted
+- Since Silo's `build-1875`, a Silo commit tag, `build-N` and `latest` name the all-in-one image, which bundles PostgreSQL and
+  Redis. It runs Silo as `PUID`/`PGID` (911 when unset) instead of root, re-owns Silo's bind-mounted
   directories to that account on first start, and will not start with a container
   `user:`. To keep the runtime Silo had before, pin the same commit's base image, tagged
   `<full SHA>-base`. Otherwise set `PUID`/`PGID` to an account that can read the media.
@@ -1148,9 +1099,6 @@ Technical pages:
   [release-versioning overlay](../../release-versioning.md).
 - [S3 storage setup](../../s3-storage-setup.md).
 - [Downloads API](../../../../downloads-api.md).
-- Deployment records: [October 7 native storage](../../../../operations/2026-10-07-native-storage-deployment.md),
-  [September 30 upstream integration](../../../../operations/2026-09-30-upstream-deployment.md),
-  [September 19 Xtream](../../../../operations/2026-09-19-xtream-deployment.md).
 - Source: [`docker-compose.advanced.yml`](../../../../../docker-compose.advanced.yml),
   which Bloem uses; [`docker-compose.yml`](../../../../../docker-compose.yml), Silo's
   all-in-one stack, which does not start Bloem;

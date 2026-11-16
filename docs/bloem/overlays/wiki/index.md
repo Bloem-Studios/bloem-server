@@ -9,17 +9,15 @@ tags:
 audience:
   - end-user
   - operator
-last_reviewed: 2026-11-01
+last_reviewed: 2026-11-16
 related: []
 ---
 
 # Bloem guides for operators and viewers
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. It is Bloem's index of the guides for people who run a Bloem server
-> and people who watch on one. Silo no longer keeps these guides in its repository, so this
-> index is Bloem's own edition. Its history and the rules for editing the guides are in the
-> [For developers](#for-developers) section.
+This is Bloem's index of the guides for people who run a Bloem server and people who watch
+on one. Silo no longer keeps these guides in its repository, so this index is Bloem's own
+edition.
 
 This page lists the guides by who they are for: viewers first, then the person running the
 server, then installing and updating, then what to do when something goes wrong. Each guide is
@@ -93,23 +91,9 @@ Reference:
 
 - [Deploy Bloem with Docker](deployment/docker.md): install and run Bloem with Docker Compose,
   including storage, GPU acceleration, search, distributed roles, tuning, backups and updates.
-- [Integration changelog](../../CHANGELOG.md): what each integration changed. Deployment records are
-  kept separately.
-- [Deployment records](../../../operations/): every dated deployment and integration record. Each
-  record is true for its date only. The newest is the
-  [November 1 provider sign-out deployment](../../../operations/2026-11-01-provider-sign-out-deployment.md),
-  after the [organization domains deployment](../../../operations/2026-11-01-organization-domains-deployment.md)
-  and the [Silo merge through `63ef34b23`](../../../operations/2026-11-01-silo-sync-63ef34b23-deployment.md)
-  the same day.
-- Older records kept for their history:
-  - [October 27 main deployment](../../../operations/2026-10-27-main-deployment.md): Silo through
-    `3e2d306b2`, the first CI-built production image, and PostgreSQL auto-tuning turned off.
-  - [October 7 native storage deployment](../../../operations/2026-10-07-native-storage-deployment.md):
-    the revision, migration checks and remaining verification.
-  - [September 30 upstream deployment](../../../operations/2026-09-30-upstream-deployment.md): the
-    membership migration and integration evidence.
-  - [September 19 deployment record](../../../operations/2026-09-19-xtream-deployment.md): applied
-    migrations, operational smoke results, the approved CI-timeout exception and rollback limits.
+- [Integration changelog](../../CHANGELOG.md): what each integration changed.
+- [Release versioning](../release-versioning.md): which image tags Bloem publishes (`latest`,
+  dated tags, `edge` and one per commit) and how to pin one.
 
 ## When something goes wrong
 
@@ -119,20 +103,13 @@ Reference:
   apps, passwords, playback and sign-in messages.
 - [Contract transition](../../../architecture/bloem-contract-adjudications.md): checks before a native
   app release is rolled out.
-- [Upgrade validation](../../../operations/2026-10-07-native-storage-deployment.md#outstanding-validation):
-  the historical provider and app acceptance limits, distinct from live health.
 
 ## For developers
 
-### Where this index comes from
-
-This index began as Silo's `docs/wiki/index.md`, which Bloem edited in place from August 2026
-and moved here in `47ea7c889` (2026-09-23). Silo then deleted its in-repository wiki in
-`42b39765b` (#1635, 2026-09-28), when its operator guides moved out of the server repository.
-This is now a complete Bloem edition, not a section-by-section overlay. Silo's current repository
+This index started as Silo's `docs/wiki/index.md`. Silo has since deleted its in-repository
+wiki, so this is a complete Bloem edition, not a section-by-section overlay. Silo's current
 reference index is [`docs/README.md`](../../../README.md). Bloem's complete index of the documents
-it owns is [docs/bloem/README.md](../../README.md). The previous review was on 2026-10-27 at
-`e852f92bf` (Silo through `3e2d306b2`); this one is at `b6039036d` (Silo through `63ef34b23`).
+it owns is [docs/bloem/README.md](../../README.md).
 
 ### Editing rules
 

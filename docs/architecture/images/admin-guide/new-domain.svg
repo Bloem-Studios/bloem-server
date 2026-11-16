@@ -44,12 +44,10 @@
 <text x="64" y="324" font-size="17" font-weight="700" fill="#101827" text-anchor="start">At the provider, for each domain</text>
 <text x="360" y="324" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Made-up domain: watch.riverside.example</text>
 <text x="64" y="362" font-size="14" font-weight="700" fill="#374151" text-anchor="start">Redirect URI</text>
-<text x="196" y="362" font-size="14" font-weight="normal" fill="#101827" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace">https://watch.riverside.example/api/v1/auth/oauth/&lt;installation&gt;/callback</text>
-<text x="64" y="394" font-size="14" font-weight="700" fill="#374151" text-anchor="start">Redirect URI</text>
-<text x="196" y="394" font-size="14" font-weight="normal" fill="#101827" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace">https://watch.riverside.example/api/v2/auth/oauth/&lt;installation&gt;/callback</text>
-<text x="64" y="426" font-size="14" font-weight="700" fill="#374151" text-anchor="start">Post-logout</text>
-<text x="196" y="426" font-size="14" font-weight="normal" fill="#101827" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace">https://watch.riverside.example/login</text>
-<text x="560" y="426" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">(when signing out at the provider is on)</text>
+<text x="196" y="362" font-size="14" font-weight="normal" fill="#101827" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace">https://watch.riverside.example/api/v2/auth/oauth/&lt;installation&gt;/callback</text>
+<text x="64" y="394" font-size="14" font-weight="700" fill="#374151" text-anchor="start">Post-logout</text>
+<text x="196" y="394" font-size="14" font-weight="normal" fill="#101827" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace">https://watch.riverside.example/login</text>
+<text x="560" y="394" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">(when signing out at the provider is on)</text>
 <text x="40" y="494" font-size="19" font-weight="700" fill="#101827" text-anchor="start">What visitors on the domain get</text>
 <rect x="40" y="510" width="357" height="136" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
 <text x="58" y="542" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Its own look</text>

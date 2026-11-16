@@ -9,7 +9,7 @@ tags:
   - profiles
 audience:
   - end-user
-last_reviewed: 2026-11-01
+last_reviewed: 2026-11-16
 related:
   - admin-guide.md
   - ../architecture/bloem-apps.md
@@ -20,13 +20,11 @@ related:
 
 # Bloem user guide
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. It is the guide for people who watch, listen and read on a Bloem
-> server. The web app is Silo's, so parts of it say "Silo". Bloem adds Live TV, audiobook and
-> ebook requests, browse-only previews, promotional cards and seasonal artwork, separate
-> sign-ins for household profiles, and organizations' own addresses. The technical details are
-> in the [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+This is the guide for people who watch, listen and read on a Bloem server. The web app is
+Silo's, so parts of it say "Silo". Bloem adds Live TV, audiobook and ebook requests, browse-only
+previews, promotional cards and seasonal artwork, separate sign-ins for household profiles, and
+organizations' own addresses. The technical details are in the [For developers](#for-developers)
+section.
 
 Somebody you know runs a Bloem server, a private streaming service for a library they look
 after, and has given you a way in. This guide walks through getting in, profiles, finding
@@ -493,13 +491,10 @@ of which app uses which entrance, see [How apps connect](../architecture/bloem-a
   [requests](../bloem/api/requests.md) and [organizations](../bloem/api/organizations.md)
   (organization domains).
 
-### Review basis
+### Silo's labels
 
-- This rewrite was checked on 2026-11-01 against the web app's source and the server code at Bloem
-  `main` `b6039036d` (Silo through `63ef34b23`). The previous check was on 2026-10-27 at
-  `e852f92bf` (Silo through `3e2d306b2`). It is a source review, not a device test.
-- Bloem is built on [Silo Server](https://github.com/Silo-Server/silo-server) and follows it
-  closely. Silo's labels stay, for example "Silo app or website" on the Connect Apps page.
+Bloem is built on [Silo Server](https://github.com/Silo-Server/silo-server) and follows it
+closely. Silo's labels stay, for example "Silo app or website" on the Connect Apps page.
 
 ### Sign-in and sessions
 
@@ -529,7 +524,7 @@ of which app uses which entrance, see [How apps connect](../architecture/bloem-a
   requires account sign-in: credentials do not enable direct-profile browser login or
   shared-device profile pairing, and TV account activation is separate.
 - A profile can report progress for and stop only its own playback.
-- The automatic audio choice arrived from Silo on 2026-10-27 (`internal/playback/audio_select_v3.go`).
+- The automatic audio choice is Silo's (`internal/playback/audio_select_v3.go`).
 - Watch Party rooms end two minutes after the host disconnects (`internal/watchtogether`).
 - Provider-backed native EPUB/PDF reading is experimental and requires an enabled, authorized
   source. Disabling or uninstalling the source prevents access while keeping library and
