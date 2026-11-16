@@ -1,9 +1,7 @@
 # How Bloem's native API is organized
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against `main`
-> at `b6039036d` and checked again on 2026-11-11, after Silo retired its v1 API.
-> `/api/bloem/v2`, Bloem's native API, is a Bloem addition beside Silo's own `/api/v2`. This page explains its layout in plain language; the technical
-> rules are in the [For developers](#for-developers) section.
+`/api/bloem/v2`, Bloem's native API, is a Bloem addition beside Silo's own `/api/v2`. This page explains its layout
+in plain language; the technical rules are in the [For developers](#for-developers) section.
 
 Bloem's apps talk to a Bloem server through two APIs: Silo's, for everything Silo has, and
 Bloem's own, for what Bloem adds. This page walks through why Bloem has its own API, how it is
@@ -100,21 +98,10 @@ This example is made up.
   [API by topic](../bloem/api/README.md). The [wire reference](../bloem-api-reference.md) adds
   behavior that does not fit a schema.
 
-### History
-
-The native client surface was first served on `/api/v2` (`25024c844`, 2026-08-14) and moved
-to `/api/bloem/v2` (`811fb4d29`, 2026-09-02) because upstream Silo was taking `/api/v2` for its
-own, unrelated API. Later changes that matter: direct-profile sessions may file ebook requests
-(`70401bd26`, 2026-10-14); Bloem's music routes (`f9e1447f3`) and lifecycle receipts with
-their `lifecycle_idempotency_*` tokens (`b017bfe84`) were removed on 2026-10-26; the campaign
-viewer routes (`promotions_viewer_v1`) and the public `GET /api/bloem/v2/ambience/public`
-were added on 2026-11-01. On 2026-11-11 Silo retired its v1 API (`26cf9b3e4`) and Bloem's
-native progress upload went with it (`862d0fec2`). Silo's own v1 and v2 APIs are described in
-[API contract](api-contract.md) and [v1 scope](v1-scope.md).
-
 ### Namespace rule
 
-`/api/bloem/v2` is the native Bloem API, distinct from upstream Silo's `/api/v2`. Silo's
+`/api/bloem/v2` is the native Bloem API, distinct from upstream Silo's `/api/v2`. (Bloem's native routes were
+first served on `/api/v2` and moved when Silo took that prefix for its own, unrelated API.) Silo's
 alpha v1 API is retired. New Bloem-only features belong under `/api/bloem/v2`, because
 a deployment must stay usable by upstream Silo clients that will never learn a Bloem-only
 field, value or route.
@@ -165,8 +152,7 @@ support, not permission, encryption readiness or playback success. Server-owned 
 bindings include this field with absent/false handling. The embedded web uses
 `POST /api/bloem/v2/livetv/tuners/xtream` with an authenticated administrator's selected
 primary profile and required PIN proof. No Silo v1/v2 alias or sibling-client provider
-administration is supplied. See [Xtream boundaries](xtream-live-tv.md) and the
-[deployed revision and acceptance limits](../operations/2026-10-07-native-storage-deployment.md).
+administration is supplied. See [Xtream boundaries](xtream-live-tv.md).
 
 The viewer routes use ordinary account sessions and require `X-Profile-Id`. Direct-profile
 sessions are limited by the router's allowlist (`internal/api/direct_profile_routes.go`),
@@ -202,7 +188,7 @@ endpoint remains authoritative for that purpose. See
 ### Progress sync
 
 Bloem's native `POST /sync/progress` and its `progress_sync_v1` token were removed on
-2026-11-11 (`862d0fec2`). The route took Silo's v1 request body and reported `updated`,
+2026-11-11. The route took Silo's v1 request body and reported `updated`,
 `ignored` or `error` where Silo's v1 route reported `ok`. Clients upload offline progress to
 Silo's `POST /api/v2/sync/progress`, which reports `success` or `failure` per item.
 
