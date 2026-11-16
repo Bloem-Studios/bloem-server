@@ -383,6 +383,10 @@
 ./internal/notifications TestEmailPrefsStayOnTheAccountDB
 ./internal/notifications TestEmailPrefsAccountKeyMigrationResetsSharedRowsDB
 
+# One server runs the notification interest rebuild at a time, and a rebuild
+# that loses its lock session stops before it completes the checkpoint.
+./internal/notifications TestInterestRebuildRunsOnOneServerAtATimeDB
+
 # Legacy mobile registration protects account ownership under the installation lock.
 ./internal/notifications TestLegacyMobilePushRefusesForeignAccountDB
 ./internal/notifications TestLegacyMobilePushProfileSwitchRollbackDB
@@ -608,6 +612,7 @@
 ./internal/userstore/pgstore TestPostgresAtomicJellycompatProgress
 ./internal/userstore/pgstore TestPostgresJellycompatPlayedByDate
 ./internal/userstore/pgstore TestPostgresPersonalListPage
+./internal/userstore/pgstore TestPostgresCompletedHistoryPage
 ./internal/userstore/pgstore TestPostgresReplaceCollectionItemsWritesOnlyTheDifference
 ./internal/userstore/pgstore TestPostgresRemoveHistoryItemsDeletesTheirPlaysDB
 ./internal/userstore/pgstore TestPostgresReplaceCollectionItemsWaitsOutADelete
@@ -860,6 +865,7 @@
 ./internal/recommendations TestTasteProfileSubjectsSkipDeletedProfilesPostgres
 ./internal/recommendations TestTasteSeedCandidatesHonourAccessPostgres
 ./internal/recommendations TestProgressReadsMatchStoreWalkPostgres
+./internal/recommendations TestRewatchCountsReadTheWholeHistoryPostgres
 ./internal/sections TestRecommendationSectionsFillFromTheWholePoolPostgres
 ./internal/webhooksync TestWebhookEventsReportSignalChangesPostgres
 ./migrations TestPurgeOrphanedRecommendationRowsPostgres
