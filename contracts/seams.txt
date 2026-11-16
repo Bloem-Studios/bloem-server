@@ -300,6 +300,7 @@ web/src/components/admin/libraries/useLibraryForm.boxSets.test.tsx  # mocks the 
 web/src/components/admin/libraries/useLibraryForm.save.test.tsx  # mocks the storage sources query the library form now reads
 web/src/components/admin/libraries/useLibraryForm.ts  # library form state for a storage source location
 web/src/components/admin/users/CreateUserForm.tsx  # Bloem's Watch Live TV switch in the create-account dialog
+web/src/components/notifications/NotificationInbox.tsx  # shows Bloem's announcements (title, message, severity) in the inbox rows; moved here from web/src/pages/Notifications.tsx when Silo split the inbox out (#4383)
 web/src/components/ui/sheet.tsx  # darker sheet overlay and a visible 40px close button; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/hooks/queries/admin/plugins.ts
 web/src/hooks/queries/admin/policy.ts
@@ -321,7 +322,6 @@ web/src/pages/Home.tsx
 web/src/pages/ItemDetail/DetailHero.tsx  # phone detail hero puts the actions in the first screen; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/pages/ItemDetail/SeasonContent.test.tsx
 web/src/pages/Notifications.test.tsx
-web/src/pages/Notifications.tsx
 web/src/pages/admin-settings/AdminSettingsLayout.tsx
 web/src/pages/admin-settings/SearchSettings.tsx  # offer frequency as a matching strategy; temporary, frequency matching (descriptive searches in the top 50: 16.5% -> 36.5% on the live index, titles unchanged, 2026-11-10), drop when Silo's version merges
 web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permission-list hook after upstream split the user detail page

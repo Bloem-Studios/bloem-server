@@ -1,3 +1,4 @@
+import { Megaphone } from "lucide-react";
 import type { AppNotification } from "@/api/types";
 import { useBloemT, type BloemTranslate } from "@/bloem/i18n";
 
@@ -19,5 +20,16 @@ export function AnnouncementDetails({ notification }: { notification: AppNotific
       ) : null}
       <p className="mt-2 text-xs font-medium">{severityLabel(bt, notification.severity)}</p>
     </>
+  );
+}
+
+/** An announcement's place in the inbox where a title shows its poster. */
+export function AnnouncementPoster() {
+  return (
+    <div className="flex w-12 shrink-0">
+      <div className="bg-muted flex h-[4.375rem] w-12 items-center justify-center rounded-md">
+        <Megaphone className="h-5 w-5" aria-hidden="true" />
+      </div>
+    </div>
   );
 }
