@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useId, useState } from "react";
+import { FolderOpen, FolderSearch, Plus, Trash2 } from "lucide-react";
 import { useBloemT } from "@/bloem/i18n";
 import FolderBrowser from "@/components/FolderBrowser";
 import PathAutocompleteInput from "@/components/PathAutocompleteInput";
@@ -16,6 +17,7 @@ import { supportsSource } from "./types";
 import { StorageFolderBrowser } from "./StorageFolderBrowser";
 export function LibraryLocationsEditor({ form }: { form: LibraryFormController }) {
   const bt = useBloemT();
+  const pathIdBase = useId();
   const locations = form.locations;
   const [filesystemOpen, setFilesystemOpen] = useState(false);
   const [sourceKey, setSourceKey] = useState("");
@@ -58,6 +60,7 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
           <Button
             type="button"
             variant="outline"
+            className="h-11 sm:h-9"
             disabled={locations.pending}
             onClick={() => void locations.reload()}
           >
@@ -66,23 +69,30 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
         )}
       <fieldset disabled={!locations.ready || locations.pending} className="min-w-0 space-y-3">
         {form.paths.map((path, i) => (
-          <div key={i} className="flex items-center gap-2">
+          <div key={i} className="flex items-center gap-1.5">
+            <FolderOpen className="text-muted-foreground/60 size-4 shrink-0" />
             <PathAutocompleteInput
+              id={`${pathIdBase}-${i}`}
               value={path}
               onValueChange={(value) => form.updatePath(i, value)}
               placeholder={bt("bloem.admin.libraries.locations.filesystemFolder")}
+              aria-invalid={form.errors.paths ? true : undefined}
+              className="h-11 sm:h-9"
               disabled={!canFilesystem}
             />
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon"
+              className="text-muted-foreground hover:text-destructive size-11 shrink-0 sm:size-9"
+              onClick={() => form.removePath(i)}
+              title={bt("bloem.admin.libraries.locations.remove")}
               aria-label={bt("bloem.admin.libraries.locations.removeFilesystemFolder", {
                 number: i + 1,
               })}
-              onClick={() => form.removePath(i)}
+              aria-describedby={`${pathIdBase}-${i}`}
             >
-              {bt("bloem.admin.libraries.locations.remove")}
+              <Trash2 className="size-3.5" />
             </Button>
           </div>
         ))}
@@ -91,7 +101,7 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
           return (
             <div
               key={i}
-              className="border-border flex items-center gap-2 rounded-md border p-2 text-sm"
+              className="border-border flex items-center gap-1.5 rounded-md border p-2 text-sm"
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate">{locationRootName(root, savedSource)}</p>
@@ -113,7 +123,9 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="icon"
+                className="text-muted-foreground hover:text-destructive size-11 shrink-0 sm:size-9"
+                title={bt("bloem.admin.libraries.locations.remove")}
                 aria-label={
                   root.name
                     ? bt("bloem.admin.libraries.locations.removeNamed", { name: root.name })
@@ -121,23 +133,32 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
                 }
                 onClick={() => locations.removeSelection(i)}
               >
-                {bt("bloem.admin.libraries.locations.remove")}
+                <Trash2 className="size-3.5" />
               </Button>
             </div>
           );
         })}
         {form.errors.paths && <p className="text-destructive text-xs">{form.errors.paths}</p>}
         {canFilesystem && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-1.5">
             <Button
               type="button"
               variant="outline"
               size="sm"
+              className="h-11 flex-1 sm:h-8 sm:flex-none"
               onClick={() => setFilesystemOpen(true)}
             >
+              <FolderSearch className="me-1 size-3.5" />
               {bt("bloem.admin.libraries.locations.browseFolders")}
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={form.addPath}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-11 flex-1 sm:h-8 sm:flex-none"
+              onClick={form.addPath}
+            >
+              <Plus className="me-1 size-3.5" />
               {bt("bloem.admin.libraries.locations.addPath")}
             </Button>
           </div>
@@ -147,7 +168,7 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
             <Select value={sourceKey} onValueChange={setSourceKey}>
               <SelectTrigger
                 aria-label={bt("bloem.admin.libraries.locations.chooseSource")}
-                className="min-w-0 flex-1"
+                className="min-w-0 flex-1 data-[size=default]:h-11 sm:data-[size=default]:h-9"
               >
                 <SelectValue placeholder={bt("bloem.admin.libraries.locations.chooseSource")} />
               </SelectTrigger>
@@ -163,6 +184,7 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
               type="button"
               variant="outline"
               size="sm"
+              className="h-11 sm:h-9"
               disabled={!source}
               onClick={() => setStorageOpen(true)}
             >

@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nativeApi, nativeApiWithProfileRequestContext } from "./bloemClient";
 import {
   captureProfileRequestContext,
+  getOrCreateDeviceId,
   getAccessToken,
   getProfileToken,
   onProfileUnverified,
@@ -10,6 +11,8 @@ import {
   setProfileToken,
   setRefreshToken,
 } from "./client";
+import { API_READ_TIMEOUT_MS } from "./requestDeadline";
+import { V2TimeoutError } from "./v2/request";
 
 // The apiBlob tests that stood here were removed with the function itself:
 // cd8ad6aed retired apiBlob but left these behind, so the suite could not even
@@ -597,21 +600,24 @@ describe("api", () => {
       configurable: true,
     });
 
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), {
+    // A read gets a signal linked to the caller's (and to its deadline), so
+    // the caller's abort must reach fetch rather than the signal itself.
+    const controller = new AbortController();
+    let abortedInFlight: boolean | undefined;
+    const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
+      controller.abort();
+      abortedInFlight = init?.signal?.aborted;
+      return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }),
-    );
+      });
+    });
     vi.stubGlobal("fetch", fetchMock);
 
-    const controller = new AbortController();
-    await nativeApi("/test", { signal: controller.signal });
+    await nativeApi("/test", { signal: controller.signal }).catch(() => undefined);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const call = fetchMock.mock.calls[0]!;
-    const init = call[1] as RequestInit;
-    expect(init.signal).toBe(controller.signal);
+    expect(abortedInFlight).toBe(true);
   });
 
   it("treats 202 responses with an empty body as success", async () => {
@@ -671,5 +677,125 @@ describe("native profile requests", () => {
     expect(calls[2]!.headers["X-Profile-Id"]).toBe("viewer-a");
     expect(calls[2]!.headers["X-Profile-Token"]).toBe("pin-a");
     expect(calls[2]!.headers.Authorization).toBe("Bearer fresh");
+  });
+});
+
+// A server that accepted the connection and went quiet: the request settles
+// only when its signal aborts, with the signal's reason, as a browser does.
+function hungFetch() {
+  return vi.fn<typeof fetch>(
+    (_input, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        if (init?.signal?.aborted) reject(init.signal.reason);
+        init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+          once: true,
+        });
+      }),
+  );
+}
+
+describe("native read deadline", () => {
+  beforeEach(() => {
+    // Store the device id under real timers: jsdom queues a storage event on a
+    // timer, which would otherwise count as a pending timer below.
+    getOrCreateDeviceId();
+    vi.useFakeTimers();
+    setAccessToken("account-token");
+    setRefreshToken(null);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    setAccessToken(null);
+  });
+
+  it("fails a read the server never answers with Silo's timeout error", async () => {
+    const fetchMock = hungFetch();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const outcome = nativeApi("/livetv/channels?limit=5").catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(API_READ_TIMEOUT_MS - 1);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    const error = await outcome;
+    expect(error).toBeInstanceOf(V2TimeoutError);
+    expect(error).toMatchObject({ timeoutMs: API_READ_TIMEOUT_MS });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("fails a profile-bound read the server never answers", async () => {
+    setProfileId("profile-a");
+    const snapshot = captureProfileRequestContext()!;
+    vi.stubGlobal("fetch", hungFetch());
+
+    const outcome = nativeApiWithProfileRequestContext("/ambience", snapshot).catch(
+      (error: unknown) => error,
+    );
+    await vi.advanceTimersByTimeAsync(API_READ_TIMEOUT_MS);
+    expect(await outcome).toBeInstanceOf(V2TimeoutError);
+  });
+
+  it("fails a read whose body stalls after the headers", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (_input, init) => {
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('{"items":'));
+            init?.signal?.addEventListener("abort", () => controller.error(init.signal?.reason), {
+              once: true,
+            });
+          },
+        });
+        return new Response(body, {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+
+    const outcome = nativeApi("/requests").catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(API_READ_TIMEOUT_MS);
+    expect(await outcome).toBeInstanceOf(V2TimeoutError);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("rejects with the caller's reason when the caller aborts first", async () => {
+    const fetchMock = hungFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    const cancelled = new DOMException("query cancelled", "AbortError");
+
+    const outcome = nativeApi("/livetv/guide", { signal: controller.signal }).catch(
+      (error: unknown) => error,
+    );
+    await vi.advanceTimersByTimeAsync(1_000);
+    controller.abort(cancelled);
+
+    expect(await outcome).toBe(cancelled);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal?.reason).toBe(cancelled);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("gives a write no deadline", async () => {
+    let resolve: ((response: Response) => void) | undefined;
+    const fetchMock = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((settle) => {
+          resolve = settle;
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const outcome = nativeApi("/requests", { method: "POST", body: "{}" });
+    await vi.advanceTimersByTimeAsync(API_READ_TIMEOUT_MS * 2);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal ?? null).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+
+    resolve?.(Response.json({ ok: true }));
+    await expect(outcome).resolves.toEqual({ ok: true });
   });
 });

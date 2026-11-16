@@ -69,11 +69,12 @@ Every invitation belongs to one organization. Silo's administrator invitation
 routes on `/api/v2` list, create, resend, revoke and delete only
 the default organization's invitations. Bloem's organization console has its
 own routes under `/api/bloem/v2/admin/organization/invitations`. They create
-email-bound invitations with role `user` only, in the console's organization.
-That flow never sends mail: the create and resend responses return the claim
-token once and the administrator delivers the link. Those rows are stored with
-`delivery` NULL, the value Silo otherwise reserves for rows that predate the
-column. See [organization invitation links](../invitations-api.md#bloem-organization-invitation-links).
+invitations with role `user` only, in the console's organization, either bound
+to an email address or, with Silo's `delivery: "link"`, with no address for the
+invitee to enter at accept. That flow never sends mail: the create and resend
+responses return the claim token once and the administrator delivers the link.
+Those rows are stored with `delivery` `link`. Rows created before 2026-11-16 have
+`delivery` NULL, which Silo reports as `unknown`. See [organization invitation links](../invitations-api.md#bloem-organization-invitation-links).
 
 ---
 

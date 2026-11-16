@@ -38,7 +38,10 @@ function StorageSourceFields({ form }: { form: LibraryFormController }) {
   return (
     <div className="space-y-2">
       <Select value={form.storageSource} onValueChange={form.setStorageSource}>
-        <SelectTrigger aria-invalid={form.errors.storageSource ? true : undefined}>
+        <SelectTrigger
+          aria-invalid={form.errors.storageSource ? true : undefined}
+          className="w-full data-[size=default]:h-11 sm:w-64 sm:data-[size=default]:h-9"
+        >
           <SelectValue
             placeholder={bt("bloem.admin.libraries.form.chooseStorageSourcePlaceholder")}
           />
@@ -75,7 +78,7 @@ export function LibraryLocationKindToggle({ form }: { form: LibraryFormControlle
     <div
       role="radiogroup"
       aria-label={bt("bloem.admin.libraries.form.kind.label")}
-      className="flex gap-1.5"
+      className="flex flex-wrap gap-1.5"
     >
       {kinds.map(([kind, label]) => (
         <Button
@@ -85,6 +88,7 @@ export function LibraryLocationKindToggle({ form }: { form: LibraryFormControlle
           aria-checked={form.locationKind === kind}
           variant={form.locationKind === kind ? "secondary" : "outline"}
           size="sm"
+          className="h-11 flex-1 sm:h-8 sm:flex-none"
           onClick={() => form.setLocationKind(kind)}
         >
           {label}
@@ -110,7 +114,12 @@ function LocationsLoading({ form }: { form: LibraryFormController }) {
       <p role="status" className="text-muted-foreground text-sm">
         {form.locations.error || bt("bloem.admin.libraries.form.checkingLocations")}
       </p>
-      <Button type="button" variant="outline" onClick={() => void form.locations.reload()}>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 sm:h-9"
+        onClick={() => void form.locations.reload()}
+      >
         {bt("bloem.admin.libraries.form.reloadLocations")}
       </Button>
     </div>

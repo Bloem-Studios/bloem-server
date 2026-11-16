@@ -33,9 +33,12 @@ vi.mock("@/contexts/AdminContextProvider", () => ({
 vi.mock("./InvitationsTab", () => ({
   default: () => <p>Silo invitations</p>,
 }));
+const capabilityState = vi.hoisted(() => ({
+  tokens: ["organization_invitation_lifecycle_v1"],
+}));
 vi.mock("@/hooks/queries/useBloemCapabilities", () => ({
   useBloemCapabilities: () => ({
-    data: { feature_tokens: ["organization_invitation_lifecycle_v1"] },
+    data: { feature_tokens: capabilityState.tokens },
   }),
 }));
 
@@ -322,4 +325,137 @@ describe.each(["create", "resend"] as const)("%s invitation handoff cache lifeti
       client.clear();
     },
   );
+});
+
+describe("organization link invitations", () => {
+  const linkInvitation = {
+    id: 5,
+    email: "",
+    delivery: "link",
+    role: "user",
+    create_profile: true,
+    show_tour: true,
+    invited_by: 7,
+    note: "For Sam",
+    status: "pending",
+    created_at: "2026-08-13T08:00:00Z",
+    expires_at: "2099-08-20T08:00:00Z",
+  };
+
+  beforeEach(() => {
+    adminState.active = {
+      key: "organization:org-1",
+      scope: "organization",
+      name: "North Sea Media",
+      policyRevision: 7,
+    };
+    capabilityState.tokens = [
+      "organization_invitation_lifecycle_v1",
+      "organization_invitation_links_v1",
+    ];
+    activateAdminV2Context("test-authority", "organization:org-1");
+    vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+  });
+  afterEach(() => {
+    cleanup();
+    clearAdminV2Context();
+    vi.clearAllMocks();
+    capabilityState.tokens = ["organization_invitation_lifecycle_v1"];
+  });
+
+  function mockServer(invitations: unknown[] = []) {
+    vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
+      if (path === "/organization/groups") return { groups: [] } as never;
+      if (path === "/organization/libraries") return { libraries: [] } as never;
+      if (path === "/organization/invitations" && init?.method === "POST")
+        return { invitation: linkInvitation, claim_token: "link-secret" } as never;
+      if (path === "/organization/invitations") return { invitations } as never;
+      throw new Error(`unexpected ${path}`);
+    });
+  }
+
+  function renderTab() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <OrganizationInvitationsTab />
+      </QueryClientProvider>,
+    );
+  }
+
+  function postedBody() {
+    const call = vi
+      .mocked(adminV2Api)
+      .mock.calls.find(([path, init]) => path === "/organization/invitations" && init?.method);
+    return call ? JSON.parse(String(call[1]?.body)) : undefined;
+  }
+
+  it("creates a link with no address by default, as Silo does without email", async () => {
+    mockServer();
+    renderTab();
+    await screen.findByText(/No invitations yet/);
+    fireEvent.click(screen.getByRole("button", { name: "Invite someone" }));
+    expect(screen.getByRole("radiogroup", { name: "Who can use the link?" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Anyone you share it with" })).toBeChecked();
+    expect(screen.queryByLabelText("Email address")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Create invite link" }));
+
+    await screen.findByText(`${window.location.origin}/invite#link-secret`);
+    expect(postedBody()).toEqual({
+      delivery: "link",
+      expected_revision: 7,
+      access_group_id: null,
+      library_ids: null,
+      create_profile: true,
+      show_tour: true,
+    });
+    expect(
+      screen.getByText(/They'll enter their email address and choose a password/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Anyone with the link can use it/)).toBeInTheDocument();
+  });
+
+  it("still binds the link to one address when asked", async () => {
+    mockServer();
+    renderTab();
+    await screen.findByText(/No invitations yet/);
+    fireEvent.click(screen.getByRole("button", { name: "Invite someone" }));
+    fireEvent.click(screen.getByRole("radio", { name: "One email address" }));
+    fireEvent.change(screen.getByLabelText("Email address"), {
+      target: { value: "new@example.test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create invite link" }));
+
+    await waitFor(() =>
+      expect(postedBody()).toEqual({
+        email: "new@example.test",
+        expected_revision: 7,
+        access_group_id: null,
+        library_ids: null,
+        create_profile: true,
+        show_tour: true,
+      }),
+    );
+  });
+
+  it("names a link invitation in the history and when revoking it", async () => {
+    mockServer([linkInvitation]);
+    renderTab();
+    expect(await screen.findByText("Link invitation")).toBeInTheDocument();
+    expect(screen.getByText("“For Sam”")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Revoke this link" }));
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      "Revoke this link invitation? The link will stop working.",
+    );
+  });
+
+  it("offers no choice to a server without link invitations", async () => {
+    capabilityState.tokens = ["organization_invitation_lifecycle_v1"];
+    mockServer();
+    renderTab();
+    await screen.findByText(/No invitations yet/);
+    fireEvent.click(screen.getByRole("button", { name: "Invite someone" }));
+    expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Email address")).toBeInTheDocument();
+  });
 });

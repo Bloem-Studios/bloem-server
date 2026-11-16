@@ -44,7 +44,8 @@ type BloemOrganizationEntitlementUpdate struct {
 	Status           string `json:"status" enum:"active,suspended"`
 }
 type BloemOrganizationInvitationCreate struct {
-	Email            string `json:"email"`
+	Email            string `json:"email,omitempty" doc:"Required unless delivery is link, which forbids it. Becomes the invitee's sign-in username."`
+	Delivery         string `json:"delivery,omitempty" enum:"link" doc:"Silo's delivery field. link: create a link to share, with no address; the invitee enters their email at accept. Omitted: the link is bound to email. Nothing is emailed either way, so Silo's email value is refused. Advertised by organization_invitation_links_v1."`
 	ExpectedRevision int64  `json:"expected_revision" minimum:"1"`
 	AccessGroupID    *int64 `json:"access_group_id,omitempty"`
 	LibraryIDs       []int  `json:"library_ids,omitempty" nullable:"true"`
@@ -275,10 +276,10 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/invitations", "createBloemOrganizationInvitation", "Create a user invitation and disclose its claim token once.", "bloemOrganizationContext", 201)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
-		op.Description += " Creates role=user only; default expiry is seven days. A pending invitation for the same address in this organization is revoked. Returns claim_token once; this operation does not send email or return a claim URL. Do not automatically retry creation."
+		op.Description += " Creates role=user only; default expiry is seven days. A pending invitation for the same address in this organization is revoked. Returns claim_token once; this operation does not send email or return a claim URL. Clients build the claim link with the token in the address fragment (/invite#<claim_token>) so it never reaches a server log. delivery=link creates an invitation with an empty email and delivery link, which the invitee completes with their address; it supersedes no other invitation. Every invitation this route creates records delivery link. Do not automatically retry creation."
 		bloemDocumentDescribe(&op, map[int]string{
 			409: bloemOrganizationPolicyConflict + " email_taken: the email already belongs to an account.",
-			422: "validation_failed: expected_revision is not positive, email is not a bare email address, access_group_id is not one of this organization's groups, or library_ids lists a library the organization neither owns nor is entitled to.",
+			422: "validation_failed: expected_revision is not positive, delivery is neither link nor omitted, email is given with delivery=link or is not a bare email address otherwise, access_group_id is not one of this organization's groups, or library_ids lists a library the organization neither owns nor is entitled to.",
 		})
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationInvitationCreate], bloemJSONOutput[BloemOrganizationInvitationResendResponse]](reg, op)
 	}

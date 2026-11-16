@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -223,6 +224,80 @@ func TestBloemOrganizationInvitationGrantsOnlyThisOrganizationsGroupsAndLibrarie
 	h.HandleCreateInvitation(rec, organizationRequest(http.MethodPost, "/invitations", `{"email":"new@example.test","expected_revision":7,"access_group_id":9,"library_ids":[8,4]}`, organizationID, 7, nil))
 	if rec.Code != http.StatusCreated || store.got != organizationID || store.gotInput.AccessGroupID == nil || *store.gotInput.AccessGroupID != 9 || len(store.gotInput.LibraryIDs) != 2 || libraries.got != organizationID {
 		t.Fatalf("response=%d %s input=%+v libraries_for=%s", rec.Code, rec.Body.String(), store.gotInput, libraries.got)
+	}
+}
+
+// Silo's delivery=link (#1788): a link with no address, which the invitee
+// fills in at accept. Organization invitations are never emailed, so the
+// default stays an address-bound link the administrator delivers.
+func TestBloemOrganizationInvitationDelivery(t *testing.T) {
+	organizationID := uuid.New()
+	for _, tc := range []struct {
+		name, body, wantEmail string
+	}{
+		{name: "link has no address", body: `{"delivery":"link","expected_revision":7,"note":"For Sam"}`},
+		{name: "default stays bound to the address", body: `{"email":"new@example.test","expected_revision":7}`, wantEmail: "new@example.test"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := &organizationInvitationStub{created: &models.Invitation{ID: 3, OrganizationID: organizationID, Email: tc.wantEmail, ExpiresAt: time.Now().Add(time.Hour)}}
+			h := NewBloemAdminOrganizationHandler(nil, nil, nil, store)
+			rec := httptest.NewRecorder()
+			h.HandleCreateInvitation(rec, organizationRequest(http.MethodPost, "/invitations", tc.body, organizationID, 7, nil))
+			var body struct {
+				ClaimToken string `json:"claim_token"`
+			}
+			if rec.Code != http.StatusCreated || json.Unmarshal(rec.Body.Bytes(), &body) != nil || body.ClaimToken == "" {
+				t.Fatalf("response=%d %s", rec.Code, rec.Body.String())
+			}
+			// Nothing is emailed either way, and the history says so.
+			if store.got != organizationID || store.gotInput.Email != tc.wantEmail || store.gotInput.Delivery != models.InvitationDeliveryLink || store.gotInput.Role != "user" {
+				t.Fatalf("input=%+v organization=%s", store.gotInput, store.got)
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		name, body, field string
+	}{
+		{name: "link refuses an address", body: `{"delivery":"link","email":"new@example.test","expected_revision":7}`, field: "email"},
+		{name: "email is never sent here", body: `{"delivery":"email","email":"new@example.test","expected_revision":7}`, field: "delivery"},
+		{name: "unknown delivery", body: `{"delivery":"pigeon","email":"new@example.test","expected_revision":7}`, field: "delivery"},
+		{name: "default needs an address", body: `{"expected_revision":7}`, field: "email"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := &organizationInvitationStub{created: &models.Invitation{ID: 3}}
+			h := NewBloemAdminOrganizationHandler(nil, nil, nil, store)
+			rec := httptest.NewRecorder()
+			h.HandleCreateInvitation(rec, organizationRequest(http.MethodPost, "/invitations", tc.body, organizationID, 7, nil))
+			if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), `"`+tc.field+`"`) || store.got != uuid.Nil {
+				t.Fatalf("response=%d %s created_for=%s", rec.Code, rec.Body.String(), store.got)
+			}
+		})
+	}
+}
+
+// A link invitation belongs to the administrator's resolved organization. No
+// query parameter or body field can point it at another one.
+func TestBloemOrganizationLinkInvitationStaysInTheResolvedOrganization(t *testing.T) {
+	organizationID, foreignID := uuid.New(), uuid.New()
+	store := &organizationInvitationStub{created: &models.Invitation{ID: 3, OrganizationID: organizationID, ExpiresAt: time.Now().Add(time.Hour)}}
+	h := NewBloemAdminOrganizationHandler(nil, nil, nil, store)
+	smuggled := httptest.NewRecorder()
+	h.HandleCreateInvitation(smuggled, organizationRequest(http.MethodPost, "/invitations", `{"delivery":"link","expected_revision":7,"organization_id":"`+foreignID.String()+`"}`, organizationID, 7, nil))
+	if smuggled.Code != http.StatusBadRequest || store.got != uuid.Nil {
+		t.Fatalf("smuggled=%d %s created_for=%s", smuggled.Code, smuggled.Body.String(), store.got)
+	}
+	rec := httptest.NewRecorder()
+	h.HandleCreateInvitation(rec, organizationRequest(http.MethodPost, "/invitations?organization_id="+foreignID.String(), `{"delivery":"link","expected_revision":7}`, organizationID, 7, nil))
+	if rec.Code != http.StatusCreated || store.got != organizationID || strings.Contains(rec.Body.String(), foreignID.String()) {
+		t.Fatalf("response=%d %s created_for=%s", rec.Code, rec.Body.String(), store.got)
+	}
+	// The organization's policy revision still guards the write.
+	store.got = uuid.Nil
+	stale := httptest.NewRecorder()
+	h.HandleCreateInvitation(stale, organizationRequest(http.MethodPost, "/invitations", `{"delivery":"link","expected_revision":6}`, organizationID, 7, nil))
+	if stale.Code != http.StatusConflict || store.got != uuid.Nil {
+		t.Fatalf("stale=%d %s created_for=%s", stale.Code, stale.Body.String(), store.got)
 	}
 }
 

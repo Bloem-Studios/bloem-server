@@ -1,5 +1,6 @@
 import { useBloemT, bloemT, type BloemMessageKey } from "@/bloem/i18n";
-import { useMemo, useState } from "react";
+import { useT } from "@/i18n";
+import { useId, useMemo, useState } from "react";
 import { captureAdminRequestContext } from "@/api/adminV2Client";
 import type { FormEvent } from "react";
 import type {
@@ -21,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { ChoiceOption } from "@/components/ChoiceOption";
 import {
   Select,
   SelectContent,
@@ -55,6 +57,11 @@ import InvitationsTab from "./InvitationsTab";
 import { useOrganizationLibraries } from "@/hooks/queries/admin/organizationLibraries";
 import type { AdminContextSummary } from "@/api/bloemTypes";
 import { useBloemCapabilities } from "@/hooks/queries/useBloemCapabilities";
+
+/** A pending link invitation has no address until someone claims it. */
+function isLinkInvitation(invitation: Invitation) {
+  return invitation.email === "";
+}
 
 // The claim-link box shown after create/resend. min-w-0 + overflow-hidden on
 // every level matters: the URL is one unbreakable token, and without them it
@@ -112,6 +119,7 @@ export default function OrganizationInvitationsTab() {
 
 function InvitationContent({ active }: { active: AdminContextSummary | null }) {
   const bt = useBloemT();
+  const t = useT();
   const organization = active?.scope === "organization";
   const {
     data: invitations = [],
@@ -124,6 +132,10 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
   const lifecycleAvailable =
     !organization ||
     Boolean(capabilities.data?.feature_tokens?.includes("organization_invitation_lifecycle_v1"));
+  // Older servers bind every organization invitation to an address.
+  const linksAvailable =
+    organization &&
+    Boolean(capabilities.data?.feature_tokens?.includes("organization_invitation_links_v1"));
   const resend = useResendInvitation(active);
   const revoke = useRevokeInvitation(active);
   const [createOpen, setCreateOpen] = useState(false);
@@ -190,9 +202,13 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
           if (!open) setConfirmRevoke(null);
         }}
         title={bt("bloem.admin.orgInvitations.revokeInvitation")}
-        description={bt("bloem.admin.orgInvitations.revokeTheInvitationForTheir", {
-          email: confirmRevoke?.email,
-        })}
+        description={
+          confirmRevoke && isLinkInvitation(confirmRevoke)
+            ? t("web.admin.settings.invitations.revoke.linkDescription")
+            : bt("bloem.admin.orgInvitations.revokeTheInvitationForTheir", {
+                email: confirmRevoke?.email,
+              })
+        }
         confirmLabel={bt("bloem.admin.orgInvitations.revoke")}
         variant="destructive"
         onConfirm={() => {
@@ -253,6 +269,7 @@ function InvitationContent({ active }: { active: AdminContextSummary | null }) {
             {createOpen && (
               <CreateInvitationForm
                 context={active}
+                linksAvailable={linksAvailable}
                 onClose={() => setCreateOpen(false)}
                 onCopy={handleCopy}
               />
@@ -308,6 +325,7 @@ function InvitationRow({
   allowActions: boolean;
 }) {
   const bt = useBloemT();
+  const t = useT();
   const badge = STATUS_BADGES[invitation.status];
   const showResend =
     allowActions && (invitation.status === "pending" || invitation.status === "expired");
@@ -316,7 +334,16 @@ function InvitationRow({
   return (
     <TableRow>
       <TableCell>
-        <div className="font-medium">{invitation.email}</div>
+        <div className="font-medium">
+          {isLinkInvitation(invitation)
+            ? t("web.admin.settings.invitations.row.linkInvitation")
+            : invitation.email}
+        </div>
+        {isLinkInvitation(invitation) && invitation.note && (
+          <div className="text-muted-foreground text-xs">
+            {t("web.admin.settings.invitations.row.note", { note: invitation.note })}
+          </div>
+        )}
         {invitation.invited_by_name && (
           <div className="text-muted-foreground text-xs">
             {bt("bloem.admin.orgInvitations.invitedBy", {
@@ -370,14 +397,18 @@ function InvitationRow({
 
 function CreateInvitationForm({
   context,
+  linksAvailable,
   onClose,
   onCopy,
 }: {
   context: AdminContextSummary | null;
+  linksAvailable: boolean;
   onClose: () => void;
   onCopy: (text: string) => void;
 }) {
   const bt = useBloemT();
+  const t = useT();
+  const deliveryGroup = useId();
   const organization = context?.scope === "organization";
   const create = useCreateInvitation(context);
   const { data: accessGroups = [] } = useAccessGroups(context);
@@ -394,6 +425,10 @@ function CreateInvitationForm({
         enabled: library.access_kind === "owned" || library.entitlement?.status === "active",
       }))
     : legacyLibraries;
+  // Silo offers a link with no address first when it cannot send email, and
+  // organization invitations are never emailed.
+  const [delivery, setDelivery] = useState<"link" | "address">(linksAvailable ? "link" : "address");
+  const link = delivery === "link";
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("user");
   const [accessGroupID, setAccessGroupID] = useState<number | null>(null);
@@ -404,14 +439,18 @@ function CreateInvitationForm({
   // After creation we keep the dialog open to show the claim link — the
   // token is only readable in this response, so this is the one chance to
   // copy it. emailSent changes the copy: delivered vs deliver-it-yourself.
-  const [result, setResult] = useState<{ claimUrl: string; emailSent: boolean } | null>(null);
+  const [result, setResult] = useState<{
+    claimUrl: string;
+    emailSent: boolean;
+    link: boolean;
+  } | null>(null);
 
   const defaultGroup = useMemo(() => accessGroups.find((g) => g.is_default), [accessGroups]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const data = await create.send({
-      email,
+      ...(link ? { delivery: "link" as const } : { email }),
       role,
       access_group_id: effectiveAccessGroupID(role, accessGroupID),
       library_ids: libraryIDs,
@@ -425,7 +464,7 @@ function CreateInvitationForm({
         bloemT("bloem.admin.orgInvitations.invitationSentTo", { email: data.invitation.email }),
       );
     if (data.claim_url) {
-      setResult({ claimUrl: data.claim_url, emailSent: data.email_sent });
+      setResult({ claimUrl: data.claim_url, emailSent: data.email_sent, link });
     } else {
       onClose();
     }
@@ -435,13 +474,19 @@ function CreateInvitationForm({
     return (
       <div className="min-w-0 space-y-4">
         <p className="text-sm">
-          {result.emailSent
-            ? bt("bloem.admin.orgInvitations.invitationEmailedYouCanAlso")
-            : bt("bloem.admin.orgInvitations.theInvitationWasCreatedBut")}
+          {result.link
+            ? t("web.admin.settings.invitations.delivery.linkCreated")
+            : result.emailSent
+              ? bt("bloem.admin.orgInvitations.invitationEmailedYouCanAlso")
+              : bt("bloem.admin.orgInvitations.theInvitationWasCreatedBut")}
         </p>
         <ClaimLinkBox
           claimUrl={result.claimUrl}
-          finePrint={bt("bloem.admin.orgInvitations.newLinkFinePrint")}
+          finePrint={
+            result.link
+              ? t("web.admin.settings.invitations.create.finePrintLink")
+              : bt("bloem.admin.orgInvitations.newLinkFinePrint")
+          }
           onCopy={onCopy}
           onDone={onClose}
         />
@@ -451,21 +496,56 @@ function CreateInvitationForm({
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="invitation-email">{bt("bloem.admin.orgInvitations.emailAddress")}</Label>
-        <Input
-          id="invitation-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder={bt("bloem.admin.orgInvitations.themExampleCom")}
-          autoFocus
-          required
-        />
-        <p className="text-muted-foreground text-xs">
-          {bt("bloem.admin.orgInvitations.thisBecomesBothTheDestination")}
-        </p>
-      </div>
+      {linksAvailable && (
+        <div className="space-y-2">
+          <p id={`${deliveryGroup}-label`} className="text-sm leading-none font-medium">
+            {bt("bloem.admin.orgInvitations.whoCanUseTheLink")}
+          </p>
+          <div
+            role="radiogroup"
+            aria-labelledby={`${deliveryGroup}-label`}
+            className="grid gap-2 sm:grid-cols-2"
+          >
+            <ChoiceOption
+              name={deliveryGroup}
+              value="link"
+              selected={link}
+              disabled={create.isPending}
+              title={bt("bloem.admin.orgInvitations.anyoneOption")}
+              onSelect={setDelivery}
+            >
+              {bt("bloem.admin.orgInvitations.anyoneOptionBody")}
+            </ChoiceOption>
+            <ChoiceOption
+              name={deliveryGroup}
+              value="address"
+              selected={!link}
+              disabled={create.isPending}
+              title={bt("bloem.admin.orgInvitations.oneAddressOption")}
+              onSelect={setDelivery}
+            >
+              {bt("bloem.admin.orgInvitations.oneAddressOptionBody")}
+            </ChoiceOption>
+          </div>
+        </div>
+      )}
+      {!link && (
+        <div className="space-y-2">
+          <Label htmlFor="invitation-email">{bt("bloem.admin.orgInvitations.emailAddress")}</Label>
+          <Input
+            id="invitation-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={bt("bloem.admin.orgInvitations.themExampleCom")}
+            autoFocus
+            required
+          />
+          <p className="text-muted-foreground text-xs">
+            {bt("bloem.admin.orgInvitations.thisBecomesBothTheDestination")}
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
@@ -537,7 +617,9 @@ function CreateInvitationForm({
           className="border-border bg-background text-foreground focus:border-ring focus:ring-ring/50 w-full resize-y rounded-md border px-3 py-2.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus:ring-[3px]"
         />
         <p className="text-muted-foreground text-xs">
-          {bt("bloem.admin.orgInvitations.appearsInTheEmailPlain")}
+          {link
+            ? t("web.admin.settings.invitations.create.noteHintLink")
+            : bt("bloem.admin.orgInvitations.appearsInTheEmailPlain")}
         </p>
       </div>
 
@@ -548,7 +630,9 @@ function CreateInvitationForm({
               {bt("bloem.admin.orgInvitations.createTheirFirstProfile")}
             </Label>
             <p className="text-muted-foreground text-xs">
-              {bt("bloem.admin.orgInvitations.namedFromThePartBefore")}
+              {link
+                ? t("web.admin.settings.invitations.create.profileHintLink")
+                : bt("bloem.admin.orgInvitations.namedFromThePartBefore")}
             </p>
           </div>
           <Switch

@@ -13,6 +13,8 @@ import {
   type ProfileRequestContextSnapshot,
 } from "./client";
 import type { RequestPolicy } from "./bloemRequestPolicy";
+import { API_READ_TIMEOUT_MS, startRequestDeadline } from "./requestDeadline";
+import { V2TimeoutError } from "./v2/request";
 import { storage } from "../utils/storage";
 
 export type { RequestPolicy } from "./bloemRequestPolicy";
@@ -119,17 +121,60 @@ export async function nativeApi<T>(
   options: RequestInit = {},
   policy?: RequestPolicy,
 ): Promise<T> {
-  const readOnly =
-    !options.method || ["GET", "HEAD", "OPTIONS"].includes(options.method.toUpperCase());
-  return readApiResponse<T>(
-    await apiResponseInternal(
-      path,
-      options,
-      policy ?? (readOnly ? "safe" : "none"),
-      undefined,
-      "/api/bloem/v2",
+  const readOnly = isRead(options);
+  return withReadDeadline(path, options, async (init) =>
+    readApiResponse<T>(
+      await apiResponseInternal(
+        path,
+        init,
+        policy ?? (readOnly ? "safe" : "none"),
+        undefined,
+        "/api/bloem/v2",
+      ),
     ),
   );
+}
+
+function isRead(options: RequestInit): boolean {
+  return !options.method || ["GET", "HEAD", "OPTIONS"].includes(options.method.toUpperCase());
+}
+
+/**
+ * Gives a read Silo's v2 read deadline (`withV2Deadline` in v2/request.ts):
+ * after `API_READ_TIMEOUT_MS` it rejects with `V2TimeoutError`, which
+ * `loadErrorDescription` and the query retry rules recognize. `send` must
+ * read the body under the signal, since a server can send the headers and
+ * then stall. A caller's own abort rejects with the caller's reason. Writes
+ * get no deadline, as in Silo: abandoning one leaves its outcome unknown.
+ */
+async function withReadDeadline<T>(
+  path: string,
+  options: RequestInit,
+  send: (init: RequestInit) => Promise<T>,
+): Promise<T> {
+  if (!isRead(options)) return send(options);
+  const method = (options.method ?? "GET").toUpperCase();
+  const operation = `${method} /api/bloem/v2${path.split("?", 1)[0]}`;
+  const deadline = startRequestDeadline(
+    API_READ_TIMEOUT_MS,
+    () => new V2TimeoutError(operation, API_READ_TIMEOUT_MS),
+    options.signal,
+  );
+  try {
+    return await send({ ...options, signal: deadline.signal });
+  } catch (err) {
+    // A network or abort failure after the deadline fired is the deadline's
+    // doing; a server answer or a context change that arrived in time stands.
+    if (
+      deadline.expired &&
+      !(err instanceof ApiClientError || err instanceof StaleApiRequestContextError)
+    ) {
+      throw deadline.signal.reason;
+    }
+    throw err;
+  } finally {
+    deadline.dispose();
+  }
 }
 
 /**
@@ -161,17 +206,13 @@ async function apiForProfile<T>(
   setHeader(headers, "Authorization", `Bearer ${snapshot.accessToken}`);
   setHeader(headers, "X-Profile-Id", snapshot.profileId);
   setHeader(headers, "X-Profile-Token", snapshot.profileToken ?? "");
-  const response = await apiResponseInternal(
-    path,
-    { ...options, headers },
-    policy,
-    snapshot,
-    prefix,
-  );
-  if (!isProfileRequestContextCurrent(snapshot)) {
-    throw new StaleApiRequestContextError();
-  }
-  return readApiResponse<T>(response);
+  return withReadDeadline(path, { ...options, headers }, async (init) => {
+    const response = await apiResponseInternal(path, init, policy, snapshot, prefix);
+    if (!isProfileRequestContextCurrent(snapshot)) {
+      throw new StaleApiRequestContextError();
+    }
+    return readApiResponse<T>(response);
+  });
 }
 
 async function apiResponseInternal(

@@ -240,6 +240,21 @@ its slots; its budget is at least 1 GiB or eight times the file size, over a
 64 KiB to 8 MiB, at most eight prefetched blocks, at most 64 MiB cached and an
 authorization window of at most ten seconds.
 
+FFmpeg's stderr for a native input stays in memory. Each run keeps a 64 KiB
+tail (`transcodeExecutionInput.stderr`, `internal/playback/bloem_native_input.go`)
+only to classify its failure with Silo's `classifyFFmpegFailure`, so a GPU
+decoder rejection takes Silo's CPU-decode retry: the hardware encoder with CPU
+decoding, then software. That covers a live start (`StartReadyTranscode`, on
+the API server and on a worker) and converting for offline use
+(`prepareSourceFile`, which follows `PrepareFile`'s retries step by step). The
+text can name the private input address, so it never enters an error message,
+a log, the FFmpeg log sink, a receipt or a response. Errors carry only the
+classification. `TestPrepareSourceFileFollowsPrepareFileRetries` fails when
+Silo's `PrepareFile` gains a retry that `prepareSourceFile` lacks. Silo's
+restart on CPU decoding after a QSV or VAAPI filter-graph failure reads the
+session's own stderr, which stays empty for a native input, so native playback
+does not take that restart.
+
 Session bindings compare their source snapshot and delegation by instant.
 Stores normalize their times to UTC without a monotonic reading, because a
 Redis JSON copy never keeps the location or monotonic reading of the value it
@@ -477,7 +492,9 @@ Native video arrived in `b781ac3ff` (2026-10-11: playback, the movie scanner and
 checked-ETag reads). Read-ahead followed in `b0b819fc8` (2026-10-11), and native
 audiobooks on 2026-10-12. The Silo merge `68070f04b` (2026-10-27) bound the
 login-session recheck to the delegated account. Original downloads followed in
-`c901194a8` (2026-11-12), and converting for offline use on 2026-11-12.
+`c901194a8` (2026-11-12), and converting for offline use on 2026-11-12. Native
+inputs took Silo's CPU-decode retry for a rejected GPU decoder (Silo
+`061bbd172`) on 2026-11-15.
 
 ### Related pages
 

@@ -7111,6 +7111,18 @@
       "value": "⟦Åđɱîñ~~⟧"
     }
   ],
+  "bloem.admin.orgInvitations.anyoneOption": [
+    {
+      "type": 0,
+      "value": "⟦Åñýöñé ýöû šĥåŕé îţ ŵîţĥ~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.orgInvitations.anyoneOptionBody": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥéý éñţéŕ ţĥéîŕ öŵñ éɱåîļ åđđŕéšš ŵĥéñ ţĥéý çļåîɱ îţ.~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
   "bloem.admin.orgInvitations.appearsInTheEmailPlain": [
     {
       "type": 0,
@@ -7387,6 +7399,18 @@
       "value": "⟦Ñö îñṽîţåţîöñš ýéţ. Îñṽîţé šöɱéöñé ţö ĝéţ šţåŕţéđ.~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
     }
   ],
+  "bloem.admin.orgInvitations.oneAddressOption": [
+    {
+      "type": 0,
+      "value": "⟦Öñé éɱåîļ åđđŕéšš~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.orgInvitations.oneAddressOptionBody": [
+    {
+      "type": 0,
+      "value": "⟦Öñļý ţĥîš åđđŕéšš çåñ çļåîɱ îţ. Îţ ƀéçöɱéš ţĥéîŕ ûšéŕñåɱé.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
   "bloem.admin.orgInvitations.personalNoteOptional": [
     {
       "type": 0,
@@ -7615,6 +7639,12 @@
     {
       "type": 0,
       "value": "⟦Ŵåļķš ţĥŕöûĝĥ ŵĥåţ ţĥîš šéŕṽéŕ çåñ đö, šķîþþîñĝ åñýţĥîñĝ ţûŕñéđ öƒƒ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.orgInvitations.whoCanUseTheLink": [
+    {
+      "type": 0,
+      "value": "⟦Ŵĥö çåñ ûšé ţĥé ļîñķ?~~~~~~~~~~⟧"
     }
   ],
   "bloem.admin.organization.activity.accessChecks": [

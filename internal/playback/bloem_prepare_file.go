@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -47,10 +46,13 @@ func prepareContextFile(ctx context.Context, opts TranscodeOpts, outputPath stri
 
 // prepareSourceFile is PrepareFile for a typed source. It follows PrepareFile
 // step by step: the same encoder, hardware and tone-map resolution, the same
-// arguments (with the source's fixed demuxer), the same software retry and
-// the same atomic finalization. Each run opens the source afresh, so a retry
-// rechecks the source's authority. ffmpeg's diagnostics are discarded, as for
-// every native execution, because they would name the private input address.
+// arguments (with the source's fixed demuxer), the same retries (software
+// encoding for VideoToolbox, and CPU decoding, then software, after a GPU
+// decoder rejection) and the same atomic finalization. Each run opens the
+// source afresh, so a retry rechecks the source's authority. ffmpeg's
+// diagnostics never reach the prepare log or an error, as for every native
+// execution, because they would name the private input address; a private
+// tail only classifies the failure.
 func prepareSourceFile(ctx context.Context, opts TranscodeOpts, outputPath string) error {
 	if outputPath == "" {
 		return errors.New("prepare-file: empty output path")
@@ -87,7 +89,15 @@ func prepareSourceFile(ctx context.Context, opts TranscodeOpts, outputPath strin
 	}
 
 	logs := newPrepareLogWriter(ctx, opts)
-	err = runSourcePrepare(ctx, opts, partPath, logs)
+	// As PrepareFile: whether the last failed attempt wrote any of the
+	// artifact, which only an attempt past encoder startup does.
+	wroteOutput := false
+	runOnce := func(runOpts TranscodeOpts) error {
+		var runErr error
+		wroteOutput, runErr = runSourcePrepare(ctx, runOpts, partPath, logs)
+		return runErr
+	}
+	err = runOnce(opts)
 	if err != nil && ctx.Err() == nil && opts.ToneMapMode != tonemap.ModeHardware {
 		if retryAccel := StartupRetryHWAccel(opts); retryAccel != opts.HWAccel {
 			slog.WarnContext(ctx, "prepared encode failed; retrying with software encoding",
@@ -95,7 +105,24 @@ func prepareSourceFile(ctx context.Context, opts TranscodeOpts, outputPath strin
 			logs.event("retrying with software encoding", "")
 			retryOpts := opts
 			retryOpts.HWAccel = retryAccel
-			err = runSourcePrepare(ctx, retryOpts, partPath, logs)
+			err = runOnce(retryOpts)
+		} else if decodeRetry := NewSoftwareDecodeRetryPipeline(opts, err); decodeRetry.Enabled() {
+			// As PrepareFile: the hardware decoder rejected the source, so
+			// decode on the CPU with the hardware encoder, then fall back to
+			// software. err's message carries no FFmpeg diagnostics.
+			slog.WarnContext(ctx, "prepared encode failed in the hardware decoder; retrying with CPU decoding",
+				"hw_accel", opts.HWAccel, "output", outputPath, "error", err)
+			logs.event("retrying with CPU decoding", "")
+			for {
+				err = runOnce(decodeRetry.Current())
+				if err == nil || ctx.Err() != nil || wroteOutput || !decodeRetry.AdvanceAfterFailure("") {
+					break
+				}
+				if decodeRetry.Current().HWAccel == transcodeHWNone {
+					releaseHWDevice()
+				}
+				logs.event("retrying with software encoding", "")
+			}
 		}
 	}
 	if err != nil {
@@ -116,11 +143,13 @@ func prepareSourceFile(ctx context.Context, opts TranscodeOpts, outputPath strin
 }
 
 // runSourcePrepare runs one ffmpeg encode from a freshly opened source. It
-// returns only after the child and every source read have joined.
-func runSourcePrepare(ctx context.Context, opts TranscodeOpts, partPath string, logs *prepareLogWriter) error {
+// returns only after the child and every source read have joined. On failure
+// it reports whether the attempt had written any of the artifact, and marks
+// the error from the run's private stderr tail without adding its text.
+func runSourcePrepare(ctx context.Context, opts TranscodeOpts, partPath string, logs *prepareLogWriter) (wroteOutput bool, err error) {
 	runCtx, executionOpts, input, err := prepareTranscodeInput(ctx, opts)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrTranscodeFailed, err)
+		return false, fmt.Errorf("%w: %w", ErrTranscodeFailed, err)
 	}
 	args := restrictSourceInputArgs(buildPrepareFileArgs(executionOpts, partPath), opts.InputFormat)
 	bin := opts.FFmpegPath
@@ -129,7 +158,7 @@ func runSourcePrepare(ctx context.Context, opts TranscodeOpts, partPath string, 
 	}
 	cmd := fspath.CommandContext(runCtx, bin, args...)
 	configureTranscodeInputCommand(cmd, input)
-	cmd.Stderr = io.Discard
+	cmd.Stderr = input.classificationStderr()
 	if opts.PrepareProgressSink != nil {
 		// As PrepareFile's own run: copied video keeps the source's own
 		// timing, so a remux reads out_time alone.
@@ -146,15 +175,17 @@ func runSourcePrepare(ctx context.Context, opts TranscodeOpts, partPath string, 
 	logs.event("ffmpeg process starting", "")
 	if err := cmd.Start(); err != nil {
 		_ = os.Remove(partPath)
-		return fmt.Errorf("%w: %w", ErrTranscodeFailed, input.complete(err))
+		return false, fmt.Errorf("%w: %w", ErrTranscodeFailed, input.complete(err))
 	}
 	err = input.complete(waitTranscodeInputProcess(runCtx, cmd))
 	logs.flush()
 	if err != nil {
+		info, statErr := os.Stat(partPath)
+		wroteOutput = statErr == nil && info.Size() > 0
 		_ = os.Remove(partPath)
 		logs.event("ffmpeg process exit error", formatWaitError(err))
-		return fmt.Errorf("%w: %w", ErrTranscodeFailed, err)
+		return wroteOutput, input.classify(fmt.Errorf("%w: %w", ErrTranscodeFailed, err))
 	}
 	logs.event("ffmpeg process exited", "")
-	return nil
+	return false, nil
 }

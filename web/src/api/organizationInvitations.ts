@@ -6,7 +6,10 @@ export type Invitation = components["schemas"]["AdminInvitation"];
 export type InvitationStatus = Invitation["status"];
 
 export interface CreateInvitationRequest {
-  email: string;
+  /** Omitted for a link invitation: the invitee enters an address when claiming it. */
+  email?: string;
+  /** Silo's delivery choice; organization invitations accept only "link" (never emailed). */
+  delivery?: "link";
   role?: string;
   access_group_id?: number | null;
   library_ids?: number[] | null;
