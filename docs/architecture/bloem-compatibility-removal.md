@@ -1,10 +1,8 @@
 # How Bloem runs Silo's Jellyfin and Audiobookshelf servers
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-15
-> and checked against `main` at `8e1d391d7`, the merge of Silo through `229a719b9`. The compatibility servers are Silo's; only the organization
-> wiring and the persistence notes are Bloem's. The file name still says "removal"
-> because the page was first written when Bloem removed the protocols; today they are
-> served. The technical rules are in the [For developers](#for-developers) section.
+The compatibility servers are Silo's; only the organization wiring and the persistence notes are Bloem's. The
+file name still says "removal" because Bloem first removed the protocols; today they are served. The technical rules
+are in the [For developers](#for-developers) section.
 
 Jellyfin apps and Audiobookshelf apps can use a Bloem server as if it were their own
 kind of server. This page walks through how Bloem took that ability out and brought
@@ -67,12 +65,6 @@ to. Where the Bloem server builds Silo's compatibility servers, it adds four rul
   [`internal/audiobooks/README.md`](../../internal/audiobooks/README.md). Bloem's native
   API is not served on these ports.
 
-History: first written for Bloem's removal of Jellyfin and Audiobookshelf
-compatibility (`b8ddec9bf`, 2026-10-13; migration renumbered in `933bcc5dd`) and
-rewritten when Bloem restored Silo's servers (`2393c41ee`, 2026-10-18). `879da820c`
-(2026-10-26) returned the public port and the compatibility listener start-up to
-Silo's `main.go` code.
-
 ### What runs
 
 Bloem runs upstream Silo's Jellyfin-compatible server (`internal/jellycompat`) and
@@ -80,8 +72,7 @@ Audiobookshelf-compatible server (`internal/audiobooks/abs`,
 `internal/audiobooks/abssocket`) as Silo ships them. Each binds its own configured
 port: `jellyfin_compat.listen` (default `:8096`) and, when
 `audiobookshelf_compat.enabled` is on (the default), `:13378`. Silo's bootstrap
-variables `JF_PORT` and `ABS_PORT` move them (`ABS_PORT` is Silo #3117, merged in
-`68070f04b`). Neither is served on the public port.
+variables `JF_PORT` and `ABS_PORT` move them. Neither is served on the public port.
 
 Bloem removed both on 2026-10-13 and restored them on 2026-10-18, so that Silo's code
 merges without hundreds of deletion seams. Bloem's own additions from before the
@@ -103,7 +94,7 @@ with the adapters in `cmd/silo/bloem_compat.go` and the tenant-aware resolver in
   decides; a session without a resolvable tenant is refused.
 - Audiobookshelf downloads go through the same service: Silo checks the download rules
   on `/api/items/{id}/file/{ino}/download`, on the sign-in and `/me` payloads'
-  `permissions.download`, and when an RSS feed opens or serves (Silo `6e8c2ed01`).
+  `permissions.download`, and when an RSS feed opens or serves.
   Those requests carry no tenant, and Bloem's tenant-scoped group policy
   (`access.EffectivePolicyForRequest`) refuses a check without one, so
   `newBloemABSDownloads` resolves the account's tenant first
@@ -149,21 +140,11 @@ table; the deleted preferences do not return. See
 ### Upstream merges
 
 Take Silo's compatibility code as it is; there are no deletion seams to preserve.
-Until the merge of Silo through `2d5f22e7d` (2026-11-05), one Jellyfin test file was
-a seam: `internal/jellycompat/dv_strip_test.go`, whose no-route cases turned off
-Bloem's tone-mapping defaults. Silo #3470 turns tone mapping off in those fixtures
-itself, so the file is Silo's bytes again and left `contracts/seams.txt`. When
-upstream changes how `main.go` builds either server, keep the tenant wiring above.
+When upstream changes how `main.go` builds either server, keep the tenant wiring above.
 `TestProductionViewerResolversUseBloemTenancy`
 (`cmd/silo/bloem_viewer_tenancy_wiring_test.go`) fails when a production
 `policy.NewViewerResolver` construction, including the compatibility servers', skips
 Bloem tenancy.
-
-Until 2026-10-26 Bloem also kept `cmd/silo` listener guard tests that allowed only
-named listener functions (`newAudiobookshelfListener`, `serveAux`) to serve the
-compatibility ports. `879da820c` removed `serveAux` and those tests when the public
-port returned to Silo's root handler; the listeners are now Silo's own start-up code in
-`cmd/silo/main.go` and `cmd/silo/abs_listener.go`.
 
 ### Related pages
 

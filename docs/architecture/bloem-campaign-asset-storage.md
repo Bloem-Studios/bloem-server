@@ -1,11 +1,8 @@
 # Where campaign and seasonal artwork is stored
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against
-> `main` at `b6039036d` and checked again on 2026-11-11, after Silo retired its v1 API.
-> The artwork upload service is a Bloem addition on top of
-> Silo's [blob storage](blob-storage.md). This page explains where uploaded pictures go
-> and how apps fetch them, in plain language; the technical rules are in the
-> [For developers](#for-developers) section.
+The artwork upload service is a Bloem addition on top of Silo's [blob storage](blob-storage.md). This page
+explains where uploaded pictures go and how apps fetch them, in plain language; the technical rules are in the
+[For developers](#for-developers) section.
 
 Campaign cards and seasonal packs can carry pictures that an administrator uploads.
 This page walks through what happens to an upload, which store it lands in, and how
@@ -80,19 +77,6 @@ Uploading the same file again for another pack reuses the same name.
   The legacy routes on Silo's v1 API were retired on 2026-11-11; they are recorded on
   [Bloem's retired v1 routes](../bloem/api/v1-routes.md#seasonal-packs).
 
-### History
-
-The ambience (seasonal pack) registry and its artwork service are Bloem's
-(`internal/ambience`, first commit `54ace4675`, 2026-09-01); campaign cards share it.
-This page was first written in the Silo merge `64bbab66b` (2026-09-23), which brought
-in Silo's blob store and its `blob-storage.md`. Later the same day `f293cce0d` moved the
-wiring into `cmd/silo/bloem_main.go` and switched the service from the public S3 client
-to the catalog Assets store, which the first version of this page did not reflect. On
-2026-10-31 (`3eb77be33`) uploads started returning paths under
-`/api/bloem/v2/ambience/assets/`, and migration
-`20261031234831_bloem_native_ambience_asset_paths` rewrote the paths stored in
-`ambience_packs.assets`, `promotions.image_url` and `promotions.placement`.
-
 ### Store selection
 
 - `bloemWireServices` (`cmd/silo/bloem_main.go`) hands `ambience.NewService` the catalog
@@ -144,13 +128,6 @@ to the catalog Assets store, which the first version of this page did not reflec
   `Cache-Control: public, max-age=31536000, immutable`, and `304` when `If-None-Match`
   matches. The `Content-Type` comes from the reference's extension.
 - The route is public because seasonal artwork can render on the login screen.
-
-### Acceptance
-
-The browser acceptance recorded in
-[web feature coverage](bloem-web-feature-coverage.md#acceptance-evidence-and-limits)
-(18 September 2026) ran against configured public S3, before the switch to the Assets
-store. No later upload acceptance against local artwork storage is recorded.
 
 ### Related pages
 

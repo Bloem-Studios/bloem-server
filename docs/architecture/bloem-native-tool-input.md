@@ -1,10 +1,7 @@
 # How a trusted tool reads a stored file
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. The tool input bridge is part of Bloem's
-> [native storage](bloem-native-storage.md), a Bloem addition: Silo's tools read
-> files from paths on the server. The technical rules are in the
-> [For developers](#for-developers) section.
+The tool input bridge is part of Bloem's [native storage](bloem-native-storage.md), a Bloem addition: Silo's tools
+read files from paths on the server. The technical rules are in the [For developers](#for-developers) section.
 
 Tools such as ffprobe and ffmpeg read a file by its address. A stored file has no
 address on the server's disk, and its address at the storage service must never
@@ -70,8 +67,7 @@ still reading it:
 ## For developers
 
 The bridge has no API route; it is never mounted on the public API. Its
-consumers are the native probe (`internal/scanner/bloem_native_probe.go`, since
-`d3d2c8f72`) and native video (`internal/api/handlers/bloem_native_video.go`).
+consumers are the native probe (`internal/scanner/bloem_native_probe.go`) and native video (`internal/api/handlers/bloem_native_video.go`).
 
 ### Contract
 
@@ -140,15 +136,6 @@ process limits and output validation:
   a 12-hour lifetime and a budget of at least 1 GiB or eight times the file size
   (`internal/api/handlers/bloem_native_video.go`); see
   [native video playback](bloem-native-video-playback.md).
-
-### History
-
-`nativestorage.ToolInput` and this page arrived in `8dd12345d` (2026-10-10).
-`4e73aa7aa` (2026-10-11) stopped an abandoned range from failing a successful
-probe (the cleanup exception above); `93d60257d` (2026-10-12) made a request
-beyond the concurrent-read bound wait for a slot instead of failing; `8dbdb744f`
-(2026-10-12) keeps the cancellation cause as the sticky failure; `f02081299`
-(2026-10-28) starts each range with a small read.
 
 ### Related pages
 
