@@ -34,6 +34,7 @@ func (r *recordingArtifactMissReporter) ReportRemoteArtifactMissing(_ context.Co
 func newDownloadProxyServer(t *testing.T, secret string) *Server {
 	t.Helper()
 	srv := NewServer(testWatcher(secret), nil)
+	srv.SetNodeKeys(nodeauthtest.NodeKey(secret))
 	srv.SetSourceAccess(allowAllSourceAccess{})
 	return srv
 }
