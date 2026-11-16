@@ -228,7 +228,7 @@ into a Bloem site. Keep license/provenance notices on reused source.
 
 | Audience or change | Maintained source |
 | --- | --- |
-| Product overview, provenance and current source status | [Bloem front page](../../.github/README.md), [integration changelog](CHANGELOG.md) |
+| Product overview, provenance and current source status | [Bloem front page](../../.github/README.md), [Bloem Server in depth](about.md), [how Bloem keeps up with Silo](../architecture/bloem-following-silo.md), [integration changelog](CHANGELOG.md) |
 | Fork and merge policy | [FORK.md](../../FORK.md), [agent rules](../../BLOEM_AGENTS.md) |
 | CI, the daily upstream sync and the published image | [Bloem CI](ci.md) |
 | Viewer tasks | [User guide](../wiki/user-guide.md) |

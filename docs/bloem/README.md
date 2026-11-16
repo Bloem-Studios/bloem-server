@@ -16,11 +16,12 @@ a "For developers" section that holds every technical rule.
 
 Pages marked *historical* are dated records: their facts are true to their date,
 not to the current source, and they keep the form they were written in. The current
-state is on the [front page](../../.github/README.md#current-state).
+state is in [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md).
 
 ## Start here
 
-- [Bloem Server front page](../../.github/README.md) — what Bloem is, where it comes from, current state, quick start. GitHub shows it in place of the root `README.md`, which is Silo's.
+- [Bloem Server front page](../../.github/README.md) — a short introduction: what Bloem is, what it adds, a quick start and where to read on. GitHub shows it in place of the root `README.md`, which is Silo's.
+- [Bloem Server in depth](about.md) — where Bloem comes from, what it adds to and removed from Silo, deployment, configuration and building from source.
 - [How Bloem forks Silo](../../FORK.md) — tracking-fork policy, the "Silo wins" rule, seams and overlays, what Bloem adds and removed, the current integration boundary.
 - [Agent instructions](../../BLOEM_AGENTS.md) — Bloem's overrides of Silo's `AGENTS.md` / `CLAUDE.md`; they take precedence where the two differ.
 - [Contributing to Bloem](../../.github/CONTRIBUTING.md) — repository ownership, AI disclosure and the validation commands; the root `CONTRIBUTING.md` is Silo's.
