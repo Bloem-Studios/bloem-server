@@ -16,7 +16,7 @@ AGENTS.md
 Makefile  # Bloem gates and generation; bounded 20-minute Go package timeout covers the measured ~15-minute executor
 assets/icon.png
 cmd/playbackfixtures/main.go
-cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources
+cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources; one line after the download preparer's SetSourceGrants wraps its granter so native files get Bloem source grants for core-access transcode nodes (handlers.NativeNodeSources, 2026-11-16)
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/create_library_validation_failed.json  # generated: createLibrary accepts storage_source instead of paths, so paths is no longer required
@@ -68,7 +68,7 @@ internal/api/handlers/playback_hung_node_test.go  # the router fixture sets the 
 internal/api/handlers/playback_missing.go  # a native-storage file is checked through its provider, never stat'ed or marked missing (bloemNativePreflight)
 internal/api/handlers/playback_sessions.go  # one additive, zero-valued filter field (PlaybackSessionsQuery.OrganizationID) so the organization support streams route filters in SQL; Silo reads are unchanged
 internal/api/handlers/playback_test.go
-internal/api/handlers/playback_v3.go  # two hook lines in planPlaybackWithCapabilitiesV3: the planner call goes through playback.PlanPlaybackAirPlayAwareV3 (bloem_airplay_v3.go), so an AirPlay output plans under a bitrate cap
+internal/api/handlers/playback_v3.go  # two hook lines in planPlaybackWithCapabilitiesV3: the planner call goes through playback.PlanPlaybackAirPlayAwareV3 (bloem_airplay_v3.go), so an AirPlay output plans under a bitrate cap; native video lines in prepareRemoteTransportV3 admit a native input only to a core-access node (nativeVideoWorkerAdmissionV3) and name the session its Bloem source grant reads through (nativeNodeGrantRequest, bloem_native_node_source.go, 2026-11-16)
 internal/api/handlers/playback_v3_test.go
 internal/api/handlers/plugins.go  # installation store becomes an interface so native storage installations can be hidden (bloem_plugins_native_storage.go)
 internal/api/handlers/profiles.go
@@ -84,7 +84,7 @@ internal/api/middleware/household_profile_gate.go  # direct-profile sessions are
 internal/api/middleware/policy_gates.go
 internal/api/middleware/profile.go
 internal/api/middleware/viewer_access.go
-internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher
+internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher; four lines put native inputs on core-access transcode nodes: the playback handler's granter, the node control grant issuer and catalog check, Bloem's sources/open in the /self node routes and its source bytes middleware (bloem_native_node_sources.go, 2026-11-16)
 internal/api/testdata/media_routes.txt
 internal/apiv2/admin_subtitle_metadata_test.go  # reviewed test-only exception: canonical API language projection preserves raw legacy row
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification

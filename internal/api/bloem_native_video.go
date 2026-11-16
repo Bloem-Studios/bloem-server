@@ -144,6 +144,7 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 	configureNativeVideoDelegates(deps, coordinator, service, p)
 	h.NativeVideo = service
 	sh.NativeVideo = service
+	installNativeNodeSources(deps, service, p.secret)
 	deps.NativeVideoCompat.install(service, deps.SessionMgr.GetSession, deps.FileRepo, p.secret)
 	deps.NativeVideoCompat.watchStops(deps.SessionMgr)
 }

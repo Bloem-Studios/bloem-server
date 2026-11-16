@@ -26,8 +26,8 @@ var _ downloads.NativePreparation = (*NativeVideoDownloads)(nil)
 // a playback start binds a playback session: the attempt's UUID names a
 // binding sealed with the requester's authority, and every read reopens the
 // source through it, rechecking the authority, the binding, the download and
-// the source. The returned context carries the source for PrepareFile, which
-// runs on this server. end revokes the binding.
+// the source. The returned context carries the source for PrepareFile on this
+// server, and the binding a core-access transcode node's grant reads through. end revokes the binding.
 func (d *NativeVideoDownloads) BeginPreparation(ctx context.Context, artifactID, attemptID string, requester *downloads.Download, file *models.MediaFile) (context.Context, func(), error) {
 	if d == nil || d.Service == nil || d.Service.Bindings == nil || d.Prepare == nil || requester == nil || file == nil ||
 		!nativeVideoFileSupported(file) || requester.MediaFileID != file.ID || requester.UserID <= 0 || artifactID == "" || requester.ArtifactID != artifactID {
@@ -64,7 +64,10 @@ func (d *NativeVideoDownloads) BeginPreparation(ctx context.Context, artifactID,
 	frozen := *file
 	host := &nativeVideoPreparation{service: service, session: session, file: &frozen, attemptID: attemptID,
 		logSession: playback.DownloadPrepareLogSessionID(artifactID)}
-	return playback.WithContextMediaHost(ctx, host), func() { host.end(ctx) }, nil
+	// A transcode node with core source access may prepare it: its grant reads
+	// through this binding (NativeNodeSources).
+	prepared := WithNativeNodeGrantSession(playback.WithContextMediaHost(ctx, host), session.ID)
+	return prepared, func() { host.end(ctx) }, nil
 }
 
 // nativeVideoPreparation is the context-scoped media host of one download

@@ -4596,9 +4596,10 @@ func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla
 		if NativeVideoSupported(file) && nodePlan.ProxyNode != nil {
 			return preparedTransportV3{}, nativeVideoProxyAdmissionErrorV3()
 		}
-		if admissionErr := h.nativeVideoWorkerAdmissionV3(r.Context(), file, nodePlan.TranscodeNode); admissionErr != nil {
+		if admissionErr := h.nativeVideoWorkerAdmissionV3(r.Context(), file, nodePlan.TranscodeNode, result); admissionErr != nil {
 			return preparedTransportV3{}, admissionErr
 		}
+		r = nativeNodeGrantRequest(r, session) // Bloem: a native grant reads through this session's binding (bloem_native_node_source.go)
 		// Native admission must be rechecked before a worker start, not at
 		// commit where a refusal would abort the previous live session.
 		unlock = h.tm.LockSessionLifecycle(session.ID)

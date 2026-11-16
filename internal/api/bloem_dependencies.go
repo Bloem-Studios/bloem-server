@@ -22,6 +22,11 @@ import (
 //
 //	api.Dependencies{DB: pool, BloemDependencies: api.BloemDependencies{LiveTV: svc}}
 type BloemDependencies struct {
+	// NativeNodeSources grants native inputs to core-access transcode nodes
+	// and answers their source requests (bloem_native_node_sources.go). main
+	// creates it so the download preparer's granter shares it; the router
+	// creates one when main did not.
+	NativeNodeSources *handlers.NativeNodeSources
 	// NativeMovieScannerReady witnesses startup assembly of the scan reader,
 	// trusted probe and publication coordinator. It is not backend health proof
 	// or viewer playback authority, and no request/config setting may change it.

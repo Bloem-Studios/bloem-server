@@ -18,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/ambience"
 	"github.com/Silo-Server/silo-server/internal/api"
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/backup"
@@ -245,6 +246,9 @@ func bloemWireCoreDependencies(ctx context.Context, deps *api.Dependencies, pool
 	// Hybrid searches also query the title fields, so a typed title stays
 	// first (internal/catalog/bloem_search_title_boost.go).
 	catalog.SetBloemTitleBoost(true)
+	// One NativeNodeSources serves the router and the download preparer, so
+	// both grant native files to core-access transcode nodes.
+	deps.NativeNodeSources = &handlers.NativeNodeSources{}
 	adminPeopleService := adminpeople.NewService(pool, cfg.Auth.JWTSecret)
 	adminPeopleWorker := adminpeople.NewWorker(adminPeopleService, adminpeople.WorkerOptions{})
 	startAdminPeopleBackgroundWorker(ctx, adminPeopleWorker)

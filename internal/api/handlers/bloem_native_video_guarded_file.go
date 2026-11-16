@@ -4,31 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
-
-	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/nodepool"
 )
-
-// Native inputs run on the API servers only. Silo's transcode nodes hold no
-// database, cipher or Redis and read sources only through a core source
-// grant, which names an absolute file path (nodesource.Grant): a
-// `bloem-storage:` reference cannot be granted at all, and a `.strm` grant
-// would name the text file, not the video it points at. See
-// docs/architecture/bloem-native-video-playback.md#where-native-inputs-run.
-
-// errNativeVideoAPIOnly is why a native input is never started on a node.
-var errNativeVideoAPIOnly = errors.New("native inputs run only on the API servers")
-
-// nativeVideoWorkerAdmissionV3 refuses every transcode node for a native
-// input, before a source grant is minted or a start is sent. The route loop
-// then excludes the node and falls back to the API server when the delivery
-// policy allows it.
-func (h *PlaybackHandler) nativeVideoWorkerAdmissionV3(_ context.Context, file *models.MediaFile, _ *nodepool.Node) *transportErrorV3 {
-	if h.NativeVideo == nil || !NativeVideoSupported(file) {
-		return nil
-	}
-	return &transportErrorV3{reason: routeCapabilityUnavailableReasonV3, message: "Transcode nodes cannot read this source.", retryable: true, cause: errNativeVideoAPIOnly, executorIneligible: true}
-}
 
 // nativeVideoGuardedFile rechecks a bound playback's authority around every
 // read of a locally served source. Cancellation stops source IO; Close

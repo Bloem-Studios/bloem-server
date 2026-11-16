@@ -9,6 +9,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/nodeauth/nodeauthtest"
 	"github.com/Silo-Server/silo-server/internal/nodepool"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
@@ -142,27 +143,40 @@ func (p *reservingPlanner) ReserveTranscodeWork(string) (*nodepool.Node, func())
 }
 func (p *reservingPlanner) TranscodeNode(int) (*nodepool.Node, bool) { return nil, false }
 
-type fallbackSettings map[string]string
+// A native preparation goes through Silo's pooled preparer: a node whose
+// grant is minted (a core-access node, given a Bloem grant) prepares it, and
+// a node the grant is refused for (one that reads its own library mount)
+// falls back to the API server under the local fallback setting.
+func TestNativePreparationGoesThroughThePooledPreparer(t *testing.T) {
+	const artifact = "artifact-6f1b7a64-3a60-4f0c-9c1a-3d8e0f5b2c11"
+	opts := playback.TranscodeOpts{InputPath: "bloem-storage:location/entry", MediaFileID: 42}
+	for _, refused := range []bool{false, true} {
+		local, planner, remote := &markerPreparer{}, &reservingPlanner{}, &recordingRemotePreparer{}
+		pooled := NewNodeAwarePreparer(local, planner, func() *config.Config { return &config.Config{} })
+		pooled.SetNodeKeys(nodeauthtest.SameKey("fixture-node-key"))
+		pooled.remote = remote
+		pooled.SetSourceGrants(nativeGrantFixture{refused: refused})
+		m := &ArtifactManager{preparer: pooled}
+		if _, err := m.prepareNativeHere(t.Context(), artifact, opts, "/tmp/artifact.mp4"); err != nil {
+			t.Fatal(err)
+		}
+		if planner.reserved != 1 {
+			t.Fatalf("refused=%v: node reservations=%d, want 1", refused, planner.reserved)
+		}
+		if refused && (local.calls != 1 || remote.request.SourceGrant != "") {
+			t.Fatalf("refused grant: local calls=%d remote grant=%q; want it prepared here", local.calls, remote.request.SourceGrant)
+		}
+		if !refused && (local.calls != 0 || remote.request.SourceGrant != "bloem-native-grant.v1.fixture") {
+			t.Fatalf("granted: local calls=%d remote grant=%q; want it prepared on the node", local.calls, remote.request.SourceGrant)
+		}
+	}
+}
 
-func (s fallbackSettings) GetAll(context.Context) (map[string]string, error) { return s, nil }
+type nativeGrantFixture struct{ refused bool }
 
-// A native preparation runs on the API server even when a transcode node is
-// free: a node reads its sources only through a core source grant, which
-// cannot name a native input. The pooled preparer's local fallback setting
-// still applies, so with it off the job fails rather than going to a node.
-func TestNativePreparationRunsOnTheAPIServer(t *testing.T) {
-	local, planner := &markerPreparer{}, &reservingPlanner{}
-	pooled := NewNodeAwarePreparer(local, planner, nil)
-	m := &ArtifactManager{preparer: pooled}
-	opts := playback.TranscodeOpts{InputPath: "bloem-storage:location/entry"}
-	if _, err := m.prepareNativeHere(t.Context(), "artifact-6f1b7a64-3a60-4f0c-9c1a-3d8e0f5b2c11", opts, "/tmp/artifact.mp4"); err != nil {
-		t.Fatal(err)
+func (g nativeGrantFixture) ForFile(context.Context, int, *models.MediaFile) (string, error) {
+	if g.refused {
+		return "", errors.New("a native input needs a transcode node with core source access")
 	}
-	if local.calls != 1 || planner.reserved != 0 {
-		t.Fatalf("local calls=%d node reservations=%d; want it prepared here", local.calls, planner.reserved)
-	}
-	pooled.SetSettingsReader(fallbackSettings{config.DownloadLocalTranscodeFallbackSettingKey: "false"})
-	if _, err := m.prepareNativeHere(t.Context(), "artifact-6f1b7a64-3a60-4f0c-9c1a-3d8e0f5b2c11", opts, "/tmp/artifact.mp4"); err == nil || local.calls != 1 || planner.reserved != 0 {
-		t.Fatalf("fallback off: err=%v local calls=%d node reservations=%d", err, local.calls, planner.reserved)
-	}
+	return "bloem-native-grant.v1.fixture", nil
 }

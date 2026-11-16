@@ -3559,6 +3559,7 @@ func main() {
 			preparer := downloads.NewNodeAwarePreparer(downloads.NewPlaybackPreparer(), downloadWorkPlanner, liveDownloadConfig)
 			preparer.SetNodeKeys(deps.NodeKeys)
 			preparer.SetSourceGrants(deps.SourceGrants)
+			preparer.SetSourceGrants(deps.NativeNodeSources.Granter(deps.SourceGrants)) // Bloem: native files get Bloem grants (handlers.NativeNodeSources)
 			if deps.NodeRepo != nil {
 				preparer.SetOriginLookup(deps.NodeRepo)
 			}

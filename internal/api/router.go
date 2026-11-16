@@ -1567,6 +1567,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if deps.SourceGrants != nil {
 			playbackHandler.SourceGrants = deps.SourceGrants
 		}
+		bloemNativeSourceGrants(deps, playbackHandler) // Bloem: native files get Bloem grants (bloem_native_node_sources.go)
 		if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
 			playbackHandler.JWTSecret = deps.Config.Auth.JWTSecret
 			if authMiddleware != nil && playbackHandler.PlanStoreV3 != nil {
@@ -3547,9 +3548,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 		nodeRecipes := noderecipe.NewStore(deps.RedisClient, 0)
 		nodeControlOptions.Recipes, nodeControlOptions.Revocations = nodeRecipes, nodeRecipes
 		deps.wireNodeSources(&nodeControlOptions)
+		deps.bloemNativeNodeControl(&nodeControlOptions) // Bloem: native resolve grants; no Silo grant opens a native file
 		nodeControl := nodecontrol.NewServer(nodeControlOptions)
 		r.Route("/api/internal/nodes/self", func(r chi.Router) {
 			r.Use(nodecontrol.RequireNode(deps.NodeKeyRegistry))
+			// Bloem: sources/open for a native grant (bloem_native_node_source.go).
+			r.Use(deps.NativeNodeSources.NodeSelfMiddleware(nodeControl.LimitNodePlayback))
 			// Resolve is on a viewer's request path (a rebuild after a node
 			// restart, or each progressive remux request), and open and
 			// renewal sit on a job's start path, so they have their own
@@ -3648,6 +3652,8 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 	r.Use(skipGuestLogging(apimw.RequestLogger(deps.NodeID)))
 	r.Use(middleware.Recoverer)
 	r.Use(apimw.Metrics)
+	// Bloem: source bytes for a native grant (bloem_native_node_sources.go).
+	useBloemNativeNodeSources(r, deps)
 
 	// Compress text-like responses (JSON, SVG, …), while leaving exact bulk
 	// media routes unwrapped so their io.ReaderFrom/sendfile path survives,

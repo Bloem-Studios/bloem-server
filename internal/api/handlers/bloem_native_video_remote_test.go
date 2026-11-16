@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -84,22 +85,21 @@ func TestNativeVideoRemoteProxyPreparationRefusesBeforeStart(t *testing.T) {
 	}
 }
 
-// nativeExecutionWorker is a transcode node that would have passed Bloem's
-// former native readiness probe. Silo's thin nodes have no database or
-// cipher and read sources only through core grants, so no native start may
-// reach one, readiness answer or not. starts counts POST /transcode/start.
-func nativeExecutionWorker(t *testing.T, starts *atomic.Int32) *httptest.Server {
+// nativeExecutionWorker is a transcode node. starts counts POST
+// /transcode/start; grants records the source grant of each start.
+func nativeExecutionWorker(t *testing.T, starts *atomic.Int32, grants ...*atomic.Value) *httptest.Server {
 	t.Helper()
 	worker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/bloem/native-execution":
-			writeJSON(w, http.StatusOK, map[string]any{"native_execution": true, "node_id": 7})
 		case r.Method == http.MethodGet && r.URL.Path == "/hw-capabilities":
 			writeJSON(w, http.StatusOK, playback.HWAccelInfo{Transformations: remoteHLSPlanV3().Transformations})
 		case r.Method == http.MethodPost && r.URL.Path == "/transcode/start":
 			starts.Add(1)
 			var req transcodenode.TranscodeStartRequest
 			_ = json.NewDecoder(r.Body).Decode(&req)
+			for _, grant := range grants {
+				grant.Store(req.SourceGrant)
+			}
 			writeJSON(w, http.StatusAccepted, transcodenode.TranscodeStartResponse{SessionID: req.SessionID, Status: "started", HWAccel: req.HWAccel, AudioRecipeVersion: req.AudioRecipeVersion, CopyFMP4RecipeVersion: req.CopyFMP4RecipeVersion, ThrottleSeconds: req.ThrottleSeconds})
 		default:
 			w.WriteHeader(http.StatusNoContent)
@@ -109,35 +109,57 @@ func nativeExecutionWorker(t *testing.T, starts *atomic.Int32) *httptest.Server 
 	return worker
 }
 
-// A native HLS start is refused on every transcode node before a source
-// grant is minted or a start is sent, so the route loop excludes the node.
-func TestNativeVideoRemoteStartNeverReachesATranscodeNode(t *testing.T) {
-	for _, headerAuth := range []bool{false, true} {
-		t.Run(map[bool]string{false: "signed", true: "header"}[headerAuth], func(t *testing.T) {
+// A native HLS start is refused on a transcode node that reads its own
+// library mount, before a grant is minted or a start is sent, so the route
+// loop excludes the node; a core-access node gets the start with a Bloem
+// grant that reads through the session's binding.
+func TestNativeVideoRemoteStartNeedsACoreAccessNode(t *testing.T) {
+	for _, access := range []string{nodepool.SourceAccessLocal, nodepool.SourceAccessCore} {
+		t.Run(access, func(t *testing.T) {
 			client := nativeVideoRedis(t)
 			service, session, _, _ := nativeVideoBoundFixture(t, client)
 			file, err := service.Files.GetByID(t.Context(), session.MediaFileID)
 			if err != nil {
 				t.Fatal(err)
 			}
-			starts := &atomic.Int32{}
-			worker := nativeExecutionWorker(t, starts)
+			starts, grant := &atomic.Int32{}, &atomic.Value{}
+			worker := nativeExecutionWorker(t, starts, grant)
+			node := &nodepool.Node{ID: 7, URL: worker.URL, SourceAccess: access}
+			sources := &NativeNodeSources{}
+			sources.Install(NativeNodeSourceConfig{Service: service, Secret: func() string { return "fixture-secret" },
+				Node: func(context.Context, int) (*nodepool.Node, error) { return node, nil }})
 			h := NewPlaybackHandler(service.Sessions, service.Files)
 			h.NativeVideo, h.JWTSecret, h.NodeKeys = service, "fixture-secret", nodeauthtest.SameKey("fixture-node-key")
+			h.SourceGrants = sources.Granter(siloGranterFixture{})
 			recipes := &recordingRecipeCardStoreV3{}
 			h.NodeRecipeStore = recipes
 			result := remoteHLSResultV3()
 			result.Plan.EffectiveMediaFileID = file.ID
-			transport, failure := h.prepareRemoteTransportV3(httptest.NewRequest(http.MethodPost, "/", nil), session, file, result, nodepool.Plan{TranscodeNode: &nodepool.Node{ID: 7, URL: worker.URL}}, preparedTimelineV3{}, mediaAuthModeV3{headerAuth: headerAuth})
-			if failure == nil {
-				transport.rollback()
-				t.Fatal("a native HLS start was sent to a transcode node")
+			transport, failure := h.prepareRemoteTransportV3(httptest.NewRequest(http.MethodPost, "/", nil), session, file, result, nodepool.Plan{TranscodeNode: node}, preparedTimelineV3{}, mediaAuthModeV3{})
+			if access == nodepool.SourceAccessLocal {
+				if failure == nil {
+					transport.rollback()
+					t.Fatal("a native HLS start was sent to a local-access node")
+				}
+				if failure.reason != routeCapabilityUnavailableReasonV3 || !failure.retryable || !failure.executorIneligible || !errors.Is(failure.cause, errNativeNodeLocalAccess) {
+					t.Fatalf("refusal = %+v, want an ineligible executor", failure)
+				}
+				if starts.Load() != 0 || len(recipes.ops) != 0 {
+					t.Fatalf("refusal ran media or stored a recipe: starts=%d recipes=%d", starts.Load(), len(recipes.ops))
+				}
+				return
 			}
-			if failure.reason != routeCapabilityUnavailableReasonV3 || !failure.retryable || !failure.executorIneligible || !errors.Is(failure.cause, errNativeVideoAPIOnly) {
-				t.Fatalf("refusal = %+v, want an ineligible executor", failure)
+			if failure != nil {
+				t.Fatalf("core-access node refused: %+v", failure)
 			}
-			if starts.Load() != 0 || len(recipes.ops) != 0 {
-				t.Fatalf("refusal ran media or stored a recipe: starts=%d recipes=%d", starts.Load(), len(recipes.ops))
+			defer transport.rollback()
+			sent, _ := grant.Load().(string)
+			if starts.Load() != 1 || !IsNativeNodeGrant(sent) {
+				t.Fatalf("start: starts=%d grant=%q, want one start with a Bloem grant", starts.Load(), sent)
+			}
+			claims, status := sources.open(sources.config(), 7, sent)
+			if status != 0 || claims.Session != session.ID || claims.File != file.ID {
+				t.Fatalf("grant claims = %+v status %d, want session %s file %d", claims, status, session.ID, file.ID)
 			}
 		})
 	}

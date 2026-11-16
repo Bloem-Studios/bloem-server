@@ -73,6 +73,9 @@ func nativeStorageRouteError(w http.ResponseWriter, decision *handlers.APIError)
 // Dependencies. It builds the storage source management handler on the host
 // registry; each router gets its own handler and capability witness.
 func nativeStorageDependencies(deps Dependencies) Dependencies {
+	if deps.NativeNodeSources == nil {
+		deps.NativeNodeSources = &handlers.NativeNodeSources{}
+	}
 	if deps.NativeStorageManagement == nil {
 		if deps.DB == nil || deps.NativeStorage == nil || deps.NativeStorage.Registry == nil {
 			return deps

@@ -24,7 +24,8 @@ type NativePreparation interface {
 	// BeginPreparation authorizes one preparation attempt (attemptID) of the
 	// artifact artifactID of file for requester, a download waiting for it.
 	// The returned context carries the source as a context-scoped media input
-	// (playback.WithContextMediaHost); the attempt runs on this server. end
+	// (playback.WithContextMediaHost) for this server, and the binding a
+	// core-access transcode node's grant reads through. end
 	// withdraws the attempt's authority; call it once the attempt has
 	// finished.
 	BeginPreparation(ctx context.Context, artifactID, attemptID string, requester *Download, file *models.MediaFile) (prepared context.Context, end func(), err error)
@@ -164,14 +165,12 @@ func (r *Repository) bloemPreparingDownloads(ctx context.Context, artifactID str
 	return scanDownloads(rows)
 }
 
-// prepareNativeHere prepares a native input on this server. A pooled
-// preparer would send it to a transcode node, which reads its sources only
-// through a core source grant naming a file path; a native input is not one.
-// The pooled preparer's local path still applies its local fallback setting
-// and storage gate.
+// prepareNativeHere prepares a native input through the pooled preparer, as
+// any other input: a transcode node with core source access reads it through
+// the API servers under a Bloem source grant naming the preparation's
+// binding (handlers.NativeNodeSources). A node the grant is refused for (one
+// that reads its own library mount) falls back to this server, under the
+// pooled preparer's local fallback setting and storage gate.
 func (m *ArtifactManager) prepareNativeHere(ctx context.Context, attemptID string, opts playback.TranscodeOpts, outputPath string) (PreparedArtifact, error) {
-	if pooled, ok := m.preparer.(*NodeAwarePreparer); ok {
-		return pooled.prepareLocally(ctx, attemptID, opts, outputPath)
-	}
 	return m.preparer.PrepareFile(ctx, attemptID, opts, outputPath)
 }
