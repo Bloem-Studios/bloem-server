@@ -156,8 +156,6 @@ This example is made up.
   behavior without editing Silo's files.
 - [BLOEM_AGENTS.md](../../BLOEM_AGENTS.md): the rules for changing Bloem,
   including Silo switching and upstream contributions.
-- [Integration changelog](../bloem/CHANGELOG.md): every Silo merge and Bloem
-  change, with commits and seam counts.
 - [Documentation workflow](../bloem/documentation-workflow.md): where each kind
   of change is documented, and how the generated pages are rebuilt.
 

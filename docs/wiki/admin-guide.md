@@ -913,8 +913,7 @@ Your media is not part of this backup; back it up however you already do.
 ### 3.2 Updating
 
 1. Record the image you run (`docker compose images silo`) and take a database backup.
-2. Read the [integration changelog](../bloem/CHANGELOG.md). If it mentions a migration, test the
-   update on a copy first.
+2. If the update brings a migration, test it on a copy first.
 3. Pull the new image and update only the application service. With `latest`, that is the
    newest release; to choose the version, set `SILO_IMAGE` in `.env` to a dated tag first.
 
