@@ -123,7 +123,7 @@ internal/backup/swap.go  # three calls: a user-data backup cannot replace the li
 internal/backup/users_apply.go  # a restored account is created in its organization, a restored profile carries its group name (bloem_restore_tenancy.go)
 internal/backup/users_plan.go  # one call: the planner names the organization an account is restored into, so its group is matched there (bloem_restore_tenancy.go)
 internal/blobgc/collector_s3_db_test.go  # added lines: collect the test's own queue rows first (collectFirst); dbpins runs listed packages at once and another may hold an older due row (failed in Bloem CI on 2026-11-02, and again for the single-image test on 2026-11-16)
-internal/blobgc/connection_db_test.go  # collectFirst helper and two calls: the one-connection collector and sweeper tests claim their own queue rows before any other package's due row, which took one of their limited claims and left the deleted count short under CI load (2026-11-16)
+internal/blobgc/connection_db_test.go  # collectFirst helper and two calls: the one-connection collector and sweeper tests claim their own queue rows before any other due row, which took one of their limited claims and left the deleted count short under CI load (2026-11-16); setup (object writes, first connection, queueing) runs under its own one-minute bound, apart from the 30-second hang guard on the behavior pinned (2026-11-16)
 internal/blobstore/open_test.go  # the two fence tests wait up to 30 s, not 1 s, for a write to resume after the fence is released (fenceResumeTimeout); a real file or HTTP round trip took longer on a loaded runner (2026-11-16)
 internal/branding/branding.go
 internal/branding/render.go
