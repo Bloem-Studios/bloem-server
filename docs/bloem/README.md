@@ -233,6 +233,7 @@ same path. Read the upstream document together with its overlay.
 ## API references and specs
 
 - [Bloem native API reference](../bloem-api-reference.md) — the maintained wire reference for Bloem's native extensions.
+- [Organization live updates](../design/bloem-org-live.md) — the ticket route and WebSocket (`bloem-live.v1`) that tell an organization administrator's app when streams, people or activity changed; auth by the context pass, scope, close codes, bursts.
 - [Playback cards: who calls which route](../playback-overlays-api.md) — campaign CRUD and the save-to-inbox endpoint for playback overlays.
 - [How Bloem announces itself on a home network (`_bloem._tcp`)](../specs/lan-service-advertisement.md) — the opt-in DNS-SD service (`internal/lanadvert`) Bloem's clients browse for.
 
