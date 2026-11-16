@@ -35,6 +35,7 @@ docs/design/schemas/playback-v3/v3/fixtures/valid/hls-subtitle-rendition-decisio
 docs/design/schemas/playback-v3/v3/fixtures/valid/hls-subtitle-renditions-all-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 docs/design/schemas/playback-v3/v3/fixtures/valid/learned-limit-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
+docs/realtime-api.md  # the playback control ticket retry backs off to 30 s instead of retrying every 5 s for as long as a tab stays open; drop this entry once Silo-Server/silo-server#4392 is merged upstream (2026-11-16)
 go.mod
 go.sum
 internal/access/group_store.go  # GetPolicyForUser reads the account's group only within its organization (groups are organization-owned)
@@ -329,6 +330,8 @@ web/src/player/components/VideoPlayer.reconnect.test.tsx # Upstream reconnect ha
 web/src/player/components/VideoPlayer.test.tsx
 web/src/player/components/VideoPlayer.tsx
 web/src/player/components/WatchPage.tsx
+web/src/player/hooks/usePlaybackRealtime.test.ts  # the playback control ticket retry backs off to 30 s instead of retrying every 5 s for as long as a tab stays open; drop this entry once Silo-Server/silo-server#4392 is merged upstream (2026-11-16)
+web/src/player/hooks/usePlaybackRealtime.ts  # the playback control ticket retry backs off to 30 s instead of retrying every 5 s for as long as a tab stays open; drop this entry once Silo-Server/silo-server#4392 is merged upstream (2026-11-16)
 web/src/test-setup.ts
 web/src/test/requestBudget.ts  # Include Bloem public shell endpoints in deterministic boot server without exempting authenticated operations
 web/src/test/signedInBoot.test.tsx  # Exercise Bloem shell requests against real public endpoint fixtures before measuring budget
