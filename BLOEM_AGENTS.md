@@ -3,7 +3,7 @@
 `AGENTS.md` (and `CLAUDE.md`, a symlink to it) is Silo's upstream file, kept as Silo wrote it
 so upstream merges stay clean, apart from a one-line pointer to this file at its top (a declared
 seam in `contracts/seams.txt`). This file carries Bloem's additions and overrides. **Where the
-two disagree, this file wins.** Fork provenance and merge policy: [FORK.md](FORK.md). Bloem's
+two disagree, this file wins.** Fork policy: [FORK.md](FORK.md). Bloem's
 documentation index: [docs/bloem/README.md](docs/bloem/README.md).
 
 ## Shared implementation follows Silo
@@ -19,8 +19,8 @@ shape is not a reason to keep a Bloem difference.
 
 ## Jellyfin and Audiobookshelf compatibility
 
-Bloem runs Silo's Jellyfin and Audiobookshelf compatibility servers as Silo ships them
-(restored 2026-10-18 after the 2026-10-13 removal). Take upstream's code in merges.
+Bloem runs Silo's Jellyfin and Audiobookshelf compatibility servers as Silo ships them.
+Take upstream's code in merges.
 Bloem's tenant wiring lives in `cmd/silo/main.go`, `cmd/silo/bloem_compat.go` and the
 tenant-aware resolver in `cmd/silo/bloem_main.go`.
 Bloem's companion-application enrollment and compatibility gateway stay removed; do
@@ -63,8 +63,7 @@ Xtream is live-only and uses fixed reviewed endpoints with encrypted credentials
 not VOD/series ingestion or an Xtream server API
 ([docs/architecture/xtream-live-tv.md](docs/architecture/xtream-live-tv.md)).
 
-**`.strm` remote-URL items are a Bloem feature** (decided 2026-11-12, reversing the earlier
-rule): a `.strm` file in a library folder or a storage source may point at any web
+**`.strm` remote-URL items are a Bloem feature**: a `.strm` file in a library folder or a storage source may point at any web
 address, and Bloem catalogs, probes and plays it like the video it names. Bloem never
 filters content. It keeps one security default, which limits no content:
 
@@ -96,21 +95,19 @@ to its one organization. Keep it working:
 
 ## Docs hygiene (replaces the upstream paragraph)
 
-New implementation plans and specs are ephemeral working artifacts, not
-maintained documentation. `docs/superpowers/` is gitignored for new files: write new plans there
-(or in scratch space), but do not add them to a change. The already tracked files in that
-directory are historical records; preserve their historical facts and add a frozen-snapshot banner
-when one reads as current operating guidance. Before a branch merges, distill durable invariants,
-protocols, and security rules into `docs/architecture/`. The code is the source of truth; a doc
-that disagrees with the code is wrong. Any committed doc must not contain local absolute filesystem
-paths or transient worktree IDs — use repository-relative paths and wording like "Commands assume
-the repository root is the cwd." `make verify-local-paths` enforces this.
+Implementation plans and specs are ephemeral working artifacts, not maintained documentation.
+`docs/superpowers/` is gitignored: write plans there (or in scratch space), but do not add them to a
+change. Before a branch merges, distill durable invariants, protocols, and security rules into
+`docs/architecture/`. The code is the source of truth; a doc that disagrees with the code is wrong.
+Any committed doc must not contain local absolute filesystem paths or transient worktree IDs — use
+repository-relative paths and wording like "Commands assume the repository root is the cwd."
+`make verify-local-paths` enforces this. Public docs also carry no private hostnames, addresses or
+account details.
 
 Keep Bloem-specific documentation out of Silo-owned files: add it to a Bloem-owned doc (for a
 change to an upstream doc, its overlay under `docs/bloem/overlays/`) and list it in
 [docs/bloem/README.md](docs/bloem/README.md). `contracts/seams.txt` lists the Silo-owned files
-Bloem may edit (305 at `5fc698915`), and `make verify-seams` fails on an undeclared one; the
-count may only go down.
+Bloem may edit, and `make verify-seams` fails on an undeclared one; the count may only go down.
 
 ## Upstream contribution direction
 
@@ -137,20 +134,13 @@ names `silo-android` or `silo-apple` (sibling repos, the client-visible change c
 coordination), read `bloem-android` and `bloem-apple`: follow-up work is done or filed for both,
 preferring coordinated multi-repo changes over leaving a platform behind.
 
-## Session and request efficiency
+## Session efficiency
 
 - Keep each agent task bounded to one coherent milestone. Move unrelated follow-up work to a fresh task with a concise handoff.
 - Inspect only relevant files, keep tool output focused, and combine safe related operations into one turn.
 - Do not spawn subagents unless the user explicitly requests delegation or parallel agent work.
 - Avoid repeated polling; use one appropriately bounded wait only when genuinely necessary.
 - Run focused verification during implementation and full suites only at an integration or release gate.
-- After a major milestone or context compaction, recommend a clean continuation containing the objective, repository/worktree, branch and HEAD, dirty state, completed work, verification, risks, and exact next step.
-- In Claude Code, prefer a fresh session after a major milestone instead of repeatedly compacting an extended session.
-
-## Claude Code session efficiency
-
-- Keep this file and auto-memory indexes concise; move detailed discoveries into on-demand topic files.
-- Use `/compact` only with a milestone handoff that preserves the objective, repository state, completed work, verification, risks, and next step.
-- Prefer starting a fresh Claude Code session after a major milestone instead of repeatedly compacting an extended session.
-- Do not create or resume subagents unless the user explicitly requests delegation or parallel agent work.
-- Avoid repeated short follow-ups and status polling; complete the approved milestone autonomously and report once useful evidence is available.
+- After a major milestone, start a fresh session instead of repeatedly compacting. A handoff covers the objective,
+  repository and branch, dirty state, completed work, verification, risks, and the exact next step.
+- Keep this file concise; move detailed discoveries into on-demand topic files.
