@@ -1,20 +1,14 @@
 # Writing Bloem documentation
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`; its API facts were
-> checked again on 2026-11-11, after Silo retired its v1 API. These rules are
-> Bloem's own: Silo's documents stay as Silo wrote them, and Bloem writes its pages
-> beside them. The technical rules are in the [For developers](#for-developers)
-> section.
-
 Every new or changed Bloem page follows the rules on this page. It walks through
 where a page belongs, the shape every page takes, how its pictures are drawn, what
-stays out of Bloem's pages, and what to check before a page lands. The model page is
+stays out of Bloem's pages, and what to check before a page lands. A page states
+what is true now; history lives in git and in the [changelog](CHANGELOG.md). The model page is
 [How organizations work](../architecture/bloem-organizations.md); read it first.
 
 ## Where a page belongs
 
-![Five kinds of document side by side: Silo's own file, left exactly as Silo wrote it; a Bloem overlay beside it; Bloem's own pages; dated records that keep their facts; and temporary plans that never get committed](../architecture/images/documentation-workflow/where-it-goes.svg)
+![Four kinds of document: Silo's own file, left exactly as Silo wrote it; a Bloem overlay beside it; Bloem's own pages; and generated pages changed only through their script](../architecture/images/documentation-workflow/where-it-goes.svg)
 
 Bloem Server is a **tracking fork** of Silo Server: it takes in Silo's work every
 day ([how Bloem keeps up with Silo](../architecture/bloem-following-silo.md)). So
@@ -28,44 +22,37 @@ each kind of writing has its own home:
 - **A Bloem page** explains something Bloem has and Silo does not, such as
   organizations, plans or Live TV. It lives in `docs/architecture/` (named
   `bloem-*.md`) or in `docs/bloem/`.
-- **A dated record** says what happened on one day, such as a deployment and the
-  checks run with it. It lives in `docs/operations/` and keeps its facts for good.
-- **A plan** is a temporary working file. It stays in the ignored
-  `docs/superpowers/` folder and never lands; its lasting facts move into a Bloem
-  page first.
+- **A generated page** is written by a script, such as the API-by-topic pages. Change
+  the script and regenerate; never edit the output.
 
 Every new Bloem page is also listed in the [documentation index](README.md).
 
 ## The shape of every page
 
-![The eight parts of a Bloem page from top to bottom: title, provenance note, what the page walks through, plain sections with pictures, a made-up example, who can change what, words used in the code, and the For developers section](../architecture/images/documentation-workflow/page-shape.svg)
+![The seven parts of a Bloem page from top to bottom: title, what the page walks through, plain sections with pictures, a made-up example, who can change what, words used in the code, and the For developers section](../architecture/images/documentation-workflow/page-shape.svg)
 
-A page has the same eight parts, in this order:
+A page has the same seven parts, in this order:
 
 1. **A title** that names the subject plainly. "How X works" suits a page that
    explains a mechanism.
-2. **A provenance note**, a quote block that starts "**Provenance and status.** Bloem
-   page, rewritten on (date) and checked against `main` at (commit)." One or two
-   more sentences say what the page is, whether it is a Bloem addition to Silo, and
-   that the technical rules are in the For developers section.
-3. **One short paragraph** that says what the page walks through.
-4. **Plain sections** for a reader who does not work on the code. Use short
+2. **One short paragraph** that says what the page walks through.
+3. **Plain sections** for a reader who does not work on the code. Use short
    sentences, active voice and everyday words. Put each new term in bold where it
    first appears, and explain it there. Number the steps of a sequence. Add a
    picture where a picture explains better than words: a flow, a set of tiers, who
    talks to whom, a before and after. Not every page needs one, but every major
    subject has at least one.
-5. **A made-up example** where it helps. Say so first: "This example is made up."
+4. **A made-up example** where it helps. Say so first: "This example is made up."
    Never use a real customer.
-6. **A "Who can change what" table** when roles are involved.
-7. **A "Words used in the code" table** that maps the page's plain words to tables,
+5. **A "Who can change what" table** when roles are involved.
+6. **A "Words used in the code" table** that maps the page's plain words to tables,
    packages, types, settings and routes.
-8. **"For developers"**: links to the API pages, then every technical rule,
+7. **"For developers"**: links to the API pages, then every technical rule,
    invariant, protocol detail, setting, error code, file path and test name. The
    plain sections may simplify; this section loses nothing. Sub-headings are fine.
    It ends with the related technical pages.
 
-An overlay keeps the same note and opening, then lists its changes by Silo's
+An overlay keeps the same opening, then lists its changes by Silo's
 sections (see [overlays](#overlays) below).
 
 ### How the words read
@@ -80,8 +67,10 @@ sections (see [overlays](#overlays) below).
   numbers, the production domain, customers, local folders or worktrees. Write "the
   server's public address" for the address people use. Link with
   repository-relative paths.
-- Lead with what a reader needs. A page says what the code does today; history goes
-  in For developers, with its commits and dates.
+- Lead with what a reader needs. A page says what the code does today. Do not
+  narrate history, such as "rewritten on" a date or "checked against" a commit:
+  git and the changelog keep it. Name a commit or version only where a reader needs
+  it to act, for example which Silo release a database switch is safe with.
 
 ## Pictures
 
@@ -110,11 +99,8 @@ Pictures are drawn by code, never by hand, so the next change can redraw them:
 
 - **Silo's own files.** A documentation change never edits a file that also exists
   in Silo's `main`. A Bloem difference goes in an overlay.
-- **Dated records.** A record in `docs/operations/` keeps the facts of its day. A
-  restyle leaves it alone, and a current page never presents an old record as
-  today's state.
-- **Plans and specs.** They stay in `docs/superpowers/` until their lasting facts
-  move into a Bloem page.
+- **Plans and specs.** They are working notes, not documentation. Put their lasting
+  facts in a Bloem page.
 - **Guesses.** The code is the source of truth. A page that disagrees with the code
   is wrong, so check each claim before you keep it.
 
@@ -123,10 +109,8 @@ Pictures are drawn by code, never by hand, so the next change can redraw them:
 An overlay page has this shape:
 
 1. The title "Bloem overlay:" and the Silo document's title.
-2. The provenance note, naming the Silo document it covers.
-3. A plain opening: what Bloem changes in that document, and why.
-4. "For developers", with where the overlay came from (its commits and dates) and
-   then one block per Silo section, in the Silo document's order. Each block starts
+2. A plain opening: what Bloem changes in that document, and why.
+3. "For developers", with one block per Silo section, in the Silo document's order. Each block starts
    with its place in Silo's text, for example: **Location:** section "Account
    passwords", the first paragraph. **Bloem replaces** it with: … or **Bloem adds:** …
 
@@ -140,7 +124,7 @@ This example is made up.
 Bloem adds a made-up feature: a limit on how many titles a profile can download.
 
 1. A new page, `docs/architecture/bloem-download-limits.md`, explains it with the
-   eight parts above. Its title is "How download limits work".
+   seven parts above. Its title is "How download limits work".
 2. A drawing module, `scripts/bloem/pictures/download_limits.py`, draws one picture
    of the limit narrowing from plan to profile into
    `docs/architecture/images/download-limits/`.
@@ -157,7 +141,6 @@ Bloem adds a made-up feature: a limit on how many titles a profile can download.
 | Silo | Silo's own files. Bloem takes them in unchanged through the daily sync. |
 | A Bloem contributor | Bloem pages, overlays, the documentation index, and drawing modules for their own pages. |
 | The generators | The API-by-topic pages, the API catalogue, the OpenAPI documents and the pictures. Change their source, then regenerate; never edit the output. |
-| Nobody | The facts of a dated record. A later page may correct or supersede it, but the record stays as written. |
 
 ## Words used in the code
 
@@ -172,63 +155,48 @@ Bloem adds a made-up feature: a limit on how many titles a profile can download.
 | Picture files | `docs/architecture/images/<page>/<name>.svg` |
 | API by topic | `docs/bloem/api/`, generated by `scripts/bloem/api-topic-docs.py` |
 | API catalogue | [api-catalogue.md](api-catalogue.md), generated by `scripts/bloem-api-catalogue.py` |
-| Dated record | `docs/operations/<date>-<topic>.md` |
-| Plan | a file in the ignored `docs/superpowers/` |
 | Public-text check | `make verify-local-paths` (`scripts/check-local-path-leaks.sh`) |
 
 ## For developers
 
 Documentation follows the implemented source. Keep API contracts, user
-instructions, architecture and deployment evidence distinct, and link between
-them. A generated DTO is not proof that a native client supports a workflow; a
-passing health check is not proof of provider or playback acceptance.
+instructions and architecture distinct, and link between them. A generated DTO is
+not proof that a native client supports a workflow; a passing health check is not
+proof of provider or playback acceptance.
 
 Bloem's material lives in Bloem-owned files: see [fork provenance](../../FORK.md),
 the [agent rules](../../BLOEM_AGENTS.md) and the [documentation index](README.md).
 
 ### What Silo does
 
-The reviewed Silo server baseline is `63ef34b23` (November 1, 2026), the Silo
-revision Bloem `main` integrates. Silo's [`docs/README.md`](../README.md) was last
-changed in `42b39765b` (Silo #1635, September 28, 2026), which moved the operator
-guides out of the server repository; it is unchanged at `63ef34b23`. It sends
-people running a server to Silo's user manual and keeps this folder for people
-changing the server. Architecture and invariants live under `docs/architecture/`;
-API references live in `docs/*-api.md`. Go registrations generate OpenAPI and the
-server embeds Swagger UI at `/api/v2/docs` ([api-docs.md](../api-docs.md)). New
-plans are temporary working files. Between the baseline `3e2d306b2` and
-`288f58200`, Silo added five architecture pages within that model:
-[`omnibus-image.md`](../architecture/omnibus-image.md),
-[`playback-lifecycle.md`](../architecture/playback-lifecycle.md),
-[`request-discover-rows.md`](../architecture/request-discover-rows.md),
-[`tcp-congestion.md`](../architecture/tcp-congestion.md) and
-[`tmdb-client.md`](../architecture/tmdb-client.md). It added no documentation page
-from `288f58200` through `63ef34b23`.
+Silo's [`docs/README.md`](../README.md) sends people running a server to Silo's user
+manual and keeps this folder for people changing the server. Architecture and
+invariants live under `docs/architecture/`; API references live in `docs/*-api.md`.
+Go registrations generate OpenAPI and the server embeds Swagger UI at `/api/v2/docs`
+([api-docs.md](../api-docs.md)). New plans are temporary working files.
 
 Silo's public manual is a separate repository,
-[`Silo-Server/siloserver.org`](https://github.com/Silo-Server/siloserver.org),
-reviewed at `b2197cad7c7384512fa6f76f82934682fa54d6f5`; its layout below was
-re-checked at `35d859752` (October 24, 2026). It uses Astro/Starlight,
-plain Markdown in `src/content/docs/docs/`, a curated task-based sidebar in
-`src/data/sidebar.mjs`, redirects in `src/data/docs-redirects.mjs`, edit links,
-last-updated metadata and `starlight-links-validator` during the build.
-Its navigation groups getting started, viewer tasks, running a server and
-reference material. The site source is AGPL-3.0-or-later; Silo's trademarks and
-visual identity are separately restricted.
+[`Silo-Server/siloserver.org`](https://github.com/Silo-Server/siloserver.org). It uses
+Astro/Starlight, plain Markdown in `src/content/docs/docs/`, a curated task-based
+sidebar in `src/data/sidebar.mjs`, redirects in `src/data/docs-redirects.mjs`, edit
+links, last-updated metadata and `starlight-links-validator` during the build. Its
+navigation groups getting started, viewer tasks, running a server and reference
+material. The site source is AGPL-3.0-or-later; Silo's trademarks and visual
+identity are separately restricted.
 
 Bloem adopts that separation and task-based navigation. Its portable operator and
-viewer pages currently remain in this repository, indexed by the
-[manual index](overlays/wiki/index.md); no separately hosted Bloem manual is
-established. A future Starlight site should publish those maintained pages or move
-them with redirects, rather than create independently edited copies. Do not copy
-Silo's branding, domain, deployment credentials or removed protocol instructions
-into a Bloem site. Keep license/provenance notices on reused source.
+viewer pages remain in this repository, indexed by the
+[manual index](overlays/wiki/index.md); no separately hosted Bloem manual exists. A
+future Starlight site should publish those maintained pages or move them with
+redirects, rather than create independently edited copies. Do not copy Silo's
+branding, domain, deployment credentials or removed protocol instructions into a
+Bloem site. Keep license notices on reused source.
 
 ### Where a change belongs
 
 | Audience or change | Maintained source |
 | --- | --- |
-| Product overview, provenance and current source status | [Bloem front page](../../.github/README.md), [Bloem Server in depth](about.md), [how Bloem keeps up with Silo](../architecture/bloem-following-silo.md), [integration changelog](CHANGELOG.md) |
+| Product overview and how Bloem relates to Silo | [Bloem front page](../../.github/README.md), [Bloem Server in depth](about.md), [how Bloem keeps up with Silo](../architecture/bloem-following-silo.md), [integration changelog](CHANGELOG.md) |
 | Fork and merge policy | [FORK.md](../../FORK.md), [agent rules](../../BLOEM_AGENTS.md) |
 | CI, the daily upstream sync and the published image | [Bloem CI](ci.md) |
 | Viewer tasks | [User guide](../wiki/user-guide.md) |
@@ -238,8 +206,8 @@ into a Bloem site. Keep license/provenance notices on reused source.
 | Security, tenancy, storage and playback invariants | Bloem-owned files under `docs/architecture/`, listed in the [index](README.md) |
 | Plain-language explanations with pictures | A Bloem page in this house style, such as [How organizations work](../architecture/bloem-organizations.md), with SVG pictures under `docs/architecture/images/<page>/` |
 | Generated contract coverage | [API catalogue](api-catalogue.md) |
-| Exact deployment evidence | Dated `docs/operations/` records with revision, checks and limits |
-| Temporary implementation plan | Ignored `docs/superpowers/`; distill durable facts before committing |
+| History of Silo integrations | [Integration changelog](CHANGELOG.md) |
+| Temporary implementation plan | Scratch space or the pull request description; distill durable facts into `docs/architecture/` before merging |
 
 Keep Silo-owned Markdown unchanged: a Markdown file that also exists in Silo's
 `main` is Silo's, and Bloem differences go in an **overlay**, a Bloem-owned file
@@ -248,17 +216,12 @@ the repository root), that names the upstream section and the Bloem replacement 
 addition. Bloem-specific documentation never goes in a Silo-owned file: add it to
 a Bloem-owned page (an overlay, for a change to an upstream document) and list it
 in the [documentation index](README.md). Silo-owned files Bloem does edit are
-**seams**, each declared in [`contracts/seams.txt`](../../contracts/seams.txt) (304
-entries at `b6039036d`) and checked by `make verify-seams`; the count may only go
+**seams**, each declared in [`contracts/seams.txt`](../../contracts/seams.txt) and checked by `make verify-seams`; the count may only go
 down, and a documentation change never adds one.
 
-Historical deployment records retain their original facts; a current landing page
-must not present an old record as live health. The files already tracked in
-`docs/superpowers/` are historical records: preserve their facts, and add a
-frozen-snapshot banner when one reads as current operating guidance. Before a
-branch merges, distill its durable invariants, protocols and security rules into
-`docs/architecture/`. Committed docs contain no local absolute paths or transient
-worktree names (`make verify-local-paths`).
+Before a branch merges, distill its durable invariants, protocols and security
+rules into `docs/architecture/`. Committed docs contain no local absolute paths or
+transient worktree names (`make verify-local-paths`).
 
 Operator/viewer pages use portable Markdown and frontmatter with `title`,
 `description`, `summary`, `tags`, `audience`, `last_reviewed` and `related`.
@@ -371,11 +334,9 @@ look at any picture you changed; a new full build or test suite is unnecessary.
 
 ### Facts a current page must not get wrong
 
-Each was re-checked against the code at `b6039036d` (Silo through `63ef34b23`).
-The first fifteen were first written down in October 2026, at `e852f92bf` and
-`81c26179c`; the last four were added on 2026-11-01.
+Each was checked against the code when it was written down.
 
-- Account policy lives on `users`, as in Silo (`c60b7008e`, migration
+- Account policy lives on `users`, as in Silo (migration
   `20261026003000_bloem_account_policy_on_users`). An organization membership
   only links an account to its one organization
   (`organization_memberships_one_per_account`, `UNIQUE (account_id)`); do not
@@ -398,27 +359,27 @@ The first fifteen were first written down in October 2026, at `e852f92bf` and
   Preserve folder navigation and existing selections; provider and playback
   readiness remain separate from configuring a source.
 - Silo's Jellyfin and Audiobookshelf compatibility servers run on their own ports
-  (removed by Bloem on October 13, restored on October 18 in `2393c41ee`);
+  (removed by Bloem on October 13, restored on October 18);
   Bloem's companion applications and compatibility gateway stay removed. See
   [protocol compatibility](../architecture/bloem-compatibility-removal.md).
-- Pastime managed tracking is removed (merge `4835a698e`, migration
+- Pastime managed tracking is removed (migration
   `20261013231500_remove_pastime_managed_tracking`). Do not restore its
   API/setup guidance; any future ordinary plugin integration has its own
   contract. See [Pastime removal](../architecture/bloem-pastime-removal.md).
-- Music is removed (`f9e1447f3`, migration `20261026020000_bloem_remove_music`).
+- Music is removed (migration `20261026020000_bloem_remove_music`).
   Silo has no music library type either: library types are movie, series,
   mixed, audiobook, ebook, podcast and manga (`internal/librarykind`).
-- Lifecycle idempotency receipts are removed (`b017bfe84`); the
+- Lifecycle idempotency receipts are removed; the
   `lifecycle_idempotency_v1` tokens are no longer advertised. Describe retries
   with the [retrying mutations](../bloem-api-reference.md#retrying-mutations)
   rules, not an `Idempotency-Key` replay for every lifecycle write.
-- Promotions and ambience evaluate in-process (`310c545f9`); there are no
+- Promotions and ambience evaluate in-process; there are no
   bundled presentation worker binaries or `BLOEM_PRESENTATION_PLUGIN_DIR`.
-- The header-authenticated media deployment gate (`545ed3a33`, October 9) and the
-  `playback.strict_reconstruct_admission` setting (`e452f8fef`, October 26) are
+- The header-authenticated media deployment gate and the
+  `playback.strict_reconstruct_admission` setting are
   gone. Do not document them as operator controls.
 - AI providers are connected once under AI Services and chosen per job (Silo
-  #3106, merged in `68070f04b`); the embedding provider is chosen there too
+  #3106); the embedding provider is chosen there too
   (Silo #3107). Pages that describe one key per AI feature are stale.
 - Authenticated browse-only content policy does not by itself establish a public
   showcase. The server side of the preview principal, signed guest sessions,
@@ -426,9 +387,7 @@ The first fifteen were first written down in October 2026, at `e852f92bf` and
   ([browse-only policy](../architecture/bloem-browse-only-content-policy.md));
   the Bloem HQ launch flow lives in Bloem HQ's own repository and is not checked
   here. Verify both deployed revisions, preview-host configuration and the
-  launch/exchange journey before describing a live prospect flow as enabled. The
-  [October 15 receipt](../operations/2026-10-15-preview-server-deployment.md)
-  recorded public preview as disabled; no later receipt records enabling it.
+  launch/exchange journey before describing a live prospect flow as enabled.
   Native preview controls and later showcase presentation remain separate
   follow-up work.
 - `docker-compose.yml` is Silo's all-in-one stack. It ignores `SILO_IMAGE` and
@@ -441,10 +400,7 @@ The first fifteen were first written down in October 2026, at `e852f92bf` and
 - Describe organizations with the tiers on
   [How organizations work](../architecture/bloem-organizations.md): one
   membership per account, the organization as the hard library ceiling, plans
-  and account settings within it, profiles narrowing further. Production has one
-  organization, the default one, with the server's public address registered as
-  its primary domain; reseller organizations exist in the code but none is in
-  use.
+  and account settings within it, profiles narrowing further.
 - Organizations can be served on their own domains, under their own name, logo
   and colours (`internal/orgdomains`, migration
   `20261101055208_bloem_organization_domains`, capability
@@ -466,13 +422,10 @@ The first fifteen were first written down in October 2026, at `e852f92bf` and
   with `401 session_invalid` (`session_expired` on `/api/v2`), so the app asks the
   person to sign in again instead of showing a broken home page
   (`internal/api/middleware/bloem_viewer_session.go`).
-- Bloem `main` includes Silo through `63ef34b23`, and the seam ledger has 304
-  entries.
 
 ### When finishing
 
-State the source revision, the changed docs and artifacts, the verification scope
-and any remaining gaps. A source refresh alone neither deploys a server nor
+State the changed docs and artifacts, the verification scope and any remaining gaps. A source refresh alone neither deploys a server nor
 publishes a manual or adopts contracts into a client release.
 
 Related pages:

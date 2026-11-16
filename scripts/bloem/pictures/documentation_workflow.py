@@ -27,11 +27,10 @@ def where_it_goes():
     s = Svg(1200, 690, "Where each kind of documentation lives",
             "Top: Silo's own document stays exactly as Silo wrote it, and a Bloem overlay beside it lists what "
             "Bloem adds or replaces, section by section; a reader reads Silo's page first, then the overlay. "
-            "Bottom: Bloem's own pages, dated records that keep the facts of their day, and temporary plans that "
-            "never get committed.")
+            "Bottom: Bloem's own pages, and generated pages that are changed only through their generator.")
     s.header("Where each kind of documentation lives",
              "Silo's files stay Silo's. Bloem writes beside them, never inside them.")
-    org, warn, grey = TIERS["org"], TIERS["warn"], TIERS["grey"]
+    org, grey = TIERS["org"], TIERS["grey"]
 
     s.text(40, 142, "A Silo document and its overlay", size=17, weight="700")
     _doc(s, 40, 158, 500, 212, SILO, "Silo's document", "docs/auth-api.md",
@@ -47,32 +46,29 @@ def where_it_goes():
         _mono(s, 676, 302 + i * 19, row, size=12.5, fill=BLOEM["label"])
 
     s.text(40, 416, "Bloem's own writing", size=17, weight="700")
-    _doc(s, 40, 432, 360, 150, org, "Bloem pages", "docs/architecture/bloem-*.md",
+    _doc(s, 40, 432, 550, 150, org, "Bloem pages", "docs/architecture/bloem-*.md",
          "Explain what Bloem has and Silo does not. Each is listed in the documentation index.")
-    _doc(s, 420, 432, 360, 150, warn, "Dated records", "docs/operations/",
-         "Say what happened on one day. They keep their facts for good.")
-    _doc(s, 800, 432, 360, 150, grey, "Plans", "docs/superpowers/ (ignored)",
-         "Working notes. Their lasting facts move into a Bloem page; the plan never lands.", dash="7 5")
+    _doc(s, 610, 432, 550, 150, grey, "Generated pages", "docs/bloem/api/",
+         "Written by a script. Change the script, then regenerate; never edit the output.", dash="7 5")
 
     footer(s, "The code is the source of truth: a page that disagrees with the code is wrong.", y=640, fill=INK)
     return s
 
 
 def page_shape():
-    s = Svg(1200, 884, "The shape of a Bloem page",
-            "A page drawn as eight stacked parts: the title, the provenance note, one paragraph on what the page "
+    s = Svg(1200, 812, "The shape of a Bloem page",
+            "A page drawn as seven stacked parts: the title, one paragraph on what the page "
             "walks through, the plain sections with pictures, a made-up example, the who-can-change-what table, "
             "the words-used-in-the-code table, and the For developers section. Brackets on the right group them: "
             "the opening, the plain part for every reader, the bridge to the code, and everything technical.")
     s.header("The shape of a Bloem page",
-             "The same eight parts, in the same order, on every page. Plain first, technical last.")
+             "The same seven parts, in the same order, on every page. Plain first, technical last.")
     g, a, p, o = TIERS["grey"], TIERS["account"], TIERS["plan"], TIERS["org"]
 
     # The page itself.
-    s.rect(40, 120, 640, 724, "#FFFFFF", "#D1D5DB", rx=16, sw=1.5)
+    s.rect(40, 120, 640, 652, "#FFFFFF", "#D1D5DB", rx=16, sw=1.5)
     bands = [
         (g, 50, "Title", "“How X works”"),
-        (g, 58, "Provenance and status", "Date, commit, Bloem or Silo"),
         (g, 50, "What this page walks through", "One short paragraph"),
         (a, 150, "Plain sections, with pictures", "Short sentences, bold new terms"),
         (a, 56, "A made-up example", "“This example is made up.”"),
@@ -88,12 +84,12 @@ def page_shape():
         s.number(86, cy, i + 1, c["stroke"], r=12)
         s.text(110, cy + 6, title, size=16.5, weight="700")
         s.text(644, cy + 5, note, size=13.5, fill=MUTED, anchor="end")
-        if i == 3:
+        if i == 2:
             # A small picture inside the plain sections.
             s.rect(110, y + 64, 220, 70, "#FFFFFF", c["stroke"], rx=8, sw=1.2, dash="5 4")
             s.text(220, y + 104, "a picture", size=13.5, fill=c["label"], weight="600", anchor="middle")
             s.lines(352, y + 92, ["Where a picture explains", "better than words."], size=13.5, gap=19)
-        if i == 7:
+        if i == 6:
             s.lines(110, y + 74, ["API links, then the technical rules, then the", "related technical pages."],
                     size=13.5, gap=19)
         spans.append((y, y + h))
@@ -101,10 +97,10 @@ def page_shape():
 
     # Brackets on the right.
     groups = [
-        (0, 2, g, "The opening", "What this is, where it came from, what follows."),
-        (3, 4, a, "For every reader", "No code needed. Pictures carry the hard parts."),
-        (5, 6, p, "The bridge", "From the page's plain words to the code's words."),
-        (7, 7, o, "For people who change the code", "Loses nothing the old page said that is still true."),
+        (0, 1, g, "The opening", "What this is and what follows."),
+        (2, 3, a, "For every reader", "No code needed. Pictures carry the hard parts."),
+        (4, 5, p, "The bridge", "From the page's plain words to the code's words."),
+        (6, 6, o, "For people who change the code", "Loses nothing the old page said that is still true."),
     ]
     for first, last, c, title, body in groups:
         top, bottom = spans[first][0] + 4, spans[last][1] - 4

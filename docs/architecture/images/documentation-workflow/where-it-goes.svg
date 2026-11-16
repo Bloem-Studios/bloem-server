@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="690" viewBox="0 0 1200 690" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">Where each kind of documentation lives</title>
-<desc id="d">Top: Silo's own document stays exactly as Silo wrote it, and a Bloem overlay beside it lists what Bloem adds or replaces, section by section; a reader reads Silo's page first, then the overlay. Bottom: Bloem's own pages, dated records that keep the facts of their day, and temporary plans that never get committed.</desc>
+<desc id="d">Top: Silo's own document stays exactly as Silo wrote it, and a Bloem overlay beside it lists what Bloem adds or replaces, section by section; a reader reads Silo's page first, then the overlay. Bottom: Bloem's own pages, and generated pages that are changed only through their generator.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="689" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Where each kind of documentation lives</text>
@@ -28,20 +28,15 @@
 <text x="676" y="340" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#C2410C" text-anchor="start">Location: “Sign-in attempts per name”</text>
 <text x="676" y="359" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#C2410C" text-anchor="start">  Bloem adds a paragraph</text>
 <text x="40" y="416" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's own writing</text>
-<rect x="40" y="432" width="360" height="150" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<rect x="40" y="432" width="550" height="150" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
 <text x="60" y="466" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Bloem pages</text>
 <text x="60" y="492" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" fill="#6B7280" text-anchor="start">docs/architecture/bloem-*.md</text>
-<text x="60" y="524" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Explain what Bloem has and Silo does not.</text>
-<text x="60" y="544" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Each is listed in the documentation index.</text>
-<rect x="420" y="432" width="360" height="150" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
-<text x="440" y="466" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Dated records</text>
-<text x="440" y="492" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" fill="#6B7280" text-anchor="start">docs/operations/</text>
-<text x="440" y="524" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Say what happened on one day. They keep</text>
-<text x="440" y="544" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">their facts for good.</text>
-<rect x="800" y="432" width="360" height="150" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8" stroke-dasharray="7 5"/>
-<text x="820" y="466" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Plans</text>
-<text x="820" y="492" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" fill="#6B7280" text-anchor="start">docs/superpowers/ (ignored)</text>
-<text x="820" y="524" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Working notes. Their lasting facts move into</text>
-<text x="820" y="544" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">a Bloem page; the plan never lands.</text>
+<text x="60" y="524" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Explain what Bloem has and Silo does not. Each is listed in the</text>
+<text x="60" y="544" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">documentation index.</text>
+<rect x="610" y="432" width="550" height="150" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8" stroke-dasharray="7 5"/>
+<text x="630" y="466" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Generated pages</text>
+<text x="630" y="492" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" fill="#6B7280" text-anchor="start">docs/bloem/api/</text>
+<text x="630" y="524" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Written by a script. Change the script, then regenerate; never edit</text>
+<text x="630" y="544" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">the output.</text>
 <text x="40" y="640" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The code is the source of truth: a page that disagrees with the code is wrong.</text>
 </svg>
