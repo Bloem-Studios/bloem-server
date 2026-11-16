@@ -26,12 +26,14 @@ A Bloem server can take over an existing Silo installation on the same database 
 
 ## Run it
 
-You need Docker with Compose 2.24 or newer, Git, OpenSSL and a folder of media.
+Bloem runs from its public image, `ghcr.io/bloem-studios/bloem-server`; there is nothing to build. You need Docker with
+Compose 2.24 or newer, OpenSSL and a folder of media. Download the Compose file and the settings template into an
+empty folder and generate the two secrets:
 
 ```sh
-git clone https://github.com/Bloem-Studios/bloem-server.git
-cd bloem-server
-cp .env.bloem.example .env
+mkdir bloem && cd bloem
+curl -fsSL -o docker-compose.advanced.yml https://raw.githubusercontent.com/Bloem-Studios/bloem-server/main/docker-compose.advanced.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/Bloem-Studios/bloem-server/main/.env.bloem.example
 chmod 600 .env
 printf '\nPOSTGRES_PASSWORD=%s\nSECRET_KEY=%s\n' \
   "$(openssl rand -hex 24)" "$(openssl rand -base64 48)" >> .env
@@ -47,15 +49,12 @@ Open <http://localhost:8090> and the setup wizard creates the administrator acco
 of `SECRET_KEY` somewhere other than the server: it encrypts every stored credential, and a database backup does not
 contain it.
 
-The image is public: `ghcr.io/bloem-studios/bloem-server`. `.env.bloem.example` uses `latest`, the image Bloem's own
-production runs, which moves at most once a day. Pin a dated tag such as `2026.11.17` to choose when you update, or use
-`edge` for every commit that passes CI. To build your own instead, run `docker build -t bloem-server:local .` and set
-`SILO_IMAGE=bloem-server:local`.
-
-`.env.bloem.example` selects Silo's multi-container Compose file (`docker-compose.advanced.yml`); keep that line, because
-Silo's default `docker-compose.yml` starts Silo's own image instead. The
-[Docker guide](../docs/bloem/overlays/wiki/deployment/docker.md) covers hardware transcoding, reverse proxies, search and
-updates.
+**Which image.** `.env` uses `latest`, the image Bloem's own production runs, which moves at most once a day; update
+with `docker compose pull && docker compose up -d`. Pin a dated tag such as `2026.11.17` in `SILO_IMAGE` to choose when
+you update, or use `edge` for every commit that passes CI. Keep `COMPOSE_FILE=docker-compose.advanced.yml` in `.env`:
+Silo's own `docker-compose.yml` starts Silo, not Bloem. The
+[Docker guide](../docs/bloem/overlays/wiki/deployment/docker.md) covers hardware transcoding, reverse proxies, search,
+updates and building the image yourself.
 
 ## Documentation
 
