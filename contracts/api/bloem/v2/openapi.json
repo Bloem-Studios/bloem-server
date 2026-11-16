@@ -2334,7 +2334,7 @@
             "type": "boolean"
           },
           "legacy_silo_v1": {
-            "description": "This build still answers Silo's retired alpha v1 API. Always false: Silo retired it.",
+            "description": "Always false. Kept so clients that read it keep working.",
             "type": "boolean"
           },
           "organization_memberships": {
@@ -48641,7 +48641,7 @@
     },
     "/api/bloem/v2/profile-credentials/{id}": {
       "delete": {
-        "description": "Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (it lived on Silo's alpha v1 API, which Silo retired). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.",
+        "description": "Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.",
         "operationId": "clearBloemProfileCredentials",
         "parameters": [
           {
@@ -48813,7 +48813,7 @@
         ]
       },
       "get": {
-        "description": "Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (it lived on Silo's alpha v1 API, which Silo retired). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused.",
+        "description": "Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused.",
         "operationId": "getBloemProfileCredentials",
         "parameters": [
           {
@@ -48918,7 +48918,7 @@
         ]
       },
       "put": {
-        "description": "Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (it lived on Silo's alpha v1 API, which Silo retired). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.",
+        "description": "Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.",
         "operationId": "setBloemProfileCredentials",
         "parameters": [
           {
@@ -49092,7 +49092,7 @@
     },
     "/api/bloem/v2/promotions": {
       "get": {
-        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Replaces the campaign list of Silo's retired alpha v1 API and, for the home surface, the promoted row of its home layout: home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out.",
+        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Lists the promotional cards for a surface. For the home surface, home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out.",
         "operationId": "listBloemPromotions",
         "parameters": [
           {
@@ -49261,7 +49261,7 @@
     },
     "/api/bloem/v2/promotions/{id}/dismissals/{surface}": {
       "put": {
-        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Replaces the promo:{surface}/{id} home dismissal of Silo's retired alpha v1 API, and writes the same per-profile dismissal. Idempotent: repeating it refreshes the dismissal.",
+        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Dismisses a promotional card for the profile on that surface. Idempotent: repeating it refreshes the dismissal.",
         "operationId": "dismissBloemPromotion",
         "parameters": [
           {
@@ -49422,7 +49422,7 @@
     },
     "/api/bloem/v2/promotions/{id}/save": {
       "post": {
-        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Replaces the campaign save of Silo's retired alpha v1 API. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy.",
+        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Saves a promotional card to the profile's inbox. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy.",
         "operationId": "saveBloemPromotion",
         "parameters": [
           {

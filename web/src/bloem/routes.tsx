@@ -89,8 +89,8 @@ export const bloemAdminContextRoutes = (
 
 /**
  * Profile settings. The direct-account profile credentials panel is dormant:
- * profile sign-in lived only on Silo's retired alpha API, so the panel stays
- * hidden until a native profile sign-in exists
+ * profile sign-in has no route, so the panel stays hidden until a native
+ * profile sign-in exists
  * (docs/architecture/bloem-security-foundation.md).
  */
 export function withDirectProfileCredentials(settings: ReactElement) {

@@ -100,7 +100,7 @@ Read direct-profile credential status without exposing a password or hash.
 Operation ID: `getBloemProfileCredentials`.
 Credentials: `bloemAccountSession`.
 
-Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (it lived on Silo's alpha v1 API, which Silo retired). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused.
+Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -124,7 +124,7 @@ Set or replace direct-profile login credentials.
 Operation ID: `setBloemProfileCredentials`.
 Credentials: `bloemAccountSession`.
 
-Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (it lived on Silo's alpha v1 API, which Silo retired). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.
+Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -154,7 +154,7 @@ Clear direct-profile login credentials.
 Operation ID: `clearBloemProfileCredentials`.
 Credentials: `bloemAccountSession`.
 
-Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route (it lived on Silo's alpha v1 API, which Silo retired). Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.
+Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -286,7 +286,7 @@ Searches the movies and series the selected profile may see and composes at most
 | --- | --- | --- | --- |
 | `delegated_admin_roles` | boolean | yes | Administration can be delegated below the server owner. |
 | `direct_profile_login` | boolean | yes | A profile can hold its own credentials rather than logging in through its account. |
-| `legacy_silo_v1` | boolean | yes | This build still answers Silo's retired alpha v1 API. Always false: Silo retired it. |
+| `legacy_silo_v1` | boolean | yes | Always false. Kept so clients that read it keep working. |
 | `organization_memberships` | boolean | yes | Accounts can belong to organizations. |
 | `shared_device_pairing` | boolean | yes | A device can be paired to a household rather than to one account. |
 | `tenant_bounded_media_scope` | boolean | yes | Media visibility is bounded by the viewer's organization. |

@@ -12,8 +12,7 @@ import (
 // The platform administration a storefront (Bloem HQ) drives with its API
 // key: reseller organizations (tenants) and their members, an account's
 // profiles, devices and sign-in sessions, and announcements
-// (api.mountBloemPlatformStorefront). The handlers are the ones behind the
-// admin routes on Silo's retired alpha v1 API; these are their native addresses.
+// (api.mountBloemPlatformStorefront).
 
 // bloemPlatformCredential401 describes a refused Platform context or API key.
 const bloemPlatformCredential401 = "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."

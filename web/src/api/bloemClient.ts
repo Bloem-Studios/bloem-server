@@ -1,6 +1,5 @@
 // Bloem's JSON API client. Bloem screens call Silo's /api/v2 through v2() and
-// Bloem's native /api/bloem/v2 through nativeApi(); Silo's retired alpha API
-// is never called (docs/architecture/bloem-leaving-silo-v1.md).
+// Bloem's native /api/bloem/v2 through nativeApi().
 // Built on the Silo-owned session transport in client.ts so that file stays
 // close to upstream.
 import type { ApiError } from "./types";

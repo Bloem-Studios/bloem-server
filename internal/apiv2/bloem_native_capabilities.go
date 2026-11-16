@@ -10,7 +10,7 @@ import (
 // this package must not import handlers, and
 // TestBloemCapabilityDocumentMatchesTheServedShape holds them together.
 type BloemCapabilityFeatures struct {
-	LegacySiloV1            bool `json:"legacy_silo_v1" doc:"This build still answers Silo's retired alpha v1 API. Always false: Silo retired it."`
+	LegacySiloV1            bool `json:"legacy_silo_v1" doc:"Always false. Kept so clients that read it keep working."`
 	OrganizationMemberships bool `json:"organization_memberships" doc:"Accounts can belong to organizations."`
 	TenantBoundedMediaScope bool `json:"tenant_bounded_media_scope" doc:"Media visibility is bounded by the viewer's organization."`
 	DirectProfileLogin      bool `json:"direct_profile_login" doc:"A profile can hold its own credentials rather than logging in through its account."`

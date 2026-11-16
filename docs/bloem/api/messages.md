@@ -642,7 +642,7 @@ List the campaign cards a profile sees on a surface.
 Operation ID: `listBloemPromotions`.
 Credentials: `bearerAuth`.
 
-Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Replaces the campaign list of Silo's retired alpha v1 API and, for the home surface, the promoted row of its home layout: home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out.
+Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Lists the promotional cards for a surface. For the home surface, home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -669,7 +669,7 @@ Stop showing a campaign to a profile on a surface.
 Operation ID: `dismissBloemPromotion`.
 Credentials: `bearerAuth`.
 
-Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Replaces the promo:{surface}/{id} home dismissal of Silo's retired alpha v1 API, and writes the same per-profile dismissal. Idempotent: repeating it refreshes the dismissal.
+Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Dismisses a promotional card for the profile on that surface. Idempotent: repeating it refreshes the dismissal.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -696,7 +696,7 @@ Save an in-playback campaign to the profile's inbox.
 Operation ID: `saveBloemPromotion`.
 Credentials: `bearerAuth`.
 
-Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Replaces the campaign save of Silo's retired alpha v1 API. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy.
+Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Saves a promotional card to the profile's inbox. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
