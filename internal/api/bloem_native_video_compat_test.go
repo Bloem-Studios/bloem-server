@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -25,10 +26,15 @@ type compatSessionsFixture struct {
 	liveErr   error
 	rechecked []string
 	digests   []string
+	// mu guards the records: read-ahead rechecks authority from several
+	// goroutines at once.
+	mu sync.Mutex
 }
 
 func (c *compatSessionsFixture) Recheck(_ context.Context, credential string) (NativeVideoCompatSession, error) {
+	c.mu.Lock()
 	c.rechecked = append(c.rechecked, credential)
+	c.mu.Unlock()
 	if credential != compatTestCredential {
 		return NativeVideoCompatSession{}, errors.New("unknown compat session")
 	}
@@ -36,7 +42,9 @@ func (c *compatSessionsFixture) Recheck(_ context.Context, credential string) (N
 }
 
 func (c *compatSessionsFixture) Live(_ context.Context, userID int, profileID, digest string) error {
+	c.mu.Lock()
 	c.digests = append(c.digests, digest)
+	c.mu.Unlock()
 	if userID != c.session.UserID || profileID != c.session.ProfileID {
 		return errors.New("compat session belongs to someone else")
 	}
