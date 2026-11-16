@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
@@ -35,6 +36,9 @@ type BloemSystemHandler struct {
 	ebookRequests               bool
 	bookRequestConnectionAdmin  bool
 	nativeAudioReadiness        func(context.Context) bool
+	// adminPushReady reports whether the admin push routes are mounted and the
+	// operator has push delivery on. Nil means the routes are not mounted.
+	adminPushReady func(context.Context) bool
 	// profilePasswordsEnabled reads the admin switch that turns profile
 	// passwords on; direct profile login and credential management are
 	// advertised only while it is on.
@@ -237,6 +241,10 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	if h.organizationLive {
 		featureTokens = append(featureTokens, "organization_live_v1")
 	}
+	if h.adminPushReady != nil && h.adminPushReady(request.Context()) {
+		// The admin apps show their push settings only on a server that says so.
+		featureTokens = append(featureTokens, notifications.AdminPushCapabilityToken, notifications.AdminWidgetWakesCapabilityToken)
+	}
 	writeJSON(w, http.StatusOK, bloemCapabilitiesResponse{
 		API:            nativeAPIIdentifier,
 		IdentitySchema: 1,
@@ -318,6 +326,13 @@ func (h *BloemSystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.
 // Without it, profile passwords are not advertised.
 func (h *BloemSystemHandler) SetProfilePasswordsEnabled(enabled func(context.Context) bool) {
 	h.profilePasswordsEnabled = enabled
+}
+
+// SetAdminPushReadiness advertises admin_push_v1 while ready reports true. It is
+// asked on every probe, so an operator switching push delivery off withdraws
+// the token at once. Without it the token is never advertised.
+func (h *BloemSystemHandler) SetAdminPushReadiness(ready func(context.Context) bool) {
+	h.adminPushReady = ready
 }
 
 // SetNativeAudioReadiness advertises only the composed native audio service.

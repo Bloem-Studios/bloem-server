@@ -76,6 +76,10 @@ func bloemHumaConfig() huma.Config {
 	cfg.Components.SecuritySchemes["bloemEntitlementBulkKey"] = &huma.SecurityScheme{
 		Type: "http", Scheme: "bearer", Description: "Bearer sa_ API key owned by an enabled platform administrator, unscoped or carrying admin:entitlements:bulk. Accepted only by authoritative policy reads, snapshots, cohort reads and bulk operations.",
 	}
+	cfg.Components.SecuritySchemes["bloemAdminPushDisplayToken"] = &huma.SecurityScheme{
+		Type: "http", Scheme: "bearer",
+		Description: "A bad_ display token returned by registering an admin app device. It reads that device's own notifications and retires that device, and opens nothing else.",
+	}
 	cfg.Components.SecuritySchemes["bloemLiveTVDeliveryTicket"] = &huma.SecurityScheme{
 		Type: "apiKey", In: "query", Name: "st", Description: "Signed Live TV HLS delivery ticket from the session-start URL. Bound to playback ID, user/profile, expiry and purpose=bloem_livetv_hls. Current viewer authorization is re-resolved on every fetch. Does not authorize operations or the MPEG-TS session proxy.",
 	}
@@ -124,6 +128,7 @@ func registerBloemAll(reg *Registry) {
 	registerBloemStorefrontDocument(reg)
 	registerBloemNewArrivalsDocument(reg)
 	registerBloemBookRequestsDocument(reg)
+	registerBloemAdminPushDocument(reg)
 }
 
 // GenerateBloemOpenAPI writes the native surface's OpenAPI document from the Go

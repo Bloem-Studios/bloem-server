@@ -4030,6 +4030,7 @@ func main() {
 	}
 
 	api.ConfigureNativeStorageArtwork(&deps)
+	api.ConfigureBloemAdminPush(&deps, needsWorkers)
 	router := api.NewRouter(deps)
 
 	// Step 8: Build the handler the primary port serves — the API router and

@@ -401,8 +401,10 @@ Field notes:
   `organization_support_v1` (the organization support routes for password reset links,
   sessions and devices, profiles, streams and break-glass access are mounted with both
   gates; see [How organization support works](architecture/bloem-organization-support.md)) and
-  `organization_live_v1` (the ticket route and socket for the organization pages' change signals
-  are mounted; see [Organization live updates](design/bloem-org-live.md)).
+  `admin_push_v1` (the admin app push routes under `/admin/push/` are mounted and the operator
+  has push delivery on for a platform; asked on every probe; see
+  [Admin app push notifications](architecture/bloem-admin-push.md)) with `admin_widget_wakes_v1` (the
+  server also accepts the app's widget report and sends silent widget wakes).
 - `features.legacy_silo_v1` and `features.direct_profile_login` are `false` since Silo
   retired its v1 API; `shared_device_pairing` and `delegated_admin_roles` are always `false`.
 - `media_types`: the fixed vocabulary of `mediaTypesServed` — the item types *this build* can

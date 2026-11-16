@@ -1,6 +1,8 @@
 package notifications
 
 import (
+	"sync"
+
 	evt "github.com/Silo-Server/silo-server/internal/events"
 )
 
@@ -13,4 +15,16 @@ type bloemSystem struct {
 
 	scopes ScopeResolver
 	hub    *evt.Hub
+
+	// adminPush is built on first use by BloemAdminPush.
+	adminPushOnce sync.Once
+	adminPush     *AdminPushService
+}
+
+// Hub is the events hub the system was built with, or nil.
+func (s *System) Hub() *evt.Hub {
+	if s == nil {
+		return nil
+	}
+	return s.hub
 }

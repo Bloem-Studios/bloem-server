@@ -828,6 +828,26 @@
         ],
         "type": "object"
       },
+      "AdminPushKindState": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "server_emitted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "enabled",
+          "server_emitted"
+        ],
+        "type": "object"
+      },
       "AdminSubjectRef": {
         "additionalProperties": false,
         "properties": {
@@ -1732,6 +1752,257 @@
           "name",
           "status",
           "authority"
+        ],
+        "type": "object"
+      },
+      "BloemAdminPushContent": {
+        "additionalProperties": false,
+        "properties": {
+          "actions": {
+            "description": "Buttons the notification offers. Empty for most kinds.",
+            "items": {
+              "enum": [
+                "approve",
+                "decline"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "badge": {
+            "description": "Waiting items to show on the app icon.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "body": {
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "servers",
+              "requests",
+              "libraries",
+              "backups",
+              "nodes",
+              "plugins"
+            ],
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "delivery_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "description": "The item on that page: a request id, library id, node id or plugin installation id.",
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "lock_screen": {
+            "description": "All a locked screen shows unless the device allows details.",
+            "type": "string"
+          },
+          "page": {
+            "description": "App link page a tap opens: requests, libraries, backups, nodes or plugins.",
+            "type": "string"
+          },
+          "subject_type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delivery_id",
+          "kind",
+          "channel",
+          "title",
+          "body",
+          "lock_screen",
+          "actions",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "BloemAdminPushKinds": {
+        "additionalProperties": false,
+        "properties": {
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPushKindState"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "kinds"
+        ],
+        "type": "object"
+      },
+      "BloemAdminPushKindsRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "kinds": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Kind id to enabled. Kinds not named keep their setting.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "kinds"
+        ],
+        "type": "object"
+      },
+      "BloemAdminPushRegisterRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "apns_environment": {
+            "description": "Required for apple.",
+            "enum": [
+              "production",
+              "sandbox"
+            ],
+            "type": "string"
+          },
+          "apns_topic": {
+            "description": "Required for apple; must be com.bloemstudios.admin.",
+            "type": "string"
+          },
+          "disabled_kinds": {
+            "description": "Kind ids this device has switched off. Replaces the stored switches when present; omit to keep them.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "installation_id": {
+            "description": "A key the app generates once per installation and keeps across token refreshes and sign-ins.",
+            "maxLength": 128,
+            "minLength": 8,
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "apple",
+              "android"
+            ],
+            "type": "string"
+          },
+          "token": {
+            "description": "The APNs device token (hex) or the FCM registration token.",
+            "type": "string"
+          },
+          "widget_channels": {
+            "description": "What the placed widgets show: sessions (now playing), requests, libraries, nodes. Required, and not empty, when widgets_placed is true.",
+            "items": {
+              "enum": [
+                "sessions",
+                "requests",
+                "libraries",
+                "nodes"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "widgets_placed": {
+            "description": "Whether the app has at least one home-screen widget placed. Only then does the server send widget wakes. Omit to keep what the server holds. Reporting false clears the channels.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "installation_id",
+          "platform",
+          "token"
+        ],
+        "type": "object"
+      },
+      "BloemAdminPushRegistered": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "description": "Prefixes every delivery id pushed to this device, so the app can tell which saved server a push came from: delivery_id is {device_id}.{delivery}.",
+            "type": "string"
+          },
+          "display_token": {
+            "description": "Bearer token for reading this device's notification text and retiring it. Returned by every registration; a new one replaces the last.",
+            "type": "string"
+          },
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPushKindState"
+            },
+            "type": "array"
+          },
+          "widget_channels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "widgets_placed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "device_id",
+          "display_token",
+          "kinds",
+          "widgets_placed",
+          "widget_channels"
+        ],
+        "type": "object"
+      },
+      "BloemAdminPushWidgets": {
+        "additionalProperties": false,
+        "properties": {
+          "channels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "widgets_placed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "widgets_placed",
+          "channels"
+        ],
+        "type": "object"
+      },
+      "BloemAdminPushWidgetsRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "channels": {
+            "description": "What the placed widgets show. Required, and not empty, when widgets_placed is true; ignored when false.",
+            "items": {
+              "enum": [
+                "sessions",
+                "requests",
+                "libraries",
+                "nodes"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "widgets_placed": {
+            "description": "Whether at least one widget is placed. Send false when the last widget is removed.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "widgets_placed",
+          "channels"
         ],
         "type": "object"
       },
@@ -11915,6 +12186,11 @@
       },
       "bloemAdminLoginSession": {
         "description": "Account access token with a current login session and account incarnation, used only to exchange for an administrative context. API keys without a session are refused.",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "bloemAdminPushDisplayToken": {
+        "description": "A bad_ display token returned by registering an admin app device. It reads that device's own notifications and retires that device, and opens nothing else.",
         "scheme": "bearer",
         "type": "http"
       },
@@ -39558,6 +39834,579 @@
         "summary": "Preview a pinned entitlement template.",
         "tags": [
           "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/push/content/{delivery_id}": {
+      "get": {
+        "description": "Authenticated by the device's display token, not by a login: the iOS notification extension reads text while the phone is locked. The token opens only this device's own notifications and retire call. The push itself carries only an id; the relay never sees the text. A notification is visible only to a device it was sent to, for the account it was written for, until it expires (24 hours), and only while the account is still an enabled administrator.",
+        "operationId": "getBloemAdminPushContent",
+        "parameters": [
+          {
+            "description": "The delivery id a push carried, with or without its {device_id}. prefix.",
+            "in": "path",
+            "name": "delivery_id",
+            "required": true,
+            "schema": {
+              "description": "The delivery id a push carried, with or without its {device_id}. prefix.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemAdminPushContent"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_display_token: the token is missing, unknown or replaced by a newer registration."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_required: the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such notification for this device, or it expired."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_push_unavailable: push delivery is off on this server, or it has no push backing."
+          }
+        },
+        "security": [
+          {
+            "bloemAdminPushDisplayToken": []
+          }
+        ],
+        "summary": "Read the text and behavior of a notification pushed to this device.",
+        "tags": [
+          "admin-push"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/push/devices": {
+      "post": {
+        "description": "Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Registers or refreshes the installation named by installation_id and returns the device id and a display token. Registering again with the same installation_id keeps the device id, the per-kind switches and the widget report, replaces the token and mints a new display token. A token already held by another account or installation moves to this one. The Apple topic must be com.bloemstudios.admin.",
+        "operationId": "registerBloemAdminPushDevice",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemAdminPushRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemAdminPushRegistered"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: the body is not valid JSON for this route, or exceeds 32 KiB."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unauthorized: no valid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_required: the account is not an enabled administrator; account_session_required: the token is an API key, impersonation or administrative-context token."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_registration: a field is missing or malformed, the topic is not com.bloemstudios.admin, or a kind id is unknown."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_push_unavailable: push delivery is off on this server, or it has no push backing."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Register an admin app installation for push.",
+        "tags": [
+          "admin-push"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/push/devices/{device_id}": {
+      "delete": {
+        "description": "Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Stops every push to the device. Use the retire route when no login is available.",
+        "operationId": "deleteBloemAdminPushDevice",
+        "parameters": [
+          {
+            "description": "The device_id a registration returned.",
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "description": "The device_id a registration returned.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unauthorized: no valid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_required or account_session_required, as for registration."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no device with this id belongs to the account."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_push_unavailable: push delivery is off on this server, or it has no push backing."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Remove one of the account's devices.",
+        "tags": [
+          "admin-push"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/push/devices/{device_id}/kinds": {
+      "patch": {
+        "description": "Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. The server stops sending a switched-off kind to this device, including notifications already queued. Kinds not named keep their setting. The two reachability kinds are produced by the apps' own checks; their switches are stored here so they survive a reinstall.",
+        "operationId": "setBloemAdminPushKinds",
+        "parameters": [
+          {
+            "description": "The device_id a registration returned.",
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "description": "The device_id a registration returned.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemAdminPushKindsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemAdminPushKinds"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: the body is not valid JSON for this route."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unauthorized: no valid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_required or account_session_required, as for registration."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no device with this id belongs to the account."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_registration: a kind id is unknown."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_push_unavailable: push delivery is off on this server, or it has no push backing."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Switch notification kinds on or off for one device.",
+        "tags": [
+          "admin-push"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/push/devices/{device_id}/retire": {
+      "post": {
+        "description": "Authenticated by the device's display token, not by a login: the iOS notification extension reads text while the phone is locked. The token opens only this device's own notifications and retire call. Lets an app that has signed out, or whose session expired, remove its device.",
+        "operationId": "retireBloemAdminPushDevice",
+        "parameters": [
+          {
+            "description": "The device_id a registration returned.",
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "description": "The device_id a registration returned.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_display_token: the token is missing, unknown, replaced by a newer registration, or not this device's."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_push_unavailable: push delivery is off on this server, or it has no push backing."
+          }
+        },
+        "security": [
+          {
+            "bloemAdminPushDisplayToken": []
+          }
+        ],
+        "summary": "Stop pushes to a device using its display token.",
+        "tags": [
+          "admin-push"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/push/devices/{device_id}/widgets": {
+      "put": {
+        "description": "Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Only a device that reports widgets_placed gets widget wakes, and only for the channels its widgets show (sessions, requests, libraries, nodes). A wake is a silent push (the relay's background_wake) with no content: its delivery id is {device_id}.widgets-{channels}-{unix seconds}, for example dev.widgets-nodes-requests-1763254800, and the app re-reads what the widgets show through the normal API. The server coalesces changes for 30 seconds, sends a device at most one wake every 10 minutes, and none within 2 minutes after a visible notification push. Call this whenever a widget is added or removed; send widgets_placed false when the last is removed.",
+        "operationId": "setBloemAdminPushWidgets",
+        "parameters": [
+          {
+            "description": "The device_id a registration returned.",
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "description": "The device_id a registration returned.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemAdminPushWidgetsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemAdminPushWidgets"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: the body is not valid JSON for this route."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unauthorized: no valid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_required or account_session_required, as for registration."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no device with this id belongs to the account."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_registration: a channel is unknown, or widgets_placed is true with no channel."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_push_unavailable: push delivery is off on this server, or it has no push backing."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Report the widgets the app has placed.",
+        "tags": [
+          "admin-push"
         ]
       }
     },

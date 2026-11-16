@@ -16,7 +16,7 @@ AGENTS.md
 Makefile  # Bloem gates and generation; bounded 20-minute Go package timeout covers the measured ~15-minute executor
 assets/icon.png
 cmd/playbackfixtures/main.go
-cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources; one line after the download preparer's SetSourceGrants wraps its granter so native files get Bloem source grants for core-access transcode nodes (handlers.NativeNodeSources, 2026-11-16)
+cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources; one line after the download preparer's SetSourceGrants wraps its granter so native files get Bloem source grants for core-access transcode nodes (handlers.NativeNodeSources, 2026-11-16); one line starts the admin push workers (api.ConfigureBloemAdminPush)
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/create_library_validation_failed.json  # generated: createLibrary accepts storage_source instead of paths, so paths is no longer required
@@ -84,7 +84,7 @@ internal/api/middleware/household_profile_gate.go  # direct-profile sessions are
 internal/api/middleware/policy_gates.go
 internal/api/middleware/profile.go
 internal/api/middleware/viewer_access.go
-internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher; four lines put native inputs on core-access transcode nodes: the playback handler's granter, the node control grant issuer and catalog check, Bloem's sources/open in the /self node routes and its source bytes middleware (bloem_native_node_sources.go, 2026-11-16)
+internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher; four lines put native inputs on core-access transcode nodes: the playback handler's granter, the node control grant issuer and catalog check, Bloem's sources/open in the /self node routes and its source bytes middleware (bloem_native_node_sources.go, 2026-11-16); one line wraps the request lifecycle notifier for admin push (bloemAdminPushLifecycle)
 internal/api/testdata/media_routes.txt
 internal/apiv2/admin_subtitle_metadata_test.go  # reviewed test-only exception: canonical API language projection preserves raw legacy row
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
