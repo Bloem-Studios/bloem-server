@@ -87,10 +87,10 @@ revalidate it. A healthy server alone does not show that uploads work.
   `503` (`unavailable`); an HTTPS artwork URL can still be entered. The private
   (Operational) store is never used. Uploaded pictures are served publicly at
   `GET /api/bloem/v2/ambience/assets/{ref}`, the only artwork route and the only
-  accepted path prefix since 2026-11-11. Migrations
+  accepted path prefix. Migrations
   `20261031234831_bloem_native_ambience_asset_paths.sql` and
   `20261111215029_bloem_api_v2_ambience_asset_paths.sql` moved the paths stored in
-  Bloem's own tables to it; the older v1 artwork route went with Silo's v1 API.
+  Bloem's own tables to it.
   The web app's signed-out seasonal layer reads the active packs from
   `GET /api/bloem/v2/ambience/public`. The design is in
   [campaign and seasonal asset storage](../../architecture/bloem-campaign-asset-storage.md).

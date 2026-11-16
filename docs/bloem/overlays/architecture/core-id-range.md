@@ -55,31 +55,23 @@ and array bounds keep their meanings. Writers must use the aligned types rather
 than reintroduce a fork-only `bigint[]` assumption. See
 [upstream adapters](../../../architecture/bloem-upstream-adapters.md).
 
-Historical SQL stays byte-identical. `migrations.BloemFS` adapts ordering and
+Existing migration SQL stays byte-identical. `migrations.BloemFS` adapts ordering and
 schema differences, including databases that Silo created first. Silo
 switching, where Silo and Bloem take turns on one database, is the single flag
-`public.bloem_silo_switching` since the October 26 migration; see
+`public.bloem_silo_switching`; see
 [Silo switching](../../../architecture/silo-backend-switching.md). Switching
 acceptance must use the pinned Silo source or image that the Bloem source
-actually includes. A wider historical schema alone does not show that either
+actually includes. A wider schema alone does not show that either
 server can write it.
-
-#### Older wide arrays
-
-A September 2026 deployment widened eight policy arrays to `bigint[]`
-(`20260919095615_bloem_policy_library_ids_bigint`). That is history: it does not
-describe the current array width, and the old migration is not an upgrade step.
 
 #### Client and rollout boundary
 
 Keep Silo's decimal-string IDs, numeric precision limits and nullable field
-semantics. A successful schema conversion is not device acceptance. Review the
-[contract adjudications](../../../architecture/bloem-contract-adjudications.md)
-and [Silo switching](../../../architecture/silo-backend-switching.md) before
+semantics. A successful schema conversion is not device acceptance. Review
+[Silo switching](../../../architecture/silo-backend-switching.md) before
 rollout. For table-rewriting migrations, the operator is responsible for
 writer quiescence, copy space, pool recycling and recovery planning. Silo's
-Audiobookshelf-compatible server, which Bloem runs again since October 2026,
-resolves library access through Silo's access filter like Silo's
+Audiobookshelf-compatible server resolves library access through Silo's access filter like Silo's
 other surfaces.
 
 ### Related pages

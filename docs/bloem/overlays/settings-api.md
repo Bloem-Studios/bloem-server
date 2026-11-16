@@ -5,8 +5,7 @@ This overlay covers Silo's [`docs/settings-api.md`](../../settings-api.md), whic
 Silo's settings page explains how apps read and change settings: the server's,
 an account's, a profile's and a device's. Bloem serves Silo's settings contract as
 Silo documents it: the `/api/v2` settings operations with their headers, scopes,
-write mirror, atomic shortcuts and device registry. Silo's v1 settings bridge is
-retired. Bloem adds three notes, because Bloem has **organizations** and
+write mirror, atomic shortcuts and device registry. Bloem adds three notes, because Bloem has **organizations** and
 **profiles with a sign-in of their own**.
 
 ## What Bloem changes
@@ -16,8 +15,7 @@ retired. Bloem adds three notes, because Bloem has **organizations** and
   and it applies in every organization alike. There is no per-organization
   default.
 - **A profile's own sign-in reaches no settings.** A session signed in straight to
-  one profile reached only that profile's settings on Silo's v1 bridge. Profile
-  sign-in is dormant since Silo retired that API on 2026-11-11.
+  one profile reaches no settings route. Profile sign-in is dormant.
 - **Each organization's domain shows its own brand.** On an organization's own
   domain, the public branding Silo serves before sign-in (name, logo, colours)
   is that organization's. Silo's own branding settings stay the server's.
@@ -27,7 +25,7 @@ retired. Bloem adds three notes, because Bloem has **organizations** and
 | On this page | In the code and API |
 | --- | --- |
 | An administrator's default | a server setting `defaults.<key>`, for definitions marked `admin_default` |
-| A profile's own sign-in | a direct-profile session, from Silo's retired v1 `POST /auth/profile-login` (dormant) |
+| A profile's own sign-in | a direct-profile session (dormant: no sign-in route is mounted) |
 | Its allowed routes | the default-deny allowlist in `internal/api/direct_profile_routes.go` |
 | An organization's brand | `bloem_organization_branding`, served through `orgdomains.SettingsOverlay` |
 
@@ -75,16 +73,14 @@ server's. See [organization domains](../../architecture/bloem-organization-domai
 
 ---
 
-**Location:** section “Settings semantics”, subsection “Request identity headers”
-(until Silo #3200 a subsection of the v1 bridge section, which Silo removed), after
+**Location:** section “Settings semantics”, subsection “Request identity headers”, after
 the paragraph beginning “Authenticated settings routes use the active account and
 profile…”. **Bloem adds:**
 
 A Bloem direct-profile session is bound to its token's profile. Its default-deny
-route allowlist (`internal/api/direct_profile_routes.go`) admitted only settings
-routes on Silo's v1 bridge, never a `/api/v2` settings operation, so since Silo
-retired its v1 API on 2026-11-11 the session reaches no settings route. Profile
-sign-in itself is dormant: its sign-in route was on the same retired API.
+route allowlist (`internal/api/direct_profile_routes.go`) admits no `/api/v2` settings
+operation, so the session reaches no settings route. Profile sign-in itself is
+dormant: no sign-in route is mounted.
 
 ### Related pages
 

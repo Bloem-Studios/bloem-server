@@ -91,7 +91,6 @@ Reference:
 
 - [Deploy Bloem with Docker](deployment/docker.md): install and run Bloem with Docker Compose,
   including storage, GPU acceleration, search, distributed roles, tuning, backups and updates.
-- [Integration changelog](../../CHANGELOG.md): what each integration changed.
 - [Release versioning](../release-versioning.md): which image tags Bloem publishes (`latest`,
   dated tags, `edge` and one per commit) and how to pin one.
 
@@ -101,8 +100,6 @@ Reference:
   paths, playback, storage, and sign-in on organization addresses.
 - [Viewer troubleshooting](../../../wiki/user-guide.md#10-when-something-is-not-working): connecting
   apps, passwords, playback and sign-in messages.
-- [Contract transition](../../../architecture/bloem-contract-adjudications.md): checks before a native
-  app release is rolled out.
 
 ## For developers
 

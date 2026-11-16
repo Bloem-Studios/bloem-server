@@ -55,8 +55,6 @@ session or a profile was not minted for a key and is refused.
 
 - [Security foundation](../../architecture/bloem-security-foundation.md): events
   authority and organization-scoped session revocation.
-- [v1 scope overlay](architecture/v1-scope.md#retired-bloem-v1-socket-ticket-routes):
-  the retired Bloem ticket routes.
 - [Writing Bloem documentation](../documentation-workflow.md#overlays): how an
   overlay is written and kept up to date.
 - Index: [Bloem documentation](../README.md).

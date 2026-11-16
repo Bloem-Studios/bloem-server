@@ -64,5 +64,4 @@ one play at 10:15.
   and the source choice), until the Emby servers retire at the end of November 2026.
 - Tests: `internal/historyimport/bloem_marked_records_test.go`.
 
-Related: [Silo's history import execution](../../../architecture/history-import-execution.md),
-[how removing a title in a tracker clears its watch history](../../../architecture/bloem-watch-sync-removals.md).
+Related: [Silo's history import execution](../../../architecture/history-import-execution.md).

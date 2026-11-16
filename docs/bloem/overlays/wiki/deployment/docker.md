@@ -1036,11 +1036,8 @@ plus its rebuilt indexes, and on a large library the `media_files` copy can run 
 update. The release notes name the releases that carry a migration like this.
 
 `health` reports process liveness. `ready` also checks required dependencies, including
-PostgreSQL and configured S3 storage. Both are retained operational probes: they kept
-their paths when Silo retired its v1 API (November 2026), so probe configuration did not
-change. Apart from these probes, every v1 route answers `410 Gone`, and nothing in
-Bloem calls one; see
-[leaving Silo's v1 API](../../../../architecture/bloem-leaving-silo-v1.md).
+PostgreSQL and configured S3 storage. Both are Silo's operational probes, and
+probe configuration uses the paths shown above.
 
 ### Release-specific steps
 

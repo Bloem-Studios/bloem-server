@@ -49,8 +49,7 @@ for a library with no `paths` and exactly one storage location; mixed and
 multi-location libraries are created, read and edited through the native
 [library-locations routes](../../bloem-api-reference.md#library-locations-and-reading).
 In `updateLibrary`, a storage library keeps its media type, and one without
-filesystem paths refuses non-empty `paths`. Silo's retired v1 routes never returned or
-accepted the member. See
+filesystem paths refuses non-empty `paths`. See
 [creating a library](../../architecture/bloem-native-storage.md#creating-a-library).
 
 ---

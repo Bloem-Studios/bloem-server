@@ -63,8 +63,7 @@ server can support authorized EPUB/PDF onboarding while keeping
 `backend_verified: false`; generated DTO presence and artifact approval do not
 certify a provider or establish native-client adoption.
 
-Use the generated artifacts from the source you are building; the
-[changelog](../CHANGELOG.md) lists the source milestones. Documentation does not
+Use the generated artifacts from the source you are building. Documentation does not
 establish a server's running revision, provider readiness or native-client
 adoption.
 
@@ -72,6 +71,6 @@ adoption.
 
 - [Writing Bloem documentation](../documentation-workflow.md#api-and-swagger-sources):
   which source generates which API description, and how to regenerate it.
-- [Leaving Silo's v1 API](../../architecture/bloem-leaving-silo-v1.md): why
-  Bloem's features live under `/api/bloem/v2`.
+- [How Bloem's native API is organized](../../architecture/bloem-client-surface.md):
+  why Bloem's features live under `/api/bloem/v2`.
 - Index: [Bloem documentation](../README.md).

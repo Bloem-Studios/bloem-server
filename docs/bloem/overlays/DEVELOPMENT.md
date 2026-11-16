@@ -132,12 +132,7 @@ November 2026), so they need no extra setup. Set `BLOEM_STORAGE_SDK_WORKTREE` to
 SDK checkout only to test unreleased SDK changes; the host and SDK storage protos
 must match.
 
-Silo's scenario catalogs and their executor were deleted with its v1 API (Silo #3200),
-and Bloem's [contract adjudications](../../architecture/bloem-contract-adjudications.md)
-and `make test-scenarios` went with them.
-
-`make test-go` sets a 20-minute per-package timeout. The
-[integration changelog](../CHANGELOG.md) lists the source milestones. Check the
+`make test-go` sets a 20-minute per-package timeout. Check the
 [SDK guide](../../architecture/bloem-sdk-compatibility.md) for reproducible
 contract generation and consumer adoption; a generated file alone is not a client feature.
 

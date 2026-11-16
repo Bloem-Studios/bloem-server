@@ -33,7 +33,7 @@ their own, and organizations.
 
 | On this page | In the code and API |
 | --- | --- |
-| Direct-profile credential, profile sign-in | dormant: the sign-in route was Silo's v1 `POST /auth/profile-login`, retired 2026-11-11; managed at `/api/bloem/v2/profile-credentials/{id}` (capability `profile_credential_management_v1`) |
+| Direct-profile credential, profile sign-in | dormant: no sign-in route is mounted; credentials are managed at `/api/bloem/v2/profile-credentials/{id}` (capability `profile_credential_management_v1`) |
 | The domain check | `auth.SignInDomainCheck`, `orgdomains.Directory.SignInCheck`, refusal `409 wrong_organization_domain` |
 | A provider sign-in staying on its domain | `orgdomains.Directory.OAuthBaseURL`, `auth.OAuthHandler.SetRequestBaseURL` |
 | A sign-in its organization revoked | `apimw.ErrSessionRevokedByOrganization`, answered `401 session_invalid` (`session_expired` on `/api/v2`) |
@@ -85,16 +85,13 @@ direct-profile session is already bound to its profile and revision.
 
 **Location:** section “Sign-in rate limits”, subsection “When the server is too
 busy to check a password”, after the paragraph beginning “The refusal is `503`
-with `Retry-After: 1`: v2 `dependency_unavailable`, v1 error code…”. **Bloem adds:**
+with `Retry-After: 1`…”. **Bloem adds:**
 
 Since October 25, 2026, Bloem's own password hashing and checks run under
 Silo's admission limit (`internal/auth/passwordhash`). The following answer a
 busy refusal with Silo's `503 service_unavailable` and `Retry-After`:
 
 - setting or rotating a profile credential (hashing the new credential).
-
-Until Silo retired its v1 API on 2026-11-11, the same held for direct-profile login
-and for the v1 tenant-member commands, which also hashed their command receipt.
 
 Two account-password re-checks also run under the limit, but any failure there,
 busy included, answers `503` without `Retry-After`: the check before a
@@ -109,10 +106,6 @@ acceptance run Silo's handlers unchanged (since October 26, 2026), now on
 “Every password sign-in also spends a budget kept for the name it signs in with…”.
 **Bloem adds:**
 
-Direct-profile login (dormant since 2026-11-11; it was Silo's v1
-`POST /auth/profile-login`) spent no per-name budget. It spent the `login` budget,
-so account and profile sign-ins from one client address shared one allowance, including the connection-address cap on forwarded
-clients described under [sign-in rate limits](../../auth-api.md#sign-in-rate-limits).
 Setting or clearing a profile credential (`PUT` and `DELETE`
 `/api/bloem/v2/profile-credentials/{id}`) checks the account password and spends
 the `password_change` budget; reading the status spends none. A budget must be one
@@ -124,8 +117,7 @@ and cannot be configured: until 2026-11-10 these routes used the undefined names
 ---
 
 **Location:** section “External sign-in”, subsection “OAuth sign-in flows”, after
-the paragraph beginning “The frozen v1 routes share the login policy…” (the end of
-the subsection). **Bloem adds:**
+the last paragraph of the subsection. **Bloem adds:**
 
 #### Organization domains at sign-in
 
@@ -142,7 +134,7 @@ arrived on.
 session repository (`internal/auth/bloem_sign_in_domain.go`). When the request's
 domain is registered to another organization than the account's, the sign-in is
 refused before a session exists with `auth.OrganizationDomainError`. Password
-sign-in (v1 and v2 `login`) and direct-profile login answer
+sign-in (`/api/v2` `login`) answers
 `409 wrong_organization_domain`, "This account signs in at
 https://<primary domain>." (`internal/api/handlers/bloem_sign_in_domain.go`); the
 address is the server public URL when the account's organization has no primary
@@ -264,8 +256,8 @@ unavailable session store also applies to Bloem's direct-profile refresh
 adapter. A missing credential service or a store/transport failure while
 revalidating the current profile returns an unavailable error without revoking
 the session. A mismatched retained binding or confirmed revoked subject still
-ends it. The shared HTTP contract uses `503` with `Retry-After` (v1
-`service_unavailable`, v2 `dependency_unavailable`); clients retain their
+ends it. The shared HTTP contract uses `503` with `Retry-After` (`/api/v2`
+`dependency_unavailable`); clients retain their
 credentials and retry with bounded backoff. This does not broaden the
 direct-profile route allowlist or grant access to native administration.
 

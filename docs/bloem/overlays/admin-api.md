@@ -9,10 +9,9 @@ files in Bloem's native storage.
 
 ## What Bloem changes
 
-- **Remote control of playing apps (dormant).** An administrator could pause, seek,
-  stop or send a message to an app someone was watching on, but only an app that said
-  it accepted that command. Its routes lived on Silo's v1 API, which Silo retired on
-  2026-11-11, so the feature is parked until it has native routes.
+- **Remote control of playing apps (dormant).** An administrator pausing, seeking,
+  stopping or sending a message to an app someone is watching on needs routes that
+  Bloem does not have yet, so the feature is parked until it has native routes.
 - **Passwords and organizations.** Silo's password-reset links and temporary
   passwords work in Bloem too. They belong to the **account**, the sign-in, and do
   not change who owns an **organization** or who manages a household.
@@ -21,9 +20,8 @@ files in Bloem's native storage.
   Bookwarehouse sources, beside ordinary folders. Platform and organization
   administrators manage those sources through their own routes, and Bloem refuses
   the library operations that cannot work on them yet.
-- **Native-storage files on transcode nodes (changed).** Silo's transcode nodes
-  no longer use a database or Redis, so the way a node used to read a file kept in
-  native storage no longer applies. The
+- **Native-storage files on transcode nodes.** Silo's transcode nodes use no
+  database or Redis, so a file kept in native storage reaches a node another way. The
   [native video playback](../../architecture/bloem-native-video-playback.md) page
   describes how such a file reaches a node.
 
@@ -31,7 +29,7 @@ files in Bloem's native storage.
 
 | On this page | In the code and API |
 | --- | --- |
-| Remote control (dormant) | `internal/remote`, `internal/api/handlers/remote_control.go`; its retired v1 routes are on [Bloem's retired v1 routes](../api/v1-routes.md#remote-control) |
+| Remote control (dormant) | `internal/remote`, `internal/api/handlers/remote_control.go`; the rules are in [how remote control works](../../architecture/admin-remote-control.md) |
 | An app saying it accepts a command | the control socket's `hello.capabilities.commands` |
 | Native storage | `/native-storage` routes in the platform and organization administrative scopes |
 | Storage source on a library | `storage_source` on v2 `createLibrary`, or the native `library-locations` routes |
@@ -61,11 +59,8 @@ beginning “`level` accepts a comma-separated list, so one request can ask…�
 
 #### Remote control of playing clients (dormant)
 
-Bloem's remote-control routes (v1 `/admin/remote/...`, `PUT /devices/{device_id}/remote-control`
-and the household command route) lived on Silo's v1 API and answer `410 Gone` since Silo
-retired it on 2026-11-11. Nothing is added to Silo's admin API for remote control until
-native routes exist. The former contract is on
-[Bloem's retired v1 routes](../api/v1-routes.md#remote-control), and the rules on
+Bloem mounts no remote-control routes. Nothing is added to Silo's admin API for remote
+control until native routes exist. The rules are on
 [how remote control works](../../architecture/admin-remote-control.md).
 
 #### Passwords and account policy
@@ -97,7 +92,7 @@ operations. Ordinary installation/configuration/update/test/auth-binding/task-bi
 routes reject explicitly marked native installation IDs; changing native source
 state must use its authorized lifecycle routes.
 
-Finite guards also cover selected ordinary v1/v2 library, scan, repair,
+Finite guards also cover selected ordinary `/api/v2` library, scan, repair,
 metadata, image, translation and trailer operations. They authorize the whole
 selected set before native classification, preserving hidden-resource and PIN
 refusal precedence. Authorized native targets return

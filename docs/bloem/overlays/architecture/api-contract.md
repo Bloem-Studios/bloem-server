@@ -15,9 +15,8 @@ own, `/api/bloem/v2`, which Silo's page does not cover.
   facts the route list already holds into the ledger. The decisions in the ledger
   are still made by people.
 - **Bloem's own API is separate.** Features Silo does not have live under
-  `/api/bloem/v2`, with their own API description. Bloem adds nothing to Silo's
-  retired v1 API, and where Silo's `/api/v2` lacks something, Bloem adds a route of its
-  own rather than changing Silo's.
+  `/api/bloem/v2`, with their own API description. Where Silo's `/api/v2` lacks
+  something, Bloem adds a route of its own rather than changing Silo's.
 - **A generated description is not proof.** Matching API descriptions show what
   the contract says, not that a route is switched on, that it works against a real
   server, or that an app uses it.
@@ -94,7 +93,7 @@ schema never promotes artifact approval or synthetic provider tests to
 language formats) runs on `contracts/api/v2/openapi.json`, which includes Bloem's
 `/api/v2` registrations; it does not check the native artifact.
 
-Storage-source libraries use ordinary v1/v2 library operations, except where
+Storage-source libraries use ordinary `/api/v2` library operations, except where
 locations combine: the v2 `createLibrary` takes exactly one of `paths` and
 `storage_source`, while the scoped native `library-locations` routes combine local
 paths and several selected source roots when native-storage capabilities advertise
@@ -110,22 +109,16 @@ required. The public plugin SDK version, private `StorageProvider` wire schema
 and native-client API artifacts are separate compatibility surfaces; see
 [protocol ownership](../../../architecture/bloem-native-storage.md#protocol).
 
-#### Bloem and Silo's v1 retirement
+#### Bloem's API versions
 
-Silo retired its v1 API on 2026-11-11 (the `410 Gone` tombstone with
-`client_upgrade_required` described above; Silo #3200), and every Bloem route mounted beside it went too. Bloem's callers use
-Silo's `/api/v2` for what Silo has and `/api/bloem/v2` for Bloem's own features; where
-Silo's `/api/v2` lacks something Bloem needs, Bloem adds a native route. Nothing in Bloem
-calls Silo's v1 API, and `make verify-no-v1` fails on a Bloem line that names a retired
-path. Bloem's own API moved from v1 to `/api/bloem/v2` on the same day, with no alias; its
-identifier is `"api": "bloem/v2"` and `bloem_api: ["v2"]`. It grows by adding fields and
+Bloem's callers use Silo's `/api/v2` for what Silo has and `/api/bloem/v2` for Bloem's own
+features; where Silo's `/api/v2` lacks something Bloem needs, Bloem adds a native route. Bloem's
+API identifier is `"api": "bloem/v2"` and `bloem_api: ["v2"]`. It grows by adding fields and
 routes, which clients detect through `feature_tokens` in `GET /api/bloem/v2/capabilities`,
-and its version changes only for a breaking change to Bloem's own contract. See
-[leaving Silo's v1 API](../../../architecture/bloem-leaving-silo-v1.md).
+and its version changes only for a breaking change to Bloem's own contract.
 
 ### Related pages
 
-- [v1 scope overlay](v1-scope.md): what Bloem had on Silo's retired v1 API.
 - [Writing Bloem documentation](../../documentation-workflow.md#api-and-swagger-sources):
   which source generates which contract.
 - Index: [Bloem documentation](../../README.md).
