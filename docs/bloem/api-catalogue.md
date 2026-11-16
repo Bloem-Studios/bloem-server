@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 956 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 285 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 287 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Retired alpha v1 API (410 Gone except the health and ready probes) | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -67,6 +67,7 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v2/admin/organization/library-locations` | `createBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
 | `GET /api/bloem/v2/admin/organization/library-locations/{library_id}` | `getBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
 | `PUT /api/bloem/v2/admin/organization/library-locations/{library_id}` | `replaceBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
+| `POST /api/bloem/v2/admin/organization/live/ticket` | `createBloemOrganizationLiveTicket` | Mint a single-use ticket for the organization live socket. |
 | `GET /api/bloem/v2/admin/organization/native-storage/artifacts` | `listArtifactsBloemOrganizationNativeStorage` | List automatically verified catalog releases and any optional manual artifacts. |
 | `GET /api/bloem/v2/admin/organization/native-storage/capabilities` | `getCapabilitiesBloemOrganizationNativeStorage` | Read composition-dependent flags; backend verification remains false. |
 | `POST /api/bloem/v2/admin/organization/native-storage/catalog/installations` | `catalogInstallBloemOrganizationNativeStorage` | Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload. |
@@ -296,6 +297,7 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v2/notifications` | `listBloemNotifications` | The acting profile's inbox, newest first, with the alert fields a row needs to render. |
 | `GET /api/bloem/v2/notifications/sync` | `syncBloemNotifications` | Rows newer than a cursor, for a client waking from a push or reconnecting across a gap. |
 | `GET /api/bloem/v2/notifications/{id}` | `getBloemNotification` | One inbox row. Another profile's row is absent, not forbidden. |
+| `GET /api/bloem/v2/organization/live/ws` | `connectBloemOrganizationLiveSocket` | Open the organization live socket with a ticket. |
 | `GET /api/bloem/v2/organizations` | `listBloemOrganizations` | The organizations this account belongs to. |
 | `GET /api/bloem/v2/persons/{person_id}` | `getBloemPersonDetail` | One person and their credits, filtered to what this viewer may see. |
 | `POST /api/bloem/v2/preview/events` | `recordBloemPreviewEvent` | Increment a daily aggregate preview counter. |

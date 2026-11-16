@@ -3,6 +3,25 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 16, 2026 — Organization live updates
+
+The organization pages in the admin apps can stop polling. A new ticket route,
+`POST /api/bloem/v2/admin/organization/live/ticket`, takes the administrative context pass and
+returns a single-use ticket; `GET /api/bloem/v2/organization/live/ws` opens a `bloem-live.v1`
+WebSocket with it. The socket carries change signals, never content: `org.streams` (a stream
+starting, stopping, pausing or resuming), `org.people` (a member joining, leaving, or changing
+status or role) and `org.activity` (a new activity entry). Each names an item, a revision and a kind,
+and the app re-reads the item through the existing route. The server advertises
+`organization_live_v1`.
+
+A socket is bound to the one organization its pass names, and a signal reaches only the
+connections registered under that organization. The pass is revalidated every 15 seconds by
+`AdminContextMiddleware.Authorize`, the code the REST routes now call too. People and activity
+come from Postgres triggers and one `LISTEN` connection per node (migration
+`bloem_org_live_notify`); streams come from the playback lifecycle events on the hub. No Silo-owned
+file changed except the generated route inventory, so the ledger stays at 330.
+See [Organization live updates](../design/bloem-org-live.md).
+
 ## November 15, 2026 — AirPlay output planning
 
 A client that reports an AirPlay receiver as its output (`output.sink_type`) is now planned

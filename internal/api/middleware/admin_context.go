@@ -89,83 +89,103 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 			writeAdminContextError(w, http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
 			return
 		}
-
-		// A context lives no longer than the login session it was exchanged
-		// from: logout or session revocation ends it on the next request.
-		if claims.SessionID == "" {
-			writeAdminContextError(w, http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
+		ctx, refusal := m.Authorize(r.Context(), claims)
+		if refusal != nil {
+			refusal.Write(w)
 			return
 		}
-		if m.sessions == nil {
-			writeAdminContextError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
-			return
-		}
-		if authority, valid, err := m.sessions.ActiveSession(r.Context(), claims.SessionID, claims.AccountID); err != nil {
-			writeAdminContextError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
-			return
-		} else if !valid || authority.IsRemotePlayback() {
-			writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
-			return
-		}
-
-		// The account behind the token is re-read on every request, for both
-		// scopes: a disabled or replaced account loses administrative access
-		// immediately rather than when the token expires.
-		operator, err := m.operator(r.Context(), claims)
-		if err != nil {
-			writeAdminOperatorError(w, err)
-			return
-		}
-
-		switch claims.Scope {
-		case auth.AdminScopePlatform:
-			if !operator.PlatformAdmin {
-				writeAdminContextError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
-				return
-			}
-			next.ServeHTTP(w, r.WithContext(SetAdminContextClaims(r.Context(), claims)))
-		case auth.AdminScopeOrganization:
-			if claims.SupportAccessID != uuid.Nil {
-				m.serveSupportAccess(w, r, next, claims, operator)
-				return
-			}
-			resolved, err := m.resolve(r.Context(), claims.AccountID, &claims.OrganizationID, false)
-			if err != nil {
-				w.Header().Set("Cache-Control", "no-store")
-				writeTenantResolveError(w, err)
-				return
-			}
-			if resolved.AccountID != claims.AccountID || resolved.OrganizationID != claims.OrganizationID ||
-				resolved.MembershipID != claims.MembershipID || resolved.PolicyRevision != claims.PolicyRevision ||
-				resolved.SecurityRevision != claims.SecurityRevision {
-				writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
-				return
-			}
-
-			membership, err := m.membership(r.Context(), claims.AccountID, claims.OrganizationID)
-			if err != nil {
-				writeAdminContextMembershipError(w, err)
-				return
-			}
-			if membership.ID != claims.MembershipID || membership.AccountID != claims.AccountID || membership.OrganizationID != claims.OrganizationID || membership.Status != tenancy.MembershipActive {
-				writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
-				return
-			}
-			if claims.EffectiveAuthority == "platform_admin" {
-				if !operator.PlatformAdmin {
-					writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
-					return
-				}
-			} else if claims.EffectiveAuthority != "organization_admin" || membership.LegacyRole != "admin" {
-				writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
-				return
-			}
-			ctx := SetAdminContextClaims(r.Context(), claims)
-			next.ServeHTTP(w, r.WithContext(tenancy.WithContext(ctx, resolved)))
-		default:
-			writeAdminContextError(w, http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
-		}
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// AdminContextRefusal is why an administrative context does not hold: the HTTP
+// answer the routes give, and the reason a long-lived connection that was
+// opened under the context closes.
+type AdminContextRefusal struct {
+	Status  int
+	Code    string
+	Message string
+}
+
+// Transient reports a refusal that says the check could not be made, not that
+// the context stopped holding. A connection keeps going through one.
+func (r *AdminContextRefusal) Transient() bool { return r.Status >= http.StatusInternalServerError }
+
+// Write answers the request with the refusal. No cache may keep it.
+func (r *AdminContextRefusal) Write(w http.ResponseWriter) {
+	writeAdminContextError(w, r.Status, r.Code, r.Message)
+}
+
+func refuse(status int, code, message string) *AdminContextRefusal {
+	return &AdminContextRefusal{Status: status, Code: code, Message: message}
+}
+
+// Authorize revalidates the authority claims encode against the current
+// session, account, membership and organization, and returns the context a
+// handler runs in. It is everything Require does after parsing the token, so
+// a connection that outlives its request (the organization live socket)
+// revalidates with exactly the rules the REST routes apply.
+func (m *AdminContextMiddleware) Authorize(ctx context.Context, claims auth.AdminContextClaims) (context.Context, *AdminContextRefusal) {
+	// A context lives no longer than the login session it was exchanged
+	// from: logout or session revocation ends it on the next request.
+	if claims.SessionID == "" {
+		return ctx, refuse(http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
+	}
+	if m == nil || m.sessions == nil {
+		return ctx, refuse(http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+	}
+	if authority, valid, err := m.sessions.ActiveSession(ctx, claims.SessionID, claims.AccountID); err != nil {
+		return ctx, refuse(http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+	} else if !valid || authority.IsRemotePlayback() {
+		return ctx, refuse(http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+	}
+
+	// The account behind the token is re-read on every request, for both
+	// scopes: a disabled or replaced account loses administrative access
+	// immediately rather than when the token expires.
+	operator, err := m.operator(ctx, claims)
+	if err != nil {
+		return ctx, operatorRefusal(err)
+	}
+
+	switch claims.Scope {
+	case auth.AdminScopePlatform:
+		if !operator.PlatformAdmin {
+			return ctx, refuse(http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
+		}
+		return SetAdminContextClaims(ctx, claims), nil
+	case auth.AdminScopeOrganization:
+		if claims.SupportAccessID != uuid.Nil {
+			return m.authorizeSupportAccess(ctx, claims, operator)
+		}
+		resolved, err := m.resolve(ctx, claims.AccountID, &claims.OrganizationID, false)
+		if err != nil {
+			return ctx, tenantResolveRefusal(err)
+		}
+		if resolved.AccountID != claims.AccountID || resolved.OrganizationID != claims.OrganizationID ||
+			resolved.MembershipID != claims.MembershipID || resolved.PolicyRevision != claims.PolicyRevision ||
+			resolved.SecurityRevision != claims.SecurityRevision {
+			return ctx, refuse(http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+		}
+
+		membership, err := m.membership(ctx, claims.AccountID, claims.OrganizationID)
+		if err != nil {
+			return ctx, membershipRefusal(err)
+		}
+		if membership.ID != claims.MembershipID || membership.AccountID != claims.AccountID || membership.OrganizationID != claims.OrganizationID || membership.Status != tenancy.MembershipActive {
+			return ctx, refuse(http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+		}
+		if claims.EffectiveAuthority == "platform_admin" {
+			if !operator.PlatformAdmin {
+				return ctx, refuse(http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+			}
+		} else if claims.EffectiveAuthority != "organization_admin" || membership.LegacyRole != "admin" {
+			return ctx, refuse(http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+		}
+		return tenancy.WithContext(SetAdminContextClaims(ctx, claims), resolved), nil
+	default:
+		return ctx, refuse(http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
+	}
 }
 
 func (m *AdminContextMiddleware) parse(header string) (auth.AdminContextClaims, error) {
@@ -202,21 +222,33 @@ func (m *AdminContextMiddleware) operator(ctx context.Context, claims auth.Admin
 	return auth.ResolveOperatorAuthority(ctx, m.platform, claims.AccountID, claims.AccountIncarnationID)
 }
 
-func writeAdminOperatorError(w http.ResponseWriter, err error) {
+func operatorRefusal(err error) *AdminContextRefusal {
 	switch {
 	case errors.Is(err, auth.ErrOperatorIneligible):
-		writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+		return refuse(http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 	default:
-		writeAdminContextError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+		return refuse(http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 	}
 }
 
-func writeAdminContextMembershipError(w http.ResponseWriter, err error) {
+func membershipRefusal(err error) *AdminContextRefusal {
 	switch {
 	case errors.Is(err, tenancy.ErrMembershipNotFound):
-		writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+		return refuse(http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 	default:
-		writeAdminContextError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+		return refuse(http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+	}
+}
+
+// tenantResolveRefusal is writeTenantResolveError's answer as a value.
+func tenantResolveRefusal(err error) *AdminContextRefusal {
+	switch {
+	case errors.Is(err, tenancy.ErrTenantSuspended):
+		return refuse(http.StatusForbidden, "organization_suspended", "Tenant access is suspended")
+	case errors.Is(err, tenancy.ErrTenantNotFoundOrHidden), errors.Is(err, tenancy.ErrOwnershipResolutionRequired):
+		return refuse(http.StatusUnauthorized, "tenant_session_required", "Valid tenant session required")
+	default:
+		return refuse(http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 	}
 }
 

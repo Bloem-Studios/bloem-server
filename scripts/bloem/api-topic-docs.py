@@ -76,7 +76,7 @@ TOPICS = [
      [("Multitenant administration", "multitenant-administration.md"),
       ("Resource tenancy foundation", "resource-tenancy-foundation.md"),
       ("OPA tenant authorization", "opa-tenant-authorization.md"), ("Lifecycle safety", "bloem-lifecycle-safety.md")],
-     [r"^/admin/session(/|$)", r"^/organizations(/|$)", r"^/admin/organization/",
+     [r"^/admin/session(/|$)", r"^/organizations(/|$)", r"^/admin/organization/", r"^/organization/live/",
       r"^/admin/platform/(organizations|tenants|accounts|library-figures|new-arrivals)(/|$)",
       r"^/admin/search/"],
      "Administrative contexts, organization administration (people, groups, invitations, libraries, grants, "

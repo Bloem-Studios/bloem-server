@@ -186,6 +186,13 @@ It is declared in `contracts/seams.txt`.
 ### Not done
 
 Parental fields and setting a PIN stay out of organization authority. Personal API keys
-survive "sign out everywhere", as in Silo's reset policy. The streams list is polled; there
-is no organization realtime channel. Removing a profile deletes its sessions, but nothing stops a
-stream already playing on it; stop the stream first.
+survive "sign out everywhere", as in Silo's reset policy. Removing a profile deletes its sessions,
+but nothing stops a stream already playing on it; stop the stream first.
+
+### Live updates
+
+The streams, people and activity lists do not need polling. The organization live socket tells an
+administrator's app which item changed, and the app re-reads it through the routes above; the list
+stays the truth. The ticket is minted with the same administrative context as the routes, the socket
+is bound to the one organization that context names, and the context is revalidated with the
+routes' own code every 15 seconds. See [Organization live updates](../design/bloem-org-live.md).

@@ -17,7 +17,7 @@ Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's ex
 | [Plans and preview](plans.md) | 34 | [bloem-plans.md](../../architecture/bloem-plans.md) |
 | [Messages and promotions](messages.md) | 24 | [bloem-messages-and-promotions.md](../../architecture/bloem-messages-and-promotions.md) |
 | [Apps and clients](apps.md) | 10 | [bloem-apps.md](../../architecture/bloem-apps.md) |
-| [Organizations and administration](organizations.md) | 112 | [bloem-organizations.md](../../architecture/bloem-organizations.md) |
+| [Organizations and administration](organizations.md) | 114 | [bloem-organizations.md](../../architecture/bloem-organizations.md) |
 | [Retired v1 routes](v1-routes.md) | hand-written | |
 
 ## Conventions
@@ -44,6 +44,7 @@ Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's ex
 | `bloemEntitlementBulkKey` | Bearer sa_ API key owned by an enabled platform administrator, unscoped or carrying admin:entitlements:bulk. Accepted only by authoritative policy reads, snapshots, cohort reads and bulk operations. |
 | `bloemLiveTVDeliveryTicket` | Signed Live TV HLS delivery ticket from the session-start URL. Bound to playback ID, user/profile, expiry and purpose=bloem_livetv_hls. Current viewer authorization is re-resolved on every fetch. Does not authorize operations or the MPEG-TS session proxy. |
 | `bloemOrganizationContext` | An organization-scoped administrative-context token obtained through /api/bloem/v2/admin/session. The account, originating login session, organization, membership and policy/security revisions are revalidated on every request. An account token or platform-scoped context alone is insufficient. |
+| `bloemOrganizationLiveTicket` | A single-use ticket from createBloemOrganizationLiveTicket, offered as the second subprotocol: Sec-WebSocket-Protocol: bloem-live.v1, ticket.<ticket>. Valid for 30 seconds. It is never accepted in a URL. |
 | `bloemPlatformContext` | A platform-scoped administrative-context token obtained through /api/bloem/v2/admin/session. The originating login session and current platform authority are revalidated on every request. Account and organization-scoped tokens are insufficient. |
 
 ## Errors

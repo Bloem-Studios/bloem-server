@@ -261,7 +261,7 @@ func registerBloemOrganizationSupportStreams(reg *Registry) {
 	}
 	{
 		op := bloemSupportOp(reg, "GET", "/admin/organization/streams", "listBloemOrganizationStreams", "List the organization's live streams.", 200)
-		op.Description = bloemSupportAuthority + " Polling only: there is no organization realtime channel. The organization filter is applied in SQL, so cursors and pages are exact."
+		op.Description = bloemSupportAuthority + " The organization filter is applied in SQL, so cursors and pages are exact. The list is the truth: the org.streams channel of the organization live socket (createBloemOrganizationLiveTicket) only says which stream changed, and the client re-reads."
 		bloemDocumentOmit(&op, 409, 429)
 		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "validation_failed: limit is outside 1 to 100, cursor is malformed, or a parameter is not supported."})
 		registerBloemChiDocument[BloemSupportStreamsInput, bloemJSONOutput[BloemSupportStreamsResponse]](reg, op)

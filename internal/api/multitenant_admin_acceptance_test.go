@@ -158,8 +158,16 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organ
 	}}
 	store := tenancy.NewStore(pool)
 	bootstrap := v1TenancyBootstrap{store: store}
+	// The application context ends with the test, and the organization live
+	// feed (a LISTEN connection that starts on first use) is gone before the
+	// disposable database is dropped.
+	appCtx, stopApp := context.WithCancel(ctx)
+	t.Cleanup(func() {
+		stopApp()
+		waitNoListeners(pool)
+	})
 	fixture.router = NewRouter(Dependencies{
-		AppContext: ctx, DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
+		AppContext: appCtx, DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
 		BloemDependencies:     bloem,
 	})
@@ -222,5 +230,24 @@ func (fixture *multitenantAdminAcceptanceFixture) assertIsolationAndRevocation(t
 	usable := performJSONRequest(t, fixture.router, http.MethodGet, NativeAPIPrefix+"/admin/organization/overview", "", fixture.organizationTokens[1], nil)
 	if usable.Code != http.StatusOK {
 		t.Fatalf("unrelated organization context after suspension = %d %s", usable.Code, usable.Body.String())
+	}
+}
+
+// waitNoListeners waits for the LISTEN connections the application opened on
+// the database to close, so the database can be dropped.
+func waitNoListeners(pool *pgxpool.Pool) {
+	deadline := time.After(3 * time.Second)
+	tick := time.NewTicker(20 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		var open int
+		if err := pool.QueryRow(context.Background(), `SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND query LIKE 'LISTEN %' AND pid<>pg_backend_pid()`).Scan(&open); err != nil || open == 0 {
+			return
+		}
+		select {
+		case <-deadline:
+			return
+		case <-tick.C:
+		}
 	}
 }

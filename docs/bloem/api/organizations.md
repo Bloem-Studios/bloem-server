@@ -14,7 +14,7 @@ For the plain-language picture, read the [Organizations and administration expla
 - [OPA tenant authorization](../../architecture/opa-tenant-authorization.md)
 - [Lifecycle safety](../../architecture/bloem-lifecycle-safety.md)
 
-## Operations (112)
+## Operations (114)
 
 | Method and path | Summary |
 | --- | --- |
@@ -31,6 +31,7 @@ For the plain-language picture, read the [Organizations and administration expla
 | [`DELETE /api/bloem/v2/admin/organization/invitations/{id}`](#delete-apibloemv2adminorganizationinvitationsid) | Revoke an unaccepted, unrevoked user invitation in the selected organization. |
 | [`POST /api/bloem/v2/admin/organization/invitations/{id}/resend`](#post-apibloemv2adminorganizationinvitationsidresend) | Rotate an unaccepted, unrevoked user invitation and return its new claim token once. |
 | [`GET /api/bloem/v2/admin/organization/libraries`](#get-apibloemv2adminorganizationlibraries) | List the organization library entitlement projection. |
+| [`POST /api/bloem/v2/admin/organization/live/ticket`](#post-apibloemv2adminorganizationliveticket) | Mint a single-use ticket for the organization live socket. |
 | [`GET /api/bloem/v2/admin/organization/overview`](#get-apibloemv2adminorganizationoverview) | Read the selected organization overview. |
 | [`GET /api/bloem/v2/admin/organization/people/`](#get-apibloemv2adminorganizationpeople) | Page organization people and their profiles. |
 | [`POST /api/bloem/v2/admin/organization/people/bulk-jobs`](#post-apibloemv2adminorganizationpeoplebulk-jobs) | Enqueue a people bulk mutation. |
@@ -129,6 +130,7 @@ For the plain-language picture, read the [Organizations and administration expla
 | [`POST /api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/suspend`](#post-apibloemv2adminplatformtenantstenant_idmembersuser_idsuspend) | Suspend a member's account. |
 | [`GET /api/bloem/v2/admin/search/mirror`](#get-apibloemv2adminsearchmirror) | Read the search mirror's status. |
 | [`POST /api/bloem/v2/admin/session`](#post-apibloemv2adminsession) | Exchange a login session for a scoped administrative context. |
+| [`GET /api/bloem/v2/organization/live/ws`](#get-apibloemv2organizationlivews) | Open the organization live socket with a ticket. |
 | [`GET /api/bloem/v2/organizations`](#get-apibloemv2organizations) | The organizations this account belongs to. |
 
 ## Reference
@@ -420,6 +422,24 @@ Requires the selected organization administrative context. Current account, logi
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
+
+### `POST /api/bloem/v2/admin/organization/live/ticket`
+
+Mint a single-use ticket for the organization live socket.
+
+Operation ID: `createBloemOrganizationLiveTicket`.
+Credentials: `bloemOrganizationContext`.
+
+Organization-scoped administrative context, as for the organization's other routes. A platform-scoped context is refused (403 insufficient_organization_authority). A context opened under break-glass support access is accepted. The context is revalidated on every request here and, for the life of the socket, every 15 seconds. The ticket binds the socket to the one organization the context names and carries the context's claims, never the context itself. It is single use and valid for 30 seconds; fetch a new one for every connection. The route takes no body (an empty body, {} or null). Mint at most 30 a minute per account. The response is Cache-Control: no-store. Advertised publicly by organization_live_v1 in feature_tokens.
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`OrgLiveTicket`](#orgliveticket) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: the route takes no body. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
+| 429 | [`BloemNativeError`](README.md#bloemnativeerror) | rate_limited: more than 30 tickets a minute for the account on this server (Retry-After: seconds). |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable. live_unavailable (Retry-After: 5): the server's change feed is down. Back off; after 3 failed attempts in a row fall back to polling. |
 
 ### `GET /api/bloem/v2/admin/organization/overview`
 
@@ -1003,7 +1023,7 @@ List the organization's live streams.
 Operation ID: `listBloemOrganizationStreams`.
 Credentials: `bloemOrganizationContext`.
 
-Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Polling only: there is no organization realtime channel. The organization filter is applied in SQL, so cursors and pages are exact.
+Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. The organization filter is applied in SQL, so cursors and pages are exact. The list is the truth: the org.streams channel of the organization live socket (createBloemOrganizationLiveTicket) only says which stream changed, and the client re-reads.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -2798,6 +2818,27 @@ Request body (required, `application/json`): [`BloemAdminSessionRequest`](#bloem
 | 429 | [`BloemNativeError`](README.md#bloemnativeerror) | rate_limited: the operator opened 20 support accesses in the last hour; Retry-After says when to retry. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; service_unavailable: the login session could not be checked, retry after Retry-After. |
 
+### `GET /api/bloem/v2/organization/live/ws`
+
+Open the organization live socket with a ticket.
+
+Operation ID: `connectBloemOrganizationLiveSocket`.
+Credentials: `bloemOrganizationLiveTicket`.
+
+WebSocket upgrade, protocol bloem-live.v1. The path is outside /admin because a WebSocket client cannot send an Authorization header; the ticket in Sec-WebSocket-Protocol is the credential, and the context it carries is revalidated as the ticket route does. Client frames (JSON text, at most 4 KiB): {"op":"subscribe","channels":[...],"resume":null} and {"op":"unsubscribe","channels":[...]}. Channels: org.streams, org.people, org.activity. Server frames: {"op":"change","seq","channel","id","rev","kind"} with kind created, updated or deleted; {"op":"heartbeat","seq"} every 25 seconds; {"op":"resync","seq","channel"}, sent after every subscribe and whenever signals may have been lost; {"op":"error","code","channel"} with code unknown_channel, unavailable or too_many_channels. A change names an item and a revision, never its content: re-read it through the matching REST route. Close codes: 4401 invalid ticket, 4403 the context no longer holds, 4408 the context or the one-hour limit ended (renew and reconnect), 4429 more than 5 sockets for the account and organization on this server, 1012 server restart, 1013 try again later, 1008 a frame this protocol does not accept, 1009 a frame over 4 KiB. Full contract: docs/design/bloem-org-live.md.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `Sec-WebSocket-Protocol` | header | string | yes | bloem-live.v1, ticket.<single-use-ticket>. |
+| `Origin` | header | string |  | Absent, an app scheme or null, or a browser origin that matches the server's public origin. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 101 |  | Switching protocols. The ticket is checked after the upgrade: a bad, used, expired or foreign ticket closes the socket with 4401. |
+| 400 | `text/plain` string | Plain text: not a valid handshake (a ticket or token in the URL, a body, a missing or wrong subprotocol, a malformed upgrade). |
+| 403 | `text/plain` string | Plain text: the browser origin is not allowed. |
+| 503 | `text/plain` string | Plain text: live updates are unavailable on this server, or its change feed is down (Retry-After: 5). |
+
 ### `GET /api/bloem/v2/organizations`
 
 The organizations this account belongs to.
@@ -3984,6 +4025,16 @@ Type: object.
 | `security_revision` | integer (int64) | yes |  |
 | `status` | string | yes |  |
 | `username` | string | yes |  |
+
+### OrgLiveTicket
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `channels` | array of string | yes |  |
+| `expires_at` | string (date-time) | yes |  |
+| `max_connection_seconds` | integer (int64) | yes |  |
+| `protocol` | string | yes |  |
+| `ticket` | string | yes |  |
 
 ### Organization
 

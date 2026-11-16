@@ -57,6 +57,7 @@ routes run.
 | Status | `error` | Meaning |
 | --- | --- | --- |
 | 401 | `tenant_session_required`, `authorization_state_stale` | The pass is invalid, expired, or no longer matches the account, session, membership or support access. Renew the pass as for any organization route. |
+| 400 | `invalid_request` | The route takes no body; send none (an empty body, `{}` or `null` is accepted). |
 | 403 | `insufficient_organization_authority` | Not an organization-scope pass. |
 | 429 | `rate_limited` | More than 30 tickets a minute for the account on one node. `Retry-After` in seconds. |
 | 503 | `live_unavailable` | The server's change feed is down. `Retry-After` in seconds. |
@@ -88,7 +89,7 @@ because a WebSocket client cannot send an `Authorization` header; the ticket is 
 | 4408 | `expired` | The pass or the connection lifetime ended. Not an error: renew the pass if needed and reconnect at once. |
 | 4429 | `too_many_connections` | The account already has 5 sockets for this organization on this server. Back off. |
 | 1008 | `bad_frame` | The client sent something this protocol does not accept. A client bug. |
-| 1009 | `frame_too_large` | A client frame over 4 KiB. |
+| 1009 | | A client frame over 4 KiB. |
 | 1012 | `restart` | The server is shutting down. Reconnect at once. |
 | 1013 | `live_unavailable` | The change feed is down. Back off. After 3 failed attempts in a row fall back to polling, as the staff-live client rules say. |
 
@@ -109,7 +110,9 @@ All frames are JSON text frames, one object each.
   new subscribe. `resume` is accepted and ignored; see below.
 - A channel the server does not know answers
   `{"op":"error","code":"unknown_channel","channel":"…"}`. A known channel this server does not
-  serve answers `{"op":"error","code":"unavailable","channel":"…"}`. The connection stays open.
+  serve answers `{"op":"error","code":"unavailable","channel":"…"}`. A channel beyond the third on
+  one socket answers `{"op":"error","code":"too_many_channels","channel":"…"}`. The connection
+  stays open after each of these.
 
 ### Server to client
 
@@ -194,17 +197,19 @@ For people changing the server; clients can skip this.
   small JSON payload (channel, organization id, item id, revision, kind). `pg_notify` inside a
   transaction delivers on commit, so a rolled-back change never signals, and every writer is
   covered, including the people bulk-job worker and other nodes. Each node holds one dedicated
-  `LISTEN` connection and hands the payloads to its local registry. While that connection is
-  down the endpoints answer 503, open sockets close with 1013, and on reconnect every connection
-  gets a `resync` for each subscribed channel. This needs a direct Postgres connection (a
-  transaction-pooling proxy breaks `LISTEN`).
+  `LISTEN` connection, opened the first time a ticket or a socket reaches the node, and hands the
+  payloads to its local registry. While that connection is down the endpoints answer 503 and open
+  sockets close with 1013; the clients reconnect, and the `resync` that answers their subscribe
+  covers whatever was missed. This needs a direct Postgres connection (a transaction-pooling
+  proxy breaks `LISTEN`).
 - **Streams** come from the playback lifecycle events on Silo's hub (`session.started`,
   `session.paused`, `session.resumed`, `session.stopped`). Each node maps the session's account to
   its organization with the same rule as the REST filter (the account is a member and the
   profile, if any, belongs to the organization) and signals that organization only. The
   unattributed `sessions.replaced` event (a node died, stale sessions were swept) carries no
   session; on it, each node compares a fingerprint of the session set of every organization that
-  has a subscriber on this node and sends `resync` to those whose set changed.
+  has a subscriber on this node and sends `resync` to those whose set changed (the first look at
+  an organization has nothing to compare with, so it sends one).
 - Nothing is written to the shared hub for these channels, so plugins and the account socket never
   see them.
 

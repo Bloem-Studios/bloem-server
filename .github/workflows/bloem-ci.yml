@@ -179,6 +179,17 @@ jobs:
             -run 'TestMultitenantAdmin|TestAdminStore|TestService|TestAdminPeopleMigrations|TestOrganizationAdminProjectionMigration' \
             -count=1 -v -timeout=30m
 
+      # The triggers that signal the organization pages, the listener that
+      # carries them, and the socket through the real router: each creates its
+      # own disposable databases beside the one the URL names.
+      - name: Organization live updates
+        env:
+          SILO_REQUIRE_TEST_DATABASE: "1"
+          SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_tenant_test?sslmode=disable
+        run: |
+          go test -race ./internal/orglive -count=1 -v -timeout=30m
+          go test ./internal/api -run '^TestOrganizationLiveAcceptance$' -count=1 -v -timeout=30m
+
   # The tenancy store's race tests are most of the tenant gate's time and run
   # one after another, so four runners split them, each against its own
   # disposable PostgreSQL. scripts/ci/go-test-shard.sh deals every test to

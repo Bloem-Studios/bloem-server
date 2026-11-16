@@ -107,6 +107,9 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 		}
 		supportHandler = newBloemSupportHandler(deps, peopleService, accountPolicyHandler)
 	}
+	// Change signals for the organization pages (docs/design/bloem-org-live.md).
+	// Revalidated by the same middleware the organization routes pass through.
+	orgLive := newBloemOrganizationLive(deps, adminMW, accountPolicyHandler)
 	// Compatibility Applications administration: platform-scoped lifecycle
 	// state and controls for the removable compatibility applications. The
 	// handler consumes the lifecycle service; it never writes application
@@ -151,7 +154,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			UpgradePrompt:  bloemUpgradePromptHandler(deps),
 			NewArrivals:    bloemNewArrivalsHandler(deps),
 			Client:         newBloemClientSurface(deps, authMW, tenantMW, searchProvider, liveTVAdmin),
-			Platform:       platformHandler, People: peopleHandler, Support: supportHandler, Organization: organizationHandler,
+			Platform:       platformHandler, People: peopleHandler, Support: supportHandler, OrgLive: orgLive, Organization: organizationHandler,
 			Explain:     explainHandler,
 			Entitlement: entitlementHandler, AccountPolicy: accountPolicyHandler,
 			Storefront: newBloemPlatformStorefrontHandlers(deps, accountPolicyHandler,
@@ -180,6 +183,7 @@ type bloemRouteSurfaces struct {
 	Platform               *handlers.BloemAdminPlatformHandler
 	People                 *handlers.BloemAdminPeopleHandler
 	Support                *handlers.BloemOrganizationSupportHandler
+	OrgLive                *handlers.BloemOrganizationLive
 	Organization           *handlers.BloemAdminOrganizationHandler
 	Explain                *handlers.BloemPolicyExplainHandler
 	Entitlement            *handlers.EntitlementTemplatesHandler
@@ -260,9 +264,18 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 			system.SetOrganizationSupportAvailable(surfaces.Support.Available() && authMW != nil && adminMW != nil)
 		}
 		if system != nil {
+			system.SetOrganizationLiveAvailable(surfaces.OrgLive.Available() && authMW != nil && adminMW != nil)
+		}
+		if system != nil {
 			system.SetOrganizationDomainsAvailable(surfaces.Storefront.Domains != nil && authMW != nil && adminMW != nil)
 		}
 		mountBloemPlatformStorefront(r, surfaces.Storefront, authMW, adminMW)
+		if surfaces.OrgLive.Available() && authMW != nil && adminMW != nil {
+			// Outside /admin on purpose: a WebSocket client cannot send an
+			// Authorization header, so the single-use ticket in the handshake
+			// is the credential (the ticket route is behind the middleware).
+			r.Get("/organization/live/ws", surfaces.OrgLive.ServeHTTP)
+		}
 		if authMW == nil || adminMW == nil {
 			mountUnavailableAdminContextRoutes(r)
 			return
@@ -334,6 +347,9 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 				})
 			}
 
+			if surfaces.OrgLive.Available() {
+				r.Post("/organization/live/ticket", surfaces.OrgLive.HandleTicket)
+			}
 			if surfaces.Support != nil {
 				r.Get("/organization/support-capabilities", surfaces.Support.HandleCapabilities)
 				r.Delete("/organization/support-access", surfaces.Support.HandleCloseSupportAccess)

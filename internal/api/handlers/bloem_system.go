@@ -30,6 +30,7 @@ type BloemSystemHandler struct {
 	promotionsViewer            bool
 	organizationDomains         bool
 	organizationSupport         bool
+	organizationLive            bool
 	bookRequests                bool
 	ebookRequests               bool
 	bookRequestConnectionAdmin  bool
@@ -88,6 +89,13 @@ func (h *BloemSystemHandler) SetOrganizationDomainsAvailable(available bool) {
 // parts this server can serve).
 func (h *BloemSystemHandler) SetOrganizationSupportAvailable(available bool) {
 	h.organizationSupport = available
+}
+
+// SetOrganizationLiveAvailable tracks the organization live updates: the
+// ticket route and the socket that tell an organization administrator's app
+// which streams, people or activity entries changed.
+func (h *BloemSystemHandler) SetOrganizationLiveAvailable(available bool) {
+	h.organizationLive = available
 }
 
 // SetSeasonalViewerAvailable tracks the authenticated native ambience route.
@@ -225,6 +233,9 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	}
 	if h.organizationSupport {
 		featureTokens = append(featureTokens, "organization_support_v1")
+	}
+	if h.organizationLive {
+		featureTokens = append(featureTokens, "organization_live_v1")
 	}
 	writeJSON(w, http.StatusOK, bloemCapabilitiesResponse{
 		API:            nativeAPIIdentifier,
