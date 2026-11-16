@@ -13,6 +13,8 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/bookrequests"
+	evt "github.com/Silo-Server/silo-server/internal/events"
+	"github.com/Silo-Server/silo-server/internal/orglive"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -265,9 +267,13 @@ func TestUndocumentedNativeRouteCountDoesNotGrow(t *testing.T) {
 func mountedAdministrativeAndLiveTVOperations(t *testing.T) map[string]struct{} {
 	t.Helper()
 	router := chi.NewRouter()
+	adminMW := &apimw.AdminContextMiddleware{}
+	// The ticket route is mounted only where organization live updates can
+	// serve, so the test gives them every dependency, as production wiring does.
+	orgLive := handlers.NewBloemOrganizationLive(orglive.NewBus(), evt.NewSocketTicketStore(nil, handlers.SocketAudienceOrgLive), adminMW, orglive.Channels, "")
 	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), &handlers.AdminContextSessionHandler{},
-		&apimw.AuthMiddleware{}, &apimw.AdminContextMiddleware{}, bloemRouteSurfaces{
-			Platform: &handlers.BloemAdminPlatformHandler{}, People: &handlers.BloemAdminPeopleHandler{}, Support: &handlers.BloemOrganizationSupportHandler{},
+		&apimw.AuthMiddleware{}, adminMW, bloemRouteSurfaces{
+			Platform: &handlers.BloemAdminPlatformHandler{}, People: &handlers.BloemAdminPeopleHandler{}, Support: &handlers.BloemOrganizationSupportHandler{}, OrgLive: orgLive,
 			Organization: &handlers.BloemAdminOrganizationHandler{}, Explain: &handlers.BloemPolicyExplainHandler{},
 			Storefront: bloemPlatformStorefrontHandlers{Tenants: &handlers.AdminTenantsHandler{}, TenantMembers: &handlers.AdminTenantMembersHandler{},
 				Accounts: &handlers.AdminHandler{}, Announcements: &handlers.AdminAnnouncementsHandler{},

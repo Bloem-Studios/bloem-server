@@ -109,10 +109,11 @@ compared for it.
   belongs to one group: data, restored as the backup has it (organizations,
   memberships, plans, branding, promotions, book requests, the Live TV setup); server
   state, restored and rebuilt (the storage scan index, the Live TV guide, job and lease
-  state); logs and queues, left out (remote commands); short-lived sign-ins, left out
+  state, the admin app push log and its retry queue, whose unfinished sends a restore
+  ends as failed); logs and queues, left out (remote commands); short-lived sign-ins, left out
   (preview guest sessions and their grants, Watch Together room owners); and
   credentials kept from the live server, never the backup's (Xtream sign-ins, the
-  preview storefront's ticket keys). Grant switches (an access group's playback switch,
+  preview storefront's ticket keys, the admin apps' push registrations). Grant switches (an access group's playback switch,
   a storage source, a Live TV channel or guide source) keep the stricter of the
   backup's and the live value.
 

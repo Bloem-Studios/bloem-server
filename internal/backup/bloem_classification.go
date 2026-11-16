@@ -22,6 +22,8 @@ func init() {
 	stricterFlags = append(stricterFlags, bloemStricterFlags()...)
 	maps.Copy(restoredFlagColumns, bloemRestoredFlagColumns)
 
+	interruptedWork = append(interruptedWork, bloemInterruptedWork...)
+
 	accountFieldTables = append(accountFieldTables, bloemAccountFieldTables...)
 	maps.Copy(excludedUserTables, bloemExcludedUserTables)
 
@@ -62,12 +64,14 @@ var bloemRestoredDataTables = strings.Fields(`
 `)
 
 // bloemServerStateTables describe the running server: job and lease state,
-// receipts, counters, caches, the storage scan index (rebuilt by the next
+// the admin app push log and its retry queue (as notification_deliveries and
+// push_delivery_attempts are), receipts, counters, caches, the storage scan index (rebuilt by the next
 // scan), the Live TV guide (refetched from its sources), and sessions.
 var bloemServerStateTables = strings.Fields(`
 	admin_people_bulk_jobs admin_people_bulk_job_receipts admin_people_bulk_targets admin_people_selections
 	bloem_audiobook_request_acquisitions bloem_audiobook_request_decisions bloem_ebook_request_dispatches
 	bloem_ebook_request_policy_epoch bloem_library_location_state bloem_livetv_xtream_leases
+	bloem_admin_push_attempts bloem_admin_push_deliveries
 	bloem_org_session_revocations bloem_preview_event_counts bloem_preview_personal_presentation bloem_remote_sources
 	bloem_preview_ticket_uses bloem_silo_switching
 	bloem_storage_audio_probes bloem_storage_audio_staged_tracks bloem_storage_change_tokens bloem_storage_entries
@@ -104,6 +108,18 @@ var bloemSecretTables = []secretTable{
 		key: "tuner_id", same: []string{"tuner_id"}, credential: everyRow,
 		owned:    `EXISTS (SELECT 1 FROM livetv_tuners x WHERE x.id = r.tuner_id)`,
 		describe: `format('Xtream sign-in of tuner %s', r.tuner_id)`,
+	}},
+	// An admin app's push registration reaches an administrator's phone
+	// without a session, as push_devices does for the Silo apps: one removed
+	// since the backup would be pushed to again, so the live set wins. The
+	// token is encrypted bound to the row id, which the carry keeps. A device
+	// bound to a login session the restore leaves out stops until the app
+	// registers it again at the next sign-in.
+	{name: "bloem_admin_push_devices", handling: secretCarried, why: "admin app push registrations", carry: &carrySpec{
+		key: "id", same: []string{"id", columnUserID, "installation_id", "token_hash"}, credential: everyRow,
+		owners:   []string{columnUserID},
+		owned:    ownerCarried(columnUserID),
+		describe: `format('admin app push device %s (account %s)', r.id, r.user_id)`,
 	}},
 	// The storefront's ticket keys decide who may open a preview: a key
 	// retired since the backup must not admit anyone again.
@@ -176,6 +192,14 @@ var bloemRestoredFlagColumns = map[string]string{
 	"promotions.dismissible":                                         whyShown,
 }
 
+// bloemInterruptedWork ends, as Silo's push attempts do, an admin app push
+// still pending or retrying when the backup was taken: the restored server
+// would otherwise send the backup's notifications again.
+var bloemInterruptedWork = []struct{ table, sql string }{
+	{"bloem_admin_push_attempts", `UPDATE bloem_admin_push_attempts SET outcome = 'failed', failure_message = $1, updated_at = now()
+		WHERE outcome IN ('pending', 'retrying')`},
+}
+
 // bloemAccountFieldTables are kept from the account and profile fields:
 // login_email_registry is kept by triggers on users and user_profiles.
 var bloemAccountFieldTables = []string{"login_email_registry"}
@@ -183,6 +207,8 @@ var bloemAccountFieldTables = []string{"login_email_registry"}
 // bloemExcludedUserTables are Bloem's per-user tables a restore set and a
 // profile export leave out.
 var bloemExcludedUserTables = map[string]string{
+	"bloem_admin_push_devices":       excludedPush,
+	"bloem_admin_push_deliveries":    "admin app push notification log",
 	"livetv_recordings":              "Live TV recordings, restored with the server's Live TV setup",
 	"livetv_series_rules":            "Live TV recording rules, restored with the server's Live TV setup",
 	"livetv_sessions":                "Live TV tuner sessions in progress",

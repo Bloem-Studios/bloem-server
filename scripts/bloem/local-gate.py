@@ -252,6 +252,18 @@ STEPS = [
     ),
     Step(
         "tenancy",
+        "org-live-socket",
+        _TENANT + "go test -race ./internal/orglive -count=1 -v -timeout=30m",
+        _needs("pg"),
+    ),
+    Step(
+        "tenancy",
+        "org-live-acceptance",
+        _TENANT + "go test ./internal/api -run '^TestOrganizationLiveAcceptance$' -count=1 -v -timeout=30m",
+        _needs("pg"),
+    ),
+    Step(
+        "tenancy",
         "stores-migrate",
         _MIGRATE.format(db=_pg("bloem_tenant_stores_test")),
         _needs("pg", "fresh_db:bloem_tenant_stores_test"),

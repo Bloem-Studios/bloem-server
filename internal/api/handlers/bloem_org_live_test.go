@@ -701,7 +701,7 @@ func TestOrgLiveSocketHeartbeatAndClientFrames(t *testing.T) {
 			case "error":
 				errorsSeen++
 				code, channel := frame["code"], frame["channel"]
-				if !(code == "unavailable" && channel == "org.streams") && !(code == "unknown_channel" && channel == "org.nope") {
+				if (code != "unavailable" || channel != "org.streams") && (code != "unknown_channel" || channel != "org.nope") {
 					t.Fatalf("error frame = %v", frame)
 				}
 			case "resync":

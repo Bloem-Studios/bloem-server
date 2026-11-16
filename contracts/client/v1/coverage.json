@@ -3112,6 +3112,42 @@
     {
       "type": "internal/apiv2.BloemAdminSessionSupport",
       "reason": "OpenAPI-only declaration of the organization support routes (an organization administrator's password reset, sessions, devices, profiles, streams and break-glass support access). Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/api/handlers.BloemAdminPushContent",
+      "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemAdminPushKinds",
+      "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemAdminPushKindsRequest",
+      "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemAdminPushRegisterRequest",
+      "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemAdminPushRegistered",
+      "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemAdminPushWidgets",
+      "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemAdminPushWidgetsRequest",
+      "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
+    },
+    {
+      "type": "internal/notifications.AdminPushKindState",
+      "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
+    },
+    {
+      "type": "internal/api/handlers.OrgLiveTicket",
+      "reason": "Wire type of the organization live-updates ticket route (/api/bloem/v2/admin/organization/live/ticket), called only by Bloem's staff apps (the admin apps' organization pages) with an organization administrative context pass; the streaming clients this generator serves do not open the organization live socket."
     }
   ]
 }
