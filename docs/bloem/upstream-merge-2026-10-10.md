@@ -1,16 +1,14 @@
 # October 10 upstream integration
 
-> **Historical record (note added October 27, 2026).** The resolutions below are
-> true to the October 10 merges. Several no longer describe current code: Bloem
-> removed Jellyfin and Audiobookshelf compatibility on October 13 and then ran
-> Silo's servers again from October 18 (`2393c41ee`); the v1 and v2 download
-> handlers call Silo's own `ServeDirect`, `ResolveDirectFile` and `Capability`
-> again, with the profile read from the request context (`0deddcf59`, October 26),
-> and the `*ForProfile` wrappers remain only for an explicit profile such as a
-> Jellyfin session's; and
-> Bloem's bundle-budget checker and allowance were replaced by Silo's report-only
-> checker (October 26). The current state is Silo through `3e2d306b2`, recorded on
-> the [front page](../../.github/README.md#current-state) and in the
+> **Historical record.** The resolutions below are true to the October 10 merges.
+> Several no longer describe current code. Bloem removed Jellyfin and Audiobookshelf
+> compatibility on October 13 and has run Silo's servers again since October 18. The
+> v1 and v2 download handlers call Silo's own `ServeDirect`, `ResolveDirectFile` and
+> `Capability` again, with the profile read from the request context, and the
+> `*ForProfile` wrappers remain only for an explicit profile such as a Jellyfin
+> session's. Bloem's bundle-budget checker and allowance were replaced by Silo's
+> report-only checker. For the current state, see the
+> [front page](../../.github/README.md#current-state) and the
 > [integration changelog](CHANGELOG.md).
 
 This source integration preserves Silo ancestry through normal merges. The
@@ -78,8 +76,7 @@ in the server; sibling client repositories are not written by regeneration.
 
 Generated settings, client DTOs, API artifacts and their drift gates must
 match the merged source. Focused database, HTTP, compatibility, metadata,
-thumbnail and web checks cover the affected behavior; the integration handoff
-records the exact commands and outcomes. Passing synthetic provider checks
+thumbnail and web checks cover the affected behavior. Passing synthetic provider checks
 does not establish production S3 immutability. Bloem requires immutable
 versions or verified snapshots for S3 playback; checked ETags alone cannot
 meet that boundary.

@@ -1,15 +1,12 @@
 # Upstream reconciliation — 2026-09-08
 
-> **Status: historical integration record** (2026-09-08; written in `c53cdc4e7`;
-> checked against `e852f92bf`). It records how Bloem merged Silo `main` through
-> `aeb82e1c9` in merge `3cbc2abed`. Every later Silo merge supersedes its state: Bloem
-> `main` now contains all of Silo `main` through `3e2d306b2` (merge `68070f04b`,
-> 2026-10-27). The deferred native part of Silo `658be10eb` was completed the same day
-> in `549d88b6d`; that behaviour is now Silo's own, described in Silo's
+> **Historical integration record, September 8, 2026.** It records how Bloem merged
+> Silo `main` through `aeb82e1c9` in merge `3cbc2abed`. Every later Silo merge
+> supersedes its state. The deferred native part of Silo `658be10eb` was completed
+> later, in `549d88b6d`; that behaviour is now Silo's own, described in Silo's
 > [playback protocol v3](playback-protocol-v3.md#8-track-identity-and-the-subtitle-ordinal-space). Fork
 > policy and current merge practice are in [FORK.md](../../FORK.md); later merges are
-> listed in the [integration changelog](../bloem/CHANGELOG.md). The record below is kept
-> as written, except that the final merge hash replaces a pointer to an external report.
+> listed in the [integration changelog](../bloem/CHANGELOG.md).
 
 This reconciliation adopts applicable Silo main changes while preserving Bloem's
 native client contracts and fork behavior. It does not authorize deployment.
