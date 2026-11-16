@@ -1,15 +1,9 @@
 # How native storage works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
-> and checked against `main` at `1430c3769`; where the native installation root lives
-> was updated on 2026-11-16 for Silo's thin transcode nodes, merged through
-> `699f84ecf`. Native storage is a Bloem addition: Silo's libraries read files from
-> paths on the server, and Bloem adds libraries
-> that read from S3 buckets and the Bookwarehouse book service through approved
-> storage plugins. It builds on Silo's plugin runtime (`internal/plugins`),
-> scanner and catalog. It is experimental, and no storage service is certified
-> (`backend_verified` stays false). The technical rules are in the
-> [For developers](#for-developers) section.
+Native storage is a Bloem addition: Silo's libraries read files from paths on the server, and Bloem adds libraries
+that read from S3 buckets and the Bookwarehouse book service through approved storage plugins. It builds on Silo's
+plugin runtime (`internal/plugins`), scanner and catalog. It is experimental, and no storage service is certified
+(`backend_verified` stays false). The technical rules are in the [For developers](#for-developers) section.
 
 This page walks through what happens after a storage source is added: how Bloem
 scans it, how it notices a file has gone, where covers come from, and how people
@@ -271,8 +265,7 @@ scanned like any other.
 Silo's `CreateLibrary` and `normalizeNewLibrary`
 (`internal/api/handlers/libraries_service.go`) stay as Silo wrote them; Bloem's
 part is on added lines that call `bloemLibraryAttachment`
-(`internal/api/handlers/bloem_library_create.go`, since the merge of Silo through
-`cb4f45d0c`). It validates `storage_source`, or takes the attachment that
+(`internal/api/handlers/bloem_library_create.go`). It validates `storage_source`, or takes the attachment that
 `CreateLibraryWithAttachment` (the native `library-locations` create) passes in the
 request context, and marks a library with no paths. `normalizeNewLibrary` sends
 such a library to `bloemNormalizePathlessLibrary`, which runs Silo's checks on a
@@ -338,8 +331,7 @@ directory, on the API host and the proxy host alike. Transcode nodes hold none: 
 run no storage plugin, and read a native source's bytes through the API servers
 ([How stored movies play](bloem-native-video-playback.md)). That
 directory is `SILO_PLUGIN_CACHE_DIR` when set (the operator secures it), otherwise
-`silo-plugins` under the operating system's temporary directory. Since the Silo merge
-`68070f04b` (Silo #3138) a Unix server refuses to start with that default when another
+`silo-plugins` under the operating system's temporary directory. Since Silo #3138 a Unix server refuses to start with that default when another
 local user controls it (`plugins.EnsurePrivateCacheRoot`); set `SILO_PLUGIN_CACHE_DIR`
 to a directory only the server's user can write. Executable replacement, runtime
 generation changes, credential rotation and host restart preserve this path.
@@ -556,7 +548,7 @@ verifies the lease under the source and run locks (`verifyLease`).
 
 A storage scan that fails resumes its journal where it stopped
 (`StorageScanner.SetRetry`, `internal/libraryingest/storage_scan_retry.go`).
-Production allows five failures in a row, pausing 30 seconds longer after each;
+The scanner allows five failures in a row, pausing 30 seconds longer after each;
 an attempt that ran for five minutes (`storageRetryProgress`) resets the count.
 Separately, a page listing that fails as transiently unavailable (gRPC
 `Unavailable`, `DeadlineExceeded`, `ResourceExhausted` or `Aborted`) is listed
@@ -839,8 +831,7 @@ uses its own generated bindings in `internal/storageproto`.
 1.36.11 and protoc-gen-go-grpc 1.6.1; `--check` verifies the generated files.
 
 Hosts request at most 512 entries and 1 MiB per page with a 30-second deadline.
-The plugin session's 10-second default RPC bound used to cut that short; since
-`d183b286f` (2026-10-25) a listing call asks for its full 30 seconds
+The plugin session's 10-second default RPC bound used to cut that short; a listing call asks for its full 30 seconds
 (`storageplugin.RPCLimit`), and every other call keeps the 10-second bound.
 `Read` delivers exactly the requested range (at most 8 MiB) in ordered chunks
 of at most 128 KiB and must end with status OK; a partial read is discarded.
@@ -989,21 +980,6 @@ replacement rule; it is not an in-place toggle for attached libraries.
 - Gates still open: verified admission of other backends, cluster-wide
   cancellation of streams open on other nodes, and recurring scan history
   retention.
-
-### History
-
-Persisted sources and bindings arrived on 2026-10-06 (`324ed712d`, `dbf43c8a6`,
-`ccc18d1b1`), EPUB/PDF onboarding on 2026-10-07 (`b62833a14`), catalog
-Bookwarehouse installs on 2026-10-09 (`5268a8ce5`), S3 discovery and private S3
-state on 2026-10-10 (`730bbfe3d`, `204f820e1`), movies and checked-ETag reads on
-2026-10-11 (`b781ac3ff`), audiobooks on 2026-10-12 (`8b8943320`), the
-source-management UI and organization S3 sources on 2026-10-15, and full 30-second
-listing deadlines on 2026-10-25 (`d183b286f`). The Silo merge `68070f04b`
-(2026-10-27) added Silo's private plugin cache check. On 2026-10-28 lock-free
-read-only lease checks (`24c1f3354`, `54cadaab5`), transient page-listing retries
-(`3ed00c8bd`) and the ebook following-page listing (`f78891f74`) landed. The Silo
-merge `ff0a75fd1` (2026-11-03) brought Silo's skip of every hidden folder, and
-native scans skip the same folders (`dbe43fa54`).
 
 ### Related pages
 

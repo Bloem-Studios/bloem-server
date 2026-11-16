@@ -1,11 +1,8 @@
 # How browse-only access and the preview work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`; the preview status wait updated on 2026-11-02. Browse-only access and the storefront preview are Bloem
-> additions. Silo's group policy has the playback, download and permission switches
-> that this page builds on; Silo has no preview principals, guest sessions or
-> delivery-time playback checks. The technical rules are in the
-> [For developers](#for-developers) section.
+Browse-only access and the storefront preview are Bloem additions. Silo's group policy has the playback, download
+and permission switches that this page builds on; Silo has no preview principals, guest sessions or delivery-time
+playback checks. The technical rules are in the [For developers](#for-developers) section.
 
 A **browse-only** account can look through the catalog but never play anything.
 This page walks through what browse-only allows, how Bloem makes sure nothing
@@ -226,8 +223,7 @@ in `internal/auth/bloem_preview_principal.go`). Classification is read with
 current session authority on each request. That lookup (`ActivePreviewSession`,
 `ActiveSessionAuthority` and the auth middleware's `sessionAuthority`) also
 requires the session to belong to the account the credential names, which is
-Silo's token-to-session binding (Silo #3140, merged in `68070f04b` on
-2026-10-27). The plugin router and the auth middleware therefore keep that
+Silo's token-to-session binding (Silo #3140). The plugin router and the auth middleware therefore keep that
 binding. Per-account and profile overrides cannot restore the denied
 permissions. The lookup keeps remote-playback purpose and its approved profile,
 so preview restrictions and handoff restrictions both apply. Guest activity and
@@ -511,27 +507,12 @@ Bloem Android and Apple preview banners, CTA and personal-control suppression ar
 the separate native-client milestone. Their existing denied-operation behavior
 continues to enforce server policy.
 
-### History
-
-The transport checks arrived in `61fc3cfd5` (2026-10-13). Preview principals,
-the route and operation allowlists, guest sessions and preview administration
-arrived on 2026-10-14 (`994d44176`, `4c9840362`, `343ad96b5`, `c443409a2`,
-`017538c98`, `d1ae0621f`, `f7a1b09db`), and the web preview mode in `0d589164f`.
-`7452bd121` (2026-10-15) re-integrated it all with the Silo main of that date,
-and `21fae6837` (2026-10-15) preserved template history on migration reapply.
-`a7436b4e5` (2026-10-25) moved the v1 sockets to Silo's tickets; `c60b7008e`
-(2026-10-26) moved an account's group back onto `users`; the Silo merge
-`68070f04b` (2026-10-27) binds every preview-aware session lookup to the account
-the credential names; and `38e587805` added free play (migration
-`20261028222252_bloem_preview_free_play`).
-
 Technical pages:
 
 - [How plans work](bloem-plans.md): the plans, the preview from the storefront's
   side, and the upgrade prompt.
-- [Entitlement templates guide](../wiki/admin/entitlement-templates.md) and
-  [managing entitlement templates](../operations/entitlement-templates.md): the
-  `browse-only` and `bloem-preview` templates.
+- [Entitlement templates guide](../wiki/admin/entitlement-templates.md):
+  the `browse-only` and `bloem-preview` templates.
 - [Live TV client access](live-tv-client-access.md): the separate Live TV
   permission.
 - [Delivery boundary enforcement](delivery-boundary-enforcement.md): access

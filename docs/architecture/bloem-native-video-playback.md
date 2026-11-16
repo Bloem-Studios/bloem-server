@@ -1,18 +1,10 @@
 # How stored movies play
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against
-> `main` at `b6039036d`, checked again on 2026-11-11, after Silo retired its v1 API, and
-> updated on 2026-11-13 for the server log in the merge `06a12fb0c`, on 2026-11-15
-> for Silo's IDR primer in the merge `8e1d391d7`, and on 2026-11-16 for Silo's thin
-> transcode nodes (merge `fb187cab2`), and again on 2026-11-16 for stored movies on
-> transcode nodes through Silo's core source access.
-> Native video is a Bloem addition: it plays movies kept in
-> [native storage](bloem-native-storage.md) (S3 buckets, for example) through
-> Silo's playback planner and delivery handlers, using Silo's
-> [playback protocol v3](playback-protocol-v3.md). It is current for movies;
-> runtime playback on the phone and TV apps and production cross-server operation
-> are still open acceptance gates. The technical rules are in the
-> [For developers](#for-developers) section.
+Native video is a Bloem addition: it plays movies kept in [native storage](bloem-native-storage.md) (S3 buckets,
+for example) through Silo's playback planner and delivery handlers, using Silo's
+[playback protocol v3](playback-protocol-v3.md). It is current for movies; runtime playback on the phone and TV
+apps and cross-server operation are still open acceptance gates. The technical rules are in the
+[For developers](#for-developers) section.
 
 A movie kept in a storage source plays like any other movie: the app asks for a
 playback plan and gets ordinary addresses. This page covers what the app sees,
@@ -195,7 +187,7 @@ reference. The login-session part of that recheck (`verifyNativeVideoActor`)
 goes through `SessionRepository.ActiveSessionRole` (Bloem's wrapper in
 `internal/auth/bloem_session.go`), which passes the delegated account to Silo's
 `SessionRepository.ActiveSession`; that binds a token to its session's account
-(Silo #3140, since the merge `68070f04b`). A login session that belongs to another
+(Silo #3140). A login session that belongs to another
 account does not count as active. A delegated API key must still exist with the
 same account, revision and no scopes. The host retains a sealed source descriptor
 for the playback session. Replanning the same file reauthorizes it without
@@ -432,7 +424,7 @@ changes, through playback's context-scoped media host
   for a seeked HEVC copy (`remuxIDRPrimer`) reads a local Matroska file's Cues; a
   native input has none, so its remux (`internal/playback/bloem_native_tools.go`)
   always serves the plain seeked copy, as Silo does for a source without usable
-  Cues (merge `8e1d391d7`). HDR tone-map
+  Cues. HDR tone-map
   validation of a local transcode goes through the source's own `Validate`,
   as for native API playback. The subtitle cache keys entries by a file's size
   and modification time; a native input is never a file, so nothing is cached
@@ -560,7 +552,7 @@ may reuse it without replacement.
 
 Web, Apple and Android consume normal HTTP playback plan URLs. Source schemes
 and provider headers are not client contracts. Their URL contracts have been
-reviewed; runtime playback on those clients and production cross-replica
+reviewed; runtime playback on those clients and cross-replica
 source operation are separate acceptance gates.
 
 Synthetic-provider acceptance runs the real coordinator, pinned readers,
@@ -568,25 +560,10 @@ planner, handlers and ffmpeg. It verifies direct ranges and decodes remux/HLS
 output, exercises seek, restart, recovery, stop/revocation and joined
 cancellation, and checks HDR conversion to H.264, 8-bit BT.709. Database scan
 acceptance separately checks atomic movie publication. These tests do not
-certify a live storage backend, a production cluster or a Stremio/debrid
+certify a live storage backend, a multi-server cluster or a Stremio/debrid
 implementation. The SDK's storage byte interface can consume another admitted
 provider, but it does not currently offer on-demand Stremio discovery or
 verified snapshot lifecycle.
-
-### History
-
-Native video arrived in `b781ac3ff` (2026-10-11: playback, the movie scanner and
-checked-ETag reads). Read-ahead followed in `b0b819fc8` (2026-10-11), and native
-audiobooks on 2026-10-12. The Silo merge `68070f04b` (2026-10-27) bound the
-login-session recheck to the delegated account. Original downloads followed in
-`c901194a8` (2026-11-12), and converting for offline use on 2026-11-12. Native
-inputs took Silo's CPU-decode retry for a rejected GPU decoder (Silo
-`061bbd172`) on 2026-11-15. On 2026-11-16, after Silo's thin transcode nodes
-(Silo #4337, #4338) removed the node database Bloem's worker grants relied on,
-native inputs moved to the API servers only: the worker grants, the readiness
-probe, the node-side native execution wrapper and the standalone worker composition
-were deleted, and the API servers began redacting tool input addresses in Silo's
-FFmpeg command logs.
 
 ### Related pages
 
