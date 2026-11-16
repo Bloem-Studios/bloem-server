@@ -1,10 +1,8 @@
 # How the client contract generator works
 
-> **Provenance and status.** Bloem page, written on 2026-11-01 and checked against
-> `main` at `798faa986`. The generator is a Bloem addition; Silo's nearest equivalent is
-> its settings bindings (`cmd/settingsgen`). This page replaces the September working
-> spec, `docs/specs/client-dto-generator.md`, and keeps that spec's section numbers in
-> [For developers](#for-developers), because the generator's code cites them as `§N`.
+The generator is a Bloem addition; Silo's nearest equivalent is its settings bindings (`cmd/settingsgen`). The
+numbered sections under [For developers](#for-developers) are cited by the generator's code as `§N`, so the numbering
+is kept.
 
 Bloem's apps have to know the exact shape of every message the server sends and accepts.
 This page explains how the server writes those shapes out for the apps, how a change
@@ -62,7 +60,7 @@ a coordinated app update.
 | Who | What they change |
 | --- | --- |
 | Server developers | The Go wire types, the registry, the generator and the committed output. |
-| The owner | Rulings on the contract: what counts as a breaking change, and the generator's open questions (§11). |
+| Bloem maintainers | Rulings on the contract: what counts as a breaking change, and the generator's open questions (§11). |
 | App developers | The pinned server commit, the copied files, and the hand-written code around them (§9.2). |
 
 ## Words used in the code
@@ -80,16 +78,11 @@ a coordinated app update.
 
 ## For developers
 
-The numbered sections below keep the numbering of the September 2026 spec
-(`docs/specs/client-dto-generator.md`, written in `ab6d56ae9` with the owner's answers
-in `f71d0e9c1`, both 2026-09-02; removed on 2026-11-01). Code comments in
-`cmd/clientdtogen` and `contracts/client/v1` cite them as `§N`. Sections that only
-recorded the original plan are summarised; every rule still in force is kept.
+The numbered sections below keep the numbering of the generator's original design, because code comments in
+`cmd/clientdtogen` and `contracts/client/v1` cite them as `§N`. Sections that only recorded the original plan are
+summarised; every rule still in force is kept.
 
-**History.** The generator's first commit is `d82101ee0` (2026-09-02); the Kotlin output
-landed in `b9559b4b6`, the coverage allowlist in `9e8f492f1` and the digest pin in
-`b0d658aac` (all 2026-09-02); the Swift emitter in `fac4c80db` (2026-09-04). The
-registry holds 17 packages at `798faa986`: `internal/playback`, `internal/api/handlers`,
+**Registry.** It holds 17 packages: `internal/playback`, `internal/api/handlers`,
 `internal/notifications`, `internal/events`, `internal/promotions`, `internal/ambience`,
 `internal/remote`, `internal/requests`, `internal/onboarding`, `internal/watchdoc`,
 `internal/subtitles`, `internal/models`, `internal/diagnostics`, `internal/livetv`,
@@ -99,9 +92,8 @@ work in the app repositories.
 
 ### 2. Why the output shape differs from the earlier client
 
-The owner's rulings R-19, R-31 and R-32 make the server the single source of the apps'
-wire types, and require the current apps to share no substantive line with the earlier
-Android client except wire strings. The output shape is therefore a provenance
+The server is the single source of the apps' wire types, and the current apps share no substantive code with
+any earlier client except wire strings. The output shape is therefore a provenance
 requirement, enforced by generator tests (§8):
 
 1. Property names come from the Go field name by the generator's own rule (§4.3), never
@@ -479,7 +471,7 @@ written down (§4.5). Two follow-ups are deliberately not gating: explicit `swif
 in `serializers` (they would move the digest), and a copy hook into the Apple checkout
 (it waits for the app to settle where generated files live).
 
-### 11. Owner decisions (2026-09-02)
+### 11. Design decisions
 
 - Q1, property names: camelCase from the Go field name (§4.3).
 - Q8, Swift: in scope; the emitter interface serves both languages (`-lang

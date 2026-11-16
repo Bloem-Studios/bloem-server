@@ -1,11 +1,8 @@
 # How audiobook requests work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. The audiobook request lane is a Bloem addition. It runs
-> beside Silo's movie and series request service (`internal/requests`, Silo's
-> [media requests](media-requests.md)), which it does not change. The technical
-> rules are in the [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+The audiobook request lane is a Bloem addition. It runs beside Silo's movie and series request service
+(`internal/requests`, Silo's [media requests](media-requests.md)), which it does not change. The technical rules
+are in the [For developers](#for-developers) section.
 
 A viewer can ask for an audiobook the library doesn't have yet. This page walks
 through who can ask and who sees what, how Bloem fetches an approved book when an
@@ -468,16 +465,6 @@ notification link, and clear rows/forms/pagination when authority changes.
 They must not expose ebook fulfilment through this audiobook capability. Native
 acquisition setup and review surfaces remain follow-up work for both clients;
 the server exposes those operations through the Bloem admin API.
-
-### History
-
-The lane arrived on 2026-10-10 (`904cd8b66`, `23083cc81`). The ebook lane and
-shared book queues followed on 2026-10-11 (`fb87eb439`), acquisition dispatch on
-2026-10-12 (`0e6cd9a27`), and connection editing, testing and status handling on
-2026-10-14 (`49834d9f3`, `a9901dd3c`, `7ae86fbab`, `bd0162bcb`, `c5daf4119`).
-`c60b7008e` (2026-10-26) moved the per-account request override from the
-membership back onto `users`, gave each account one organization, and replaced
-the `mirrored` membership-policy phase with the single Silo switching flag.
 
 Technical pages:
 
