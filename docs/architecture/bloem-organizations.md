@@ -4,7 +4,8 @@
 > 2026-11-01 and checked against `main` at `b6039036d`. Organizations are a Bloem
 > addition: Silo has one set of accounts per server. This page explains the model in
 > plain language. The technical pages linked at the end hold the invariants.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+> Its routes were checked again on 2026-11-11, after Silo retired its v1 API. The
+> section on invitations was added on 2026-11-16.
 
 Bloem is built in four tiers. Each tier lives inside the one above it, and each one
 can only narrow what the tier above it allows. This page walks through who is who,
@@ -100,6 +101,25 @@ own another organization, or that are platform administrators, are kept. The
 organization itself is never deleted outright: it stays on record as the owner of
 anything it had ([lifecycle safety](bloem-lifecycle-safety.md)).
 
+## How an organization administrator invites people
+
+An organization administrator invites someone from the admin console's
+**Invitations** page. Bloem never emails these invitations: the page shows a
+one-time **invitation link**, and the administrator passes it on, for example in a
+chat. The administrator first picks who can use the link:
+
+- **Anyone you share it with.** The link has no email address. Whoever opens it
+  enters their own address and chooses a password. This is the first choice,
+  as on Silo's own invitations page when a server cannot send email.
+- **One email address.** Only that address can use the link, and it becomes the
+  person's username.
+
+Either way, the new account joins the administrator's own organization, never
+another one, with the access chosen on the invitation. A link works once and
+expires after seven days. Regenerating it stops the old link, and revoking it
+stops it for good. In the history, a link with no address shows as a **link
+invitation**, with its note so the administrator can tell links apart.
+
 ## Example: a reseller
 
 This example is made up. On 2026-10-31 production had no reseller organizations.
@@ -190,6 +210,8 @@ it.
 | Profile limits | `user_profiles`: PIN, child flag, age limit and library restrictions |
 | Domains, primary domain | `bloem_organization_domains`, with one `is_primary` row per organization (`internal/orgdomains`) |
 | Its own branding | `bloem_organization_branding`, the organization's own `branding.*` values |
+| Invitation link | an `invitations` row with the organization's `organization_id`; `delivery` is `link` |
+| Anyone you share it with | `delivery: "link"` on create; the row's `email` stays empty until someone accepts |
 
 ## For developers
 
@@ -203,6 +225,31 @@ it.
   Silo's v1 API on 2026-10-31 and the web app on 2026-11-01, before Silo retired it on
   2026-11-11
   ([leaving Silo's v1 API](bloem-leaving-silo-v1.md)).
+
+- **Organization invitations:** `POST /api/bloem/v2/admin/organization/invitations`
+  takes Silo's optional `delivery` field (Silo #1788, `4a0cff41f`), advertised by
+  the `organization_invitation_links_v1` capability token. `link` creates an
+  invitation with no `email` (sending one is a 422 on `email`); the invitee enters
+  their address at accept, through Silo's own lookup (`email_required`) and accept.
+  Omitted keeps the address-bound invitation, which needs `email`. Silo's other
+  value, `email`, and any unknown value are a 422 on `delivery`: this route never
+  sends mail, so it matches Silo's behaviour on a server without email. Both kinds
+  are stored with `delivery` `link` and return the one-time `claim_token`, never a
+  claim URL; the web app puts it only in the address fragment (`/invite#<token>`)
+  so it never reaches a server log. The organization comes only from the
+  administrative context: a body `organization_id` is refused (unknown field) and
+  a query one is ignored. Regenerating a link invitation
+  (`/invitations/{id}/resend`) revokes the old row itself, because nothing
+  supersedes an address-free invitation by address, and the replacement stays a
+  link. Code: `bloemOrganizationInvitationAddress` in
+  `internal/api/handlers/bloem_admin_organization.go`,
+  `ResendForOrganization` in `internal/invitations/bloem_lifecycle.go`, the web
+  form in `web/src/pages/admin-settings/OrganizationInvitationsTab.tsx`. Tests:
+  `TestBloemOrganizationInvitationDelivery`,
+  `TestBloemOrganizationLinkInvitationStaysInTheResolvedOrganization`,
+  `TestOrganizationLinkInvitationRotationRevokesTheOldLink` and the
+  "organization link invitations" tests in `OrganizationInvitationsTab.test.tsx`.
+  See the [invitation API overlay](../bloem/overlays/invitations-api.md#bloem-organization-invitation-links).
 
 Technical pages:
 

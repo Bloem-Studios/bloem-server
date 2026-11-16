@@ -6491,6 +6491,18 @@
       "value": "Admin"
     }
   ],
+  "bloem.admin.orgInvitations.anyoneOption": [
+    {
+      "type": 0,
+      "value": "Anyone you share it with"
+    }
+  ],
+  "bloem.admin.orgInvitations.anyoneOptionBody": [
+    {
+      "type": 0,
+      "value": "They enter their own email address when they claim it."
+    }
+  ],
   "bloem.admin.orgInvitations.appearsInTheEmailPlain": [
     {
       "type": 0,
@@ -6751,6 +6763,18 @@
       "value": "No invitations yet. Invite someone to get started."
     }
   ],
+  "bloem.admin.orgInvitations.oneAddressOption": [
+    {
+      "type": 0,
+      "value": "One email address"
+    }
+  ],
+  "bloem.admin.orgInvitations.oneAddressOptionBody": [
+    {
+      "type": 0,
+      "value": "Only this address can claim it. It becomes their username."
+    }
+  ],
   "bloem.admin.orgInvitations.personalNoteOptional": [
     {
       "type": 0,
@@ -6963,6 +6987,12 @@
     {
       "type": 0,
       "value": "Walks through what this server can do, skipping anything turned off."
+    }
+  ],
+  "bloem.admin.orgInvitations.whoCanUseTheLink": [
+    {
+      "type": 0,
+      "value": "Who can use the link?"
     }
   ],
   "bloem.admin.organization.activity.accessChecks": [

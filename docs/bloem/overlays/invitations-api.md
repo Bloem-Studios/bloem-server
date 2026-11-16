@@ -24,7 +24,9 @@ and the separate routes an organization administrator uses.
 - **An organization administrator has routes of their own.** The organization
   console invites people into its own organization, as ordinary users only.
 - **The console sends no email.** It shows a link once, and the administrator
-  passes it on. The console never stores the link where it could leak.
+  passes it on. The console never stores the link where it could leak. As on
+  Silo's page without email, the link can name one address or none; with none,
+  the invitee enters their own.
 
 ## Words used in the code
 
@@ -91,12 +93,18 @@ native flow:
 
 - is limited to role `user` invitations in the selected organization. Platform
   and `admin` invitations cannot be created, regenerated or revoked here;
-- binds every invitation to an email address, like Silo's emailed invitations,
-  but sends **no email**, even when SMTP is configured. Creation and
-  regeneration return a one-time `claim_token` that the administrator delivers.
-  Stored rows have `delivery` NULL;
+- sends **no email**, even when SMTP is configured. Creation and regeneration
+  return a one-time `claim_token` that the administrator delivers. Every row it
+  stores, created or regenerated, has `delivery` `link`;
+- takes Silo's optional `delivery` field on create (`4a0cff41f`), advertised by
+  the `organization_invitation_links_v1` capability token. `delivery: "link"`
+  creates an invitation without an address (an `email` with it is a 422 on
+  `email`), which the invitee completes through Silo's lookup (`email_required`)
+  and accept. Omitted binds the invitation to `email`, which is then required.
+  Silo's `email` value and unknown values are a 422 on `delivery`;
 - regenerates only an unaccepted, unrevoked invitation. Regeneration revokes
-  the old link in the same transaction.
+  the old link in the same transaction: by address for a bound invitation, and
+  directly for a link invitation, whose replacement stays a link.
 
 The browser captures the administrative-context generation before a write,
 reloads after attempted mutations, and never replays an uncertain create or
@@ -104,8 +112,8 @@ regeneration. Handoffs stay out of query and mutation caches and out of
 persistent storage. Closing the result, switching context or logging out clears
 them. See the
 [native workflow contract](../../bloem-api-reference.md#embedded-web-workflow-adapters)
-for revision, status and audit details. Silo's v2 delivery semantics above
-(`link`, `email`, recorded delivery) are separate and unchanged.
+for revision, status and audit details. Silo's own v2 routes and their delivery
+semantics (`link`, `email`, recorded delivery) are unchanged.
 
 ### Related pages
 

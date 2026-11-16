@@ -373,6 +373,7 @@ removed its receipt system on 2026-10-26 (`b017bfe84`); see [Retrying mutations]
     "live_tv_access_v1",
     "organization_activity_v1",
     "organization_invitation_lifecycle_v1",
+    "organization_invitation_links_v1",
     "platform_engagement_authoring_v1",
     "watch_document_v1",
     "device_pairing_v1"
@@ -385,7 +386,9 @@ Field notes:
   `internal/api/handlers/bloem_system.go`). The first seventeen are Silo's v3 playback tokens,
   taken from `playback.ServerFeaturesV3()`, so a Silo merge can change them. `organization_activity_v1`,
   `organization_invitation_lifecycle_v1` and `platform_engagement_authoring_v1`
-  identify the embedded-web adapters below. Conditional tokens are appended only when the
+  identify the embedded-web adapters below. `organization_invitation_links_v1` (added
+  2026-11-16) says the organization invitation create accepts Silo's `delivery: "link"`
+  for an invitation without an address. Conditional tokens are appended only when the
   matching service is wired: `native_audiobook_presentations_v1` (native audio ready),
   `profile_credential_management_v1` (credential management, separate from
   `direct_profile_login`), `audiobook_requests_v1`, `ebook_requests_v1` with
@@ -1247,7 +1250,8 @@ Identical `invitationResponse` shape and `status` derivation (revoked > accepted
 - Request body:
 ```json
 {
-  "email": "string (required, valid RFC 5322 address)",
+  "email": "string (required unless delivery is link, which forbids it; valid RFC 5322 address)",
+  "delivery": "link (optional)",
   "expected_revision": 0,
   "access_group_id": 0,
   "library_ids": [0],
@@ -1256,7 +1260,7 @@ Identical `invitationResponse` shape and `status` derivation (revoked > accepted
   "note": "string"
 }
 ```
-`expected_revision` is checked against the organization's `policy_revision` (org-wide, not per-invitation). `access_group_id` is `*int64` (nullable). `create_profile`/`show_tour` are `*bool`, defaulting to `true` when omitted/null. Role is hardcoded to `"user"` server-side — there is no `role` field on this request (unlike v1's `createInvitationRequest`, which accepts one). The invitation is created with `invitations.DefaultTTL` = 7 days from now.
+`expected_revision` is checked against the organization's `policy_revision` (org-wide, not per-invitation). `access_group_id` is `*int64` (nullable). `create_profile`/`show_tour` are `*bool`, defaulting to `true` when omitted/null. Role is hardcoded to `"user"` server-side — there is no `role` field on this request (unlike v1's `createInvitationRequest`, which accepts one). The invitation is created with `invitations.DefaultTTL` = 7 days from now. `delivery` is Silo's field from `4a0cff41f` (#1788), advertised by `organization_invitation_links_v1`: `link` creates an invitation with no address, which the invitee enters at accept; omitted binds the invitation to `email`. Silo's `email` value is refused, because this route never sends mail. Every row it creates is stored with `delivery` `link`.
 - Response body (201):
 ```json
 {
@@ -1265,7 +1269,7 @@ Identical `invitationResponse` shape and `status` derivation (revoked > accepted
 }
 ```
 `claim_token` is the raw, single-use token (the server stores only its SHA-256 hex digest) — this response is the only place it is ever returned, and there is no `email_sent`/`claim_url` field at all: delivery is entirely the caller's responsibility.
-- Errors: `422 validation_failed` (`email` fails `net/mail.ParseAddress` or contains surrounding whitespace/comments the parser stripped; `access_group_id` is not one of this organization's groups; or `library_ids` names a library the organization neither owns nor is entitled to), `409 authorization_state_changed`, `409 email_taken` (an account with this email already exists), `503 tenant_unavailable` (also covers token-generation failure, which is treated as a generic tenant-unavailable error rather than a distinct code).
+- Errors: `422 validation_failed` (`delivery` is neither `link` nor omitted; `email` is given with `delivery: "link"`; without it, `email` fails `net/mail.ParseAddress` or contains surrounding whitespace/comments the parser stripped; `access_group_id` is not one of this organization's groups; or `library_ids` names a library the organization neither owns nor is entitled to), `409 authorization_state_changed`, `409 email_taken` (an account with this email already exists), `503 tenant_unavailable` (also covers token-generation failure, which is treated as a generic tenant-unavailable error rather than a distinct code).
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
