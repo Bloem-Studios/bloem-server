@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -92,6 +93,10 @@ type themePlaybackFiles struct{ file themesongs.File }
 func (f themePlaybackFiles) Resolve(_ context.Context, id string, _ bool, _ catalogpkg.AccessFilter) (string, []themesongs.File, error) {
 	return id, []themesongs.File{f.file}, nil
 }
+
+// themeRequestURN matches the random request ID a problem body names.
+var themeRequestURN = regexp.MustCompile(`urn:silo:request:[0-9a-f]+`)
+
 func TestBloemThemeGrantHTTPRevocation(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "theme.mp3")
@@ -127,7 +132,10 @@ func TestBloemThemeGrantHTTPRevocation(t *testing.T) {
 		for _, method := range []string{"GET", "HEAD"} {
 			target = "/api/v2/catalog/items/movie:heat-1995/themes/7/audio?token=" + url.QueryEscape(token)
 			rec = do(t, h, method, target, "", map[string]string{"Range": "bytes=2-4", "If-None-Match": "*"})
-			if rec.Code != 401 || rec.Header().Get("Content-Range") != "" || rec.Header().Get("ETag") != "" || strings.Contains(rec.Body.String(), "234") {
+			// The problem body carries a random request ID, which can contain
+			// "234" by chance; look for the leaked bytes in the rest of it.
+			leaked := strings.Contains(themeRequestURN.ReplaceAllString(rec.Body.String(), ""), "234")
+			if rec.Code != 401 || rec.Header().Get("Content-Range") != "" || rec.Header().Get("ETag") != "" || leaked {
 				t.Fatalf("revoked %s %s: %d %v %s", delivery, method, rec.Code, rec.Header(), rec.Body)
 			}
 		}
