@@ -48,8 +48,6 @@ TOPICS = [
      "the acquisition connections. Movie and series requests are Silo's, under /api/v2."),
     ("plans", "Plans and preview", "bloem-plans.md",
      [("Entitlement templates guide", "../wiki/admin/entitlement-templates.md"),
-      ("Entitlement template operations", "../operations/entitlement-templates.md"),
-      ("Bulk policy cohorts", "../operations/bulk-policy-cohorts.md"),
       ("Browse-only content policy", "bloem-browse-only-content-policy.md")],
      [r"^/admin/platform/(entitlement-templates|users|preview)(/|$)",
       r"^/admin/platform/accounts/(entitlement-bulk|entitlement-snapshots)(/|$)",

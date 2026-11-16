@@ -10,8 +10,6 @@ Entitlement templates (plans) and their revisions, applying them to accounts one
 For the plain-language picture, read the [Plans and preview explainer](../../architecture/bloem-plans.md). The invariants are in:
 
 - [Entitlement templates guide](../../wiki/admin/entitlement-templates.md)
-- [Entitlement template operations](../../operations/entitlement-templates.md)
-- [Bulk policy cohorts](../../operations/bulk-policy-cohorts.md)
 - [Browse-only content policy](../../architecture/bloem-browse-only-content-policy.md)
 
 ## Operations (34)
