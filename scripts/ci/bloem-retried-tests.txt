@@ -9,16 +9,6 @@
 #
 # <package dir> <TestName>
 
-# Silo's test. It gives the backup swap's cleanup a 200 ms deadline, and its
-# --recover step runs under that same deadline. It failed twice in Go test
-# shard 4 on 2b63332aa (2026-11-15, run 43747772724) with "deleting
-# assets/library-posters/2.jpg: context deadline exceeded", with the tests'
-# temporary files already on a tmpfs (a 1 MiB synced write took 1 ms). It
-# passes alone, ten times in a row, and the Silo merge through c9ce328b5 that
-# met it changes nothing in internal/backup. Retried by the owner's decision
-# of 2026-11-15; Silo's test code stays as Silo wrote it.
-./internal/backup TestSwapCleanupHasADeadline
-
 # Silo's tests, in Go database pins. Both wait on the chapter thumbnail
 # worker under a ten-second test deadline. On ffe90dc09 (2026-11-16, run
 # 43916767759 attempt 1) both failed with "context deadline exceeded" while
