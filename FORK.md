@@ -263,9 +263,9 @@ to or replaces in an upstream document of the same path.
 ### Prairie Server Live TV
 
 Bloem's server-side and web Live TV, OTA tuner, guide, streaming and DVR subsystem is adapted from
-[Prairie Server](https://github.com/Prairie-Server/prairie-server), licensed under AGPL-3.0. Bloem preserves the
-applicable licence and identifies every imported or adapted source blob, with the commit it came from, in
-`docs/livetv/prairie-source-manifest.tsv`.
+[Prairie Server](https://github.com/Prairie-Server/prairie-server) at commit
+`095ecd22fbea3384a905eb9049386015db3ff4d8`, licensed under AGPL-3.0. Bloem preserves the applicable licence and
+identifies every imported or adapted source blob in `docs/livetv/prairie-source-manifest.tsv`.
 
 The adaptation changes product and module identity, migration ordering and shared Bloem integration points. It does not
 import Prairie native-client source, assets, layouts or tests.
