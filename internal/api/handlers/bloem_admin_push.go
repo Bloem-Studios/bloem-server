@@ -31,6 +31,7 @@ type AdminPushBackend interface {
 	Register(ctx context.Context, userID int, reg notifications.AdminPushRegistration) (*notifications.AdminPushRegistered, error)
 	SetKinds(ctx context.Context, userID int, deviceID string, kinds map[string]bool) ([]notifications.AdminPushKindState, error)
 	Unregister(ctx context.Context, userID int, deviceID string) error
+	SetWidgets(ctx context.Context, userID int, deviceID string, placed bool, channels []string) (bool, []string, error)
 	Retire(ctx context.Context, displayToken, deviceID string) error
 	Content(ctx context.Context, displayToken, deliveryID string) (*notifications.AdminPushContent, error)
 }
@@ -68,6 +69,8 @@ type BloemAdminPushRegisterRequest struct {
 	APNsEnvironment string    `json:"apns_environment,omitempty" enum:"production,sandbox" doc:"Required for apple."`
 	APNsTopic       string    `json:"apns_topic,omitempty" doc:"Required for apple; must be com.bloemstudios.admin."`
 	DisabledKinds   *[]string `json:"disabled_kinds,omitempty" doc:"Kind ids this device has switched off. Replaces the stored switches when present; omit to keep them."`
+	WidgetsPlaced   *bool     `json:"widgets_placed,omitempty" doc:"Whether the app has at least one home-screen widget placed. Only then does the server send widget wakes. Omit to keep what the server holds. Reporting false clears the channels."`
+	WidgetChannels  *[]string `json:"widget_channels,omitempty" enum:"sessions,requests,libraries,nodes" doc:"What the placed widgets show: sessions (now playing), requests, libraries, nodes. Required, and not empty, when widgets_placed is true."`
 }
 
 // BloemAdminPushRegistered answers a registration.
@@ -75,6 +78,21 @@ type BloemAdminPushRegistered struct {
 	DeviceID     string                             `json:"device_id" doc:"Prefixes every delivery id pushed to this device, so the app can tell which saved server a push came from: delivery_id is {device_id}.{delivery}."`
 	DisplayToken string                             `json:"display_token" doc:"Bearer token for reading this device's notification text and retiring it. Returned by every registration; a new one replaces the last."`
 	Kinds        []notifications.AdminPushKindState `json:"kinds"`
+	// WidgetsPlaced and WidgetChannels are what the server now holds for this device.
+	WidgetsPlaced  bool     `json:"widgets_placed"`
+	WidgetChannels []string `json:"widget_channels"`
+}
+
+// BloemAdminPushWidgetsRequest reports the widgets an app has placed.
+type BloemAdminPushWidgetsRequest struct {
+	WidgetsPlaced bool     `json:"widgets_placed" doc:"Whether at least one widget is placed. Send false when the last widget is removed."`
+	Channels      []string `json:"channels" enum:"sessions,requests,libraries,nodes" doc:"What the placed widgets show. Required, and not empty, when widgets_placed is true; ignored when false."`
+}
+
+// BloemAdminPushWidgets echoes what the server holds.
+type BloemAdminPushWidgets struct {
+	WidgetsPlaced bool     `json:"widgets_placed"`
+	Channels      []string `json:"channels"`
 }
 
 // BloemAdminPushKindsRequest switches kinds on or off for one device.
@@ -171,13 +189,17 @@ func (h *BloemAdminPushHandler) HandleRegister(w http.ResponseWriter, r *http.Re
 	out, err := h.service.Register(r.Context(), claims.UserID, notifications.AdminPushRegistration{
 		InstallationID: in.InstallationID, Platform: in.Platform, Token: in.Token,
 		APNsEnvironment: in.APNsEnvironment, APNsTopic: in.APNsTopic, DisabledKinds: in.DisabledKinds,
+		WidgetsPlaced: in.WidgetsPlaced, WidgetChannels: in.WidgetChannels,
 		LoginSessionID: claims.SessionID,
 	})
 	if err != nil {
 		h.fail(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, BloemAdminPushRegistered{DeviceID: out.DeviceID, DisplayToken: out.DisplayToken, Kinds: out.Kinds})
+	writeJSON(w, http.StatusOK, BloemAdminPushRegistered{
+		DeviceID: out.DeviceID, DisplayToken: out.DisplayToken, Kinds: out.Kinds,
+		WidgetsPlaced: out.WidgetsPlaced, WidgetChannels: out.WidgetChannels,
+	})
 }
 
 func (h *BloemAdminPushHandler) HandleSetKinds(w http.ResponseWriter, r *http.Request) {
@@ -195,6 +217,25 @@ func (h *BloemAdminPushHandler) HandleSetKinds(w http.ResponseWriter, r *http.Re
 		return
 	}
 	writeJSON(w, http.StatusOK, BloemAdminPushKinds{Kinds: kinds})
+}
+
+// HandleSetWidgets records which widget channels the app's placed widgets show. The app calls it
+// whenever a widget is added or removed.
+func (h *BloemAdminPushHandler) HandleSetWidgets(w http.ResponseWriter, r *http.Request) {
+	claims, ok := h.admin(w, r)
+	if !ok {
+		return
+	}
+	var in BloemAdminPushWidgetsRequest
+	if !decodeStrict(w, r, &in) {
+		return
+	}
+	placed, channels, err := h.service.SetWidgets(r.Context(), claims.UserID, chi.URLParam(r, "device_id"), in.WidgetsPlaced, in.Channels)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, BloemAdminPushWidgets{WidgetsPlaced: placed, Channels: channels})
 }
 
 func (h *BloemAdminPushHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {

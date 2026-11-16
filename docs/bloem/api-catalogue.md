@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 955 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 290 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 291 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Retired alpha v1 API (410 Gone except the health and ready probes) | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -251,6 +251,7 @@ security declaration and the wire reference before sending credentials or mutati
 | `DELETE /api/bloem/v2/admin/push/devices/{device_id}` | `deleteBloemAdminPushDevice` | Remove one of the account's devices. |
 | `PATCH /api/bloem/v2/admin/push/devices/{device_id}/kinds` | `setBloemAdminPushKinds` | Switch notification kinds on or off for one device. |
 | `POST /api/bloem/v2/admin/push/devices/{device_id}/retire` | `retireBloemAdminPushDevice` | Stop pushes to a device using its display token. |
+| `PUT /api/bloem/v2/admin/push/devices/{device_id}/widgets` | `setBloemAdminPushWidgets` | Report the widgets the app has placed. |
 | `GET /api/bloem/v2/admin/search/mirror` | `getBloemSearchMirrorStatus` | Read the search mirror's status. |
 | `POST /api/bloem/v2/admin/session` | `createBloemAdminSession` | Exchange a login session for a scoped administrative context. |
 | `GET /api/bloem/v2/ambience` | `getBloemSeasonalViewer` | Read seasonal presentation for the current verified tenant viewer. |

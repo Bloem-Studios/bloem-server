@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -40,6 +42,64 @@ const (
 	AdminActionApprove = "approve"
 	AdminActionDecline = "decline"
 )
+
+// Widget channels: what the admin app's home-screen widgets can show. An app
+// reports the channels its placed widgets show, and a wake names the ones that changed.
+const (
+	AdminWidgetSessions  = "sessions"
+	AdminWidgetRequests  = "requests"
+	AdminWidgetLibraries = "libraries"
+	AdminWidgetNodes     = "nodes"
+)
+
+// Widget wake rate limit (bloem-staff-widgets.md, "Widget wakes"), applied per device on the server.
+const (
+	// adminWakeCoalesce is how long changes gather into one wake.
+	adminWakeCoalesce = 30 * time.Second
+	// adminWakeMinGap is the least time between two wakes to one device.
+	adminWakeMinGap = 10 * time.Minute
+	// adminWakeAfterVisible is how long after a visible push no wake goes out, because the push already refreshes the widgets.
+	adminWakeAfterVisible = 2 * time.Minute
+)
+
+var adminWidgetChannels = []string{AdminWidgetSessions, AdminWidgetRequests, AdminWidgetLibraries, AdminWidgetNodes}
+
+// AdminWidgetChannels lists the channels a widget report may name.
+func AdminWidgetChannels() []string { return append([]string(nil), adminWidgetChannels...) }
+
+func validAdminWidgetChannels(channels []string) ([]string, error) {
+	known := map[string]bool{}
+	for _, c := range adminWidgetChannels {
+		known[c] = true
+	}
+	seen := map[string]bool{}
+	out := make([]string, 0, len(channels))
+	for _, c := range channels {
+		if !known[c] {
+			return nil, fmt.Errorf("%w: unknown widget channel %q", ErrAdminPushInvalid, c)
+		}
+		if !seen[c] {
+			seen[c] = true
+			out = append(out, c)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// AdminWakeReason is the reason every widget wake carries.
+const AdminWakeReason = "widgets"
+
+// adminWakeID is the delivery id a wake carries after the device id: the reason,
+// the channels that changed (sorted, full names, no hyphens inside a name), then
+// the time in Unix seconds, joined by hyphens, for example
+// "widgets-nodes-requests-1763254800". A wake has no content row, so the phone reads
+// the channels from the id and fetches nothing.
+func adminWakeID(channels []string, at time.Time) string {
+	sorted := append([]string(nil), channels...)
+	sort.Strings(sorted)
+	return AdminWakeReason + "-" + strings.Join(sorted, "-") + "-" + strconv.FormatInt(at.Unix(), 10)
+}
 
 // AdminPushKind describes one kind: where it shows up, what the lock screen
 // says, where a tap goes and which buttons it offers.

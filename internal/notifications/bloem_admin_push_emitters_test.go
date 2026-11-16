@@ -14,6 +14,14 @@ import (
 type recordingSink struct {
 	mu      sync.Mutex
 	notices []AdminPushNotice
+	wakes   []string
+}
+
+func (s *recordingSink) Wake(_ context.Context, channel string, _ int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.wakes = append(s.wakes, channel)
+	return nil
 }
 
 func (s *recordingSink) Notify(_ context.Context, n AdminPushNotice) error {
@@ -35,9 +43,6 @@ func submitRequest(n *adminPushRequestNotifier, req requests.Request) {
 	wg.Add(1)
 	n.done = wg.Done
 	n.RequestSubmitted(context.Background(), req)
-	if req.Status != requests.StatusPending {
-		wg.Done() // no detached push was started
-	}
 	wg.Wait()
 }
 
@@ -67,10 +72,14 @@ func TestAdminPushRequestDecoratorPushesOnlyWhatWaitsForAnAdmin(t *testing.T) {
 		t.Fatalf("notice = %+v", got)
 	}
 
-	// Auto-approved: Silo still reports the submission, but nobody has to act.
+	// Auto-approved: Silo still reports the submission, but nobody has to act, so nothing is notified.
+	// The requests widget still changed, so it is woken, as it was for the pending one.
 	submitRequest(n, requests.Request{ID: "r2", Title: "Dune", Status: requests.StatusApproved, RequestedByUserID: 7})
 	if inner.submitted != 2 || len(sink.notices) != 1 {
 		t.Fatalf("auto-approved request: wrapped=%d pushed=%d, want 2 and 1", inner.submitted, len(sink.notices))
+	}
+	if len(sink.wakes) != 2 || sink.wakes[0] != AdminWidgetRequests || sink.wakes[1] != AdminWidgetRequests {
+		t.Fatalf("wakes for two arriving requests = %v, want requests twice", sink.wakes)
 	}
 
 	// Without a service the router keeps the notifier it had.
@@ -233,12 +242,12 @@ func TestAdminPushWatchersEmitFromServerState(t *testing.T) {
 		t.Fatal(err)
 	}
 	nodes := newOutageTracker()
-	f.svc.watchNodes(ctx, nodes, f.now)
+	f.svc.watchNodes(ctx, nodes, nil, f.now)
 	if got := deliveries(AdminKindNodeOffline); got != 0 {
 		t.Fatalf("a node that just went down notified before the grace period (%d)", got)
 	}
-	f.svc.watchNodes(ctx, nodes, f.now.Add(3*time.Minute))
-	f.svc.watchNodes(ctx, nodes, f.now.Add(4*time.Minute))
+	f.svc.watchNodes(ctx, nodes, nil, f.now.Add(3*time.Minute))
+	f.svc.watchNodes(ctx, nodes, nil, f.now.Add(4*time.Minute))
 	if got := deliveries(AdminKindNodeOffline); got != 1 {
 		t.Fatalf("node deliveries = %d, want 1 (one outage, one enabled unhealthy node)", got)
 	}
@@ -291,7 +300,7 @@ func TestAdminPushWatchScansTurnsAFailedScanEventIntoANotice(t *testing.T) {
 	}
 	hub := evt.NewHub("test", nil)
 	done := make(chan struct{})
-	go func() { defer close(done); f.svc.WatchScans(ctx, hub) }()
+	go func() { defer close(done); f.svc.WatchEvents(ctx, hub) }()
 
 	publish := func(event string, run evt.ScanRun) {
 		t.Helper()

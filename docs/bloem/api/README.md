@@ -15,7 +15,7 @@ Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's ex
 | [Storage sources](storage.md) | 42 | [bloem-storage-sources.md](../../architecture/bloem-storage-sources.md) |
 | [Requests](requests.md) | 33 | [bloem-requests.md](../../architecture/bloem-requests.md) |
 | [Plans and preview](plans.md) | 34 | [bloem-plans.md](../../architecture/bloem-plans.md) |
-| [Messages and promotions](messages.md) | 29 | [bloem-messages-and-promotions.md](../../architecture/bloem-messages-and-promotions.md) |
+| [Messages and promotions](messages.md) | 30 | [bloem-messages-and-promotions.md](../../architecture/bloem-messages-and-promotions.md) |
 | [Apps and clients](apps.md) | 10 | [bloem-apps.md](../../architecture/bloem-apps.md) |
 | [Organizations and administration](organizations.md) | 112 | [bloem-organizations.md](../../architecture/bloem-organizations.md) |
 | [Retired v1 routes](v1-routes.md) | hand-written | |

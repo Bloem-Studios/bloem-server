@@ -39,6 +39,15 @@ type BloemAdminPushKindsOutput struct {
 	Body handlers.BloemAdminPushKinds
 }
 
+type BloemAdminPushWidgetsInput struct {
+	DeviceID string `path:"device_id" minLength:"1" doc:"The device_id a registration returned."`
+	Body     handlers.BloemAdminPushWidgetsRequest
+}
+
+type BloemAdminPushWidgetsOutput struct {
+	Body handlers.BloemAdminPushWidgets
+}
+
 type BloemAdminPushContentInput struct {
 	DeliveryID string `path:"delivery_id" minLength:"1" doc:"The delivery id a push carried, with or without its {device_id}. prefix."`
 }
@@ -53,7 +62,7 @@ func registerBloemAdminPushDocument(reg *Registry) {
 
 	register := bloemChiDocumentOp(reg, "POST", "/admin/push/devices", "registerBloemAdminPushDevice", "admin-push",
 		"Register an admin app installation for push.", "bloemAccountSession", http.StatusOK)
-	register.Description = bloemAdminPushLogin + "Registers or refreshes the installation named by installation_id and returns the device id and a display token. Registering again with the same installation_id keeps the device id and per-kind switches, replaces the token and mints a new display token. A token already held by another account or installation moves to this one. The Apple topic must be com.bloemstudios.admin."
+	register.Description = bloemAdminPushLogin + "Registers or refreshes the installation named by installation_id and returns the device id and a display token. Registering again with the same installation_id keeps the device id, the per-kind switches and the widget report, replaces the token and mints a new display token. A token already held by another account or installation moves to this one. The Apple topic must be com.bloemstudios.admin."
 	register.Responses = map[string]*huma.Response{}
 	bloemDocumentErrors[BloemNativeError](reg, &register, map[int]string{
 		400: "invalid_request: the body is not valid JSON for this route, or exceeds 32 KiB.",
@@ -79,6 +88,21 @@ func registerBloemAdminPushDocument(reg *Registry) {
 	})
 	kinds.Responses["200"] = &huma.Response{Description: http.StatusText(http.StatusOK), Headers: noStore}
 	registerBloemChiDocument[BloemAdminPushKindsInput, BloemAdminPushKindsOutput](reg, kinds)
+
+	widgets := bloemChiDocumentOp(reg, "PUT", "/admin/push/devices/{device_id}/widgets", "setBloemAdminPushWidgets", "admin-push",
+		"Report the widgets the app has placed.", "bloemAccountSession", http.StatusOK)
+	widgets.Description = bloemAdminPushLogin + "Only a device that reports widgets_placed gets widget wakes, and only for the channels its widgets show (sessions, requests, libraries, nodes). A wake is a silent push (the relay's background_wake) with no content: its delivery id is {device_id}.widgets-{channels}-{unix seconds}, for example dev.widgets-nodes-requests-1763254800, and the app re-reads what the widgets show through the normal API. The server coalesces changes for 30 seconds, sends a device at most one wake every 10 minutes, and none within 2 minutes after a visible notification push. Call this whenever a widget is added or removed; send widgets_placed false when the last is removed."
+	widgets.Responses = map[string]*huma.Response{}
+	bloemDocumentErrors[BloemNativeError](reg, &widgets, map[int]string{
+		400: "invalid_request: the body is not valid JSON for this route.",
+		401: "unauthorized: no valid access token.",
+		403: "admin_required or account_session_required, as for registration.",
+		404: "not_found: no device with this id belongs to the account.",
+		422: "invalid_registration: a channel is unknown, or widgets_placed is true with no channel.",
+		503: unavailable,
+	})
+	widgets.Responses["200"] = &huma.Response{Description: http.StatusText(http.StatusOK), Headers: noStore}
+	registerBloemChiDocument[BloemAdminPushWidgetsInput, BloemAdminPushWidgetsOutput](reg, widgets)
 
 	remove := bloemChiDocumentOp(reg, "DELETE", "/admin/push/devices/{device_id}", "deleteBloemAdminPushDevice", "admin-push",
 		"Remove one of the account's devices.", "bloemAccountSession", http.StatusNoContent)

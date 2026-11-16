@@ -38,10 +38,13 @@ type AdminPushDevice struct {
 	TokenHash       string
 	ServerDeviceID  string
 	DisabledKinds   []string
-	LoginSessionID  string
-	Enabled         bool
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	// WidgetsPlaced and WidgetChannels are what the app reported about its home-screen widgets.
+	WidgetsPlaced  bool
+	WidgetChannels []string
+	LoginSessionID string
+	Enabled        bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // kindEnabled applies the device's own switches.
@@ -68,6 +71,8 @@ type adminDeliveryRow struct {
 	Badge       *int
 	CreatedAt   time.Time
 	ExpiresAt   time.Time
+	// Wake marks a widget wake: sent in background_wake mode and never stored.
+	Wake bool
 }
 
 // adminPushAttempt is one pending send of a delivery to a device.
@@ -83,7 +88,8 @@ type adminPushStore struct{ pool *pgxpool.Pool }
 func newAdminPushStore(pool *pgxpool.Pool) *adminPushStore { return &adminPushStore{pool: pool} }
 
 const adminDeviceColumns = `d.id, d.user_id, d.installation_id, d.platform, COALESCE(d.apns_environment, ''), COALESCE(d.apns_topic, ''),
-	d.token_ciphertext, d.token_hash, d.server_device_id, d.disabled_kinds, COALESCE(d.login_session_id, ''), d.enabled, d.created_at, d.updated_at`
+	d.token_ciphertext, d.token_hash, d.server_device_id, d.disabled_kinds, COALESCE(d.login_session_id, ''), d.enabled, d.created_at, d.updated_at,
+	d.widgets_placed, d.widget_channels`
 
 // adminLoginLive is true while the login that registered the device is still
 // valid, or when the registration has no known login.
@@ -97,7 +103,7 @@ func scanAdminDevice(row pgx.Row) (*AdminPushDevice, error) {
 	var d AdminPushDevice
 	if err := row.Scan(&d.ID, &d.UserID, &d.InstallationID, &d.Platform, &d.APNsEnvironment, &d.APNsTopic,
 		&d.TokenCiphertext, &d.TokenHash, &d.ServerDeviceID, &d.DisabledKinds, &d.LoginSessionID, &d.Enabled,
-		&d.CreatedAt, &d.UpdatedAt); err != nil {
+		&d.CreatedAt, &d.UpdatedAt, &d.WidgetsPlaced, &d.WidgetChannels); err != nil {
 		return nil, err
 	}
 	return &d, nil
@@ -133,6 +139,9 @@ type adminPushUpsert struct {
 	LoginSessionID  string
 	// DisabledKinds replaces the device's switches when set; nil keeps them.
 	DisabledKinds *[]string
+	// WidgetsPlaced and WidgetChannels replace what the app reported about its widgets when set; nil keeps them.
+	WidgetsPlaced  *bool
+	WidgetChannels *[]string
 }
 
 // upsertDevice registers or refreshes a device and mints a new display token.
@@ -188,13 +197,21 @@ func insertAdminDevice(ctx context.Context, tx pgx.Tx, cipher *secret.Cipher, in
 	if in.DisabledKinds != nil {
 		disabled = *in.DisabledKinds
 	}
+	placed, channels := false, []string{}
+	if in.WidgetsPlaced != nil {
+		placed = *in.WidgetsPlaced
+	}
+	if in.WidgetChannels != nil {
+		channels = *in.WidgetChannels
+	}
 	return scanAdminDevice(tx.QueryRow(ctx, `
 		INSERT INTO bloem_admin_push_devices AS d (id, user_id, installation_id, platform, apns_environment, apns_topic,
-			token_ciphertext, token_hash, server_device_id, display_token_hash, disabled_kinds, login_session_id)
-		VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, $8, $9, $10, $11, NULLIF($12, ''))
+			token_ciphertext, token_hash, server_device_id, display_token_hash, disabled_kinds, login_session_id,
+			widgets_placed, widget_channels)
+		VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, $8, $9, $10, $11, NULLIF($12, ''), $13, $14)
 		RETURNING `+adminDeviceColumns,
 		id, in.UserID, in.InstallationID, in.Platform, in.APNsEnvironment, in.APNsTopic,
-		ciphertext, in.TokenHash, ulid.Make().String(), displayHash, disabled, in.LoginSessionID))
+		ciphertext, in.TokenHash, ulid.Make().String(), displayHash, disabled, in.LoginSessionID, placed, channels))
 }
 
 func updateAdminDevice(ctx context.Context, tx pgx.Tx, cipher *secret.Cipher, in adminPushUpsert, id, displayHash string) (*AdminPushDevice, error) {
@@ -207,11 +224,12 @@ func updateAdminDevice(ctx context.Context, tx pgx.Tx, cipher *secret.Cipher, in
 			apns_environment = NULLIF($2, ''), apns_topic = NULLIF($3, ''),
 			token_ciphertext = $4, token_hash = $5, display_token_hash = $6,
 			disabled_kinds = COALESCE($7, d.disabled_kinds), login_session_id = NULLIF($8, ''),
+			widgets_placed = COALESCE($9, d.widgets_placed), widget_channels = COALESCE($10, d.widget_channels),
 			enabled = true, last_failure_at = NULL, last_failure_code = NULL, updated_at = now()
 		WHERE d.id = $1
 		RETURNING `+adminDeviceColumns,
 		id, in.APNsEnvironment, in.APNsTopic, ciphertext, in.TokenHash, displayHash,
-		in.DisabledKinds, in.LoginSessionID))
+		in.DisabledKinds, in.LoginSessionID, in.WidgetsPlaced, in.WidgetChannels))
 }
 
 // setKinds applies per-kind switches (true = on) to a device the account owns.
@@ -269,7 +287,7 @@ func (s *adminPushStore) deviceByDisplayToken(ctx context.Context, tokenHash str
 	var d AdminPushDevice
 	err := row.Scan(&d.ID, &d.UserID, &d.InstallationID, &d.Platform, &d.APNsEnvironment, &d.APNsTopic,
 		&d.TokenCiphertext, &d.TokenHash, &d.ServerDeviceID, &d.DisabledKinds, &d.LoginSessionID, &d.Enabled,
-		&d.CreatedAt, &d.UpdatedAt, &admin)
+		&d.CreatedAt, &d.UpdatedAt, &d.WidgetsPlaced, &d.WidgetChannels, &admin)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, false, nil
 	}
@@ -287,7 +305,7 @@ func (s *adminPushStore) deviceByID(ctx context.Context, id string) (*AdminPushD
 	err := s.pool.QueryRow(ctx, `SELECT `+adminDeviceColumns+`, (`+adminAccountLive+` AND `+adminLoginLive+`) FROM bloem_admin_push_devices d WHERE d.id = $1`, id).
 		Scan(&d.ID, &d.UserID, &d.InstallationID, &d.Platform, &d.APNsEnvironment, &d.APNsTopic,
 			&d.TokenCiphertext, &d.TokenHash, &d.ServerDeviceID, &d.DisabledKinds, &d.LoginSessionID, &d.Enabled,
-			&d.CreatedAt, &d.UpdatedAt, &live)
+			&d.CreatedAt, &d.UpdatedAt, &d.WidgetsPlaced, &d.WidgetChannels, &live)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, false, nil
 	}
@@ -363,7 +381,7 @@ func (s *adminPushStore) recipientDevices(ctx context.Context, userID int, kind 
 // insertDelivery stores the delivery and one pending attempt per device in one
 // transaction. It reports false, and writes nothing, when the delivery id
 // already exists: another replica or an earlier pass handled the same event.
-func (s *adminPushStore) insertDelivery(ctx context.Context, row adminDeliveryRow, devices []AdminPushDevice) ([]adminPushAttempt, bool, error) {
+func (s *adminPushStore) insertDelivery(ctx context.Context, row adminDeliveryRow, devices []AdminPushDevice, now time.Time) ([]adminPushAttempt, bool, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, false, err
@@ -387,6 +405,10 @@ func (s *adminPushStore) insertDelivery(ctx context.Context, row adminDeliveryRo
 			return nil, false, err
 		}
 		attempts = append(attempts, attempt)
+		// A visible push refreshes the app's widgets by itself, so no wake follows it for two minutes.
+		if _, err = tx.Exec(ctx, `UPDATE bloem_admin_push_devices SET last_visible_push_at = $2 WHERE id = $1`, device.ID, now); err != nil {
+			return nil, false, err
+		}
 	}
 	return attempts, true, tx.Commit(ctx)
 }
@@ -463,4 +485,94 @@ func (s *adminPushStore) recordFailure(ctx context.Context, deviceID, code strin
 func (s *adminPushStore) purgeExpired(ctx context.Context) (int64, error) {
 	tag, err := s.pool.Exec(ctx, `DELETE FROM bloem_admin_push_deliveries WHERE expires_at < now() - interval '1 day'`)
 	return tag.RowsAffected(), err
+}
+
+// setWidgets records what the app reports about its widgets for one of the
+// account's devices. Reporting none clears the channels and any wake waiting.
+func (s *adminPushStore) setWidgets(ctx context.Context, userID int, serverDeviceID string, placed bool, channels []string) (*AdminPushDevice, error) {
+	if !placed {
+		channels = []string{}
+	}
+	return scanAdminDevice(s.pool.QueryRow(ctx, `UPDATE bloem_admin_push_devices AS d SET widgets_placed = $3, widget_channels = $4,
+		wake_pending_channels = CASE WHEN $3 THEN d.wake_pending_channels ELSE '{}' END,
+		wake_pending_since = CASE WHEN $3 THEN d.wake_pending_since ELSE NULL END, updated_at = now()
+		WHERE d.server_device_id = $1 AND d.user_id = $2 RETURNING `+adminDeviceColumns, serverDeviceID, userID, placed, channels))
+}
+
+// markWakePending notes that something a widget shows changed, for every device
+// that has a widget showing that channel. Changes from the same 30 second window
+// share one wake: the pending set keeps the first change's time. A visible push
+// sent since that first change already refreshed the widgets, so the set starts
+// over rather than waking for what the push covered. userIDs limits the devices to
+// those accounts (nil is every admin). It reports how many devices were marked.
+func (s *adminPushStore) markWakePending(ctx context.Context, channel string, now time.Time, userIDs []int) (int64, error) {
+	tag, err := s.pool.Exec(ctx, `UPDATE bloem_admin_push_devices AS d SET
+		wake_pending_channels = CASE
+			WHEN d.wake_pending_since IS NULL OR d.last_visible_push_at >= d.wake_pending_since THEN ARRAY[$1]::text[]
+			ELSE ARRAY(SELECT DISTINCT c FROM unnest(d.wake_pending_channels || ARRAY[$1]::text[]) AS c ORDER BY c) END,
+		wake_pending_since = CASE
+			WHEN d.wake_pending_since IS NULL OR d.last_visible_push_at >= d.wake_pending_since THEN $2
+			ELSE d.wake_pending_since END
+		WHERE d.enabled AND d.widgets_placed AND $1 = ANY(d.widget_channels) AND ($3::int[] IS NULL OR d.user_id = ANY($3))
+			AND `+adminAccountLive+` AND `+adminLoginLive,
+		channel, now, userIDs)
+	return tag.RowsAffected(), err
+}
+
+// wakeClaim is a device whose pending wake is due, with the channels it carries.
+type wakeClaim struct {
+	Device   AdminPushDevice
+	Channels []string
+}
+
+// claimDueWakes takes the wakes that may go out now, and takes them atomically, so
+// of several API replicas exactly one sends each. A device is due when its
+// coalescing window has run (30 s since the first change), its last wake was at
+// least 10 minutes ago, and no visible push was queued for it in the last 2
+// minutes. The claim stamps last_wake_at and clears the pending set; the newest
+// state wins because the set holds every channel that changed in the window.
+func (s *adminPushStore) claimDueWakes(ctx context.Context, now time.Time, limit int) ([]wakeClaim, error) {
+	// A visible push sent after the first change covers it: drop what it covered.
+	if _, err := s.pool.Exec(ctx, `UPDATE bloem_admin_push_devices SET wake_pending_channels = '{}', wake_pending_since = NULL
+		WHERE wake_pending_since IS NOT NULL AND last_visible_push_at >= wake_pending_since`); err != nil {
+		return nil, err
+	}
+	rows, err := s.pool.Query(ctx, `
+		WITH due AS (
+			SELECT d.id, d.wake_pending_channels AS channels FROM bloem_admin_push_devices d
+			WHERE d.wake_pending_since IS NOT NULL AND d.wake_pending_since <= $1::timestamptz - $2::interval
+				AND d.enabled AND d.widgets_placed AND cardinality(d.wake_pending_channels) > 0
+				AND (d.last_wake_at IS NULL OR d.last_wake_at <= $1::timestamptz - $3::interval)
+				AND (d.last_visible_push_at IS NULL OR d.last_visible_push_at <= $1::timestamptz - $4::interval)
+				AND `+adminAccountLive+` AND `+adminLoginLive+`
+			ORDER BY d.wake_pending_since LIMIT $5 FOR UPDATE SKIP LOCKED)
+		UPDATE bloem_admin_push_devices AS d SET last_wake_at = $1, wake_pending_channels = '{}', wake_pending_since = NULL
+		FROM due WHERE d.id = due.id
+		RETURNING `+adminDeviceColumns+`, due.channels`,
+		now, adminWakeCoalesce, adminWakeMinGap, adminWakeAfterVisible, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []wakeClaim
+	for rows.Next() {
+		var d AdminPushDevice
+		var channels []string
+		if err := rows.Scan(&d.ID, &d.UserID, &d.InstallationID, &d.Platform, &d.APNsEnvironment, &d.APNsTopic,
+			&d.TokenCiphertext, &d.TokenHash, &d.ServerDeviceID, &d.DisabledKinds, &d.LoginSessionID, &d.Enabled,
+			&d.CreatedAt, &d.UpdatedAt, &d.WidgetsPlaced, &d.WidgetChannels, &channels); err != nil {
+			return nil, err
+		}
+		out = append(out, wakeClaim{Device: d, Channels: channels})
+	}
+	return out, rows.Err()
+}
+
+// requeueWake puts the channels of a wake that could not be sent back as pending.
+// last_wake_at keeps the claim time, so the retry waits out the 10 minute gap and a
+// relay that is down is not asked every few seconds.
+func (s *adminPushStore) requeueWake(ctx context.Context, deviceID string, channels []string, now time.Time) {
+	_, _ = s.pool.Exec(ctx, `UPDATE bloem_admin_push_devices AS d SET
+		wake_pending_channels = ARRAY(SELECT DISTINCT c FROM unnest(d.wake_pending_channels || $2::text[]) AS c ORDER BY c),
+		wake_pending_since = COALESCE(d.wake_pending_since, $3) WHERE d.id = $1 AND d.widgets_placed`, deviceID, channels, now)
 }

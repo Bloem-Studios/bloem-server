@@ -33,6 +33,7 @@ const (
 // adminNoticeSink is what the request decorator needs from the push service.
 type adminNoticeSink interface {
 	Notify(context.Context, AdminPushNotice) error
+	Wake(ctx context.Context, channel string, requesterUserID int) error
 }
 
 type adminPushRequestNotifier struct {
@@ -54,20 +55,26 @@ func NewAdminPushRequestNotifier(next requests.LifecycleNotifier, push *AdminPus
 	return &adminPushRequestNotifier{LifecycleNotifier: next, push: push, waiting: waiting}
 }
 
-// RequestSubmitted forwards to the wrapped notifier, then pushes when the
-// request is pending. An auto-approved request waits for nobody and is skipped.
+// RequestSubmitted forwards to the wrapped notifier, wakes the requests widgets, then
+// pushes when the request is pending. An auto-approved request waits for nobody, so it
+// wakes the widgets but is not notified.
 func (n *adminPushRequestNotifier) RequestSubmitted(ctx context.Context, req requests.Request) {
 	if n.LifecycleNotifier != nil {
 		n.LifecycleNotifier.RequestSubmitted(ctx, req)
-	}
-	if req.Status != requests.StatusPending {
-		return
 	}
 	detached, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	go func() {
 		defer cancel()
 		if n.done != nil {
 			defer n.done()
+		}
+		// Any arriving request changes what the requests widget shows, pending or auto-approved.
+		if err := n.push.Wake(detached, AdminWidgetRequests, req.RequestedByUserID); err != nil {
+			slog.WarnContext(detached, "admin widget wake for a request failed", "request_id", req.ID, "error", err)
+		}
+		// Only a request that waits for an administrator is notified.
+		if req.Status != requests.StatusPending {
+			return
 		}
 		waiting := 1
 		if n.waiting != nil {
@@ -118,8 +125,28 @@ func (s *AdminPushService) libraryName(ctx context.Context, id int) string {
 	return name
 }
 
-// WatchScans notifies admins when a library scan fails.
-func (s *AdminPushService) WatchScans(ctx context.Context, hub *evt.Hub) {
+// hubWakeChannel maps a hub event to the widget channel it changes, or "" for none. Session starts,
+// pauses, resumes and stops change the now-playing widget; a scan starting, ending (completed,
+// cancelled) or failing changes the libraries widget. Progress ticks are not changes.
+func hubWakeChannel(channel evt.EventChannel, event string) string {
+	switch channel {
+	case evt.ChannelSessions:
+		switch event {
+		case "session.started", "session.paused", "session.resumed", "session.stopped":
+			return AdminWidgetSessions
+		}
+	case evt.ChannelScans:
+		switch event {
+		case "scan.started", "scan.completed", "scan.failed", "scan.cancelled":
+			return AdminWidgetLibraries
+		}
+	}
+	return ""
+}
+
+// WatchEvents turns events-hub events into admin pushes: a failed scan notifies admins, and the
+// session and scan events above wake the widgets that show them.
+func (s *AdminPushService) WatchEvents(ctx context.Context, hub *evt.Hub) {
 	if !s.Available() || hub == nil {
 		return
 	}
@@ -132,6 +159,11 @@ func (s *AdminPushService) WatchScans(ctx context.Context, hub *evt.Hub) {
 		case env, ok := <-events:
 			if !ok {
 				return
+			}
+			if channel := hubWakeChannel(env.Channel, env.Event); channel != "" {
+				if err := s.Wake(ctx, channel, 0); err != nil && ctx.Err() == nil {
+					s.logger.WarnContext(ctx, "admin widget wake failed", "channel", channel, "error", err)
+				}
 			}
 			if env.Channel != evt.ChannelScans || env.Event != "scan.failed" {
 				continue
@@ -225,13 +257,13 @@ func (s *AdminPushService) RunWatchers(ctx context.Context, sources AdminPushSou
 	if !s.Available() {
 		return
 	}
-	nodes, plugins := newOutageTracker(), newOutageTracker()
+	nodes, plugins, nodeStates := newOutageTracker(), newOutageTracker(), newStateTracker()
 	startedAt := s.now()
 	lastWarning := startedAt
 	tick := time.NewTicker(adminWatchEvery)
 	defer tick.Stop()
 	for {
-		s.watchOnce(ctx, sources, nodes, plugins, &lastWarning)
+		s.watchOnce(ctx, sources, nodes, plugins, nodeStates, &lastWarning)
 		select {
 		case <-ctx.Done():
 			return
@@ -240,12 +272,12 @@ func (s *AdminPushService) RunWatchers(ctx context.Context, sources AdminPushSou
 	}
 }
 
-func (s *AdminPushService) watchOnce(ctx context.Context, sources AdminPushSources, nodes, plugins *outageTracker, lastWarning *time.Time) {
+func (s *AdminPushService) watchOnce(ctx context.Context, sources AdminPushSources, nodes, plugins *outageTracker, nodeStates *stateTracker, lastWarning *time.Time) {
 	now := s.now()
 	if sources.LastBackup != nil {
 		s.watchBackup(ctx, sources.LastBackup, now)
 	}
-	s.watchNodes(ctx, nodes, now)
+	s.watchNodes(ctx, nodes, nodeStates, now)
 	if sources.Plugins != nil {
 		s.watchPlugins(ctx, sources.Plugins, plugins, now)
 	}
@@ -270,7 +302,24 @@ func (s *AdminPushService) watchBackup(ctx context.Context, last func(context.Co
 	}
 }
 
-func (s *AdminPushService) watchNodes(ctx context.Context, tracker *outageTracker, now time.Time) {
+// stateTracker reports when a subject's up or down state changes. The first sight of a
+// subject only records it: a server that starts with a node already down changes nothing.
+type stateTracker struct {
+	mu   sync.Mutex
+	last map[string]bool
+}
+
+func newStateTracker() *stateTracker { return &stateTracker{last: map[string]bool{}} }
+
+func (t *stateTracker) changed(id string, up bool) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	previous, seen := t.last[id]
+	t.last[id] = up
+	return seen && previous != up
+}
+
+func (s *AdminPushService) watchNodes(ctx context.Context, tracker *outageTracker, states *stateTracker, now time.Time) {
 	rows, err := s.store.pool.Query(ctx, `SELECT id::text, name, healthy FROM stream_nodes WHERE enabled`)
 	if err != nil {
 		if ctx.Err() == nil {
@@ -291,6 +340,12 @@ func (s *AdminPushService) watchNodes(ctx context.Context, tracker *outageTracke
 	}
 	rows.Close()
 	for _, n := range nodes {
+		// A node going offline or coming back changes what the nodes widget shows, at once.
+		if states != nil && states.changed(n.id, n.healthy) {
+			if err := s.Wake(ctx, AdminWidgetNodes, 0); err != nil {
+				s.logger.WarnContext(ctx, "admin widget wake for a node failed", "node_id", n.id, "error", err)
+			}
+		}
 		if start, fire := tracker.observe(n.id, !n.healthy, now, adminNodeGrace); fire {
 			if err := s.Notify(ctx, NodeOfflineNotice(n.id, n.name, tracker.bucket(start))); err != nil {
 				s.logger.WarnContext(ctx, "admin push for an offline node failed", "node_id", n.id, "error", err)

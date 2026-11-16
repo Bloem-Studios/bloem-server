@@ -16,7 +16,7 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 - [Campaign and seasonal asset storage](../../architecture/bloem-campaign-asset-storage.md)
 - [Admin app push notifications](../../architecture/bloem-admin-push.md)
 
-## Operations (29)
+## Operations (30)
 
 | Method and path | Summary |
 | --- | --- |
@@ -40,6 +40,7 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 | [`DELETE /api/bloem/v2/admin/push/devices/{device_id}`](#delete-apibloemv2adminpushdevicesdevice_id) | Remove one of the account's devices. |
 | [`PATCH /api/bloem/v2/admin/push/devices/{device_id}/kinds`](#patch-apibloemv2adminpushdevicesdevice_idkinds) | Switch notification kinds on or off for one device. |
 | [`POST /api/bloem/v2/admin/push/devices/{device_id}/retire`](#post-apibloemv2adminpushdevicesdevice_idretire) | Stop pushes to a device using its display token. |
+| [`PUT /api/bloem/v2/admin/push/devices/{device_id}/widgets`](#put-apibloemv2adminpushdevicesdevice_idwidgets) | Report the widgets the app has placed. |
 | [`GET /api/bloem/v2/ambience`](#get-apibloemv2ambience) | Read seasonal presentation for the current verified tenant viewer. |
 | [`GET /api/bloem/v2/ambience/assets/{ref}`](#get-apibloemv2ambienceassetsref) | Serve uploaded seasonal and campaign artwork. |
 | [`GET /api/bloem/v2/ambience/public`](#get-apibloemv2ambiencepublic) | List the active deployment-wide seasonal packs. |
@@ -393,7 +394,7 @@ Register an admin app installation for push.
 Operation ID: `registerBloemAdminPushDevice`.
 Credentials: `bloemAccountSession`.
 
-Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Registers or refreshes the installation named by installation_id and returns the device id and a display token. Registering again with the same installation_id keeps the device id and per-kind switches, replaces the token and mints a new display token. A token already held by another account or installation moves to this one. The Apple topic must be com.bloemstudios.admin.
+Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Registers or refreshes the installation named by installation_id and returns the device id and a display token. Registering again with the same installation_id keeps the device id, the per-kind switches and the widget report, replaces the token and mints a new display token. A token already held by another account or installation moves to this one. The Apple topic must be com.bloemstudios.admin.
 
 Request body (required, `application/json`): [`BloemAdminPushRegisterRequest`](#bloemadminpushregisterrequest).
 
@@ -469,6 +470,31 @@ Authenticated by the device's display token, not by a login: the iOS notificatio
 | --- | --- | --- |
 | 204 |  | No Content |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_display_token: the token is missing, unknown, replaced by a newer registration, or not this device's. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
+
+### `PUT /api/bloem/v2/admin/push/devices/{device_id}/widgets`
+
+Report the widgets the app has placed.
+
+Operation ID: `setBloemAdminPushWidgets`.
+Credentials: `bloemAccountSession`.
+
+Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Only a device that reports widgets_placed gets widget wakes, and only for the channels its widgets show (sessions, requests, libraries, nodes). A wake is a silent push (the relay's background_wake) with no content: its delivery id is {device_id}.widgets-{channels}-{unix seconds}, for example dev.widgets-nodes-requests-1763254800, and the app re-reads what the widgets show through the normal API. The server coalesces changes for 30 seconds, sends a device at most one wake every 10 minutes, and none within 2 minutes after a visible notification push. Call this whenever a widget is added or removed; send widgets_placed false when the last is removed.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `device_id` | path | string | yes | The device_id a registration returned. |
+
+Request body (required, `application/json`): [`BloemAdminPushWidgetsRequest`](#bloemadminpushwidgetsrequest).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemAdminPushWidgets`](#bloemadminpushwidgets) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: the body is not valid JSON for this route. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: no valid access token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required or account_session_required, as for registration. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no device with this id belongs to the account. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: a channel is unknown, or widgets_placed is true with no channel. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
 
 ### `GET /api/bloem/v2/ambience`
@@ -798,6 +824,8 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | `installation_id` | string | yes | A key the app generates once per installation and keeps across token refreshes and sign-ins. |
 | `platform` | string: `apple`, `android` | yes |  |
 | `token` | string | yes | The APNs device token (hex) or the FCM registration token. |
+| `widget_channels` | array of string: `sessions`, `requests`, `libraries`, `nodes` |  | What the placed widgets show: sessions (now playing), requests, libraries, nodes. Required, and not empty, when widgets_placed is true. |
+| `widgets_placed` | boolean |  | Whether the app has at least one home-screen widget placed. Only then does the server send widget wakes. Omit to keep what the server holds. Reporting false clears the channels. |
 
 ### BloemAdminPushRegistered
 
@@ -806,6 +834,22 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | `device_id` | string | yes | Prefixes every delivery id pushed to this device, so the app can tell which saved server a push came from: delivery_id is {device_id}.{delivery}. |
 | `display_token` | string | yes | Bearer token for reading this device's notification text and retiring it. Returned by every registration; a new one replaces the last. |
 | `kinds` | array of [`AdminPushKindState`](#adminpushkindstate) | yes |  |
+| `widget_channels` | array of string | yes |  |
+| `widgets_placed` | boolean | yes |  |
+
+### BloemAdminPushWidgets
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `channels` | array of string | yes |  |
+| `widgets_placed` | boolean | yes |  |
+
+### BloemAdminPushWidgetsRequest
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `channels` | array of string: `sessions`, `requests`, `libraries`, `nodes` | yes | What the placed widgets show. Required, and not empty, when widgets_placed is true; ignored when false. |
+| `widgets_placed` | boolean | yes | Whether at least one widget is placed. Send false when the last widget is removed. |
 
 ### BloemAmbienceAttachForm
 

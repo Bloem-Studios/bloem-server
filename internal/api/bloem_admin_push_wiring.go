@@ -107,7 +107,7 @@ func ConfigureBloemAdminPush(deps *Dependencies, workers bool) {
 		}
 	}
 	go push.Run(ctx)
-	go push.WatchScans(ctx, deps.EventsHub)
+	go push.WatchEvents(ctx, deps.EventsHub)
 	go push.RunWatchers(ctx, sources)
 	slog.Info("bloem admin push started")
 }

@@ -71,11 +71,39 @@ The display token opens only those two routes. It is stored as a hash, and a new
 it. A delivery is readable only by a device it was sent to, for the account it was written for, for 24
 hours, and only while the account is still an enabled admin.
 
+## Widget wakes
+
+A wake is a silent push (the relay's `background_wake`; on APNs a background push at priority 5, on FCM a data-only
+message) that tells an app with a widget placed to re-read what the widget shows. It has no title, no sound and no
+content, and it never opens anything.
+
+- **Who gets one.** Only a device that reported `widgets_placed`, and only for the channels its widgets show:
+  `sessions` (now playing), `requests`, `libraries`, `nodes`. The app reports them with `POST devices`
+  (`widgets_placed`, `widget_channels`) or `PUT devices/{device_id}/widgets` (`widgets_placed`, `channels`), and
+  again whenever a widget is added or removed. Reporting `widgets_placed` false clears the channels and any wake
+  waiting. A server that lists `admin_widget_wakes_v1` accepts the report.
+- **What triggers one.** A session starting, pausing, resuming or stopping (`sessions`); a request arriving, whether
+  it waits for an admin or was auto-approved (`requests`, only to admins of the requester's organization); a scan
+  starting, completing, being cancelled or failing (`libraries`); a node going offline or coming back (`nodes`).
+  Progress ticks, traffic and similar figures never wake.
+- **Rate limit,** applied per device in the database so every replica agrees: changes gather for 30 seconds into one
+  wake; a device gets at most one wake every 10 minutes, and the changes held back go out together when the gap has
+  passed; and none goes out within 2 minutes after a visible alert push to that device, because the push already
+  refreshes the widgets. A wake still waiting when a visible push goes out is dropped as covered by it. A wake is
+  claimed once across replicas. If the relay cannot take it, it is tried again after the gap; a token the push
+  service reports as gone switches the device off, as for an alert.
+- **On the wire.** The delivery id is `{device_id}.widgets-{channels}-{unix seconds}`, with the channel names sorted
+  and joined by hyphens, for example `01K….widgets-nodes-requests-1763254800`. The mode is `background_wake`. The
+  relay carries no other field, so the reason and the channels travel in this id. The app reads them from it and
+  fetches nothing: a wake has no content row, so `GET content` answers 404 for it.
+- **Plain Silo servers** have none of these routes, so they send no wakes.
+
 ## Discovery
 
 `GET /api/bloem/v2/capabilities` lists `admin_push_v1` in `feature_tokens` only while the routes are
 mounted and the operator has push delivery on for at least one platform. A server without the token is
-treated as a plain Silo server by the apps.
+treated as a plain Silo server by the apps. `admin_widget_wakes_v1` is advertised with it, and says the server
+accepts the widget report and sends wakes.
 
 ## Seams
 

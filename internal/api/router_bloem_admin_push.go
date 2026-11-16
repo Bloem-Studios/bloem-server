@@ -33,6 +33,7 @@ func mountBloemAdminPush(r chi.Router, h *handlers.BloemAdminPushHandler, system
 		r.Use(authMW.RequireAuth)
 		r.Post("/admin/push/devices", h.HandleRegister)
 		r.Patch("/admin/push/devices/{device_id}/kinds", h.HandleSetKinds)
+		r.Put("/admin/push/devices/{device_id}/widgets", h.HandleSetWidgets)
 		r.Delete("/admin/push/devices/{device_id}", h.HandleDelete)
 	})
 	r.Post("/admin/push/devices/{device_id}/retire", h.HandleRetire)

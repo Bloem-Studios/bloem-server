@@ -17,6 +17,11 @@ import (
 	"github.com/Silo-Server/silo-server/internal/notifications"
 )
 
+type widgetsCall struct {
+	placed   bool
+	channels []string
+}
+
 type adminPushStub struct {
 	registered  []notifications.AdminPushRegistration
 	registerFor []int
@@ -25,6 +30,7 @@ type adminPushStub struct {
 	deliveryID  string
 	retired     string
 	kinds       map[string]bool
+	widgets     widgetsCall
 	content     *notifications.AdminPushContent
 	enabled     bool
 }
@@ -37,11 +43,15 @@ func (s *adminPushStub) Register(_ context.Context, userID int, reg notification
 	if s.err != nil {
 		return nil, s.err
 	}
-	return &notifications.AdminPushRegistered{DeviceID: "dev1", DisplayToken: "bad_x", Kinds: []notifications.AdminPushKindState{{Kind: "admin.scan_failed", Enabled: true, ServerEmitted: true}}}, nil
+	return &notifications.AdminPushRegistered{DeviceID: "dev1", DisplayToken: "bad_x", Kinds: []notifications.AdminPushKindState{{Kind: "admin.scan_failed", Enabled: true, ServerEmitted: true}}, WidgetChannels: []string{}}, nil
 }
 func (s *adminPushStub) SetKinds(_ context.Context, _ int, _ string, kinds map[string]bool) ([]notifications.AdminPushKindState, error) {
 	s.kinds = kinds
 	return nil, s.err
+}
+func (s *adminPushStub) SetWidgets(_ context.Context, _ int, _ string, placed bool, channels []string) (bool, []string, error) {
+	s.widgets = widgetsCall{placed, channels}
+	return placed, channels, s.err
 }
 func (s *adminPushStub) Unregister(context.Context, int, string) error { return s.err }
 func (s *adminPushStub) Retire(_ context.Context, token, deviceID string) error {
@@ -69,6 +79,7 @@ func adminPushRouter(h *BloemAdminPushHandler, claims *auth.Claims) http.Handler
 		})
 		r.Post("/devices", h.HandleRegister)
 		r.Patch("/devices/{device_id}/kinds", h.HandleSetKinds)
+		r.Put("/devices/{device_id}/widgets", h.HandleSetWidgets)
 		r.Delete("/devices/{device_id}", h.HandleDelete)
 	})
 	r.Post("/devices/{device_id}/retire", h.HandleRetire)
@@ -242,15 +253,73 @@ func TestAdminPushCapabilityIsAdvertisedOnlyWhileReady(t *testing.T) {
 	stub := &adminPushStub{}
 	system := NewBloemSystemHandler(nil)
 	system.SetAdminPushReadiness(NewBloemAdminPushHandlerWith(stub).Ready)
-	if strings.Contains(probe(system), "admin_push_v1") {
-		t.Fatal("push delivery switched off must withdraw the token")
+	if got := probe(system); strings.Contains(got, "admin_push_v1") || strings.Contains(got, "admin_widget_wakes_v1") {
+		t.Fatalf("push delivery switched off must withdraw both tokens: %s", got)
 	}
 	stub.enabled = true
-	if !strings.Contains(probe(system), `"admin_push_v1"`) {
-		t.Fatal("a ready server must advertise admin_push_v1")
+	if got := probe(system); !strings.Contains(got, `"admin_push_v1"`) || !strings.Contains(got, `"admin_widget_wakes_v1"`) {
+		t.Fatalf("a ready server must advertise admin_push_v1 and admin_widget_wakes_v1: %s", got)
 	}
 	stub.enabled = false
 	if strings.Contains(probe(system), "admin_push_v1") {
 		t.Fatal("the token must follow the operator's switch on every probe")
+	}
+}
+
+func TestAdminPushWidgetReportIsForTheSignedInAdministratorAndPassesWhatTheAppSaid(t *testing.T) {
+	stub := &adminPushStub{}
+	claims := &auth.Claims{UserID: 7, Role: "admin", SessionID: "sess-1", TokenType: auth.TokenTypeAccess}
+	h := adminPushRouter(NewBloemAdminPushHandlerWith(stub), claims)
+	rec := serveAdminPush(h, "PUT", "/devices/dev1/widgets", `{"widgets_placed":true,"channels":["requests","nodes"]}`, "")
+	if rec.Code != 200 || !stub.widgets.placed || strings.Join(stub.widgets.channels, ",") != "requests,nodes" {
+		t.Fatalf("report: %d %s %+v", rec.Code, rec.Body.String(), stub.widgets)
+	}
+	var out BloemAdminPushWidgets
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || !out.WidgetsPlaced || len(out.Channels) != 2 {
+		t.Fatalf("response %s (%v)", rec.Body.String(), err)
+	}
+	if rec := serveAdminPush(h, "PUT", "/devices/dev1/widgets", `{"widgets_placed":false,"channels":[]}`, ""); rec.Code != 200 || stub.widgets.placed {
+		t.Fatalf("removing the last widget: %d %+v", rec.Code, stub.widgets)
+	}
+	if rec := serveAdminPush(h, "PUT", "/devices/dev1/widgets", `{"widgets_placed":true,"channels":["nodes"],"extra":1}`, ""); rec.Code != 400 {
+		t.Fatalf("unknown field: %d", rec.Code)
+	}
+	viewer := adminPushRouter(NewBloemAdminPushHandlerWith(stub), &auth.Claims{UserID: 8, Role: "user", SessionID: "s", TokenType: auth.TokenTypeAccess})
+	if rec := serveAdminPush(viewer, "PUT", "/devices/dev1/widgets", `{"widgets_placed":true,"channels":["nodes"]}`, ""); rec.Code != 403 {
+		t.Fatalf("a viewer reported widgets: %d", rec.Code)
+	}
+	for err, want := range map[error]int{notifications.ErrAdminPushInvalid: 422, notifications.ErrAdminPushNotFound: 404, notifications.ErrAdminPushUnavailable: 503} {
+		h := adminPushRouter(NewBloemAdminPushHandlerWith(&adminPushStub{err: err}), claims)
+		if rec := serveAdminPush(h, "PUT", "/devices/dev1/widgets", `{"widgets_placed":true,"channels":["nodes"]}`, ""); rec.Code != want {
+			t.Errorf("%v: status %d, want %d", err, rec.Code, want)
+		}
+	}
+}
+
+func TestAdminPushRegistrationPassesTheWidgetReportAndEchoesIt(t *testing.T) {
+	stub := &adminPushStub{}
+	h := adminPushRouter(NewBloemAdminPushHandlerWith(stub), &auth.Claims{UserID: 7, Role: "admin", SessionID: "sess-1", TokenType: auth.TokenTypeAccess})
+	body := `{"installation_id":"install-0001","platform":"android","token":"abc","widgets_placed":true,"widget_channels":["sessions"]}`
+	rec := serveAdminPush(h, "POST", "/devices", body, "")
+	if rec.Code != 200 {
+		t.Fatalf("register: %d %s", rec.Code, rec.Body.String())
+	}
+	got := stub.registered[0]
+	if got.WidgetsPlaced == nil || !*got.WidgetsPlaced || got.WidgetChannels == nil || (*got.WidgetChannels)[0] != "sessions" {
+		t.Fatalf("service got %+v", got)
+	}
+	var wire map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &wire)
+	if _, ok := wire["widgets_placed"]; !ok {
+		t.Fatalf("response lacks widgets_placed: %s", rec.Body.String())
+	}
+	if channels, ok := wire["widget_channels"].([]any); !ok || channels == nil {
+		t.Fatalf("widget_channels must be an array, got %v", wire["widget_channels"])
+	}
+	// Omitted fields reach the service as nil, which keeps what the server holds.
+	stub.registered = nil
+	serveAdminPush(h, "POST", "/devices", registerBody, "")
+	if g := stub.registered[0]; g.WidgetsPlaced != nil || g.WidgetChannels != nil {
+		t.Fatalf("an omitted widget report must stay nil: %+v", g)
 	}
 }

@@ -27,6 +27,9 @@ func (readyAdminPush) Register(context.Context, int, notifications.AdminPushRegi
 func (readyAdminPush) SetKinds(context.Context, int, string, map[string]bool) ([]notifications.AdminPushKindState, error) {
 	return nil, nil
 }
+func (readyAdminPush) SetWidgets(_ context.Context, _ int, _ string, placed bool, channels []string) (bool, []string, error) {
+	return placed, channels, nil
+}
 func (readyAdminPush) Unregister(context.Context, int, string) error { return nil }
 func (readyAdminPush) Retire(context.Context, string, string) error  { return nil }
 func (readyAdminPush) Content(_ context.Context, token, _ string) (*notifications.AdminPushContent, error) {

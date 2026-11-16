@@ -3,6 +3,8 @@ package notifications
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +17,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/oklog/ulid/v2"
 
 	"github.com/Silo-Server/silo-server/internal/secret"
 )
@@ -33,6 +36,9 @@ const (
 	// AdminPushCapabilityToken is the feature token that tells an app this
 	// server can push to it.
 	AdminPushCapabilityToken = "admin_push_v1"
+	// AdminWidgetWakesCapabilityToken tells an app this server accepts its widget report and
+	// sends widget wakes. It is advertised with AdminPushCapabilityToken, never without it.
+	AdminWidgetWakesCapabilityToken = "admin_widget_wakes_v1"
 
 	adminPushBatch       = 50
 	adminPushTick        = 5 * time.Second
@@ -64,7 +70,10 @@ type AdminPushRegistration struct {
 	APNsEnvironment string
 	APNsTopic       string
 	// DisabledKinds replaces the device's switches when non-nil.
-	DisabledKinds  *[]string
+	DisabledKinds *[]string
+	// WidgetsPlaced and WidgetChannels replace what the app reported about its widgets when non-nil.
+	WidgetsPlaced  *bool
+	WidgetChannels *[]string
 	LoginSessionID string
 }
 
@@ -84,6 +93,9 @@ type AdminPushRegistered struct {
 	// once per registration.
 	DisplayToken string
 	Kinds        []AdminPushKindState
+	// WidgetsPlaced and WidgetChannels echo what the server now holds for this device.
+	WidgetsPlaced  bool
+	WidgetChannels []string
 }
 
 // AdminPushContent is a notification's text and behavior, read by the phone
@@ -248,11 +260,56 @@ func (s *AdminPushService) Register(ctx context.Context, userID int, reg AdminPu
 		}
 		in.DisabledKinds = &kinds
 	}
+	if reg.WidgetChannels != nil {
+		channels, err := validAdminWidgetChannels(*reg.WidgetChannels)
+		if err != nil {
+			return nil, err
+		}
+		in.WidgetChannels = &channels
+	}
+	in.WidgetsPlaced = reg.WidgetsPlaced
+	if in.WidgetsPlaced != nil && !*in.WidgetsPlaced {
+		none := []string{}
+		in.WidgetChannels = &none
+	}
 	device, token, err := s.store.upsertDevice(ctx, s.cipher, in)
 	if err != nil {
 		return nil, err
 	}
-	return &AdminPushRegistered{DeviceID: device.ServerDeviceID, DisplayToken: token, Kinds: kindStates(device.DisabledKinds)}, nil
+	return &AdminPushRegistered{
+		DeviceID: device.ServerDeviceID, DisplayToken: token, Kinds: kindStates(device.DisabledKinds),
+		WidgetsPlaced: device.WidgetsPlaced, WidgetChannels: nonNil(device.WidgetChannels),
+	}, nil
+}
+
+func nonNil(in []string) []string {
+	if in == nil {
+		return []string{}
+	}
+	return in
+}
+
+// SetWidgets records which widget channels the app's placed widgets show, for one of the caller's
+// devices. The app calls it whenever a widget is added or removed. Reporting no widgets stops wakes.
+func (s *AdminPushService) SetWidgets(ctx context.Context, userID int, deviceID string, placed bool, channels []string) (bool, []string, error) {
+	if !s.Available() {
+		return false, nil, ErrAdminPushUnavailable
+	}
+	clean, err := validAdminWidgetChannels(channels)
+	if err != nil {
+		return false, nil, err
+	}
+	if placed && len(clean) == 0 {
+		return false, nil, fmt.Errorf("%w: widgets_placed needs at least one channel", ErrAdminPushInvalid)
+	}
+	device, err := s.store.setWidgets(ctx, userID, deviceID, placed, clean)
+	if err != nil {
+		if isNoRows(err) {
+			return false, nil, ErrAdminPushNotFound
+		}
+		return false, nil, err
+	}
+	return device.WidgetsPlaced, nonNil(device.WidgetChannels), nil
 }
 
 // SetKinds applies per-kind switches to one of the caller's devices.
@@ -393,7 +450,7 @@ func (s *AdminPushService) Notify(ctx context.Context, n AdminPushNotice) error 
 			ID: adminDeliveryID(n, userID), UserID: userID, Kind: n.Kind, CollapseKey: adminCollapseKey(n),
 			SubjectType: n.SubjectType, SubjectID: n.SubjectID, Title: n.Title, Body: n.Body, LockText: kind.LockText,
 			Badge: n.Badge, ExpiresAt: now.Add(ttl),
-		}, devices)
+		}, devices, now)
 		if err != nil {
 			return fmt.Errorf("store delivery: %w", err)
 		}
@@ -424,8 +481,10 @@ func (s *AdminPushService) Run(ctx context.Context) {
 			return
 		case <-s.wake:
 			s.Drain(ctx)
+			s.FlushWakes(ctx)
 		case <-tick.C:
 			s.Drain(ctx)
+			s.FlushWakes(ctx)
 		case <-purge.C:
 			if _, err := s.store.purgeExpired(ctx); err != nil && ctx.Err() == nil {
 				s.logger.WarnContext(ctx, "purge expired admin push deliveries failed", "error", err)
@@ -573,6 +632,10 @@ func (s *AdminPushService) send(ctx context.Context, a adminPushAttempt, device 
 // adminRelayApple and adminRelayFCM are the relay's send contracts. The relay
 // refuses fields it does not know, so server_id and profile_id are not sent:
 // the phone finds its server from the device id that prefixes delivery_id.
+// relayModeBackgroundWake is the relay's silent push: on APNs a background push at priority 5 with
+// no alert, on FCM a data-only message. It has no title, no sound and nothing visible.
+const relayModeBackgroundWake = "background_wake"
+
 type adminRelayApple struct {
 	Token          string  `json:"token"`
 	Environment    string  `json:"environment"`
@@ -605,12 +668,17 @@ func adminWireDeliveryID(device *AdminPushDevice, deliveryID string) string {
 func adminRelayPayload(device *AdminPushDevice, delivery *adminDeliveryRow, token string) (path string, body any) {
 	collapse := delivery.CollapseKey
 	wire := adminWireDeliveryID(device, delivery.ID)
+	mode, badge := relayModePrivateAlert, delivery.Badge
+	if delivery.Wake {
+		// A wake is silent: no badge, and the relay builds no alert.
+		mode, badge = relayModeBackgroundWake, nil
+	}
 	if device.Platform == PushPlatformAndroid {
-		return relayFcmSendPath, adminRelayFCM{Token: token, Mode: relayModePrivateAlert, ServerDeviceID: device.ServerDeviceID, DeliveryID: wire, CollapseID: &collapse}
+		return relayFcmSendPath, adminRelayFCM{Token: token, Mode: mode, ServerDeviceID: device.ServerDeviceID, DeliveryID: wire, CollapseID: &collapse}
 	}
 	return relayAppleSendPath, adminRelayApple{
-		Token: token, Environment: device.APNsEnvironment, Topic: device.APNsTopic, Mode: relayModePrivateAlert,
-		ServerDeviceID: device.ServerDeviceID, DeliveryID: wire, CollapseID: &collapse, Badge: delivery.Badge,
+		Token: token, Environment: device.APNsEnvironment, Topic: device.APNsTopic, Mode: mode,
+		ServerDeviceID: device.ServerDeviceID, DeliveryID: wire, CollapseID: &collapse, Badge: badge,
 	}
 }
 
@@ -659,5 +727,106 @@ func (s *AdminPushService) post(ctx context.Context, a adminPushAttempt, device 
 		HTTPStatus: resp.StatusCode, RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"), time.Now()),
 		RelayRequestID: parsed.Error.RequestID, UpstreamReason: code, Message: message,
 		TerminalDevice: terminalDeviceRejection(device.Platform, resp.StatusCode, code, message),
+	}
+}
+
+// adminWakeCollapse is the relay collapse id of every wake to a device: a wake still
+// waiting at the push service when a newer one arrives is replaced, so the newest wins.
+var adminWakeCollapse = func() string {
+	sum := sha256.Sum256([]byte("admin.widgets"))
+	return hex.EncodeToString(sum[:16])
+}()
+
+// Wake notes that something a widget shows changed in channel. Devices with a widget
+// showing that channel get one silent wake, after the rate limit: changes gather for
+// 30 seconds, a device is woken at most once every 10 minutes, and not within 2 minutes
+// after a visible push. requesterUserID limits the requests channel to the admins whose
+// authority covers that requester, as the visible request notice is; it is ignored for
+// the other channels, which describe the whole server. It never blocks on the relay.
+func (s *AdminPushService) Wake(ctx context.Context, channel string, requesterUserID int) error {
+	if !s.Enabled(ctx) {
+		return nil
+	}
+	if _, err := validAdminWidgetChannels([]string{channel}); err != nil {
+		return err
+	}
+	var accounts []int
+	if channel == AdminWidgetRequests {
+		ids, err := s.store.adminAccountIDs(ctx, AudienceRequestAdmins, requesterUserID)
+		if err != nil {
+			return fmt.Errorf("resolve admins: %w", err)
+		}
+		accounts = ids
+		if accounts == nil {
+			accounts = []int{}
+		}
+	}
+	if _, err := s.store.markWakePending(ctx, channel, s.now(), accounts); err != nil {
+		return fmt.Errorf("mark wake pending: %w", err)
+	}
+	return nil
+}
+
+// FlushWakes sends the wakes that are due and returns how many it sent or tried. Every API
+// replica may call it: each wake is claimed once, in the database.
+func (s *AdminPushService) FlushWakes(ctx context.Context) int {
+	if !s.Enabled(ctx) {
+		return 0
+	}
+	claims, err := s.store.claimDueWakes(ctx, s.now(), adminPushBatch)
+	if err != nil {
+		if ctx.Err() == nil {
+			s.logger.WarnContext(ctx, "claim widget wakes failed", "error", err)
+		}
+		return 0
+	}
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 5)
+	for _, claim := range claims {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			s.sendWake(ctx, claim)
+		}()
+	}
+	wg.Wait()
+	return len(claims)
+}
+
+// sendWake sends one device its wake. A wake is best effort: a transient relay failure puts
+// the channels back to be tried after the minimum gap, and a token the push service says is
+// gone switches the device off, as for a visible push.
+func (s *AdminPushService) sendWake(ctx context.Context, claim wakeClaim) {
+	device := claim.Device
+	enabled := s.settings.ApplePushDeliveryEnabled(ctx)
+	if device.Platform == PushPlatformAndroid {
+		enabled = s.settings.AndroidPushDeliveryEnabled(ctx)
+	}
+	if !enabled {
+		return
+	}
+	token, err := s.cipher.Decrypt(device.TokenCiphertext, adminPushTokenAAD(device.ID))
+	if err != nil {
+		return
+	}
+	now := s.now()
+	row := &adminDeliveryRow{ID: adminWakeID(claim.Channels, now), CollapseKey: adminWakeCollapse, Wake: true}
+	result := s.send(ctx, adminPushAttempt{ID: ulid.Make().String(), DeliveryID: row.ID, DeviceID: device.ID}, &device, row, token)
+	switch {
+	case result.OK:
+		s.store.recordSuccess(ctx, device.ID)
+	case result.TerminalDevice:
+		s.store.recordFailure(ctx, device.ID, result.UpstreamReason, true)
+	default:
+		code := result.UpstreamReason
+		if code == "" {
+			code = result.Message
+		}
+		s.store.recordFailure(ctx, device.ID, code, false)
+		if retryableHTTPStatus(result.HTTPStatus) || result.HTTPStatus == 0 {
+			s.store.requeueWake(ctx, device.ID, claim.Channels, now)
+		}
 	}
 }
