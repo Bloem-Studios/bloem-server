@@ -232,13 +232,13 @@ describe("Add to these library pages", () => {
     // compute every accessible name each time and push this test past CI's timeout.
     for (let id = 100; id < 199; id++)
       fireEvent.click(within(group).getByLabelText(`Library ${id}`));
-    expect(within(group).getByRole("checkbox", { name: "Library 199" })).toBeDisabled();
+    expect(within(group).getByLabelText("Library 199")).toBeDisabled();
     expect(within(form).getByText(LIMIT_NOTE)).toBeInTheDocument();
     // Dropping one page frees a place again.
-    fireEvent.click(within(group).getByRole("checkbox", { name: "Library 100" }));
-    expect(within(group).getByRole("checkbox", { name: "Library 199" })).toBeEnabled();
+    fireEvent.click(within(group).getByLabelText("Library 100"));
+    expect(within(group).getByLabelText("Library 199")).toBeEnabled();
     expect(within(form).queryByText(LIMIT_NOTE)).toBeNull();
-    fireEvent.click(within(group).getByRole("checkbox", { name: "Library 100" }));
+    fireEvent.click(within(group).getByLabelText("Library 100"));
 
     await userEvent.click(within(form).getByRole("button", { name: "Add to 100 pages" }));
     await waitFor(() => expect(writes).toHaveLength(1));

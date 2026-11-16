@@ -306,6 +306,7 @@ web/src/lib/documentTitle.ts
 web/src/lib/episodeCardLabels.ts  # no placeholder 'Episode N' title above the episode code; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/lib/loginSessionDevice.ts  # recognizes Bloem client user agents as the app
 web/src/pages/AdminAccessGroups.tsx
+web/src/pages/AdminHomeRows.libraryCopies.test.tsx  # four lookups: the 100-page limit test finds its checkboxes by label, as its own loop already does, instead of by role, which recomputed 100+ accessible names per lookup and ran past the 30 s timeout under CI load (owner's decision, 2026-11-16)
 web/src/pages/AdminLibraries.tsx  # shows a storage library's source instead of paths
 web/src/pages/AdminPlugins.tsx  # Storage tab for storage sources inside an administrative context
 web/src/pages/Catalog.tsx  # empty search field at the top on phones; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
