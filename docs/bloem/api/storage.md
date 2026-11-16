@@ -1220,10 +1220,10 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | `native_audio_playback` | boolean | yes | Always equal to native_audio_libraries: true only when the native audio scanner, catalog and playback are all composed. |
 | `native_movie_libraries` | boolean | yes | Movie attachment and scanning are composed with native video playback; individual sources still require admission under their retained read policy. |
 | `native_series_libraries` | boolean | yes | TV (series) library attachment and scanning are composed with native video playback, as native_movie_libraries is for movies; each selected source must declare the series media kind. |
-| `native_video_downloads` | boolean | yes | Downloads of native video are composed with native video playback: the original file, and copies converted for offline use (bitrate presets, and originals a device cannot play), prepared on the API server or on a worker that can read native storage. |
+| `native_video_downloads` | boolean | yes | Downloads of native video are composed with native video playback: the original file, and copies converted for offline use (bitrate presets, and originals a device cannot play), prepared on the API server or on a transcode node that reads the source through the API servers. |
 | `native_video_jellyfin` | boolean: `False` | yes |  |
 | `native_video_playback` | boolean | yes | Native API video playback is composed; this does not certify a backend or client runtime. |
-| `native_video_remote_execution` | boolean | yes | Always false: native video runs only on the API servers, because a transcode node reads its sources only through a core source grant, which names a file path. |
+| `native_video_remote_execution` | boolean | yes | Remote HLS of native video runs on Silo's transcode nodes: the API servers open the native source and serve its bytes to the node under a short-lived source grant, and the node holds no storage credentials and runs no Bloem code. |
 | `retained_namespace_reinstall` | boolean: `False` | yes |  |
 | `s3_bucket_browse` | boolean | yes | The stateless S3 bucket and folder browse operations are composed. Organization administrators are limited to well-known S3 endpoint ports. |
 | `s3_catalog_discovery` | boolean | yes | Administrators can add an S3 source from a catalog release whose digest the host has pre-approved, discovering its root without a manual upload. Platform administrators create a platform-owned source and organization administrators one owned by their organization. |

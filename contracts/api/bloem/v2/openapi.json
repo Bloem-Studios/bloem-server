@@ -3701,7 +3701,7 @@
             "type": "boolean"
           },
           "native_video_downloads": {
-            "description": "Downloads of native video are composed with native video playback: the original file, and copies converted for offline use (bitrate presets, and originals a device cannot play), prepared on the API server or on a worker that can read native storage.",
+            "description": "Downloads of native video are composed with native video playback: the original file, and copies converted for offline use (bitrate presets, and originals a device cannot play), prepared on the API server or on a transcode node that reads the source through the API servers.",
             "type": "boolean"
           },
           "native_video_jellyfin": {
@@ -3715,7 +3715,7 @@
             "type": "boolean"
           },
           "native_video_remote_execution": {
-            "description": "Always false: native video runs only on the API servers, because a transcode node reads its sources only through a core source grant, which names a file path.",
+            "description": "Remote HLS of native video runs on Silo's transcode nodes: the API servers open the native source and serve its bytes to the node under a short-lived source grant, and the node holds no storage credentials and runs no Bloem code.",
             "type": "boolean"
           },
           "retained_namespace_reinstall": {
