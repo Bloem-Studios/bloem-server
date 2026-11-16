@@ -3,6 +3,23 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 16, 2026 — Silo batches twice a day; retried database pins
+
+The merge bot starts a Silo batch twice a day, at 04:00 and 16:00 Amsterdam time,
+instead of whenever Silo has been quiet for 10 minutes. Production moves once a day,
+so merging more often reached users no sooner. A batch's thread now ends at the push:
+the bot itself waits for Bloem CI, reruns a failed run once, and sends the merged
+message, or stops the batch for the owner when CI stays red.
+
+Bloem CI's Go database pins job now retries the pins listed in
+`scripts/ci/bloem-retried-tests.txt`, as the Go test shards already did: Silo's two
+`internal/chapterthumbs` tests that timed out under the job's load on `ffe90dc09` run
+alone after the other pins, with up to two retries, and still fail on a skip.
+
+- **Pages.** [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md),
+  [How Bloem CI works](ci.md#the-merge-bot), [FORK.md](../../FORK.md#taking-upstream-changes)
+  and the front page; two pictures redrawn.
+
 ## November 16, 2026 — Organization live updates
 
 The organization pages in the admin apps can stop polling. A new ticket route,

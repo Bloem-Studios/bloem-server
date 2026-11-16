@@ -22,21 +22,22 @@ def _line(s, x1, y1, x2, y2, color=LINE, dash=None):
 
 def daily_flow():
     s = Svg(1200, 740, "How Bloem keeps up with Silo",
-            "A merge bot takes each batch of Silo's work. Silo's main has new commits and has been quiet for 10 "
-            "minutes; a free check every 10 minutes starts one batch at a time, each in its own T3 thread the owner "
-            "can watch and answer; the merge takes Silo's side of every conflict. If Bloem still works, after the "
-            "review list and the fast local checks, the merge is pushed to Bloem's main, Bloem CI runs the full "
-            "suite on that exact commit, the bot deploys it, writes the receipt and sends one message. If not, Bloem adapts on its own "
-            "lines with a test. When a check cannot be fixed, Bloem cannot keep working without editing Silo's "
-            "lines, CI stays red or the deploy fails, the bot stops in its thread and blocks the next batch.")
+            "A merge bot takes each batch of Silo's work. Silo's main has new commits; twice a day, at 04:00 and "
+            "16:00 Amsterdam time, a free check starts one batch, each in its own T3 thread the owner can watch and "
+            "answer; the merge takes Silo's side of every conflict. If Bloem still works, after the review list and "
+            "the fast local checks, the merge is pushed to Bloem's main and the thread ends. The bot waits for Bloem "
+            "CI to run the full suite on that exact commit and sends one message; the daily deploy at 10:00 ships "
+            "the newest commit CI passed. If not, Bloem adapts on its own lines with a test. When a check cannot be "
+            "fixed, Bloem cannot keep working without editing Silo's lines, or CI stays red, the bot stops for the "
+            "owner and blocks the next batch.")
     s.header("How Bloem keeps up with Silo",
-             "A merge bot takes in each batch of Silo's work, checks that Bloem still works, and deploys it.")
+             "A merge bot takes in each batch of Silo's work and checks that Bloem still works.")
     g, a, w, p, st = TIERS["grey"], TIERS["account"], TIERS["warn"], TIERS["plan"], TIERS["stop"]
 
     s.text(40, 140, "Each Silo batch", size=17, weight="700")
     first = [
-        (SILO, "Silo's main", "New commits, then 10 quiet minutes. The batch is all of it."),
-        (g, "The check", "Every 10 minutes, at no cost. One batch at a time."),
+        (SILO, "Silo's main", "New commits. The batch is all of it, once 10 minutes quiet."),
+        (g, "The check", "At 04:00 and 16:00, Amsterdam time. One batch at a time."),
         (BLOEM, "One thread per batch", "Its own T3 thread, which the owner can watch and answer."),
         (g, "The merge", "Silo wins every conflict, word for word."),
     ]
@@ -60,9 +61,9 @@ def daily_flow():
     s.text(239, 378, "Yes", size=13, weight="700", fill=a["label"], anchor="middle")
     second = [
         (a, 210, "Bloem's main", "Pushed once the review and the fast local checks pass."),
-        (p, 210, "Bloem CI", "The full suite, on that exact commit. A failed job runs once more."),
-        (w, 200, "Deploy", "Only a commit CI passed. A snapshot and a restore point first."),
-        (a, 192, "One message", "The receipt, then deployed, stuck or rolled back."),
+        (p, 210, "Bloem CI", "The full suite, on that exact commit. The bot waits; one rerun."),
+        (a, 200, "One message", "Merged or stuck, from the bot itself."),
+        (w, 192, "Daily deploy", "At 10:00: the newest commit CI passed."),
     ]
     x = 258
     centers = []
@@ -80,12 +81,12 @@ def daily_flow():
         "fails without it. Then every check again.", size=14)
     s.arrow(374, 597, 456, 597, color=st["stroke"], dash="6 5")
     s.text(415, 585, "cannot fix", size=12.5, weight="700", fill=st["label"], anchor="middle")
-    for cx, label in ((centers[1], "stays red"), (centers[2], "fails or rolls back")):
+    for cx, label in ((centers[1], "stays red"),):
         s.arrow(cx, 458, cx, 510, color=st["stroke"], dash="6 5")
         s.text(cx + 10, 490, label, size=12.5, weight="700", fill=st["label"])
     box(s, 460, 514, 700, 166, st, "Stops for the owner",
-        "The bot stops in its thread, writes what failed, what it tried and what it suggests, and sends the "
-        "stuck message. No new batch starts until the owner answers in that thread or releases it. A change to "
+        "The bot stops and sends the stuck message; its thread says what failed, what it tried and what it "
+        "suggests. No new batch starts until the owner answers in that thread or releases it. A change to "
         "Silo's lines is never the way out.", size=14.5)
     return s
 

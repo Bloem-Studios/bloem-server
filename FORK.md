@@ -2,7 +2,8 @@
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
 > and checked against `main` at `a7359de60`; its API lines were checked again on
-> 2026-11-11, after Silo retired its v1 API. This is Bloem's fork policy and
+> 2026-11-11, after Silo retired its v1 API, and its merge bot lines on 2026-11-16, on
+> `main` at `ffe90dc09`. This is Bloem's fork policy and
 > provenance; Silo has no such file. Every rule, command and number is in the
 > [For developers](#for-developers) section.
 
@@ -36,10 +37,11 @@ Silo's module path in 1,178 files. After that, every Silo change was a conflict.
 Silo's own. Renaming it could still happen any day; getting the ability to merge back
 could not.
 
-A **merge bot** on Bloem's build machine takes each batch of Silo's work. It merges
-it into Bloem, takes Silo's side of every conflict, checks that Bloem still works,
-pushes the merge to `main`, waits for Bloem CI to pass it and deploys it. Each batch
-is worked in its own thread that the owner can watch and answer. Until 2 November 2026
+A **merge bot** on Bloem's build machine takes each batch of Silo's work, twice a
+day. It merges it into Bloem, takes Silo's side of every conflict, checks that Bloem
+still works, pushes the merge to `main` and waits for Bloem CI to pass it; a daily
+deploy ships the newest commit CI passed. Each batch is worked in its own thread that
+the owner can watch and answer. Until 2 November 2026
 a daily GitHub job made clean merges by itself; it is switched off.
 [How Bloem keeps up with Silo](docs/architecture/bloem-following-silo.md) explains
 the routine with pictures.
@@ -115,7 +117,7 @@ primary domain.
 | Who | What they decide |
 | --- | --- |
 | The owner | When to deploy anything the merge bot does not, whether a new seam may be added, and how a stopped batch goes on. |
-| The merge bot | Merging each Silo batch with Silo winning, fixing Bloem on Bloem's own lines, pushing to `main` after the fast local checks pass, and deploying a batch Bloem CI passed. |
+| The merge bot | Merging each Silo batch with Silo winning, fixing Bloem on Bloem's own lines, pushing to `main` after the fast local checks pass, waiting for Bloem CI, and deploying once a day the newest commit Bloem CI passed. |
 | A Bloem maintainer | Merging Silo by hand, with the same steps, when the bot cannot. |
 | A repository administrator | Switching the daily GitHub sync back on, with the repository variable `BLOEM_UPSTREAM_SYNC`. It is off since 2 November 2026. |
 | Silo's maintainers | Whether a change Bloem offers is taken into Silo. Bloem never pushes to Silo directly; it offers changes through a separate fork and a pull request. |
@@ -180,10 +182,11 @@ use a separate fork and pull request.
 
 Since 2 November 2026 the **merge bot** takes in each Silo batch. It runs on Bloem's
 build machine, outside GitHub Actions; its configuration, scripts and prompts live in
-Bloem's private infrastructure repository. A free check every 10 minutes starts a
-batch only when Silo's `main` has commits Bloem lacks and has been quiet for 10
-minutes. The batch is everything on Silo's `main` when its thread starts; later
-commits wait for the next batch. One batch runs at a time, each in its own T3 thread
+Bloem's private infrastructure repository. A free check starts a batch twice a day,
+at 04:00 and 16:00 Amsterdam time, when Silo's `main` has commits Bloem lacks and has
+been quiet for 10 minutes; a batch still running at one of those times means no new
+batch until the next. The batch is everything on Silo's `main` when its thread
+starts; later commits wait for the next batch. One batch runs at a time, each in its own T3 thread
 and worktree, on a `merge/upstream-<sha9>` branch from `origin/main`, which the owner
 can watch and answer. A person merging by hand follows the same steps.
 
@@ -228,15 +231,16 @@ Before pushing, each batch:
    CI job for a developer checking by hand
    ([validation checks](.github/CONTRIBUTING.md#validate-your-change)).
 
-Then it pushes to `main`, waits for Bloem CI on that exact commit (a failed job is
-rerun once; a run cancelled by a newer push is followed to the new tip), deploys only
-a commit CI passed, writes the receipt and sends one message: deployed, stuck or
-rolled back. The operator can override the CI check by hand with the deploy script's
+Then it pushes to `main`, and its thread ends. The bot itself waits for Bloem CI on
+that exact commit (a failed job is rerun once; a run cancelled by a newer push is
+followed to the new tip) and sends one message: merged, or stuck. Production moves
+once a day, at 10:00 Amsterdam time, to the newest commit on `main` that Bloem CI
+passed. The operator can override the CI check by hand with the deploy script's
 `--skip-ci-check`, which the bot never passes; that happened once, for `c5a2b43f3`
-([receipt](docs/operations/2026-11-02-silo-sync-56e6f871c-deployment.md)). It stops
-in its thread, and blocks the next batch, when a test or check
-cannot be fixed, when Bloem cannot be kept working without editing Silo's lines, when
-CI stays red, or when the deploy fails or rolls back. See
+([receipt](docs/operations/2026-11-02-silo-sync-56e6f871c-deployment.md)). The bot
+stops, and blocks the next batch, when a test or check cannot be fixed, when Bloem
+cannot be kept working without editing Silo's lines, or when CI stays red; the owner
+answers in the batch's thread. See
 [CI](docs/bloem/ci.md#the-merge-bot) for every step.
 
 The daily `Upstream sync` workflow (`.github/workflows/upstream-sync.yml`, 05:20 UTC)

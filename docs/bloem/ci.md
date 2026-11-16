@@ -2,7 +2,9 @@
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-10
 > and checked against `main` at `f12b3c75f`, which includes Silo through `07f0ae21c`;
-> its retried-tests paragraph was added on 2026-11-15, on `main` at `2b63332aa`.
+> its retried-tests paragraph was added on 2026-11-15, on `main` at `2b63332aa`, and
+> extended to Go database pins on 2026-11-16, on `main` at `ffe90dc09`, when the merge
+> bot's schedule and CI wait were updated too.
 > Since 2 November Silo's work comes in through the merge bot, and the GitHub upstream
 > sync is switched off. Bloem's CI, image and upstream-sync workflows are Bloem
 > additions; Silo's own `ci.yml` stays as Silo wrote it apart from one line. The
@@ -62,9 +64,9 @@ copying it by hand ([how Bloem keeps up with Silo](../architecture/bloem-followi
 Since November 2, 2026 a **merge bot** on Bloem's build machine takes each Silo
 batch, outside GitHub Actions:
 
-1. **A free check every 10 minutes** starts a batch when Silo has new commits and has
-   been quiet for 10 minutes. The batch is everything on Silo's `main` at that moment,
-   and only one runs at a time.
+1. **Twice a day, at 04:00 and 16:00 Amsterdam time,** a free check starts a batch
+   when Silo has new commits and has been quiet for 10 minutes. The batch is
+   everything on Silo's `main` at that moment, and only one runs at a time.
 2. **One thread per batch.** The bot works the batch in its own T3 thread and its own
    copy of the repository, which the owner can watch and answer.
 3. **Merge and check.** Each conflict takes Silo's side, word for word, and Bloem's
@@ -73,19 +75,20 @@ batch, outside GitHub Actions:
    migrations to read. Then the **fast local checks** run on the build machine: the
    build, the contract and verify checks and changed-line lint
    ([local gate](#local-gate)).
-4. **Push and wait.** The bot pushes the merge to `main` and waits for Bloem CI, which
-   runs the full suite, on that exact commit.
-5. **Deploy.** Only a commit Bloem CI passed is deployed; the deploy refuses any other.
-   The operator can override that by hand, as happened once
-   ([receipt](../operations/2026-11-02-silo-sync-56e6f871c-deployment.md)). The bot
-   writes the receipt and sends one message: deployed, stuck or rolled back.
+4. **Push and hand off.** The thread pushes the merge to `main` and ends. The bot
+   itself waits for Bloem CI, which runs the full suite, on that exact commit, and
+   sends one message: merged or stuck.
+5. **Deploy once a day.** At 10:00 Amsterdam time the daily deploy ships the newest
+   commit on `main` that Bloem CI passed; the deploy refuses any other. The operator
+   can override that by hand, as happened once
+   ([receipt](../operations/2026-11-02-silo-sync-56e6f871c-deployment.md)).
 
-![The merge bot pushes to main and waits for Bloem CI on that commit. Passed: it deploys. A failed job is rerun once; a run cancelled by a newer push is followed to main's new tip; a failure that comes back is fixed on Bloem's own lines and pushed again, at most three times. A failure it cannot fix stops the batch for the owner](../architecture/images/bloem-ci/merge-bot.svg)
+![The batch thread pushes to main and hands the commit to the bot, which waits for Bloem CI on it. Passed: the bot sends the merged message, and the daily deploy ships the newest commit CI passed. A failed job is rerun once; a run cancelled by a newer push is followed to main's new tip; a failure that comes back stops the batch for the owner, who can send the thread back to fix it on Bloem's own lines, at most three times](../architecture/images/bloem-ci/merge-bot.svg)
 
-The bot stops in its thread and sends the "stuck" message when a test or check
-cannot be fixed, when Bloem cannot be kept working without editing Silo's lines, when
-Bloem CI stays red after its fixes, or when the deploy fails or rolls back. No new
-batch starts until the owner answers there or releases the batch.
+The bot stops and sends the "stuck" message when a test or check cannot be fixed,
+when Bloem cannot be kept working without editing Silo's lines, or when Bloem CI
+stays red. No new batch starts until the owner answers in the batch's thread or
+releases the batch.
 
 The daily sync and its merge gate are still in the repository, switched off, so two
 automatic mergers never race. A repository administrator turns both back on by
@@ -116,8 +119,8 @@ Nothing in the sync writes to `main` directly or rewrites history.
   quickly, the second cancels the first run, and only the second commit gets an
   image.
 - **The merge bot reruns once by itself.** When CI fails on a batch it pushed, it
-  reruns the failed jobs once. The same failure twice is real: the bot fixes it, or
-  stops for the owner.
+  reruns the failed jobs once. The same failure twice stops the batch for the owner,
+  who can send the batch's thread back to fix it.
 
 ## Example: two pushes in quick succession
 
@@ -313,7 +316,7 @@ runners on October 26, 2026 (`52369dbad`, `5e6f9e407`):
 | Go lint | gofmt, `go vet ./...`, govulncheck, changed-line lint (`scripts/bloem-lint-changed-ci.sh`) and the full-tree router recovery lint (`make lint-router-recovery`). |
 | Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, the seam ledger, the local gate's coverage of this workflow (`make verify-local-gate`), the Go test shards' database-list skip (`make verify-db-list-skip`), and their retried tests (`make verify-retried-tests`). |
 | Go test (1-4/4) | `make test-go` on a database `cmd/bloem-testdb` prepared, its packages split four ways, four at a time per database. Silo's database-list tests are left to Go database pins (below). |
-| Go database pins | The database pins (`make test-db-pins`) and the upstream database regression gates. |
+| Go database pins | The database pins (`make test-db-pins`, with the listed flaky pins retried) and the upstream database regression gates. |
 | Go database regressions | Watch Party and history-import race tests, the Redis-backed native video grant and cover cache tests, and the library location and native storage pins (`scripts/ci/bloem-library-locations.txt`, built with `-tags=integration`). |
 | Web (build, checks) | ESLint and format, typecheck and build, the launch bundle budget, the web settings binding and v2 types, and `make verify-local-paths`, which first runs the upstream sync merge helper's tests. On a push to `main` or `apiv2`, the build part uploads `frontend-dist-<sha>`, which Bloem Image publishes. |
 | Web test (1-4/4) | Vitest in four shards. |
@@ -367,6 +370,19 @@ shard 4 on `2b63332aa` ("context deadline exceeded" deleting a restored
 poster) with the temporary files already on a tmpfs. It passes alone ten
 times in a row, and the Silo merge through `c9ce328b5` that met it changes
 nothing in `internal/backup`. Silo's test code stays as Silo wrote it.
+
+The same list covers Go database pins. A listed test that is also in a
+database list is that job's, not a shard's:
+`python3 scripts/ci/bloem-retried-tests.py db-pins` runs `make test-db-pins`
+on copies of both lists without it, then runs it alone through the same
+runner (`make test-db-contracts` with a one-test list), so a missing or
+skipped test still fails, with the same two retries. A test that passes on a
+retry leaves a warning on the run's summary. Since November 16, 2026 it holds
+Silo's `TestTerminatedChapterWorkerCannotReplaceCurrentBlobDB` and
+`TestChapterImageReuseWaitsForCollectorDB` in `internal/chapterthumbs`: both
+wait on the chapter thumbnail worker under a ten-second deadline, both failed
+with "context deadline exceeded" in the job on `ffe90dc09`, and the job's
+rerun passed on the same commit. The local gate runs the job the same way.
 
 The split jobs each run against their own PostgreSQL.
 `scripts/ci/deal.sh N I` deals lines round-robin to N shards so each lands in
@@ -428,8 +444,9 @@ python3 scripts/bloem/local-gate.py services down "$GATE_SERVICES_ID"
 
 ### Failures and re-runs
 
-Nothing in the workflows retries a failed test or job. The merge bot's one
-re-run of a batch it pushed is its own ([below](#the-merge-bot)). When a job fails
+Apart from the few listed tests the Go jobs retry ([above](#jobs)),
+nothing in the workflows retries a failed test or job. The merge bot's one re-run of
+a batch it pushed is its own ([below](#the-merge-bot)). When a job fails
 for a reason that has nothing to do with the change, such as a flaky test or a lost
 runner, the run is re-run with GitHub's **Re-run failed jobs**
 (`gh run rerun <run id> --failed`). That starts attempt 2 of the same run.
@@ -619,11 +636,14 @@ this repository starts it. It uses two scripts from this repository:
 `scripts/bloem/silo-merge-review.py` and `scripts/bloem/local-gate.py`.
 
 1. **The check.** A timer runs it every 10 minutes. It runs no model and starts no
-   thread. It fetches Bloem's and Silo's `main`, and acts only when Silo's tip is
-   not in Bloem's `main` and that tip's commit time is at least 10 minutes old. It
-   then takes a lock, one batch at a time, and starts the batch. The check also
-   reports a batch nobody picked up, a stopped batch that sent no message, a running
-   batch silent for four hours, and its own repeated failures.
+   thread. It fetches Bloem's and Silo's `main`, and starts a batch only in the hour
+   after 04:00 or 16:00 Amsterdam time, once per slot, when Silo's tip is not in
+   Bloem's `main` and that tip's commit time is at least 10 minutes old. A lock
+   still held when a slot starts uses up that slot. It then takes a lock, one batch
+   at a time, and starts the batch. Every run, slot or not, it also reports a batch
+   nobody picked up, a stopped batch that sent no message, a running batch silent
+   for four hours, and its own repeated failures, and keeps the bot's CI wait
+   running while one is due.
 2. **The batch thread.** One T3 thread per batch, titled "Silo sync <sha9>", in its
    own worktree on `merge/upstream-<sha9>` from `origin/main`. The batch is exactly
    the Silo commit the check found; later commits wait. If that commit is already in
@@ -644,44 +664,46 @@ this repository starts it. It uses two scripts from this repository:
    pictures redrawn, and the status rows that say which Silo commit Bloem includes.
 6. **Fast checks.** `python3 scripts/bloem/local-gate.py run --base <old main> --only build,verify,lint`
    (the build, gofmt, vet, every contract and verify target and changed-line lint).
-   Bloem CI runs the
-   full suite on the pushed commit, and the deploy refuses any commit Bloem CI has not
-   passed. A failed test is rerun alone once; a real failure gets at most three fix
+   Bloem CI runs the full suite on the pushed commit, and the deploy refuses any
+   commit Bloem CI has not passed. A failed test is rerun alone once; a real failure gets at most three fix
    attempts. If `main` moved meanwhile, it is merged in and the fast checks run again;
    a third move stops the batch.
-7. **Push and wait.** `git push origin HEAD:main`, never forced. The bot then waits
-   for the Bloem CI run on that exact commit. A failed run is rerun once, failed jobs
-   only (`gh run rerun <id> --failed`), unless `main` has moved on, since a re-run
-   would cancel the newer push's run. A run cancelled by a newer push, or failed with
-   `main` moved on, is followed to the new tip after checking it still contains the
-   pushed commit. Red twice: a test that also fails alone is fixed and pushed again,
-   at most three fix pushes per batch; anything else stops the batch. The bot never
-   pushes an empty commit or starts CI by hand to turn it green.
-8. **Deploy.** Only a commit Bloem CI passed, and the new tip may carry other
-   commits pushed to `main`, which the receipt names. One fixed deploy script builds
-   the image from a `git archive` of the commit, loads it on the server and both
-   transcode nodes, takes a server snapshot and a database restore point, refuses to
-   restart unless production runs the expected previous release, applies migrations
-   while the server is stopped, restarts and checks readiness, health, the version,
-   the logs and the transcode nodes. A failed check rolls the image back by itself,
+7. **Push and hand off.** `git push origin HEAD:main`, never forced. The thread hands
+   the pushed commit, the message's text and its per-commit write-up to the bot and
+   ends. The bot waits for the Bloem CI run on that exact commit, holding the lock so
+   no other batch starts. A failed run is rerun once, failed jobs only
+   (`gh run rerun <id> --failed`), unless `main` has moved on, since a re-run would
+   cancel the newer push's run. A run cancelled by a newer push, or failed with `main`
+   moved on, is followed to the new tip after checking it still contains the pushed
+   commit. Red twice, a run that never finishes, or a `main` that lost the commit
+   stops the batch. Sent back by the owner, the thread reruns each failed test alone;
+   one that also fails alone is fixed and pushed again, at most three fix pushes per
+   batch. Nobody pushes an empty commit or starts CI by hand to turn it green.
+8. **Message.** Once CI passed, the bot sends one message (merged) with the Silo
+   range, the user-visible changes, any Bloem workaround or new seam, new migrations,
+   the green commit and a link to the thread, followed by the per-commit write-up.
+9. **Deploy, once a day.** At 10:00 Amsterdam time the daily deploy takes the newest
+   commit on `main` with a passing Bloem CI run, with every batch merged since the
+   last deploy, and sends its own message. One fixed deploy script builds the image
+   from a `git archive` of the commit, loads it on the server and both transcode
+   nodes, takes a server snapshot and a database restore point, refuses to restart
+   unless production runs the expected previous release, applies migrations while
+   the server is stopped, restarts and checks readiness, health, the version, the
+   logs and the transcode nodes. A failed check rolls the image back by itself,
    whether or not migrations ran. Only when the host stops answering during the
    restart, or the rollback itself fails, is nothing more tried and production left
    to the owner. The bot never restores the database. The operator can override the
    CI check by hand with the script's operator-only `--skip-ci-check`, which the bot
    never passes; that happened once, for `c5a2b43f3`
    ([receipt](../operations/2026-11-02-silo-sync-56e6f871c-deployment.md)).
-9. **Receipt and message.** `docs/operations/<date>-silo-sync-<sha9>-deployment.md`,
-   the index's "current:" receipt and the front page's `Production` row, pushed to
-   `main` and checked by Bloem CI too; one message (deployed, stuck or rolled back)
-   with the Silo range, the user-visible changes, any Bloem workaround or new seam,
-   migrations and downtime, and a link to the thread.
 
-It stops in its thread, writes "Needs you" with what failed, what it tried and what
-it suggests, and sends the stuck message when a test or check will not pass and it
-cannot fix the cause, when Bloem cannot be kept working without editing Silo's lines,
-when Bloem CI stays red after its fixes, and when the deploy fails or rolls back.
-Migrations and active streams are not stop reasons. A stopped batch keeps the lock,
-so no new batch starts until the owner answers in its thread or releases it.
+The thread stops, writes "Needs you" with what failed, what it tried and what it
+suggests, and sends the stuck message when a test or check will not pass and it
+cannot fix the cause, or when Bloem cannot be kept working without editing Silo's
+lines. After the hand-off the bot stops the batch itself and sends the stuck message
+when Bloem CI stays red. Migrations and active streams are not stop reasons. A
+stopped batch keeps the lock, so no new batch starts until the owner answers in its
+thread or releases it.
 
 #### The switch for the GitHub sync
 

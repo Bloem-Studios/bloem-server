@@ -1,9 +1,11 @@
-# Tests Bloem CI's Go test shards run again when they fail, up to two
-# retries; each still has to pass once. scripts/ci/bloem-retried-tests.py
-# reads this list: the shards skip these names and then run each one on its
-# own. Only the owner adds an entry, for a test that fails only under the
-# shards' load, with the evidence below it. Never add a whole package or a
-# pattern.
+# Tests Bloem CI runs again when they fail, up to two retries; each still
+# has to pass once. scripts/ci/bloem-retried-tests.py reads this list: the
+# Go test shards skip these names and then run each one on its own. A test
+# that is also in scripts/ci/db-pins.txt or scripts/ci/db-contracts.txt is
+# retried by the Go database pins job instead: it runs the other pins first,
+# then this test alone through the same runner, so a skip still fails it.
+# Only the owner adds an entry, for a test that fails only under CI's load,
+# with the evidence below it. Never add a whole package or a pattern.
 #
 # <package dir> <TestName>
 
@@ -16,3 +18,12 @@
 # met it changes nothing in internal/backup. Retried by the owner's decision
 # of 2026-11-15; Silo's test code stays as Silo wrote it.
 ./internal/backup TestSwapCleanupHasADeadline
+
+# Silo's tests, in Go database pins. Both wait on the chapter thumbnail
+# worker under a ten-second test deadline. On ffe90dc09 (2026-11-16, run
+# 43916767759 attempt 1) both failed with "context deadline exceeded" while
+# the job ran every listed package at once; the rerun of that job passed, on
+# the same commit. Retried by the owner's decision of 2026-11-16; Silo's test
+# code stays as Silo wrote it.
+./internal/chapterthumbs TestTerminatedChapterWorkerCannotReplaceCurrentBlobDB
+./internal/chapterthumbs TestChapterImageReuseWaitsForCollectorDB

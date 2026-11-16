@@ -1,7 +1,8 @@
 # How Bloem keeps up with Silo
 
 > **Provenance and status.** Bloem page, written on 2026-10-31, updated on 2026-11-16
-> and checked against `main` at `c1c7de503`. Bloem is a tracking fork of Silo Server.
+> and checked against `main` at `c1c7de503`; its batch routine (two batches a day, the
+> bot's own CI wait, the daily deploy) was updated on 2026-11-16, on `main` at `ffe90dc09`. Bloem is a tracking fork of Silo Server.
 > This page explains in plain language how Bloem takes in Silo's work and keeps its
 > own apart. The policy itself is in [how Bloem forks Silo](../../FORK.md), the
 > automation in [Bloem CI](../bloem/ci.md), and the technical rules in the
@@ -10,21 +11,24 @@
 Bloem is Silo plus Bloem's additions. Silo's developers change Silo several times a
 day, and Bloem takes those changes in rather than copying them by hand. This only
 stays cheap if Bloem's additions sit **beside** Silo's code, never inside it. This
-page walks through how each batch of Silo's work comes in and is deployed, when the
-merge stops, what happens when Silo and Bloem change the same lines, and where Bloem
+page walks through how each batch of Silo's work comes in and reaches production, when
+the merge stops, what happens when Silo and Bloem change the same lines, and where Bloem
 keeps its own work.
 
 ## Each Silo batch
 
-![A merge bot takes each batch: Silo's main has new commits and 10 quiet minutes; a free check every 10 minutes starts one batch at a time in its own thread; the merge takes Silo's side of every conflict; if Bloem still works, the merge is pushed to main, Bloem CI checks that commit, the bot deploys it and sends one message. If not, Bloem adapts on its own lines, or the bot stops for the owner and blocks the next batch](images/following-silo/daily-flow.svg)
+![A merge bot takes each batch: Silo's main has new commits; twice a day, at 04:00 and 16:00 Amsterdam time, a free check starts one batch at a time in its own thread; the merge takes Silo's side of every conflict; if Bloem still works, the merge is pushed to main and the thread ends, the bot waits for Bloem CI on that commit and sends one message, and the daily deploy ships the newest commit CI passed. If not, Bloem adapts on its own lines, or the bot stops for the owner and blocks the next batch](images/following-silo/daily-flow.svg)
 
 A **merge bot** on Bloem's build machine takes each Silo **batch**: everything on
 Silo's `main` when the bot starts work on it.
 
-1. **A free check every 10 minutes** looks for Silo commits Bloem lacks. It costs
-   nothing, and it starts a batch only when Silo has new commits and has been quiet
-   for 10 minutes, because Silo's commits arrive in bursts. One batch runs at a time;
-   commits that land later wait for the next one.
+1. **Twice a day, at 04:00 and 16:00 Amsterdam time,** a free check starts a batch
+   when Silo has commits Bloem lacks and has been quiet for 10 minutes. It costs
+   nothing, and it runs every 10 minutes to watch the running batch, but only those
+   two times start one. Merging more often would not reach users sooner, because
+   production moves once a day. One batch runs at a time: a batch still running when
+   a slot comes means no new batch that slot, and commits that land later wait for
+   the next one.
 2. **One thread per batch.** The bot works each batch in its own T3 thread, in its
    own copy of the repository. The owner can watch it live and answer it.
 3. **The merge.** Every conflict takes Silo's side, word for word. Where Silo's
@@ -38,11 +42,14 @@ Silo's `main` when the bot starts work on it.
    before anything is pushed: the build, the contract and verify checks and
    changed-line lint.
 6. **Pushed to `main`,** the merge goes through Bloem CI like any other push, and
-   Bloem CI runs the full suite. The bot waits for CI on that exact commit.
-7. **Deployed.** The bot deploys only a commit Bloem CI passed: the deploy refuses any
-   other. It writes the dated receipt and sends the owner one message: deployed,
-   stuck or rolled back. The operator can override the CI check by hand, as happened
-   once, when the owner wanted the first batch live at once.
+   Bloem CI runs the full suite. The thread ends here: it hands the pushed commit to
+   the bot, and the bot itself waits for CI on that exact commit, with one rerun of a
+   failed job. Then it sends the owner one message: merged, or stuck when CI stays
+   red.
+7. **Deployed once a day.** At 10:00 Amsterdam time the daily deploy ships the newest
+   commit on `main` that Bloem CI passed, with every batch merged since the last one;
+   the deploy refuses any other commit. The operator can override the CI check by
+   hand, as happened once, when the owner wanted the first batch live at once.
 
 Until 2 November 2026 a daily GitHub job made clean merges by itself, and maintainers
 merged the rest by hand. The job could not resolve a conflict or adapt Bloem's code,
@@ -106,28 +113,30 @@ Bloem keeps its own work in three places:
   to one of Silo's database tests so that it collects its own row first, after it
   failed in Bloem CI.
 
-## Example: a morning's batches
+## Example: a day's batches
 
 This example is made up.
 
-1. Silo lands three commits, at 08:05, 08:12 and 08:21.
-2. The checks from 08:10 to 08:30 find new commits, but Silo has not been quiet for
-   10 minutes yet. At 08:40 it has, and the check starts a batch with all three.
-3. At 09:15 Silo lands a fourth commit. It waits for the next batch.
-4. The merge conflicts in one file. The bot takes Silo's lines, puts Bloem's check
-   back on its own lines with a test, and runs the fast checks. It pushes at 10:40.
-5. Bloem CI fails one job. The bot runs it once more, and it passes.
-6. At 11:25 the batch is deployed. The bot writes the receipt and sends the owner
-   one message: deployed.
-7. Right after the message the batch is done; Bloem CI still checks the receipt on
-   its own. At 11:30 the check starts the next batch, with the 09:15 commit.
+1. Silo lands three commits overnight, the last at 02:40.
+2. At 04:00 the check finds them, and Silo has been quiet for more than 10 minutes.
+   It starts a batch with all three.
+3. The merge conflicts in one file. The bot takes Silo's lines, puts Bloem's check
+   back on its own lines with a test, and runs the fast checks. It pushes at 04:25,
+   hands the commit to the bot, and its thread ends.
+4. Bloem CI fails one job. The bot runs it once more, and it passes. At 05:20 the
+   bot sends the owner one message: merged.
+5. During the day Silo lands two more commits, at 09:15 and 13:30. The checks see
+   them but start nothing until 16:00.
+6. At 10:00 the daily deploy ships the 04:25 merge.
+7. At 16:00 the check starts the next batch, with both of the day's commits. It is
+   merged by evening and ships with the next morning's deploy.
 
 ## Who can change what
 
 | Who | What they decide |
 | --- | --- |
 | The owner | Answering a stopped batch, pausing the bot or releasing a batch, every deploy the bot does not make, and any database restore. |
-| The merge bot | Merging each Silo batch with Silo winning, fixing Bloem on Bloem's own lines, pushing to `main`, and deploying a batch Bloem CI passed. |
+| The merge bot | Merging each Silo batch with Silo winning, fixing Bloem on Bloem's own lines, pushing to `main`, waiting for Bloem CI, and deploying once a day the newest commit Bloem CI passed. |
 | A repository administrator | Switching the old daily GitHub sync back on, with the repository variable `BLOEM_UPSTREAM_SYNC`. |
 | Silo | Its own files, which Bloem takes in as Silo wrote them. |
 
@@ -151,8 +160,8 @@ This example is made up.
 
 - [How Bloem forks Silo](../../FORK.md#taking-upstream-changes): the merge policy,
   the steps each batch follows, seams and overlays, and what Bloem adds and removed.
-- [Bloem CI](../bloem/ci.md#upstream-sync-merges): the merge bot's CI wait and
-  deploy rules, the local gate, the switched-off daily sync and its merge gate, and
+- [Bloem CI](../bloem/ci.md#upstream-sync-merges): the merge bot's schedule, CI
+  wait and deploy rules, the local gate, the switched-off daily sync and its merge gate, and
   the image.
 - [Bloem's adapters over Silo](bloem-upstream-adapters.md): how Bloem changes Silo's
   behavior without editing Silo's files.

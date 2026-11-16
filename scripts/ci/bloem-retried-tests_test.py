@@ -58,6 +58,8 @@ class RetriedTestsTest(unittest.TestCase):
         write(self.root, "scripts/ci/bloem-retried-tests.txt", "# why\n\n./internal/a TestSlow\n")
         write(self.root, "internal/a/a_test.go", go_test("TestSlow", "TestSlowLater"))
         write(self.root, "internal/b/b_test.go", go_test("TestOther"))
+        write(self.root, "scripts/ci/db-pins.txt", "# pins\n./internal/b TestOther\n")
+        write(self.root, "scripts/ci/db-contracts.txt", "# contracts\n./internal/b TestContract\n")
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -109,8 +111,56 @@ class RetriedTestsTest(unittest.TestCase):
         self.assertTrue(self.mod.run_retried(self.root, [f"{MODULE}/internal/b"], runner))
         self.assertEqual(runner.calls, [])
 
+    def test_a_shard_leaves_a_database_list_test_to_the_pins_job(self):
+        write(self.root, "scripts/ci/bloem-retried-tests.txt", "./internal/b TestOther\n")
+        runner = FakeRunner([])
+        self.assertTrue(self.mod.run_retried(self.root, [f"{MODULE}/internal/b"], runner))
+        self.assertEqual(runner.calls, [])
+
+    def db_pins(self, codes):
+        write(self.root, "scripts/ci/bloem-retried-tests.txt", "# why\n./internal/b TestOther\n./internal/a TestSlow\n")
+        runner = FakeRunner(codes)
+        work = self.root / "work"
+        work.mkdir()
+        return self.mod.run_db_pins(self.root, work, runner), runner, work
+
+    def test_db_pins_runs_the_lists_without_the_retried_test_then_the_test_alone(self):
+        ok, runner, work = self.db_pins([0, 0])
+        self.assertTrue(ok)
+        self.assertEqual(len(runner.calls), 2)
+        full, alone = runner.calls
+        self.assertEqual(full, ["make", "test-db-pins", f"DB_PINS={work / 'db-pins.txt'}",
+                                f"DB_CONTRACTS={work / 'db-contracts.txt'}"])
+        self.assertEqual((work / "db-pins.txt").read_text(), "# pins\n")
+        self.assertEqual((work / "db-contracts.txt").read_text(), "# contracts\n./internal/b TestContract\n")
+        # The same runner as the pins, so a skip still fails; the shard's TestSlow is not its business.
+        self.assertEqual(alone, ["make", "test-db-contracts", f"DB_CONTRACTS={work / 'retried-TestOther.txt'}"])
+        self.assertEqual((work / "retried-TestOther.txt").read_text(), "./internal/b TestOther\n")
+
+    def test_db_pins_retries_a_failed_test_and_a_later_pass_passes(self):
+        ok, runner, _ = self.db_pins([0, 1, 1, 0])
+        self.assertTrue(ok)
+        self.assertEqual(len(runner.calls), 4)
+
+    def test_db_pins_fails_when_the_test_fails_every_run(self):
+        ok, runner, _ = self.db_pins([0, 1, 1, 1])
+        self.assertFalse(ok)
+        self.assertEqual(len(runner.calls), 4)
+
+    def test_db_pins_fails_when_the_other_pins_fail_and_still_runs_the_retried_test(self):
+        ok, runner, _ = self.db_pins([2, 0])
+        self.assertFalse(ok)
+        self.assertEqual(len(runner.calls), 2)
+
     def test_the_real_list_is_valid(self):
         self.assertTrue(self.mod.skip_pattern(ROOT).startswith("^("))
+
+    def test_the_real_database_entries_are_in_a_database_list(self):
+        listed = self.mod.db_listed(ROOT)
+        for entry in [("./internal/chapterthumbs", "TestTerminatedChapterWorkerCannotReplaceCurrentBlobDB"),
+                      ("./internal/chapterthumbs", "TestChapterImageReuseWaitsForCollectorDB")]:
+            self.assertIn(entry, listed)
+            self.assertIn(entry, self.mod.checked_entries(ROOT))
 
 
 if __name__ == "__main__":

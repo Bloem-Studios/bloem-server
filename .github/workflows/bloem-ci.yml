@@ -793,7 +793,11 @@ jobs:
 
       - name: Upstream database regression gates
         run: |
-          make test-db-pins
+          # Every database pin, as the test-db-pins target runs them, except
+          # that the pins also listed in scripts/ci/bloem-retried-tests.txt
+          # (Silo tests that fail only under this job's load) run afterwards,
+          # each alone, with up to two retries.
+          python3 scripts/ci/bloem-retried-tests.py db-pins
           go test -race -count=1 -run '^TestMarkerContributionClaimsByTargetMigrationPostgres$' ./migrations/
           go test -race -count=1 -run '^TestUpsertTasteClusters.*Postgres$' ./internal/recommendations/
           go test -race -count=1 -run '^TestCompatDetailServiceResolvesViewerSubtitleDefaultsPostgres$' ./cmd/silo/

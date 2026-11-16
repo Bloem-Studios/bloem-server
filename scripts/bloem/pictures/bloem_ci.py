@@ -183,18 +183,18 @@ def _line(s, x1, y1, x2, y2, color="#9CA3AF"):
 
 def merge_bot():
     s = Svg(1200, 700, "How the merge bot waits for Bloem CI",
-            "The merge bot pushes a Silo batch to main and waits for Bloem CI on that exact commit. If CI passed, it "
-            "deploys that commit, writes the receipt and sends one message. If a job failed, it reruns the failed "
-            "jobs once and reads CI again. If a newer push to main cancelled the run, it follows CI to main's new "
-            "tip, which still holds its commit. If the same failure comes back, a test that also fails alone is "
-            "fixed on Bloem's own lines with a test and pushed again, at most three times. A failure it cannot fix, "
-            "or CI that stays red, stops the batch: the bot writes Needs you in its thread, sends the stuck message, "
-            "deploys nothing and starts no new batch until the owner answers or releases it.")
+            "The batch thread pushes a Silo batch to main and hands it to the bot, which waits for Bloem CI on that "
+            "exact commit. If CI passed, the bot sends the merged message, and the daily deploy ships the newest "
+            "commit CI passed. If a job failed, the bot reruns the failed jobs once and reads CI again. If a newer "
+            "push to main cancelled the run, it follows CI to main's new tip, which still holds its commit. If the "
+            "same failure comes back, the bot stops the batch and sends the stuck message; the owner can send the "
+            "thread back to fix a test that also fails alone, on Bloem's own lines, at most three times. No new "
+            "batch starts until the owner answers or releases it.")
     s.header("How the merge bot waits for Bloem CI",
-             "It deploys only a commit Bloem CI passed. Anything else stops the batch for the owner.")
+             "Only a commit Bloem CI passed gets the merged message. Anything else stops the batch for the owner.")
     a, p, g, w, st = TIERS["account"], TIERS["plan"], TIERS["grey"], TIERS["warn"], TIERS["stop"]
 
-    box(s, 40, 124, 240, 124, g, "Pushed to main", "The merge, its regenerated files and any Bloem fixes.",
+    box(s, 40, 124, 240, 124, g, "Pushed to main", "The thread pushes, hands the commit to the bot and ends.",
         size=14)
     s.arrow(284, 186, 316, 186)
     box(s, 320, 124, 260, 124, p, "Bloem CI", "Runs on exactly that commit, like any other push.", size=14)
@@ -204,8 +204,8 @@ def merge_bot():
     s.text(680, 192, "Passed?", size=15, weight="700", anchor="middle")
     s.arrow(754, 186, 796, 186)
     s.text(775, 176, "Yes", size=13, weight="700", fill=a["label"], anchor="middle")
-    box(s, 800, 124, 360, 124, a, "Deployed",
-        "Only now. The deploy has its own checks and rollback, then the receipt and one message.", size=14)
+    box(s, 800, 124, 360, 124, a, "Merged",
+        "The bot sends one message. The daily deploy at 10:00 ships the newest commit CI passed.", size=14)
 
     _line(s, 680, 248, 680, 282)
     s.text(692, 272, "No", size=13, weight="700", fill=st["label"])
@@ -213,12 +213,11 @@ def merge_bot():
     for cx in (220, 600, 980):
         s.arrow(cx, 282, cx, 306)
     cases = [
-        (w, "A job failed", "The bot reruns the failed jobs once, then reads Bloem CI again. Nothing in the "
-                            "workflows retries by itself."),
+        (w, "A job failed", "The bot reruns the failed jobs once, then reads Bloem CI again."),
         (g, "Cancelled by a newer push", "Someone pushed to main. The bot follows Bloem CI to main's new tip, "
                                          "which still holds its commit."),
-        (st, "Failed again", "A test that also fails alone is real: fixed on Bloem's own lines with a test, "
-                             "pushed, and checked again. At most three times."),
+        (st, "Failed again", "The bot stops. Sent back by the owner, the thread fixes a test that also fails "
+                             "alone, on Bloem's own lines, and pushes again. At most three times."),
     ]
     x = 40
     for c, t, b in cases:
@@ -226,14 +225,14 @@ def merge_bot():
         x += 380
 
     s.arrow(980, 470, 980, 520, color=st["stroke"], dash="6 5")
-    s.text(992, 500, "cannot fix, or still red", size=12.5, weight="700", fill=st["label"])
+    s.text(992, 500, "red twice, or cannot fix", size=12.5, weight="700", fill=st["label"])
     s.rect(40, 524, 1120, 110, st["fill"], st["stroke"], rx=14, sw=1.8)
     s.text(64, 558, "Stopped", size=17, weight="700")
-    para(s, 64, 586, "The bot writes “Needs you” in its thread and sends the stuck message. It deploys nothing, and "
-         "no new batch starts until the owner answers in that thread or releases it. It never pushes an empty "
-         "commit to start CI again.", 1072, size=14.5, fill=INK)
-    footer(s, "A test that passes alone after failing in CI, or a failed runner, also stops the batch for the owner.",
-           y=668, fill=MUTED)
+    para(s, 64, 586, "The bot sends the stuck message with a link to the batch's thread. No new batch starts "
+         "until the owner answers in that thread or releases it. Nobody pushes an empty commit to start CI "
+         "again.", 1072, size=14.5, fill=INK)
+    footer(s, "Bloem CI retries a few known flaky tests itself (scripts/ci/bloem-retried-tests.txt) before it "
+              "reports them.", y=668, fill=MUTED)
     return s
 
 

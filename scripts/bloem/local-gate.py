@@ -136,7 +136,7 @@ STEPS = [
         "db",
         "pins",
         "export SILO_TEST_DATABASE_URL=" + _pg("bloem_pins_test")
-        + " && go run ./cmd/bloem-testdb && make test-db-pins",
+        + " && go run ./cmd/bloem-testdb && python3 scripts/ci/bloem-retried-tests.py db-pins",
         _needs("pg", "fresh_db:bloem_pins_test"),
     ),
     Step(
