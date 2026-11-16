@@ -28,8 +28,16 @@ func (r *Repository) ResendForOrganization(ctx context.Context, organizationID u
 	if prior.Role != "user" || prior.AcceptedAt != nil || prior.RevokedAt != nil {
 		return nil, ErrNotClaimable
 	}
+	// Organization invitations are never emailed, so every replacement is a
+	// link. A link invitation has no address for createInvitation to
+	// supersede by, so the replaced link is revoked here, as Silo's Resend does.
+	if prior.Email == "" {
+		if _, err := tx.Exec(ctx, `UPDATE invitations SET revoked_at=clock_timestamp(), updated_at=clock_timestamp() WHERE id=$1`, id); err != nil {
+			return nil, fmt.Errorf("revoking replaced organization link invitation: %w", err)
+		}
+	}
 	item, err := createInvitation(ctx, tx, organizationID, models.CreateInvitationInput{
-		Email: prior.Email, Role: prior.Role, AccessGroupID: prior.AccessGroupID, LibraryIDs: prior.LibraryIDs,
+		Email: prior.Email, Delivery: models.InvitationDeliveryLink, Role: prior.Role, AccessGroupID: prior.AccessGroupID, LibraryIDs: prior.LibraryIDs,
 		CreateProfile: prior.CreateProfile, ShowTour: prior.ShowTour, Note: prior.Note,
 		InvitedBy: actorID, ExpiresAt: expires,
 	}, tokenHash)

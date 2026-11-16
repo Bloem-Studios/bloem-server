@@ -149,7 +149,7 @@ func buildBloemCapabilityTokens() []string {
 		}
 	}
 	add(playbackFeatures...)
-	add(featureDeclaredEventChannels, "live_tv_access_v1", "organization_activity_v1", "organization_invitation_lifecycle_v1", "platform_engagement_authoring_v1")
+	add(featureDeclaredEventChannels, "live_tv_access_v1", "organization_activity_v1", "organization_invitation_lifecycle_v1", "organization_invitation_links_v1", "platform_engagement_authoring_v1")
 	add(featureWatchDocumentV1, featureDevicePairingV1)
 	return tokens
 }

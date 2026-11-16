@@ -339,7 +339,7 @@ Create a user invitation and disclose its claim token once.
 Operation ID: `createBloemOrganizationInvitation`.
 Credentials: `bloemOrganizationContext`.
 
-Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Creates role=user only; default expiry is seven days. A pending invitation for the same address in this organization is revoked. Returns claim_token once; this operation does not send email or return a claim URL. Do not automatically retry creation.
+Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Creates role=user only; default expiry is seven days. A pending invitation for the same address in this organization is revoked. Returns claim_token once; this operation does not send email or return a claim URL. Clients build the claim link with the token in the address fragment (/invite#<claim_token>) so it never reaches a server log. delivery=link creates an invitation with an empty email and delivery link, which the invitee completes with their address; it supersedes no other invitation. Every invitation this route creates records delivery link. Do not automatically retry creation.
 
 Request body (required, `application/json`): [`BloemOrganizationInvitationCreate`](#bloemorganizationinvitationcreate).
 
@@ -350,7 +350,7 @@ Request body (required, `application/json`): [`BloemOrganizationInvitationCreate
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_organization_authority: the context is not organization-scoped; organization_suspended: the organization or membership is suspended; insufficient_platform_authority: a platform context's account is no longer a platform administrator. |
 | 409 | [`BloemNativeRevisionConflict`](#bloemnativerevisionconflict) | authorization_state_changed: expected_revision is not the organization's policy_revision; current_revision carries the current value. email_taken: the email already belongs to an account. |
-| 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive, email is not a bare email address, access_group_id is not one of this organization's groups, or library_ids lists a library the organization neither owns nor is entitled to. |
+| 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive, delivery is neither link nor omitted, email is given with delivery=link or is not a bare email address otherwise, access_group_id is not one of this organization's groups, or library_ids lists a library the organization neither owns nor is entitled to. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization or the administration store is unavailable. |
 
 ### `DELETE /api/bloem/v2/admin/organization/invitations/{id}`
@@ -386,7 +386,7 @@ Rotate an unaccepted, unrevoked user invitation and return its new claim token o
 Operation ID: `resendBloemOrganizationInvitation`.
 Credentials: `bloemOrganizationContext`.
 
-Requires an organization-scoped administrative-context token matching the resolved account, organization and membership. The originating session, current authority and policy/security revisions are revalidated on each request. No organization path or header can broaden this scope. A JSON body containing expected_revision is required, including on DELETE. It must match the resolved organization's policy revision. Only role=user invitations that have not been accepted or revoked can be renewed; expired invitations remain eligible. Rotation invalidates the previous token and renews expiry for seven days. This endpoint returns claim_token, not claim_url or email_sent, and does not send email. The token is disclosed once and only its hash is stored. Do not automatically retry: a second successful call rotates the link again.
+Requires an organization-scoped administrative-context token matching the resolved account, organization and membership. The originating session, current authority and policy/security revisions are revalidated on each request. No organization path or header can broaden this scope. A JSON body containing expected_revision is required, including on DELETE. It must match the resolved organization's policy revision. Only role=user invitations that have not been accepted or revoked can be renewed; expired invitations remain eligible. Rotation invalidates the previous token and renews expiry for seven days. A link invitation (empty email) stays a link invitation, and the replacement records delivery link. This endpoint returns claim_token, not claim_url or email_sent, and does not send email. The token is disclosed once and only its hash is stored. Do not automatically retry: a second successful call rotates the link again.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -3400,7 +3400,8 @@ Type: object.
 | --- | --- | --- | --- |
 | `access_group_id` | integer (int64) |  |  |
 | `create_profile` | boolean |  | Defaults to true. |
-| `email` | string | yes |  |
+| `delivery` | string: `link` |  | Silo's delivery field. link: create a link to share, with no address; the invitee enters their email at accept. Omitted: the link is bound to email. Nothing is emailed either way, so Silo's email value is refused. Advertised by organization_invitation_links_v1. |
+| `email` | string |  | Required unless delivery is link, which forbids it. Becomes the invitee's sign-in username. |
 | `expected_revision` | integer (int64) | yes |  |
 | `library_ids` | array of integer (int64) or null |  |  |
 | `note` | string |  |  |

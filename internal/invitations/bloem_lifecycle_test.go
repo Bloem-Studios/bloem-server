@@ -90,3 +90,49 @@ func TestOrganizationInvitationLifecycleFencesTenantRoleAndOldLinks(t *testing.T
 		t.Fatalf("revoked platform invitation: %v", err)
 	}
 }
+
+// A link invitation has no address, so nothing supersedes it by address:
+// rotating it must revoke the old link itself and keep the new one a link.
+func TestOrganizationLinkInvitationRotationRevokesTheOldLink(t *testing.T) {
+	ctx := context.Background()
+	pool := newInvitationOrganizationDatabase(t, ctx)
+	repo := NewRepository(pool)
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatal(err)
+	}
+	var org uuid.UUID
+	if err := pool.QueryRow(ctx, `SELECT public.bloem_default_organization_id()`).Scan(&org); err != nil {
+		t.Fatal(err)
+	}
+	var actor int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users(username,email,password_hash,role) VALUES('linker','linker@example.test','hash','admin') RETURNING id`).Scan(&actor); err != nil {
+		t.Fatal(err)
+	}
+	link, err := repo.CreateForOrganization(ctx, org, models.CreateInvitationInput{Delivery: models.InvitationDeliveryLink, Role: "user", Note: "For Sam", InvitedBy: actor, ExpiresAt: time.Now().Add(time.Hour)}, "link-hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rotated, err := repo.ResendForOrganization(ctx, org, link.ID, actor, "link-replacement", time.Now().Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rotated.ID == link.ID || rotated.Email != "" || rotated.Delivery != models.InvitationDeliveryLink || rotated.Note != "For Sam" {
+		t.Fatalf("replacement = %+v", rotated)
+	}
+	old, err := repo.GetByTokenHash(ctx, "link-hash")
+	if err != nil || old.RevokedAt == nil {
+		t.Fatalf("old link not revoked: %+v %v", old, err)
+	}
+
+	bound, err := repo.CreateForOrganization(ctx, org, models.CreateInvitationInput{Email: "bound@example.test", Delivery: models.InvitationDeliveryLink, Role: "user", InvitedBy: actor, ExpiresAt: time.Now().Add(time.Hour)}, "bound-hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := repo.ResendForOrganization(ctx, org, bound.ID, actor, "bound-replacement", time.Now().Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Email != "bound@example.test" || again.Delivery != models.InvitationDeliveryLink {
+		t.Fatalf("bound replacement = %+v", again)
+	}
+}

@@ -289,6 +289,7 @@ func (h *BloemAdminOrganizationHandler) HandleCreateInvitation(w http.ResponseWr
 	}
 	var request struct {
 		Email            string `json:"email"`
+		Delivery         string `json:"delivery"`
 		ExpectedRevision int64  `json:"expected_revision"`
 		AccessGroupID    *int64 `json:"access_group_id"`
 		LibraryIDs       []int  `json:"library_ids"`
@@ -302,9 +303,8 @@ func (h *BloemAdminOrganizationHandler) HandleCreateInvitation(w http.ResponseWr
 	if !requireOrganizationRevision(w, tenant, request.ExpectedRevision) {
 		return
 	}
-	parsed, err := netmail.ParseAddress(strings.TrimSpace(request.Email))
-	if err != nil || parsed.Address != strings.TrimSpace(request.Email) {
-		writeAdminValidation(w, map[string]string{"email": "must be a valid email address"})
+	email, ok := bloemOrganizationInvitationAddress(w, request.Delivery, request.Email)
+	if !ok {
 		return
 	}
 	if !h.invitationAccessIsTheOrganizations(w, r, tenant.OrganizationID, request.AccessGroupID, request.LibraryIDs) {
@@ -322,7 +322,7 @@ func (h *BloemAdminOrganizationHandler) HandleCreateInvitation(w http.ResponseWr
 		writeBloemOrganizationError(w, r, err)
 		return
 	}
-	item, err := h.invitations.CreateForOrganization(r.Context(), tenant.OrganizationID, models.CreateInvitationInput{Email: parsed.Address, Role: "user", AccessGroupID: request.AccessGroupID, LibraryIDs: request.LibraryIDs, CreateProfile: createProfile, ShowTour: showTour, Note: strings.TrimSpace(request.Note), InvitedBy: int64(tenant.AccountID), ExpiresAt: time.Now().Add(invitations.DefaultTTL)}, tokenHash)
+	item, err := h.invitations.CreateForOrganization(r.Context(), tenant.OrganizationID, models.CreateInvitationInput{Email: email, Delivery: models.InvitationDeliveryLink, Role: "user", AccessGroupID: request.AccessGroupID, LibraryIDs: request.LibraryIDs, CreateProfile: createProfile, ShowTour: showTour, Note: strings.TrimSpace(request.Note), InvitedBy: int64(tenant.AccountID), ExpiresAt: time.Now().Add(invitations.DefaultTTL)}, tokenHash)
 	if err != nil {
 		writeBloemOrganizationError(w, r, err)
 		return
@@ -331,6 +331,32 @@ func (h *BloemAdminOrganizationHandler) HandleCreateInvitation(w http.ResponseWr
 		Invitation any    `json:"invitation"`
 		ClaimToken string `json:"claim_token"`
 	}{bloemV2.Invitation(item), token})
+}
+
+// bloemOrganizationInvitationAddress applies Silo's delivery choice (#1788) to
+// an organization invitation, which is never emailed. delivery=link creates a
+// link with no address, which the invitee enters at accept; omitted keeps the
+// link bound to email for the administrator to deliver, as Silo does when
+// email is not configured. Silo's delivery=email has no sender here.
+func bloemOrganizationInvitationAddress(w http.ResponseWriter, delivery, email string) (string, bool) {
+	switch invitations.Delivery(delivery) {
+	case invitations.DeliveryLink:
+		if email != "" {
+			writeAdminValidation(w, map[string]string{"email": "must be omitted for a link invitation; the invitee enters one"})
+			return "", false
+		}
+		return "", true
+	case invitations.DeliveryDefault:
+		parsed, err := netmail.ParseAddress(strings.TrimSpace(email))
+		if err != nil || parsed.Address != strings.TrimSpace(email) {
+			writeAdminValidation(w, map[string]string{"email": "must be a valid email address"})
+			return "", false
+		}
+		return parsed.Address, true
+	default:
+		writeAdminValidation(w, map[string]string{"delivery": "must be link or omitted; organization invitations are never emailed"})
+		return "", false
+	}
 }
 
 // invitationAccessIsTheOrganizations refuses an access group or library the

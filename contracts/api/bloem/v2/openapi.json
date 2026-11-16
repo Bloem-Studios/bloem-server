@@ -5013,7 +5013,15 @@
             "description": "Defaults to true.",
             "type": "boolean"
           },
+          "delivery": {
+            "description": "Silo's delivery field. link: create a link to share, with no address; the invitee enters their email at accept. Omitted: the link is bound to email. Nothing is emailed either way, so Silo's email value is refused. Advertised by organization_invitation_links_v1.",
+            "enum": [
+              "link"
+            ],
+            "type": "string"
+          },
           "email": {
+            "description": "Required unless delivery is link, which forbids it. Becomes the invitee's sign-in username.",
             "type": "string"
           },
           "expected_revision": {
@@ -5040,7 +5048,6 @@
           }
         },
         "required": [
-          "email",
           "expected_revision"
         ],
         "type": "object"
@@ -15452,7 +15459,7 @@
         ]
       },
       "post": {
-        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Creates role=user only; default expiry is seven days. A pending invitation for the same address in this organization is revoked. Returns claim_token once; this operation does not send email or return a claim URL. Do not automatically retry creation.",
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Creates role=user only; default expiry is seven days. A pending invitation for the same address in this organization is revoked. Returns claim_token once; this operation does not send email or return a claim URL. Clients build the claim link with the token in the address fragment (/invite#\u003cclaim_token\u003e) so it never reaches a server log. delivery=link creates an invitation with an empty email and delivery link, which the invitee completes with their address; it supersedes no other invitation. Every invitation this route creates records delivery link. Do not automatically retry creation.",
         "operationId": "createBloemOrganizationInvitation",
         "requestBody": {
           "content": {
@@ -15523,7 +15530,7 @@
                 }
               }
             },
-            "description": "validation_failed: expected_revision is not positive, email is not a bare email address, access_group_id is not one of this organization's groups, or library_ids lists a library the organization neither owns nor is entitled to."
+            "description": "validation_failed: expected_revision is not positive, delivery is neither link nor omitted, email is given with delivery=link or is not a bare email address otherwise, access_group_id is not one of this organization's groups, or library_ids lists a library the organization neither owns nor is entitled to."
           },
           "503": {
             "content": {
@@ -15663,7 +15670,7 @@
     },
     "/api/bloem/v2/admin/organization/invitations/{id}/resend": {
       "post": {
-        "description": "Requires an organization-scoped administrative-context token matching the resolved account, organization and membership. The originating session, current authority and policy/security revisions are revalidated on each request. No organization path or header can broaden this scope. A JSON body containing expected_revision is required, including on DELETE. It must match the resolved organization's policy revision. Only role=user invitations that have not been accepted or revoked can be renewed; expired invitations remain eligible. Rotation invalidates the previous token and renews expiry for seven days. This endpoint returns claim_token, not claim_url or email_sent, and does not send email. The token is disclosed once and only its hash is stored. Do not automatically retry: a second successful call rotates the link again.",
+        "description": "Requires an organization-scoped administrative-context token matching the resolved account, organization and membership. The originating session, current authority and policy/security revisions are revalidated on each request. No organization path or header can broaden this scope. A JSON body containing expected_revision is required, including on DELETE. It must match the resolved organization's policy revision. Only role=user invitations that have not been accepted or revoked can be renewed; expired invitations remain eligible. Rotation invalidates the previous token and renews expiry for seven days. A link invitation (empty email) stays a link invitation, and the replacement records delivery link. This endpoint returns claim_token, not claim_url or email_sent, and does not send email. The token is disclosed once and only its hash is stored. Do not automatically retry: a second successful call rotates the link again.",
         "operationId": "resendBloemOrganizationInvitation",
         "parameters": [
           {
