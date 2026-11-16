@@ -1,11 +1,7 @@
 # How ebook requests work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. The ebook request lane is a Bloem addition: Silo's request
-> service covers movies and series through TMDB, and Bloem's book lanes sit beside
-> it. No deployment record under `docs/operations/` mentions an ebook request
-> acquisition in production. The technical rules are in the
-> [For developers](#for-developers) section.
+The ebook request lane is a Bloem addition: Silo's request service covers movies and series through TMDB, and
+Bloem's book lanes sit beside it. The technical rules are in the [For developers](#for-developers) section.
 
 A viewer in the default organization can ask for an ebook by its ISBN, and Bloem
 can have Bookwarehouse supply it. This page walks through who can ask, how a
@@ -240,15 +236,6 @@ administrative. `ebook_requests_direct_profile_v1` is advertised alongside
 `ebook_requests_v1`, so a client can tell this admission from an older server's
 403. Jellyfin and Audiobookshelf do not expose this Bloem request API. Automatic
 audiobook acquisition uses its own lane.
-
-### History
-
-Ebook admission arrived in `285e83c8b` (2026-10-10), fulfillment and the shared
-book queue in `fb87eb439` (2026-10-11), and the direct-profile and
-connection-test changes on 2026-10-14 (`70401bd26`, `49834d9f3`, `2cc1fc6c0`,
-`690a939ff`, `86438443b`, `c3523bb5f`). `c60b7008e` (2026-10-26) moved account
-policy back onto Silo's `users` table and replaced the membership-policy phases
-with a single Silo switching flag, which changed the setup exception above.
 
 Technical pages:
 

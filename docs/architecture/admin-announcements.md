@@ -1,12 +1,7 @@
 # How announcements work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against
-> `main` at `b6039036d`, checked again on 2026-11-11, after Silo retired its v1 API, and
-> on 2026-11-16 at the Silo merge `c1c7de503`, which moved the inbox rows.
-> Announcements are a Bloem addition: Silo has the
-> notification inbox but no way to write a message to it. This page explains them in
-> plain language; the technical rules are in the [For developers](#for-developers)
-> section.
+Announcements are a Bloem addition: Silo has the notification inbox but no way to write a message to it. This page
+explains them in plain language; the technical rules are in the [For developers](#for-developers) section.
 
 An **announcement** is a message a platform administrator sends to viewers' inboxes:
 a planned outage, new films, a change to the service. This page walks through how one
@@ -99,22 +94,6 @@ every inbox by itself.
   on 2026-11-11; [Bloem's retired v1 routes](../bloem/api/v1-routes.md#announcements)
   records them.
 
-### History
-
-The admin API (`GET`/`POST /admin/notifications/announcements` and `DELETE …/{id}` on
-Silo's v1 API) and the alert body rules in `internal/notifications/alert_body.go`
-came first, in `06285608c` (2026-09-01), as "S-1" of Bloem's September client
-engagement spec. That spec was removed on 2026-11-01; its rules still in force are on
-this page.
-Those routes were mounted by `mountBloemLegacyAdminV1` in
-`internal/api/router_bloem_wiring.go` until Silo retired its v1 API on 2026-11-11. This page and the web authoring screen were
-added in `f66a6ee3b` (2026-09-05). In `03f658ba9` (2026-09-23) the navigation and
-search entries moved into `web/src/lib/bloemAdminNavigation.ts`
-(`withBloemSettingsNavigation`, `withBloemAdminSettings`), so Silo's settings layout
-(`web/src/pages/admin-settings/AdminSettingsLayout.tsx`) needs only a small, ledgered
-edit. On 2026-10-31 (`3eb77be33`) the storefront and the settings page moved to the
-native platform routes; see [leaving Silo's v1 API](bloem-leaving-silo-v1.md).
-
 ### Routes and authority
 
 - The native routes are mounted by `mountBloemPlatformStorefront`
@@ -198,9 +177,7 @@ native platform routes; see [leaving Silo's v1 API](bloem-leaving-silo-v1.md).
   call `web/src/bloem/notifications/` (`AnnouncementDetails`, `AnnouncementPoster`).
   An announcement is never folded into a series group: only `episode.available` rows
   group. Read status is separate from banner dismissal. The inbox is Silo's
-  ([notifications](notifications.md)); Silo moved its rows out of
-  `web/src/pages/Notifications.tsx` in #4383, and the seam moved with them in the
-  merge `c1c7de503` (2026-11-16).
+  ([notifications](notifications.md));
 
 ### Storage
 

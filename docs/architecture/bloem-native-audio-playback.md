@@ -1,14 +1,10 @@
 # How stored audiobooks play
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, and updated on 2026-11-15 for Silo's provider-match rule in
-> the merge `8e1d391d7`. Native audiobooks are a Bloem addition, part of
-> [native storage](bloem-native-storage.md): audiobooks kept in a storage source,
-> such as an S3 bucket or Bookwarehouse, scanned through a storage plugin and
-> played without a path on the server. They build on Silo's catalog, multi-part
-> audiobook presentations and [playback protocol v3](playback-protocol-v3.md)
-> sessions. No production acceptance of storage-source audiobooks is recorded. The
-> technical rules are in the [For developers](#for-developers) section.
+Native audiobooks are a Bloem addition, part of [native storage](bloem-native-storage.md): audiobooks kept in a
+storage source, such as an S3 bucket or Bookwarehouse, scanned through a storage plugin and played without a path on
+the server. They build on Silo's catalog, multi-part audiobook presentations and
+[playback protocol v3](playback-protocol-v3.md) sessions. Storage-source audiobooks have had no acceptance run
+against a live backend. The technical rules are in the [For developers](#for-developers) section.
 
 This page covers how a folder of audio tracks in a storage source becomes one
 audiobook, what happens when a track cannot be read or goes missing, and how the
@@ -152,7 +148,7 @@ catalog pending, instead of rejecting every book. A probe failure that stops a
 scan logs the causes beneath the error.
 
 A storage scan that fails resumes its journal where it stopped
-(`StorageScanner.SetRetry`; production allows five failures in a row, pausing
+(`StorageScanner.SetRetry`; the scanner allows five failures in a row, pausing
 30 seconds longer after each). An attempt that ran for five minutes resets the
 count.
 
@@ -176,9 +172,8 @@ of location and directory identity. Native canonical and observed roots stay
 empty. Metadata publication respects locked fields, present local files and
 present files in another library. Bloem's own ownership check decides when storage
 metadata applies, so publication calls Silo's `applyBookToMediaItem` with
-`providerMatched` false: Silo's provider-match rule (Silo `931517fac`) counts any
-provider ID other than an ASIN, which would include the ISBN this path records
-(merge `8e1d391d7`). Joining native files add membership and
+`providerMatched` false: Silo's provider-match rule counts any
+provider ID other than an ASIN, which would include the ISBN this path records. Joining native files add membership and
 presentation rows without overwriting the existing owner's metadata. ISBN and
 ASIN identity locks converge concurrent publications; audiobook provider IDs
 remain distinct from ebook IDs.
@@ -221,8 +216,7 @@ and conditional replies still require fresh publication and viewer authority.
 ### Compatibility and limits
 
 Native content remains behind current host publication and playback authority.
-Silo's Jellyfin and Audiobookshelf servers run again since `2393c41ee`
-(2026-10-18; see [protocol compatibility](bloem-compatibility-removal.md)). Bloem
+Silo's Jellyfin and Audiobookshelf servers run again (see [protocol compatibility](bloem-compatibility-removal.md)). Bloem
 hides native-storage files (catalog paths starting `bloem-storage:`) from the
 Jellyfin handlers that need an operating-system file name
 (`bloemGuardNativeStorageFiles` in `cmd/silo/bloem_compat.go`). No native-file
@@ -245,16 +239,6 @@ audiobook; that is a separate follow-up.
 - `20261028152000_bloem_storage_carried_directories.sql`: the `carried` listing mode.
 - `20261028172627_bloem_storage_audio_unavailable_tracks.sql`: the `unavailable`
   track status.
-
-### History
-
-Publication arrived in `d5d02a00e` and ingest and direct playback in `8b8943320`
-(both 2026-10-12). Silo's Jellyfin and Audiobookshelf servers were restored on
-2026-10-18 (`2393c41ee`). On 2026-10-28 kept probes (`741e94ba0`), incremental
-listings of changed books (`3663a8d27`), parallel directories (`f045f1808`),
-1 MiB probe reads (`2538b6e41`), publishing from listed metadata (`72b346443`),
-rejecting only the unreadable track's book (`268975631`) and up to 10,000
-chapters (`396dd92e9`) followed.
 
 ### Related pages
 

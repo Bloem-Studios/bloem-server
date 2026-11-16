@@ -1,11 +1,8 @@
 # How organization domains and branding work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-06
-> and checked against `main` at `56a71e430`. Organization domains and branding are a Bloem addition:
-> Silo has one name, one look and one public address per server. This page explains
-> them in plain language; the technical rules are in the
-> [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+Organization domains and branding are a Bloem addition: Silo has one name, one look and one public address per
+server. This page explains them in plain language; the technical rules are in the
+[For developers](#for-developers) section.
 
 One Bloem server can look like several services. Each organization can have web
 addresses of its own, with its own name, logo and colours, and its emails link to
@@ -36,8 +33,7 @@ and people, whichever address it uses.
 
 **The default organization** uses the server's own branding, the one an
 administrator edits in the server's branding settings. Its addresses show that
-branding. In production on 2026-11-01, the default organization is the only one, and
-the server's public address is registered as its primary domain.
+branding. A server with only the default organization can register its public address as that organization's primary domain.
 
 **Another organization never shows the server's brand.** A branding value it has not
 set falls back to Bloem's built-in default, not to the server's name or logo.
@@ -106,7 +102,7 @@ and any address no organization registered, keep using the server's public addre
 
 ## Example: a club gets its own address
 
-This example is made up. On 2026-11-01 production had only the default organization.
+This example is made up.
 
 Riverside Club resells Bloem to its members. A platform administrator registers
 `watch.riverside.example` (the first, so it becomes primary) and
@@ -118,8 +114,7 @@ and its blue accent colour.
 - The member's invitation email links to `watch.riverside.example`.
 - A Harbour Hotel guest who tries to sign in there is told to sign in at Harbour
   Hotel's own address.
-- The server's public address is registered to the default organization, as in
-  production, so a member who signs in there is told to sign in at
+- The server's public address is registered to the default organization, so a member who signs in there is told to sign in at
   `watch.riverside.example`.
 - What members can watch does not change: it is still the club's libraries, on the
   club's plan.

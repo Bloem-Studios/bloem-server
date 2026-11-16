@@ -2,18 +2,14 @@
 
 > **Dormant since 2026-11-11.** Remote control's routes (`/admin/remote/...`, the
 > household command route and `PUT /devices/{id}/remote-control`) lived only on Silo's
-> alpha v1 API, which Silo retired (Silo #3200, merged into Bloem in
-> `26cf9b3e4`). It is parked: the HTTP handler went with the routes, no remote
+> alpha v1 API, which Silo retired (Silo #3200). It is parked: the HTTP handler went with the routes, no remote
 > observer is wired, and the notification capability reports `remote_control` as off.
 > The service, its store and the playback hooks stay, and it comes back with native
 > routes under `/api/bloem/v2`. The rest of this page describes how it worked.
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, checked against
-> `main` at `b6039036d` and checked again on 2026-11-11, when its routes were retired.
-> Remote control is a Bloem addition: Silo's playback connection
-> carries the commands, and Bloem adds who may send them, the app's list of accepted
-> commands, and the record of each one. This page explains it in plain language; the
-> invariants are in the [For developers](#for-developers) section.
+Remote control is a Bloem addition: Silo's playback connection carries the commands, and Bloem adds who may send
+them, the app's list of accepted commands, and the record of each one. This page explains it in plain language;
+the invariants are in the [For developers](#for-developers) section.
 
 **Remote control** lets an administrator, or a household's main profile, control an
 app that is playing something: pause it, seek, stop it, change the volume or the audio
@@ -102,21 +98,11 @@ that cap, and keeps it until the session ends.
   (`admin`, `household`) was part of the v1 notification capability and went with it;
   Silo's `GET /api/v2/notifications/capabilities` has no such block.
 
-### History
+`internal/remote` and `remote_control.go` are Bloem's; Silo's playback control socket (`session_ws.go`, a ledgered seam
+in `contracts/seams.txt`) carries the commands. The hello filter is in
+`internal/api/handlers/bloem_session_ws_ext.go`.
 
-Remote control is "S-5a" in Bloem's September 2026 plan series: first commit
-`e1efec046` (2026-09-02), review round `9f299bf86` the same day, and the first version
-of this page in `3136d0848` (2026-09-02). `internal/remote` and `remote_control.go` are
-Bloem's; Silo's playback control socket (`session_ws.go`, a ledgered seam in
-`contracts/seams.txt`) carries the commands. `5ee7e9455` (2026-09-23) moved Bloem's
-in-body edits of Silo handlers into hooks, including the hello filter in
-`internal/api/handlers/bloem_session_ws_ext.go`. The September working spec
-(`docs/specs/admin-remote-control.md`) was removed on 2026-11-01; every rule still in
-force is on this page. Migration `20260901200034_remote_commands.sql` still names it
-in its header comment, which stays as written because applied migrations are not
-edited.
-
-The device rail ("S-5b": queued device commands such as `play_media` and `sign_out`) is
+The device rail (queued device commands such as `play_media` and `sign_out`) is
 not implemented; a device may already advertise its command names.
 
 ### Wiring
