@@ -5,11 +5,11 @@ upstream feature history remain separate from Bloem's application commits.
 
 ## November 16, 2026 — Silo batches twice a day; retried database pins
 
-The merge bot starts a Silo batch twice a day, at 04:00 and 16:00 Amsterdam time,
-instead of whenever Silo has been quiet for 10 minutes. Production moves once a day,
-so merging more often reached users no sooner. A batch's thread now ends at the push:
-the bot itself waits for Bloem CI, reruns a failed run once, and sends the merged
-message, or stops the batch for the owner when CI stays red.
+The merge bot starts a Silo batch twice a day instead of whenever Silo has been quiet
+for 10 minutes. Releases go out once a day, so merging more often reached users no
+sooner. A batch's working session now ends at the push: the bot itself waits for
+Bloem CI, reruns a failed run once, and sends the merged message, or stops the batch
+for a maintainer when CI stays red.
 
 Bloem CI's Go database pins job now retries the pins listed in
 `scripts/ci/bloem-retried-tests.txt`, as the Go test shards already did: Silo's two
@@ -310,8 +310,7 @@ seams (`internal/catalog/search_meilisearch_provider.go`,
 `internal/catalog/search_provider.go`, `web/src/pages/admin-settings/SearchSettings.tsx`),
 to drop when Silo accepts `frequency`; the ledger goes from 330 to 333. Production
 switched to `frequency` with a 3,000 ms query timeout
-([How search finds titles by words and by meaning](../architecture/bloem-search-and-embeddings.md),
-[receipt](../operations/2026-11-10-search-and-embeddings-deployment.md)).
+([How search finds titles by words and by meaning](../architecture/bloem-search-and-embeddings.md)).
 
 ## November 10, 2026 — gemini-embedding-2 gets task labels
 
@@ -326,8 +325,7 @@ so items embedded before the change are embedded again. Two new temporary seams
 (`internal/recommendations/embeddings/client.go` and
 `internal/recommendations/search_query_vector.go`), to drop when Silo carries the
 labels; the ledger goes from 328 to 330
-([overlay on Silo's recommendations page](overlays/architecture/recommendations.md),
-[receipt](../operations/2026-11-10-search-and-embeddings-deployment.md)).
+([overlay on Silo's recommendations page](overlays/architecture/recommendations.md)).
 
 ## November 6, 2026 — restores never give more access than the backup
 
@@ -404,9 +402,7 @@ character errors on the same excerpts fell from 13.3% to 6.5%.
 The merge bot no longer runs the full local gate on a batch. It runs the fast local
 checks: the build, the contract and verify checks, changed-line lint, the scenario
 executor and the scenario catalog tests. Bloem CI runs the full suite on the pushed
-commit, and the deploy refuses any commit Bloem CI has not passed. The operator can
-override that by hand, as happened once, for `c5a2b43f3`
-([receipt](../operations/2026-11-02-silo-sync-56e6f871c-deployment.md)). A batch now
+commit, and the deploy refuses any commit Bloem CI has not passed. A batch now
 starts once Silo has been quiet for 10 minutes instead of 30. Developers still run the
 whole gate by hand with `scripts/bloem/local-gate.py`.
 
@@ -450,14 +446,13 @@ left out of counts (#3383).
 
 ## November 2, 2026 — Silo batches come in through the merge bot
 
-A merge bot on Bloem's build machine now takes each Silo batch: a free check every 10
+A merge bot now takes each Silo batch: a free check every 10
 minutes starts one when Silo has been quiet for 30 minutes, one batch at a time, each in
-its own T3 thread. It merges with Silo winning, runs the review list
+its own working session. It merges with Silo winning, runs the review list
 (`scripts/bloem/silo-merge-review.py`) and the full local gate
 (`scripts/bloem/local-gate.py`), pushes to `main`, waits for Bloem CI on that commit,
-deploys it, writes the receipt and sends one message. It stops in its thread, and blocks
-the next batch, when it cannot go on. Its configuration lives in Bloem's private
-infrastructure repository; the GitHub sync stays off behind `BLOEM_UPSTREAM_SYNC`.
+deploys it and sends one message. It stops, and blocks the next batch, when it cannot
+go on. The GitHub sync stays off behind `BLOEM_UPSTREAM_SYNC`.
 
 - **Pages.** [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md),
   [How Bloem CI works](ci.md#the-merge-bot), [FORK.md](../../FORK.md#taking-upstream-changes)
@@ -493,7 +488,7 @@ rule for new and changed pages.
 - **Scope.** 86 Bloem pages: the architecture pages, the guides, the Docker
   installation guide, the operations runbooks, the overlays on Silo documents,
   `FORK.md`, the CI and documentation-workflow pages and the native API reference.
-  Silo's own files, dated receipts and historical records are unchanged.
+  Silo's own files are unchanged.
 - **Pictures.** 93 new pictures, one drawing module per page in
   `scripts/bloem/pictures/`. `scripts/bloem/draw-pictures.py` now finds the modules
   itself, so adding a page's pictures needs no other edit.
@@ -530,7 +525,7 @@ Each organization can have its own domains, name, logo and colours
 - **Authentik.** A web sign-in through the provider stays on the organization domain it
   started on, and a provider sign-out returns to that domain's login page. Each domain's
   callbacks and `/login` must be registered with the provider. This adds one
-  seam, `internal/auth/oauth_handler.go` (303 to 304), approved by the owner.
+  seam, `internal/auth/oauth_handler.go` (303 to 304).
 - **Seasonal packs.** The web app's signed-out seasonal layer reads
   `GET /api/bloem/v1/ambience/public` instead of Silo's `/api/v1/theme/branding`, so the
   web app calls none of Silo's `/api/v1`.
@@ -615,8 +610,7 @@ Bloem, and following Silo; the native API generated by topic (`docs/bloem/api/`,
 There were no conflicts. The client DTOs and contract digest are regenerated for
 the additive series-status fields. One Silo migration,
 `20261031021616_allow_roku_client_diagnostic_reports`, widens a check
-constraint. Production has run `4edbee99d` since 20:25 UTC
-([receipt](../operations/2026-10-31-silo-sync-32a2f63e1-deployment.md)).
+constraint. Production has run `4edbee99d` since 20:25 UTC.
 
 ## October 31, 2026 — Silo's session-revoked hook keeps Silo's type
 
@@ -689,8 +683,7 @@ A documentation refresh.
 `4c3f4f56b` merges the four Silo commits after `07c05cad6`, through
 `288f58200` (2026-10-31 17:35 UTC). Silo wins every conflict, and the seam
 ledger stays at 305. There are no migrations. Production has run `29c23fc2c`
-since 18:18 UTC
-([receipt](../operations/2026-10-31-silo-sync-288f58200-deployment.md)).
+since 18:18 UTC.
 
 - **Passwords.** A password change can sign out the account's other devices
   (#2925). The v2 password capability gains `sign_out_other_sessions`.
@@ -751,8 +744,7 @@ There are seven migrations, all from Silo:
 - `20261031032133_enable_pg_stat_statements`
 
 Production applied them online, beside the running server, in 126 seconds. The
-restart that followed took 52 seconds
-([receipt](../operations/2026-10-31-silo-sync-deployment.md)).
+restart that followed took 52 seconds.
 
 Conflicts kept Silo's lines:
 
@@ -770,8 +762,7 @@ Silo's new admin wire types join the client coverage allowlist.
 ## October 30, 2026 — Upgrade prompt and new arrivals
 
 Both serve a storefront's sales tools, and both stay off until a storefront
-turns them on. Production has run `b99aa105c` since 19:49 UTC
-([receipt](../operations/2026-10-30-upgrade-prompt-new-arrivals-deployment.md)).
+turns them on. Production has run `b99aa105c` since 19:49 UTC.
 
 - **`c0d629550`: the upgrade prompt.**
   - When a stream is refused because the account's plan is already playing on
@@ -790,8 +781,7 @@ turns them on. Production has run `b99aa105c` since 19:49 UTC
 ## October 30, 2026 — Guided S3 setup and all-bucket sources
 
 `38d233cf0`..`8f4ba105c` change the web admin only, together with S3 storage
-plugin 0.4.0. Production has run `8f4ba105c` since 15:17 UTC
-([receipt](../operations/2026-10-30-s3-all-buckets-deployment.md)).
+plugin 0.4.0. Production has run `8f4ba105c` since 15:17 UTC.
 
 - **Guided setup.** Adding an S3 source starts with the provider: Backblaze B2,
   Wasabi, Cloudflare R2, Amazon S3, DigitalOcean Spaces, Hetzner or Other.
@@ -806,8 +796,7 @@ plugin 0.4.0. Production has run `8f4ba105c` since 15:17 UTC
 `6314dcd0a` adds `GET /api/bloem/v1/admin/platform/library-figures`. It reads
 every library's movies, series, episodes, audiobooks and ebooks in one
 snapshot, for a storefront's selling pages. `6d6fbf1b5` lists its response types
-in the client coverage allowlist. Production has run `6d6fbf1b5` since 15:15 UTC
-([receipt](../operations/2026-10-29-silo-sync-free-play-deployment.md#library-figures-6d6fbf1b5)).
+in the client coverage allowlist. Production has run `6d6fbf1b5` since 15:15 UTC.
 
 ## October 29, 2026 — AI subtitles from word-only and Chinese or Japanese speech-to-text
 
@@ -821,8 +810,7 @@ in the client coverage allowlist. Production has run `6d6fbf1b5` since 15:15 UTC
 
 `b2b64eff1` keeps the tests in Bloem-owned files. The two Silo files these fixes
 change join the seam ledger as upstream PR candidates, taking it from 304 to
-306. Production has run `09dab0097` since 12:16 UTC
-([receipt](../operations/2026-10-29-silo-sync-free-play-deployment.md#ai-subtitles-09dab0097)).
+306. Production has run `09dab0097` since 12:16 UTC.
 
 ## October 29, 2026 — Library preview free play
 
@@ -833,8 +821,7 @@ the storefront turns it on. Migration `20261028222252_bloem_preview_free_play`
 adds its settings and tables
 ([browse-only content policy](../architecture/bloem-browse-only-content-policy.md)).
 `af8a3781b` pins Silo's two new API key scopes in the scenario scope catalog.
-Production has run it since 07:48 UTC on October 29
-([receipt](../operations/2026-10-29-silo-sync-free-play-deployment.md)).
+Production has run it since 07:48 UTC on October 29.
 
 ## October 29, 2026 — Silo integration through cc8514943
 
@@ -1126,14 +1113,12 @@ three forward-only migrations applied offline: Silo's
 `20261026170000_bloem_cohort_coherence_ignores_deleted_libraries`. At 07:55 UTC
 it moved to `276becf4a`, which changes only the web admin console and tests, with
 no migrations. The PostgreSQL tuner had sized the database's CPU-based settings
-for the application container's 32 CPUs instead of the database container's 12;
-that was corrected first, and at 08:28 UTC auto-tuning was turned off
-(`POSTGRES_TUNE=off`), because Bloem's database runs separately from the server
-and the [Docker guide](overlays/wiki/deployment/docker.md#external-postgresql)
+for the application's CPUs instead of the database's; that was corrected first, and
+at 08:28 UTC auto-tuning was turned off (`POSTGRES_TUNE=off`), because Bloem's
+database runs separately from the server and the [Docker guide](overlays/wiki/deployment/docker.md#external-postgresql)
 advises tuning off for an external database. The tuned values stay in the
 database's `postgresql.auto.conf`. This is deployment evidence, not native-client
-or playback acceptance; see the
-[October 27 receipt](../operations/2026-10-27-main-deployment.md).
+or playback acceptance.
 
 ## October 27, 2026 — An admin context refused before its first render recovers
 
@@ -1622,8 +1607,7 @@ method-dispatch regressions.
 
 The [documentation workflow](documentation-workflow.md) records the reviewed
 Silo manual structure and Bloem's adaptation: developer invariants, API references,
-task-based operator/viewer guides, generated contracts and dated deployment
-records. This documentation refresh neither publishes a manual site nor deploys
+task-based operator/viewer guides and generated contracts. This documentation refresh neither publishes a manual site nor deploys
 a server or adopts contracts into a native client release.
 
 ## October 14, 2026
@@ -1706,8 +1690,8 @@ Go/web builds, focused tests, real disposable-database regressions and uncapped
 changed-line lint passed within their recorded scopes. Migration completion,
 health/readiness, web assets and administrative refusals were checked on the
 exact running binary. No database backup was taken for this explicitly approved
-rollout. [Deployment evidence and limits](../operations/2026-10-07-native-storage-deployment.md)
-remain distinct from production provider and native-client acceptance.
+rollout. Deployment evidence remains distinct from production provider and
+native-client acceptance.
 
 Bloem plugin SDK `v0.24.0` is published with the Silo `v0.23.0` public protocols
 and Bloem storage service retained. Native OpenAPI now documents all 32 storage
@@ -1730,8 +1714,7 @@ and inventory-hook costs. Existing revision semantics, DTOs and mandatory tenant
 authority are preserved. This is owned host-module extraction, not optional
 multi-tenant enforcement or SDK catalog packaging.
 The combined cutover is deployed at `d55ebd6d` with passing health, contract,
-protected-denial, branding and worker checks. See the
-[merge-reduction verification record](../operations/2026-10-05-merge-reduction.md).
+protected-denial, branding and worker checks.
 
 A subsequent merge-reduction pass restores six upstream files byte-for-byte,
 reducing declared seams from 396 to 390. Trusted playback tenant facts move to
@@ -1747,8 +1730,7 @@ Promotions and ambience evaluation move into bundled local plugin workers with
 host-owned authority and storage. Shared sections use generic extension hooks;
 API projections and existing records are retained without a migration. This is
 local worker extraction, with catalog SDK integration deferred. The seam count
-remains 396, and IPTV/Xtream extraction remains shelved. See the
-[cutover verification record](../operations/2026-10-05-presentation-plugin-cutover.md).
+remains 396, and IPTV/Xtream extraction remains shelved.
 
 The upstream merge imports Silo `1555e5214` (build 1116), including network
 identity sign-in, subtitle synchronization, download preparation controls,
@@ -1757,9 +1739,8 @@ fixes. Bloem retains membership/profile policy and public compatibility behavior
 The seam ledger stays at 396 paths; deployment samples and compatibility
 constants move to owned files to offset necessary integration adjustments.
 
-The [verification record](../operations/2026-10-05-upstream-integration.md)
-distinguishes passing build/contract/fixture checks from inherited full-suite
-failures and native feature-adoption follow-ups.
+The verification distinguished passing build/contract/fixture checks from inherited
+full-suite failures and native feature-adoption follow-ups.
 
 ## October 2, 2026
 
@@ -1770,8 +1751,7 @@ adapters for membership-aware account transactions, current policy reads, initia
 owner recovery, invitation admission, Live TV permissions, and email branding.
 
 Generated client DTOs, settings bindings, OpenAPI, and fixtures are refreshed.
-The [integration verification record](../operations/2026-10-02-upstream-integration.md)
-records passing checks and the remaining full-suite limitations.
+The verification recorded passing checks and the remaining full-suite limitations.
 
 ## September 30, 2026
 
@@ -1806,9 +1786,7 @@ Other failures are returned without that consistency retry.
   separate from upstream validation rules.
 
 See [integration adapters](../architecture/bloem-upstream-adapters.md) for the
-implementation boundary and [deployment and validation](../operations/2026-09-30-upstream-deployment.md)
-for the exact running revision, migration correction, passed checks, and open
-contract/scenario/UI validation work.
+implementation boundary.
 
 The later documentation refresh updates the GitHub README, contributor and
 operator guides, API overlays, historical checkpoints, and links after upstream
