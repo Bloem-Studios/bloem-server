@@ -1,12 +1,6 @@
 # Bloem overlay: Library diagnostics API
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`; the deletion rule
-> was updated on 2026-11-10. It lists what Bloem
-> adds to Silo's [`docs/libraries-api.md`](../../libraries-api.md), which stays
-> exactly as Silo wrote it. Bloem replaces nothing there. The additions are in the
-> [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+This overlay covers Silo's [`docs/libraries-api.md`](../../libraries-api.md), which stays exactly as Silo wrote it.
 
 Silo's page explains the library routes that report and repair a library's
 contents. Bloem serves them unchanged and adds two rules that come from Bloem's own
@@ -34,20 +28,6 @@ features.
 | A bundle that includes a library | an `entitlement_bundle_members` row; joining is the `media_folders_join_starting_set` trigger, leaving is `ON DELETE CASCADE` (`20261110123408_bloem_library_starting_set.sql`) |
 
 ## For developers
-
-### Where this overlay came from
-
-`storage_source` on `createLibrary` dates from `6c27ec35c` (2026-10-07) and the
-deletion guard from `5436ed812` (2026-10-10). This overlay was created in the Silo
-merge `a2bc7219c` (2026-10-18) and updated in `96249b876` (2026-10-25). On 2026-11-10
-deletion stopped refusing libraries a bundle includes and new libraries started
-joining the starting set (`20261110123408`). It was
-reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at `e852f92bf`
-(`internal/api/handlers/libraries_service.go`). From `3e2d306b2` through
-`63ef34b23` Silo changed the document once, in `73a6ae6a3` (#3114, 2026-10-27),
-which keeps titles that are in no library out of administrator listings; that
-applies to Bloem unchanged, and both passages this overlay points at are
-unchanged.
 
 ### Section by section
 

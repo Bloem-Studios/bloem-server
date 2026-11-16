@@ -1,11 +1,6 @@
 # Bloem overlay: Cross-platform settings contract
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
-> adds to Silo's
-> [`docs/architecture/settings-contract.md`](../../../architecture/settings-contract.md),
-> which stays exactly as Silo wrote it. Bloem replaces nothing there. The addition
-> is in the [For developers](#for-developers) section.
+This overlay covers Silo's [`docs/architecture/settings-contract.md`](../../../architecture/settings-contract.md), which stays exactly as Silo wrote it.
 
 Every setting the server and its apps share is described once, in a **settings
 manifest**, and each app gets a generated file listing the setting names, a
@@ -35,22 +30,6 @@ checks that they match the manifest.
 | Copy to the apps | `SYNC_CLIENTS=1` or `make client-copies-settings` |
 
 ## For developers
-
-### Where this overlay came from
-
-Bloem began committing the Kotlin and Swift bindings, which its Android and Apple
-clients copy, and checking them for drift in `8331fe5c2` (2026-09-04). The
-paragraph moved out of the Silo file into this overlay in `47ea7c889`
-(2026-09-23). It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem
-`main` at `e852f92bf` (`Makefile`, `Makefile.bloem`, `contracts/settings/v1/`).
-Since this overlay was written (against Silo `8e5ae2f46`), Silo changed the
-document twice: `668a431b7` (#1740, 2026-10-02) adds a profile switch to turn off
-title art, and `1ca1ba5b3` (#2365, 2026-10-19) adds administrator defaults
-(`admin_default`, `defaults.<key>`, `config.AdminDefaults`) and the
-profile-ahead-of-device resolution order. Both apply to Bloem; for how
-administrator defaults behave with Bloem's organizations, see the
-[settings API overlay](../settings-api.md). Silo has not changed the document
-again through `63ef34b23`.
 
 ### Section by section
 

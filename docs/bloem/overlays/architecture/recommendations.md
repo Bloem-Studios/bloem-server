@@ -1,11 +1,6 @@
 # Bloem overlay: Recommendations
 
-> **Provenance and status.** Bloem page, written on 2026-11-10 and checked against `main`
-> at `7acd2c7e0`, which includes Silo through `df9f55019`. It lists what Bloem adds to
-> Silo's [`docs/architecture/recommendations.md`](../../../architecture/recommendations.md),
-> which stays exactly as Silo wrote it. Bloem replaces nothing; every other section of
-> Silo's page applies as written. The additions are in the
-> [For developers](#for-developers) section.
+This overlay covers Silo's [`docs/architecture/recommendations.md`](../../../architecture/recommendations.md), which stays exactly as Silo wrote it.
 
 Silo's page explains how every title gets an **embedding**, a list of numbers an AI model
 makes from the title's text, and how recommendations and search compare them. Bloem
@@ -35,14 +30,6 @@ words.
 | Embedding a search | `Client.EmbedQueries`, reached from `Engine.EmbedSearchQuery` through `embedSearchText` |
 
 ## For developers
-
-### Where this overlay came from
-
-Production moved from `gemini-embedding-001` to `gemini-embedding-2` on November 9, 2026
-([receipt](../../../operations/2026-11-10-search-and-embeddings-deployment.md)). A test
-on 6,432 titles showed the labels Google recommends lift search noticeably (mean
-reciprocal rank 0.774 to 0.923), so `9df39cadb` (November 10) added them. This overlay
-was written the same day. Silo's page is unchanged through `df9f55019`.
 
 ### Section by section
 

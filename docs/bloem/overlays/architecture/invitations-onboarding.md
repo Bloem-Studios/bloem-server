@@ -1,12 +1,6 @@
 # Bloem overlay: Invitations and server-driven onboarding
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
-> adds to or replaces in Silo's
-> [`docs/architecture/invitations-onboarding.md`](../../../architecture/invitations-onboarding.md),
-> which stays exactly as Silo wrote it. The section-by-section changes are in the
-> [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+This overlay covers Silo's [`docs/architecture/invitations-onboarding.md`](../../../architecture/invitations-onboarding.md), which stays exactly as Silo wrote it.
 
 Silo's page explains how an invitation becomes an account and how a new person is
 shown around the app. Everything there applies to Bloem: link invitations without
@@ -39,24 +33,6 @@ onboarding tour. Bloem changes only what organizations and profile sign-ins touc
 | A profile store that cannot join the transaction | `ErrTransactionalProfileUnavailable` |
 
 ## For developers
-
-### Where this overlay came from
-
-Bloem added organization-scoped invitations and the organization console's
-invitation routes in August 2026 (for example `463afb680`, 2026-08-13, which made
-the one-pending-invitation index per organization). Bloem's text moved out of the
-Silo file into this overlay in `47ea7c889` (2026-09-23).
-
-It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
-`e852f92bf` (`internal/invitations`, `internal/auth/bloem_account_provisioner.go`,
-`internal/api/handlers/bloem_admin_organization.go`). Since this overlay was
-written (against Silo `8e5ae2f46`), Silo changed the document twice:
-`be15e8b0e` (#1523, 2026-09-26) lets only the server Owner create or resend an
-`admin` invitation, and `4a0cff41f` (#1788, 2026-10-02) adds link invitations,
-which have no address until accept, and records delivery. Both apply to Bloem.
-The earlier edition of this overlay replaced whole Silo sections with
-September text that predated those changes; it now records only Bloem's real
-differences. Silo has not changed the document again through `63ef34b23`.
 
 ### Section by section
 

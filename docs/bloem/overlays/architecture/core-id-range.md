@@ -1,12 +1,6 @@
 # Bloem overlay: Core database ID ranges
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
-> adds to Silo's
-> [`docs/architecture/core-id-range.md`](../../../architecture/core-id-range.md),
-> which stays exactly as Silo wrote it. Bloem replaces nothing; Silo's “Schema audit”
-> and “Apply and rollback” apply as written. The additions are in the
-> [For developers](#for-developers) section.
+This overlay covers Silo's [`docs/architecture/core-id-range.md`](../../../architecture/core-id-range.md), which stays exactly as Silo wrote it.
 
 Every row in the database has a number that identifies it, and each kind of number
 has a size: a smaller one (32-bit) or a larger one (64-bit). Silo's page explains
@@ -35,26 +29,6 @@ invitation or a plan may use.
 | Sharing one database with Silo | Silo switching, `public.bloem_silo_switching` |
 
 ## For developers
-
-### Where this overlay came from
-
-A policy-library array lists the library IDs a policy grants. Silo has them on
-`users`, `access_groups` and `invitations`; Bloem adds its own on entitlement
-template and policy cohort revisions. Bloem has changed their integer width twice:
-
-- the September 19, 2026 deployment widened eight such arrays to `bigint[]`
-  (`20260919095615_bloem_policy_library_ids_bigint`);
-- the October 14 Silo integration aligned them back to Silo's 32-bit
-  `integer[]` (`20261014233826_bloem_silo_policy_alignment`).
-
-Since `c60b7008e` (2026-10-26) an account's policy lives on `users` again, where
-Silo keeps it. Bloem's per-membership policy columns, their phase table and
-rollback snapshots are gone (`20261026003000_bloem_account_policy_on_users`).
-This overlay was created in `47ea7c889` (2026-09-23) from Bloem's earlier edits
-to the Silo file. It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem
-`main` at `e852f92bf` (`migrations/sql/`), when it was updated for the October 26
-policy move and for the Audiobookshelf server Bloem runs again. Silo has not
-changed this document since Silo `ea3c10a7f`, through `63ef34b23`.
 
 ### Section by section
 
@@ -90,14 +64,11 @@ acceptance must use the pinned Silo source or image that the Bloem source
 actually includes. A wider historical schema alone does not show that either
 server can write it.
 
-#### Historical widening evidence
+#### Older wide arrays
 
-The September 19 deployment of `418a18b7d` applied
-`20260919095615_bloem_policy_library_ids_bigint`, widening eight policy arrays.
-Its [deployment record](../../../operations/2026-09-19-xtream-deployment.md#database-and-recovery-evidence)
-records the backup, restored-backup rehearsal, row hashes, bounds and trigger
-checks. Those facts remain historical evidence. They do not describe the current
-array width or authorize rerunning the old migration as an upgrade step.
+A September 2026 deployment widened eight policy arrays to `bigint[]`
+(`20260919095615_bloem_policy_library_ids_bigint`). That is history: it does not
+describe the current array width, and the old migration is not an upgrade step.
 
 #### Client and rollout boundary
 
@@ -107,8 +78,8 @@ semantics. A successful schema conversion is not device acceptance. Review the
 and [Silo switching](../../../architecture/silo-backend-switching.md) before
 rollout. For table-rewriting migrations, the operator is responsible for
 writer quiescence, copy space, pool recycling and recovery planning. Silo's
-Audiobookshelf-compatible server, which Bloem runs again since `2393c41ee`
-(2026-10-18), resolves library access through Silo's access filter like Silo's
+Audiobookshelf-compatible server, which Bloem runs again since October 2026,
+resolves library access through Silo's access filter like Silo's
 other surfaces.
 
 ### Related pages

@@ -1,11 +1,6 @@
 # Bloem overlay: Authentication API
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
-> and checked against `main` at `1430c3769`, which includes Silo through `cb4f45d0c`, and
-> checked again on 2026-11-11, after Silo retired its v1 API. It lists what Bloem
-> adds to or replaces in Silo's [`docs/auth-api.md`](../../auth-api.md), which stays
-> exactly as Silo wrote it. The section-by-section changes are in the
-> [For developers](#for-developers) section.
+This overlay covers Silo's [`docs/auth-api.md`](../../auth-api.md), which stays exactly as Silo wrote it.
 
 Silo's authentication page explains how people sign in, how passwords and login
 sessions work, and how the server protects them. Bloem signs people in the same
@@ -46,32 +41,6 @@ their own, and organizations.
 
 ## For developers
 
-### Where this overlay came from
-
-Bloem's direct-profile login (v1 `POST /auth/profile-login`, dormant since Silo
-retired its v1 API on 2026-11-11) has had a default-deny route allowlist since
-`16baf5558` (2026-08-14). Account creation also
-provisions an organization membership. Bloem first documented these in the Silo
-file in September 2026 and moved the text here in `47ea7c889` (2026-09-23).
-
-It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
-`e852f92bf` (`internal/api/handlers/bloem_auth_ext.go`,
-`bloem_profile_credentials.go`, `admin_tenant_members.go`,
-`bloem_admin_platform.go`, `internal/auth/account_provisioner.go`). That review
-rewrote the busy-refusal note, which had described Bloem's lifecycle-receipt
-handlers, removed in `b017bfe84` (2026-10-26), and the period before
-`bb92c4cfd` (2026-10-25), which put Bloem's own password hashing under Silo's
-admission limit.
-
-This rewrite added the organization-domain sections (organization domains landed
-from `b95a3dda9` through `59616c4af`, 2026-11-01) and the revoked-sign-in section
-(`25129bcbd`, 2026-11-01). From `3e2d306b2` through `63ef34b23` Silo changed
-`docs/auth-api.md` three times: `9b77105e5` (#3021, 2026-10-28) verifies the
-profile and acting admin on plugin routes; `5a205566a` (#3075, 2026-10-31) adds
-the hourly request quota per login session; and `7ee9615f2` (#2925, 2026-10-31)
-lets a v2 password change sign out the account's other devices. All three apply to
-Bloem as written, and none changes a passage this overlay points at.
-
 ### Section by section
 
 ---
@@ -101,7 +70,7 @@ account and organization, and the viewer resolver
 (`internal/api/bloem_org_session_revocation.go`) refuses a profile selection by a
 session created before it.
 
-Since `25129bcbd` (2026-11-01) that refusal ends the session and the viewer-access
+Since November 1, 2026 that refusal ends the session and the viewer-access
 gate answers `401 session_invalid` (`session_expired` on `/api/v2`), the answer of
 any ended session (`internal/api/middleware/bloem_viewer_session.go`). The
 session's refresh is then refused as revoked, which is the answer clients sign
@@ -118,7 +87,7 @@ direct-profile session is already bound to its profile and revision.
 busy to check a password”, after the paragraph beginning “The refusal is `503`
 with `Retry-After: 1`: v2 `dependency_unavailable`, v1 error code…”. **Bloem adds:**
 
-Since `bb92c4cfd` (2026-10-25), Bloem's own password hashing and checks run under
+Since October 25, 2026, Bloem's own password hashing and checks run under
 Silo's admission limit (`internal/auth/passwordhash`). The following answer a
 busy refusal with Silo's `503 service_unavailable` and `Retry-After`:
 
@@ -131,7 +100,7 @@ Two account-password re-checks also run under the limit, but any failure there,
 busy included, answers `503` without `Retry-After`: the check before a
 profile-credential write (`unavailable`) and the check before an organization
 ownership transfer (`tenant_unavailable`). Setup, signup and invitation
-acceptance run Silo's handlers unchanged since `b017bfe84` (2026-10-26), now on
+acceptance run Silo's handlers unchanged (since October 26, 2026), now on
 `/api/v2`. All of them answer as described above.
 
 ---
@@ -266,21 +235,19 @@ the existing direct-session allowlist is unchanged. See the
 [native contract](../../bloem-api-reference.md#embedded-web-workflow-adapters) for fields
 and errors. Account-device activation remains a separate sign-in protocol.
 
-#### September 30 upstream integration
+#### Password resets and account policy
 
 Upstream account password-reset links and temporary-password flows are described
 in [password resets](../../architecture/password-resets.md). The setup owner flag
 belongs to the account; it does not replace Bloem organization ownership or
-primary-profile authority. Account policy lives on `users`, as in Silo, since
-`c60b7008e` (2026-10-26); an organization membership only links the account to
+primary-profile authority. Account policy lives on `users`, as in Silo; an organization membership only links the account to
 its one organization. Bloem keeps its organization-scoped session revocation and
 carries those Silo account fields through its own service integration. See
-[adapter boundaries](../../architecture/bloem-upstream-adapters.md) and the
-[deployment record](../../operations/2026-09-30-upstream-deployment.md).
+[adapter boundaries](../../architecture/bloem-upstream-adapters.md).
 
-#### October 27 integration: tokens bound to their session's account
+#### Tokens bound to their session's account
 
-Silo `d8d053f75` (#3140), merged into Bloem in `68070f04b` (2026-10-27), binds a
+Silo (#3140) binds a
 token to its session's account: `ActiveSession` takes the account the
 credential names. Bloem's own session lookups pass that account too:
 the preview-aware `ActivePreviewSession` and `ActiveSessionAuthority`, the
@@ -290,10 +257,9 @@ plugin router, preview, tenant-admin and native-video paths keep Silo's
 binding. A direct-profile session still answers with the user role inside
 Silo's query.
 
-#### October 7 integration: credential checks and network identity
+#### Credential checks and network identity
 
-Bloem `c87b44545228c93f909275c0b5c4fc1d6a289e1b` includes Silo through
-`74158b4a8`. The upstream distinction between invalid credentials and an
+The upstream distinction between invalid credentials and an
 unavailable session store also applies to Bloem's direct-profile refresh
 adapter. A missing credential service or a store/transport failure while
 revalidating the current profile returns an unavailable error without revoking

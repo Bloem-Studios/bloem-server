@@ -1,13 +1,6 @@
 # Bloem overlay: Streaming write deadlines and writer-chain conformance
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
-> adds to Silo's
-> [`docs/architecture/streaming-write-deadline.md`](../../../architecture/streaming-write-deadline.md),
-> which stays exactly as Silo wrote it. Bloem replaces nothing; Silo's contract and
-> conformance rules apply to Bloem as written. The addition is in the
-> [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+This overlay covers Silo's [`docs/architecture/streaming-write-deadline.md`](../../../architecture/streaming-write-deadline.md), which stays exactly as Silo wrote it.
 
 When the server sends a large file, such as a video, it gives each piece a time
 limit, so a stalled connection is dropped without cutting off a slow but working
@@ -33,22 +26,6 @@ records one layer it removed.
 | Routes the compressor leaves alone | `skipNativeMediaCompression` in `internal/api/router.go` |
 
 ## For developers
-
-### Where this overlay came from
-
-Bloem serves media from native-storage ebooks, video and audiobooks on Silo's
-native (non-Jellyfin) routes, and those must follow Silo's rules too. Bloem once
-ran an Audiobookshelf gateway on the main port that needed its own writer-chain
-marker. That gateway was removed, and since `2393c41ee` (2026-10-18) Bloem runs
-Silo's Audiobookshelf-compatible server, as Silo ships it, on its own port. Bloem
-first documented this in the Silo file in August 2026 and moved the text here in
-`47ea7c889` (2026-09-23). It was reviewed on 2026-10-27 against Silo `3e2d306b2`
-and Bloem `main` at `e852f92bf`.
-
-From `3e2d306b2` through `63ef34b23` Silo changed the document once, in
-`fd1e718f0` (#3268, 2026-10-30), which negotiates zstd and brotli response
-compression and adds “The compressor is bypassed on bulk routes”. That applies to
-Bloem as written; see the note under the addition below.
 
 ### Section by section
 

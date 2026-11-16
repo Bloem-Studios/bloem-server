@@ -1,12 +1,6 @@
 # Bloem overlay: Invitation API
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
-> adds to Silo's [`docs/invitations-api.md`](../../invitations-api.md) (titled
-> “Email invitation API” until Silo's `4a0cff41f`), which stays exactly as Silo
-> wrote it. Bloem replaces nothing there. The additions are in the
-> [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+This overlay covers Silo's [`docs/invitations-api.md`](../../invitations-api.md), which stays exactly as Silo wrote it.
 
 An **invitation** lets someone create an account by following a link. Silo's page
 explains the administrator routes that create, resend and revoke invitations.
@@ -38,26 +32,6 @@ and the separate routes an organization administrator uses.
 | Which organization an invitation belongs to | `invitations.organization_id` |
 
 ## For developers
-
-### Where this overlay came from
-
-Bloem first documented this route family in the Silo file in September 2026 and
-moved it here in `47ea7c889` (2026-09-23). The design is in the
-[invitations overlay](architecture/invitations-onboarding.md). It was reviewed on
-2026-10-27 against Silo `3e2d306b2` and Bloem `main` at `e852f92bf`
-(`internal/api/router_bloem.go`, `internal/api/handlers/bloem_admin_organization.go`,
-`internal/invitations`). Since this overlay was written (against Silo
-`8e5ae2f46`), Silo changed the document three times:
-
-- `be15e8b0e` (#1523, 2026-09-26): only the server Owner may create or resend an
-  `admin` invitation;
-- `4a0cff41f` (#1788, 2026-10-02): link invitations with `delivery: "link"`,
-  `email_required` and `note`;
-- `d9c79f3b4` (#2399, 2026-10-13): unknown library IDs are refused, and deleting
-  a library removes its ID from stored invitations.
-
-All three apply to Bloem's `/api/v2` routes as written. Silo has not changed the
-document again through `63ef34b23`.
 
 ### Section by section
 
@@ -96,7 +70,7 @@ native flow:
 - sends **no email**, even when SMTP is configured. Creation and regeneration
   return a one-time `claim_token` that the administrator delivers. Every row it
   stores, created or regenerated, has `delivery` `link`;
-- takes Silo's optional `delivery` field on create (`4a0cff41f`), advertised by
+- takes Silo's optional `delivery` field on create, advertised by
   the `organization_invitation_links_v1` capability token. `delivery: "link"`
   creates an invitation without an address (an `email` with it is a 422 on
   `email`), which the invitee completes through Silo's lookup (`email_required`)

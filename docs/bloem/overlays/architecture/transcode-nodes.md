@@ -1,12 +1,9 @@
 # Bloem overlay: Transcode nodes
 
-> **Provenance and status.** Bloem page, written on 2026-11-16 and checked against
-> the merge `fb187cab2`, updated the same day for native inputs on core-access nodes, which brings Silo through `699f84ecf` (Silo #4337, #4338). It
-> lists what Bloem adds to Silo's
-> [`docs/architecture/transcode-nodes.md`](../../../architecture/transcode-nodes.md),
-> which stays exactly as Silo wrote it. Bloem replaces nothing; Silo's design applies
-> to Bloem as written. The details are in the [For developers](#for-developers)
-> section.
+This overlay covers Silo's
+[`docs/architecture/transcode-nodes.md`](../../../architecture/transcode-nodes.md),
+which stays exactly as Silo wrote it. Bloem replaces nothing; Silo's design applies
+to Bloem as written.
 
 A transcoding node converts video for the API servers. Since Silo's change of
 November 2026 a node keeps no database and no keys: it reads each movie by asking
@@ -52,7 +49,7 @@ ships them, with no Bloem code on them.
   servers register it; a transcode node never does.
 - Launch guard: Silo's `TestEveryMediaLaunchGoesThroughCommandContext` gets Bloem's
   launches, with their reasons, from `internal/fspath/bloem_launch_guard_test.go`.
-- Removed on 2026-11-16: Bloem's node-side native execution
+- Removed with Silo's thin nodes (Silo #4337): Bloem's node-side native execution
   (`internal/transcodenode/bloem_native_*.go`), its readiness probe
   (`GET /bloem/native-execution`), the API's Redis worker grants and the standalone
   worker composition in `cmd/silo`. They needed the database, Redis and data

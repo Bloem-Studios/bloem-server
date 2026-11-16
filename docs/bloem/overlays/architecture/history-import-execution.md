@@ -1,12 +1,9 @@
 # Bloem overlay: History import execution
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-04, updated on 2026-11-09
-> and checked against `main` at `5a93e8b41`, which includes Silo through `8487cd7b1`. It lists what Bloem
-> adds to Silo's
-> [`docs/architecture/history-import-execution.md`](../../../architecture/history-import-execution.md),
-> which stays exactly as Silo wrote it. Bloem replaces nothing; every section of Silo's
-> page applies as written. The addition is in the [For developers](#for-developers)
-> section.
+This overlay covers Silo's
+[`docs/architecture/history-import-execution.md`](../../../architecture/history-import-execution.md),
+which stays exactly as Silo wrote it. Bloem replaces nothing; every section of Silo's
+page applies as written.
 
 A **history import** copies what a person watched on another media server, such as
 Emby, into their Bloem profile. Silo's page explains how an import runs. Bloem adds one
@@ -50,7 +47,7 @@ one play at 10:15.
   `ExternalID`s. One run reads one source account. A multi-episode file expands to
   several records with one `ExternalID` and counts once; unplayed, undated and
   watchlist records never mark.
-- Since Silo streams imports (Silo #3715, merged in `5a93e8b41`), `executeRunWithClaim`
+- Silo streams imports (Silo #3715), so `executeRunWithClaim`
   wraps the provider with `withBulkMarks` on one added line. `bulkMarkProvider.Stream`
   calls Silo's `Provider.Stream` once, from the run's resume position, and counts each
   batch's minutes before it marks that batch and hands it to Silo's sink. A resumed
@@ -65,9 +62,6 @@ one play at 10:15.
 - Temporary seams, listed in `contracts/seams.txt`: `internal/historyimport/types.go`
   (`Record.Marked`) and `internal/historyimport/service.go` (the `withBulkMarks` line
   and the source choice), until the Emby servers retire at the end of November 2026.
-- History imported before this rule was relabelled once in production on
-  2026-11-04 by the same rule; see the
-  [deployment receipt](../../../operations/2026-11-04-import-marks-deployment.md).
 - Tests: `internal/historyimport/bloem_marked_records_test.go`.
 
 Related: [Silo's history import execution](../../../architecture/history-import-execution.md),

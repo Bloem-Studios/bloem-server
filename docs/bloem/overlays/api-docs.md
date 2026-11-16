@@ -1,10 +1,6 @@
 # Bloem overlay: Interactive API documentation
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
-> adds to Silo's [`docs/api-docs.md`](../../api-docs.md), a one-section page about
-> the bundled Swagger viewer, which stays exactly as Silo wrote it. The addition is
-> in the [For developers](#for-developers) section.
+This overlay covers Silo's [`docs/api-docs.md`](../../api-docs.md), which stays exactly as Silo wrote it.
 
 Silo's server has a built-in page for browsing its API, the **Swagger viewer** at
 `/api/v2/docs`. Bloem serves the same viewer, unchanged. Bloem also has an API of
@@ -31,16 +27,6 @@ organizations, plans and Live TV. The viewer does not show that second API.
 | API pages by topic | [`docs/bloem/api/`](../api/README.md) |
 
 ## For developers
-
-### Where this overlay came from
-
-Bloem's separate OpenAPI artifact for `/api/bloem/v2` dates from `7d9cafbca`
-(2026-09-14). Bloem wrote a first version of this page with its own viewer work
-(`93af17b6e`, 2026-09-09); Silo's page arrived with Silo's API v2 migration
-(`a0ab8f0b7`, #1075, 2026-09-13). Bloem's remaining notes moved here in
-`47ea7c889` (2026-09-23). It was reviewed on 2026-10-27 against Silo `3e2d306b2`.
-Silo has not changed `docs/api-docs.md` since Silo `ea3c10a7f`, through
-`63ef34b23`.
 
 ### Section by section
 
@@ -77,11 +63,10 @@ server can support authorized EPUB/PDF onboarding while keeping
 `backend_verified: false`; generated DTO presence and artifact approval do not
 certify a provider or establish native-client adoption.
 
-Bloem `main` at `b6039036d` includes Silo through `63ef34b23`. Use the
-generated artifacts from the source being built, and keep
-[source milestones](../CHANGELOG.md) separate from the dated
-[deployment records](../../operations/). Documentation does not establish a
-server's running revision, provider readiness or native-client adoption.
+Use the generated artifacts from the source you are building; the
+[changelog](../CHANGELOG.md) lists the source milestones. Documentation does not
+establish a server's running revision, provider readiness or native-client
+adoption.
 
 ### Related pages
 

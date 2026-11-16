@@ -1,11 +1,6 @@
 # Bloem overlay: Silo v1 Scope
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and updated on
-> 2026-11-11 against `main` at `26cf9b3e4`, which includes Silo through `7bb66f9ad`, and
-> again that day for the retired v1 promotions list. It lists what Bloem
-> adds to Silo's [`docs/architecture/v1-scope.md`](../../../architecture/v1-scope.md),
-> which stays exactly as Silo wrote it, including its table of removals. The
-> section-by-section changes are in the [For developers](#for-developers) section.
+This overlay covers Silo's [`docs/architecture/v1-scope.md`](../../../architecture/v1-scope.md), which stays exactly as Silo wrote it.
 
 Silo's page decides what Silo 1.0 includes and records the old features Silo
 removed before 1.0. On 11 November 2026 Silo retired its older `/api/v1`: every
@@ -36,31 +31,6 @@ retired.
 
 ## For developers
 
-### Where this overlay came from
-
-Until 2026-11-11 Bloem's `/api/v1` was Silo's frozen v1 surface plus a few reviewed
-Bloem additions; since Silo retired it, it is Silo's tombstone alone, and Bloem's own
-client features live under `/api/bloem/v2`. Before that, Bloem had already retired some
-of its own earlier v1 additions: the `playback.proxy_policy` setting,
-and two socket-ticket routes removed in `a7436b4e5` (2026-10-25). Silo's removals
-table stays exactly as Silo wrote it, and Bloem's client contract digest
-(`contracts/client/v1/digest.txt`, read by `cmd/clientdtogen`) covers that table,
-so Bloem's retired items are recorded here instead. Bloem first documented these
-differences in the Silo file in August 2026 and moved them here in `47ea7c889`
-(2026-09-23).
-
-It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
-`e852f92bf` (`internal/api/v1_silo_contract_test.go`,
-`internal/api/testdata/v1_routes_with_database.txt`,
-`internal/livetv/capability.go`). Silo had then added two rows to its removals
-table, both applying to Bloem unchanged: v1 writes of the retired AI endpoint
-settings return `400` (`c27acf246`, #3106, and `39913c51d`, #3107, 2026-10-26,
-when AI providers became one list each job selects from), and `383e52922` (#3135,
-2026-10-26) omits other accounts' history samples from a v1 split for a delegated
-curator. Silo has not changed the document since, through `63ef34b23`. This
-rewrite added the note on leaving Silo's `/api/v1`, and the update of 2026-11-11 the
-retirement itself.
-
 ### Section by section
 
 ---
@@ -72,7 +42,7 @@ retirement itself.
 **Location:** section “Silo v1 Scope”, after the paragraph beginning “This file
 governs v1 **capability** scope: which user-facing capabilities Silo…”. **Bloem adds:**
 
-Silo retired `/api/v1` (Silo #3200, merged into Bloem in `26cf9b3e4`): the main
+Silo retired `/api/v1` (Silo #3200): the main
 listener answers every route there with `410 Gone` and `client_upgrade_required`,
 except the health and readiness probes. The routes Bloem had added there, among them
 direct-profile login (`POST /api/v1/auth/profile-login`) and tenant-member
@@ -104,9 +74,8 @@ provider-creation endpoint is embedded-web/OpenAPI only; native-client provider
 administration is not claimed. This additive graph change repins the client digest
 without adding a removal or changing the removals table below. See
 [Xtream live TV providers](../../../architecture/xtream-live-tv.md) for scope, credentials and limits.
-The [September 19 deployment record](../../../operations/2026-09-19-xtream-deployment.md)
-records the shipped revision and CI exception; clients still use capability discovery,
-not deployment dates or revision sniffing, to decide whether support is installed.
+Clients use capability discovery, not deployment dates or revision sniffing, to
+decide whether support is installed.
 
 #### Reviewed Bloem-only namespace correction
 
@@ -125,9 +94,7 @@ not another runtime removal or a change to Silo's historical removals table.
 **Location:** section “Breaking removals taken before lock”. The retired
 Bloem-only `playback.proxy_policy` explanation is kept in this overlay.
 The upstream removals table is preserved verbatim; the earlier claim that it
-still contains a Bloem row is obsolete. Contract digest reconciliation after
-that move is tracked in the
-[September 30 validation record](../../../operations/2026-09-30-upstream-deployment.md#outstanding-validation).
+still contains a Bloem row is obsolete.
 
 #### Retired Bloem playback proxy policy
 

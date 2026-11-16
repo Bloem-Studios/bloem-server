@@ -1,13 +1,6 @@
 # Bloem overlay: At-rest credential encryption
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`, and checked again
-> on 2026-11-16 against Silo through `699f84ecf`. It lists what Bloem
-> adds to or renames in Silo's
-> [`docs/architecture/secret-encryption.md`](../../../architecture/secret-encryption.md),
-> which stays exactly as Silo wrote it. Silo's cipher, `SECRET_KEY` handling,
-> backfill, key-loss and API-key-verifier text applies as written. The
-> section-by-section changes are in the [For developers](#for-developers) section.
+This overlay covers Silo's [`docs/architecture/secret-encryption.md`](../../../architecture/secret-encryption.md), which stays exactly as Silo wrote it.
 
 Silo encrypts the passwords and keys it stores for other services, such as
 download managers and S3 storage, with the server's secret key. Bloem uses the same
@@ -37,36 +30,6 @@ from. Bloem holds those to a stricter rule than Silo's older secrets.
 | Xtream sources | migration `20260919133349_bloem_xtream_sources` |
 
 ## For developers
-
-### Where this overlay came from
-
-Bloem's Live TV can consume Xtream live providers. Their usernames and passwords
-are encrypted with Silo's cipher but, unlike Silo's older integration
-credentials, never accept a plaintext fallback (migration
-`20260919133349_bloem_xtream_sources`, 2026-09-19). Bloem first documented this in
-the Silo file in September 2026 and moved it here in `47ea7c889` (2026-09-23).
-
-It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
-`e852f92bf`, when a replacement of Silo's first “Rollback / downgrade hazard”
-paragraph that only reworded “predates this change” was dropped; Silo's text
-applies. From `3e2d306b2` through `63ef34b23` Silo changed the document once, in
-`07c05cad6` (#3309, 2026-10-31): administrators can no longer set the JWT signing
-keys, and a downgrade clears both the `auth.jwt_secret` and
-`audiobooks.abs.jwt_secret` rows. That applies to Bloem unchanged, and every
-passage this overlay points at is unchanged.
-
-On 2026-11-16 the overlay was checked against Silo through `699f84ecf`. Silo's
-#4337 (thin transcode nodes) added one passage to the “Scope and known gaps”
-paragraph beginning “Covered: arr (Requests + Autoscan) API keys…”: a transcode
-node's key is stored encrypted in `stream_nodes.node_key_ciphertext` (AAD
-`stream_nodes:node_key_ciphertext:<id>`), has no plaintext backfill, and after a
-`SECRET_KEY` change leaves the node keyless until an administrator issues a new
-key. That applies to Bloem unchanged. The paragraph still begins the same way, so
-Bloem's addition after it keeps its place. Like Bloem's Xtream credentials, a node
-key has no plaintext read path (`nodepool.DecryptNodeKey` refuses a plaintext
-value), so it is not one of the legacy integration credentials the renamed
-read-path bullet below describes. A transcode node itself no longer holds
-`SECRET_KEY`; only the API servers and proxies do.
 
 ### Section by section
 
@@ -110,9 +73,8 @@ though recorded files remain. Do not present re-creation as lossless key recover
 
 The legacy downgrade discussion above does not authorize converting Xtream
 credentials to plaintext. Older binaries cannot administer protected Xtream sources.
-The [September 19 rollback plan](../../../operations/2026-09-19-xtream-deployment.md#upgrade-and-rollback-boundaries)
-retains additive schema and ciphertext; it requires a compatibility review if new
-providers or recordings have since been created. A rollback to any binary that
+A rollback keeps the additive schema and the ciphertext; it requires a
+compatibility review if new providers or recordings have been created since. A rollback to any binary that
 predates migration `20261019181724_hash_api_key_verifiers` is also bound by
 Silo's *API key verifiers* section: that binary needs the removed `api_key`
 column and must not be restarted against the migrated database.

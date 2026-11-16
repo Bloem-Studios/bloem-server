@@ -1,12 +1,6 @@
 # Bloem overlay: Playback protocol v3
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`, and checked again
-> on 2026-11-16 against Silo through `699f84ecf`. It lists what Bloem
-> adds to Silo's
-> [`docs/architecture/playback-protocol-v3.md`](../../../architecture/playback-protocol-v3.md),
-> which stays exactly as Silo wrote it. Bloem replaces nothing there. The additions
-> are in the [For developers](#for-developers) section.
+This overlay covers Silo's [`docs/architecture/playback-protocol-v3.md`](../../../architecture/playback-protocol-v3.md), which stays exactly as Silo wrote it.
 
 Silo's page defines how an app asks to play a title and how the server answers:
 which file, which way to deliver it, and what to do when conditions change. Bloem
@@ -37,43 +31,6 @@ server's own folders).
 | The native-storage check | `nativeVideoPreflight` (`internal/api/handlers/bloem_native_video.go`) |
 
 ## For developers
-
-### Where this overlay came from
-
-Bloem's v3 responses carry an extra field, `negotiated_client_features`, which
-Bloem added to Silo's `internal/playback/protocol_v3.go` as a seam in `0a0d16094`
-(2026-08-24). A *seam* is a Bloem edit inside a Silo-owned file, declared in
-`contracts/seams.txt`. Bloem also lets v3 play video from native storage, so every
-candidate file passes a native-storage check (`b781ac3ff`, 2026-10-11). Bloem
-first documented these in the Silo file in August 2026; the text moved here in
-`47ea7c889` (2026-09-23). The header-authenticated media deployment gate this page
-once described was removed in `545ed3a33` (2026-10-09).
-
-It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
-`e852f92bf` (`internal/api/handlers/bloem_playback_v3_ext.go`,
-`internal/playback/bloem_protocol_v3.go`,
-`internal/api/handlers/bloem_native_video.go`), after Silo's `8b84639ed` (#3109,
-the software-only `pq_full_range` tone-map kind), `e7605afe2` (#3115, starting on
-an audio track the client plays without conversion) and `4a1a2200c` (#3044,
-protocol corrections, including `400` for a missing `X-Profile-Id`, viewer
-resolution before the body is read, and the replan lease and capacity rules).
-From `3e2d306b2` through `63ef34b23` Silo changed the document four more times:
-transcoding H.264 High 10 for browsers that cannot decode it (`539f9b90e`), noting
-that downloads still refuse declared `video_decode` entries (`23aec3e11`), keeping
-a session alive while the client waits out its startup timeout (#3208), and direct
-play of a 1080p50 source on a decoder rated 4K30 (#3267). All of them apply to
-Bloem; the two paragraphs this overlay follows are unchanged.
-
-On 2026-11-16 the overlay was checked against Silo through `699f84ecf`. Silo's
-#4337 (thin transcode nodes) changed one paragraph of section “4.1
-Header-authenticated media URLs”: the API's resolve now checks the plan-scoped
-transport record before a transcode node starts each progressive response, where
-the node used to read it itself, and a force reload revokes the record. This
-overlay covers no part of section 4.1, and its three anchors are unchanged. A thin
-node reads no database or Redis, so the worker grant a node once read for a
-native-storage input no longer applies; the
-[native video playback](../../../architecture/bloem-native-video-playback.md) page
-describes how a native file reaches a transcode node now.
 
 ### Section by section
 

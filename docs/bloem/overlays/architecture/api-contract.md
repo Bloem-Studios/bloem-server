@@ -1,13 +1,6 @@
 # Bloem overlay: Native API contract: Huma and `/api/v2`
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`, checked again on
-> 2026-11-11, after Silo retired its v1 API, and on 2026-11-14 for Silo's stream
-> references (merge `28f76229c`). It lists what Bloem
-> adds to or replaces in Silo's
-> [`docs/architecture/api-contract.md`](../../../architecture/api-contract.md),
-> which stays exactly as Silo wrote it. The section-by-section changes are in the
-> [For developers](#for-developers) section.
+This overlay covers Silo's [`docs/architecture/api-contract.md`](../../../architecture/api-contract.md), which stays exactly as Silo wrote it.
 
 Silo's page sets the rules for Silo's stable API, `/api/v2`, and for the
 **migration ledger**, the file that records what happens to every older route as
@@ -40,24 +33,6 @@ own, `/api/bloem/v2`, which Silo's page does not cover.
 | Feature detection | `feature_tokens` in `GET /api/bloem/v2/capabilities` |
 
 ## For developers
-
-### Where this overlay came from
-
-Bloem's own middleware changes the chain of almost every route, so its route
-inventory moves on most merges. To keep the hand-curated migration ledger in step
-without hand edits, Bloem added `make migration-ledger`
-(`scripts/apiv2-ledger/refresh_ledger.py`, in `23b23f531`, 2026-09-16). Bloem first
-documented these in the Silo file in September 2026 (`0f00b3eae`, 2026-09-01) and
-moved the text here in `47ea7c889` (2026-09-23).
-
-It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
-`e852f92bf` (`Makefile`, `Makefile.bloem`, `scripts/apiv2-ledger/`,
-`contracts/api/bloem/v2/openapi.json`). The earlier edition of this overlay
-replaced Silo's whole description of the ledger tooling. Silo's section
-assignment and consumer-evidence scripts still run in Bloem, so the replacement is
-narrowed to the one sentence that differs. From `3e2d306b2` through `63ef34b23`
-Silo changed the document six times (#3055, #3169, #3193, #3021, #3279, #3276);
-none touches the migration ledger section, and all apply to Bloem as written.
 
 ### Section by section
 
@@ -92,7 +67,7 @@ operation and is not part of this target -- it needs the sibling client trees at
 
 **Location:** section “Credential continuity”, after the paragraph beginning “The playback
 delivery routes (`getPlaybackMedia`, …) accept the plan's signed stream reference `st`”
-(Silo #4060, merged into Bloem in `28f76229c`). **Bloem adds:**
+(Silo #4060). **Bloem adds:**
 
 On Bloem, the stream-token gate reads the same `st` first. A token it accepts (valid
 signature, not expired, naming the session in the path) authorizes delivery of that
@@ -138,8 +113,7 @@ and native-client API artifacts are separate compatibility surfaces; see
 #### Bloem and Silo's v1 retirement
 
 Silo retired its v1 API on 2026-11-11 (the `410 Gone` tombstone with
-`client_upgrade_required` described above; Silo #3200, merged into Bloem in
-`26cf9b3e4`), and every Bloem route mounted beside it went too. Bloem's callers use
+`client_upgrade_required` described above; Silo #3200), and every Bloem route mounted beside it went too. Bloem's callers use
 Silo's `/api/v2` for what Silo has and `/api/bloem/v2` for Bloem's own features; where
 Silo's `/api/v2` lacks something Bloem needs, Bloem adds a native route. Nothing in Bloem
 calls Silo's v1 API, and `make verify-no-v1` fails on a Bloem line that names a retired

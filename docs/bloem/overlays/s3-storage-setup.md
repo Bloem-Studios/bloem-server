@@ -1,15 +1,5 @@
 # Bloem S3 storage notes
 
-> **Provenance and status.** Bloem overlay page, rewritten on 2026-11-01 and checked
-> against `main` at `b6039036d` (Silo through `63ef34b23`). It overlays Silo's former
-> `docs/s3-storage-setup.md`, which Silo deleted in `42b39765b` (#1635, 2026-09-28)
-> when it moved operator guides out of the server repository. Silo's current
-> reference for the same subject is [blob storage](../../architecture/blob-storage.md)
-> (`internal/blobstore`), which applies to Bloem as written. This page adds only
-> Bloem's notes beside it; the technical rules are in the
-> [For developers](#for-developers) section.
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
-
 An *overlay* is a Bloem-owned page that records Bloem's additions to, or
 replacements of, a Silo-owned document; Silo's files stay exactly as Silo wrote
 them (see the [documentation workflow](../documentation-workflow.md)). This page
@@ -85,29 +75,6 @@ revalidate it. A healthy server alone does not show that uploads work.
 | Storage sources | native storage (`internal/nativestorage`) |
 
 ## For developers
-
-### Where this overlay came from
-
-Bloem's S3 notes moved out of the Silo file into this overlay in `47ea7c889`
-(2026-09-23). Silo's blob storage reference (`internal/blobstore`) dates from
-Silo's `b98d9af21` (2026-09-16). Campaign cards and seasonal packs are Bloem's own
-upload service (`internal/ambience`, first commit `54ace4675`, 2026-09-01), which
-has used the catalog Assets store since `f293cce0d` (2026-09-23). The review on
-2026-10-27 (against Silo `3e2d306b2` and Bloem `main` at `e852f92bf`) corrected
-the earlier claim that these uploads require public S3; it read
-`cmd/silo/bloem_main.go`, `internal/ambience` and
-`internal/api/handlers/admin_ambience.go`. Silo's `blob-storage.md` had changed
-seven times since the page's previous edit (against Silo `8e2e84047`). Those
-changes, which all apply to Bloem, included managed storage transitions, offline
-artwork on local storage, trickplay previews, originals cached up to 4K, local
-sidecar artwork, readiness before shutdown, and artwork uploads when `HeadObject`
-answers `403` (`9e19d3440`, #2688, 2026-10-21). Since then Silo added, through
-`63ef34b23`, that a local root reached through a linked parent directory keeps its
-recorded identity (`SameLocalRoot`, `5444ec630`, #3177) and that `DeletePrefix`
-honours cancellation (`01f6b023a`, #1661). Both apply to Bloem.
-
-For installation wiring, use the [Bloem Docker guide](wiki/deployment/docker.md).
-Index: [Bloem documentation](../README.md).
 
 ### Section "The two stores"
 

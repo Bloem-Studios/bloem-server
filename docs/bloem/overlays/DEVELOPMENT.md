@@ -1,15 +1,9 @@
 # Bloem overlay: Developing Silo
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`; its Make targets
-> table was checked again on 2026-11-16 against Silo through `699f84ecf`. It lists what Bloem
-> adds to or replaces in Silo's root [`DEVELOPMENT.md`](../../../DEVELOPMENT.md),
-> which stays exactly as Silo wrote it. The section-by-section changes are in the
-> [For developers](#for-developers) section.
-
 Silo's `DEVELOPMENT.md` explains how to build, run and test the server from source.
 Bloem builds the same way, so read Silo's page first. This page lists the few places
-where Bloem Server differs, and why.
+where Bloem Server differs, and why. It covers Silo's root
+[`DEVELOPMENT.md`](../../../DEVELOPMENT.md), which stays exactly as Silo wrote it.
 
 ## What Bloem changes
 
@@ -24,8 +18,7 @@ where Bloem Server differs, and why.
   (the list of Silo files Bloem is allowed to edit) and the Silo-switching tests
   passing.
 
-Bloem's guidance moved out of `DEVELOPMENT.md` into this overlay so the Silo file
-could go back to Silo's text and stay easy to merge.
+Silo's `DEVELOPMENT.md` stays exactly as Silo wrote it, so it merges cleanly.
 
 ## Words used in the code
 
@@ -39,32 +32,6 @@ could go back to Silo's text and stay easy to merge.
 | Silo switching | `public.bloem_silo_switching`, checked end to end by `make silo-switch-check` |
 
 ## For developers
-
-### Where this overlay came from
-
-Bloem's guidance moved out of `DEVELOPMENT.md` into this overlay in `ba218eb97`
-(2026-09-23), when the Silo file was restored to Silo's text. It was reviewed on
-2026-10-27 against Silo `3e2d306b2` and Bloem `main` at `e852f92bf`, when a stale
-statement that lifecycle routes need a phase store in scenario runs was removed;
-that mechanism went with Bloem's lifecycle receipts in `b017bfe84` (2026-10-26).
-
-This rewrite checked `go.mod`, `Makefile`, `Makefile.bloem`,
-`.github/workflows/bloem-ci.yml` and `internal/bloemtestsdk` at `b6039036d`. Since
-the previous review Silo changed `DEVELOPMENT.md` twice: `40e03ad31` (#3180,
-2026-10-28) made Silo's all-in-one image the default Compose deployment, and
-`9d3f24ca4` (#3279, 2026-10-30) kept two Compose files, so a source build now
-starts PostgreSQL and Redis from `dev/compose.yml`. Both apply to Bloem as Silo
-wrote them, and every section this overlay points at is unchanged.
-
-On 2026-11-16 the overlay was checked against Silo through `699f84ecf`. Silo's
-#4337 (thin transcode nodes) changed `DEVELOPMENT.md` twice: the
-`make dev-transcode` row of the Make targets table, because a transcode node now starts
-against a running server with only `SILO_CORE_URL` and `SILO_NODE_KEY`, and the
-paragraph on runtime migrations, because a transcode node has no database
-connection at all. The table this overlay replaces now carries Silo's new
-`dev-transcode` row; the migrations paragraph applies to Bloem as Silo wrote it.
-How a transcode node reads a file in Bloem's native storage is on
-[native video playback](../../architecture/bloem-native-video-playback.md).
 
 ### Section by section
 
@@ -85,8 +52,7 @@ pre-submission gate are in [CONTRIBUTING.md](../../../.github/CONTRIBUTING.md).
 
 **Location:** section “Prerequisites”. **Bloem adds:**
 
-Bloem's `go.mod` declares `go 1.26.11` (since the Silo sync through `4a9e527a4`,
-2026-11-11, for GO-2026-6859), above Silo's 1.26.4 minimum, so build with Go
+Bloem's `go.mod` declares `go 1.26.11` above Silo's 1.26.4 minimum, so build with Go
 1.26.11 or later. Bloem CI installs
 exactly the patch `go.mod` names.
 
@@ -161,8 +127,8 @@ package, where some fail by design; skip them as CI does with
 
 The storage plugin executable tests build `examples/hello-storage` from the
 published `bloem-plugin-sdk` module pinned in `internal/bloemtestsdk`
-(`StorageModule`, `github.com/Bloem-Studios/bloem-plugin-sdk@v0.27.0` at
-`b6039036d`), so they need no extra setup. Set `BLOEM_STORAGE_SDK_WORKTREE` to an
+(`StorageModule`, `github.com/Bloem-Studios/bloem-plugin-sdk@v0.27.0` as of
+November 2026), so they need no extra setup. Set `BLOEM_STORAGE_SDK_WORKTREE` to an
 SDK checkout only to test unreleased SDK changes; the host and SDK storage protos
 must match.
 
@@ -171,10 +137,7 @@ and Bloem's [contract adjudications](../../architecture/bloem-contract-adjudicat
 and `make test-scenarios` went with them.
 
 `make test-go` sets a 20-minute per-package timeout. The
-[October 7 deployment record](../../operations/2026-10-07-native-storage-deployment.md#outstanding-validation)
-records historical focused checks and remaining backend/client acceptance. Use
-the [integration changelog](../CHANGELOG.md) for the newer source milestones. Older
-interrupted or failed broad runs remain historical failures. Check the
+[integration changelog](../CHANGELOG.md) lists the source milestones. Check the
 [SDK guide](../../architecture/bloem-sdk-compatibility.md) for reproducible
 contract generation and consumer adoption; a generated file alone is not a client feature.
 
@@ -195,8 +158,8 @@ all-in-one image, whose database lives inside the container's `/config` volume.
 Local test databases need `max_locks_per_transaction = 512`, as in CI,
 and `make lint-changed` needs a golangci-lint built with the toolchain `go.mod` names.
 
-Run `make verify-seams` after an upstream merge. Bloem currently declares 304
-seams (modified or deleted upstream files) at `b6039036d`; additions belong in owned
+Run `make verify-seams` after an upstream merge. Bloem currently declares 339
+seams (modified or deleted upstream files); additions belong in owned
 modules wherever possible. CI's changed-line lint gate, `scripts/bloem-lint-changed-ci.sh`,
 reports a finding only on a line that changed in the push and differs from Silo's
 copy of the file, so lines a Silo merge brings in, or a file restored to Silo's
@@ -230,4 +193,6 @@ operations and unresolved documentation gaps after the Silo integration.
 - [Writing Bloem documentation](../documentation-workflow.md): overlays and the
   page shape.
 - [Silo backend switching](../../architecture/silo-backend-switching.md).
+- [Native video playback](../../architecture/bloem-native-video-playback.md): how a
+  transcode node reads a file in Bloem's native storage.
 - Index: [Bloem documentation](../README.md).

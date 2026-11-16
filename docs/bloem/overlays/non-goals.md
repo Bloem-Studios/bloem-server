@@ -1,11 +1,9 @@
 # What Bloem will not do
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-12 and checked against
-> `main` at `bf0fde82f`. This is Bloem's complete edition of Silo's
-> [`docs/non-goals.md`](../../non-goals.md): read it *instead of* Silo's, not beside
-> it. Bloem differs from Silo in two places: Live TV is in scope, and so are `.strm`
-> files that point anywhere. The technical rules are in the
-> [For developers](#for-developers) section.
+This is Bloem's complete edition of Silo's [`docs/non-goals.md`](../../non-goals.md),
+which stays exactly as Silo wrote it: read this page *instead of* Silo's, not beside
+it. Bloem differs from Silo in two places: Live TV is in scope, and so are `.strm`
+files that point anywhere.
 
 Silo keeps a short list of features it will never accept, however well they are built.
 This page walks through Bloem's version of that list: the two things Bloem adds back,
@@ -46,9 +44,8 @@ These are current limits, not permanent decisions:
 ## `.strm` files are in scope
 
 Silo refuses **`.strm` files**: a small text file in the library whose content is the
-web address of a video somewhere else. Bloem accepts them, wherever they point. Jim
-decided this on 2026-11-12: "That might be a Silo goal but not Bloem, anything goes on
-Bloem."
+web address of a video somewhere else. Bloem accepts them, wherever they point: what a library may
+contain is the administrator's decision, not the server's.
 
 1. **A `.strm` file is a video.** Bloem reads the first line that is not empty, and
    treats the file as the movie or episode its name says, like any other video. It
@@ -127,22 +124,6 @@ Bloem's own features stay inside that rule:
 ## For developers
 
 - **API:** [Live TV](../api/live-tv.md): every route under `/api/bloem/v2/livetv`.
-
-### Where this edition came from
-
-`.strm` support was added on 2026-11-12, when Jim reversed the earlier rule that kept
-`.strm` files and other remote streams out of scope. Before then this edition listed
-them under "Where Live TV stops".
-
-Bloem's edition moved out of the Silo file in `47ea7c889` (2026-09-23), so Silo's file
-stays exactly as Silo wrote it and Silo merges stay clean; see the
-[documentation workflow](../documentation-workflow.md). Live TV has been in Bloem since
-`ef2d38171` (2026-08-13, an attributed adaptation of Prairie Server's tuner and DVR
-code); its routes later moved under `/api/bloem/v2/livetv`. Xtream providers followed on
-2026-09-19. This edition took Silo's media-file-management non-goal at Silo `6de6d5e5e`.
-It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `e852f92bf`, and on
-2026-11-01 against `b6039036d`; Silo has not changed `docs/non-goals.md` from
-`3e2d306b2` through `63ef34b23`.
 
 ### Live TV boundary
 

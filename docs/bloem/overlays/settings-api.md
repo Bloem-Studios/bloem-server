@@ -1,11 +1,6 @@
 # Bloem overlay: Canonical Settings API
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`, and checked again on
-> 2026-11-11, after Silo retired its v1 API and its settings bridge. It lists what Bloem
-> adds to Silo's [`docs/settings-api.md`](../../settings-api.md), which stays exactly
-> as Silo wrote it. Bloem replaces nothing there. The additions are in the
-> [For developers](#for-developers) section.
+This overlay covers Silo's [`docs/settings-api.md`](../../settings-api.md), which stays exactly as Silo wrote it.
 
 Silo's settings page explains how apps read and change settings: the server's,
 an account's, a profile's and a device's. Bloem serves Silo's settings contract as
@@ -37,25 +32,6 @@ retired. Bloem adds three notes, because Bloem has **organizations** and
 | An organization's brand | `bloem_organization_branding`, served through `orgdomains.SettingsOverlay` |
 
 ## For developers
-
-### Where this overlay came from
-
-Bloem's direct-profile sessions sign in straight to one household profile with
-that profile's own credential; their default-deny route allowlist dates from
-`16baf5558` (2026-08-14). Bloem first noted its settings differences in the Silo
-file in August 2026 and moved them here in `47ea7c889` (2026-09-23). Until
-`b017bfe84` (2026-10-26) this page also described Bloem's Idempotency-Key lifecycle
-receipts on the settings admin routes. That system is gone, and Silo's
-`settings_values.go` and `settings_values_admin.go` are Silo's bytes again.
-
-It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
-`e852f92bf` (`internal/api/direct_profile_routes.go`), when Silo's `93585220e`
-(#3136, 2026-10-26) had bounded the stored values one `resolveEffectiveSettings`
-or `listSettingValues` response returns at 16 MiB; that applies to Bloem
-unchanged. From `3e2d306b2` through `63ef34b23` Silo changed the document once more,
-in `33cf0ed11` (#3142, 2026-10-27), which retires the media card caption choice;
-that applies to Bloem unchanged too. This rewrite added the organization branding
-note (organization domains and branding, from `b95a3dda9`, 2026-11-01).
 
 ### Section by section
 
