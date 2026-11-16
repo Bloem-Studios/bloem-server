@@ -2,8 +2,9 @@
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
 > `main` at `b6039036d`, which contains Silo through `63ef34b23`; the Meilisearch steps were
-> updated on 2026-11-10 against `7acd2c7e0`, and the API paths checked again on
-> 2026-11-11, after Silo retired its v1 API. This is Bloem's own
+> updated on 2026-11-10 against `7acd2c7e0`, the API paths checked again on
+> 2026-11-11, after Silo retired its v1 API, and the server roles on 2026-11-16 against
+> Silo through `699f84ecf`. This is Bloem's own
 > installation guide. It began as Silo's Docker guide, which Silo has since removed;
 > Bloem runs Silo's code on Silo's multi-container Compose file, and serving an
 > organization on its own domain is a Bloem addition. The technical rules are in the
@@ -369,7 +370,7 @@ To use a database and Redis you already run, write a Compose file or override th
 - removes or replaces the waits on the bundled services;
 - leaves the bundled PostgreSQL and Redis services out of the project;
 - keeps the media, plugin, compatibility, transcode and catalog mounts;
-- keeps the same `SECRET_KEY` on every Bloem role;
+- keeps the same `SECRET_KEY` on every API server and proxy;
 - sets `POSTGRES_TUNE=off`, unless you deliberately size the tuner for the database
   host; the bundled file defaults it to `auto` (see
   [PostgreSQL auto-tuning](#postgresql-auto-tuning)).
@@ -399,11 +400,20 @@ single host: `integrated` already streams and converts.
 
 For several servers:
 
-- connect every role to the same PostgreSQL and Redis;
-- use the same `SECRET_KEY` on every role;
-- give every process that serves media the same full media paths;
+- connect every API server and proxy to the same PostgreSQL and Redis;
+- use the same `SECRET_KEY` on every API server and proxy;
+- start each transcode node with only `SILO_CORE_URL`, the API's address, and
+  `SILO_NODE_KEY`, the key issued to it on the Nodes page; it opens no database or
+  Redis, and ignores `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `NODE_URL` and
+  `NODE_NAME`;
+- give every API server, proxy and local-access transcode node the same full media
+  paths; a transcode node set to read sources through the API servers needs no media
+  mount;
 - keep the prepared-download folder on every process that can prepare downloads;
 - restart a role after changing its download folder.
+
+Silo's [transcode node design](../../../../architecture/transcode-nodes.md) has the
+details.
 
 ## PostgreSQL auto-tuning
 
@@ -1027,7 +1037,7 @@ bundled Compose file passes `.env` to the server through `env_file`.
 | `POSTGRES_TUNE_CPUS` | `auto` | CPU count for the worker and `work_mem` settings; `auto` is the server process's CPU count. |
 | `POSTGRES_TUNE_STORAGE` | `ssd` | `hdd`, `ssd`, `san` or `nvme` (`optane` means `nvme`). Sets `effective_io_concurrency` (2, 200, 300, 1000) and `random_page_cost`. |
 | `POSTGRES_TUNE_DB_SIZE` | `auto` | `less_ram`, `mid_ram` or `greater_ram`. `auto` compares `pg_database_size` with the memory budget. |
-| `POSTGRES_TUNE_CONNECTIONS` | `100` | PostgreSQL `max_connections`, raised to at least the server's own pool (`database.max_connections`, 20 by default) plus 20. With several processes (API, proxy and transcode nodes), cover every pool plus admin sessions. |
+| `POSTGRES_TUNE_CONNECTIONS` | `100` | PostgreSQL `max_connections`, raised to at least the server's own pool (`database.max_connections`, 20 by default) plus 20. With several processes, cover the pool of every API server and proxy, plus admin sessions; transcode nodes open no database connection. |
 | `POSTGRES_TUNE_OS` | `linux` | Any other value omits `effective_io_concurrency`; `mac` or `darwin` also turns `huge_pages` off. |
 | `POSTGRES_TUNE_IO_METHOD` | unset | PostgreSQL 18 and later: sets `io_method` when given and not `auto`; otherwise `io_method` is reset to PostgreSQL's default. |
 | `POSTGRES_SHM_SIZE` | `8gb` | Docker `/dev/shm` size for the bundled PostgreSQL. |

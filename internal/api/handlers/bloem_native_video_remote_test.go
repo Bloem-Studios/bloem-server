@@ -10,152 +10,20 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/nodeauth/nodeauthtest"
 	"github.com/Silo-Server/silo-server/internal/nodepool"
 	"github.com/Silo-Server/silo-server/internal/noderouting"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/transcodenode"
-	"github.com/redis/go-redis/v9"
 )
 
-func TestNativeVideoRemotePreparationAndRollback(t *testing.T) {
-	client := nativeVideoGrantRedis(t)
-	service, session, _, _ := nativeVideoGrantFixture(t, client)
-	service.WorkerGrants = NewNativeVideoWorkerGrantStore(client)
-	file, err := service.Files.GetByID(t.Context(), session.MediaFileID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var received transcodenode.TranscodeStartRequest
-	node := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if answerNativeExecutionReadiness(w, r, 7) {
-			return
-		}
-		if r.Method == http.MethodPost && r.URL.Path == "/transcode/start" {
-			if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
-				t.Error(err)
-				w.WriteHeader(400)
-				return
-			}
-			grant, err := service.WorkerGrants.Resolve(r.Context(), transcodenode.NativeExecutionRequest{WorkerID: 7, TransportID: received.SessionID, InputPath: received.InputPath, Start: &received}, service)
-			if err != nil || grant == nil {
-				t.Errorf("POST arrived without exact grant: %v", err)
-				w.WriteHeader(403)
-				return
-			}
-			writeJSON(w, http.StatusAccepted, transcodenode.TranscodeStartResponse{SessionID: received.SessionID, Status: "started", HWAccel: received.HWAccel, AudioRecipeVersion: received.AudioRecipeVersion, CopyFMP4RecipeVersion: received.CopyFMP4RecipeVersion, ThrottleSeconds: received.ThrottleSeconds})
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer node.Close()
-	h := NewPlaybackHandler(service.Sessions, service.Files)
-	h.NativeVideo, h.JWTSecret = service, "fixture-secret"
-	result := remoteHLSResultV3()
-	result.Plan.EffectiveMediaFileID = file.ID
-	request := httptest.NewRequest(http.MethodPost, "/", nil)
-	transport, failure := h.prepareRemoteTransportV3(request, session, file, result, nodepool.Plan{TranscodeNode: &nodepool.Node{ID: 7, URL: node.URL}}, preparedTimelineV3{}, mediaAuthModeV3{})
-	if failure != nil {
-		t.Fatalf("prepare: %v", failure)
-	}
-	card := remoteTranscodeRecipeCardV3(session, file, node.URL, transport.transportID, received, transcodenode.TranscodeStartResponse{HWAccel: received.HWAccel}, "")
-	card.RoutingWorkload, card.RoutingExecution, card.RoutingEgress, card.RoutingExecutionNodeID = string(transport.routingWorkload), string(transport.routingExecution), string(transport.routingEgress), 7
-	card.RoutingNetworkProvider = new(string) // same empty provider as the request
-	if _, err := service.WorkerGrants.Resolve(t.Context(), transcodenode.NativeExecutionRequest{WorkerID: 7, TransportID: transport.transportID, InputPath: file.FilePath, Recipe: &card}, service); err != nil {
-		transport.rollback()
-		t.Fatalf("accepted GET rejected: %v", err)
-	}
-	transport.rollback()
-	if _, err := service.WorkerGrants.Resolve(context.Background(), transcodenode.NativeExecutionRequest{WorkerID: 7, TransportID: transport.transportID, InputPath: file.FilePath, Recipe: &card}, service); err == nil {
-		t.Fatal("rollback left source grant usable")
-	}
-}
-
-func TestNativeVideoRemoteHeaderAuthRequiresRecipeBeforePublication(t *testing.T) {
-	for _, missing := range []bool{true, false} {
-		t.Run(map[bool]string{true: "absent_store", false: "failed_write"}[missing], func(t *testing.T) {
-			client := nativeVideoGrantRedis(t)
-			service, session, _, _ := nativeVideoGrantFixture(t, client)
-			service.WorkerGrants = NewNativeVideoWorkerGrantStore(client)
-			file, err := service.Files.GetByID(t.Context(), session.MediaFileID)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var received transcodenode.TranscodeStartRequest
-			node := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if answerNativeExecutionReadiness(w, r, 7) {
-					return
-				}
-				if r.Method == http.MethodPost && r.URL.Path == "/transcode/start" {
-					if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
-						t.Error(err)
-						w.WriteHeader(400)
-						return
-					}
-					writeJSON(w, http.StatusAccepted, transcodenode.TranscodeStartResponse{SessionID: received.SessionID, HWAccel: received.HWAccel, AudioRecipeVersion: received.AudioRecipeVersion, CopyFMP4RecipeVersion: received.CopyFMP4RecipeVersion, ThrottleSeconds: received.ThrottleSeconds})
-					return
-				}
-				w.WriteHeader(http.StatusNoContent)
-			}))
-			defer node.Close()
-			h := NewPlaybackHandler(service.Sessions, service.Files)
-			h.NativeVideo, h.JWTSecret = service, "fixture-secret"
-			if !missing {
-				h.NodeRecipeStore = &recordingRecipeCardStoreV3{putErr: errors.New("recipe write failed")}
-			}
-			result := remoteHLSResultV3()
-			result.Plan.EffectiveMediaFileID = file.ID
-			transport, failure := h.prepareRemoteTransportV3(httptest.NewRequest(http.MethodPost, "/", nil), session, file, result, nodepool.Plan{TranscodeNode: &nodepool.Node{ID: 7, URL: node.URL}}, preparedTimelineV3{}, mediaAuthModeV3{headerAuth: true})
-			if failure == nil {
-				transport.rollback()
-				t.Fatal("native header-auth route published without its serving recipe")
-			}
-			if _, err := service.WorkerGrants.Resolve(t.Context(), transcodenode.NativeExecutionRequest{WorkerID: 7, TransportID: received.SessionID, InputPath: file.FilePath, Start: &received}, service); err == nil {
-				t.Fatal("failed route publication left native worker grant usable")
-			}
-		})
-	}
-}
-
-func TestNativeVideoRemoteStopKeepsSessionWhenRevocationFails(t *testing.T) {
-	client := nativeVideoGrantRedis(t)
-	service, session, start, _ := nativeVideoGrantFixture(t, client)
-	store := NewNativeVideoWorkerGrantStore(client)
-	if err := store.Prepare(t.Context(), 7, service, session, start); err != nil {
-		t.Fatal(err)
-	}
-	manager := service.Sessions.(*playback.SessionManager)
-	if err := manager.SetTranscodeRoute(session.ID, playback.TranscodeRoute{NodeURL: "http://127.0.0.1:1", TransportID: start.SessionID}); err != nil {
-		t.Fatal(err)
-	}
-	session, err := manager.GetSession(session.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	dead := redis.NewClient(client.Options())
-	_ = dead.Close()
-	service.WorkerGrants = NewNativeVideoWorkerGrantStore(dead)
-	h := NewPlaybackHandler(manager, service.Files)
-	h.NativeVideo = service
-	if err := h.stopPlaybackSession(t.Context(), session, PlaybackEndStopped); err == nil {
-		t.Fatal("stop succeeded without durable native grant revocation")
-	}
-	if _, err := manager.GetSession(session.ID); err != nil {
-		t.Fatalf("failed stop removed retryable session: %v", err)
-	}
-	service.WorkerGrants = store
-	if err := h.stopPlaybackSession(t.Context(), session, PlaybackEndStopped); err != nil {
-		t.Fatalf("retry stop: %v", err)
-	}
-	if _, err := store.Resolve(t.Context(), transcodenode.NativeExecutionRequest{WorkerID: 7, TransportID: start.SessionID, InputPath: start.InputPath, Start: &start}, service); err == nil {
-		t.Fatal("successful stop left grant usable")
-	}
-}
-
 func TestNativeVideoLocalStopRequiresDurableDenial(t *testing.T) {
-	client := nativeVideoGrantRedis(t)
-	service, session, _, _ := nativeVideoGrantFixture(t, client)
+	client := nativeVideoRedis(t)
+	service, session, _, _ := nativeVideoBoundFixture(t, client)
 	manager := service.Sessions.(*playback.SessionManager)
 	h := NewPlaybackHandler(manager, service.Files)
 	h.NativeVideo = service
@@ -180,9 +48,8 @@ func TestNativeVideoLocalStopRequiresDurableDenial(t *testing.T) {
 func TestNativeVideoRemoteProxyPreparationRefusesBeforeStart(t *testing.T) {
 	for _, headerAuth := range []bool{false, true} {
 		t.Run(map[bool]string{false: "signed", true: "header"}[headerAuth], func(t *testing.T) {
-			client := nativeVideoGrantRedis(t)
-			service, session, _, _ := nativeVideoGrantFixture(t, client)
-			service.WorkerGrants = NewNativeVideoWorkerGrantStore(client)
+			client := nativeVideoRedis(t)
+			service, session, _, _ := nativeVideoBoundFixture(t, client)
 			file, err := service.Files.GetByID(t.Context(), session.MediaFileID)
 			if err != nil {
 				t.Fatal(err)
@@ -214,46 +81,106 @@ func TestNativeVideoRemoteProxyPreparationRefusesBeforeStart(t *testing.T) {
 			if failure.reason != "route_capability_unavailable" || !failure.retryable || transport.url != "" || requests.Load() != 0 || len(recipes.ops) != 0 || len(proxy.ops) != 0 {
 				t.Fatalf("proxy refusal ran media or published authority: failure=%+v requests=%d", failure, requests.Load())
 			}
-			key, _ := nativeVideoWorkerKey(7, transportGenerationV3(session.ID, result.Plan.PlanID))
-			if n, err := client.Exists(t.Context(), key).Result(); err != nil || n != 0 {
-				t.Fatal("proxy refusal created a worker grant")
+		})
+	}
+}
+
+// nativeExecutionWorker is a transcode node. starts counts POST
+// /transcode/start; grants records the source grant of each start.
+func nativeExecutionWorker(t *testing.T, starts *atomic.Int32, grants ...*atomic.Value) *httptest.Server {
+	t.Helper()
+	worker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/hw-capabilities":
+			writeJSON(w, http.StatusOK, playback.HWAccelInfo{Transformations: remoteHLSPlanV3().Transformations})
+		case r.Method == http.MethodPost && r.URL.Path == "/transcode/start":
+			starts.Add(1)
+			var req transcodenode.TranscodeStartRequest
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			for _, grant := range grants {
+				grant.Store(req.SourceGrant)
+			}
+			writeJSON(w, http.StatusAccepted, transcodenode.TranscodeStartResponse{SessionID: req.SessionID, Status: "started", HWAccel: req.HWAccel, AudioRecipeVersion: req.AudioRecipeVersion, CopyFMP4RecipeVersion: req.CopyFMP4RecipeVersion, ThrottleSeconds: req.ThrottleSeconds})
+		default:
+			w.WriteHeader(http.StatusNoContent)
+		}
+	}))
+	t.Cleanup(worker.Close)
+	return worker
+}
+
+// A native HLS start is refused on a transcode node that reads its own
+// library mount, before a grant is minted or a start is sent, so the route
+// loop excludes the node; a core-access node gets the start with a Bloem
+// grant that reads through the session's binding.
+func TestNativeVideoRemoteStartNeedsACoreAccessNode(t *testing.T) {
+	for _, access := range []string{nodepool.SourceAccessLocal, nodepool.SourceAccessCore} {
+		t.Run(access, func(t *testing.T) {
+			client := nativeVideoRedis(t)
+			service, session, _, _ := nativeVideoBoundFixture(t, client)
+			file, err := service.Files.GetByID(t.Context(), session.MediaFileID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			starts, grant := &atomic.Int32{}, &atomic.Value{}
+			worker := nativeExecutionWorker(t, starts, grant)
+			node := &nodepool.Node{ID: 7, URL: worker.URL, SourceAccess: access}
+			sources := &NativeNodeSources{}
+			sources.Install(NativeNodeSourceConfig{Service: service, Secret: func() string { return "fixture-secret" },
+				Node: func(context.Context, int) (*nodepool.Node, error) { return node, nil }})
+			h := NewPlaybackHandler(service.Sessions, service.Files)
+			h.NativeVideo, h.JWTSecret, h.NodeKeys = service, "fixture-secret", nodeauthtest.SameKey("fixture-node-key")
+			h.SourceGrants = sources.Granter(siloGranterFixture{})
+			recipes := &recordingRecipeCardStoreV3{}
+			h.NodeRecipeStore = recipes
+			result := remoteHLSResultV3()
+			result.Plan.EffectiveMediaFileID = file.ID
+			transport, failure := h.prepareRemoteTransportV3(httptest.NewRequest(http.MethodPost, "/", nil), session, file, result, nodepool.Plan{TranscodeNode: node}, preparedTimelineV3{}, mediaAuthModeV3{})
+			if access == nodepool.SourceAccessLocal {
+				if failure == nil {
+					transport.rollback()
+					t.Fatal("a native HLS start was sent to a local-access node")
+				}
+				if failure.reason != routeCapabilityUnavailableReasonV3 || !failure.retryable || !failure.executorIneligible || !errors.Is(failure.cause, errNativeNodeLocalAccess) {
+					t.Fatalf("refusal = %+v, want an ineligible executor", failure)
+				}
+				if starts.Load() != 0 || len(recipes.ops) != 0 {
+					t.Fatalf("refusal ran media or stored a recipe: starts=%d recipes=%d", starts.Load(), len(recipes.ops))
+				}
+				return
+			}
+			if failure != nil {
+				t.Fatalf("core-access node refused: %+v", failure)
+			}
+			defer transport.rollback()
+			sent, _ := grant.Load().(string)
+			if starts.Load() != 1 || !IsNativeNodeGrant(sent) {
+				t.Fatalf("start: starts=%d grant=%q, want one start with a Bloem grant", starts.Load(), sent)
+			}
+			claims, status := sources.open(sources.config(), 7, sent)
+			if status != 0 || claims.Session != session.ID || claims.File != file.ID {
+				t.Fatalf("grant claims = %+v status %d, want session %s file %d", claims, status, session.ID, file.ID)
 			}
 		})
 	}
 }
 
-func TestNativeVideoRemoteProxyRoutingFallsBackToSameWorkerAPIRelay(t *testing.T) {
+// A policy that runs video transcodes only on nodes leaves a native input
+// with no route, whatever its egress, instead of starting it on a node.
+func TestNativeVideoNodeOnlyPolicyHasNoRoute(t *testing.T) {
 	for _, proxyOnly := range []bool{false, true} {
-		t.Run(map[bool]string{false: "API_relay_fallback", true: "proxy_only_refused"}[proxyOnly], func(t *testing.T) {
-			client := nativeVideoGrantRedis(t)
-			service, session, _, _ := nativeVideoGrantFixture(t, client)
-			service.WorkerGrants = NewNativeVideoWorkerGrantStore(client)
+		t.Run(map[bool]string{false: "API_relay", true: "proxy_only"}[proxyOnly], func(t *testing.T) {
+			client := nativeVideoRedis(t)
+			service, session, _, _ := nativeVideoBoundFixture(t, client)
 			file, err := service.Files.GetByID(t.Context(), session.MediaFileID)
 			if err != nil {
 				t.Fatal(err)
 			}
 			starts := &atomic.Int32{}
-			worker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if answerNativeExecutionReadiness(w, r, 7) {
-					return
-				}
-				switch {
-				case r.Method == http.MethodGet && r.URL.Path == "/hw-capabilities":
-					writeJSON(w, http.StatusOK, playback.HWAccelInfo{Transformations: remoteHLSPlanV3().Transformations})
-				case r.Method == http.MethodPost && r.URL.Path == "/transcode/start":
-					starts.Add(1)
-					var req transcodenode.TranscodeStartRequest
-					_ = json.NewDecoder(r.Body).Decode(&req)
-					writeJSON(w, http.StatusAccepted, transcodenode.TranscodeStartResponse{SessionID: req.SessionID, Status: "started", HWAccel: req.HWAccel, AudioRecipeVersion: req.AudioRecipeVersion, CopyFMP4RecipeVersion: req.CopyFMP4RecipeVersion, ThrottleSeconds: req.ThrottleSeconds})
-				default:
-					w.WriteHeader(http.StatusNoContent)
-				}
-			}))
-			defer worker.Close()
+			worker := nativeExecutionWorker(t, starts)
 			h := NewPlaybackHandler(service.Sessions, service.Files)
-			h.NativeVideo, h.JWTSecret = service, "fixture-secret"
-			planner := &progressiveFallbackPlannerV3{transcode: &nodepool.Node{ID: 7, URL: worker.URL}, proxy: &nodepool.Node{ID: 8, URL: "http://proxy.example"}}
-			h.NodePlanner = planner
+			h.NativeVideo, h.JWTSecret, h.NodeKeys = service, "fixture-secret", nodeauthtest.SameKey("fixture-node-key")
+			h.NodePlanner = &progressiveFallbackPlannerV3{transcode: &nodepool.Node{ID: 7, URL: worker.URL}, proxy: &nodepool.Node{ID: 8, URL: "http://proxy.example"}}
 			result := remoteHLSResultV3()
 			result.Plan.SessionID, result.Plan.EffectiveMediaFileID = session.ID, file.ID
 			policy := config.DefaultPlaybackRoutingPolicy()
@@ -262,33 +189,20 @@ func TestNativeVideoRemoteProxyRoutingFallsBackToSameWorkerAPIRelay(t *testing.T
 				policy.VideoTranscodeEgress = config.PlaybackEgressProxyOnly
 			}
 			transport, failure := h.prepareTransportWithPolicyV3(httptest.NewRequest(http.MethodPost, "/", nil), session, file, result, mediaAuthModeV3{}, policy)
-			if proxyOnly {
-				if failure == nil {
-					transport.rollback()
-					t.Fatal("proxy-only native policy published an unsupported route")
-				}
-				if failure.reason != "route_capability_unavailable" || !failure.retryable || starts.Load() != 0 {
-					t.Fatalf("proxy-only refusal: failure=%+v starts=%d", failure, starts.Load())
-				}
-				return
+			if failure == nil {
+				transport.rollback()
+				t.Fatal("a node-only policy published a native route")
 			}
-			if failure != nil {
-				t.Fatalf("legal API relay fallback failed: %v", failure)
-			}
-			defer transport.rollback()
-			if starts.Load() != 1 || transport.routingEgress != noderouting.EgressAPI || transport.routingExecutorURL != worker.URL || !strings.HasPrefix(transport.url, "/playback/transcode/") {
-				t.Fatalf("fallback failed to reuse worker via API relay: starts=%d egress=%s executor=%q url=%q", starts.Load(), transport.routingEgress, transport.routingExecutorURL, transport.url)
-			}
-			if len(planner.requests) < 2 || !planner.requests[0].NeedsProxy || planner.requests[len(planner.requests)-1].NeedsProxy {
-				t.Fatalf("fallback did not retry topology: %+v", planner.requests)
+			if !failure.retryable || starts.Load() != 0 {
+				t.Fatalf("refusal: failure=%+v starts=%d", failure, starts.Load())
 			}
 		})
 	}
 }
 
 func TestNativeVideoRemoteOrdinaryPredecessorStillPublishes(t *testing.T) {
-	client := nativeVideoGrantRedis(t)
-	service, _, _, _ := nativeVideoGrantFixture(t, client)
+	client := nativeVideoRedis(t)
+	service, _, _, _ := nativeVideoBoundFixture(t, client)
 	file := &models.MediaFile{ID: 101, ContentID: "ordinary", MediaFolderID: 9, FilePath: "/fixture/ordinary.mp4", Container: "mp4", CodecVideo: "h264"}
 	service.Files = mapPlaybackFileResolver{files: map[int]*models.MediaFile{file.ID: file}}
 	manager := service.Sessions.(*playback.SessionManager)
@@ -316,7 +230,7 @@ func TestNativeVideoRemoteOrdinaryPredecessorStillPublishes(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := NewPlaybackHandler(manager, service.Files)
-	h.NativeVideo, h.JWTSecret = service, "fixture-secret"
+	h.NativeVideo, h.JWTSecret, h.NodeKeys = service, "fixture-secret", nodeauthtest.SameKey("fixture-node-key")
 	result := remoteHLSResultV3()
 	result.Plan.SessionID, result.Plan.EffectiveMediaFileID = session.ID, file.ID
 	transport, failure := h.prepareRemoteTransportV3(httptest.NewRequest(http.MethodPost, "/", nil), session, file, result, nodepool.Plan{TranscodeNode: &nodepool.Node{ID: 7, URL: worker.URL}, ProxyNode: &nodepool.Node{ID: 8, URL: "http://proxy.example"}}, preparedTimelineV3{}, mediaAuthModeV3{})

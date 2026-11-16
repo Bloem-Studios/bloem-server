@@ -1,15 +1,17 @@
 # Bloem overlay: Admin API
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`, and checked again on
-> 2026-11-11, after Silo retired its v1 API. It lists what Bloem
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`, checked again on
+> 2026-11-11, after Silo retired its v1 API, and on 2026-11-16 against Silo through
+> `699f84ecf`. It lists what Bloem
 > adds to Silo's [`docs/admin-api.md`](../../admin-api.md), which stays exactly as
 > Silo wrote it. Bloem replaces nothing there. The section-by-section additions are
 > in the [For developers](#for-developers) section.
 
 Silo's Admin API page documents the routes an administrator uses to run a server.
 Bloem serves all of them unchanged and adds three things of its own, after Silo's
-section on reading the application log.
+section on reading the application log, and one note on how a transcode node reads
+files in Bloem's native storage.
 
 ## What Bloem changes
 
@@ -25,6 +27,11 @@ section on reading the application log.
   Bookwarehouse sources, beside ordinary folders. Platform and organization
   administrators manage those sources through their own routes, and Bloem refuses
   the library operations that cannot work on them yet.
+- **Native-storage files on transcode nodes (changed).** Silo's transcode nodes
+  no longer use a database or Redis, so the way a node used to read a file kept in
+  native storage no longer applies. The
+  [native video playback](../../architecture/bloem-native-video-playback.md) page
+  describes how such a file reaches a node.
 
 ## Words used in the code
 
@@ -62,7 +69,32 @@ section below. Silo's own sequenced administrator playback commands
 (`/api/v2/admin/sessions/{session_id}/pause`, `/resume`, `/stop`, `/message` and
 `/terminate`) were separate from Bloem's retired v1 remote-control routes.
 
+On 2026-11-16 the overlay was checked against Silo through `699f84ecf`. Silo's
+#4337 and #4338 (thin transcode nodes and core source access) changed the nodes
+sections: a transcode node finds its row by its key instead of `NODE_URL`, node
+rows report `key_issued` and `source_access`, `POST /api/v2/admin/nodes` and
+`PUT /api/v2/admin/nodes/{id}` take `source_access`, a delete removes the node's
+credential, and two new sections describe node source access and
+`POST /api/v2/admin/nodes/{id}/key` (`issueAdminNodeKey`). All of it applies to
+Bloem as Silo wrote it, and the application-log anchor below is unchanged. The one
+Bloem difference is native storage, in the first block below.
+
 ### Section by section
+
+**Location:** section “Node source access (v2)”, after its list of the two modes.
+**Bloem adds:**
+
+#### Native-storage files on a transcode node (changed)
+
+Silo's two modes describe files in library folders. A file in Bloem's
+[native storage](../../architecture/bloem-native-storage.md) is not in a library
+folder: it is read through its storage source. Before Silo's thin nodes a
+transcode node read such a file under a worker grant kept in Redis; a thin node
+has no Redis, so that path no longer applies. How a native-storage file reaches a
+transcode node now is on
+[native video playback](../../architecture/bloem-native-video-playback.md).
+
+---
 
 **Location:** section “`GET /api/v2/admin/logs/app` — `level`”, after the paragraph
 beginning “`level` accepts a comma-separated list, so one request can ask…”.

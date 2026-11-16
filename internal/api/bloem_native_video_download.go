@@ -51,7 +51,7 @@ func newNativeVideoDownloads(deps Dependencies, service *handlers.NativeVideoSer
 		return nil
 	}
 	populateNativeVideoStores(deps, &p)
-	native := &handlers.NativeVideoDownloads{Service: service, Secret: p.secret, Open: func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
+	native := &handlers.NativeVideoDownloads{Service: service, Open: func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
 		authority, err := nativeVideoDownloadAuthority(ctx, file.ID, p)
 		if err != nil {
 			return nil, err

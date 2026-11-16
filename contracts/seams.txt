@@ -16,7 +16,7 @@ AGENTS.md
 Makefile  # Bloem gates and generation; bounded 20-minute Go package timeout covers the measured ~15-minute executor
 assets/icon.png
 cmd/playbackfixtures/main.go
-cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources; one line starts the admin push workers (api.ConfigureBloemAdminPush)
+cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources; one line after the download preparer's SetSourceGrants wraps its granter so native files get Bloem source grants for core-access transcode nodes (handlers.NativeNodeSources, 2026-11-16); one line starts the admin push workers (api.ConfigureBloemAdminPush)
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/create_library_validation_failed.json  # generated: createLibrary accepts storage_source instead of paths, so paths is no longer required
@@ -68,7 +68,7 @@ internal/api/handlers/playback_hung_node_test.go  # the router fixture sets the 
 internal/api/handlers/playback_missing.go  # a native-storage file is checked through its provider, never stat'ed or marked missing (bloemNativePreflight)
 internal/api/handlers/playback_sessions.go  # one additive, zero-valued filter field (PlaybackSessionsQuery.OrganizationID) so the organization support streams route filters in SQL; Silo reads are unchanged
 internal/api/handlers/playback_test.go
-internal/api/handlers/playback_v3.go  # two hook lines in planPlaybackWithCapabilitiesV3: the planner call goes through playback.PlanPlaybackAirPlayAwareV3 (bloem_airplay_v3.go), so an AirPlay output plans under a bitrate cap
+internal/api/handlers/playback_v3.go  # two hook lines in planPlaybackWithCapabilitiesV3: the planner call goes through playback.PlanPlaybackAirPlayAwareV3 (bloem_airplay_v3.go), so an AirPlay output plans under a bitrate cap; native video lines in prepareRemoteTransportV3 admit a native input only to a core-access node (nativeVideoWorkerAdmissionV3) and name the session its Bloem source grant reads through (nativeNodeGrantRequest, bloem_native_node_source.go, 2026-11-16)
 internal/api/handlers/playback_v3_test.go
 internal/api/handlers/plugins.go  # installation store becomes an interface so native storage installations can be hidden (bloem_plugins_native_storage.go)
 internal/api/handlers/profiles.go
@@ -84,7 +84,7 @@ internal/api/middleware/household_profile_gate.go  # direct-profile sessions are
 internal/api/middleware/policy_gates.go
 internal/api/middleware/profile.go
 internal/api/middleware/viewer_access.go
-internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher; one line wraps the request lifecycle notifier for admin push (bloemAdminPushLifecycle)
+internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher; four lines put native inputs on core-access transcode nodes: the playback handler's granter, the node control grant issuer and catalog check, Bloem's sources/open in the /self node routes and its source bytes middleware (bloem_native_node_sources.go, 2026-11-16); one line wraps the request lifecycle notifier for admin push (bloemAdminPushLifecycle)
 internal/api/testdata/media_routes.txt
 internal/apiv2/admin_subtitle_metadata_test.go  # reviewed test-only exception: canonical API language projection preserves raw legacy row
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
@@ -111,6 +111,7 @@ internal/auth/service.go
 internal/auth/session.go
 internal/backup/backuptest/backuptest.go  # one call: the template gets Bloem's fixture-compatibility triggers (bloem_fixture_compat.go), because Silo's backup tests seed profiles and libraries with bare SQL
 internal/backup/credentials_authority_test.go  # two guards: Bloem's access-policy and profile fields are decided in bloem_coverage_test.go
+internal/backup/swap_test.go  # one line: TestSwapCleanupHasADeadline's --recover step gets the real cleanup deadline back; Silo's 200 ms bound still proves the timed-out rollback, but under CI load it also cut the recovery short (owner's decision, 2026-11-16)
 internal/backup/restoreset_users.go  # two fields and two calls: a restore set records each account's organization and each profile's access group (bloem_restore_tenancy.go)
 internal/backup/restoreset_write.go  # one call: a user-data backup's restore set leaves the plugins and settings out (bloem_user_data_backup.go)
 internal/backup/selective_apply.go  # one call: a restore of accounts only is marked, so it takes no backup first (bloem_user_data_backup.go)
@@ -157,7 +158,7 @@ internal/invitations/repository.go
 internal/invitations/repository_atomic_test.go  # fully migrated isolated databases preserve tenant FKs/triggers and strengthen rollback checks
 internal/invitations/service.go
 internal/invitations/service_atomic_test.go  # reuse real tenant membership provisioning in the atomic acceptance fixture
-internal/jellycompat/handlers_playback.go  # three hook lines (S6): the remote transcode start seals the worker grant for a native-storage input before it is sent (playback.SealContextWorkerStart); Jellyfin worker HLS of native-storage files, approved 2026-11-12, chosen over wrapping NodeClient's transport, which Silo's client test pins to *http.Transport
+internal/jellycompat/handlers_playback.go  # three hook lines (S6): the remote transcode start refuses a native-storage or .strm input before it is sent (playback.RefuseContextRemoteStart), so it runs on the API server; Silo's thin transcode nodes read sources only through core grants, which name file paths. Approved 2026-11-12 for worker HLS, repurposed 2026-11-16; chosen over wrapping NodeClient's transport, which Silo's client test pins to *http.Transport
 internal/jellycompat/streamtelemetry.go  # two lines (S1): attachCompatStream notes the compat session, playback session and file for the request's context media host (playback.NoteContextStream); the one place every Jellyfin stream handler names them, so native-storage files play for Jellyfin clients, approved 2026-11-12
 internal/libraryingest/executor.go
 internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
@@ -305,6 +306,7 @@ web/src/lib/documentTitle.ts
 web/src/lib/episodeCardLabels.ts  # no placeholder 'Episode N' title above the episode code; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/lib/loginSessionDevice.ts  # recognizes Bloem client user agents as the app
 web/src/pages/AdminAccessGroups.tsx
+web/src/pages/AdminHomeRows.libraryCopies.test.tsx  # four lookups: the 100-page limit test finds its checkboxes by label, as its own loop already does, instead of by role, which recomputed 100+ accessible names per lookup and ran past the 30 s timeout under CI load (owner's decision, 2026-11-16)
 web/src/pages/AdminLibraries.tsx  # shows a storage library's source instead of paths
 web/src/pages/AdminPlugins.tsx  # Storage tab for storage sources inside an administrative context
 web/src/pages/Catalog.tsx  # empty search field at the top on phones; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges

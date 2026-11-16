@@ -40,7 +40,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v2 handler, the retained /api/v1 probes and tombstone, and the routes mounted beside them.",
-      "route_count": 512
+      "route_count": 521
     },
     {
       "id": "api_v2",
@@ -62,8 +62,8 @@
     }
   ],
   "totals": {
-    "routes": 697,
-    "conditional_routes": 193,
+    "routes": 706,
+    "conditional_routes": 202,
     "streaming_routes": 27,
     "websocket_routes": 0
   },
@@ -86,6 +86,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)"
@@ -105,6 +106,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -125,6 +127,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -145,6 +148,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -166,6 +170,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -188,6 +193,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -213,6 +219,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -239,6 +246,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -265,6 +273,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -291,6 +300,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -318,6 +328,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -345,6 +356,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -370,6 +382,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -394,6 +407,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -414,6 +428,7 @@
         "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
         "middleware.Recoverer",
         "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
@@ -424,13 +439,80 @@
     {
       "id": 16,
       "middleware": [
+        "captureNativeVideoRequest",
+        "httpstream.NoSniff",
+        "apimw.RequestID",
+        "apimw.NormalizeClientHeaders",
+        "clientip.Middleware(deps.ClientIPResolver) [when deps.ClientIPResolver != nil]",
+        "previewHostGuard(reader, previewHostTokens{JWTService: auth.NewJWTService(deps.Config.Auth.JWTSecret, time.Hour, time.Hour), privacyKey: []byte(deps.Config.Auth.JWTSecret)})",
+        "previewAccountLoginGuard(deps.DB)",
+        "netaccess.Middleware(deps.NetworkAccess.Registry) [when deps.NetworkAccess != nil]",
+        "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
+        "middleware.Recoverer",
+        "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
+        "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
+        "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
+        "nodecontrol.RequireNode(deps.NodeKeyRegistry)"
+      ]
+    },
+    {
+      "id": 17,
+      "middleware": [
+        "captureNativeVideoRequest",
+        "httpstream.NoSniff",
+        "apimw.RequestID",
+        "apimw.NormalizeClientHeaders",
+        "clientip.Middleware(deps.ClientIPResolver) [when deps.ClientIPResolver != nil]",
+        "previewHostGuard(reader, previewHostTokens{JWTService: auth.NewJWTService(deps.Config.Auth.JWTSecret, time.Hour, time.Hour), privacyKey: []byte(deps.Config.Auth.JWTSecret)})",
+        "previewAccountLoginGuard(deps.DB)",
+        "netaccess.Middleware(deps.NetworkAccess.Registry) [when deps.NetworkAccess != nil]",
+        "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
+        "middleware.Recoverer",
+        "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
+        "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
+        "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
+        "nodecontrol.RequireNode(deps.NodeKeyRegistry)",
+        "deps.NativeNodeSources.NodeSelfMiddleware(nodeControl.LimitNodePlayback)",
+        "nodeControl.LimitNode"
+      ]
+    },
+    {
+      "id": 18,
+      "middleware": [
+        "captureNativeVideoRequest",
+        "httpstream.NoSniff",
+        "apimw.RequestID",
+        "apimw.NormalizeClientHeaders",
+        "clientip.Middleware(deps.ClientIPResolver) [when deps.ClientIPResolver != nil]",
+        "previewHostGuard(reader, previewHostTokens{JWTService: auth.NewJWTService(deps.Config.Auth.JWTSecret, time.Hour, time.Hour), privacyKey: []byte(deps.Config.Auth.JWTSecret)})",
+        "previewAccountLoginGuard(deps.DB)",
+        "netaccess.Middleware(deps.NetworkAccess.Registry) [when deps.NetworkAccess != nil]",
+        "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
+        "middleware.Recoverer",
+        "apimw.Metrics",
+        "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
+        "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
+        "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
+        "nodecontrol.RequireNode(deps.NodeKeyRegistry)",
+        "deps.NativeNodeSources.NodeSelfMiddleware(nodeControl.LimitNodePlayback)",
+        "nodeControl.LimitNodePlayback"
+      ]
+    },
+    {
+      "id": 19,
+      "middleware": [
         "clientip.Middleware(s.clientIP) [when s.clientIP != nil]",
         "netaccess.Middleware(s.ingressTokens) [when s.ingressTokens != nil]",
         "cors.Handler(cors.Options{ AllowedOrigins: []string{\"*\"}, AllowedMethods: []string{\"GET\", \"HEAD\", \"OPTIONS\"}, AllowedHeaders: []string{ \"Accept\", \"Authorization\", \"Content-Type\", proxyRangeHeader, \"X-Silo-Device-Name\", \"X-Silo-Device-Platform\", \"X-Silo-Client-Family\", \"X-Profile-Token\", \"X-Silo-Device-Id\", \"X-Silo-Client\", \"X-Silo-Client-Version\", \"X-Profile-Id\", \"X-Silo-Client-Build\", \"X-Silo-Client-Channel\", \"If-Match\", \"If-Modified-Since\", \"If-None-Match\", \"If-Range\", \"If-Unmodified-Since\", }, ExposedHeaders: []string{ \"Accept-Ranges\", \"Content-Encoding\", \"Content-Length\", \"Content-Range\", \"ETag\", \"Last-Modified\", \"Retry-After\", }, MaxAge: 86400, })"
       ]
     },
     {
-      "id": 17,
+      "id": 20,
       "middleware": [
         "clientip.Middleware(s.clientIP) [when s.clientIP != nil]",
         "netaccess.Middleware(s.ingressTokens) [when s.ingressTokens != nil]",
@@ -439,7 +521,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 21,
       "middleware": [
         "clientip.Middleware(s.clientIP) [when s.clientIP != nil]",
         "netaccess.Middleware(s.ingressTokens) [when s.ingressTokens != nil]",
@@ -448,7 +530,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 22,
       "middleware": [
         "s.requireBearer"
       ]
@@ -16557,6 +16639,274 @@
     },
     {
       "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/internal/nodes/self/config",
+      "route_group": "/api/internal/nodes/self",
+      "handler": "(*internal/nodecontrol.Server).HandleConfig",
+      "handler_expr": "nodeControl.HandleConfig",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 17,
+      "auth_class": "node_signed",
+      "auth_traits": [
+        "node_signed",
+        "rate_limited"
+      ],
+      "conditions": [
+        "deps.NodeKeyRegistry != nil && deps.NodeRepo != nil && settingsRepo != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/internal/nodes/self/health-changed",
+      "route_group": "/api/internal/nodes/self",
+      "handler": "(*internal/nodecontrol.Server).HandleHealthChanged",
+      "handler_expr": "nodeControl.HandleHealthChanged",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 17,
+      "auth_class": "node_signed",
+      "auth_traits": [
+        "node_signed",
+        "rate_limited"
+      ],
+      "conditions": [
+        "deps.NodeKeyRegistry != nil && deps.NodeRepo != nil && settingsRepo != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/internal/nodes/self/logs",
+      "route_group": "/api/internal/nodes/self",
+      "handler": "(*internal/nodecontrol.Server).HandleLogs",
+      "handler_expr": "nodeControl.HandleLogs",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 17,
+      "auth_class": "node_signed",
+      "auth_traits": [
+        "node_signed",
+        "rate_limited"
+      ],
+      "conditions": [
+        "deps.NodeKeyRegistry != nil && deps.NodeRepo != nil && settingsRepo != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/internal/nodes/self/report",
+      "route_group": "/api/internal/nodes/self",
+      "handler": "(*internal/nodecontrol.Server).HandleReport",
+      "handler_expr": "nodeControl.HandleReport",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 17,
+      "auth_class": "node_signed",
+      "auth_traits": [
+        "node_signed",
+        "rate_limited"
+      ],
+      "conditions": [
+        "deps.NodeKeyRegistry != nil && deps.NodeRepo != nil && settingsRepo != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/internal/nodes/self/resolve",
+      "route_group": "/api/internal/nodes/self",
+      "handler": "(*internal/nodecontrol.Server).HandleResolve",
+      "handler_expr": "nodeControl.HandleResolve",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 18,
+      "auth_class": "node_signed",
+      "auth_traits": [
+        "node_signed",
+        "rate_limited"
+      ],
+      "conditions": [
+        "deps.NodeKeyRegistry != nil && deps.NodeRepo != nil && settingsRepo != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/internal/nodes/self/revoke-recipes",
+      "route_group": "/api/internal/nodes/self",
+      "handler": "(*internal/nodecontrol.Server).HandleRevokeRecipes",
+      "handler_expr": "nodeControl.HandleRevokeRecipes",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 17,
+      "auth_class": "node_signed",
+      "auth_traits": [
+        "node_signed",
+        "rate_limited"
+      ],
+      "conditions": [
+        "deps.NodeKeyRegistry != nil && deps.NodeRepo != nil && settingsRepo != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/internal/nodes/self/sources/open",
+      "route_group": "/api/internal/nodes/self",
+      "handler": "(*internal/nodecontrol.Server).HandleSourceOpen",
+      "handler_expr": "nodeControl.HandleSourceOpen",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 18,
+      "auth_class": "node_signed",
+      "auth_traits": [
+        "node_signed",
+        "rate_limited"
+      ],
+      "conditions": [
+        "deps.NodeKeyRegistry != nil && deps.NodeRepo != nil && settingsRepo != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/internal/nodes/sources",
+      "route_group": "/",
+      "handler": "(*internal/nodecontrol.Server).HandleSource",
+      "handler_expr": "nodeControl.HandleSource",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 16,
+      "auth_class": "node_signed",
+      "auth_traits": [
+        "node_signed"
+      ],
+      "conditions": [
+        "deps.NodeKeyRegistry != nil && deps.NodeRepo != nil && settingsRepo != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "HEAD",
+      "path": "/api/internal/nodes/sources",
+      "route_group": "/",
+      "handler": "(*internal/nodecontrol.Server).HandleSource",
+      "handler_expr": "nodeControl.HandleSource",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 16,
+      "auth_class": "node_signed",
+      "auth_traits": [
+        "node_signed"
+      ],
+      "conditions": [
+        "deps.NodeKeyRegistry != nil && deps.NodeRepo != nil && settingsRepo != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router.go"
+    },
+    {
+      "listener": "api",
       "namespace": "api_v1",
       "method": "CONNECT",
       "path": "/api/v1",
@@ -18635,7 +18985,7 @@
       "handler_expr": "s.handleForceReload",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 18,
+      "middleware_chain": 21,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -18663,7 +19013,7 @@
       "handler_expr": "s.handleReloadConfig",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 18,
+      "middleware_chain": 21,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -18691,7 +19041,7 @@
       "handler_expr": "s.handleReprobeCapabilities",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 18,
+      "middleware_chain": 21,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -18719,7 +19069,7 @@
       "handler_expr": "s.handleHealth",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 16,
+      "middleware_chain": 19,
       "auth_class": "public",
       "auth_traits": [
         "cors"
@@ -18746,7 +19096,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/downloads/file/{token}\", s.handleDownloadFile)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -18774,7 +19124,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/downloads/file/{token}\", s.handleDownloadFile)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -18802,7 +19152,7 @@
       "handler_expr": "s.handleHWCapabilities",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 18,
+      "middleware_chain": 21,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -18830,7 +19180,7 @@
       "handler_expr": "promhttp.Handler()",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 16,
+      "middleware_chain": 19,
       "auth_class": "public",
       "auth_traits": [
         "cors"
@@ -18857,7 +19207,7 @@
       "handler_expr": "s.handleNetworkAccessStatus",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 18,
+      "middleware_chain": 21,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -18885,7 +19235,7 @@
       "handler_expr": "s.handleNetworkAccessConnect",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 18,
+      "middleware_chain": 21,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -18913,7 +19263,7 @@
       "handler_expr": "s.handleNetworkAccessDisconnect",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 18,
+      "middleware_chain": 21,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -18941,7 +19291,7 @@
       "handler_expr": "s.handleNetworkAccessProviderStatus",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 18,
+      "middleware_chain": 21,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -18969,7 +19319,7 @@
       "handler_expr": "s.handleStatus",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 18,
+      "middleware_chain": 21,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -18997,7 +19347,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/bandwidth-probe/{token}\", s.handleBandwidthProbe)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19025,7 +19375,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/direct/{token}\", s.handleDirectPlay)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19053,7 +19403,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/direct/{token}\", s.handleDirectPlay)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19081,7 +19431,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/remux/audio-v2/{token}\", s.handleAudioV2Remux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19109,7 +19459,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/remux/audio-v2/{token}\", s.handleAudioV2Remux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19137,7 +19487,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/remux/{token}\", s.handleRemux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19165,7 +19515,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/remux/{token}\", s.handleRemux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19193,7 +19543,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/subtitles/{token}/{track}\", s.handleSubtitle)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19221,7 +19571,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/subtitles/{token}/{track}/fonts\", s.handleSubtitleFonts)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19249,7 +19599,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/theme/{token}\", s.handleThemeAudio)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19277,7 +19627,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/theme/{token}\", s.handleThemeAudio)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19305,7 +19655,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/transcode/{token}/master.m3u8\", s.handleTranscodeManifest)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19333,7 +19683,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/transcode/{token}/master.m3u8\", s.handleTranscodeManifest)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19361,7 +19711,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/transcode/{token}/segment/{name}\", s.handleTranscodeSegment)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19389,7 +19739,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/v3/{session_id}\", s.handleGrantIdentity)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19417,7 +19767,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/v3/{session_id}\", s.handleGrantIdentity)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19445,7 +19795,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/v3/{session_id}/master.m3u8\", s.handleGrantTranscodeManifest)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19473,7 +19823,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/v3/{session_id}/master.m3u8\", s.handleGrantTranscodeManifest)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19501,7 +19851,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/v3/{session_id}/segment/{name}\", s.handleGrantTranscodeSegment)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 20,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -19529,7 +19879,7 @@
       "handler_expr": "s.handleForceReload",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19556,7 +19906,7 @@
       "handler_expr": "s.handleReloadConfig",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19583,7 +19933,7 @@
       "handler_expr": "s.handleReprobeCapabilities",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19635,7 +19985,7 @@
       "handler_expr": "s.handleChapterThumbnailExtract",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19662,7 +20012,7 @@
       "handler_expr": "s.handleListDownloadArtifacts",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19689,7 +20039,7 @@
       "handler_expr": "s.handleDeleteDownloadArtifact",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19716,7 +20066,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodGet, \"/downloads/artifacts/{artifact_id}\", s.handleDownloadArtifact)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19743,7 +20093,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodHead, \"/downloads/artifacts/{artifact_id}\", s.handleDownloadArtifact)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19770,7 +20120,7 @@
       "handler_expr": "s.handleDownloadPrepare",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19797,7 +20147,7 @@
       "handler_expr": "s.handleDownloadPrepareProgress",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19824,7 +20174,7 @@
       "handler_expr": "s.handleHWCapabilities",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19851,7 +20201,7 @@
       "handler_expr": "s.handleMediaSample",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19903,7 +20253,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodGet, \"/remux/{session_id}\", s.handleRemux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19930,7 +20280,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodHead, \"/remux/{session_id}\", s.handleRemux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19957,7 +20307,7 @@
       "handler_expr": "s.handleStatus",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -19984,7 +20334,7 @@
       "handler_expr": "s.handleStart",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -20011,7 +20361,7 @@
       "handler_expr": "s.handleStop",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -20038,7 +20388,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodGet, \"/transcode/{session_id}/master.m3u8\", s.handleManifest)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -20065,7 +20415,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodGet, \"/transcode/{session_id}/segment/{name}\", s.handleSegment)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -20092,7 +20442,7 @@
       "handler_expr": "s.handleSegmentDownloaded",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -20119,7 +20469,7 @@
       "handler_expr": "s.handleTrickplayExtract",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 19,
+      "middleware_chain": 22,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"

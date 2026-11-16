@@ -71,7 +71,7 @@ func newCompatServeFixtureFor(t *testing.T, sessionID string) *compatServeFixtur
 	stream := compatTestStream()
 	stream.PlaybackSessionID = sessionID
 	fixture := &compatServeFixture{delegation: d, sessions: sessions, host: host, store: store, stream: stream}
-	service := &handlers.NativeVideoService{Files: compatFilesFixture{file: f.file}, Bindings: store, WorkerReadiness: handlers.NewNativeVideoWorkerReadiness()}
+	service := &handlers.NativeVideoService{Files: compatFilesFixture{file: f.file}, Bindings: store}
 	fixture.service = service
 	configureNativeVideoBoundAuthority(service, f.policy)
 	service.Delegation = func(ctx context.Context) (handlers.NativeVideoAuthority, error) {

@@ -15,12 +15,11 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
-	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/downloads"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/nativeredact"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/playback"
-	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
@@ -114,6 +113,8 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 	if deps.DB == nil || deps.FileRepo == nil || deps.SessionMgr == nil || coordinator == nil || h == nil || sh == nil || authMiddleware == nil || viewer == nil {
 		return
 	}
+	// Silo's FFmpeg command logs must not name a tool input argument.
+	nativeredact.Register()
 	tenantStore := tenancy.NewStore(deps.DB)
 	tenantResolver := tenancy.NewResolver(tenantStore)
 	resources := resourcetenancy.NewStore(deps.DB)
@@ -126,8 +127,8 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 	}, getSession: deps.SessionMgr.GetSession, denied: nativeVideoSessionDenied(deps.RedisClient, h.StreamDeny), resolveFile: h.ResolveNativeVideoFile, authorizeSource: func(ctx context.Context, file *models.MediaFile, source storagesource.SourceConfig) error {
 		return authorizeNativeStorageSource(ctx, file, source, tenantResolver, resources)
 	}, compat: deps.NativeVideoCompat}
-	service := &handlers.NativeVideoService{Presentation: nativeAudioPresentation(deps), Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: h.StreamDeny,
-		Sidecars: storagesource.NewRepository(deps.DB), WorkerReadiness: handlers.NewNativeVideoWorkerReadiness()}
+	service := &handlers.NativeVideoService{Presentation: nativeAudioPresentation(deps), Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: h.StreamDeny,
+		Sidecars: storagesource.NewRepository(deps.DB)}
 	strm, storage := newStrmPlayback(deps), coordinatorOpen(coordinator)
 	service.Open = func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
 		if file == nil {
@@ -143,6 +144,7 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 	configureNativeVideoDelegates(deps, coordinator, service, p)
 	h.NativeVideo = service
 	sh.NativeVideo = service
+	installNativeNodeSources(deps, service, p.secret)
 	deps.NativeVideoCompat.install(service, deps.SessionMgr.GetSession, deps.FileRepo, p.secret)
 	deps.NativeVideoCompat.watchStops(deps.SessionMgr)
 }
@@ -480,44 +482,6 @@ func configureNativeVideoBoundAuthority(service *handlers.NativeVideoService, p 
 		}
 		return nil
 	}
-}
-
-// NewNativeVideoDelegateService composes worker reads from server-owned durable
-// bindings. It never accepts a captured HTTP credential, raw path or worker
-// body as authority and does not create sessions or grant transcode admission.
-func NewNativeVideoDelegateService(deps Dependencies, coordinator *nativestorage.Coordinator) (*handlers.NativeVideoService, error) {
-	if deps.DB == nil || deps.FileRepo == nil || deps.UserStoreProvider == nil || coordinator == nil || coordinator.AcquireOpen == nil {
-		return nil, storagesource.ErrSourceUnavailable
-	}
-	tenants := tenancy.NewStore(deps.DB)
-	tenantResolver := tenancy.NewResolver(tenants)
-	resources := resourcetenancy.NewStore(deps.DB)
-	users := auth.NewUserRepository(deps.DB)
-	groups := access.NewTenantGroupStore(deps.DB)
-	unrated := config.NewUnratedContentPolicy(catalog.NewServerSettingsRepo(deps.DB))
-	var resolver middleware.ViewerResolver
-	if deps.PolicySystem != nil {
-		resolver = policy.NewViewerResolver(users, deps.UserStoreProvider, nil, deps.PolicySystem.PDP(), groups).WithUnratedContentPolicy(unrated).WithAdminDefaults(deps.AdminDefaults).WithBloemTenancy(resources)
-	} else {
-		resolver = access.NewResolver(users, deps.UserStoreProvider, nil, groups).WithUnratedContentPolicy(unrated)
-	}
-	viewer := middleware.NewViewerAccessMiddleware(bloemOrgRevocationAwareViewer(resolver, deps.DB))
-	h := handlers.NewPlaybackHandler(deps.SessionMgr, deps.FileRepo)
-	h.ItemAccess = catalog.NewItemRepository(deps.DB)
-	h.EpisodeLookup = catalog.NewEpisodeRepository(deps.DB)
-	h.ExtraLookup = catalog.NewExtraRepository(deps.DB)
-	deny := playback.NewStreamDeny(deps.RedisClient)
-	getSession := func(string) (*playback.Session, error) { return nil, playback.ErrSessionNotFound }
-	if deps.SessionMgr != nil {
-		getSession = deps.SessionMgr.GetSession
-	}
-	p := nativeVideoPolicy{viewer: viewer, tenants: tenancy.NewSubjectResolver(tenantResolver, tenants), getSession: getSession, denied: nativeVideoSessionDenied(deps.RedisClient, deny), resolveFile: h.ResolveNativeVideoFile, authorizeSource: func(ctx context.Context, file *models.MediaFile, source storagesource.SourceConfig) error {
-		return authorizeNativeStorageSource(ctx, file, source, tenantResolver, resources)
-	}}
-	service := &handlers.NativeVideoService{Presentation: nativeAudioPresentation(deps), Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: deny}
-	h.NativeVideo = service
-	configureNativeVideoDelegates(deps, coordinator, service, p)
-	return service, nil
 }
 
 func nativeVideoDelegation(ctx context.Context, p nativeVideoPolicy) (handlers.NativeVideoAuthority, error) {

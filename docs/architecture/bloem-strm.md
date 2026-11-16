@@ -4,7 +4,8 @@
 > `main` at `bf0fde82f` plus the `.strm` changes. `.strm` support is a Bloem addition:
 > Silo refuses `.strm` files ([Bloem's non-goals](../bloem/overlays/non-goals.md#strm-files-are-in-scope)).
 > It covers scanning from library folders and storage sources, playback in the web
-> app and Bloem's apps on the API server and on transcoding workers, subtitle files
+> app and Bloem's apps on the API server and, for HLS, on a transcode node with core
+> source access (since 2026-11-16; see [where native inputs run](bloem-native-video-playback.md#where-native-inputs-run)), subtitle files
 > beside a `.strm` file, rescans that skip unchanged files, and the private-address
 > switch in the admin settings. Jellyfin apps play `.strm` items, with their subtitles,
 > through the Jellyfin media host for stored movies (checked on 2026-11-12), and ffmpeg
@@ -52,11 +53,14 @@ The app gets an ordinary playback plan with Bloem's own addresses. Bloem then:
 Jellyfin apps get the same three ways through Bloem's Jellyfin media host for
 stored movies, under the same checks.
 
-Converting runs on the API server or on a transcoding worker, as for any stored movie.
-A worker reads the remote address itself, from Bloem's record, and applies the same
-security default with its own check. ffmpeg and ffprobe never see the remote address:
-they read from a private address inside Bloem (or the worker) that fetches the bytes
-for them. They never open the `.strm` file either: its text is whatever was written to
+Converting runs on the API server or on a **transcode node** with core source
+access, as for any stored movie
+([where native inputs run](bloem-native-video-playback.md#where-native-inputs-run)).
+A transcode node never learns the remote address: the API server opens the video,
+under the same security default, and passes its bytes on to the node. Jellyfin
+apps convert on the API server. ffmpeg and ffprobe never see the remote address:
+they read from a private address inside Bloem, or on the node from the API
+server's bytes. They never open the `.strm` file either: its text is whatever was written to
 the library folder, and Bloem refuses to hand it to them as a video.
 
 **Each time the video is opened**, and about once a second while it plays, Bloem checks
@@ -66,8 +70,8 @@ one this playback started with.
 `.strm` items download as stored movies do
 ([downloads](bloem-native-video-playback.md#downloading-a-stored-movie)): as the
 original file, in every app, or as a copy converted for offline use, in Bloem's apps
-and the web app. The conversion reads the remote address the same way, on the API
-server or a worker.
+and the web app. The conversion reads the video the same way, on the API server or a
+transcode node with core source access.
 
 ## The security default
 
@@ -150,7 +154,7 @@ and the library is scanned again.
   Backups classify the table as server state (`bloemServerStateTables`): the next scan
   rebuilds it, and URLs can carry tokens.
 - The URL never enters a catalog path, a stream URL or token, a playback recipe, a
-  worker grant, an API response or a log line. Errors from `remotesource` name the
+  source grant, an API response or a log line. Errors from `remotesource` name the
   HTTP status or the cause, never the URL (`scrubURL` strips `*url.Error`).
 
 ### The guard
@@ -228,8 +232,8 @@ and the library is scanned again.
 
 - `storagesource.IsNativeLocation` is true for a path with a `.strm` extension, so
   every guard that keeps native files from Silo's OS-path code also keeps `.strm` text
-  away from clients: stream file resolution, downloads, the Jellyfin file guard, the
-  proxy and worker input authorization.
+  away from clients: stream file resolution, downloads, the Jellyfin file guard and
+  the proxy's input authorization.
 - `NativeVideoService.Open` and `OpenDelegated` (`internal/api/bloem_native_video.go`)
   call `strmPlayback.open`, which looks up `bloem_remote_sources` by catalog path:
   - a local `.strm` with a row opens the URL under `nativeVideoAuthority` /
@@ -277,8 +281,8 @@ and the library is scanned again.
 - `.strm` items play through the Jellyfin media host for stored movies
   ([Jellyfin clients](bloem-native-video-playback.md#jellyfin-clients)):
   `NativeVideoCompat.Handles` takes every native location, `.strm` included, so
-  direct play, remux, local HLS, copy seek anchors, worker HLS and embedded text
-  subtitles read the host's pinned source, which `strmPlayback.open` opens as for
+  direct play, remux, local HLS, copy seek anchors and embedded text subtitles read
+  the host's pinned source, which `strmPlayback.open` opens as for
   Bloem's apps. A refused address answers 403.
 - `bloemNativeStorageFiles` (`cmd/silo/bloem_compat.go`) hides a `.strm` file from
   every Jellyfin handler except a stream request that carries the host (video,
@@ -300,18 +304,22 @@ and the library is scanned again.
   route serves a `.strm` item's fonts. Without a host a native location has no fonts,
   and ffprobe is not run.
 
-### Workers
+### Transcode nodes
 
-- The worker grant (`NativeVideoWorkerGrantStore.prepare`) binds a storage object's
-  catalog location, or, for an identity with no storage location whose catalog path is
-  a local `.strm` file, that path (`nativeVideoGrantLocation`). The grant, the start
-  request, the recipe and the stream token carry only the catalog path and the URL's
-  revision.
-- The worker composes `NewNativeVideoDelegateService` as for stored movies; its
-  `strm.open` reads the URL from `bloem_remote_sources` itself and opens it through its
-  own `remotesource.ForPool` guard, which reads the private-address setting from the
-  database and checks every connection and redirect. A worker without approved native
-  storage does not answer `GET /bloem/native-execution` and is skipped.
+- A transcode node runs only Silo's code. It holds no storage credentials and never
+  sees a `.strm` file's URL. HLS and download preparation of a `.strm` item go only
+  to a node with `source_access=core`, under a sealed Bloem source grant: the API
+  servers answer the node's `sources/open` and source bytes requests by opening the
+  URL and serving its bytes, and the node reads them through Silo's loopback relay.
+- The API server opens the URL through its own `remotesource` guard, so the
+  private-address setting and the check of every connection and redirect apply to a
+  node's reads as to the API server's own; a refused address answers the node 403
+  and names nothing. A Silo grant never opens a `.strm` file (its text names the
+  URL): nodecontrol's catalog check treats a native path as inactive for Silo's
+  grants. Jellyfin starts stay on the API server (`playback.RefuseContextRemoteStart`).
+- The design and its tests are on
+  [where native inputs run](bloem-native-video-playback.md#where-native-inputs-run);
+  `TestStrmNodeSourceKeepsTheAddressGuard` covers the guard on a node's reads.
 
 ### Tests
 
@@ -333,12 +341,9 @@ and the library is scanned again.
 - `internal/api`: `TestStrmDirectPlayProxiesRanges`, `TestStrmURLChangeIsANewRevision`,
   `TestStrmReauthorizeChecksTheViewer`, `TestStrmOpenRefusesPrivateAddressesAndUnrecordedFiles`,
   `TestStrmStoredObjectNeedsTheScannedRevision`, `TestStrmRemuxRunsFFmpegThroughTheBridge`,
-  `TestStrmHLSTranscodeReadsThroughTheBridge`, `TestStrmRefusedAddressReadsAs403`, and
-  `TestStrmWorkerHLSRunsOnTheWorkerThroughItsOwnGuard` (Redis: an API host seals the
-  grant, a separate worker host with its own guard resolves it and runs a real ffmpeg
-  HLS encode, for a local and a storage `.strm`).
+  `TestStrmHLSTranscodeReadsThroughTheBridge`, and `TestStrmRefusedAddressReadsAs403`.
 - Jellyfin: `TestStrmJellyfinDirectPlay`, `TestStrmJellyfinRefusalsAnswer403`,
-  `TestStrmJellyfinRemuxAndTranscode`, `TestStrmJellyfinWorkerStartSealsTheGrant`
+  `TestStrmJellyfinRemuxAndTranscode`, `TestNativeJellyfinRemoteStartStaysOnTheAPIServer`
   (`internal/api`) and `TestStrmSubtitlesServeForJellyfinApps`
   (`internal/jellycompat`: a sidecar, an embedded track and an attached font through
   Silo's routes, all 404 without the host; nothing cached under the `.strm` file; the
@@ -347,9 +352,7 @@ and the library is scanned again.
 - Media tools: `TestCommandContextRefusesNativeInputs` and
   `TestNativeLocationMatchesStorageSource` (`internal/procgroup`),
   `TestRunRefusesNativeInputsWithoutStartingFFmpeg` (`internal/mediasample`).
-- `internal/api/handlers`: `TestNativeVideoWorkerGrantAdmitsLocalStrmItems`,
-  `TestNativeVideoWorkerGrantRefusesLocationFreeStorageIdentities`,
-  `TestStrmSidecarSubtitlesServeLikeLocalSidecars`, `TestStrmSidecarSubtitlesStayBesideTheirStrmFile`.
+- `internal/api/handlers`: `TestStrmSidecarSubtitlesServeLikeLocalSidecars`, `TestStrmSidecarSubtitlesStayBesideTheirStrmFile`.
 - Rescans: `TestStatReadsValidatorsWithOneByte`, `TestValidatorsUnchanged`,
   `TestRemoteSourceValidatorsDB`, `TestLocalStrmRescanSkipsUnchangedRemoteDB`,
   `TestNativeStrmStorageRescanSkipsUnchangedRemoteDB`, `TestStrmReuseScalesToThousandsOfEntriesDB`.

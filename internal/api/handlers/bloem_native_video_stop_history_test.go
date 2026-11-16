@@ -47,8 +47,8 @@ func (f nativeStopHistoryWriteFailure) ProcessPipelineHook(next redis.ProcessPip
 func TestNativeVideoStopHistorySurvivesCatalogChange(t *testing.T) {
 	for _, current := range []string{"filesystem", "missing", "no-resolver"} {
 		t.Run(current, func(t *testing.T) {
-			client := nativeVideoGrantRedis(t)
-			service, session, _, _ := nativeVideoGrantFixture(t, client)
+			client := nativeVideoRedis(t)
+			service, session, _, _ := nativeVideoBoundFixture(t, client)
 			manager := service.Sessions.(*playback.SessionManager)
 			switch current {
 			case "filesystem":
@@ -92,7 +92,7 @@ func TestNativeVideoStopHistorySurvivesCatalogChange(t *testing.T) {
 // Filesystem sessions without a native descriptor retain ordinary best-effort
 // stream denial; installing native support must not make their stop durable.
 func TestNativeVideoStopHistoryLeavesOrdinaryFilesystemStop(t *testing.T) {
-	client := nativeVideoGrantRedis(t)
+	client := nativeVideoRedis(t)
 	manager := playback.NewSessionManager(0, 0)
 	session, err := manager.StartSession(1, "profile", 42, playback.PlayDirect, false)
 	if err != nil {
@@ -115,8 +115,8 @@ func TestNativeVideoStopHistoryLeavesOrdinaryFilesystemStop(t *testing.T) {
 }
 
 func TestNativeVideoStopHistoryRedisPublicationAndExpiry(t *testing.T) {
-	client := nativeVideoGrantRedis(t)
-	service, session, _, _ := nativeVideoGrantFixture(t, client)
+	client := nativeVideoRedis(t)
+	service, session, _, _ := nativeVideoBoundFixture(t, client)
 	marker := "bloem:native-video-session:" + session.ID
 	t.Cleanup(func() { _ = client.Del(context.Background(), marker).Err() })
 	history, ok := service.Bindings.(interface {
@@ -180,8 +180,8 @@ func TestNativeVideoStopHistoryRedisPublicationAndExpiry(t *testing.T) {
 // A failed atomic publication cannot leave a recoverable descriptor behind
 // without its per-session marker; no global Redis scan repairs that invariant.
 func TestNativeVideoStopHistoryFailedPutPublishesNothing(t *testing.T) {
-	client := nativeVideoGrantRedis(t)
-	service, session, _, _ := nativeVideoGrantFixture(t, client)
+	client := nativeVideoRedis(t)
+	service, session, _, _ := nativeVideoBoundFixture(t, client)
 	value, err := service.Bindings.Get(t.Context(), session.ID, session.MediaFileID)
 	if err != nil {
 		t.Fatal(err)
@@ -205,8 +205,8 @@ func TestNativeVideoStopHistoryFailedPutPublishesNothing(t *testing.T) {
 // A server rejection of the marker write must abort the whole publication,
 // including the descriptor SET NX that precedes it in the transaction.
 func TestNativeVideoStopHistoryRedisMarkerFailureIsAtomic(t *testing.T) {
-	client := nativeVideoGrantRedis(t)
-	service, session, _, _ := nativeVideoGrantFixture(t, client)
+	client := nativeVideoRedis(t)
+	service, session, _, _ := nativeVideoBoundFixture(t, client)
 	value, err := service.Bindings.Get(t.Context(), session.ID, session.MediaFileID)
 	if err != nil {
 		t.Fatal(err)

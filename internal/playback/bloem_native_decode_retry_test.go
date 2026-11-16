@@ -14,12 +14,21 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/nativeredact"
 )
 
 // nativeRetryPrivateArgument stands in for the private address a native
-// input hands FFmpeg. The fake FFmpeg names it on stderr, as a real one does
-// when it fails to open or decode an input.
-const nativeRetryPrivateArgument = "http://192.0.2.40:41234/private-source-token"
+// input hands FFmpeg, in the tool input's form (a loopback listener and its
+// capability). The fake FFmpeg names it on stderr, as a real one does when it
+// fails to open or decode an input. Silo logs FFmpeg's command line through
+// fspath.RedactRelayed, which the API servers make redact it
+// (nativeredact.Register, called by init below as the server does).
+const nativeRetryPrivateArgument = "http://127.0.0.1:41234/" + nativeRetryCapability
+
+const nativeRetryCapability = "PrivateSourceCapabilityForTheRetryFixture00"
+
+func init() { nativeredact.Register() }
 
 // nativeRetryInput is a TranscodeInput whose Run hands its consumer
 // nativeRetryPrivateArgument under the execution lifetime it was opened with.
@@ -132,7 +141,7 @@ func readNativeRetryInvocations(t *testing.T, path string) []string {
 
 func assertNoNativeRetryPrivateArgument(t *testing.T, where, text string) {
 	t.Helper()
-	if strings.Contains(text, nativeRetryPrivateArgument) || strings.Contains(text, "192.0.2.40") {
+	if strings.Contains(text, nativeRetryPrivateArgument) || strings.Contains(text, nativeRetryCapability) {
 		t.Fatalf("%s carries the private input address: %q", where, text)
 	}
 }

@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -168,25 +168,39 @@ func TestStrmJellyfinRemuxAndTranscode(t *testing.T) {
 	}
 }
 
-// A Jellyfin HLS start for a local `.strm` item on a worker seals the same
-// worker grant as a stored movie: the worker resolves only that exact start,
-// and the grant names the catalog path, never the URL.
-func TestStrmJellyfinWorkerStartSealsTheGrant(t *testing.T) {
-	client := compatWorkerRedis(t)
-	f, _, _ := strmCompatFixtureFor(t, newCompatServeFixtureFor(t, uuid.NewString()), strmBlob(4096), true)
-	f.service.WorkerGrants = handlers.NewNativeVideoWorkerGrantStore(client)
-	worker := compatWorker(t, 7, &atomic.Int32{})
-	start, body := f.start()
-	if err := f.host.SealWorkerStart(f.workerContext(), worker.URL, body); err != nil {
-		t.Fatalf("seal: %v", err)
+// remoteStartContext is the context of a Jellyfin stream request that
+// serves the fixture's playback, as Silo's Jellyfin server starts a remote
+// transcode in.
+func (f *compatServeFixture) remoteStartContext() context.Context {
+	ctx := playback.WithContextMediaHost(context.Background(), f.host)
+	playback.NoteContextStream(ctx, f.stream)
+	return ctx
+}
+
+func (f *compatServeFixture) remoteStart(t *testing.T) []byte {
+	t.Helper()
+	body, err := json.Marshal(transcodenode.TranscodeStartRequest{SessionID: f.stream.PlaybackSessionID, InputPath: f.delegation.base.file.FilePath, TargetCodecVideo: "h264", TargetCodecAudio: "aac", SegmentDuration: 6})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if strings.Contains(string(body), "very-secret") {
-		t.Fatal("the worker start names the URL")
-	}
-	if _, err := f.service.WorkerGrants.Resolve(t.Context(), transcodenode.NativeExecutionRequest{WorkerID: 7, TransportID: start.SessionID, InputPath: start.InputPath, Start: &start}, f.service); err != nil {
-		t.Fatalf("worker refused the sealed .strm start: %v", err)
-	}
-	if _, err := f.service.WorkerGrants.Resolve(t.Context(), transcodenode.NativeExecutionRequest{WorkerID: 8, TransportID: start.SessionID, InputPath: start.InputPath, Start: &start}, f.service); err == nil {
-		t.Fatal("grant admitted another worker")
+	return body
+}
+
+// Silo's transcode nodes read sources only through core source grants,
+// which cannot name a native input, so a Jellyfin remote start for a stored
+// movie or a local `.strm` item is refused before it is sent
+// (jellycompat's remote start hook), and the route loop runs it on the API
+// server. A library file in the same request is sent as before.
+func TestNativeJellyfinRemoteStartStaysOnTheAPIServer(t *testing.T) {
+	stored := newCompatServeFixtureFor(t, uuid.NewString())
+	strm, _, _ := strmCompatFixtureFor(t, newCompatServeFixtureFor(t, uuid.NewString()), strmBlob(4096), true)
+	for name, f := range map[string]*compatServeFixture{"stored movie": stored, "strm": strm} {
+		if err := playback.RefuseContextRemoteStart(f.remoteStartContext(), f.remoteStart(t)); !errors.Is(err, playback.ErrContextInputStaysLocal) {
+			t.Fatalf("%s: remote start = %v, want it kept on the API server", name, err)
+		}
+		library, _ := json.Marshal(transcodenode.TranscodeStartRequest{SessionID: f.stream.PlaybackSessionID, InputPath: "/media/Film (2019).mkv"})
+		if err := playback.RefuseContextRemoteStart(f.remoteStartContext(), library); err != nil {
+			t.Fatalf("%s: library file start refused: %v", name, err)
+		}
 	}
 }

@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/downloadprepare"
+	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/nodeauth/nodeauthtest"
+	"github.com/Silo-Server/silo-server/internal/nodepool"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
@@ -133,64 +134,49 @@ func TestNativePreparationNeedsComposition(t *testing.T) {
 	}
 }
 
-type sealingHost struct {
-	sealed []byte
-	err    error
+// reservingPlanner offers a transcode node for every job.
+type reservingPlanner struct{ reserved int }
+
+func (p *reservingPlanner) ReserveTranscodeWork(string) (*nodepool.Node, func()) {
+	p.reserved++
+	return &nodepool.Node{ID: 7, URL: "http://192.0.2.7:8080"}, func() {}
+}
+func (p *reservingPlanner) TranscodeNode(int) (*nodepool.Node, bool) { return nil, false }
+
+// A native preparation goes through Silo's pooled preparer: a node whose
+// grant is minted (a core-access node, given a Bloem grant) prepares it, and
+// a node the grant is refused for (one that reads its own library mount)
+// falls back to the API server under the local fallback setting.
+func TestNativePreparationGoesThroughThePooledPreparer(t *testing.T) {
+	const artifact = "artifact-6f1b7a64-3a60-4f0c-9c1a-3d8e0f5b2c11"
+	opts := playback.TranscodeOpts{InputPath: "bloem-storage:location/entry", MediaFileID: 42}
+	for _, refused := range []bool{false, true} {
+		local, planner, remote := &markerPreparer{}, &reservingPlanner{}, &recordingRemotePreparer{}
+		pooled := NewNodeAwarePreparer(local, planner, func() *config.Config { return &config.Config{} })
+		pooled.SetNodeKeys(nodeauthtest.SameKey("fixture-node-key"))
+		pooled.remote = remote
+		pooled.SetSourceGrants(nativeGrantFixture{refused: refused})
+		m := &ArtifactManager{preparer: pooled}
+		if _, err := m.prepareNativeHere(t.Context(), artifact, opts, "/tmp/artifact.mp4"); err != nil {
+			t.Fatal(err)
+		}
+		if planner.reserved != 1 {
+			t.Fatalf("refused=%v: node reservations=%d, want 1", refused, planner.reserved)
+		}
+		if refused && (local.calls != 1 || remote.request.SourceGrant != "") {
+			t.Fatalf("refused grant: local calls=%d remote grant=%q; want it prepared here", local.calls, remote.request.SourceGrant)
+		}
+		if !refused && (local.calls != 0 || remote.request.SourceGrant != "bloem-native-grant.v1.fixture") {
+			t.Fatalf("granted: local calls=%d remote grant=%q; want it prepared on the node", local.calls, remote.request.SourceGrant)
+		}
+	}
 }
 
-func (h *sealingHost) Handles(string) bool                                          { return false }
-func (h *sealingHost) ServeDirect(http.ResponseWriter, *http.Request, string) error { return nil }
-func (h *sealingHost) Input(context.Context, string) (playback.TranscodeInputBinding, error) {
-	return playback.TranscodeInputBinding{}, errors.New("unused")
-}
-func (h *sealingHost) SealWorkerStart(_ context.Context, _ string, start []byte) error {
-	h.sealed = start
-	return h.err
-}
+type nativeGrantFixture struct{ refused bool }
 
-type progressRemote struct{ recordingRemotePreparer }
-
-func (r *progressRemote) Prepare(_ context.Context, nodeURL, secret string, req downloadprepare.Request) (downloadprepare.Result, error) {
-	r.nodeURL, r.secret, r.request = nodeURL, secret, req
-	return downloadprepare.Result{ArtifactID: req.ArtifactID}, nil
-}
-func (r *progressRemote) Stat(context.Context, string, string, string) (downloadprepare.Result, error) {
-	return downloadprepare.Result{}, downloadprepare.ErrArtifactNotFound
-}
-func (r *progressRemote) Delete(context.Context, string, string, string) error { return nil }
-func (r *progressRemote) Progress(context.Context, string, string, string) (downloadprepare.Progress, error) {
-	return downloadprepare.Progress{Running: true}, nil
-}
-
-// A native preparation reaches a worker only once the preparation's host has
-// granted that worker the exact request; progress reports still pass.
-func TestNativePreparationSealsWorkerRequests(t *testing.T) {
-	inner := &progressRemote{}
-	pooled := &NodeAwarePreparer{remote: inner}
-	bloemSealNativeWorkerStarts(pooled)
-	bloemSealNativeWorkerStarts(pooled)
-	if _, ok := pooled.remote.(remoteProgressReader); !ok {
-		t.Fatal("progress reports hidden by the sealing wrapper")
+func (g nativeGrantFixture) ForFile(context.Context, int, *models.MediaFile) (string, error) {
+	if g.refused {
+		return "", errors.New("a native input needs a transcode node with core source access")
 	}
-	if _, ok := pooled.remote.(nativeSealingProgressRemote); !ok {
-		t.Fatalf("remote wrapped %T", pooled.remote)
-	}
-	native := downloadprepare.Request{ArtifactID: "a-6f1b7a64-3a60-4f0c-9c1a-3d8e0f5b2c11", InputPath: "bloem-storage:location/entry"}
-	if _, err := pooled.remote.Prepare(t.Context(), "http://worker", "secret", native); !errors.Is(err, errNativePreparationRefused) || inner.nodeURL != "" {
-		t.Fatalf("native request without a host: err=%v sent=%q", err, inner.nodeURL)
-	}
-	host := &sealingHost{err: errors.New("worker cannot read native storage")}
-	ctx := playback.WithContextMediaHost(t.Context(), host)
-	if _, err := pooled.remote.Prepare(ctx, "http://worker", "secret", native); err == nil || inner.nodeURL != "" {
-		t.Fatalf("unsealed native request was sent: err=%v", err)
-	}
-	host.err = nil
-	if _, err := pooled.remote.Prepare(ctx, "http://worker", "secret", native); err != nil || inner.request.ArtifactID != native.ArtifactID || len(host.sealed) == 0 {
-		t.Fatalf("sealed native request: err=%v sent=%+v sealed=%d", err, inner.request, len(host.sealed))
-	}
-	local := downloadprepare.Request{ArtifactID: "local", InputPath: "/media/movie.mkv"}
-	host.sealed = nil
-	if _, err := pooled.remote.Prepare(t.Context(), "http://worker", "secret", local); err != nil || inner.request.ArtifactID != "local" || host.sealed != nil {
-		t.Fatalf("local request: err=%v", err)
-	}
+	return "bloem-native-grant.v1.fixture", nil
 }

@@ -2,19 +2,17 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
-	"github.com/Silo-Server/silo-server/internal/downloadprepare"
 	"github.com/Silo-Server/silo-server/internal/downloads"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
-	"github.com/Silo-Server/silo-server/internal/transcodenode"
 )
 
 // NativeVideoPrepare opens file for a download preparation under the
@@ -29,14 +27,13 @@ var _ downloads.NativePreparation = (*NativeVideoDownloads)(nil)
 // binding sealed with the requester's authority, and every read reopens the
 // source through it, rechecking the authority, the binding, the download and
 // the source. The returned context carries the source for PrepareFile on this
-// server and seals a worker grant for exactly the attempt's request when a
-// worker prepares it. end revokes the binding and any worker grant.
+// server, and the binding a core-access transcode node's grant reads through. end revokes the binding.
 func (d *NativeVideoDownloads) BeginPreparation(ctx context.Context, artifactID, attemptID string, requester *downloads.Download, file *models.MediaFile) (context.Context, func(), error) {
 	if d == nil || d.Service == nil || d.Service.Bindings == nil || d.Prepare == nil || requester == nil || file == nil ||
 		!nativeVideoFileSupported(file) || requester.MediaFileID != file.ID || requester.UserID <= 0 || artifactID == "" || requester.ArtifactID != artifactID {
 		return nil, nil, catalog.ErrItemNotFound
 	}
-	transport, ok := transcodenode.NativePreparationTransport(attemptID)
+	transport, ok := nativePreparationTransport(attemptID)
 	if !ok {
 		return nil, nil, storagesource.ErrReferenceConflict
 	}
@@ -66,8 +63,11 @@ func (d *NativeVideoDownloads) BeginPreparation(ctx context.Context, artifactID,
 	}
 	frozen := *file
 	host := &nativeVideoPreparation{service: service, session: session, file: &frozen, attemptID: attemptID,
-		logSession: playback.DownloadPrepareLogSessionID(artifactID), secret: d.Secret}
-	return playback.WithContextMediaHost(ctx, host), func() { host.end(ctx) }, nil
+		logSession: playback.DownloadPrepareLogSessionID(artifactID)}
+	// A transcode node with core source access may prepare it: its grant reads
+	// through this binding (NativeNodeSources).
+	prepared := WithNativeNodeGrantSession(playback.WithContextMediaHost(ctx, host), session.ID)
+	return prepared, func() { host.end(ctx) }, nil
 }
 
 // nativeVideoPreparation is the context-scoped media host of one download
@@ -78,10 +78,7 @@ type nativeVideoPreparation struct {
 	file       *models.MediaFile
 	attemptID  string
 	logSession string
-	secret     func() string
 }
-
-var _ playback.ContextWorkerStartSealer = (*nativeVideoPreparation)(nil)
 
 func (p *nativeVideoPreparation) Handles(inputPath string) bool { return inputPath == p.file.FilePath }
 
@@ -128,35 +125,26 @@ func (p *nativeVideoPreparation) Input(ctx context.Context, inputPath string) (p
 	return playback.TranscodeInputBinding{InputPath: p.file.FilePath, InputFormat: format, SessionID: p.logSession, InputSource: adapter}, nil
 }
 
-// SealWorkerStart grants the worker at nodeURL this attempt's exact
-// preparation request, once it shows it can read native storage.
-func (p *nativeVideoPreparation) SealWorkerStart(ctx context.Context, nodeURL string, body []byte) error {
-	var request downloadprepare.Request
-	if err := json.Unmarshal(body, &request); err != nil || request.InputPath != p.file.FilePath || request.ArtifactID != p.attemptID {
-		return storagesource.ErrReferenceConflict
-	}
-	grants := p.service.WorkerGrants
-	if !grants.Enabled() || p.secret == nil {
-		return nativeVideoUnavailable()
-	}
-	node, err := p.service.WorkerNativeNode(ctx, nodeURL, p.secret())
-	if err != nil {
-		return err
-	}
-	return grants.PrepareDownload(ctx, node, p.service, p.session, p.session.ID, request)
-}
-
-// end revokes the attempt's binding and worker grant. It outlives the job's
+// end revokes the attempt's binding. It outlives the job's
 // cancellation, so a stopped job still withdraws its authority.
 func (p *nativeVideoPreparation) end(ctx context.Context) {
 	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
-	var err error
-	if p.service.WorkerGrants.Enabled() {
-		err = p.service.WorkerGrants.RevokeTransport(cleanup, p.session.ID)
-	}
-	err = errors.Join(err, p.service.Bindings.RevokeSession(cleanup, p.session.ID))
-	if err != nil {
+	if err := p.service.Bindings.RevokeSession(cleanup, p.session.ID); err != nil {
 		slog.WarnContext(cleanup, "revoking a download preparation's native source failed", "component", "native_video", "error", err)
 	}
+}
+
+// nativePreparationTransport is the binding name of a download preparation
+// attempt: the UUID that ends the attempt's artifact ID (the artifact queue
+// names each attempt "<artifact>-<uuid>").
+func nativePreparationTransport(attemptID string) (string, bool) {
+	if len(attemptID) < 38 || attemptID[len(attemptID)-37] != '-' {
+		return "", false
+	}
+	transport := attemptID[len(attemptID)-36:]
+	if _, err := uuid.Parse(transport); err != nil {
+		return "", false
+	}
+	return transport, true
 }

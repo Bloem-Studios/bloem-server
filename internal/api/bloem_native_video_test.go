@@ -13,6 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -25,8 +28,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
-	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
 type nativeVideoSubjectFixture struct {
@@ -46,10 +47,14 @@ type nativeVideoViewerFixture struct {
 	err    error
 	last   access.ResolveInput
 	tenant tenancy.Context
+	// mu guards last: read-ahead rechecks authority from several goroutines.
+	mu sync.Mutex
 }
 
 func (v *nativeVideoViewerFixture) Resolve(ctx context.Context, input access.ResolveInput) (access.Scope, error) {
+	v.mu.Lock()
 	v.last = input
+	v.mu.Unlock()
 	tenant, ok := tenancy.FromContext(ctx)
 	if !ok || tenant != v.tenant {
 		return access.Scope{}, errors.New("stale viewer tenant")
@@ -618,15 +623,6 @@ func TestNativeVideoDelegatedDirectProfileRequiresCurrentLoginRevision(t *testin
 	revision++
 	if _, err = authority.AuthorizeFile(t.Context(), f.file); !errors.Is(err, middleware.ErrCurrentCredentialInvalid) {
 		t.Fatalf("changed direct-profile login revision=%v", err)
-	}
-}
-
-func TestNativeVideoDelegateConstructorRefusesMissingDependencies(t *testing.T) {
-	for _, coordinator := range []*nativestorage.Coordinator{nil, {}} {
-		service, err := NewNativeVideoDelegateService(Dependencies{}, coordinator)
-		if service != nil || !errors.Is(err, storagesource.ErrSourceUnavailable) {
-			t.Fatalf("service=%v error=%v", service, err)
-		}
 	}
 }
 

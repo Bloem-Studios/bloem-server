@@ -10,14 +10,13 @@ import (
 // source services: the host runtime, the source management service and the
 // reader that opens storage files.
 type nativeStorageCapabilities struct {
-	deps        Dependencies
-	reader      bool
-	locations   bool
-	video       bool
-	movies      bool
-	series      bool
-	remoteVideo bool
-	audio       bool
+	deps      Dependencies
+	reader    bool
+	locations bool
+	video     bool
+	movies    bool
+	series    bool
+	audio     bool
 }
 
 func (c *nativeStorageCapabilities) NativeStorageReady(ctx context.Context) bool {
@@ -46,8 +45,11 @@ func (c *nativeStorageCapabilities) NativeSeriesLibrariesReady(ctx context.Conte
 	return c.NativeMovieLibrariesReady(ctx) && c.series
 }
 
+// NativeRemoteVideoReady reports whether native inputs can run on transcode
+// nodes with core source access: the API servers grant them and serve their
+// bytes (handlers.NativeNodeSources).
 func (c *nativeStorageCapabilities) NativeRemoteVideoReady(ctx context.Context) bool {
-	return c.NativeVideoReady(ctx) && c.remoteVideo
+	return c.NativeVideoReady(ctx) && c.deps.NativeNodeSources.Ready()
 }
 
 // attachNativeVideoReadiness runs once before the router accepts requests.
@@ -74,7 +76,6 @@ func attachNativeVideoReadiness(deps Dependencies, h *handlers.PlaybackHandler, 
 		c.video = true
 		c.movies = movies
 		c.series = series
-		c.remoteVideo = h.NativeVideo.WorkerGrants.Enabled() && h.NodeRecipeStore != nil && h.NodeRecipeStore.Enabled()
 	}
 	attachNativeAudioReadiness(deps, h, stream, libraries)
 }
