@@ -1,13 +1,10 @@
 # How playback works across several API servers
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. These are Bloem additions built on Silo's durable v3
-> playback attempts (`playback_v3_attempts`), node heartbeats and `NODE_URL`; see
-> Silo's [restart-resilient playback](restart-resilient-playback.md) and
-> [node failure detection](node-failure-detection.md). Live TV itself is not
-> Silo's: it is Bloem's adaptation of Prairie Server
-> ([FORK.md](../../FORK.md#prairie-server-live-tv)). The technical rules are in the
-> [For developers](#for-developers) section.
+These are Bloem additions built on Silo's durable v3 playback attempts (`playback_v3_attempts`), node heartbeats
+and `NODE_URL`; see Silo's [restart-resilient playback](restart-resilient-playback.md) and
+[node failure detection](node-failure-detection.md). Live TV itself is not Silo's: it is Bloem's adaptation of
+Prairie Server ([FORK.md](../../FORK.md#prairie-server-live-tv)). The technical rules are in the
+[For developers](#for-developers) section.
 
 A larger Bloem runs several API servers behind one address, and any request can
 land on any of them. Silo already keeps playback attempts in the database, so a
@@ -112,7 +109,7 @@ failover.
 
 Bloem's former Live TV stream mapping and opener-token path on the Jellyfin
 compatibility surface are removed. Silo's Jellyfin server itself is served again
-since `2393c41ee`, as Silo's unchanged code, which has no Live TV routes. Native
+as Silo's unchanged code, which has no Live TV routes. Native
 session ownership remains the authority for retained Live TV routes; historical
 protocol tables do not provide an alternate content path. See
 [protocol compatibility](bloem-compatibility-removal.md).
@@ -136,21 +133,19 @@ URL. These leases bound Bloem's admissions, not the provider's TCP accounting or
 connections opened by other applications. They do not make encoders fail over.
 Upgrade every API/worker binary before configuring protected providers.
 
-The [September 19 deployment](../operations/2026-09-19-xtream-deployment.md) applied
-the Xtream schema and passed operational smoke checks. Cross-pool fixture coverage
-is not real multi-replica owner-loss or decoded-media acceptance; those remain open.
+Tests with several database pools do not stand in for real multi-replica owner-loss or decoded-media
+acceptance; that remains untested.
 
 ### Playback stop and capacity
 
 Both native stop entry points use the existing durable attempt stop/receipt
 mechanism. The v1 bridge falls back to legacy in-memory behavior only when no
 durable attempt exists. A storage error must not be treated as a missing attempt.
-Ownership is checked before any stop or history mutation. Since `68070f04b`
-(2026-10-27) the durable stop in `internal/api/handlers/bloem_playback_stop.go`
+Ownership is checked before any stop or history mutation. The durable stop in `internal/api/handlers/bloem_playback_stop.go`
 applies Silo's `ownsPlaybackSession` rule: both the account and the acting
 profile must match the attempt, so a sibling profile on the same account gets
 `403` and cannot stop another profile's playback. Silo's v1 progress and stop
-handlers apply the same rule (Silo #3133, `e852571bb`).
+handlers apply the same rule (Silo #3133).
 
 The transition to a non-null `playback_v3_attempts.stopped_at` releases Bloem's
 fleet capacity reservation transactionally under the same account advisory lock
@@ -171,17 +166,6 @@ No native Apple/Android protocol change is required: clients retain their
 existing native stream URLs, stop calls and status handling. Removed protocol
 parity tests do not establish native acceptance. These changes neither add a new
 endpoint nor alter the successful response schema.
-
-### History
-
-The Live TV peer forwarding, the durable stop path and the fleet capacity release
-were added in `167e03f20` (2026-09-18) with migrations
-`20260917214743_bloem_livetv_cluster_routes.sql` and
-`20260917214744_bloem_stopped_playback_capacity.sql`. The Xtream leases followed
-in `23ee4c1ac` (2026-09-19; see [Xtream Live TV](xtream-live-tv.md)). `2393c41ee`
-(2026-10-18) restored Silo's Jellyfin server, which has no Live TV routes. The Silo
-merge `68070f04b` (2026-10-27) made the durable stop follow Silo's per-profile
-ownership rule (Silo #3133).
 
 ### Related pages
 
