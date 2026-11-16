@@ -14,22 +14,20 @@ pictures first, a made-up example where it helps, a "Words used in the code" tab
 a "For developers" section that holds every technical rule.
 [Writing Bloem documentation](documentation-workflow.md) sets out that shape.
 
-Pages marked *historical* are dated records: their facts are true to their date,
-not to the current source, and they keep the form they were written in. The current
-state is in [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md).
+The current state of the Silo integration is in
+[How Bloem keeps up with Silo](../architecture/bloem-following-silo.md).
 
 ## Start here
 
 - [Bloem Server front page](../../.github/README.md) — a short introduction: what Bloem is, what it adds, how to run it and where to read on. GitHub shows it in place of the root `README.md`, which is Silo's.
-- [Bloem Server in depth](about.md) — where Bloem comes from, what it adds to and removed from Silo, the feature list, running, configuring and building it, and licence.
-- [How Bloem forks Silo](../../FORK.md) — the tracking-fork policy, the "Silo wins" rule, seams and overlays, and what Bloem adds and took out.
+- [Bloem Server in depth](about.md) — where Bloem comes from, what it adds to Silo, the feature list, running, configuring and building it, and licence.
+- [How Bloem forks Silo](../../FORK.md) — the tracking-fork policy, the "Silo wins" rule, seams and overlays, and what Bloem adds.
 - [Agent instructions](../../BLOEM_AGENTS.md) — Bloem's overrides of Silo's `AGENTS.md` / `CLAUDE.md`; they take precedence where the two differ.
 - [Working on Bloem](../../.github/CONTRIBUTING.md) — the support and contribution stance, repository ownership, AI disclosure and the validation commands; the root `CONTRIBUTING.md` is Silo's.
-- [Integration changelog](CHANGELOG.md) — every Silo integration and Bloem change, newest first, with commits and seam counts.
 - [Writing Bloem documentation](documentation-workflow.md) — Silo's manual/reference model, where each kind of Bloem change is documented, regeneration and verification commands.
 - [How Bloem CI works](ci.md) — the Bloem CI jobs, the merge bot's CI wait, the switched-off daily upstream sync, the published image's gate, runner placement and tool pins.
 - [API catalogue](api-catalogue.md) — generated list of typed `/api/v2` and `/api/bloem/v2` operations and native documentation gaps.
-- [API by topic](api/README.md) — every typed `/api/bloem/v2` operation, generated from the OpenAPI contract, one page per topic, with credentials, fields and error codes; plus the hand-written record of Bloem's [retired v1 routes](api/v1-routes.md).
+- [API by topic](api/README.md) — every typed `/api/bloem/v2` operation, generated from the OpenAPI contract, one page per topic, with credentials, fields and error codes.
 
 ## How Bloem works: start here
 
@@ -53,19 +51,12 @@ more detailed pages of its area, and ends with a "For developers" section.
 
 The pictures are drawn by `scripts/bloem/draw-pictures.py`.
 
-## Source integration records
-
-Dated records of earlier merges; the [changelog](CHANGELOG.md) carries every later integration.
-
-- [October 10 upstream resolutions](upstream-merge-2026-10-10.md) — historical: conflict resolutions for download, thumbnail, metadata and web changes.
-- [Upstream reconciliation — 2026-09-08](../architecture/2026-09-08-upstream-reconciliation.md) — historical: the September 8 reconciliation and its deferred items.
-
 ## Bloem editions of upstream documents
 
 For these, Bloem's text differs throughout; read the Bloem edition instead of the upstream file.
 
 - [docs/non-goals.md](overlays/non-goals.md) (upstream: [docs/non-goals.md](../non-goals.md)) — Live TV and `.strm` remote-URL items in scope, private addresses refused by default.
-- [Installing and running Bloem with Docker](overlays/wiki/deployment/docker.md) — maintained Bloem installation and operations guide; the former upstream wiki page was removed.
+- [Installing and running Bloem with Docker](overlays/wiki/deployment/docker.md) — maintained Bloem installation and operations guide, in place of an upstream wiki page.
 - [Bloem guides for operators and viewers](overlays/wiki/index.md) — Bloem's guide index, alongside the current [Silo reference index](../README.md).
 
 ## Overlays on upstream documents
@@ -87,7 +78,6 @@ same path. Read the upstream document together with its overlay.
 - [docs/architecture/settings-contract.md](overlays/architecture/settings-contract.md) — overlay on [docs/architecture/settings-contract.md](../architecture/settings-contract.md)
 - [docs/architecture/streaming-write-deadline.md](overlays/architecture/streaming-write-deadline.md) — overlay on [docs/architecture/streaming-write-deadline.md](../architecture/streaming-write-deadline.md)
 - [docs/architecture/transcode-nodes.md](overlays/architecture/transcode-nodes.md) — overlay on [docs/architecture/transcode-nodes.md](../architecture/transcode-nodes.md)
-- [docs/architecture/v1-scope.md](overlays/architecture/v1-scope.md) — overlay on [docs/architecture/v1-scope.md](../architecture/v1-scope.md)
 - [docs/auth-api.md](overlays/auth-api.md) — overlay on [docs/auth-api.md](../auth-api.md)
 - [docs/invitations-api.md](overlays/invitations-api.md) — overlay on [docs/invitations-api.md](../invitations-api.md)
 - [docs/libraries-api.md](overlays/libraries-api.md) — overlay on [docs/libraries-api.md](../libraries-api.md)
@@ -115,7 +105,6 @@ same path. Read the upstream document together with its overlay.
 - [How request rules apply to organizations and profiles](../architecture/bloem-request-policy.md) — verified profile quotas, scoped administrative usage and group limits on Silo's request service.
 - [How retiring an organization and deleting a library stay safe](../architecture/bloem-lifecycle-safety.md) — atomic tenant retirement and library deletion.
 - [How Bloem's security foundation works](../architecture/bloem-security-foundation.md) — the `/api/bloem/v2` discovery and administration boundary beside Silo's `/api/v2` login.
-- [How Bloem's contract adjudications work](../architecture/bloem-contract-adjudications.md) — retired on 2026-11-11 with Silo's scenario catalogs; a historical record of the pinned replacements for Silo scenario expectations.
 - [How Bloem's adapters over Silo work](../architecture/bloem-upstream-adapters.md) — migration filesystem, profile-aware interfaces and embedded-web boundaries over Silo's code.
 
 ### Native storage and media delivery
@@ -159,13 +148,10 @@ same path. Read the upstream document together with its overlay.
 
 ### Clients, protocols and compatibility
 
-- [Leaving Silo's v1 API](../architecture/bloem-leaving-silo-v1.md) — how Bloem left Silo's v1 API before Silo retired it on 2026-11-11, and where each route moved.
 - [How Bloem's native API is organized](../architecture/bloem-client-surface.md) — why Bloem-only features live under `/api/bloem/v2`, and the native document set.
 - [How Bloem's SDKs and generated contracts fit together](../architecture/bloem-sdk-compatibility.md) — plugin SDK pins, generated client DTOs and consumer synchronization.
 - [How the client contract generator works](../architecture/bloem-client-contract-generator.md) — the registry, the Kotlin and Swift files the apps copy, the contract digest, and the rules that keep older apps working.
-- [How Bloem runs Silo's Jellyfin and Audiobookshelf servers](../architecture/bloem-protocol-compatibility.md) — Silo's Jellyfin and Audiobookshelf servers, their tenant wiring, and the removed companion gateway.
-- [How Pastime tracking was removed](../architecture/bloem-pastime-removal.md) — forward-only cleanup migration and the rule that Pastime returns only as an ordinary plugin.
-- [How removing a title in a tracker clears its watch history](../architecture/bloem-watch-sync-removals.md) — watched removals on a watch-sync connection, applied to that one profile, newer watches kept.
+- [How Bloem runs Silo's Jellyfin and Audiobookshelf servers](../architecture/bloem-protocol-compatibility.md) — Silo's Jellyfin and Audiobookshelf servers, their tenant wiring and organization rules.
 - [How remote control works](../architecture/admin-remote-control.md) — invariants for server-issued commands to client apps.
 
 ### Embedded web
@@ -187,9 +173,6 @@ same path. Read the upstream document together with its overlay.
 
 ## Upstream documents that still carry Bloem edits
 
-The playback schema files below remain seams (`contracts/seams.txt`) because tooling reads them.
-The retired `playback.proxy_policy` explanation now lives only in the
-[Bloem v1 overlay](overlays/architecture/v1-scope.md#retired-bloem-playback-proxy-policy);
-Silo's `v1-scope.md` no longer carries that fork-only row.
+The playback schema files below are seams (`contracts/seams.txt`) because tooling reads them.
 
 - `docs/design/schemas/playback-v3/v3/**` — playback schema and fixtures validated by `make verify-playback-fixtures`.

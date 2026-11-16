@@ -6,7 +6,7 @@ Silo's: the scanner, the catalog, playback (direct play, remux, hardware transco
 runtime. Bloem adds organizations, Live TV and DVR, storage-plugin libraries, announcements and promotions, and a
 native API for its own apps.
 
-This page covers where Bloem comes from, what it adds and removed, what you get, and how to run, configure and build
+This page covers where Bloem comes from, what it adds, what you get, and how to run, configure and build
 it. The [front page](../../.github/README.md) is the short version.
 
 > [!IMPORTANT]
@@ -85,28 +85,6 @@ Each area has a plain-language overview page, with pictures, and a "For develope
 
 The [web coverage page](../architecture/bloem-web-feature-coverage.md) records which of these have screens in the web
 app. A server endpoint does not mean every client supports it.
-
-## What Bloem removed, and why
-
-Bloem removes its own additions when Silo comes to cover the need, or when an addition no longer earns the cost of
-merging it. Each removal is forward-only. [FORK.md](../../FORK.md#what-bloem-removed) has the list with dates, and the
-[changelog](CHANGELOG.md) has the detail.
-
-- **The Jellyfin and Audiobookshelf removal, undone.** Bloem removed both in October 2026, then went back to running
-  Silo's servers as Silo ships them, because carrying the removal cost hundreds of changed files at every merge. They
-  run on their own ports. See [protocol compatibility](../architecture/bloem-protocol-compatibility.md).
-- **Companion-application enrollment and the compatibility gateway.** Both went with the first removal and stayed out.
-- **Pastime managed tracking.** It needed private triggers and direct writes into Silo's tables. Pastime may return
-  only as an ordinary plugin. See [Pastime removal](../architecture/bloem-pastime-removal.md).
-- **Membership-owned account policy.** Policy lives on Silo's `users` table again, which is what makes switching
-  between Silo and Bloem possible.
-- **A music catalog.** Silo has no music library type.
-- **Presentation worker processes.** They ran only Bloem's own code, without a sandbox, so the process boundary
-  isolated nothing. Promotions and ambience are now chosen inside the server.
-- **Smaller items.** Lifecycle idempotency receipts, v1 socket audience tickets, a header-authenticated media gate and
-  some dead code.
-- **Silo's v1 API.** Silo retired it in November 2026, and Bloem's own v1 routes went with it. See
-  [leaving Silo's v1 API](../architecture/bloem-leaving-silo-v1.md).
 
 ## Features
 
@@ -217,7 +195,6 @@ the published image work is in [Bloem CI](ci.md).
 - [Admin guide](../wiki/admin-guide.md) and [user guide](../wiki/user-guide.md).
 - [Documentation index](README.md): every Bloem page by area.
 - [Bloem native API](../bloem-api-reference.md) and [API by topic](api/README.md).
-- [Integration changelog](CHANGELOG.md): each Silo merge and Bloem change.
 - [FORK.md](../../FORK.md) and [CONTRIBUTING.md](../../.github/CONTRIBUTING.md).
 
 ## Licence and trademarks

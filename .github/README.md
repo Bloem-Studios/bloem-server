@@ -85,7 +85,7 @@ updates and building the image yourself.
 ## Documentation
 
 - [Admin guide](../docs/wiki/admin-guide.md) and [user guide](../docs/wiki/user-guide.md): running a server, and using one.
-- [Bloem Server in depth](../docs/bloem/about.md): where Bloem comes from, everything it adds and removed, deployment and
+- [Bloem Server in depth](../docs/bloem/about.md): where Bloem comes from, everything it adds, deployment and
   configuration, and building from source.
 - [Documentation index](../docs/bloem/README.md): every Bloem page, including how organizations, plans, Live TV, storage
   and apps work.

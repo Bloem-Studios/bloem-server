@@ -18,16 +18,15 @@ def _line(s, x1, y1, x2, y2, color, width=3, dash=None):
 
 def tracking_fork():
     s = Svg(1200, 700, "A tracking fork, not a copy",
-            "Left: the hard fork Bloem tried first, a new first commit with no link to Silo's history and the "
-            "module renamed in 1,178 files, so every Silo change had to be copied by hand. Right: the tracking "
-            "fork Bloem is, sharing Silo's history, with Silo's work merged in again and again beside Bloem's own "
-            "commits.")
+            "Left: a hard fork, a new first commit with no link to Silo's history and the module renamed "
+            "everywhere, so every Silo change has to be copied by hand. Right: the tracking fork Bloem is, "
+            "sharing Silo's history, with Silo's work merged in again and again beside Bloem's own commits.")
     s.header("A tracking fork, not a copy",
              "Bloem shares Silo's history, so each Silo change is merged in rather than copied by hand.")
 
     # Left: the hard fork.
     s.rect(40, 124, 540, 470, "#FFFFFF", "#E5E7EB", rx=16)
-    s.text(64, 162, "Tried first, and dropped", size=19, weight="700")
+    s.text(64, 162, "What Bloem is not", size=19, weight="700")
     s.text(64, 186, "A hard fork", size=14, fill=MUTED)
     s.text(64, 226, "Silo's history", size=13.5, weight="600", fill=SILO["label"])
     _line(s, 90, 250, 540, 250, SILO["stroke"])
@@ -42,7 +41,7 @@ def tracking_fork():
     no_mark(s, 380, 295)
     rows = [
         "A new first commit, with no link to Silo's history.",
-        "The module path renamed: 1,178 files changed.",
+        "The module path renamed in every file that uses it.",
         "Every Silo change copied by hand, and in conflict.",
     ]
     y = 420
@@ -50,7 +49,6 @@ def tracking_fork():
         no_mark(s, 76, y - 5, r=10)
         para(s, 96, y, r, 460, size=14.5, fill=INK)
         y += 46
-    s.text(64, 566, "Replaced on 13 August 2026", size=13.5, fill=SOFT)
 
     # Right: the tracking fork.
     s.rect(620, 124, 540, 470, "#FFFFFF", "#E5E7EB", rx=16)
@@ -89,17 +87,16 @@ def tracking_fork():
     _commit(s, 966, 562, BLOEM["stroke"], ring=True)
     s.text(986, 567, "Silo merged in", size=13, fill=MUTED)
 
-    footer(s, "Renaming the module path could still happen any time. Losing the ability to merge could not be "
-              "undone, so the module path stays github.com/Silo-Server/silo-server.", y=650, fill=INK)
+    footer(s, "The module path stays github.com/Silo-Server/silo-server, so Silo's work always merges.",
+           y=650, fill=INK)
     return s
 
 
 def what_bloem_adds():
-    s = Svg(1200, 700, "What Bloem adds to Silo",
+    s = Svg(1200, 590, "What Bloem adds to Silo",
             "On the left, Silo Server, whose features all stay. On the right, what Bloem adds beside it: "
             "organizations, accounts and plans; Live TV and recordings; libraries on storage sources; an API for "
-            "Bloem's own apps; organization domains and branding; switching between Silo and Bloem. Below, what "
-            "Bloem added once and took out again.")
+            "Bloem's own apps; organization domains and branding; switching between Silo and Bloem.")
     s.header("What Bloem adds to Silo",
              "Bloem is Silo plus these additions. Each one sits beside Silo's code, not inside it.")
 
@@ -131,14 +128,8 @@ def what_bloem_adds():
         x, y = 410 + col * 380, 124 + row * 128
         box(s, x, y, 360, 116, BLOEM, t, b, size=14.5, title_size=17)
 
-    s.text(40, 552, "Added once, then taken out again", size=17, weight="700")
-    gone = ["A gateway for companion apps", "Pastime tracking", "A music catalog", "Bundled worker processes"]
-    x = 40
-    for g in gone:
-        w = s.badge(x, 570, g, TIERS["grey"], size=14)
-        x += w + 14
     footer(s, "Bloem's name and look are applied when the web app is built, so Silo's source stays as Silo "
-              "wrote it.", y=656, fill=INK)
+              "wrote it.", y=540, fill=INK)
     return s
 
 

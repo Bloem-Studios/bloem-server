@@ -23,8 +23,8 @@ Bloem runs Silo's Jellyfin and Audiobookshelf compatibility servers as Silo ship
 Take upstream's code in merges.
 Bloem's tenant wiring lives in `cmd/silo/main.go`, `cmd/silo/bloem_compat.go` and the
 tenant-aware resolver in `cmd/silo/bloem_main.go`.
-Bloem's companion-application enrollment and compatibility gateway stay removed; do
-not restore them. See [protocol compatibility](docs/architecture/bloem-protocol-compatibility.md).
+Companion-application enrollment and a compatibility gateway on the public port are not part of
+Bloem; do not add them. See [protocol compatibility](docs/architecture/bloem-protocol-compatibility.md).
 
 ## Naming
 
@@ -40,14 +40,9 @@ under `/api/bloem/v2` ([docs/bloem-api-reference.md](docs/bloem-api-reference.md
 upstream "API contract rules" section with that in mind: a client-visible change must fit the
 current `/api/v2` posture, and new features still expose a capability endpoint.
 
-Silo retired its alpha v1 API on 2026-11-11: every v1 route answers `410 Gone` with
-`client_upgrade_required`, except the health and ready probes, and Bloem's own routes there
-went with it ([leaving Silo's v1 API](docs/architecture/bloem-leaving-silo-v1.md)):
-
-- Add nothing under Silo's v1 prefix, and call nothing there. A Bloem feature gets a typed
-  route under `/api/bloem/v2` with an OpenAPI declaration (`internal/apiv2/bloem_*_document.go`),
-  which the [API by topic](docs/bloem/api/README.md) pages are generated from.
-  `make verify-no-v1` fails on a Bloem line that names a retired path.
+- Silo's features use Silo's `/api/v2`. A Bloem feature gets a typed route under `/api/bloem/v2` with an
+  OpenAPI declaration (`internal/apiv2/bloem_*_document.go`), which the
+  [API by topic](docs/bloem/api/README.md) pages are generated from.
 - Bloem's own callers (the storefront, the web app's Bloem pages, Bloem's apps) use Silo's
   `/api/v2` for Silo's features and `/api/bloem/v2` for Bloem's. Where Silo's `/api/v2` lacks
   something Bloem needs, add a native route. Prefer that over changing Silo's `/api/v2` code.

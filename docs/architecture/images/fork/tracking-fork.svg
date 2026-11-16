@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">A tracking fork, not a copy</title>
-<desc id="d">Left: the hard fork Bloem tried first, a new first commit with no link to Silo's history and the module renamed in 1,178 files, so every Silo change had to be copied by hand. Right: the tracking fork Bloem is, sharing Silo's history, with Silo's work merged in again and again beside Bloem's own commits.</desc>
+<desc id="d">Left: a hard fork, a new first commit with no link to Silo's history and the module renamed everywhere, so every Silo change has to be copied by hand. Right: the tracking fork Bloem is, sharing Silo's history, with Silo's work merged in again and again beside Bloem's own commits.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">A tracking fork, not a copy</text>
 <text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem shares Silo's history, so each Silo change is merged in rather than copied by hand.</text>
 <rect x="40" y="124" width="540" height="470" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
-<text x="64" y="162" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Tried first, and dropped</text>
+<text x="64" y="162" font-size="19" font-weight="700" fill="#101827" text-anchor="start">What Bloem is not</text>
 <text x="64" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A hard fork</text>
 <text x="64" y="226" font-size="13.5" font-weight="600" fill="#075985" text-anchor="start">Silo's history</text>
 <line x1="90" y1="250" x2="540" y2="250" stroke="#0284C7" stroke-width="3"/>
@@ -35,11 +35,10 @@
 <text x="96" y="420" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">A new first commit, with no link to Silo's history.</text>
 <circle cx="76" cy="461" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
 <path d="M71.5,456.5 L80.5,465.5 M80.5,456.5 L71.5,465.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
-<text x="96" y="466" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">The module path renamed: 1,178 files changed.</text>
+<text x="96" y="466" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">The module path renamed in every file that uses it.</text>
 <circle cx="76" cy="507" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
 <path d="M71.5,502.5 L80.5,511.5 M80.5,502.5 L71.5,511.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
 <text x="96" y="512" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Every Silo change copied by hand, and in conflict.</text>
-<text x="64" y="566" font-size="13.5" font-weight="normal" fill="#6B7280" text-anchor="start">Replaced on 13 August 2026</text>
 <rect x="620" y="124" width="540" height="470" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
 <text x="644" y="162" font-size="19" font-weight="700" fill="#101827" text-anchor="start">What Bloem is</text>
 <text x="644" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A tracking fork</text>
@@ -83,6 +82,5 @@
 <circle cx="966" cy="562" r="14" fill="#FFFFFF" stroke="#FA6400" stroke-width="2"/>
 <circle cx="966" cy="562" r="9" fill="#FA6400"/>
 <text x="986" y="567" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">Silo merged in</text>
-<text x="40" y="630" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Renaming the module path could still happen any time. Losing the ability to merge could not be undone, so the module path stays</text>
-<text x="40" y="650" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">github.com/Silo-Server/silo-server.</text>
+<text x="40" y="650" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The module path stays github.com/Silo-Server/silo-server, so Silo's work always merges.</text>
 </svg>

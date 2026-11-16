@@ -3,7 +3,7 @@
 Every new or changed Bloem page follows the rules on this page. It walks through
 where a page belongs, the shape every page takes, how its pictures are drawn, what
 stays out of Bloem's pages, and what to check before a page lands. A page states
-what is true now; history lives in git and in the [changelog](CHANGELOG.md). The model page is
+what is true now; history lives in git. The model page is
 [How organizations work](../architecture/bloem-organizations.md); read it first.
 
 ## Where a page belongs
@@ -69,8 +69,10 @@ sections (see [overlays](#overlays) below).
   repository-relative paths.
 - Lead with what a reader needs. A page says what the code does today. Do not
   narrate history, such as "rewritten on" a date or "checked against" a commit:
-  git and the changelog keep it. Name a commit or version only where a reader needs
-  it to act, for example which Silo release a database switch is safe with.
+  git keeps it. Do not recount removals, reversals, retired designs or incidents
+  either: say what is true now and what a reader must do, not how it came to be.
+  Name a commit or version only where a reader needs it to act, for example which
+  Silo release a database switch is safe with.
 
 ## Pictures
 
@@ -189,14 +191,13 @@ viewer pages remain in this repository, indexed by the
 [manual index](overlays/wiki/index.md); no separately hosted Bloem manual exists. A
 future Starlight site should publish those maintained pages or move them with
 redirects, rather than create independently edited copies. Do not copy Silo's
-branding, domain, deployment credentials or removed protocol instructions into a
-Bloem site. Keep license notices on reused source.
+branding, domain or deployment credentials into a Bloem site. Keep license notices on reused source.
 
 ### Where a change belongs
 
 | Audience or change | Maintained source |
 | --- | --- |
-| Product overview and how Bloem relates to Silo | [Bloem front page](../../.github/README.md), [Bloem Server in depth](about.md), [how Bloem keeps up with Silo](../architecture/bloem-following-silo.md), [integration changelog](CHANGELOG.md) |
+| Product overview and how Bloem relates to Silo | [Bloem front page](../../.github/README.md), [Bloem Server in depth](about.md), [how Bloem keeps up with Silo](../architecture/bloem-following-silo.md) |
 | Fork and merge policy | [FORK.md](../../FORK.md), [agent rules](../../BLOEM_AGENTS.md) |
 | CI, the daily upstream sync and the published image | [Bloem CI](ci.md) |
 | Viewer tasks | [User guide](../wiki/user-guide.md) |
@@ -206,7 +207,6 @@ Bloem site. Keep license notices on reused source.
 | Security, tenancy, storage and playback invariants | Bloem-owned files under `docs/architecture/`, listed in the [index](README.md) |
 | Plain-language explanations with pictures | A Bloem page in this house style, such as [How organizations work](../architecture/bloem-organizations.md), with SVG pictures under `docs/architecture/images/<page>/` |
 | Generated contract coverage | [API catalogue](api-catalogue.md) |
-| History of Silo integrations | [Integration changelog](CHANGELOG.md) |
 | Temporary implementation plan | Scratch space or the pull request description; distill durable facts into `docs/architecture/` before merging |
 
 Keep Silo-owned Markdown unchanged: a Markdown file that also exists in Silo's
@@ -254,7 +254,6 @@ architecture for technical invariants instead of duplicating them in user steps.
 | --- | --- | --- |
 | `/api/v2` | `internal/apiv2` registries → `contracts/api/v2/openapi.json` | `/api/v2/docs` loads `/api/v2/openapi.json`; normal account/profile and acting-admin rules apply |
 | `/api/bloem/v2` | Owned Bloem registrations → `contracts/api/bloem/v2/openapi.json` | Load the file in trusted local Swagger tooling; the v2 viewer does not include these extensions |
-| Retired alpha v1 API | Silo's `410 Gone` tombstone (only the health and ready probes stay), pinned by `internal/api/v1_route_surface_test.go`; [contract overlay](overlays/architecture/api-contract.md) | Nothing in Bloem adds to it or calls it; `make verify-no-v1` checks Bloem's lines |
 | Native client DTOs | `contracts/client/v1/registry.json` and Go wire types → Kotlin/Swift trees and graph digest | Server-owned generated files require explicit adoption by each client |
 | Settings | `contracts/settings/v1/` → Go/TypeScript/Kotlin/Swift bindings | Inheritance, scope and null semantics are part of the contract |
 
@@ -266,8 +265,7 @@ Document optional service dependencies and capability gates. Binary and streamin
 routes need their actual media type and authorization boundary, not a JSON stub.
 
 The [catalogue](api-catalogue.md) reports any inventoried method/path without a
-typed native declaration. Administration and Live TV declarations cover the
-earlier inventory gaps; production mount tests enforce method-level agreement.
+typed native declaration. Production mount tests enforce method-level agreement between the declarations and the routes.
 An all-method router mount is not an operation for every HTTP verb.
 `methodOnly` wrappers are resolved by the catalogue generator; unknown dispatchers
 remain unresolved. Production mount tests supplement the inventory for conditional
@@ -303,8 +301,7 @@ make verify-local-paths verify-seams
 table), and the explainer pictures under `docs/architecture/images/`
 (`scripts/bloem/draw-pictures.py`). `make verify-bloem-api-catalogue`, which CI runs,
 also runs the catalogue generator's tests and fails when the catalogue, the topic
-pages or a picture is out of date. The [retired v1 routes](api/v1-routes.md) page and
-the explainer pages are written by hand.
+pages or a picture is out of date. The explainer pages are written by hand.
 
 When Go wire types or registered roots change, also run `make client-dtos`.
 Run `make client-digest` only after reviewing and recording a genuine graph change.
@@ -345,11 +342,10 @@ Each was checked against the code when it was written down.
 - Nullable account `max_profiles` inherits the group limit; it does not mean
   unlimited profiles (`internal/accesspolicy/policy.go`). Explicit account
   overrides win, and a group with a managed profile limit applies its ceiling as
-  well. Both client releases need the
-  [contract transition](../architecture/bloem-contract-adjudications.md).
-- Silo removed the administrator's colour overrides, fonts and custom CSS (Silo
-  #2413) and kept one theme, Cinema Dark, whose one administrator customization is
-  the accent colour, `branding.accent_color` (Silo #1534). Bloem's campaign and
+  well.
+- Silo has one theme, Cinema Dark, whose one administrator customization is
+  the accent colour, `branding.accent_color` (Silo #1534); it has no colour
+  overrides, fonts or custom CSS (Silo #2413). Bloem's campaign and
   seasonal presentation are separate features. Organization branding is not: it
   answers Silo's own branding keys (`branding.PresentationSettingKeys()`) with each
   organization's values on its domains
@@ -358,26 +354,21 @@ Each was checked against the code when it was written down.
   storage sources ([native storage](../architecture/bloem-native-storage.md)).
   Preserve folder navigation and existing selections; provider and playback
   readiness remain separate from configuring a source.
-- Silo's Jellyfin and Audiobookshelf compatibility servers run on their own ports
-  (removed by Bloem on October 13, restored on October 18);
-  Bloem's companion applications and compatibility gateway stay removed. See
+- Silo's Jellyfin and Audiobookshelf compatibility servers run on their own ports,
+  as Silo ships them. Bloem has no companion applications and no compatibility
+  gateway. See
   [protocol compatibility](../architecture/bloem-protocol-compatibility.md).
-- Pastime managed tracking is removed (migration
-  `20261013231500_remove_pastime_managed_tracking`). Do not restore its
-  API/setup guidance; any future ordinary plugin integration has its own
-  contract. See [Pastime removal](../architecture/bloem-pastime-removal.md).
-- Music is removed (migration `20261026020000_bloem_remove_music`).
-  Silo has no music library type either: library types are movie, series,
-  mixed, audiobook, ebook, podcast and manga (`internal/librarykind`).
-- Lifecycle idempotency receipts are removed; the
-  `lifecycle_idempotency_v1` tokens are no longer advertised. Describe retries
-  with the [retrying mutations](../bloem-api-reference.md#retrying-mutations)
-  rules, not an `Idempotency-Key` replay for every lifecycle write.
+- Bloem has no Pastime managed tracking; do not write API or setup guidance for it.
+- Library types are movie, series, mixed, audiobook, ebook, podcast and manga
+  (`internal/librarykind`); there is no music library type.
+- Describe retries with the
+  [retrying mutations](../bloem-api-reference.md#retrying-mutations) rules, not an
+  `Idempotency-Key` replay for every lifecycle write.
 - Promotions and ambience evaluate in-process; there are no
   bundled presentation worker binaries or `BLOEM_PRESENTATION_PLUGIN_DIR`.
-- The header-authenticated media deployment gate and the
-  `playback.strict_reconstruct_admission` setting are
-  gone. Do not document them as operator controls.
+- Header-authenticated media is negotiated whenever a client asks, as in Silo, and
+  there is no `playback.strict_reconstruct_admission` setting. Do not document
+  either as an operator control.
 - AI providers are connected once under AI Services and chosen per job (Silo
   #3106); the embedding provider is chosen there too
   (Silo #3107). Pages that describe one key per AI feature are stale.
@@ -393,7 +384,7 @@ Each was checked against the code when it was written down.
 - `docker-compose.yml` is Silo's all-in-one stack. It ignores `SILO_IMAGE` and
   starts Silo's image (Silo #3319). Bloem installs use
   `docker-compose.advanced.yml`, which `.env.bloem.example` selects through
-  `COMPOSE_FILE`. Silo's VA-API and NVIDIA overlay files are gone (Silo #3279):
+  `COMPOSE_FILE`. Silo ships no VA-API or NVIDIA overlay files (Silo #3279):
   document GPU settings as an operator's own override file.
 - The access-token default is 8 hours (Silo #3250, migration
   `20261029170809_access_token_expiry_8h`), not 1 hour.
@@ -414,10 +405,7 @@ Each was checked against the code when it was written down.
   domain's OAuth callback and its `/login` (the post-logout redirect) must be
   registered at the provider. See
   [organization domains](../architecture/bloem-organization-domains.md).
-- Silo retired its v1 API on 2026-11-11: every v1 route answers `410 Gone`
-  except the health and ready probes, and nothing in Bloem calls it. The web
-  app's signed-out seasonal layer reads `GET /api/bloem/v2/ambience/public`. See
-  [leaving Silo's v1 API](../architecture/bloem-leaving-silo-v1.md).
+- The web app's signed-out seasonal layer reads `GET /api/bloem/v2/ambience/public`.
 - A sign-in that started before its organization revoked the account is ended
   with `401 session_invalid` (`session_expired` on `/api/v2`), so the app asks the
   person to sign in again instead of showing a broken home page

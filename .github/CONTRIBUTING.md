@@ -111,8 +111,7 @@ separately maintained SDK.
 
 GitHub displays `.github/README.md` and uses this file for the repository. Keep Bloem's guide links there and in
 `docs/bloem/README.md`, and keep root Silo documents close to upstream. Put additions in Bloem-owned documents or
-overlays. Public pages say what is true now, in plain language, with no personal names, private hostnames or addresses;
-`docs/bloem/CHANGELOG.md` is the history record.
+overlays. Public pages say what is true now, in plain language, with no personal names, private hostnames or addresses. History lives in git.
 
 For a documentation-only change, check relative links and section anchors, `git diff --check`,
 `make verify-local-paths` and `make verify-seams`. A full application build is unnecessary unless runtime or generated
