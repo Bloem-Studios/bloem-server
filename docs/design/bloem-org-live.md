@@ -1,6 +1,6 @@
 # Organization live updates
 
-Status: contract for `feat/org-live`. A server implements it, and the admin apps build against it.
+This is the contract for organization live updates. A server implements it, and the admin apps build against it.
 
 Organization pages in the admin apps (live streams, people, activity) refresh on timers because
 Silo's events socket has no organization channels. This adds a socket that tells an organization

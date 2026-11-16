@@ -1,10 +1,7 @@
 # How Live TV finds tuners
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Live TV is not a Silo feature; Silo lists it as a non-goal.
-> The first version of this page, like Bloem's tuner code, was adapted from Prairie
-> Server; Xtream providers are Bloem's own addition. Every route, setting and security
-> rule is in the [For developers](#for-developers) section.
+Live TV is not a Silo feature; Silo lists it as a non-goal. Every route, setting and
+security rule is in the [For developers](#for-developers) section.
 
 A **tuner** is a device that receives TV channels, such as a SiliconDust HDHomeRun box
 on an antenna or cable. This page walks through the two ways Bloem finds one, how
@@ -81,20 +78,14 @@ override. See [how Xtream providers work](architecture/xtream-live-tv.md).
 - **API:** [Live TV](bloem/api/live-tv.md): the tuner routes, with their fields
   and error codes.
 
-History: Bloem's tuner, guide, streaming and DVR subsystem, and the first version of
+Origin: Bloem's tuner, guide, streaming and DVR subsystem, and the first version of
 this page, were adapted from [Prairie Server](https://github.com/Prairie-Server/prairie-server)
-at commit `095ecd22fbea3384a905eb9049386015db3ff4d8` (AGPL-3.0) in `ef2d38171`
-(2026-08-13). [`docs/livetv/prairie-source-manifest.tsv`](livetv/prairie-source-manifest.tsv)
+at commit `095ecd22fbea3384a905eb9049386015db3ff4d8` (AGPL-3.0).
+[`docs/livetv/prairie-source-manifest.tsv`](livetv/prairie-source-manifest.tsv)
 lists every imported file with its source blob; it classifies this page and
 `docker-compose.livetv.yml` as `adapted` (product copy changed from Prairie to Bloem).
-See [FORK.md](../FORK.md#prairie-server-live-tv). Later Bloem changes: the operational
-routes moved to the native `/api/bloem/v2` prefix in `9cc9d9326` (2026-09-14), and Xtream
-providers were added in `23ee4c1ac` (2026-09-19), which is Bloem's own addition, not
-Prairie's. Checked on 2026-11-01 by source review of `internal/livetv/hdhomerun/`,
-`internal/livetv/fetch_url.go`, `internal/livetv/service.go`,
-`internal/api/router_livetv.go`, `internal/api/handlers/livetv.go`,
-`docker-compose.livetv.yml`, `docker-compose.advanced.yml` and
-`web/src/pages/AdminLiveTV.tsx`; this refresh did not run a tuner.
+See [FORK.md](../FORK.md#prairie-server-live-tv). Xtream providers are Bloem's own
+addition, not Prairie's.
 
 ### Discovery modes
 
@@ -240,7 +231,8 @@ refused with `400 invalid_argument`; Xtream providers use
 Operational Live TV routes use the native Bloem prefix. See
 [client access](architecture/live-tv-client-access.md) for viewer grants, signed HLS,
 recording ownership and DVR limits. Actual tuner/Safari and multi-replica owner-loss
-acceptance remain separate from offline decoding and synthetic HTTP fixtures.
+acceptance remain separate from offline decoding and synthetic HTTP fixtures; this page
+does not record a test against a real tuner.
 
 ### Related pages
 

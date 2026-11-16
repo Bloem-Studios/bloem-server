@@ -1,11 +1,9 @@
 # Playback cards: who calls which route
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Silo has no campaign or playback-card API; this is a Bloem
-> addition. It is a short map of the routes. The plain explanation is
-> [how playback cards work](architecture/playback-overlays.md), and the wire contract
-> is in the documents linked under [For developers](#for-developers).
-> Its routes were checked again on 2026-11-11, after Silo retired its v1 API.
+Silo has no campaign or playback-card API; this is a Bloem addition. This page is a
+short map of the routes. The plain explanation is
+[how playback cards work](architecture/playback-overlays.md), and the wire contract is
+in the documents linked under [For developers](#for-developers).
 
 A **playback card** is a campaign message that floats over a video for a few seconds.
 This page shows who writes campaigns, where they are stored, and which routes each
@@ -22,7 +20,8 @@ app reads to show a card.
 - **The web app** reads Bloem's own routes to list the cards for the title it plays
   and to save one to the inbox.
 - **Bloem's Android apps** read the cards from older routes on Silo's v1 API, which
-  Silo retired on 2026-11-11, so they show none until they move to the native routes. Bloem's Apple apps never ask for playback cards yet.
+  Silo retired on 2026-11-11, so they show none until they move to the native routes.
+  Bloem's Apple apps do not ask for playback cards yet.
 - **Announcements** are separate: a platform administrator publishes them from
   **Settings → Integrations → Announcements**, with no campaign rights and no storefront
   ([how announcements work](architecture/admin-announcements.md)).
@@ -56,7 +55,7 @@ app reads to show a card.
   Organization authority is refused (`403 insufficient_platform_authority`). The
   registry has no revision locking: a later save overwrites an earlier one.
 - The web console's page is `web/src/pages/admin-platform/EngagementPage.tsx`; the
-  storefront moved to these routes on 2026-10-31
+  storefront uses these routes
   ([leaving Silo's v1 API](architecture/bloem-leaving-silo-v1.md)).
 - The legacy acting-admin CRUD on Silo's v1 API (`/admin/promotions`, mounted by
   `mountBloemLegacyAdminV1`) went with that API on 2026-11-11. Nothing in Bloem called it
@@ -78,18 +77,9 @@ Campaign artwork uploads go through the ambience asset service, which stores the
 Silo's catalog **Assets** blob store (local disk or S3) and falls back to the public S3
 client only when no Assets store is configured (`cmd/silo/bloem_main.go`). With no
 store at all, uploads return `503` and an HTTPS artwork URL can still be authored.
-Uploaded files are served from `/api/bloem/v2/ambience/assets/{ref}`. This page
-said until 2026-10-27 that uploads required public S3; that described the wiring
-before `f293cce0d` (2026-09-23). See
+Uploaded files are served from `/api/bloem/v2/ambience/assets/{ref}`. See
 [campaign and seasonal asset storage](architecture/bloem-campaign-asset-storage.md)
 and the [native authoring contract](bloem-api-reference.md#platform-campaign-and-seasonal-authoring).
-
-### History
-
-This page was added with timed playback overlays in `eaa0b3a6b` (2026-09-06), revised
-for the embedded web authoring in `53534d9f0` (2026-09-18), re-checked on 2026-10-27,
-rewritten on 2026-11-01 after the storefront and the web app left Silo's v1 API, and
-checked again on 2026-11-11, when Silo retired that API.
 
 ### Related pages
 

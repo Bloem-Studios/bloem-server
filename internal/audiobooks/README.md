@@ -1,10 +1,8 @@
 # How audiobooks and podcasts work in Bloem
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which contains Silo through `63ef34b23`. This package is Silo's:
-> every Go source file here also exists in Silo's `main`. Bloem adds one small change, its
-> own tests, this README, and the organization limit described below. The technical rules
-> are in the [For developers](#for-developers) section.
+This package is Silo's: every Go source file here also exists in Silo's `main`. Bloem
+adds one small change, its own tests, this README, and the organization limit described
+below. The technical rules are in the [For developers](#for-developers) section.
 
 This page explains what the `internal/audiobooks` package does, how Audiobookshelf apps
 reach it, and the little that Bloem changes. Silo labels audiobooks, ebooks and
@@ -80,14 +78,12 @@ audiobooks through the main address, as described in
   native audiobook surface is in
   [the audio contract](../../docs/architecture/bloem-native-audio-playback.md).
 
-### Provenance
+### Relation to Silo
 
 Every Go source file here also exists in Silo's `main`; Bloem's differences are one
 declared seam, its own test files and this README. "Seam" here means a Silo-owned file
 Bloem edits, declared in [`contracts/seams.txt`](../../contracts/seams.txt) and checked by
-`make verify-seams`. The README was added in `35e9e9f7f` (2026-08-18), revised on
-2026-10-27 against `e852f92bf` (Silo through `3e2d306b2`), and rewritten on 2026-11-01
-against `b6039036d` (Silo through `63ef34b23`).
+`make verify-seams`.
 
 ### The listener
 
@@ -98,8 +94,8 @@ Audiobookshelf apps reach Silo's server on its own listener (Silo's
   (**Configure → Integrations → Compatibility → Allow Audiobookshelf apps to connect**);
   it is a restart key (`internal/config/restart_keys.go`);
 - the port is `ABS_PORT`, default `13378` (`internal/config/bootstrap.go`). Silo made it
-  configurable from the environment in `bca55f764` (2026-10-26, #3117); the bundled
-  Compose file pins the container side and publishes `ABS_PORT` on the host;
+  configurable from the environment; the bundled Compose file pins the container side and
+  publishes `ABS_PORT` on the host;
 - the handler mounts on a fresh router at the root (`/ping`, `/healthcheck`, `/status`,
   `/login`, `/socket.io` and so on), with no SPA fallback, and also serves the signed
   `/api/v2/artwork/*` route so cover redirects resolve on this port;
@@ -124,16 +120,14 @@ attempts: a new `no_match` streak starts at 1, and every other outcome increment
 existing count, so earlier repair-attempt history is not reset. Silo's version
 increments only consecutive `no_match` outcomes and resets every other one to 1. Bloem's
 tests for it are `bloem_outcome_attempts_test.go` and
-`bloem_native_audio_enrichment_db_test.go` (seam introduced in `5f70bd5d7`,
-2026-09-19). `bloem_upstream_fixtures_test.go` and `native_test_database_test.go` are
+`bloem_native_audio_enrichment_db_test.go`. `bloem_upstream_fixtures_test.go` and `native_test_database_test.go` are
 Bloem test helpers; the first copies fixtures from Silo tests that upstream has since
 removed, so those Silo files stay deleted.
 
 ### History
 
-Bloem removed both Silo compatibility servers on 2026-10-13 (`b8ddec9bf`) and restored
-Silo's versions on 2026-10-18 (`2393c41ee`) so that Silo's code merges without deletion
-seams. Bloem's earlier additions, the companion credential enrollment and the
+Bloem once removed both Silo compatibility servers, then restored Silo's versions so
+that Silo's code merges without deletion seams. Bloem's earlier additions, the companion credential enrollment and the
 same-origin compatibility gateway, stay removed. See
 [protocol compatibility](../../docs/architecture/bloem-compatibility-removal.md).
 
@@ -150,11 +144,6 @@ same-origin compatibility gateway, stay removed. See
   [Silo switching](../../docs/architecture/silo-backend-switching.md), which describes
   moving one database between Silo and Bloem images.
 - Silo's scope decision for books: [1.0 scope](../../docs/architecture/v1-scope.md#library-scope-books-deferred).
-
-### Verification scope
-
-This README was checked against the source only. It does not record an Audiobookshelf
-app sign-in, playback or progress test against a running server.
 
 Technical pages:
 

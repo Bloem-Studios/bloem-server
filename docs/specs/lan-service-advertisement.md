@@ -1,11 +1,9 @@
 # How Bloem announces itself on a home network (`_bloem._tcp`)
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. The `_bloem._tcp` announcement is a Bloem addition, separate
-> from Silo's own `_silo._tcp`. It is implemented on the server, off by default, with
-> no switch in the web app. This page explains it in plain language; the record the
-> apps read and every technical rule are in the [For developers](#for-developers)
-> section.
+The `_bloem._tcp` announcement is a Bloem addition, separate from Silo's own
+`_silo._tcp`. It is implemented on the server, off by default, with no switch in the web
+app. This page explains it in plain language; the record the apps read and every
+technical rule are in the [For developers](#for-developers) section.
 
 On a home network, Bloem can announce itself so that Bloem's own apps find the server
 without anyone typing its address. This page walks through how to switch it on, what
@@ -66,14 +64,13 @@ Bloem's setting does not publish `_silo._tcp`. Bloem's apps look for `_bloem._tc
   page. Silo's own discovery is described in
   [server discovery](../architecture/server-discovery.md).
 
-### History
+### Background
 
-Written on 2026-09-02 (`8993d1b3b`) after the native API moved to `/api/bloem/v2`,
-when aligning the clients showed that they browsed for a service no server published.
-`8173499df` (2026-09-02) added `internal/lanadvert`, which publishes `_bloem._tcp`
-through `github.com/brutella/dnssd`. Silo added `_silo._tcp` later, in `fdedf5a27`
-(#1846, 2026-10-03; `internal/landiscovery`). Statements below about the client apps
-describe their repositories as reviewed on 2026-09-02; they are not checked here.
+The client apps already browsed for `_bloem._tcp`, but no server published it.
+`internal/lanadvert` now publishes it through `github.com/brutella/dnssd`. Silo added
+its own `_silo._tcp` separately (`internal/landiscovery`). Statements below about the
+client apps describe their repositories as last reviewed in September 2026; they are not
+checked here.
 
 ### What the server does
 
@@ -116,14 +113,14 @@ The advertisement is an unauthenticated hint. It can only ever push a candidate 
 "not worth attempting"; it never grants trust. `GET /api/bloem/v2/server/identity`
 remains the authority on whether a connection is made.
 
-`bloem` is a key added on 2026-09-02: no client shipped before then reads it, and every
+`bloem` is a later addition to the record: older clients do not read it, and every
 client treats an absent key as "cannot determine", so adding it is backward compatible.
 
 ### The clients
 
 `bloem-android`, `bloem-android-skyline` and `bloem-apple` all browse `_bloem._tcp` and
-parse the TXT record, as reviewed on 2026-09-02. Clients degrade to manual origin
-entry, which is why the missing server side went unnoticed until then. No upstream
+parse the TXT record, as last reviewed in September 2026. Clients degrade to manual origin
+entry, which is why the missing server side went unnoticed. No upstream
 `silo-server`, `bloem-ops` or `bloem-edge` build publishes `_bloem._tcp`.
 
 ### The original requirements, and where they stand

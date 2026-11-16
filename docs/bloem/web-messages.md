@@ -1,11 +1,9 @@
 # How Bloem's web text is translated
 
-> **Provenance and status.** Bloem page, written on 2026-11-10 and checked against
-> the source at `dc663607d` with Bloem's seven translations added. Bloem's message
-> catalog is a Bloem addition that mirrors Silo's rules for its own catalog
-> ([`web/src/i18n/README.md`](../../web/src/i18n/README.md)); Silo's catalog stays
-> as Silo ships it. The technical rules are in the [For developers](#for-developers)
-> section.
+Bloem's message catalog is a Bloem addition that mirrors Silo's rules for its own
+catalog ([`web/src/i18n/README.md`](../../web/src/i18n/README.md)); Silo's catalog stays
+as Silo ships it. The technical rules are in the [For developers](#for-developers)
+section.
 
 The web app speaks the viewer's language: Silo's screens through Silo's catalog,
 and Bloem's screens and additions through Bloem's own. This page walks through

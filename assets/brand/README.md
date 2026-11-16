@@ -1,9 +1,8 @@
 # Bloem's brand assets
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. These files are Bloem's own visual identity, a Bloem addition:
-> Silo's name, logo and wordmark are Silo's trademarks, and a fork must replace them. The
-> technical rules are in the [For developers](#for-developers) section.
+These files are Bloem's own visual identity, a Bloem addition: Silo's name, logo and
+wordmark are Silo's trademarks, and a fork must replace them. The technical rules are in
+the [For developers](#for-developers) section.
 
 This folder holds the drawings Bloem's logo and name are made from. This page walks
 through the pieces, which one to use at which size, the colours, and where the finished
@@ -93,9 +92,8 @@ lettering is white.
 
 ### Where these came from
 
-The vector sources were added on August 25, 2026 (`4982bda25`, with the brighter "vivid"
-bloom in `bf016c37c` and the classic one kept alongside it in `48343fd17`). They are
-original Bloem work, not derived from Silo's reserved logo or wordmark; see
+The vector sources are original Bloem work, not derived from Silo's reserved logo or
+wordmark; see
 [`NOTICE`](NOTICE) and [fork provenance](../../FORK.md#ongoing-merge-cost). Silo's own
 README and trademark rules require a fork to replace Silo's brand assets, which is why
 these exist. The notice also says the vector sources are not included in the AGPL
