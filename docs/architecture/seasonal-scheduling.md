@@ -280,7 +280,7 @@ store: decoded Home images, exact image bytes, MIME types and dimensions, ETag
 revalidation, input rejection and current-organization versus public filtering. This
 does not imply that every deployment has S3 configured; see
 [storage setup](../bloem/overlays/s3-storage-setup.md) and the
-[coverage evidence](bloem-web-feature-coverage.md#acceptance-evidence-and-limits).
+[coverage evidence](bloem-web-feature-coverage.md#validation-status).
 
 ### Migration and tests
 

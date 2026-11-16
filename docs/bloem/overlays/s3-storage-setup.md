@@ -119,7 +119,7 @@ same lock covers them.
 required restart, verify an actual upload and image read, including the MIME type,
 dimensions and ETag revalidation. A registry write or a healthy server alone does
 not show that upload storage works. The
-[web coverage matrix](../../architecture/bloem-web-feature-coverage.md#acceptance-evidence-and-limits)
+[web coverage matrix](../../architecture/bloem-web-feature-coverage.md#validation-status)
 records disposable configured-S3 checks and their cleanup; those fixtures left no
 storage override configured for other installations.
 

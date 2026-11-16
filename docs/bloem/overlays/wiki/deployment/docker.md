@@ -1094,7 +1094,7 @@ Technical pages:
 - [Protocol compatibility](../../../../architecture/bloem-compatibility-removal.md).
 - [SQLite bridge preflight](../../../../architecture/sqlite-bridge-preflight.md).
 - [Policy-array migration](../../../../architecture/core-id-range.md#apply-and-rollback).
-- [Xtream fleet prerequisites](../../../../architecture/xtream-live-tv.md#deployment-and-acceptance).
+- [Xtream upgrade and coverage](../../../../architecture/xtream-live-tv.md#upgrade-and-coverage).
 - [Release versioning](../../../../release-versioning.md) and Bloem's
   [release-versioning overlay](../../release-versioning.md).
 - [S3 storage setup](../../s3-storage-setup.md).

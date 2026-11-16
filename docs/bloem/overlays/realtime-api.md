@@ -43,7 +43,7 @@ login-session tickets fail closed. The binding is neither client input nor part 
 public ticket response. One-use consumption, expiry, Origin, PIN, policy fingerprint and
 revocation checks above remain in force. See
 [security invariants](../../architecture/bloem-security-foundation.md#native-seasonal-delivery-and-events-authority)
-and [bounded browser evidence](../../architecture/bloem-web-feature-coverage.md#acceptance-evidence-and-limits).
+and [bounded browser evidence](../../architecture/bloem-web-feature-coverage.md#validation-status).
 
 A ticket minted by an API key (the subsection “API-key handshake”) has no login
 session to bind, so it carries no Bloem binding. Bloem admits it as an HTTP

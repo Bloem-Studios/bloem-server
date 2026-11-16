@@ -79,7 +79,7 @@ decide whether support is installed.
 
 #### Reviewed Bloem-only namespace correction
 
-The 2026-09-19 [contract adjudication](../../../architecture/bloem-contract-adjudications.md#route-decisions)
+The 2026-09-19 [contract adjudication](../../../architecture/bloem-contract-adjudications.md#for-developers)
 records the already-implemented relocation of 28 Prairie-derived Live TV methods
 from `/api/v1/livetv/...` to `/api/bloem/v2/livetv/...`. These were Bloem additions,
 not an upstream Silo capability. Older fork callers must use the native prefix;

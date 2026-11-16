@@ -8,7 +8,7 @@
 > `*ForProfile` wrappers remain only for an explicit profile such as a Jellyfin
 > session's. Bloem's bundle-budget checker and allowance were replaced by Silo's
 > report-only checker. For the current state, see the
-> [front page](../../.github/README.md#current-state) and the
+> [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md) and the
 > [integration changelog](CHANGELOG.md).
 
 This source integration preserves Silo ancestry through normal merges. The
