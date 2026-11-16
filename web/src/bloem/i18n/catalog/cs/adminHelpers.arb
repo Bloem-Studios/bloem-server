@@ -208,7 +208,7 @@
   "bloem.admin.policy.vocabulary.job.completed": "Změna použita",
   "bloem.admin.policy.vocabulary.job.failed": "Změna selhala",
   "bloem.admin.policy.vocabulary.job.nothingChanged": "Nic se nezměnilo",
-  "bloem.admin.policy.vocabulary.job.queued": "Čeká na zahájení",
+  "bloem.admin.policy.vocabulary.job.queued": "Čeká na spuštění",
   "bloem.admin.policy.vocabulary.job.running": "Změna se používá",
   "bloem.admin.policy.vocabulary.job.someChanged": "Změna použita u některých účtů",
   "bloem.admin.policy.vocabulary.libraryNumber": "Knihovna {id}",

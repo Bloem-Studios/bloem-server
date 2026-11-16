@@ -58,7 +58,7 @@
   "bloem.preview.banner.signOut": "登出",
   "bloem.preview.banner.subscribe": "訂閱",
   "bloem.preview.banner.yourPreview": "你的媒體庫預覽",
-  "bloem.preview.book.alsoByThisAuthor": "這位作者的其他作品",
+  "bloem.preview.book.alsoByThisAuthor": "此作者的其他作品",
   "bloem.preview.book.audiobook": "有聲書",
   "bloem.preview.book.byAuthors": "作者：{authors}",
   "bloem.preview.book.chapterNumber": "第 {number} 章",

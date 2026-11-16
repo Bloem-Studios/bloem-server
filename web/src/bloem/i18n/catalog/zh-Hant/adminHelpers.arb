@@ -53,7 +53,7 @@
   "bloem.admin.orgInvitations.hooks.revokeFailed": "無法撤銷邀請",
   "bloem.admin.orgInvitations.hooks.revoked": "邀請已撤銷",
   "bloem.admin.orgInvitations.inheritFromAccessGroup": "沿用存取群組設定",
-  "bloem.admin.orgInvitations.newLinkFinePrint": "連結只能使用一次，7 天後到期。之後重新寄出會產生新的連結，並使這個連結失效。",
+  "bloem.admin.orgInvitations.newLinkFinePrint": "此連結僅能使用一次，並會在 7 天後失效。之後重新寄送會產生新的連結，並讓此連結失效。",
   "bloem.admin.orgInvitations.regenerateLink": "重新產生連結",
   "bloem.admin.orgInvitations.resentLinkFinePrint": "連結只能使用一次；此邀請先前的所有連結都已失效。",
   "bloem.admin.orgInvitations.revoke": "撤銷",

@@ -58,7 +58,7 @@
   "bloem.preview.banner.signOut": "Wyloguj się",
   "bloem.preview.banner.subscribe": "Subskrybuj",
   "bloem.preview.banner.yourPreview": "Podgląd twojej biblioteki",
-  "bloem.preview.book.alsoByThisAuthor": "Także tego autora",
+  "bloem.preview.book.alsoByThisAuthor": "Inne książki tego autorstwa",
   "bloem.preview.book.audiobook": "Audiobook",
   "bloem.preview.book.byAuthors": "Autor: {authors}",
   "bloem.preview.book.chapterNumber": "Rozdział {number}",
