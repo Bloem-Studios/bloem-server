@@ -1,7 +1,8 @@
 # Bloem overlay: At-rest credential encryption
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`, and checked again
+> on 2026-11-16 against Silo through `699f84ecf`. It lists what Bloem
 > adds to or renames in Silo's
 > [`docs/architecture/secret-encryption.md`](../../../architecture/secret-encryption.md),
 > which stays exactly as Silo wrote it. Silo's cipher, `SECRET_KEY` handling,
@@ -53,6 +54,19 @@ applies. From `3e2d306b2` through `63ef34b23` Silo changed the document once, in
 keys, and a downgrade clears both the `auth.jwt_secret` and
 `audiobooks.abs.jwt_secret` rows. That applies to Bloem unchanged, and every
 passage this overlay points at is unchanged.
+
+On 2026-11-16 the overlay was checked against Silo through `699f84ecf`. Silo's
+#4337 (thin transcode nodes) added one passage to the “Scope and known gaps”
+paragraph beginning “Covered: arr (Requests + Autoscan) API keys…”: a transcode
+node's key is stored encrypted in `stream_nodes.node_key_ciphertext` (AAD
+`stream_nodes:node_key_ciphertext:<id>`), has no plaintext backfill, and after a
+`SECRET_KEY` change leaves the node keyless until an administrator issues a new
+key. That applies to Bloem unchanged. The paragraph still begins the same way, so
+Bloem's addition after it keeps its place. Like Bloem's Xtream credentials, a node
+key has no plaintext read path (`nodepool.DecryptNodeKey` refuses a plaintext
+value), so it is not one of the legacy integration credentials the renamed
+read-path bullet below describes. A transcode node itself no longer holds
+`SECRET_KEY`; only the API servers and proxies do.
 
 ### Section by section
 

@@ -1,7 +1,8 @@
 # Bloem overlay: Playback protocol v3
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`, and checked again
+> on 2026-11-16 against Silo through `699f84ecf`. It lists what Bloem
 > adds to Silo's
 > [`docs/architecture/playback-protocol-v3.md`](../../../architecture/playback-protocol-v3.md),
 > which stays exactly as Silo wrote it. Bloem replaces nothing there. The additions
@@ -62,6 +63,17 @@ that downloads still refuse declared `video_decode` entries (`23aec3e11`), keepi
 a session alive while the client waits out its startup timeout (#3208), and direct
 play of a 1080p50 source on a decoder rated 4K30 (#3267). All of them apply to
 Bloem; the two paragraphs this overlay follows are unchanged.
+
+On 2026-11-16 the overlay was checked against Silo through `699f84ecf`. Silo's
+#4337 (thin transcode nodes) changed one paragraph of section “4.1
+Header-authenticated media URLs”: the API's resolve now checks the plan-scoped
+transport record before a transcode node starts each progressive response, where
+the node used to read it itself, and a force reload revokes the record. This
+overlay covers no part of section 4.1, and its three anchors are unchanged. A thin
+node reads no database or Redis, so the worker grant a node once read for a
+native-storage input no longer applies; the
+[native video playback](../../../architecture/bloem-native-video-playback.md) page
+describes how a native file reaches a transcode node now.
 
 ### Section by section
 

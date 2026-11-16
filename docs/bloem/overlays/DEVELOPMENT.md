@@ -1,7 +1,8 @@
 # Bloem overlay: Developing Silo
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`; its Make targets
+> table was checked again on 2026-11-16 against Silo through `699f84ecf`. It lists what Bloem
 > adds to or replaces in Silo's root [`DEVELOPMENT.md`](../../../DEVELOPMENT.md),
 > which stays exactly as Silo wrote it. The section-by-section changes are in the
 > [For developers](#for-developers) section.
@@ -55,6 +56,16 @@ the previous review Silo changed `DEVELOPMENT.md` twice: `40e03ad31` (#3180,
 starts PostgreSQL and Redis from `dev/compose.yml`. Both apply to Bloem as Silo
 wrote them, and every section this overlay points at is unchanged.
 
+On 2026-11-16 the overlay was checked against Silo through `699f84ecf`. Silo's
+#4337 (thin transcode nodes) changed `DEVELOPMENT.md` twice: the
+`make dev-transcode` row of the Make targets table, because a transcode node now starts
+against a running server with only `SILO_CORE_URL` and `SILO_NODE_KEY`, and the
+paragraph on runtime migrations, because a transcode node has no database
+connection at all. The table this overlay replaces now carries Silo's new
+`dev-transcode` row; the migrations paragraph applies to Bloem as Silo wrote it.
+How a transcode node reads a file in Bloem's native storage is on
+[native video playback](../../architecture/bloem-native-video-playback.md).
+
 ### Section by section
 
 ---
@@ -104,7 +115,7 @@ same table, except that `migrate-status` and `migrate-up` run Bloem's
 | `make dev-frontend` | Vite dev server with HMR |
 | `make dev-backend` | Run Go backend (integrated mode) |
 | `make dev-proxy` | Run a standalone proxy node |
-| `make dev-transcode` | Run a standalone transcode node |
+| `make dev-transcode` | Run a transcode node against a running server (needs `SILO_CORE_URL` and `SILO_NODE_KEY`) |
 | `make migrate-create NAME=add_thing` | Create a timestamped Goose SQL migration |
 | `make migrate-validate` | Validate Goose migration files without touching a database |
 | `make migrate-status` | Show Goose migration status using Bloem's bootstrapping runner |
