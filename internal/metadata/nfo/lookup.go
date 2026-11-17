@@ -430,7 +430,10 @@ func (p *Provider) listDir(dir string) (*dirListing, error) {
 	if coarseTimestamp(info.ModTime()) {
 		settle = listingSettleTime
 	}
-	if listedAt.Sub(lastChange(info)) > settle {
+	if listedAt.Sub(lastChange(info)) <= settle { // Bloem: bloem_listing_settle.go
+		return listing, nil
+	}
+	if listedAt.Sub(info.ModTime()) > settle {
 		p.listings.put(key, listing)
 	}
 	return listing, nil
