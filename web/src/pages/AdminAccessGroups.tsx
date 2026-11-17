@@ -1,4 +1,3 @@
-import OrganizationAdminAccessGroups from "./OrganizationAdminAccessGroups";
 import { Plus, UsersRound } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
@@ -23,13 +22,12 @@ import {
 } from "@/hooks/queries/admin/accessGroups";
 import { useRequestGroupLimit } from "@/hooks/queries/admin/requests";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
 import { useT, type MessageKey } from "@/i18n";
 import { requestGroupLimitSummary } from "@/lib/requestAccess";
 import { TOUCH_TARGETS } from "@/lib/touchTargets";
 import { cn } from "@/lib/utils";
 
-function PlatformAdminAccessGroups() {
+export default function AdminAccessGroups() {
   useAuth();
   return <AccessGroupsPage key={accessGroupScope()} />;
 }
@@ -308,16 +306,5 @@ function AccessGroupCard({ group, onClick }: { group: AccessGroup; onClick: () =
         ))}
       </div>
     </button>
-  );
-}
-
-// Outside an AdminContextProvider (Silo's own page tests) it is Silo's
-// platform page.
-export default function AdminAccessGroups() {
-  const active = useOptionalAdminContext()?.active;
-  return active?.scope === "organization" ? (
-    <OrganizationAdminAccessGroups key={active.key} />
-  ) : (
-    <PlatformAdminAccessGroups />
   );
 }

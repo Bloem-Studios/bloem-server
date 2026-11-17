@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import AdminSidebar from "@/components/AdminSidebar";
 import { AdminSectionCommandDialog } from "@/components/AdminSectionCommandDialog";
 import ServerActivity from "@/components/ServerActivity";
@@ -26,7 +26,6 @@ import { SEARCH_SHORTCUT_LABEL } from "@/lib/keyboardShortcut";
 import { Menu, Search, X } from "lucide-react";
 import { useWatchPlaybackController } from "@/playback/watchPlaybackContext";
 import { useAudiobookPlaybackController } from "@/pages/audiobooks/player/audiobookPlaybackContext";
-import { AdminScopedOutlet } from "@/bloem/BloemAdminShell";
 
 const ADMIN_DESKTOP_MEDIA_QUERY = "(min-width: 64rem)";
 /** The play-mark glyph on the phone header's logo tile; not text. */
@@ -206,7 +205,7 @@ function AdminLayoutContent() {
             restartRequired={serverStatus?.restart_required}
             restartSignal={serverStatus?.restart_mark_count}
           />
-          <AdminScopedOutlet />
+          <Outlet />
         </PageFrame>
       </main>
     </div>

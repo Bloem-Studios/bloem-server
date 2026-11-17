@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AdminLayout from "./AdminLayout";
 
@@ -27,7 +27,13 @@ vi.mock("@/contexts/AdminContextProvider", () => ({
 }));
 vi.mock("@/bloem/BloemAdminShell", async () => {
   const { Outlet } = await import("react-router");
-  return { AdminScopedOutlet: () => <Outlet /> };
+  return {
+    AdminScopedOutlet: () => (
+      <div data-testid="scoped-outlet">
+        <Outlet />
+      </div>
+    ),
+  };
 });
 vi.mock("@/hooks/useDocumentTitle", () => ({ useDocumentTitle: vi.fn() }));
 vi.mock("@/lib/documentTitle", () => ({
@@ -102,6 +108,22 @@ describe("AdminLayout mobile navigation", () => {
 
     expect(screen.queryByRole("button", { name: /^Server activity/ })).not.toBeInTheDocument();
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("renders admin pages through Bloem's scoped outlet", () => {
+    renderInQueryClient(
+      <MemoryRouter initialEntries={["/admin/organization"]}>
+        <Routes>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="organization" element={<p>Organization page</p>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("scoped-outlet")).toContainElement(
+      screen.getByText("Organization page"),
+    );
   });
 
   it("closes the mobile sheet when a context switch succeeds", async () => {

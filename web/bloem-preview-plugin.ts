@@ -34,6 +34,8 @@ const modules: Record<string, string> = {
   "lib/episodeCardLabels.ts": "adapters/episodeCardLabels.ts",
   // A darker sheet overlay; temporary, a mobile web fix being proposed to Silo.
   "components/ui/sheet.tsx": "adapters/sheet.tsx",
+  // An organization administrator gets the organization's own access groups page.
+  "pages/AdminAccessGroups.tsx": "adapters/AdminAccessGroups.tsx",
 };
 
 // Boundaries replaced for one importer only, so every other importer, Silo's
@@ -61,6 +63,9 @@ const importerModules: Record<string, Record<string, string>> = {
   // Server activity and the build route are the platform administrator's.
   "components/AdminLayout.tsx": {
     "components/ServerActivity.tsx": "adapters/AdminServerActivity.tsx",
+    // Admin pages wait for Bloem's admin text and, for a platform page, the
+    // platform context.
+    "npm:react-router": "adapters/adminLayoutRouter.tsx",
   },
   "components/AdminSidebar.tsx": {
     "hooks/queries/admin/system.ts": "adapters/adminBuildInfo.ts",
@@ -79,7 +84,9 @@ const importerModules: Record<string, Record<string, string>> = {
     "i18n/index.ts": "adapters/i18nWithBloem.ts",
   },
   // Access groups list Bloem's Live TV permission with Silo's.
-  "components/admin/access-groups/AccessGroupPermissionsSection.tsx": { "i18n/index.ts": "adapters/i18nWithBloem.ts" },
+  "components/admin/access-groups/AccessGroupPermissionsSection.tsx": {
+    "i18n/index.ts": "adapters/i18nWithBloem.ts",
+  },
   // Bloem's admin pages have Bloem titles.
   "lib/documentTitle.ts": { "i18n/index.ts": "adapters/i18nWithBloem.ts" },
 };

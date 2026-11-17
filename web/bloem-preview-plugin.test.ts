@@ -129,3 +129,22 @@ describe("bloemPreview watch host", () => {
     ).resolves.toBeNull();
   });
 });
+
+describe("bloemPreview admin pages", () => {
+  it("gives the admin layout Bloem's scoped page outlet", async () => {
+    await expect(resolveFrom("components/AdminLayout.tsx", "react-router")).resolves.toBe(
+      path.join(SRC, "bloem/preview/adapters/adminLayoutRouter.tsx"),
+    );
+  });
+
+  it("gives every importer of the access groups page the organization switch", async () => {
+    for (const importer of ["App.tsx", "bloem/lazyPages.ts"]) {
+      await expect(resolveFrom(importer, "@/pages/AdminAccessGroups")).resolves.toBe(
+        path.join(SRC, "bloem/preview/adapters/AdminAccessGroups.tsx"),
+      );
+    }
+    await expect(
+      resolveFrom("bloem/preview/adapters/AdminAccessGroups.tsx", "@/pages/AdminAccessGroups"),
+    ).resolves.toBeNull();
+  });
+});
