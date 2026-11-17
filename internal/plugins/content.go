@@ -21,11 +21,7 @@ type ContentAccess struct {
 	// response, so an open plugin page outlives the cookie's five minutes
 	// while its login session lasts.
 	RenewedCookie *http.Cookie
-
-	// PlaybackDenied prevents an authenticated browse-only viewer from spending
-	// their identity on arbitrary plugin byte access, including public descriptors.
-	PlaybackDenied bool
-	ProfileBound   bool
+	BloemContentDenials
 }
 
 type ContentAccessResolver func(*http.Request) ContentAccess
@@ -117,12 +113,7 @@ func (h *ContentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if h.routeAccess != nil {
 			access = h.routeAccess(r)
 		}
-		if access.PlaybackDenied {
-			http.Error(w, "Plugin content access has not been granted", http.StatusForbidden)
-			return
-		}
-		if access.ProfileBound {
-			http.Error(w, "Direct profile sessions cannot use plugin routes", http.StatusForbidden)
+		if refuseBloemContent(w, access) { // Bloem: bloem_content.go
 			return
 		}
 		w = WithRenewedCookie(w, access.RenewedCookie)
@@ -143,12 +134,7 @@ func (h *ContentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.assetAccess != nil {
 		access = h.assetAccess(r)
 	}
-	if access.PlaybackDenied {
-		http.Error(w, "Plugin content access has not been granted", http.StatusForbidden)
-		return
-	}
-	if access.ProfileBound {
-		http.Error(w, "Direct profile sessions cannot use plugin routes", http.StatusForbidden)
+	if refuseBloemContent(w, access) { // Bloem: bloem_content.go
 		return
 	}
 	h.proxy.ServeAsset(w, r.WithContext(WithPluginAccess(r.Context(), access.Authenticated, access.Admin)), installationID, subpath)
