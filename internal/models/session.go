@@ -14,19 +14,16 @@ const (
 
 // AuthSession represents a row in the auth_sessions table.
 type AuthSession struct {
-	ID                        string     // UUID session ID (included in JWT claims)
-	UserID                    int        // FK to users.id
-	DeviceName                string     // human-readable device name: the reported one, else the User-Agent
-	IPAddress                 string     // optional IP address
-	CreatedAt                 time.Time  // when the session was created
-	LastSeenAt                *time.Time // last authenticated request; nil until recorded
-	ExpiresAt                 time.Time  // when the session expires
-	RevokedAt                 *time.Time // nil if active, set when revoked
-	ImpersonatorUserID        *int
-	ImpersonationStartedAt    *time.Time
-	ProfileID                 *string
-	ProfileCredentialRevision *int64
-	AuthMethod                string
+	ID                     string     // UUID session ID (included in JWT claims)
+	UserID                 int        // FK to users.id
+	DeviceName             string     // human-readable device name: the reported one, else the User-Agent
+	IPAddress              string     // optional IP address
+	CreatedAt              time.Time  // when the session was created
+	LastSeenAt             *time.Time // last authenticated request; nil until recorded
+	ExpiresAt              time.Time  // when the session expires
+	RevokedAt              *time.Time // nil if active, set when revoked
+	ImpersonatorUserID     *int
+	ImpersonationStartedAt *time.Time
 	// IdentityID is the external sign-in identity the session came from
 	// (plugin_auth_identities.id); nil for a local session. A refresh of such
 	// a session re-checks the identity with its provider.
@@ -42,7 +39,6 @@ type AuthSession struct {
 	// X-Silo-Device-Platform; empty when it sent none. Client-reported audit
 	// data: never authorize with them. Native push retention also reads DeviceID
 	// as evidence of which of an account's registrations has no live login.
-	// Bloem: a direct-profile session's DeviceID is the device it was issued for.
 	DeviceID       string
 	DevicePlatform string
 	// Purpose is SessionPurposeAccount or SessionPurposeRemotePlayback; empty
@@ -54,6 +50,13 @@ type AuthSession struct {
 	// AbsoluteExpiresAt is the latest ExpiresAt may reach: a refresh never
 	// extends the session past it. nil for a session without a fixed end.
 	AbsoluteExpiresAt *time.Time
+
+	// Bloem: a direct-profile session's profile, the profile credential
+	// revision it was issued under, and how it signed in. Such a session's
+	// DeviceID is the device it was issued for.
+	ProfileID                 *string
+	ProfileCredentialRevision *int64
+	AuthMethod                string
 }
 
 // IsRemotePlayback reports whether the session is a remote-playback handoff.

@@ -1,10 +1,6 @@
 package models
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-)
+import "time"
 
 // Invitation statuses, derived from lifecycle timestamps at read time.
 const (
@@ -25,8 +21,7 @@ const (
 // Invitation is a single-use claim token carrying the access the admin chose
 // at send time. No users row exists until it is accepted.
 type Invitation struct {
-	ID             int64
-	OrganizationID uuid.UUID
+	ID int64
 	// Email is the bound address. It is empty for a pending link invitation,
 	// whose invitee enters an address at accept; accept then records it.
 	Email         string
@@ -48,6 +43,9 @@ type Invitation struct {
 	RevokedAt      *time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+
+	// Bloem: the organization the invitation admits its invitee to.
+	OrganizationID bloemUUID
 }
 
 // Status derives the lifecycle state from the timestamps. Revoked wins over

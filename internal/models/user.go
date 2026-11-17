@@ -1,10 +1,6 @@
 package models
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-)
+import "time"
 
 // User represents a row in the users table.
 //
@@ -16,7 +12,6 @@ import (
 // access.EffectivePolicyForUser.
 type User struct {
 	ID                        int
-	AccountIncarnationID      uuid.UUID
 	Email                     string
 	Username                  string
 	PasswordHash              string
@@ -50,6 +45,10 @@ type User struct {
 	BreakGlass bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+
+	// Bloem: AccountIncarnationID identifies this incarnation of the account;
+	// authority bound to an earlier incarnation no longer applies.
+	AccountIncarnationID bloemUUID
 }
 
 // CreateUserInput contains the fields required to create a new user.

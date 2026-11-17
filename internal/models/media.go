@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -17,12 +15,9 @@ const (
 
 // MediaFolder represents a row in the media_folders table.
 type MediaFolder struct {
-	ID    int
-	Paths []string // from media_folder_paths child table
-	// StorageSourceKey is the storage source a library's files come from,
-	// instead of Paths; nil for libraries that scan filesystem paths.
-	StorageSourceKey         *uuid.UUID
-	Type                     string // movies, series, mixed
+	ID                       int
+	Paths                    []string // from media_folder_paths child table
+	Type                     string   // movies, series, mixed
 	Name                     string
 	Enabled                  bool
 	MetadataLanguage         string // ISO 639-1 code (e.g. "en", "ja")
@@ -53,6 +48,10 @@ type MediaFolder struct {
 	ScanWarningAt         *time.Time
 	AllowEmptyCleanupOnce bool
 	SortOrder             int
+
+	// Bloem: StorageSourceKey is the storage source a library's files come
+	// from, instead of Paths; nil for libraries that scan filesystem paths.
+	StorageSourceKey *bloemUUID
 }
 
 // MediaFile represents a row in the media_files table.
