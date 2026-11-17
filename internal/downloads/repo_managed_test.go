@@ -113,12 +113,11 @@ func seedManagedFixture(t *testing.T) managedFixture {
 
 	var userID int
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO users (username, role) VALUES ($1, 'user') RETURNING id`,
+		`INSERT INTO users (username, role, download_allowed) VALUES ($1, 'user', true) RETURNING id`,
 		fmt.Sprintf("dluser-%d", suffix),
 	).Scan(&userID); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
-	seedDefaultOrgMembership(t, ctx, pool, userID)
 
 	profileA := fmt.Sprintf("dlp-a-%d", suffix)
 	profileB := fmt.Sprintf("dlp-b-%d", suffix)

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -480,7 +479,6 @@ type lifecycleTestPreparer struct {
 	statWait      bool
 	deleteErr     error
 	deleteStarted chan struct{}
-	deleteOnce    sync.Once
 	deleteWait    bool
 }
 
@@ -513,7 +511,7 @@ func (p *lifecycleTestPreparer) StatArtifact(ctx context.Context, artifact *Arti
 func (p *lifecycleTestPreparer) DeleteArtifact(ctx context.Context, artifact *Artifact) error {
 	p.deleted = artifact.OriginArtifactID
 	if p.deleteStarted != nil {
-		p.deleteOnce.Do(func() { close(p.deleteStarted) })
+		close(p.deleteStarted)
 	}
 	if p.deleteWait {
 		<-ctx.Done()
