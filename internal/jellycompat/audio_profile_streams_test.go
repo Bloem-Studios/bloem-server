@@ -99,13 +99,13 @@ func TestBuildMediaStreamsJellyfin12LocalizedLabels(t *testing.T) {
 	if streams[0].LocalizedLanguage != "" || streams[0].LocalizedOriginal != "" {
 		t.Fatalf("video stream carries audio labels: %+v", streams[0])
 	}
-	if streams[1].LocalizedLanguage != compatLanguageName("ja") || streams[1].LocalizedOriginal != "Original" {
+	if streams[1].LocalizedLanguage != "Japanese" || streams[1].LocalizedOriginal != "Original" {
 		t.Fatalf("audio labels = %q/%q", streams[1].LocalizedLanguage, streams[1].LocalizedOriginal)
 	}
 	if streams[2].LocalizedLanguage != "" || streams[2].LocalizedOriginal != "Original" {
 		t.Fatalf("an audio stream without a language has no LocalizedLanguage: %+v", streams[2])
 	}
-	if streams[3].LocalizedLanguage != compatLanguageName("en") || streams[3].LocalizedOriginal != "" {
+	if streams[3].LocalizedLanguage != "English" || streams[3].LocalizedOriginal != "" {
 		t.Fatalf("subtitle labels = %q/%q", streams[3].LocalizedLanguage, streams[3].LocalizedOriginal)
 	}
 }
@@ -245,6 +245,38 @@ func TestBuildMediaStreamsVideoDisplayTitle(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			version := catalog.FileVersion{HDR: tc.hdr, VideoTracks: []models.VideoTrack{tc.track}}
+			streams := buildMediaStreams("item", "source", version)
+			if len(streams) != 1 {
+				t.Fatalf("streams length = %d, want 1", len(streams))
+			}
+			if got := streams[0].DisplayTitle; got != tc.want {
+				t.Fatalf("DisplayTitle = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// Jellyfin clients list audio tracks by DisplayTitle. For a track with no
+// title tag the scanner stores ffprobe's codec long name as its Title, which
+// must not be appended, and a tag that only repeats the language, codec or
+// channels adds nothing (#4395).
+func TestBuildMediaStreamsAudioDisplayTitle(t *testing.T) {
+	cases := []struct {
+		name  string
+		track models.AudioTrack
+		want  string
+	}{
+		{"untagged", models.AudioTrack{Codec: "eac3", Language: "eng", Channels: 6, Title: "ATSC A/52B (AC-3, E-AC-3)"}, "English - EAC3 5.1"},
+		{"language tag", models.AudioTrack{Codec: "eac3", Language: "eng", Channels: 6, Title: "English", EmbeddedTitle: "English"}, "English - EAC3 5.1"},
+		{"codec and channels tag", models.AudioTrack{Codec: "eac3", Language: "fr", Channels: 6, Title: "FRE E-AC-3 Surround 5.1", EmbeddedTitle: "FRE E-AC-3 Surround 5.1"}, "French - EAC3 5.1"},
+		{"channels that contradict the track", models.AudioTrack{Codec: "ac3", Language: "eng", Channels: 2, Title: "Mono", EmbeddedTitle: "Mono"}, "English - AC3 Stereo - Mono"},
+		{"language tag with another region", models.AudioTrack{Codec: "aac", Language: "de-AT", Channels: 2, Title: "de-DE", EmbeddedTitle: "de-DE"}, "Austrian German - AAC Stereo - de-DE"},
+		{"commentary", models.AudioTrack{Codec: "aac", Language: "eng", Channels: 2, Title: "Commentary", EmbeddedTitle: "Commentary"}, "English - AAC Stereo - Commentary"},
+		{"tag names a language the track lacks", models.AudioTrack{Codec: "aac", Channels: 2, Title: "English", EmbeddedTitle: "English"}, "Unknown - AAC Stereo - English"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			version := catalog.FileVersion{AudioTracks: []models.AudioTrack{tc.track}}
 			streams := buildMediaStreams("item", "source", version)
 			if len(streams) != 1 {
 				t.Fatalf("streams length = %d, want 1", len(streams))

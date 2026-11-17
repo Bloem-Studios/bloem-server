@@ -202251,6 +202251,16 @@
             },
             "description": "Conflict"
           },
+          "410": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Gone"
+          },
           "413": {
             "content": {
               "application/problem+json": {
@@ -249783,6 +249793,12 @@
           "is_jellyfin_compat": {
             "type": "boolean"
           },
+          "keyframe_plan_resume": {
+            "type": "boolean"
+          },
+          "keyframe_planned": {
+            "type": "boolean"
+          },
           "keyframe_playlist": {
             "type": "boolean"
           },
@@ -250354,6 +250370,9 @@
           "input_path": {
             "type": "string"
           },
+          "keyframe_plan_resume": {
+            "type": "boolean"
+          },
           "keyframe_playlist": {
             "type": "boolean"
           },
@@ -250533,6 +250552,12 @@
           },
           "hw_accel": {
             "type": "string"
+          },
+          "keyframe_plan_resume": {
+            "type": "boolean"
+          },
+          "keyframe_planned": {
+            "type": "boolean"
           },
           "keyframe_playlist": {
             "type": "boolean"

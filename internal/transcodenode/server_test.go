@@ -1012,6 +1012,15 @@ func TestValidateKeyframePlaylistAttestation(t *testing.T) {
 	if err := ValidateKeyframePlaylistAttestation(TranscodeStartRequest{}, TranscodeStartResponse{}); err != nil {
 		t.Fatalf("request without a keyframe playlist rejected a legacy node response: %v", err)
 	}
+	// An older node echoes keyframe_playlist but ignores keyframe_plan_resume
+	// and serves FFmpeg's playlist, whose segments the moved player can't use.
+	resume := TranscodeStartRequest{KeyframePlaylist: true, KeyframePlanResume: true}
+	if err := ValidateKeyframePlaylistAttestation(resume, TranscodeStartResponse{KeyframePlaylist: true}); !errors.Is(err, ErrKeyframePlaylistAttestationMismatch) {
+		t.Fatalf("missing resume plan attestation error = %v, want %v", err, ErrKeyframePlaylistAttestationMismatch)
+	}
+	if err := ValidateKeyframePlaylistAttestation(resume, TranscodeStartResponse{KeyframePlaylist: true, KeyframePlanResume: true}); err != nil {
+		t.Fatalf("matching resume plan attestation rejected: %v", err)
+	}
 }
 
 // A node that ignores requested MPEG-TS packaging would publish fMP4 under a
@@ -1181,6 +1190,22 @@ func TestHandleStartAttestsRecipeVersions(t *testing.T) {
 			},
 			receipt: func(response TranscodeStartResponse) string { return response.CopyAudioCodec },
 			want:    "aac",
+		},
+		{
+			// The echo says the node understood the request; the source has
+			// no keyframe index, so the node keeps FFmpeg's playlist and
+			// says so (#4044).
+			name: "keyframe playlist the node can't plan",
+			request: TranscodeStartRequest{
+				SessionID: "attested-unplanned", InputPath: "/media/movie.mkv",
+				SourceVideoCodec: "h264", TargetCodecVideo: "copy", TargetCodecAudio: "copy",
+				CopyFMP4RecipeVersion: playback.CopyFMP4RecipeVersion, KeyframePlaylist: true,
+				SegmentDuration: 2, TotalDuration: 60,
+			},
+			receipt: func(response TranscodeStartResponse) string {
+				return fmt.Sprintf("keyframe_playlist=%t keyframe_planned=%t", response.KeyframePlaylist, response.KeyframePlanned)
+			},
+			want: "keyframe_playlist=true keyframe_planned=false",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
