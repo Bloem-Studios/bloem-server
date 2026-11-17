@@ -13,16 +13,13 @@ For the plain-language picture, read the [Apps and clients explainer](../../arch
 - [SDK compatibility and contract generation](../../architecture/bloem-sdk-compatibility.md)
 - [Protocol compatibility](../../architecture/bloem-protocol-compatibility.md)
 
-## Operations (10)
+## Operations (7)
 
 | Method and path | Summary |
 | --- | --- |
 | [`GET /api/bloem/v2/capabilities`](#get-apibloemv2capabilities) | What this build supports, for a client deciding which surfaces to use. |
 | [`GET /api/bloem/v2/catalog/items/{content_id}/collections`](#get-apibloemv2catalogitemscontent_idcollections) | The visible server collections that contain one item. Visibility matches the server collection list; smart collections are evaluated lazily and are not included. An item the viewer may not see answers 404. |
 | [`GET /api/bloem/v2/persons/{person_id}`](#get-apibloemv2personsperson_id) | One person and their credits, filtered to what this viewer may see. |
-| [`GET /api/bloem/v2/profile-credentials/{id}`](#get-apibloemv2profile-credentialsid) | Read direct-profile credential status without exposing a password or hash. |
-| [`PUT /api/bloem/v2/profile-credentials/{id}`](#put-apibloemv2profile-credentialsid) | Set or replace direct-profile login credentials. |
-| [`DELETE /api/bloem/v2/profile-credentials/{id}`](#delete-apibloemv2profile-credentialsid) | Clear direct-profile login credentials. |
 | [`GET /api/bloem/v2/server/identity`](#get-apibloemv2serveridentity) | Which server this is, which surfaces it serves, and whether it has been set up. |
 | [`GET /api/bloem/v2/watch/home`](#get-apibloemv2watchhome) | The composed home document for this viewer. |
 | [`GET /api/bloem/v2/watch/items/{content_id}`](#get-apibloemv2watchitemscontent_id) | The composed document for one item. |
@@ -61,7 +58,7 @@ Credentials: `bearerAuth`.
 | 200 | [`BloemItemCollections`](#bloemitemcollections) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing or content_id is blank. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the item does not exist or the selected profile may not see it, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or item access or the collections could not be read. |
@@ -87,95 +84,11 @@ The person's own details are not profile-scoped; the filmography is filtered by 
 | 200 | [`BloemPersonDetail`](#bloempersondetail) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing or person_id is not a positive integer. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no person has this ID, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the person or filmography could not be loaded. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
-
-### `GET /api/bloem/v2/profile-credentials/{id}`
-
-Read direct-profile credential status without exposing a password or hash.
-
-Operation ID: `getBloemProfileCredentials`.
-Credentials: `bloemAccountSession`.
-
-Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused.
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `id` | path | string | yes | Target profile in the authenticated account; other accounts' profiles return 404. |
-| `X-Profile-Id` | header | string |  | The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id. |
-| `X-Profile-Token` | header | string |  | Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator. |
-
-| Status | Body | Meaning |
-| --- | --- | --- |
-| 200 | [`ProfileCredentialStatus`](#profilecredentialstatus) | OK |
-| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: authentication is missing or invalid, or the login session is no longer valid. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | account_session_required: use a non-impersonated account login session; forbidden: select and verify the household primary profile, or this session type cannot use the route. |
-| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: profile does not belong to this account or does not exist. |
-| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: household management permissions could not be checked. |
-| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: profile credential management is unavailable; service_unavailable: the session could not be checked, retry after Retry-After. |
-
-### `PUT /api/bloem/v2/profile-credentials/{id}`
-
-Set or replace direct-profile login credentials.
-
-Operation ID: `setBloemProfileCredentials`.
-Credentials: `bloemAccountSession`.
-
-Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `id` | path | string | yes | Target profile in the authenticated account; other accounts' profiles return 404. |
-| `X-Profile-Id` | header | string |  | The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id. |
-| `X-Profile-Token` | header | string |  | Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator. |
-
-Request body (required, `application/json`): [`BloemProfileCredentialSetBody`](#bloemprofilecredentialsetbody).
-
-| Status | Body | Meaning |
-| --- | --- | --- |
-| 204 |  | No Content |
-| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB. |
-| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: authentication is missing or invalid, or the login session is no longer valid. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password; profile_passwords_disabled: the server has profile passwords turned off, so a password cannot be set (DELETE stays allowed). |
-| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: profile does not belong to this account or does not exist. |
-| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | credential_revision_conflict: reload the reviewed status; credential_email_in_use: the login email is already registered (PUT only). |
-| 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive, login_email is not a bare email address, or password is shorter than 8 characters or longer than 72 bytes. |
-| 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
-| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: household management permissions could not be checked. |
-| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: profile credential management, the change or the account password check is unavailable; service_unavailable: the session could not be checked or password hashing is busy (PUT), retry after Retry-After. |
-
-### `DELETE /api/bloem/v2/profile-credentials/{id}`
-
-Clear direct-profile login credentials.
-
-Operation ID: `clearBloemProfileCredentials`.
-Credentials: `bloemAccountSession`.
-
-Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `id` | path | string | yes | Target profile in the authenticated account; other accounts' profiles return 404. |
-| `X-Profile-Id` | header | string |  | The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id. |
-| `X-Profile-Token` | header | string |  | Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator. |
-
-Request body (required, `application/json`): [`BloemProfileCredentialClearBody`](#bloemprofilecredentialclearbody).
-
-| Status | Body | Meaning |
-| --- | --- | --- |
-| 204 |  | No Content |
-| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB. |
-| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: authentication is missing or invalid, or the login session is no longer valid. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password. |
-| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: profile does not belong to this account or does not exist. |
-| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | credential_revision_conflict: reload the reviewed status; credential_email_in_use: the login email is already registered (PUT only). |
-| 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive. |
-| 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
-| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: household management permissions could not be checked. |
-| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: profile credential management, the change or the account password check is unavailable; service_unavailable: the session could not be checked or password hashing is busy (PUT), retry after Retry-After. |
 
 ### `GET /api/bloem/v2/server/identity`
 
@@ -210,7 +123,7 @@ Composes up to 100 of the most recently added movies and series the selected pro
 | 200 | [`Document`](#document) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the document could not be composed. |
@@ -236,7 +149,7 @@ An item the selected profile may not see answers 404 exactly like an item that d
 | 200 | [`Document`](#document) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing or content_id is blank. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the item does not exist or the selected profile may not see it, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the document could not be composed. |
@@ -262,7 +175,7 @@ Searches the movies and series the selected profile may see and composes at most
 | 200 | [`Document`](#document) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing or q is blank. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, the search failed, or the document could not be composed. |
@@ -285,7 +198,7 @@ Searches the movies and series the selected profile may see and composes at most
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `delegated_admin_roles` | boolean | yes | Administration can be delegated below the server owner. |
-| `direct_profile_login` | boolean | yes | A profile can hold its own credentials rather than logging in through its account. |
+| `direct_profile_login` | boolean | yes | Always false: profiles do not sign in on their own. Kept so clients that read it keep working. |
 | `legacy_silo_v1` | boolean | yes | Always false. Kept so clients that read it keep working. |
 | `organization_memberships` | boolean | yes | Accounts can belong to organizations. |
 | `shared_device_pairing` | boolean | yes | A device can be paired to a household rather than to one account. |
@@ -323,14 +236,6 @@ Searches the movies and series the selected profile may see and composes at most
 | `message` | string | yes |  |
 | `retry_after` | integer (int64) | yes | Seconds to wait before retrying. |
 
-### BloemNativeValidationError
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `error` | string: `validation_failed` | yes |  |
-| `fields` | object of string | yes | Validation messages keyed by request field. |
-| `message` | string | yes |  |
-
 ### BloemPersonDetail
 
 | Field | Type | Required | Description |
@@ -354,24 +259,6 @@ Searches the movies and series the selected profile may see and composes at most
 | `role` | string |  | How this person was credited: a character name or a job title. |
 | `title` | string | yes |  |
 | `year` | integer (int64) |  |  |
-
-### BloemProfileCredentialClearBody
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `current_password` | string | yes | Current account password, verified again before clearing credentials. |
-| `expected_revision` | integer (int64) | yes | Positive credential revision from the reviewed status response's credential_revision; this is not an organization policy revision. |
-| `login_email` | string |  | Accepted but ignored by DELETE. |
-| `password` | string |  | Accepted but ignored by DELETE. |
-
-### BloemProfileCredentialSetBody
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `current_password` | string | yes | Current account password, verified again before the change. |
-| `expected_revision` | integer (int64) | yes | Positive credential revision from the reviewed status response's credential_revision; this is not an organization policy revision. |
-| `login_email` | string (email) | yes | Direct-profile login email; surrounding whitespace is trimmed. |
-| `password` | string | yes | New direct-profile password: at least 8 characters and at most 72 UTF-8 bytes. |
 
 ### BloemServerIdentity
 
@@ -486,12 +373,3 @@ Searches the movies and series the selected profile may see and composes at most
 | --- | --- | --- | --- |
 | `season_number` | integer (int64) | yes |  |
 | `title` | string |  |  |
-
-### ProfileCredentialStatus
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `configured` | boolean | yes |  |
-| `credential_revision` | integer (int64) | yes |  |
-| `login_email` | string | yes |  |
-| `profile_id` | string | yes |  |

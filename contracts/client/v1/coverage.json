@@ -1998,14 +1998,6 @@
       "reason": "OpenAPI-only request declaration for native organization web invitation renewal/revocation; no generated native administration client consumes it."
     },
     {
-      "type": "internal/apiv2.BloemProfileCredentialClearBody",
-      "reason": "OpenAPI-only description of the household web credential DELETE body; runtime credentials remain owned by the existing native chi handler."
-    },
-    {
-      "type": "internal/apiv2.BloemProfileCredentialSetBody",
-      "reason": "OpenAPI-only description of the household web credential PUT body; native credential-management client adoption is a separate milestone."
-    },
-    {
       "type": "internal/apiv2.BloemPromotionBody",
       "reason": "OpenAPI-only declaration of the Bloem platform web campaign request's optional fields and defaults; runtime validation remains in the promotions registry."
     },

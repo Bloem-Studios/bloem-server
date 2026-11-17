@@ -232,14 +232,6 @@
           "direction": "response"
         },
         {
-          "type": "profileLoginRequest",
-          "direction": "request"
-        },
-        {
-          "type": "profileLoginResponse",
-          "direction": "response"
-        },
-        {
           "type": "UserView",
           "direction": "response"
         },

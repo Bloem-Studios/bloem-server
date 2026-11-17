@@ -2852,7 +2852,7 @@ Requires an account bearer token or API key; no profile or organization needs to
 | --- | --- | --- |
 | 200 | [`BloemOrganizationsOutputBody`](#bloemorganizationsoutputbody) | OK |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential could not be checked; retry after Retry-After. tenant_unavailable: memberships or organizations could not be read, or tenant authorization is not configured. |
 
 ## Schemas
@@ -2991,7 +2991,6 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `id` | string | yes |  |
 | `ip_address` | string |  |  |
 | `is_impersonation_session` | boolean | yes |  |
-| `profile_id` | string |  |  |
 | `revoked_at` | string (date-time) |  |  |
 
 ### AdminUserDevice

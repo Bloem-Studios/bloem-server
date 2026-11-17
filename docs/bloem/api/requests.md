@@ -604,7 +604,7 @@ Bloem-owned audiobook requests use a separate table and independent quota counte
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another. |
+| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required. |
 | `X-Profile-Token` | header | string |  | PIN verification when required. |
 | `Idempotency-Key` | header | string | yes | A durable key scoped to organization, account and profile, without spaces, tabs or line breaks. Reuse only for the same normalized request. |
 
@@ -634,7 +634,7 @@ Bloem-owned audiobook requests use a separate table and independent quota counte
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another. |
+| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required. |
 | `X-Profile-Token` | header | string |  | PIN verification when required. |
 
 | Status | Body | Meaning |
@@ -659,7 +659,7 @@ Bloem-owned audiobook requests use a separate table and independent quota counte
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another. |
+| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required. |
 | `X-Profile-Token` | header | string |  | PIN verification when required. |
 | `limit` | query | integer (int64) |  |  |
 | `offset` | query | integer (int64) |  |  |
@@ -686,7 +686,7 @@ Bloem-owned audiobook requests use a separate table and independent quota counte
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another. |
+| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required. |
 | `X-Profile-Token` | header | string |  | PIN verification when required. |
 | `id` | path | string (uuid) | yes |  |
 
@@ -712,7 +712,7 @@ Bloem-owned audiobook requests use a separate table and independent quota counte
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another. |
+| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required. |
 | `X-Profile-Token` | header | string |  | PIN verification when required. |
 | `id` | path | string (uuid) | yes |  |
 
@@ -741,7 +741,7 @@ Ebook requests are default-off, web/admin first, and limited to the durable defa
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another. |
+| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required. |
 | `X-Profile-Token` | header | string |  | PIN verification when required. |
 | `Idempotency-Key` | header | string | yes | A durable key scoped to organization, account and profile, without spaces, tabs or line breaks. Reuse only for the same normalized request. |
 
@@ -771,7 +771,7 @@ Ebook requests are default-off, web/admin first, and limited to the durable defa
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another. |
+| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required. |
 | `X-Profile-Token` | header | string |  | PIN verification when required. |
 
 | Status | Body | Meaning |
@@ -796,7 +796,7 @@ Ebook requests are default-off, web/admin first, and limited to the durable defa
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another. |
+| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required. |
 | `X-Profile-Token` | header | string |  | PIN verification when required. |
 | `limit` | query | integer (int64) |  |  |
 | `offset` | query | integer (int64) |  |  |
@@ -823,7 +823,7 @@ Ebook requests are default-off, web/admin first, and limited to the durable defa
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another. |
+| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required. |
 | `X-Profile-Token` | header | string |  | PIN verification when required. |
 | `id` | path | string (uuid) | yes |  |
 
@@ -849,7 +849,7 @@ Ebook requests are default-off, web/admin first, and limited to the durable defa
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another. |
+| `X-Profile-Id` | header | string |  | The acting profile, which must be verified in the authenticated account's current organization. Required. |
 | `X-Profile-Token` | header | string |  | PIN verification when required. |
 | `id` | path | string (uuid) | yes |  |
 

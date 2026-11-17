@@ -58,7 +58,7 @@ Whether this build and viewer support Live TV and a channel is available.
 Operation ID: `getBloemLiveTVCapability`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Does not require Live TV permission. allowed reports whether the selected profile holds Live TV permission; available is computed only when it does, and channel metadata is never returned. Served with Cache-Control: no-store.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Does not require Live TV permission. allowed reports whether the selected profile holds Live TV permission; available is computed only when it does, and channel metadata is never returned. Served with Cache-Control: no-store.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -70,7 +70,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`CapabilityResponse`](#capabilityresponse) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -83,7 +83,7 @@ The channel lineup this viewer may watch.
 Operation ID: `listBloemLiveTVChannels`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -96,7 +96,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`ChannelsResponse`](#channelsresponse) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -109,7 +109,7 @@ Change channel enablement, number override or guide mapping.
 Operation ID: `patchBloemLiveTVChannel`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -124,7 +124,7 @@ Request body (required, `application/json`): [`BloemLiveTVChannelPatch`](#bloeml
 | 200 | [`ChannelResponse`](#channelresponse) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_body: the body is not valid JSON. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the channel does not exist, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -137,7 +137,7 @@ Tune a channel and take a tuner lease.
 Operation ID: `startBloemLiveTVSession`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires both current Live TV and playback permission. Optional client codec capabilities are read from a body of at most 16 KiB; omit for native broadcast-codec support. Returns 201 and canonical same-origin delivery URLs. HLS URLs carry a session-bound st ticket; MPEG-TS proxy URLs require account/profile authentication. Repeating a start can allocate another lease; do not automatically retry.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires both current Live TV and playback permission. Optional client codec capabilities are read from a body of at most 16 KiB; omit for native broadcast-codec support. Returns 201 and canonical same-origin delivery URLs. HLS URLs carry a session-bound st ticket; MPEG-TS proxy URLs require account/profile authentication. Repeating a start can allocate another lease; do not automatically retry.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -152,7 +152,7 @@ Request body (optional, `application/json`): [`BloemLiveTVClientCapabilities`](#
 | 201 | [`SessionStartResponse`](#sessionstartresponse) | Created |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_body: the capability body is not valid JSON or exceeds 16 KiB. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the channel does not exist or is disabled, its tuner is gone, unreachable or refused the channel, or the channel has no signal; or X-Profile-Id names no profile of this account. |
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | no_tuner: every tuner is in use or unavailable. limit_exceeded: live transcode capacity or the Xtream provider's connection budget is in use. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
@@ -166,7 +166,7 @@ Program guide for a window.
 Operation ID: `getBloemLiveTVGuide`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -181,7 +181,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`GuideResponse`](#guideresponse) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_start or invalid_end: start or end is not RFC 3339. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -194,7 +194,7 @@ List configured guide sources.
 Operation ID: `listBloemLiveTVGuideSources`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -206,7 +206,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`BloemLiveTVGuideSourcesResponse`](#bloemlivetvguidesourcesresponse) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -219,7 +219,7 @@ Create a guide source.
 Operation ID: `createBloemLiveTVGuideSource`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. At most three guide sources may be enabled. New Schedules Direct credentials or lineups are verified with Schedules Direct before saving.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. At most three guide sources may be enabled. New Schedules Direct credentials or lineups are verified with Schedules Direct before saving.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -233,7 +233,7 @@ Request body (required, `application/json`): [`BloemLiveTVGuideSourceCreate`](#b
 | 201 | [`GuideSource`](#guidesource) | Created |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_body: the body is not valid JSON. invalid_argument: the type is unsupported; Schedules Direct username, password or password_sha1 (a SHA-1 hex digest) or lineup is missing, or Schedules Direct rejected them; an XML sync postal code or lineup is missing; or an Xtream guide source names no configured provider or one that already has a guide source. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the Xtream provider was removed while the source was saved, or X-Profile-Id names no profile of this account. |
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | limit_exceeded: three guide sources are already enabled. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
@@ -247,7 +247,7 @@ Look up Schedules Direct lineups by postal code.
 Operation ID: `lookupBloemLiveTVSchedulesDirectLineups`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Supply password or password_sha1; credentials are used for the lookup and not returned. country defaults to the Schedules Direct default.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Supply password or password_sha1; credentials are used for the lookup and not returned. country defaults to the Schedules Direct default.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -261,7 +261,7 @@ Request body (required, `application/json`): [`BloemLiveTVSchedulesDirectLineups
 | 200 | [`BloemLiveTVSchedulesDirectLineupsResponse`](#bloemlivetvschedulesdirectlineupsresponse) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_body: the body is not valid JSON. invalid_argument: username, a password or password_sha1, and postalcode are required, or Schedules Direct rejected the request. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or Schedules Direct could not be reached; internal details are withheld. |
@@ -274,7 +274,7 @@ Look up Gracenote providers by postal code.
 Operation ID: `lookupBloemLiveTVXMLSyncLineups`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -288,7 +288,7 @@ Request body (required, `application/json`): [`BloemLiveTVXMLSyncLineupsRequest`
 | 200 | [`BloemLiveTVXMLSyncLineupsResponse`](#bloemlivetvxmlsynclineupsresponse) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_body: the body is not valid JSON. invalid_argument: postalcode is required. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the provider lookup failed; internal details are withheld. |
@@ -301,7 +301,7 @@ Merge supplied guide-source fields with current configuration.
 Operation ID: `updateBloemLiveTVGuideSource`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. At most three guide sources may be enabled. Changed Schedules Direct credentials or lineups are verified with Schedules Direct before saving.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. At most three guide sources may be enabled. Changed Schedules Direct credentials or lineups are verified with Schedules Direct before saving.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -316,7 +316,7 @@ Request body (required, `application/json`): [`BloemLiveTVGuideSourcePatch`](#bl
 | 200 | [`GuideSource`](#guidesource) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_body: the body is not valid JSON. invalid_argument: the type is unsupported; Schedules Direct username, password or password_sha1 (a SHA-1 hex digest) or lineup is missing, or Schedules Direct rejected them; an XML sync postal code or lineup is missing; or an Xtream guide source names no configured provider or one that already has a guide source. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the guide source does not exist, or its Xtream provider was removed while it was saved; or X-Profile-Id names no profile of this account. |
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | limit_exceeded: three other guide sources are already enabled. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
@@ -330,7 +330,7 @@ Delete a guide source.
 Operation ID: `deleteBloemLiveTVGuideSource`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Deleting an absent guide source also answers 204.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Deleting an absent guide source also answers 204.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -343,7 +343,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 204 |  | No Content |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -356,7 +356,7 @@ Synchronize a saved guide source.
 Operation ID: `syncBloemLiveTVGuideSource`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Runs the synchronization before answering. An Xtream guide synchronization already running for the source answers 409.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Runs the synchronization before answering. An Xtream guide synchronization already running for the source answers 409.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -369,7 +369,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`GuideSource`](#guidesource) or [`BloemLiveTVSyncFallback`](#bloemlivetvsyncfallback) | The refreshed record, or a minimal status record if it disappeared after the operation. |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_argument: the source type is unsupported, an Xtream guide source is disabled or its provider configuration is not allowed, required configuration is missing, no channel maps to a guide station, or the guide provider rejected the stored configuration. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the guide source or its Xtream provider does not exist, or X-Profile-Id names no profile of this account. |
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | conflict: an Xtream synchronization of this source is already running, or the source changed as it started. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
@@ -411,7 +411,7 @@ Read a guide program.
 Operation ID: `getBloemLiveTVProgram`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -424,7 +424,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`Program`](#program) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the program does not exist, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -437,7 +437,7 @@ List recordings visible to this viewer.
 Operation ID: `listBloemLiveTVRecordings`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -450,7 +450,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`RecordingsResponse`](#recordingsresponse) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -463,7 +463,7 @@ Schedule a guide-program or manual recording.
 Operation ID: `scheduleBloemLiveTVRecording`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. User and profile ownership come from authentication, never from the body. A program_id takes its channel and time window from the guide. Tuner capacity is claimed when the recording starts, not when it is scheduled. Creation is not replay-safe.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. User and profile ownership come from authentication, never from the body. A program_id takes its channel and time window from the guide. Tuner capacity is claimed when the recording starts, not when it is scheduled. Creation is not replay-safe.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -477,7 +477,7 @@ Request body (required, `application/json`): [`BloemLiveTVScheduleRecordingReque
 | 201 | [`Recording`](#recording) | Created |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_body: the body is not valid JSON. invalid_argument: channel_id, start and stop are required without a program_id. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: program_id names no guide program, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -490,7 +490,7 @@ Cancel an owned recording and return its updated record.
 Operation ID: `cancelBloemLiveTVRecording`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -503,7 +503,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`Recording`](#recording) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the recording does not exist or belongs to another viewer, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -516,7 +516,7 @@ List viewer-owned DVR series rules.
 Operation ID: `listBloemLiveTVSeriesRules`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -528,7 +528,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`SeriesRulesResponse`](#seriesrulesresponse) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -541,7 +541,7 @@ Create a viewer-owned DVR series rule.
 Operation ID: `createBloemLiveTVSeriesRule`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Series ID, channel ID or title match is required. User/profile ownership comes from authentication. Creation is not replay-safe.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Series ID, channel ID or title match is required. User/profile ownership comes from authentication. Creation is not replay-safe.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -555,7 +555,7 @@ Request body (required, `application/json`): [`BloemLiveTVCreateSeriesRuleReques
 | 201 | [`SeriesRule`](#seriesrule) | Created |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_body: the body is not valid JSON. invalid_argument: series_id, channel_id or a non-blank title_match is required. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -568,7 +568,7 @@ Delete an owned DVR series rule.
 Operation ID: `deleteBloemLiveTVSeriesRule`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. For such an administrator, deleting an absent rule also answers 204.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. For such an administrator, deleting an absent rule also answers 204.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -581,7 +581,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 204 |  | No Content |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the rule does not exist or belongs to another viewer, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -594,7 +594,7 @@ Release an owned tuner lease and return the session record.
 Operation ID: `releaseBloemLiveTVSession`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Does not require Live TV permission. Owned cleanup therefore remains possible after revocation. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Returns the serialized session record rather than a bodyless response; releasing an already released session returns it again, unchanged.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Does not require Live TV permission. Owned cleanup therefore remains possible after revocation. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Returns the serialized session record rather than a bodyless response; releasing an already released session returns it again, unchanged.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -607,7 +607,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`BloemLiveTVSessionResponse`](#bloemlivetvsessionresponse) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the session does not exist or belongs to another viewer, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -620,7 +620,7 @@ Renew an owned active tuner session.
 Operation ID: `heartbeatBloemLiveTVSession`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -633,7 +633,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 204 |  | No Content |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the session does not exist, is no longer active or belongs to another viewer, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -646,7 +646,7 @@ Stream MPEG-TS media.
 Operation ID: `streamBloemLiveTVSession`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires both current Live TV and playback permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Requires an active session. Delivery tickets are not accepted on this route. GET proxies the MPEG-TS stream and renews the tuner lease until disconnect. HEAD checks the session and its source and returns media headers without fetching stream bytes.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires both current Live TV and playback permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Requires an active session. Delivery tickets are not accepted on this route. GET proxies the MPEG-TS stream and renews the tuner lease until disconnect. HEAD checks the session and its source and returns media headers without fetching stream bytes.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -659,7 +659,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | `video/mp2t` string (binary) | MPEG-TS media stream. |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_argument: the channel's stored source is not an allowed media address. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the session does not exist, is no longer active or belongs to another viewer, or its channel or source is gone; or X-Profile-Id names no profile of this account. |
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | limit_exceeded: the Xtream provider's connection budget is in use. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
@@ -674,7 +674,7 @@ Check MPEG-TS stream headers.
 Operation ID: `probeBloemLiveTVSession`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires both current Live TV and playback permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Requires an active session. Delivery tickets are not accepted on this route. HEAD checks the session and its source and returns media headers without fetching stream bytes or opening the upstream. GET proxies the MPEG-TS stream and renews the tuner lease until disconnect.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires both current Live TV and playback permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Requires an active session. Delivery tickets are not accepted on this route. HEAD checks the session and its source and returns media headers without fetching stream bytes or opening the upstream. GET proxies the MPEG-TS stream and renews the tuner lease until disconnect.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -687,7 +687,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 |  | MPEG-TS media headers; no body. |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_argument: the channel's stored source is not an allowed media address. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the session does not exist, is no longer active or belongs to another viewer, or its channel or source is gone; or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -700,7 +700,7 @@ List configured tuner metadata.
 Operation ID: `listBloemLiveTVTuners`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -712,7 +712,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`BloemLiveTVTunersResponse`](#bloemlivetvtunersresponse) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -725,7 +725,7 @@ Add an HDHomeRun-compatible tuner.
 Operation ID: `addBloemLiveTVTuner`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. JSON body limit 32 KiB. Xtream providers use /tuners/xtream. The device is discovered at the address and its lineup scanned before the response; if the device answers discovery but its lineup can't be read, the tuner is saved with the failure in last_error and the request answers 201 with status error; scan it again later. Adding a device that is already saved updates that tuner.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. JSON body limit 32 KiB. Xtream providers use /tuners/xtream. The device is discovered at the address and its lineup scanned before the response; if the device answers discovery but its lineup can't be read, the tuner is saved with the failure in last_error and the request answers 201 with status error; scan it again later. Adding a device that is already saved updates that tuner.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -739,7 +739,7 @@ Request body (required, `application/json`): [`BloemLiveTVAddTunerRequest`](#blo
 | 201 | [`Tuner`](#tuner) | Created |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_body: the body is not valid JSON or exceeds 32 KiB. invalid_argument: type is xtream or another non-HDHomeRun type, provider credentials or max_connections were supplied, the address is missing, invalid or not an allowed media address, or the device reported no device ID. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, the device could not be discovered, or saving the tuner or its channels failed; internal details are withheld. |
@@ -752,7 +752,7 @@ Discover local HDHomeRun-compatible tuner candidates.
 Operation ID: `discoverBloemLiveTVTuners`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. The JSON body is optional. timeout_ms defaults to 2000 and is bounded to 10000; probe_urls selects HTTP discovery candidates. Probe failures are reported in notes rather than as errors. Discovery does not save a tuner.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. The JSON body is optional. timeout_ms defaults to 2000 and is bounded to 10000; probe_urls selects HTTP discovery candidates. Probe failures are reported in notes rather than as errors. Discovery does not save a tuner.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -766,7 +766,7 @@ Request body (optional, `application/json`): [`BloemLiveTVDiscoverRequest`](#blo
 | 200 | [`DiscoverTunersResult`](#discovertunersresult) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_body: the optional body is not valid JSON. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the Live TV request failed; internal details are withheld. |
@@ -779,7 +779,7 @@ Authenticate and import an encrypted Xtream live-TV provider.
 Operation ID: `createBloemXtreamProvider`.
 Credentials: `bearerAuth`.
 
-Feature detection: GET /api/bloem/v2/livetv/capability advertises xtream_supported. Uses the same authenticated viewer, selected primary profile/PIN and acting-administrator gates as other Live TV administration. Administrative-context tokens do not replace those gates, and direct-profile sessions are not admitted. JSON body limit 32 KiB. Imports live channels only, not VOD or series; playback requires direct MPEG-TS. A configured SECRET_KEY cipher and PostgreSQL store are required. Credentials are write-only. Creation is not replay-safe: after an uncertain response, read /livetv/tuners and review the saved providers before trying again. An account at the same canonical base URL cannot be configured twice, and at most 64 providers can be configured. Upgrade the full API/worker fleet before enabling providers.
+Feature detection: GET /api/bloem/v2/livetv/capability advertises xtream_supported. Uses the same authenticated viewer, selected primary profile/PIN and acting-administrator gates as other Live TV administration. Administrative-context tokens do not replace those gates. JSON body limit 32 KiB. Imports live channels only, not VOD or series; playback requires direct MPEG-TS. A configured SECRET_KEY cipher and PostgreSQL store are required. Credentials are write-only. Creation is not replay-safe: after an uncertain response, read /livetv/tuners and review the saved providers before trying again. An account at the same canonical base URL cannot be configured twice, and at most 64 providers can be configured. Upgrade the full API/worker fleet before enabling providers.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -793,7 +793,7 @@ Request body (required, `application/json`): [`BloemXtreamProviderBody`](#bloemx
 | 201 | [`Tuner`](#tuner) | Created |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_body: the body is not valid JSON or exceeds 32 KiB. invalid_argument: type is not xtream; the URL, name, credentials or max_connections are invalid; the provider refused authentication or listed no live channels; or the same provider account is already configured. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | limit_exceeded: 64 Xtream providers are already configured. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
@@ -807,7 +807,7 @@ Delete a tuner.
 Operation ID: `deleteBloemLiveTVTuner`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Deleting an absent tuner also answers 204. Deleting an Xtream provider also deletes its guide source, and is refused while it has active streams or recordings.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Deleting an absent tuner also answers 204. Deleting an Xtream provider also deletes its guide source, and is refused while it has active streams or recordings.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -820,7 +820,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 204 |  | No Content |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | limit_exceeded: the Xtream provider still has active streams or recordings. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
@@ -834,7 +834,7 @@ Scan a saved tuner and refresh its channel lineup.
 Operation ID: `scanBloemLiveTVTuner`.
 Credentials: `bearerAuth`.
 
-Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.
+Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -847,7 +847,7 @@ Uses native account authentication and selected-profile authority, including PIN
 | 200 | [`Tuner`](#tuner) or [`BloemLiveTVScanFallback`](#bloemlivetvscanfallback) | The refreshed record, or a minimal status record if it disappeared after the operation. |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. invalid_argument: the tuner's stored address or Xtream provider configuration is not allowed. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the tuner or its stored Xtream credentials do not exist, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access or acting-administrator authority could not be resolved, or the device or provider could not be scanned; internal details are withheld. |

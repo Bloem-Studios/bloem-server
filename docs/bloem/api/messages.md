@@ -504,7 +504,7 @@ Read seasonal presentation for the current verified tenant viewer.
 Operation ID: `getBloemSeasonalViewer`.
 Credentials: `bearerAuth`.
 
-Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile. Account, profile, active organization and membership must agree; policy and security revisions must be positive. Explicit tenant claims are revalidated; legacy account sessions resolve to the default organization, not an organization selected by a header. While that default organization is still initializing, a legacy session's verified viewer receives deployment-wide packs only. The profile's organization is checked before delivering public and organization-owned packs. The existing default-deny route boundary excludes direct-profile sessions. This is private viewer delivery, separate from public login branding. Handler responses use Cache-Control: private, no-store. Availability is advertised by seasonal_viewer_v1 in /api/bloem/v2/capabilities feature_tokens.
+Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile. Account, profile, active organization and membership must agree; policy and security revisions must be positive. Explicit tenant claims are revalidated; legacy account sessions resolve to the default organization, not an organization selected by a header. While that default organization is still initializing, a legacy session's verified viewer receives deployment-wide packs only. The profile's organization is checked before delivering public and organization-owned packs. This is private viewer delivery, separate from public login branding. Handler responses use Cache-Control: private, no-store. Availability is advertised by seasonal_viewer_v1 in /api/bloem/v2/capabilities feature_tokens.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -578,7 +578,7 @@ Credentials: `bearerAuth`.
 | 200 | [`BloemNotificationPage`](#bloemnotificationpage) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing or cursor is invalid. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the inbox could not be read. |
@@ -605,7 +605,7 @@ Without a cursor, returns the newest rows up to limit, oldest first, with has_mo
 | 200 | [`BloemNotificationSyncPage`](#bloemnotificationsyncpage) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing or cursor is invalid. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the inbox could not be read. |
@@ -629,7 +629,7 @@ Credentials: `bearerAuth`.
 | 200 | [`DeliveryRowPayload`](#deliveryrowpayload) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no row with this ID belongs to the selected profile, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the row could not be read. |
@@ -642,7 +642,7 @@ List the campaign cards a profile sees on a surface.
 Operation ID: `listBloemPromotions`.
 Credentials: `bearerAuth`.
 
-Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Lists the promotional cards for a surface. For the home surface, home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out.
+Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Lists the promotional cards for a surface. For the home surface, home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -669,7 +669,7 @@ Stop showing a campaign to a profile on a surface.
 Operation ID: `dismissBloemPromotion`.
 Credentials: `bearerAuth`.
 
-Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Dismisses a promotional card for the profile on that surface. Idempotent: repeating it refreshes the dismissal.
+Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Dismisses a promotional card for the profile on that surface. Idempotent: repeating it refreshes the dismissal.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -696,7 +696,7 @@ Save an in-playback campaign to the profile's inbox.
 Operation ID: `saveBloemPromotion`.
 Credentials: `bearerAuth`.
 
-Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Saves a promotional card to the profile's inbox. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy.
+Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Saves a promotional card to the profile's inbox. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |

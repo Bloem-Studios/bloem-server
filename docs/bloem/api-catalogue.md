@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 958 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 293 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 290 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher
@@ -308,9 +308,6 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v2/preview/events` | `recordBloemPreviewEvent` | Increment a daily aggregate preview counter. |
 | `POST /api/bloem/v2/preview/sessions` | `createBloemPreviewGuestSession` | Exchange a signed launch ticket for a bounded guest session. |
 | `GET /api/bloem/v2/preview/status` | `getBloemPreviewPublicStatus` | Discover preview availability and host-specific presentation. |
-| `DELETE /api/bloem/v2/profile-credentials/{id}` | `clearBloemProfileCredentials` | Clear direct-profile login credentials. |
-| `GET /api/bloem/v2/profile-credentials/{id}` | `getBloemProfileCredentials` | Read direct-profile credential status without exposing a password or hash. |
-| `PUT /api/bloem/v2/profile-credentials/{id}` | `setBloemProfileCredentials` | Set or replace direct-profile login credentials. |
 | `GET /api/bloem/v2/promotions` | `listBloemPromotions` | List the campaign cards a profile sees on a surface. |
 | `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}` | `dismissBloemPromotion` | Stop showing a campaign to a profile on a surface. |
 | `POST /api/bloem/v2/promotions/{id}/save` | `saveBloemPromotion` | Save an in-playback campaign to the profile's inbox. |

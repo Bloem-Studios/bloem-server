@@ -890,9 +890,6 @@
           "is_impersonation_session": {
             "type": "boolean"
           },
-          "profile_id": {
-            "type": "string"
-          },
           "revoked_at": {
             "format": "date-time",
             "type": "string"
@@ -2330,7 +2327,7 @@
             "type": "boolean"
           },
           "direct_profile_login": {
-            "description": "A profile can hold its own credentials rather than logging in through its account.",
+            "description": "Always false: profiles do not sign in on their own. Kept so clients that read it keep working.",
             "type": "boolean"
           },
           "legacy_silo_v1": {
@@ -6584,70 +6581,6 @@
         ],
         "type": "object"
       },
-      "BloemProfileCredentialClearBody": {
-        "additionalProperties": false,
-        "properties": {
-          "current_password": {
-            "description": "Current account password, verified again before clearing credentials.",
-            "type": "string",
-            "writeOnly": true
-          },
-          "expected_revision": {
-            "description": "Positive credential revision from the reviewed status response's credential_revision; this is not an organization policy revision.",
-            "format": "int64",
-            "minimum": 1,
-            "type": "integer"
-          },
-          "login_email": {
-            "description": "Accepted but ignored by DELETE.",
-            "type": "string"
-          },
-          "password": {
-            "description": "Accepted but ignored by DELETE.",
-            "type": "string",
-            "writeOnly": true
-          }
-        },
-        "required": [
-          "current_password",
-          "expected_revision"
-        ],
-        "type": "object"
-      },
-      "BloemProfileCredentialSetBody": {
-        "additionalProperties": false,
-        "properties": {
-          "current_password": {
-            "description": "Current account password, verified again before the change.",
-            "type": "string",
-            "writeOnly": true
-          },
-          "expected_revision": {
-            "description": "Positive credential revision from the reviewed status response's credential_revision; this is not an organization policy revision.",
-            "format": "int64",
-            "minimum": 1,
-            "type": "integer"
-          },
-          "login_email": {
-            "description": "Direct-profile login email; surrounding whitespace is trimmed.",
-            "format": "email",
-            "type": "string"
-          },
-          "password": {
-            "description": "New direct-profile password: at least 8 characters and at most 72 UTF-8 bytes.",
-            "minLength": 8,
-            "type": "string",
-            "writeOnly": true
-          }
-        },
-        "required": [
-          "current_password",
-          "login_email",
-          "password",
-          "expected_revision"
-        ],
-        "type": "object"
-      },
       "BloemPromotionBody": {
         "additionalProperties": true,
         "properties": {
@@ -10283,31 +10216,6 @@
         ],
         "type": "object"
       },
-      "ProfileCredentialStatus": {
-        "additionalProperties": false,
-        "properties": {
-          "configured": {
-            "type": "boolean"
-          },
-          "credential_revision": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "login_email": {
-            "type": "string"
-          },
-          "profile_id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "profile_id",
-          "login_email",
-          "configured",
-          "credential_revision"
-        ],
-        "type": "object"
-      },
       "ProfilePolicySnapshot": {
         "additionalProperties": false,
         "properties": {
@@ -12180,7 +12088,7 @@
         "type": "http"
       },
       "bloemAccountSession": {
-        "description": "A non-impersonated account access token backed by a login session. Direct-profile tokens, API keys and administrative-context tokens cannot manage profile credentials. Household management authority is checked separately.",
+        "description": "A non-impersonated account access token backed by a login session. API keys and administrative-context tokens are insufficient. Household management authority is checked separately.",
         "scheme": "bearer",
         "type": "http"
       },
@@ -40589,7 +40497,7 @@
     },
     "/api/bloem/v2/ambience": {
       "get": {
-        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile. Account, profile, active organization and membership must agree; policy and security revisions must be positive. Explicit tenant claims are revalidated; legacy account sessions resolve to the default organization, not an organization selected by a header. While that default organization is still initializing, a legacy session's verified viewer receives deployment-wide packs only. The profile's organization is checked before delivering public and organization-owned packs. The existing default-deny route boundary excludes direct-profile sessions. This is private viewer delivery, separate from public login branding. Handler responses use Cache-Control: private, no-store. Availability is advertised by seasonal_viewer_v1 in /api/bloem/v2/capabilities feature_tokens.",
+        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile. Account, profile, active organization and membership must agree; policy and security revisions must be positive. Explicit tenant claims are revalidated; legacy account sessions resolve to the default organization, not an organization selected by a header. While that default organization is still initializing, a legacy session's verified viewer receives deployment-wide packs only. The profile's organization is checked before delivering public and organization-owned packs. This is private viewer delivery, separate from public login branding. Handler responses use Cache-Control: private, no-store. Availability is advertised by seasonal_viewer_v1 in /api/bloem/v2/capabilities feature_tokens.",
         "operationId": "getBloemSeasonalViewer",
         "parameters": [
           {
@@ -40861,11 +40769,11 @@
         "operationId": "createBloemBookRequest",
         "parameters": [
           {
-            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
             "in": "header",
             "name": "X-Profile-Id",
             "schema": {
-              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
               "type": "string"
             }
           },
@@ -41065,11 +40973,11 @@
         "operationId": "getBloemBookRequestCapability",
         "parameters": [
           {
-            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
             "in": "header",
             "name": "X-Profile-Id",
             "schema": {
-              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
               "type": "string"
             }
           },
@@ -41213,11 +41121,11 @@
         "operationId": "listBloemBookRequests",
         "parameters": [
           {
-            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
             "in": "header",
             "name": "X-Profile-Id",
             "schema": {
-              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
               "type": "string"
             }
           },
@@ -41384,11 +41292,11 @@
         "operationId": "getBloemBookRequest",
         "parameters": [
           {
-            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
             "in": "header",
             "name": "X-Profile-Id",
             "schema": {
-              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
               "type": "string"
             }
           },
@@ -41541,11 +41449,11 @@
         "operationId": "cancelBloemBookRequest",
         "parameters": [
           {
-            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
             "in": "header",
             "name": "X-Profile-Id",
             "schema": {
-              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
               "type": "string"
             }
           },
@@ -41809,7 +41717,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
           },
           "404": {
             "content": {
@@ -41901,11 +41809,11 @@
         "operationId": "createBloemEbookRequest",
         "parameters": [
           {
-            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
             "in": "header",
             "name": "X-Profile-Id",
             "schema": {
-              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
               "type": "string"
             }
           },
@@ -42105,11 +42013,11 @@
         "operationId": "getBloemEbookRequestCapability",
         "parameters": [
           {
-            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
             "in": "header",
             "name": "X-Profile-Id",
             "schema": {
-              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
               "type": "string"
             }
           },
@@ -42253,11 +42161,11 @@
         "operationId": "listBloemEbookRequests",
         "parameters": [
           {
-            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
             "in": "header",
             "name": "X-Profile-Id",
             "schema": {
-              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
               "type": "string"
             }
           },
@@ -42424,11 +42332,11 @@
         "operationId": "getBloemEbookRequest",
         "parameters": [
           {
-            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
             "in": "header",
             "name": "X-Profile-Id",
             "schema": {
-              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
               "type": "string"
             }
           },
@@ -42581,11 +42489,11 @@
         "operationId": "cancelBloemEbookRequest",
         "parameters": [
           {
-            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+            "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
             "in": "header",
             "name": "X-Profile-Id",
             "schema": {
-              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another.",
+              "description": "The acting profile, which must be verified in the authenticated account's current organization. Required.",
               "type": "string"
             }
           },
@@ -42754,7 +42662,7 @@
     },
     "/api/bloem/v2/livetv/capability": {
       "get": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Does not require Live TV permission. allowed reports whether the selected profile holds Live TV permission; available is computed only when it does, and channel metadata is never returned. Served with Cache-Control: no-store.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Does not require Live TV permission. allowed reports whether the selected profile holds Live TV permission; available is computed only when it does, and channel metadata is never returned. Served with Cache-Control: no-store.",
         "operationId": "getBloemLiveTVCapability",
         "parameters": [
           {
@@ -42814,7 +42722,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
           },
           "404": {
             "content": {
@@ -42902,7 +42810,7 @@
     },
     "/api/bloem/v2/livetv/channels": {
       "get": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission.",
         "operationId": "listBloemLiveTVChannels",
         "parameters": [
           {
@@ -42970,7 +42878,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
           },
           "404": {
             "content": {
@@ -43058,7 +42966,7 @@
     },
     "/api/bloem/v2/livetv/channels/{channelId}": {
       "patch": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.",
         "operationId": "patchBloemLiveTVChannel",
         "parameters": [
           {
@@ -43136,7 +43044,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -43224,7 +43132,7 @@
     },
     "/api/bloem/v2/livetv/channels/{channelId}/session": {
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires both current Live TV and playback permission. Optional client codec capabilities are read from a body of at most 16 KiB; omit for native broadcast-codec support. Returns 201 and canonical same-origin delivery URLs. HLS URLs carry a session-bound st ticket; MPEG-TS proxy URLs require account/profile authentication. Repeating a start can allocate another lease; do not automatically retry.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires both current Live TV and playback permission. Optional client codec capabilities are read from a body of at most 16 KiB; omit for native broadcast-codec support. Returns 201 and canonical same-origin delivery URLs. HLS URLs carry a session-bound st ticket; MPEG-TS proxy URLs require account/profile authentication. Repeating a start can allocate another lease; do not automatically retry.",
         "operationId": "startBloemLiveTVSession",
         "parameters": [
           {
@@ -43301,7 +43209,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted."
           },
           "404": {
             "content": {
@@ -43399,7 +43307,7 @@
     },
     "/api/bloem/v2/livetv/guide": {
       "get": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission.",
         "operationId": "getBloemLiveTVGuide",
         "parameters": [
           {
@@ -43485,7 +43393,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
           },
           "404": {
             "content": {
@@ -43573,7 +43481,7 @@
     },
     "/api/bloem/v2/livetv/guide-sources": {
       "get": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.",
         "operationId": "listBloemLiveTVGuideSources",
         "parameters": [
           {
@@ -43633,7 +43541,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -43719,7 +43627,7 @@
         ]
       },
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. At most three guide sources may be enabled. New Schedules Direct credentials or lineups are verified with Schedules Direct before saving.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. At most three guide sources may be enabled. New Schedules Direct credentials or lineups are verified with Schedules Direct before saving.",
         "operationId": "createBloemLiveTVGuideSource",
         "parameters": [
           {
@@ -43789,7 +43697,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -43887,7 +43795,7 @@
     },
     "/api/bloem/v2/livetv/guide-sources/schedules-direct/lineups": {
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Supply password or password_sha1; credentials are used for the lookup and not returned. country defaults to the Schedules Direct default.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Supply password or password_sha1; credentials are used for the lookup and not returned. country defaults to the Schedules Direct default.",
         "operationId": "lookupBloemLiveTVSchedulesDirectLineups",
         "parameters": [
           {
@@ -43957,7 +43865,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -44045,7 +43953,7 @@
     },
     "/api/bloem/v2/livetv/guide-sources/xml-sync/lineups": {
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.",
         "operationId": "lookupBloemLiveTVXMLSyncLineups",
         "parameters": [
           {
@@ -44115,7 +44023,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -44203,7 +44111,7 @@
     },
     "/api/bloem/v2/livetv/guide-sources/{sourceId}": {
       "delete": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Deleting an absent guide source also answers 204.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Deleting an absent guide source also answers 204.",
         "operationId": "deleteBloemLiveTVGuideSource",
         "parameters": [
           {
@@ -44264,7 +44172,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -44350,7 +44258,7 @@
         ]
       },
       "patch": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. At most three guide sources may be enabled. Changed Schedules Direct credentials or lineups are verified with Schedules Direct before saving.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. At most three guide sources may be enabled. Changed Schedules Direct credentials or lineups are verified with Schedules Direct before saving.",
         "operationId": "updateBloemLiveTVGuideSource",
         "parameters": [
           {
@@ -44428,7 +44336,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -44526,7 +44434,7 @@
     },
     "/api/bloem/v2/livetv/guide-sources/{sourceId}/sync": {
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Runs the synchronization before answering. An Xtream guide synchronization already running for the source answers 409.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Runs the synchronization before answering. An Xtream guide synchronization already running for the source answers 409.",
         "operationId": "syncBloemLiveTVGuideSource",
         "parameters": [
           {
@@ -44601,7 +44509,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -44882,7 +44790,7 @@
     },
     "/api/bloem/v2/livetv/programs/{programId}": {
       "get": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission.",
         "operationId": "getBloemLiveTVProgram",
         "parameters": [
           {
@@ -44950,7 +44858,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
           },
           "404": {
             "content": {
@@ -45038,7 +44946,7 @@
     },
     "/api/bloem/v2/livetv/recordings": {
       "get": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.",
         "operationId": "listBloemLiveTVRecordings",
         "parameters": [
           {
@@ -45106,7 +45014,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
           },
           "404": {
             "content": {
@@ -45192,7 +45100,7 @@
         ]
       },
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. User and profile ownership come from authentication, never from the body. A program_id takes its channel and time window from the guide. Tuner capacity is claimed when the recording starts, not when it is scheduled. Creation is not replay-safe.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. User and profile ownership come from authentication, never from the body. A program_id takes its channel and time window from the guide. Tuner capacity is claimed when the recording starts, not when it is scheduled. Creation is not replay-safe.",
         "operationId": "scheduleBloemLiveTVRecording",
         "parameters": [
           {
@@ -45262,7 +45170,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
           },
           "404": {
             "content": {
@@ -45350,7 +45258,7 @@
     },
     "/api/bloem/v2/livetv/recordings/{recordingId}": {
       "delete": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.",
         "operationId": "cancelBloemLiveTVRecording",
         "parameters": [
           {
@@ -45418,7 +45326,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
           },
           "404": {
             "content": {
@@ -45506,7 +45414,7 @@
     },
     "/api/bloem/v2/livetv/series-rules": {
       "get": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.",
         "operationId": "listBloemLiveTVSeriesRules",
         "parameters": [
           {
@@ -45566,7 +45474,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
           },
           "404": {
             "content": {
@@ -45652,7 +45560,7 @@
         ]
       },
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Series ID, channel ID or title match is required. User/profile ownership comes from authentication. Creation is not replay-safe.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Series ID, channel ID or title match is required. User/profile ownership comes from authentication. Creation is not replay-safe.",
         "operationId": "createBloemLiveTVSeriesRule",
         "parameters": [
           {
@@ -45722,7 +45630,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
           },
           "404": {
             "content": {
@@ -45810,7 +45718,7 @@
     },
     "/api/bloem/v2/livetv/series-rules/{ruleId}": {
       "delete": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. For such an administrator, deleting an absent rule also answers 204.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. For such an administrator, deleting an absent rule also answers 204.",
         "operationId": "deleteBloemLiveTVSeriesRule",
         "parameters": [
           {
@@ -45871,7 +45779,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
           },
           "404": {
             "content": {
@@ -45959,7 +45867,7 @@
     },
     "/api/bloem/v2/livetv/sessions/{sessionId}": {
       "delete": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Does not require Live TV permission. Owned cleanup therefore remains possible after revocation. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Returns the serialized session record rather than a bodyless response; releasing an already released session returns it again, unchanged.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Does not require Live TV permission. Owned cleanup therefore remains possible after revocation. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Returns the serialized session record rather than a bodyless response; releasing an already released session returns it again, unchanged.",
         "operationId": "releaseBloemLiveTVSession",
         "parameters": [
           {
@@ -46027,7 +45935,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
           },
           "404": {
             "content": {
@@ -46115,7 +46023,7 @@
     },
     "/api/bloem/v2/livetv/sessions/{sessionId}/heartbeat": {
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires the freshly resolved Live TV permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries.",
         "operationId": "heartbeatBloemLiveTVSession",
         "parameters": [
           {
@@ -46176,7 +46084,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted."
           },
           "404": {
             "content": {
@@ -46264,7 +46172,7 @@
     },
     "/api/bloem/v2/livetv/sessions/{sessionId}/stream": {
       "get": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires both current Live TV and playback permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Requires an active session. Delivery tickets are not accepted on this route. GET proxies the MPEG-TS stream and renews the tuner lease until disconnect. HEAD checks the session and its source and returns media headers without fetching stream bytes.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires both current Live TV and playback permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Requires an active session. Delivery tickets are not accepted on this route. GET proxies the MPEG-TS stream and renews the tuner lease until disconnect. HEAD checks the session and its source and returns media headers without fetching stream bytes.",
         "operationId": "streamBloemLiveTVSession",
         "parameters": [
           {
@@ -46344,7 +46252,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted."
           },
           "404": {
             "content": {
@@ -46450,7 +46358,7 @@
         ]
       },
       "head": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires both current Live TV and playback permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Requires an active session. Delivery tickets are not accepted on this route. HEAD checks the session and its source and returns media headers without fetching stream bytes or opening the upstream. GET proxies the MPEG-TS stream and renews the tuner lease until disconnect.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires both current Live TV and playback permission. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Requires an active session. Delivery tickets are not accepted on this route. HEAD checks the session and its source and returns media headers without fetching stream bytes or opening the upstream. GET proxies the MPEG-TS stream and renews the tuner lease until disconnect.",
         "operationId": "probeBloemLiveTVSession",
         "parameters": [
           {
@@ -46521,7 +46429,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. live_tv_forbidden: Live TV permission is not granted. playback_forbidden: playback permission is not granted."
           },
           "404": {
             "content": {
@@ -46609,7 +46517,7 @@
     },
     "/api/bloem/v2/livetv/tuners": {
       "get": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.",
         "operationId": "listBloemLiveTVTuners",
         "parameters": [
           {
@@ -46669,7 +46577,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -46755,7 +46663,7 @@
         ]
       },
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. JSON body limit 32 KiB. Xtream providers use /tuners/xtream. The device is discovered at the address and its lineup scanned before the response; if the device answers discovery but its lineup can't be read, the tuner is saved with the failure in last_error and the request answers 201 with status error; scan it again later. Adding a device that is already saved updates that tuner.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. JSON body limit 32 KiB. Xtream providers use /tuners/xtream. The device is discovered at the address and its lineup scanned before the response; if the device answers discovery but its lineup can't be read, the tuner is saved with the failure in last_error and the request answers 201 with status error; scan it again later. Adding a device that is already saved updates that tuner.",
         "operationId": "addBloemLiveTVTuner",
         "parameters": [
           {
@@ -46825,7 +46733,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -46913,7 +46821,7 @@
     },
     "/api/bloem/v2/livetv/tuners/discover": {
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. The JSON body is optional. timeout_ms defaults to 2000 and is bounded to 10000; probe_urls selects HTTP discovery candidates. Probe failures are reported in notes rather than as errors. Discovery does not save a tuner.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. The JSON body is optional. timeout_ms defaults to 2000 and is bounded to 10000; probe_urls selects HTTP discovery candidates. Probe failures are reported in notes rather than as errors. Discovery does not save a tuner.",
         "operationId": "discoverBloemLiveTVTuners",
         "parameters": [
           {
@@ -46982,7 +46890,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -47070,7 +46978,7 @@
     },
     "/api/bloem/v2/livetv/tuners/xtream": {
       "post": {
-        "description": "Feature detection: GET /api/bloem/v2/livetv/capability advertises xtream_supported. Uses the same authenticated viewer, selected primary profile/PIN and acting-administrator gates as other Live TV administration. Administrative-context tokens do not replace those gates, and direct-profile sessions are not admitted. JSON body limit 32 KiB. Imports live channels only, not VOD or series; playback requires direct MPEG-TS. A configured SECRET_KEY cipher and PostgreSQL store are required. Credentials are write-only. Creation is not replay-safe: after an uncertain response, read /livetv/tuners and review the saved providers before trying again. An account at the same canonical base URL cannot be configured twice, and at most 64 providers can be configured. Upgrade the full API/worker fleet before enabling providers.",
+        "description": "Feature detection: GET /api/bloem/v2/livetv/capability advertises xtream_supported. Uses the same authenticated viewer, selected primary profile/PIN and acting-administrator gates as other Live TV administration. Administrative-context tokens do not replace those gates. JSON body limit 32 KiB. Imports live channels only, not VOD or series; playback requires direct MPEG-TS. A configured SECRET_KEY cipher and PostgreSQL store are required. Credentials are write-only. Creation is not replay-safe: after an uncertain response, read /livetv/tuners and review the saved providers before trying again. An account at the same canonical base URL cannot be configured twice, and at most 64 providers can be configured. Upgrade the full API/worker fleet before enabling providers.",
         "operationId": "createBloemXtreamProvider",
         "parameters": [
           {
@@ -47140,7 +47048,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -47238,7 +47146,7 @@
     },
     "/api/bloem/v2/livetv/tuners/{tunerId}": {
       "delete": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Deleting an absent tuner also answers 204. Deleting an Xtream provider also deletes its guide source, and is refused while it has active streams or recordings.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Deleting an absent tuner also answers 204. Deleting an Xtream provider also deletes its guide source, and is refused while it has active streams or recordings.",
         "operationId": "deleteBloemLiveTVTuner",
         "parameters": [
           {
@@ -47299,7 +47207,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -47397,7 +47305,7 @@
     },
     "/api/bloem/v2/livetv/tuners/{tunerId}/scan": {
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority. Requires acting-administrator authority: the admin role, exercised through the account's primary profile.",
         "operationId": "scanBloemLiveTVTuner",
         "parameters": [
           {
@@ -47472,7 +47380,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. forbidden: the caller lacks the admin role or is not acting through the account's primary profile."
           },
           "404": {
             "content": {
@@ -47655,7 +47563,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
           },
           "404": {
             "content": {
@@ -47825,7 +47733,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
           },
           "404": {
             "content": {
@@ -47983,7 +47891,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
           },
           "404": {
             "content": {
@@ -48179,7 +48087,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first."
           },
           "503": {
             "content": {
@@ -48283,7 +48191,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
           },
           "404": {
             "content": {
@@ -48639,460 +48547,9 @@
         ]
       }
     },
-    "/api/bloem/v2/profile-credentials/{id}": {
-      "delete": {
-        "description": "Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.",
-        "operationId": "clearBloemProfileCredentials",
-        "parameters": [
-          {
-            "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
-              "type": "string"
-            }
-          },
-          {
-            "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
-            "in": "header",
-            "name": "X-Profile-Id",
-            "schema": {
-              "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
-            "in": "header",
-            "name": "X-Profile-Token",
-            "schema": {
-              "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BloemProfileCredentialClearBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "unauthorized: authentication is missing or invalid, or the login session is no longer valid."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password."
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "not_found: profile does not belong to this account or does not exist."
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "credential_revision_conflict: reload the reviewed status; credential_email_in_use: the login email is already registered (PUT only)."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeValidationError"
-                }
-              }
-            },
-            "description": "validation_failed: expected_revision is not positive."
-          },
-          "429": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeRateLimitError"
-                }
-              }
-            },
-            "description": "The configured rate limit was exceeded.",
-            "headers": {
-              "Retry-After": {
-                "description": "Seconds to wait before retrying.",
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Reset": {
-                "description": "Reset time as Unix seconds.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "internal_error: household management permissions could not be checked."
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "unavailable: profile credential management, the change or the account password check is unavailable; service_unavailable: the session could not be checked or password hashing is busy (PUT), retry after Retry-After."
-          }
-        },
-        "security": [
-          {
-            "bloemAccountSession": []
-          }
-        ],
-        "summary": "Clear direct-profile login credentials.",
-        "tags": [
-          "profiles"
-        ]
-      },
-      "get": {
-        "description": "Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused.",
-        "operationId": "getBloemProfileCredentials",
-        "parameters": [
-          {
-            "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
-              "type": "string"
-            }
-          },
-          {
-            "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
-            "in": "header",
-            "name": "X-Profile-Id",
-            "schema": {
-              "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
-            "in": "header",
-            "name": "X-Profile-Token",
-            "schema": {
-              "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProfileCredentialStatus"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "unauthorized: authentication is missing or invalid, or the login session is no longer valid."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "account_session_required: use a non-impersonated account login session; forbidden: select and verify the household primary profile, or this session type cannot use the route."
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "not_found: profile does not belong to this account or does not exist."
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "internal_error: household management permissions could not be checked."
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "unavailable: profile credential management is unavailable; service_unavailable: the session could not be checked, retry after Retry-After."
-          }
-        },
-        "security": [
-          {
-            "bloemAccountSession": []
-          }
-        ],
-        "summary": "Read direct-profile credential status without exposing a password or hash.",
-        "tags": [
-          "profiles"
-        ]
-      },
-      "put": {
-        "description": "Dormant: not mounted, and profile_credential_management_v1 is not advertised, while profile sign-in has no route. Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused. The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation.",
-        "operationId": "setBloemProfileCredentials",
-        "parameters": [
-          {
-            "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "description": "Target profile in the authenticated account; other accounts' profiles return 404.",
-              "type": "string"
-            }
-          },
-          {
-            "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
-            "in": "header",
-            "name": "X-Profile-Id",
-            "schema": {
-              "description": "The acting household primary profile. Required unless the account is a server administrator; it is separate from the target path id.",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
-            "in": "header",
-            "name": "X-Profile-Token",
-            "schema": {
-              "description": "Verification proof for a PIN-locked acting primary profile; required for household management unless the account is a server administrator.",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BloemProfileCredentialSetBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB."
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "unauthorized: authentication is missing or invalid, or the login session is no longer valid."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password; profile_passwords_disabled: the server has profile passwords turned off, so a password cannot be set (DELETE stays allowed)."
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "not_found: profile does not belong to this account or does not exist."
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "credential_revision_conflict: reload the reviewed status; credential_email_in_use: the login email is already registered (PUT only)."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeValidationError"
-                }
-              }
-            },
-            "description": "validation_failed: expected_revision is not positive, login_email is not a bare email address, or password is shorter than 8 characters or longer than 72 bytes."
-          },
-          "429": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeRateLimitError"
-                }
-              }
-            },
-            "description": "The configured rate limit was exceeded.",
-            "headers": {
-              "Retry-After": {
-                "description": "Seconds to wait before retrying.",
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Limit": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Remaining": {
-                "schema": {
-                  "type": "integer"
-                }
-              },
-              "X-RateLimit-Reset": {
-                "description": "Reset time as Unix seconds.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "internal_error: household management permissions could not be checked."
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "unavailable: profile credential management, the change or the account password check is unavailable; service_unavailable: the session could not be checked or password hashing is busy (PUT), retry after Retry-After."
-          }
-        },
-        "security": [
-          {
-            "bloemAccountSession": []
-          }
-        ],
-        "summary": "Set or replace direct-profile login credentials.",
-        "tags": [
-          "profiles"
-        ]
-      }
-    },
     "/api/bloem/v2/promotions": {
       "get": {
-        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Lists the promotional cards for a surface. For the home surface, home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out.",
+        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Lists the promotional cards for a surface. For the home surface, home cards come with home_position, the row index the campaign row is shown at. Cards the profile dismissed on the surface are left out.",
         "operationId": "listBloemPromotions",
         "parameters": [
           {
@@ -49261,7 +48718,7 @@
     },
     "/api/bloem/v2/promotions/{id}/dismissals/{surface}": {
       "put": {
-        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Dismisses a promotional card for the profile on that surface. Idempotent: repeating it refreshes the dismissal.",
+        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Dismisses a promotional card for the profile on that surface. Idempotent: repeating it refreshes the dismissal.",
         "operationId": "dismissBloemPromotion",
         "parameters": [
           {
@@ -49422,7 +48879,7 @@
     },
     "/api/bloem/v2/promotions/{id}/save": {
       "post": {
-        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Saves a promotional card to the profile's inbox. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy.",
+        "description": "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens. Saves a promotional card to the profile's inbox. Only a current in_playback card with a call to action for content_id can be saved. The inbox delivery ID is derived from the profile and campaign, so a retry does not add a second copy.",
         "operationId": "saveBloemPromotion",
         "parameters": [
           {
@@ -49694,7 +49151,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
           },
           "404": {
             "content": {
@@ -49860,7 +49317,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
           },
           "404": {
             "content": {
@@ -50027,7 +49484,7 @@
                 }
               }
             },
-            "description": "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
+            "description": "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
           },
           "404": {
             "content": {
