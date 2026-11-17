@@ -13,8 +13,6 @@
   ],
   "excluded_listeners": [
     "cmd/silo/abs_listener.go#newAudiobookshelfListener: Audiobookshelf-protocol compatibility listener; an external wire contract, out of scope for the native v2 migration",
-    "cmd/silo/metrics_listener.go#newMetricsMux: Prometheus scrape listener: one /metrics route on its own port, operational rather than part of the native API surface.",
-    "internal/audiobooks/abs/handler.go#Handler.Router: Audiobookshelf-protocol compatibility router, the handler-side twin of the listener exclusion below; an external wire contract, out of scope for the native v2 migration",
     "internal/jellycompat/router.go#NewRouter: Jellyfin-protocol compatibility listener; an external wire contract, out of scope for the native v2 migration"
   ],
   "listeners": [
