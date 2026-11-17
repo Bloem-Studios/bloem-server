@@ -41,10 +41,9 @@ type SimulateRequest struct {
 
 // SimulateResult is the raw policy decision produced by a throwaway engine.
 type SimulateResult struct {
-	Decision         json.RawMessage `json:"decision"`
-	EvalTimeNS       int64           `json:"eval_time_ns"`
-	Generation       int64           `json:"generation"`
-	NonAuthoritative bool            `json:"non_authoritative"`
+	Decision   json.RawMessage `json:"decision"`
+	EvalTimeNS int64           `json:"eval_time_ns"`
+	Generation int64           `json:"generation"`
 }
 
 // Simulate evaluates a policy decision against a throwaway engine. It never
@@ -92,10 +91,9 @@ func Simulate(ctx context.Context, store *PolicyStore, req SimulateRequest) (Sim
 		return SimulateResult{}, err
 	}
 	return SimulateResult{
-		Decision:         decision,
-		EvalTimeNS:       meta.EvalTimeNS,
-		Generation:       meta.Revision,
-		NonAuthoritative: true,
+		Decision:   decision,
+		EvalTimeNS: meta.EvalTimeNS,
+		Generation: meta.Revision,
 	}, nil
 }
 
@@ -153,20 +151,17 @@ func guardBenchmarkInput(domain string) (any, error) {
 	case DomainScope:
 		input = ScopeInput{
 			SchemaVersion: 1, UserID: 1, SessionID: "eval-cost-guard",
-			Tenant:            representativeTenantFacts(),
 			AccountLibraryIDs: []int{1, 2, 3}, AccountRestricted: true,
 			AccountMaxQuality: "2160p", AccessPolicyRevision: 1,
 			DisabledLibraryIDs: []int{4}, ProfilePresent: true,
 			ProfileMaxRating: "PG-13", ProfileMaxQuality: "1080p",
 			ProfileMaxAdvisoryAge: 12,
 			ProfileLibraryLimited: true, ProfileLibraryIDs: []int{1, 2},
-			ProfileHasPIN: true, ProfileVerified: true,
-			TenantLibraryIDs: []int{1, 2, 3, 4}, RequestTime: benchTime,
+			ProfileHasPIN: true, ProfileVerified: true, RequestTime: benchTime,
 		}
 	case DomainPermission:
 		input = PermissionInput{
 			SchemaVersion: 1, UserID: 1, Role: "user", UserEnabled: true,
-			Tenant:              representativeTenantFacts(),
 			AssignedPermissions: []string{PermissionMarkerEdit},
 			Permission:          PermissionMarkerEdit,
 			TargetLibraryIDs:    []int{1}, UserLibraryIDs: []int{1, 2},
@@ -175,7 +170,6 @@ func guardBenchmarkInput(domain string) (any, error) {
 	case DomainAction:
 		input = ActionInput{
 			SchemaVersion: 1, Action: ActionDownload, UserID: 1,
-			Tenant:          representativeTenantFacts(),
 			DownloadAllowed: true, DownloadTranscodeAllowed: true,
 			MaxStreams: 5, MaxTranscodes: 2, DownloadsEnabled: true,
 			TranscodeEnabled: true, ArtifactsAvailable: true,
@@ -185,6 +179,7 @@ func guardBenchmarkInput(domain string) (any, error) {
 	default:
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedDomain, domain)
 	}
+	input = withBloemGuardTenant(input)
 	// Round-trip so the engine sees the same JSON document shape live inputs
 	// arrive as.
 	raw, err := json.Marshal(input)

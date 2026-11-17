@@ -53,7 +53,6 @@ func parityPreferenceValues(profile *userstore.Profile, disabled []int) []userst
 
 func TestResolveViewerScopeParity(t *testing.T) {
 	ctx := context.Background()
-	ctx = resolvedTenantContextForPolicyTest() // Bloem: viewer scope is bounded by a resolved tenant
 	engine, err := NewEngine(ctx, WithEvalTimeout(time.Minute))
 	if err != nil {
 		t.Fatalf("NewEngine() error: %v", err)
@@ -141,11 +140,9 @@ func TestResolveViewerScopeParity(t *testing.T) {
 			}
 
 			policyScope := decisionToAccessScope(input, decision)
-			boundedLegacyScope := boundLegacyScopeToTenant(goScope, input.TenantLibraryIDs)
-			if !reflect.DeepEqual(policyScope, boundedLegacyScope) {
-				t.Fatalf("scope mismatch\npolicy: %#v\nbounded legacy: %#v\nlegacy: %#v\ndecision: %#v", policyScope, boundedLegacyScope, goScope, decision)
+			if !reflect.DeepEqual(policyScope, goScope) {
+				t.Fatalf("scope mismatch\npolicy: %#v\nlegacy: %#v\ndecision: %#v", policyScope, goScope, decision)
 			}
-			assertCatalogAndPlaybackAuthorizationParity(t, policyScope, goScope, input.TenantLibraryIDs)
 			if decision.Unrestricted != (policyScope.AllowedLibraryIDs == nil) {
 				t.Fatalf("unrestricted = %t, AllowedLibraryIDs = %#v", decision.Unrestricted, policyScope.AllowedLibraryIDs)
 			}
@@ -235,7 +232,6 @@ func parityProfile(restricted bool, allowed []int) *userstore.Profile {
 func scopeInputFromParity(user *models.User, profile *userstore.Profile, disabled []int, verified bool) ScopeInput {
 	input := ScopeInput{
 		SchemaVersion:        1,
-		Tenant:               validLegacyTenantFactsForPolicyTest(),
 		UserID:               user.ID,
 		SessionID:            "sess-1",
 		AccountLibraryIDs:    cloneParityInts(user.LibraryIDs),
@@ -243,7 +239,6 @@ func scopeInputFromParity(user *models.User, profile *userstore.Profile, disable
 		AccountMaxQuality:    access.ApplyGroupPolicy(user, nil).MaxPlaybackQuality,
 		AccessPolicyRevision: user.AccessPolicyRevision,
 		ProfileVerified:      true,
-		TenantLibraryIDs:     []int{1, 2, 3, 4},
 		RequestTime:          "2026-07-02T12:00:00Z",
 		DeviceID:             "device-1",
 		ClientIP:             "192.0.2.10",

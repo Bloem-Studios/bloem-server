@@ -2,91 +2,46 @@ package policy
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/pressly/goose/v3"
 
 	"github.com/Silo-Server/silo-server/internal/bloemtestdb"
-	"github.com/Silo-Server/silo-server/migrations"
-)
-
-var (
-	policyStoreTestDatabaseConfig *pgxpool.Config
-	policyStoreTestDatabaseName   string
 )
 
 // TestMain runs the package on its own prepared database
 // (bloemtestdb.RunIsolatedSuite), as the pgstore package does: Silo's database
 // tests here, such as TestViewerResolverBatchedReadsMatchEachDB, seed accounts
 // and profiles directly and need the fixture-compatibility triggers, which the
-// tenancy job's bare migrated database does not carry. Bloem's own tests here
-// use the URL only to create disposable databases of their own.
+// tenancy job's bare migrated database does not carry. Silo's policy-store
+// tests (store_test.go) reset the policy tables of that database only.
 func TestMain(m *testing.M) {
-	os.Exit(bloemtestdb.RunIsolatedSuite(func() int { return runPolicyTests(m) }))
+	os.Exit(bloemtestdb.RunIsolatedSuite(m.Run))
 }
 
-func runPolicyTests(m *testing.M) int {
-	dsn := strings.TrimSpace(os.Getenv("SILO_TEST_DATABASE_URL"))
+// TestPolicyStoreTestsRunOnMigratedDatabase keeps Silo's policy-store tests
+// from skipping silently: newPolicyStoreTest skips when policy_documents is
+// missing, which on a prepared database would mean a broken preparation.
+func TestPolicyStoreTestsRunOnMigratedDatabase(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
-		if strings.TrimSpace(os.Getenv("SILO_REQUIRE_TEST_DATABASE")) == "1" {
-			_, _ = fmt.Fprintln(os.Stderr, "SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1")
-			return 1
-		}
-		return m.Run()
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
-
-	var cleanup func() error
-	var err error
-	policyStoreTestDatabaseConfig, policyStoreTestDatabaseName, cleanup, err = preparePolicyStoreTestDatabase(context.Background(), dsn)
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "prepare policy-store test database: %v\n", err)
-		return 1
-	}
-
-	code := m.Run()
-	if err := cleanup(); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "clean up policy-store test database: %v\n", err)
-		code = 1
-	}
-	return code
-}
-
-func TestPolicyStoreUsesDisposableMigratedDatabase(t *testing.T) {
 	ctx := context.Background()
-	pool, _ := newPolicyStoreTest(t, ctx)
-
-	var (
-		currentDatabase string
-		policyTable     *string
-	)
-	if err := pool.QueryRow(ctx, `
-		SELECT current_database(), to_regclass('public.policy_documents')::text`,
-	).Scan(&currentDatabase, &policyTable); err != nil {
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect test database: %v", err)
+	}
+	defer pool.Close()
+	var policyTable *string
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.policy_documents')::text`).Scan(&policyTable); err != nil {
 		t.Fatalf("inspect policy-store test database: %v", err)
 	}
-	maintenanceConfig, err := pgxpool.ParseConfig(os.Getenv("SILO_TEST_DATABASE_URL"))
-	if err != nil {
-		t.Fatalf("parse maintenance database URL: %v", err)
-	}
-	if currentDatabase == maintenanceConfig.ConnConfig.Database {
-		t.Fatalf("policy-store test database = maintenance database %q", currentDatabase)
-	}
-	if currentDatabase != policyStoreTestDatabaseName || !strings.HasPrefix(currentDatabase, "bloem_policy_store_") {
-		t.Fatalf("policy-store test database = %q, want exact disposable child %q", currentDatabase, policyStoreTestDatabaseName)
-	}
 	if policyTable == nil || *policyTable != "policy_documents" {
-		t.Fatalf("policy_documents table = %v, want migrated child schema", policyTable)
+		t.Fatalf("policy_documents table = %v, want the migrated schema", policyTable)
 	}
 }
 
@@ -137,93 +92,4 @@ func policyTestEnvironmentWithout(names ...string) []string {
 		}
 	}
 	return filtered
-}
-
-func preparePolicyStoreTestDatabase(
-	ctx context.Context,
-	dsn string,
-) (*pgxpool.Config, string, func() error, error) {
-	var random [8]byte
-	if _, err := rand.Read(random[:]); err != nil {
-		return nil, "", nil, fmt.Errorf("generate disposable database name: %w", err)
-	}
-	name := "bloem_policy_store_" + hex.EncodeToString(random[:])
-	adminConfig, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		return nil, "", nil, fmt.Errorf("parse maintenance database URL: %w", err)
-	}
-	admin, err := pgxpool.NewWithConfig(ctx, adminConfig)
-	if err != nil {
-		return nil, "", nil, fmt.Errorf("connect maintenance database: %w", err)
-	}
-	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
-		admin.Close()
-		return nil, "", nil, fmt.Errorf("create disposable database %q: %w", name, err)
-	}
-
-	testConfig, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
-		admin.Close()
-		return nil, "", nil, fmt.Errorf("parse disposable database URL: %w", err)
-	}
-	testConfig.ConnConfig.Database = name
-	pool, err := pgxpool.NewWithConfig(ctx, testConfig)
-	if err != nil {
-		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
-		admin.Close()
-		return nil, "", nil, fmt.Errorf("connect disposable database %q: %w", name, err)
-	}
-	if err := migratePolicyStoreTestDatabase(ctx, pool); err != nil {
-		pool.Close()
-		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
-		admin.Close()
-		return nil, "", nil, fmt.Errorf("migrate disposable database %q: %w", name, err)
-	}
-	pool.Close()
-
-	cleanup := func() error {
-		defer admin.Close()
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		_, _ = admin.Exec(cleanupCtx, `
-			SELECT pg_terminate_backend(pid)
-			FROM pg_stat_activity
-			WHERE datname=$1 AND pid<>pg_backend_pid()`, name)
-		if _, err := admin.Exec(cleanupCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
-			return fmt.Errorf("drop disposable database %q: %w", name, err)
-		}
-		var exists bool
-		if err := admin.QueryRow(cleanupCtx, `
-			SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname=$1)`, name).Scan(&exists); err != nil {
-			return fmt.Errorf("verify disposable database %q cleanup: %w", name, err)
-		}
-		if exists {
-			return fmt.Errorf("disposable database %q still exists after cleanup", name)
-		}
-		return nil
-	}
-	return testConfig.Copy(), name, cleanup, nil
-}
-
-func migratePolicyStoreTestDatabase(ctx context.Context, pool *pgxpool.Pool) error {
-	migrationFS, err := fs.Sub(migrations.BloemFS, "sql")
-	if err != nil {
-		return fmt.Errorf("open embedded SQL migrations: %w", err)
-	}
-	provider, err := goose.NewProvider(
-		goose.DialectPostgres,
-		stdlib.OpenDBFromPool(pool),
-		migrationFS,
-		goose.WithTableName("public.goose_db_version"),
-		goose.WithAllowOutofOrder(true),
-	)
-	if err != nil {
-		return fmt.Errorf("create Goose provider: %w", err)
-	}
-	defer func() { _ = provider.Close() }()
-	if _, err := provider.Up(ctx); err != nil {
-		return fmt.Errorf("apply embedded SQL migrations: %w", err)
-	}
-	return nil
 }

@@ -142,7 +142,6 @@ func TestPermissionActingAdminParityCases(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			decision, _, err := pdp.CheckPermission(ctx, PermissionInput{
 				SchemaVersion:     1,
-				Tenant:            validLegacyTenantFactsForPolicyTest(),
 				UserID:            7,
 				Role:              test.role,
 				UserEnabled:       test.enabled,
@@ -243,7 +242,6 @@ func TestPermissionMetadataCurationLibraryScope(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			decision, _, err := pdp.CheckPermission(ctx, PermissionInput{
 				SchemaVersion:           1,
-				Tenant:                  validLegacyTenantFactsForPolicyTest(),
 				UserID:                  7,
 				Role:                    test.role,
 				UserEnabled:             true,
@@ -278,7 +276,6 @@ func newPermissionParityPDP(t *testing.T) *PDP {
 func permissionInputForUser(user *models.User, permission string) PermissionInput {
 	return PermissionInput{
 		SchemaVersion:           1,
-		Tenant:                  validLegacyTenantFactsForPolicyTest(),
 		UserID:                  user.ID,
 		Role:                    user.Role,
 		UserEnabled:             user.Enabled,

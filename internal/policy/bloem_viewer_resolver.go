@@ -61,7 +61,41 @@ func (r *ViewerResolver) bloemResolve(ctx context.Context, input access.ResolveI
 	if scope, handled, err := r.resolveBloemBatched(ctx, input); handled {
 		return scope, err
 	}
-	return r.resolveEach(ctx, input)
+	return r.bloemResolveEach(ctx, input)
+}
+
+// bloemResolveEach is Silo's resolveEach under tenancy: it loads the profile
+// before the group policy, and reads the group for that profile in the
+// request tenant (access.EffectivePolicyForRequest). resolveBloemBatched
+// judges its batch in this order.
+func (r *ViewerResolver) bloemResolveEach(ctx context.Context, input access.ResolveInput) (access.Scope, error) {
+	user, err := r.users.GetByID(ctx, input.UserID)
+	if err != nil {
+		return access.Scope{}, fmt.Errorf("loading user %d: %w", input.UserID, err)
+	}
+
+	store, err := r.storeFactory.ForUser(ctx, input.UserID)
+	if err != nil {
+		return access.Scope{}, fmt.Errorf("opening user store for %d: %w", input.UserID, err)
+	}
+
+	var profile *userstore.Profile
+	if input.ProfileID != "" {
+		profile, err = store.GetProfile(ctx, input.ProfileID)
+		if err != nil {
+			return access.Scope{}, fmt.Errorf("loading profile %s: %w", input.ProfileID, err)
+		}
+		if profile == nil {
+			return access.Scope{}, access.ErrProfileNotFound
+		}
+	}
+	effective, err := access.EffectivePolicyForRequest(ctx, user, input.ProfileID, r.groups)
+	if err != nil {
+		return access.Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
+	}
+
+	preferences := access.ResolveViewerPreferences(ctx, store, r.defaults, input.ProfileID)
+	return r.ResolveFacts(ctx, input, user, profile, effective, preferences)
 }
 
 // resolveBloemBatched reads what resolveEach reads under tenancy, in the same

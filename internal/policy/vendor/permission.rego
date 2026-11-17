@@ -13,8 +13,8 @@ base_decision := acting_admin_decision(input) if {
 	input.permission == "marker_edit"
 } else := metadata_curation_decision(input) if {
 	input.permission == "metadata_curation"
-} else := live_tv_decision(input) if {
- input.permission == "watch_live_tv"
+} else := bloem_live_tv_decision(input) if {
+	input.permission == "watch_live_tv"
 } else := deny("unknown permission", "unknown_permission")
 
 acting_admin_decision(i) := allow if {
@@ -33,13 +33,6 @@ marker_edit_decision(i) := allow if {
 } else := deny("user disabled", "user_disabled") if {
 	not user_enabled(i)
 } else := deny("marker edit permission required", "marker_edit_permission_required")
-
-live_tv_decision(i) := allow if {
- acting_admin_allowed(i)
-} else := allow if {
- user_enabled(i)
- assigned_permission(i, "watch_live_tv")
-} else := deny("Live TV permission required", "live_tv_forbidden")
 
 metadata_curation_decision(i) := allow if {
 	acting_admin_allowed(i)

@@ -27,20 +27,10 @@ base_decision := decision if {
 	}
 }
 
-# Bloem tenancy is opt-in on the viewer resolver. With a tenant present every
-# scope is bounded by the tenant's libraries, so an otherwise unrestricted
-# profile reports the tenant libraries it hid. Without one, Silo's rules apply.
-library_decision(i) := result if {
-	tenant_present(i)
-	effective := effective_libraries(i)
-	allowed := tenant_bounded_libraries(i, effective)
-	result := {
-		"unrestricted": false,
-		"allowed_library_ids": subtract(allowed, disabled_ids(i)),
-		"disabled_library_ids": [],
-		"hidden_library_ids": intersect(allowed, disabled_ids(i)),
-		"libraries_restricted": true,
-	}
+# Bloem: with a resolved tenant every scope is bounded by the tenant's
+# libraries (bloem_scope.rego). Without one, Silo's rules below apply.
+library_decision(i) := bloem_tenant_library_decision(i) if {
+	bloem_tenant_present(i)
 } else := result if {
 	effective := effective_libraries(i)
 	effective.unrestricted
@@ -64,19 +54,6 @@ library_decision(i) := result if {
 		"libraries_restricted": true,
 	}
 }
-
-tenant_present(i) if {
-	object.get(object.get(i, "tenant", {}), "present", false) == true
-}
-
-tenant_bounded_libraries(i, effective) := tenant_library_ids(i) if {
-	effective.unrestricted
-} else := intersect(tenant_library_ids(i), effective.allowed_library_ids)
-
-tenant_library_ids(i) := unique_sorted(ids) if {
-	ids := object.get(i, "tenant_library_ids", [])
-	is_array(ids)
-} else := []
 
 effective_libraries(i) := result if {
 	i.account_restricted

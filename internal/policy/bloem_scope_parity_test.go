@@ -3,14 +3,89 @@ package policy
 // Bloem tenant-bound scope coverage moved out of Silo's scope_parity_test.go.
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/userstore"
 )
+
+// bloemScopeInputFromParity is Silo's scopeInputFromParity with a resolved
+// tenant whose libraries are 1-4.
+func bloemScopeInputFromParity(user *models.User, profile *userstore.Profile, disabled []int, verified bool) ScopeInput {
+	input := scopeInputFromParity(user, profile, disabled, verified)
+	input.Tenant = validLegacyTenantFactsForPolicyTest()
+	input.TenantLibraryIDs = []int{1, 2, 3, 4}
+	return input
+}
+
+// TestResolveViewerScopeParityUnderTenancy runs the library cases of Silo's
+// TestResolveViewerScopeParity with a resolved tenant: policy's scope must be
+// Silo's Go scope bounded by the tenant's libraries, and catalog visibility
+// and playback authorization must agree with it.
+func TestResolveViewerScopeParityUnderTenancy(t *testing.T) {
+	ctx := resolvedTenantContextForPolicyTest()
+	engine, err := NewEngine(ctx, WithEvalTimeout(time.Minute))
+	if err != nil {
+		t.Fatalf("NewEngine() error: %v", err)
+	}
+	pdp := NewPDP(engine)
+
+	accountCases := map[string][]int{"account_unrestricted": nil, "account_empty": {}, "account_1_2_3": {1, 2, 3}}
+	profileCases := map[string]*userstore.Profile{
+		"profile_absent":       nil,
+		"profile_unrestricted": parityProfile(false, nil),
+		"profile_empty":        parityProfile(true, []int{}),
+		"profile_2_3_4":        parityProfile(true, []int{2, 3, 4}),
+	}
+	disabledCases := map[string][]int{"disabled_none": nil, "disabled_2": {2}}
+
+	for accountName, accountLibraries := range accountCases {
+		for profileName, profileCase := range profileCases {
+			for disabledName, disabled := range disabledCases {
+				t.Run(fmt.Sprintf("%s/%s/%s", accountName, profileName, disabledName), func(t *testing.T) {
+					user := &models.User{ID: 42, LibraryIDs: cloneParityInts(accountLibraries), MaxPlaybackQuality: ptr("any"), AccessPolicyRevision: 9}
+					profile := cloneParityProfile(profileCase)
+					profileID := ""
+					if profile != nil {
+						profile.MaxPlaybackQuality = "standard"
+						profileID = profile.ID
+					}
+					resolver := access.NewResolver(
+						parityUserRepo{user: user},
+						parityStoreProvider{store: parityStore{profile: profile, settingValues: parityPreferenceValues(profile, disabled)}},
+						nil,
+					)
+
+					input := bloemScopeInputFromParity(user, profile, disabled, true)
+					decision, _, err := pdp.ResolveViewerScope(ctx, input)
+					if err != nil {
+						t.Fatalf("ResolveViewerScope() error: %v", err)
+					}
+					goScope, err := resolver.Resolve(ctx, access.ResolveInput{
+						UserID: user.ID, SessionID: input.SessionID, ProfileID: profileID, SkipPINVerification: profile != nil,
+					})
+					if err != nil && !errors.Is(err, access.ErrProfileUnverified) {
+						t.Fatalf("Resolve() error: %v", err)
+					}
+
+					policyScope := decisionToAccessScope(input, decision)
+					bounded := boundLegacyScopeToTenant(goScope, input.TenantLibraryIDs)
+					if !reflect.DeepEqual(policyScope, bounded) {
+						t.Fatalf("scope mismatch\npolicy: %#v\nbounded legacy: %#v\nlegacy: %#v\ndecision: %#v", policyScope, bounded, goScope, decision)
+					}
+					assertCatalogAndPlaybackAuthorizationParity(t, policyScope, goScope, input.TenantLibraryIDs)
+				})
+			}
+		}
+	}
+}
 
 func TestTenantScopeBoundsUnrestrictedViewer(t *testing.T) {
 	ctx := resolvedTenantContextForPolicyTest()
@@ -19,7 +94,7 @@ func TestTenantScopeBoundsUnrestrictedViewer(t *testing.T) {
 		t.Fatalf("NewEngine() error: %v", err)
 	}
 
-	input := scopeInputFromParity(&models.User{ID: 42, AccessPolicyRevision: 9}, nil, nil, true)
+	input := bloemScopeInputFromParity(&models.User{ID: 42, AccessPolicyRevision: 9}, nil, nil, true)
 	input.TenantLibraryIDs = []int{20, 10, 20}
 	decision, _, err := NewPDP(engine).ResolveViewerScope(ctx, input)
 	if err != nil {
@@ -37,7 +112,7 @@ func TestTenantScopeMissingUpperBoundFailsClosed(t *testing.T) {
 		t.Fatalf("NewEngine() error: %v", err)
 	}
 
-	input := scopeInputFromParity(&models.User{ID: 42, AccessPolicyRevision: 9}, nil, nil, true)
+	input := bloemScopeInputFromParity(&models.User{ID: 42, AccessPolicyRevision: 9}, nil, nil, true)
 	input.TenantLibraryIDs = nil
 	decision, _, err := NewPDP(engine).ResolveViewerScope(ctx, input)
 	if err != nil {
@@ -62,7 +137,7 @@ override(_, _) := {"unrestricted": false, "allowed_library_ids": [10, 99]}
 		t.Fatalf("NewEngineWithCustom() error: %v", err)
 	}
 
-	input := scopeInputFromParity(&models.User{ID: 42, AccessPolicyRevision: 9}, nil, nil, true)
+	input := bloemScopeInputFromParity(&models.User{ID: 42, AccessPolicyRevision: 9}, nil, nil, true)
 	input.TenantLibraryIDs = []int{10}
 	decision, _, err := NewPDP(engine).ResolveViewerScope(ctx, input)
 	if err != nil {

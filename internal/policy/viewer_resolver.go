@@ -123,6 +123,10 @@ func (r *ViewerResolver) resolveEach(ctx context.Context, input access.ResolveIn
 	if err != nil {
 		return access.Scope{}, fmt.Errorf("loading user %d: %w", input.UserID, err)
 	}
+	effective, err := access.EffectivePolicyForUser(ctx, user, r.groups)
+	if err != nil {
+		return access.Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
+	}
 
 	store, err := r.storeFactory.ForUser(ctx, input.UserID)
 	if err != nil {
@@ -139,11 +143,6 @@ func (r *ViewerResolver) resolveEach(ctx context.Context, input access.ResolveIn
 			return access.Scope{}, access.ErrProfileNotFound
 		}
 	}
-	effective, err := access.EffectivePolicyForRequest(ctx, user, input.ProfileID, r.groups)
-	if err != nil {
-		return access.Scope{}, fmt.Errorf("loading access group policy for user %d: %w", input.UserID, err)
-	}
-
 	preferences := access.ResolveViewerPreferences(ctx, store, r.defaults, input.ProfileID)
 	return r.ResolveFacts(ctx, input, user, profile, effective, preferences)
 }

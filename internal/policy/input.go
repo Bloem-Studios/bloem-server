@@ -31,8 +31,9 @@ const (
 // account_library_ids slice is not enough for policy authors to infer whether
 // the account is unrestricted.
 type ScopeInput struct {
-	SchemaVersion int         `json:"schema_version"`
-	Tenant        TenantFacts `json:"tenant"`
+	SchemaVersion int `json:"schema_version"`
+	// Bloem: the request's resolved tenant (bloem_input.go).
+	Tenant TenantFacts `json:"tenant"`
 
 	UserID               int    `json:"user_id"`
 	SessionID            string `json:"session_id"`
@@ -99,8 +100,9 @@ type ScopeDecision struct {
 // profiles always report false. user_libraries_restricted distinguishes
 // nil user library assignment (unrestricted) from an empty allowlist.
 type PermissionInput struct {
-	SchemaVersion int         `json:"schema_version"`
-	Tenant        TenantFacts `json:"tenant"`
+	SchemaVersion int `json:"schema_version"`
+	// Bloem: the request's resolved tenant (bloem_input.go).
+	Tenant TenantFacts `json:"tenant"`
 
 	UserID                   int      `json:"user_id"`
 	Role                     string   `json:"role"`
@@ -165,8 +167,9 @@ const (
 // Go supplies all dynamic facts: live playback counts, user flags, and config
 // flags. Policy never reads server configuration or session state directly.
 type ActionInput struct {
-	SchemaVersion int         `json:"schema_version"`
-	Tenant        TenantFacts `json:"tenant"`
+	SchemaVersion int `json:"schema_version"`
+	// Bloem: the request's resolved tenant (bloem_input.go).
+	Tenant TenantFacts `json:"tenant"`
 
 	Action                   string `json:"action"`
 	UserID                   int    `json:"user_id"`

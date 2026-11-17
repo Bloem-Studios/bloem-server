@@ -59,7 +59,6 @@ func BenchmarkResolveViewerScopeMemoHit(b *testing.B) {
 func benchmarkScopeInput() ScopeInput {
 	return ScopeInput{
 		SchemaVersion:         1,
-		Tenant:                representativeTenantFacts(),
 		UserID:                42,
 		SessionID:             "sess-1",
 		ProfileID:             "prof-1",
@@ -76,7 +75,6 @@ func benchmarkScopeInput() ScopeInput {
 		ProfileHasPIN:         true,
 		ProfileVerified:       true,
 		ProfileMetadataLang:   "fr",
-		TenantLibraryIDs:      []int{1, 2, 3, 4},
 		RequestTime:           "2026-07-02T12:00:00Z",
 		DeviceID:              "device-1",
 		ClientIP:              "192.0.2.10",

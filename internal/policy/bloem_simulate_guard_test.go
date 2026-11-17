@@ -3,28 +3,28 @@ package policy
 // Bloem-owned tests for this package. Kept out of Silo's own test files so
 // upstream merges do not conflict here; see contracts/seams.txt.
 
-import (
-	"context"
-	"encoding/json"
-	"testing"
-)
+import "testing"
 
-func TestSimulateMarksCallerProvidedTenantFactsNonAuthoritative(t *testing.T) {
-	raw, err := json.Marshal(ScopeInput{
-		SchemaVersion:        1,
-		Tenant:               validLegacyTenantFactsForPolicyTest(),
-		UserID:               7,
-		AccessPolicyRevision: 1,
-		ProfileVerified:      true,
-	})
-	if err != nil {
-		t.Fatalf("json.Marshal() error: %v", err)
-	}
-	result, err := Simulate(context.Background(), nil, SimulateRequest{Domain: DomainScope, Input: raw})
-	if err != nil {
-		t.Fatalf("Simulate() error: %v", err)
-	}
-	if !result.NonAuthoritative {
-		t.Fatal("NonAuthoritative = false, want true")
+func TestGuardBenchmarkInputCarriesResolvedTenant(t *testing.T) {
+	for _, domain := range []string{DomainScope, DomainPermission, DomainAction} {
+		t.Run(domain, func(t *testing.T) {
+			input, err := guardBenchmarkInput(domain)
+			if err != nil {
+				t.Fatalf("guardBenchmarkInput() error: %v", err)
+			}
+			doc, ok := input.(map[string]any)
+			if !ok {
+				t.Fatalf("guard input = %T, want a JSON object", input)
+			}
+			tenant, _ := doc["tenant"].(map[string]any)
+			if tenant["present"] != true {
+				t.Fatalf("guard input tenant = %#v, want a present tenant", doc["tenant"])
+			}
+			if domain == DomainScope {
+				if ids, _ := doc["tenant_library_ids"].([]any); len(ids) == 0 {
+					t.Fatalf("guard scope input tenant_library_ids = %#v, want libraries", doc["tenant_library_ids"])
+				}
+			}
+		})
 	}
 }

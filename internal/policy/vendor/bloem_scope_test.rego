@@ -83,3 +83,16 @@ test_bloem_tenant_scope_cannot_be_widened_by_custom_policy if {
 	not got.unrestricted
 	got.allowed_library_ids == [10]
 }
+
+bloem_quality_only_override(_, _) := {"max_playback_quality": "720p"}
+
+# Every tenant scope is restricted, so a custom policy that tightens something
+# else must keep the tenant's libraries rather than empty them (scope.rego's
+# merged_allowed defaults an absent allowed_library_ids to the base list).
+test_bloem_override_without_library_list_keeps_tenant_libraries if {
+	got := decision
+		with input as bloem_tenant_input
+		with data.silo_custom.scope.override as bloem_quality_only_override
+	not got.unrestricted
+	got.allowed_library_ids == [1, 2, 3, 4, 5, 7]
+}

@@ -36,7 +36,6 @@ func TestActionParityDownloads(t *testing.T) {
 						presets := resolver.PresetsFor(user, cfg, artifactsAvailable)
 						input := policy.ActionInput{
 							SchemaVersion:            1,
-							Tenant:                   validLegacyTenantFacts(),
 							UserID:                   user.ID,
 							DownloadAllowed:          user.Policy.DownloadAllowed,
 							DownloadTranscodeAllowed: user.Policy.DownloadTranscodeAllowed,
@@ -85,7 +84,6 @@ func TestActionParityPlaybackAdmission(t *testing.T) {
 						limits := playback.SessionLimits{MaxStreams: maxStreams, MaxTranscodes: maxTranscodes}
 						input := policy.ActionInput{
 							SchemaVersion:           1,
-							Tenant:                  validLegacyTenantFacts(),
 							Action:                  policy.ActionPlaybackAdmission,
 							UserID:                  42,
 							MaxStreams:              limits.MaxStreams,

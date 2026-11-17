@@ -2,6 +2,7 @@ package policy
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -9,14 +10,23 @@ import (
 
 func newPolicyStoreTest(t *testing.T, ctx context.Context) (*pgxpool.Pool, *PolicyStore) {
 	t.Helper()
-	if policyStoreTestDatabaseConfig == nil {
-		t.Skip("SILO_TEST_DATABASE_URL is not set; PostgreSQL store tests skip only outside SILO_REQUIRE_TEST_DATABASE=1")
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
-	pool, err := pgxpool.NewWithConfig(ctx, policyStoreTestDatabaseConfig.Copy())
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		t.Fatalf("connect disposable policy-store database: %v", err)
+		t.Fatalf("connect test database: %v", err)
 	}
 	t.Cleanup(pool.Close)
+
+	var tableName *string
+	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.policy_documents')::text`).Scan(&tableName); err != nil {
+		t.Fatalf("check policy_documents table: %v", err)
+	}
+	if tableName == nil || *tableName == "" {
+		t.Skip("test database has not applied policy foundation migration")
+	}
 
 	resetPolicyTables(t, ctx, pool)
 	return pool, NewPolicyStore(pool)
