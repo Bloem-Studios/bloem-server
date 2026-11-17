@@ -4,7 +4,6 @@ package playback
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 )
@@ -58,30 +57,5 @@ func TestExpiredFFmpegContextDoesNotLaunchProbe(t *testing.T) {
 				t.Fatalf("expired caller registered %d hardware probe(s), want none", inFlight)
 			}
 		})
-	}
-}
-
-func waitForFakeFFmpegStart(t *testing.T, startedPath string, probeDone <-chan string) {
-	t.Helper()
-	// Keep the watchdog outside the probe command's own startup window. On a
-	// loaded runner the shell may not write the marker immediately, but the
-	// bounded probe will still report through probeDone if it cannot start.
-	deadline := time.NewTimer(hwProbeCommandTimeout + time.Second)
-	ticker := time.NewTicker(time.Millisecond)
-	defer deadline.Stop()
-	defer ticker.Stop()
-	for {
-		if _, err := os.Stat(startedPath); err == nil {
-			return
-		} else if !os.IsNotExist(err) {
-			t.Fatalf("stat fake FFmpeg start signal: %v", err)
-		}
-		select {
-		case result := <-probeDone:
-			t.Fatalf("FFmpeg probe returned %q before its helper signaled process start", result)
-		case <-deadline.C:
-			t.Fatal("timed out waiting for fake FFmpeg process start")
-		case <-ticker.C:
-		}
 	}
 }
