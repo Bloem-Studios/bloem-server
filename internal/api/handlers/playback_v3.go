@@ -7179,7 +7179,7 @@ func (h *PlaybackHandler) StartV3Maintenance(ctx context.Context) {
 			case now := <-ticker.C:
 				cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				if _, err := h.PlanStoreV3.CleanupExpired(cleanupCtx, now); err != nil {
-					slog.WarnContext(ctx, "playback v3 cleanup failed", "error", err)
+					slog.Warn("playback v3 cleanup failed", "error", err)
 				}
 				if err := h.Connections.Cleanup(cleanupCtx); err != nil {
 					slog.WarnContext(cleanupCtx, "playback connection retention failed", "error", err)
@@ -7439,7 +7439,7 @@ func remapAudioSelectionV3(source, target *models.MediaFile, request *playback.S
 		}
 		fileID, kind, ordinal, ok := playback.ParseTrackIDV3(request.AudioTrackID)
 		if !ok || kind != "audio" || fileID != source.ID {
-			return errors.New("The selected audio track identity is invalid for the source file.") //nolint:staticcheck // ST1005: user-facing copy, sent verbatim as transportErrorV3.message.
+			return errors.New("The selected audio track identity is invalid for the source file.")
 		}
 		request.AudioTrackIndex = &ordinal
 	}
@@ -7465,13 +7465,13 @@ func (h *PlaybackHandler) remapSubtitleSelectionV3(ctx context.Context, source, 
 		}
 		fileID, kind, ordinal, ok := playback.ParseTrackIDV3(request.SubtitleTrackID)
 		if !ok || kind != "subtitle" || fileID != source.ID {
-			return false, errors.New("The selected subtitle track identity is invalid for the source file.") //nolint:staticcheck // ST1005: user-facing copy, sent verbatim as transportErrorV3.message.
+			return false, errors.New("selected subtitle track identity is invalid for the source file")
 		}
 		request.SubtitleTrackIndex = &ordinal
 	}
 	index := *request.SubtitleTrackIndex
 	if index < 0 {
-		return false, errors.New("The selected subtitle track index is invalid.") //nolint:staticcheck // ST1005: user-facing copy, sent verbatim as transportErrorV3.message.
+		return false, errors.New("selected subtitle track index is invalid")
 	}
 	want, err := h.desiredSubtitleFromFileV3(ctx, source, index)
 	if err != nil {
