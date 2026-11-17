@@ -275,7 +275,7 @@ func TestNativeVideoCapturePreservesOriginalRequestAcrossProjection(t *testing.T
 }
 func TestNativeVideoRefusesMissingAuthorityInputs(t *testing.T) {
 	f := newNativeVideoPolicyFixture(t)
-	for _, kind := range []string{"capture", "scope", "claims", "credential", "tenant", "playback", "nonnative"} {
+	for _, kind := range []string{"capture", "scope", "claims", "tenant", "playback", "nonnative"} {
 		t.Run(kind, func(t *testing.T) {
 			ctx := f.requestContext(t, false)
 			switch kind {
@@ -366,7 +366,7 @@ type nativeVideoDelegationFixture struct {
 
 func newNativeVideoDelegationFixture(t *testing.T) *nativeVideoDelegationFixture {
 	f := newNativeVideoPolicyFixture(t)
-	d := &nativeVideoDelegationFixture{base: f, profile: &userstore.Profile{ID: "profile", OrganizationID: f.tenant.tenant.OrganizationID.String(), PINRevision: 1, CredentialRevision: 2}, login: &models.AuthSession{ID: "login-session", UserID: 7, ExpiresAt: time.Now().Add(time.Hour)}, key: &models.APIKeyMetadata{ID: 99, UserID: 7, Revision: 1}}
+	d := &nativeVideoDelegationFixture{base: f, profile: &userstore.Profile{ID: "profile", OrganizationID: f.tenant.tenant.OrganizationID.String(), PINRevision: 1}, login: &models.AuthSession{ID: "login-session", UserID: 7, ExpiresAt: time.Now().Add(time.Hour)}, key: &models.APIKeyMetadata{ID: 99, UserID: 7, Revision: 1}}
 	f.policy.loadUser = f.login.GetByID
 	f.policy.loadLogin = func(context.Context, string) (*models.AuthSession, error) { return d.login, nil }
 	f.policy.loginActive = f.login.ActiveSessionRole
@@ -393,7 +393,7 @@ func TestNativeVideoDelegationCarriesOnlyValidatedAuthority(t *testing.T) {
 	d := newNativeVideoDelegationFixture(t)
 	f := d.base
 	binding := d.binding(t)
-	if binding.Authority.UserID != 7 || binding.Authority.ProfileID != "profile" || binding.Authority.LoginSessionID != "login-session" || binding.Authority.ProfilePINRevision != 1 || binding.Authority.ProfileCredentialRevision != 2 || binding.Authority.Tenant != f.tenant.tenant || !binding.Authority.ExpiresAt.After(time.Now()) {
+	if binding.Authority.UserID != 7 || binding.Authority.ProfileID != "profile" || binding.Authority.LoginSessionID != "login-session" || binding.Authority.ProfilePINRevision != 1 || binding.Authority.Tenant != f.tenant.tenant || !binding.Authority.ExpiresAt.After(time.Now()) {
 		t.Fatalf("invalid delegation metadata")
 	}
 	payload, err := json.Marshal(binding)
@@ -423,7 +423,7 @@ func TestNativeVideoDelegationCarriesOnlyValidatedAuthority(t *testing.T) {
 	}
 }
 func TestNativeVideoDelegatedAuthorityRejectsCurrentRevocations(t *testing.T) {
-	for _, kind := range []string{"expiry", "account", "login-owner", "login-revoked", "login-expired", "remote-profile", "remote-absolute-expiry", "pin", "credential", "profile-tenant", "tenant", "viewer", "playback-deny", "session-owner", "session-file", "session-missing", "catalog", "source"} {
+	for _, kind := range []string{"expiry", "account", "login-owner", "login-revoked", "login-expired", "remote-profile", "remote-absolute-expiry", "pin", "profile-tenant", "tenant", "viewer", "playback-deny", "session-owner", "session-file", "session-missing", "catalog", "source"} {
 		t.Run(kind, func(t *testing.T) {
 			d := newNativeVideoDelegationFixture(t)
 			f := d.base
@@ -450,8 +450,6 @@ func TestNativeVideoDelegatedAuthorityRejectsCurrentRevocations(t *testing.T) {
 				d.login.AbsoluteExpiresAt = &end
 			case "pin":
 				d.profile.PINRevision++
-			case "credential":
-				d.profile.CredentialRevision++
 			case "profile-tenant":
 				d.profile.OrganizationID = uuid.New().String()
 			case "tenant":
@@ -603,26 +601,6 @@ func TestNativeVideoStreamDelegationKeepsOriginalSessionAndExpiry(t *testing.T) 
 	binding.SessionID = "other-session"
 	if _, err = nativeVideoDelegatedAuthority(t.Context(), f.file, binding, f.policy); !errors.Is(err, middleware.ErrCurrentCredentialForbidden) {
 		t.Fatalf("delegated stream admitted another session=%v", err)
-	}
-}
-
-func TestNativeVideoDelegatedDirectProfileRequiresCurrentLoginRevision(t *testing.T) {
-	d := newNativeVideoDelegationFixture(t)
-	f := d.base
-	pid, revision := "profile", d.profile.CredentialRevision
-	d.login.AuthMethod, d.login.ProfileID, d.login.ProfileCredentialRevision = auth.AuthMethodDirectProfile, &pid, &revision
-	f.claims.AuthMethod = auth.AuthMethodDirectProfile
-	binding := d.binding(t)
-	authority, err := nativeVideoDelegatedAuthority(t.Context(), f.file, binding, f.policy)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = authority.AuthorizeFile(t.Context(), f.file); err != nil {
-		t.Fatal(err)
-	}
-	revision++
-	if _, err = authority.AuthorizeFile(t.Context(), f.file); !errors.Is(err, middleware.ErrCurrentCredentialInvalid) {
-		t.Fatalf("changed direct-profile login revision=%v", err)
 	}
 }
 

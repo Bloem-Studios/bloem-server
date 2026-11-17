@@ -23,14 +23,8 @@ func TestAccountRefreshBindingHolds(t *testing.T) {
 	}
 
 	for name, tamper := range map[string]func(*Claims){
-		"other account":         func(c *Claims) { c.UserID = 8 },
-		"replaced incarnation":  func(c *Claims) { c.AccountIncarnationID = uuid.NewString() },
-		"stale organization":    func(c *Claims) { c.OrganizationID = uuid.NewString() },
-		"stale membership":      func(c *Claims) { c.MembershipID = uuid.NewString() },
-		"stale policy revision": func(c *Claims) { c.PolicyRevision = 3 },
-		"stale security rev":    func(c *Claims) { c.SecurityRevision = 3 },
-		"credential revision":   func(c *Claims) { c.CredentialRevision = 2 },
-		"direct profile method": func(c *Claims) { c.AuthMethod = AuthMethodDirectProfile },
+		"other account":        func(c *Claims) { c.UserID = 8 },
+		"replaced incarnation": func(c *Claims) { c.AccountIncarnationID = uuid.NewString() },
 	} {
 		t.Run(name, func(t *testing.T) {
 			claims := issued

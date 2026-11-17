@@ -35,15 +35,3 @@ func TestLiveTVAdminOwnershipOverride(t *testing.T) {
 		})
 	}
 }
-
-func TestLiveTVAdminOwnershipUsesTokenBoundProfile(t *testing.T) {
-	h := &LiveTVHandler{PrimaryProfileChecker: func(_ context.Context, _ int, profile string) (bool, bool, error) {
-		return profile == "primary", true, nil
-	}}
-	r := httptest.NewRequest("GET", "/", nil)
-	r.Header.Set("X-Profile-Id", "primary")
-	r = r.WithContext(apimw.SetClaims(r.Context(), &auth.Claims{UserID: 7, Role: "admin", ProfileID: "child", AuthMethod: auth.AuthMethodDirectProfile}))
-	if h.canManageOtherViewers(r) {
-		t.Fatal("child token used primary profile header for ownership override")
-	}
-}

@@ -6,8 +6,8 @@ import (
 )
 
 // bloemRouterMatchValue reports whether expr is a bound chi Match method
-// value, router.Match, on a router the walk tracks. Bloem's direct-profile and
-// preview route guards keep one (internal/api/router.go). It exposes only a
+// value, router.Match, on a router the walk tracks. Bloem's preview route
+// guard keeps one (internal/api/router.go). It exposes only a
 // boolean lookup, never the router or a registration method, so leakCheck
 // lets it go; any other selector on a router still fails closed.
 func bloemRouterMatchValue(expr ast.Expr, env *walkEnv) bool {

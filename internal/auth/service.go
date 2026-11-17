@@ -1269,7 +1269,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		return nil, fmt.Errorf("invalid refresh token: %w", ErrInvalidToken)
 	}
 
-	// Bloem: direct-profile and preview guest sessions refresh their own way.
+	// Bloem: preview guest sessions refresh their own way.
 	if pair, handled, err := s.bloemRefreshSession(ctx, claims); handled {
 		return pair, err
 	}
@@ -1304,14 +1304,6 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		Role:                   user.Role,
 		SessionID:              session.ID,
 		ImpersonatorUserID:     session.ImpersonatorUserID,
-		ProfileID:              claims.ProfileID,
-		OrganizationID:         claims.OrganizationID,
-		MembershipID:           claims.MembershipID,
-		PolicyRevision:         claims.PolicyRevision,
-		SecurityRevision:       claims.SecurityRevision,
-		AuthMethod:             claims.AuthMethod,
-		DeviceID:               claims.DeviceID,
-		CredentialRevision:     claims.CredentialRevision,
 		PasswordChangeRequired: user.PasswordChangeRequired && session.ImpersonatorUserID == nil,
 	}
 	if session.IsRemotePlayback() {

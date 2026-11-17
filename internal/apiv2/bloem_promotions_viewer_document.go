@@ -6,7 +6,7 @@ import (
 
 // bloemPromotionsViewerAuthority is the native viewer chain the three routes
 // share (mountBloemPromotionsViewer), stated once.
-const bloemPromotionsViewerAuthority = "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does; the existing default-deny route boundary excludes direct-profile sessions. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens."
+const bloemPromotionsViewerAuthority = "Requires authentication, native tenant resolution, viewer/PIN verification and a selected profile, as getBloemSeasonalViewer does. Availability is advertised by promotions_viewer_v1 in /api/bloem/v2/capabilities feature_tokens."
 
 type BloemPromotionsViewerHeaders struct {
 	ProfileID    string `header:"X-Profile-Id" required:"true" doc:"Verified profile belonging to the authenticated account."`

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -255,7 +256,7 @@ func TestRequireViewerAccessHonorsStreamTokenMarker(t *testing.T) {
 	})
 
 	t.Run("token resolver resolves scope and admits", func(t *testing.T) {
-		resolver := &directProfileViewerResolver{}
+		resolver := &recordingViewerResolver{}
 		m := &ViewerAccessMiddleware{}
 		m.SetTokenResolver(resolver)
 		var reached bool
@@ -371,4 +372,13 @@ func TestStreamTokenAuthOnlyAppliesToLiveHLSDelivery(t *testing.T) {
 			t.Errorf("%s was authorized by a stream token; only delivery paths may be", target)
 		}
 	}
+}
+
+// recordingViewerResolver resolves any input to a verified scope and keeps the
+// input it saw.
+type recordingViewerResolver struct{ input access.ResolveInput }
+
+func (r *recordingViewerResolver) Resolve(_ context.Context, input access.ResolveInput) (access.Scope, error) {
+	r.input = input
+	return access.Scope{UserID: input.UserID, ProfileID: input.ProfileID, ProfileVerified: true}, nil
 }

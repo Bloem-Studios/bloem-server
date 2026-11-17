@@ -103,7 +103,6 @@ func ClientDeviceFromContext(ctx context.Context) ClientDevice {
 // started; a value the device did not send leaves the caller's in place.
 func applyClientDevice(ctx context.Context, session *models.AuthSession) {
 	device := ClientDeviceFromContext(ctx)
-	bloemKeepBoundDevice(session, &device) // Bloem: a bound device stays (bloem_client_device.go)
 	if device.ID != "" {
 		session.DeviceID = device.ID
 	}

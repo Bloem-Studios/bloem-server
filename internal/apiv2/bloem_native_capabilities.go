@@ -13,7 +13,7 @@ type BloemCapabilityFeatures struct {
 	LegacySiloV1            bool `json:"legacy_silo_v1" doc:"Always false. Kept so clients that read it keep working."`
 	OrganizationMemberships bool `json:"organization_memberships" doc:"Accounts can belong to organizations."`
 	TenantBoundedMediaScope bool `json:"tenant_bounded_media_scope" doc:"Media visibility is bounded by the viewer's organization."`
-	DirectProfileLogin      bool `json:"direct_profile_login" doc:"A profile can hold its own credentials rather than logging in through its account."`
+	DirectProfileLogin      bool `json:"direct_profile_login" doc:"Always false: profiles do not sign in on their own. Kept so clients that read it keep working."`
 	SharedDevicePairing     bool `json:"shared_device_pairing" doc:"A device can be paired to a household rather than to one account."`
 	DelegatedAdminRoles     bool `json:"delegated_admin_roles" doc:"Administration can be delegated below the server owner."`
 }

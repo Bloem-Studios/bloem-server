@@ -15,10 +15,6 @@ const profileKey contextKey = "profile_id"
 func RequireProfile(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		profileID := r.Header.Get("X-Profile-Id")
-		profileID, ok := bindDirectProfile(w, r, profileID) // Bloem: a direct-profile session acts as its bound profile; a sibling is refused
-		if !ok {
-			return
-		}
 		if profileID == "" {
 			writeProfileHeaderRequired(w)
 			return

@@ -35,33 +35,27 @@ func (s bloemOrganizationStoreStub) GetOrganization(_ context.Context, id uuid.U
 	return organization, nil
 }
 
-// Profile passwords are advertised only while they are wired and the admin
-// switch is on; the switch defaults off, and an unwired switch reads as off.
-func TestBloemProfileCredentialManagementCapabilityTracksWiring(t *testing.T) {
-	on := func(context.Context) bool { return true }
-	off := func(context.Context) bool { return false }
-	for _, test := range []struct {
-		name      string
-		wired     bool
-		switchFn  func(context.Context) bool
-		advertise bool
-	}{
-		{"not wired", false, on, false},
-		{"switch unwired", true, nil, false},
-		{"switch off", true, off, false},
-		{"switch on", true, on, true},
-	} {
-		h := NewBloemSystemHandler(nil)
-		h.SetDirectProfileLoginAvailable(test.wired)
-		h.SetProfileCredentialManagementAvailable(test.wired)
-		h.SetProfilePasswordsEnabled(test.switchFn)
-		rec := httptest.NewRecorder()
-		h.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
-		body := rec.Body.String()
-		if strings.Contains(body, "profile_credential_management_v1") != test.advertise ||
-			strings.Contains(body, `"direct_profile_login":true`) != test.advertise {
-			t.Fatalf("%s: want advertised=%v, body=%s", test.name, test.advertise, body)
+// Profile sign-in was removed: no capability names it, and the published
+// direct_profile_login feature stays false.
+func TestBloemCapabilitiesDoNotAdvertiseProfileSignIn(t *testing.T) {
+	h := NewBloemSystemHandler(nil)
+	h.SetEbookRequestsAvailable(true)
+	rec := httptest.NewRecorder()
+	h.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
+	var body struct {
+		Features      map[string]bool `json:"features"`
+		FeatureTokens []string        `json:"feature_tokens"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	for _, token := range []string{"profile_credential_management_v1", "ebook_requests_direct_profile_v1"} {
+		if slices.Contains(body.FeatureTokens, token) {
+			t.Errorf("removed capability %q is advertised: %v", token, body.FeatureTokens)
 		}
+	}
+	if login, present := body.Features["direct_profile_login"]; !present || login {
+		t.Errorf("features.direct_profile_login = %v (present %v), want false", login, present)
 	}
 }
 
@@ -87,8 +81,6 @@ func TestBloemPlaybackOverlayCapabilityTracksWiring(t *testing.T) {
 func TestBloemSeasonalViewerCapabilityTracksWiring(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
 		h := NewBloemSystemHandler(nil)
-		h.SetProfileCredentialManagementAvailable(true)
-		h.SetProfilePasswordsEnabled(func(context.Context) bool { return true })
 		h.SetSeasonalViewerAvailable(enabled)
 		rec := httptest.NewRecorder()
 		h.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
@@ -101,9 +93,6 @@ func TestBloemSeasonalViewerCapabilityTracksWiring(t *testing.T) {
 		if slices.Contains(body.FeatureTokens, "seasonal_viewer_v1") != enabled {
 			t.Fatalf("capability enabled=%v body=%s", enabled, rec.Body.String())
 		}
-		if !slices.Contains(body.FeatureTokens, "profile_credential_management_v1") {
-			t.Fatal("seasonal capability lost credential management support")
-		}
 		for _, token := range bloemCapabilityTokens {
 			if !slices.Contains(body.FeatureTokens, token) {
 				t.Fatalf("existing feature %s was lost", token)
@@ -113,11 +102,7 @@ func TestBloemSeasonalViewerCapabilityTracksWiring(t *testing.T) {
 }
 
 func TestBloemCapabilitiesExactContract(t *testing.T) {
-	// Capability discovery must track what is actually wired: a server with
-	// direct profile login advertises it, one without does not.
 	handler := NewBloemSystemHandler(nil)
-	handler.SetDirectProfileLoginAvailable(true)
-	handler.SetProfilePasswordsEnabled(func(context.Context) bool { return true })
 	rec := httptest.NewRecorder()
 	handler.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
 	if rec.Code != http.StatusOK {
@@ -125,7 +110,7 @@ func TestBloemCapabilitiesExactContract(t *testing.T) {
 	}
 	want := `{"api":"bloem/v2","identity_schema":1,` +
 		`"features":{"legacy_silo_v1":false,"organization_memberships":true,"tenant_bounded_media_scope":true,` +
-		`"direct_profile_login":true,"shared_device_pairing":false,"delegated_admin_roles":false},` +
+		`"direct_profile_login":false,"shared_device_pairing":false,"delegated_admin_roles":false},` +
 		`"media_types":["movie","series","episode","audiobook","ebook","manga"],` +
 		`"feature_tokens":["playback_plan_v3","server_remote_stream_bitrate_policy_v1","server_local_stream_bitrate_policy_v1","neutral_playback_v3_contract_v1","embedded_subtitles_v1","layout_aware_passthrough",` +
 		`"playback_route_diagnostics","device_quirks_v1","seek_reanchor_v1","output_change_v1",` +
@@ -279,7 +264,7 @@ func TestBloemBookRequestCapabilityTokensTrackWiring(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 			t.Fatal(err)
 		}
-		if slices.Contains(body.FeatureTokens, "ebook_requests_v1") != tc.ebooks || slices.Contains(body.FeatureTokens, "ebook_requests_direct_profile_v1") != tc.ebooks || slices.Contains(body.FeatureTokens, "book_request_connection_admin_v1") != tc.connectionAdmin {
+		if slices.Contains(body.FeatureTokens, "ebook_requests_v1") != tc.ebooks || slices.Contains(body.FeatureTokens, "book_request_connection_admin_v1") != tc.connectionAdmin {
 			t.Fatalf("%+v: %v", tc, body.FeatureTokens)
 		}
 	}

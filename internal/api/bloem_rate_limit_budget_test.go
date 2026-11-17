@@ -13,7 +13,7 @@ import (
 // AuthEndpointHandler applies an endpoint budget only when the name is one
 // ratelimit.DefaultConfig defines; any other name silently leaves the route
 // with nothing but the shared per-IP allowance, and the admin settings cannot
-// add it. Direct-profile login shipped that way. Every literal budget name the
+// add it. Every literal budget name the
 // routers use must therefore be a default one.
 func TestAuthEndpointBudgetsAreDefined(t *testing.T) {
 	defaults := ratelimit.DefaultConfig().AuthEndpoints

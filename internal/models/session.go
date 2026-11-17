@@ -51,12 +51,8 @@ type AuthSession struct {
 	// extends the session past it. nil for a session without a fixed end.
 	AbsoluteExpiresAt *time.Time
 
-	// Bloem: a direct-profile session's profile, the profile credential
-	// revision it was issued under, and how it signed in. Such a session's
-	// DeviceID is the device it was issued for.
-	ProfileID                 *string
-	ProfileCredentialRevision *int64
-	AuthMethod                string
+	// Bloem: how the session signed in ("account" or "preview_guest").
+	AuthMethod string
 }
 
 // IsRemotePlayback reports whether the session is a remote-playback handoff.

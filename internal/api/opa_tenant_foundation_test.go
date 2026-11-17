@@ -95,7 +95,6 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate tenant foundation: %v", err)
 	}
-	enableProfilePasswords(t, pool)
 	// Match a fresh application connection after the ID-widening migrations;
 	// legacy prepared result types must not survive the schema transition.
 	pool.Reset()
@@ -400,10 +399,6 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 		}
 	}
 
-	nativeTenant, err := tenantResolver.Resolve(ctx, accountID, &legacyTenant.OrganizationID, false)
-	if err != nil {
-		t.Fatalf("resolve native default-organization tenant: %v", err)
-	}
 	viewerResolver := policy.NewViewerResolver(
 		auth.NewUserRepository(pool),
 		userStores,
@@ -414,8 +409,8 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 	tenantMiddleware := apimw.NewTenantMiddleware(tenantResolver)
 	viewerMiddleware := apimw.NewViewerAccessMiddleware(viewerResolver)
 	bloemSessionID := "opa-v2-adapter-session"
-	bloemClaims := opaAcceptanceTenantClaims(accountID, bloemSessionID, nativeTenant)
-	bloemAdapter := tenantMiddleware.RequireBloem(viewerMiddleware.RequireViewerAccess(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	bloemClaims := &auth.Claims{UserID: accountID, SessionID: bloemSessionID, TokenType: auth.TokenTypeAccess}
+	bloemAdapter := tenantMiddleware.ResolveNative(viewerMiddleware.RequireViewerAccess(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		scope, ok := access.GetScope(r.Context())
 		if !ok || !scope.LibrariesRestricted || !slices.Equal(scope.AllowedLibraryIDs, wantVisibleFolderIDs) {
 			t.Errorf("v2 adapter scope = %#v, want exact tenant folders %v", scope, wantVisibleFolderIDs)
@@ -430,29 +425,6 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 	if bloemResponse.Code != http.StatusNoContent {
 		t.Fatalf("v2 adapter = %d %s", bloemResponse.Code, bloemResponse.Body.String())
 	}
-
-	staleGate := tenantMiddleware.RequireBloem(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	if _, err := pool.Exec(ctx, `
-		UPDATE organization_memberships
-		SET security_revision=security_revision+1
-		WHERE id=$1`, nativeTenant.MembershipID); err != nil {
-		t.Fatalf("advance membership revision: %v", err)
-	}
-	assertOPAAcceptanceStaleBloem(t, staleGate, bloemClaims, "membership revision")
-	nativeTenant, err = tenantResolver.Resolve(ctx, accountID, &legacyTenant.OrganizationID, false)
-	if err != nil {
-		t.Fatalf("re-resolve tenant after membership revision: %v", err)
-	}
-	organizationStaleClaims := opaAcceptanceTenantClaims(accountID, "opa-v2-stale-organization", nativeTenant)
-	if _, err := pool.Exec(ctx, `
-		UPDATE organizations
-		SET policy_revision=policy_revision+1
-		WHERE id=$1`, nativeTenant.OrganizationID); err != nil {
-		t.Fatalf("advance organization revision: %v", err)
-	}
-	assertOPAAcceptanceStaleBloem(t, staleGate, organizationStaleClaims, "organization revision")
 
 	legacyClaims, err := auth.NewJWTService(cfg.Auth.JWTSecret, cfg.Auth.AccessTokenExpiry, cfg.Auth.RefreshTokenExpiry).ValidateToken(loginTokens.AccessToken)
 	if err != nil {
@@ -598,29 +570,6 @@ func opaAcceptanceOrganizationOwner(t *testing.T, ctx context.Context, pool *pgx
 		t.Fatalf("load organization %s resource owner: %v", organizationID, err)
 	}
 	return ownerID
-}
-
-func opaAcceptanceTenantClaims(accountID int, sessionID string, tenant tenancy.Context) *auth.Claims {
-	return &auth.Claims{
-		UserID:           accountID,
-		SessionID:        sessionID,
-		TokenType:        auth.TokenTypeAccess,
-		OrganizationID:   tenant.OrganizationID.String(),
-		MembershipID:     tenant.MembershipID.String(),
-		PolicyRevision:   tenant.PolicyRevision,
-		SecurityRevision: tenant.SecurityRevision,
-	}
-}
-
-func assertOPAAcceptanceStaleBloem(t *testing.T, handler http.Handler, claims *auth.Claims, revision string) {
-	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/acceptance/stale", nil)
-	request = request.WithContext(apimw.SetClaims(request.Context(), claims))
-	response := httptest.NewRecorder()
-	handler.ServeHTTP(response, request)
-	if response.Code != http.StatusUnauthorized || !strings.Contains(response.Body.String(), `"error":"authorization_state_stale"`) {
-		t.Fatalf("stale %s response = %d %s, want authorization_state_stale", revision, response.Code, response.Body.String())
-	}
 }
 
 func assertOPAAcceptanceJSONFields(

@@ -56,7 +56,7 @@ func bloemHumaConfig() huma.Config {
 	}
 	cfg.Components.SecuritySchemes["bloemAccountSession"] = &huma.SecurityScheme{
 		Type: "http", Scheme: "bearer",
-		Description: "A non-impersonated account access token backed by a login session. Direct-profile tokens, API keys and administrative-context tokens cannot manage profile credentials. Household management authority is checked separately.",
+		Description: "A non-impersonated account access token backed by a login session. API keys and administrative-context tokens are insufficient. Household management authority is checked separately.",
 	}
 	cfg.Components.SecuritySchemes["bloemOrganizationContext"] = &huma.SecurityScheme{
 		Type: "http", Scheme: "bearer",
@@ -111,7 +111,6 @@ func registerBloemAll(reg *Registry) {
 	registerBloemNotifications(reg)
 	registerBloemPersons(reg)
 	registerBloemItemCollections(reg)
-	registerBloemProfileCredentialDocument(reg)
 	registerBloemOrganizationWorkflowDocument(reg)
 	registerBloemOrganizationAdministrationDocument(reg)
 	registerBloemOrganizationSupportDocument(reg)

@@ -3,17 +3,23 @@ package auth
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/migrations"
 )
 
 func TestRevokeByUserAndSessionScopesTheMutation(t *testing.T) {
-	service := newProfileCredentialService(t)
-	userA, _ := newProfileCredentialFixture(t, service.pool, "session-scope-a")
-	userB, _ := newProfileCredentialFixture(t, service.pool, "session-scope-b")
-	repository := NewSessionRepository(service.pool)
+	pool := newSessionTestDatabase(t)
+	userA := newSessionTestAccount(t, pool, "session-scope-a")
+	userB := newSessionTestAccount(t, pool, "session-scope-b")
+	repository := NewSessionRepository(pool)
 	ctx := context.Background()
 
 	for _, session := range []models.AuthSession{
@@ -40,46 +46,85 @@ func TestRevokeByUserAndSessionScopesTheMutation(t *testing.T) {
 	}
 }
 
-func TestSessionRepositoryCallerTransactionControlsScopedRevoke(t *testing.T) {
-	service := newProfileCredentialService(t)
-	userID, profileID := newProfileCredentialFixture(t, service.pool, "session-caller-tx")
-	repository := NewSessionRepository(service.pool)
+func TestSessionRepositoryCallerTransactionControlsRevoke(t *testing.T) {
+	pool := newSessionTestDatabase(t)
+	userID := newSessionTestAccount(t, pool, "session-caller-tx")
+	repository := NewSessionRepository(pool)
 	ctx := context.Background()
-	profileRevision := int64(1)
-	for _, id := range []string{"caller-tx-one", "caller-tx-two"} {
-		profile := profileID
-		if err := repository.Create(ctx, models.AuthSession{ID: id, UserID: userID, DeviceID: "device-" + id, ProfileID: &profile, ProfileCredentialRevision: &profileRevision, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
-			t.Fatalf("create %s: %v", id, err)
-		}
+	if err := repository.Create(ctx, models.AuthSession{ID: "caller-tx-one", UserID: userID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
+		t.Fatalf("create session: %v", err)
 	}
 
-	tx, err := service.pool.Begin(ctx)
+	tx, err := pool.Begin(ctx)
 	if err != nil {
-		t.Fatalf("begin single revoke: %v", err)
+		t.Fatalf("begin revoke: %v", err)
 	}
 	if err := repository.RevokeByUserAndSessionInTransaction(ctx, tx, userID, "caller-tx-one"); err != nil {
-		t.Fatalf("revoke one in transaction: %v", err)
+		t.Fatalf("revoke in transaction: %v", err)
 	}
 	if err := tx.Rollback(ctx); err != nil {
-		t.Fatalf("rollback single revoke: %v", err)
+		t.Fatalf("rollback revoke: %v", err)
 	}
 	if valid, err := repository.IsValid(ctx, "caller-tx-one"); err != nil || !valid {
-		t.Fatalf("single session after rollback valid=%v, error=%v", valid, err)
+		t.Fatalf("session after rollback valid=%v, error=%v", valid, err)
 	}
 
-	tx, err = service.pool.Begin(ctx)
+	tx, err = pool.Begin(ctx)
 	if err != nil {
-		t.Fatalf("begin profile revoke: %v", err)
+		t.Fatalf("begin revoke: %v", err)
 	}
-	if err := repository.RevokeAllByUserAndProfilesInTransaction(ctx, tx, userID, []string{profileID}); err != nil {
-		t.Fatalf("revoke profiles in transaction: %v", err)
+	if err := repository.RevokeByUserAndSessionInTransaction(ctx, tx, userID, "caller-tx-one"); err != nil {
+		t.Fatalf("revoke in transaction: %v", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
-		t.Fatalf("commit profile revoke: %v", err)
+		t.Fatalf("commit revoke: %v", err)
 	}
-	for _, id := range []string{"caller-tx-one", "caller-tx-two"} {
-		if valid, err := repository.IsValid(ctx, id); err != nil || valid {
-			t.Fatalf("%s after commit valid=%v, error=%v", id, valid, err)
-		}
+	if valid, err := repository.IsValid(ctx, "caller-tx-one"); err != nil || valid {
+		t.Fatalf("session after commit valid=%v, error=%v", valid, err)
 	}
+}
+
+// newSessionTestDatabase is a migrated disposable database with an activated
+// server owner, so accounts can join the default organization.
+func newSessionTestDatabase(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	pool := newAuthTenancyDisposableDatabase(t, ctx, dsn)
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate database: %v", err)
+	}
+	owner, err := NewUserRepository(pool).Create(ctx, models.CreateUserInput{
+		Username: "session-owner", Email: "session-owner@example.test", Password: "owner-password", Role: "admin",
+	})
+	if err != nil {
+		t.Fatalf("create fixture owner: %v", err)
+	}
+	tenants := tenancy.NewStore(pool)
+	if _, err := tenants.ProvisionDefaultMembership(ctx, owner.ID, "admin"); err != nil {
+		t.Fatalf("provision fixture owner membership: %v", err)
+	}
+	if _, err := tenants.ActivateInitialOwnership(ctx, owner.ID); err != nil {
+		t.Fatalf("activate fixture owner: %v", err)
+	}
+	return pool
+}
+
+// newSessionTestAccount creates an account in the default organization.
+func newSessionTestAccount(t *testing.T, pool *pgxpool.Pool, suffix string) int {
+	t.Helper()
+	ctx := context.Background()
+	user, err := NewUserRepository(pool).Create(ctx, models.CreateUserInput{
+		Username: suffix + "-user", Email: "fixture-" + suffix + "@example.test", Password: "account-password", Role: "user",
+	})
+	if err != nil {
+		t.Fatalf("create fixture account: %v", err)
+	}
+	if _, err := tenancy.NewStore(pool).ProvisionDefaultMembership(ctx, user.ID, "user"); err != nil {
+		t.Fatalf("provision fixture membership: %v", err)
+	}
+	return user.ID
 }

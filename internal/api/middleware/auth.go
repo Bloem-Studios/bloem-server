@@ -410,9 +410,6 @@ func profileLessAdminRefused(ctx context.Context, claims *auth.Claims, requiresP
 // profile context when RequireProfile ran earlier in the chain, otherwise
 // the raw X-Profile-Id header.
 func declaredProfileID(r *http.Request) string {
-	if IsDirectProfileSession(r) { // Bloem: the token-bound profile
-		return ActiveProfileID(r)
-	}
 	if id := GetProfileID(r.Context()); id != "" {
 		return id
 	}

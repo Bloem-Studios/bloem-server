@@ -176,7 +176,7 @@ func compatDelegationFixture(t *testing.T) (*nativeVideoDelegationFixture, *comp
 func TestNativeVideoCompatDelegationCarriesNoCredential(t *testing.T) {
 	d, sessions, binding := compatDelegationFixture(t)
 	a := binding.Authority
-	if a.TokenType != nativeVideoCompatTokenType || a.AuthMethod != nativeVideoCompatTokenType || a.LoginSessionID != "login-session" || a.PlaybackSessionID != "play-session" || !a.PINVerificationSkipped || a.ProfilePINRevision != 1 || a.ProfileCredentialRevision != 2 || a.Tenant != d.base.tenant.tenant || a.CompatSessionDigest == "" {
+	if a.TokenType != nativeVideoCompatTokenType || a.AuthMethod != nativeVideoCompatTokenType || a.LoginSessionID != "login-session" || a.PlaybackSessionID != "play-session" || !a.PINVerificationSkipped || a.ProfilePINRevision != 1 || a.Tenant != d.base.tenant.tenant || a.CompatSessionDigest == "" {
 		t.Fatalf("compat delegation = %+v", a)
 	}
 	if !a.ExpiresAt.After(time.Now()) || a.ExpiresAt.After(time.Now().Add(playback.MaxTokenTTL+time.Minute)) || a.ExpiresAt.After(d.login.ExpiresAt) {
@@ -202,7 +202,7 @@ func TestNativeVideoCompatDelegationCarriesNoCredential(t *testing.T) {
 }
 
 func TestNativeVideoCompatDelegatedAuthorityRejectsCurrentRevocations(t *testing.T) {
-	for _, kind := range []string{"compat-row-gone", "no-compat", "login-revoked", "login-expired", "login-inactive", "login-other-profile", "account", "pin", "credential", "profile-removed", "profile-tenant", "tenant", "viewer", "library", "rating", "source", "session-other-profile", "denied", "expiry", "other-playback-session"} {
+	for _, kind := range []string{"compat-row-gone", "no-compat", "login-revoked", "login-expired", "login-inactive", "account", "pin", "profile-removed", "profile-tenant", "tenant", "viewer", "library", "rating", "source", "session-other-profile", "denied", "expiry", "other-playback-session"} {
 		t.Run(kind, func(t *testing.T) {
 			d, sessions, binding := compatDelegationFixture(t)
 			f := d.base
@@ -218,15 +218,10 @@ func TestNativeVideoCompatDelegatedAuthorityRejectsCurrentRevocations(t *testing
 				d.login.ExpiresAt = time.Now().Add(-time.Minute)
 			case "login-inactive":
 				f.login.active = false
-			case "login-other-profile":
-				other := "other"
-				d.login.ProfileID = &other
 			case "account":
 				f.login.enabled = false
 			case "pin":
 				d.profile.PINRevision++
-			case "credential":
-				d.profile.CredentialRevision++
 			case "profile-removed":
 				f.policy.loadProfile = func(context.Context, int, string) (*userstore.Profile, error) {
 					return nil, errors.New("profile removed")

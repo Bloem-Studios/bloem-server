@@ -601,7 +601,7 @@ func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID s
 		// Live session: secure transports require a user above; legacy bearer
 		// routes allow zero. Either way, a present but mismatched identity is
 		// forbidden. No token verification on this hot path.
-		if requestUserID != 0 && !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, requestUserID) {
+		if requestUserID != 0 && session.UserID != requestUserID {
 			return nil, playback.SessionForbidden, nil, nil, nil
 		}
 		// A non-API or incomplete route is returned to the handler for the
@@ -677,17 +677,9 @@ func (h *PlaybackHandler) loadTranscodeServeSession(r *http.Request, sessionID s
 	// rebuild doesn't hold a stream slot and its error reaches the client.
 	if card != nil && (card.ToneMapMode != "" || card.KeyframePlaylist) {
 		session, _, status, reconstructErr := h.tm.LoadOrReconstructTranscodeWithError(r.Context(), h.sessionMgr.GetSession, sessionID, requestUserID, requestedSegment, card)
-		if status == playback.SessionLoaded && requestUserID != 0 &&
-			!callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, requestUserID) {
-			return nil, playback.SessionForbidden, nil, nil, nil
-		}
 		return session, status, card, claims, reconstructErr
 	}
 	session, status := h.tm.LoadOrReconstructSession(r.Context(), h.sessionMgr.GetSession, sessionID, requestUserID, card)
-	if status == playback.SessionLoaded && requestUserID != 0 &&
-		!callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, requestUserID) {
-		return nil, playback.SessionForbidden, nil, nil, nil
-	}
 	return session, status, card, claims, nil
 }
 

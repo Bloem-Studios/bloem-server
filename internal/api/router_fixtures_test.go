@@ -253,12 +253,10 @@ func TestCIChangedLineLintNeedsNoRepositoryCredential(t *testing.T) {
 
 func assertLegacyToken(t *testing.T, cfg *config.Config, token string) {
 	t.Helper()
-	claims, err := auth.NewJWTService(cfg.Auth.JWTSecret, cfg.Auth.AccessTokenExpiry, cfg.Auth.RefreshTokenExpiry).ValidateToken(token)
-	if err != nil {
+	// Claims carries no tenant fields at all, so a token that validates holds
+	// no tenant authority.
+	if _, err := auth.NewJWTService(cfg.Auth.JWTSecret, cfg.Auth.AccessTokenExpiry, cfg.Auth.RefreshTokenExpiry).ValidateToken(token); err != nil {
 		t.Fatalf("validate legacy token: %v", err)
-	}
-	if claims.OrganizationID != "" || claims.MembershipID != "" || claims.PolicyRevision != 0 || claims.SecurityRevision != 0 {
-		t.Fatalf("v1 token contains tenant authority: %#v", claims)
 	}
 }
 
@@ -319,6 +317,5 @@ func newV1TenancyDatabase(t *testing.T) *pgxpool.Pool {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
-	enableProfilePasswords(t, pool)
 	return pool
 }

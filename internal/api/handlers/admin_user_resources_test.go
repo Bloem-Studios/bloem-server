@@ -24,10 +24,9 @@ import (
 )
 
 type adminUserResourceSessions struct {
-	sessions                map[string]*models.AuthSession
-	cancelAfterRevoke       func()
-	perSessionRevokeCalls   int
-	scopedAtomicRevokeCalls int
+	sessions              map[string]*models.AuthSession
+	cancelAfterRevoke     func()
+	perSessionRevokeCalls int
 }
 
 type adminOrganizationUserStore struct {
@@ -186,30 +185,6 @@ func (s *adminUserResourceSessions) RevokeAllByUser(ctx context.Context, userID 
 	return nil
 }
 
-func (s *adminUserResourceSessions) RevokeAllByUserAndProfiles(ctx context.Context, userID int, profileIDs []string) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	selected := make(map[string]struct{}, len(profileIDs))
-	s.scopedAtomicRevokeCalls++
-	for _, profileID := range profileIDs {
-		selected[profileID] = struct{}{}
-	}
-	now := time.Now()
-	for _, session := range s.sessions {
-		if session.UserID != userID || session.ProfileID == nil || session.RevokedAt != nil {
-			continue
-		}
-		if _, ok := selected[*session.ProfileID]; ok {
-			session.RevokedAt = &now
-		}
-	}
-	if s.cancelAfterRevoke != nil {
-		s.cancelAfterRevoke()
-	}
-	return ctx.Err()
-}
-
 func (s *adminUserResourceSessions) RevokeAllByImpersonator(ctx context.Context, _ int) error {
 	return ctx.Err()
 }
@@ -269,9 +244,8 @@ func newAdminUserResourceHandler(t *testing.T) (*AdminHandler, map[int]userstore
 		1: {ID: 1, Username: "account-a", MaxProfiles: new(4)},
 		2: {ID: 2, Username: "account-b", MaxProfiles: new(4)},
 	}}
-	profileA := "profile-a-secondary"
 	sessions := &adminUserResourceSessions{sessions: map[string]*models.AuthSession{
-		"session-a": {ID: "session-a", UserID: 1, DeviceName: "A browser", ProfileID: &profileA, ExpiresAt: time.Now().Add(time.Hour)},
+		"session-a": {ID: "session-a", UserID: 1, DeviceName: "A browser", ExpiresAt: time.Now().Add(time.Hour)},
 		"session-b": {ID: "session-b", UserID: 2, DeviceName: "B browser", ExpiresAt: time.Now().Add(time.Hour)},
 	}}
 	handler := NewAdminHandler(users, nil, mappedTestUserStoreProvider{stores: stores})
@@ -677,7 +651,6 @@ func TestAdminUserAuthSessions_CompatInvalidationSurvivesRequestCancellation(t *
 	}{
 		{name: "global single", path: "/api/bloem/v2/admin/platform/accounts/1/auth-sessions/session-a"},
 		{name: "global all", path: "/api/bloem/v2/admin/platform/accounts/1/auth-sessions"},
-		{name: "profile scoped single", path: "/api/bloem/v2/admin/platform/accounts/1/auth-sessions/session-a", scoped: true},
 		{name: "profile scoped all", path: "/api/bloem/v2/admin/platform/accounts/1/auth-sessions", scoped: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -715,57 +688,6 @@ func TestAdminUserAuthSessions_CompatInvalidationSurvivesRequestCancellation(t *
 				t.Fatalf("global compat sessions remain: persistent=%v memory=%v", state.persistent, state.memory)
 			}
 		})
-	}
-}
-
-func TestAdminUserAuthSessions_ProfileScopedRevokeAllIsAtomicAcrossRequestCancellation(t *testing.T) {
-	tenantID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
-	handler, stores, sessions := newAdminUserResourceHandler(t)
-	stores[1] = &adminOrganizationUserStore{UserStore: stores[1], organizationID: tenantID.String()}
-	profileA := "profile-a-secondary"
-	profileB := "profile-other-tenant"
-	sessions.sessions = map[string]*models.AuthSession{
-		"tenant-a-1": {ID: "tenant-a-1", UserID: 1, ProfileID: &profileA, ExpiresAt: time.Now().Add(time.Hour)},
-		"tenant-a-2": {ID: "tenant-a-2", UserID: 1, ProfileID: &profileA, ExpiresAt: time.Now().Add(time.Hour)},
-		"tenant-b":   {ID: "tenant-b", UserID: 1, ProfileID: &profileB, ExpiresAt: time.Now().Add(time.Hour)},
-		"account":    {ID: "account", UserID: 1, ExpiresAt: time.Now().Add(time.Hour)},
-	}
-	state := newCancellationCompatState()
-	handler.OnUserProfileSessionsRevoked = state.invalidateProfiles
-	requestCtx, cancelRequest := context.WithCancel(withAdminResourceOrganization(context.Background(), tenantID))
-	sessions.cancelAfterRevoke = cancelRequest
-
-	recorder := adminUserResourceRequestWithContext(t, routeAdminUserResources(handler), requestCtx, http.MethodDelete,
-		"/api/bloem/v2/admin/platform/accounts/1/auth-sessions")
-	if recorder.Code != http.StatusNoContent {
-		t.Fatalf("status = %d: %s, want 204", recorder.Code, recorder.Body.String())
-	}
-	for _, sessionID := range []string{"tenant-a-1", "tenant-a-2"} {
-		if sessions.sessions[sessionID].RevokedAt == nil {
-			t.Fatalf("in-scope native session %q remains active", sessionID)
-		}
-	}
-	for _, sessionID := range []string{"tenant-b", "account"} {
-		if sessions.sessions[sessionID].RevokedAt != nil {
-			t.Fatalf("out-of-scope native session %q was revoked", sessionID)
-		}
-	}
-	if _, ok := state.persistent["profile-a"]; ok {
-		t.Fatal("in-scope durable compat session remains")
-	}
-	if _, ok := state.memory["profile-a"]; ok {
-		t.Fatal("in-scope memory compat session remains")
-	}
-	for _, token := range []string{"profile-b", "account"} {
-		if _, ok := state.persistent[token]; !ok {
-			t.Fatalf("out-of-scope durable compat session %q was removed", token)
-		}
-		if _, ok := state.memory[token]; !ok {
-			t.Fatalf("out-of-scope memory compat session %q was removed", token)
-		}
-	}
-	if sessions.scopedAtomicRevokeCalls != 1 || sessions.perSessionRevokeCalls != 0 {
-		t.Fatalf("scoped revoke calls: atomic=%d per-session=%d, want one atomic boundary", sessions.scopedAtomicRevokeCalls, sessions.perSessionRevokeCalls)
 	}
 }
 

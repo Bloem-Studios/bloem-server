@@ -10,21 +10,17 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/ambience"
-	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/promotions"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 )
 
-// These are the 17 methods on the 11 paths added by the web-completion
-// commit. Checking methods and wire contracts catches omissions that the
+// These are the methods the web-completion commit added that remain after
+// profile sign-in was removed. Checking methods and wire contracts catches omissions that the
 // immutable path-count ceiling alone cannot detect.
 var bloemWebCompletionOperations = []struct {
 	path, method, status, security string
 }{
-	{"/profile-credentials/{id}", "get", "200", "bloemAccountSession"},
-	{"/profile-credentials/{id}", "put", "204", "bloemAccountSession"},
-	{"/profile-credentials/{id}", "delete", "204", "bloemAccountSession"},
 	{"/admin/organization/activity", "get", "200", "bloemOrganizationContext"},
 	{"/admin/organization/invitations/{id}/resend", "post", "201", "bloemOrganizationContext"},
 	{"/admin/organization/invitations/{id}", "delete", "204", "bloemOrganizationContext"},
@@ -143,7 +139,6 @@ func TestBloemWebCompletionDocumentRevisionsAndEnvelopes(t *testing.T) {
 		path, method, status string
 		fields               []string
 	}{
-		{"/profile-credentials/{id}", "get", "200", []string{"profile_id", "login_email", "configured", "credential_revision"}},
 		{"/admin/organization/activity", "get", "200", []string{"events", "next_cursor"}},
 		{"/admin/organization/invitations/{id}/resend", "post", "201", []string{"invitation", "claim_token"}},
 		{"/admin/platform/promotions/", "get", "200", []string{"promotions", "surfaces"}},
@@ -158,8 +153,6 @@ func TestBloemWebCompletionDocumentRevisionsAndEnvelopes(t *testing.T) {
 		})
 	}
 	for _, tc := range []struct{ path, method, revision string }{
-		{"/profile-credentials/{id}", "put", "credential revision"},
-		{"/profile-credentials/{id}", "delete", "credential revision"},
 		{"/admin/organization/invitations/{id}/resend", "post", "policy revision"},
 		{"/admin/organization/invitations/{id}", "delete", "policy revision"},
 	} {
@@ -253,15 +246,6 @@ func TestBloemWebCompletionDocumentInputsAndTokens(t *testing.T) {
 	}
 	invitation := bloemDocSchema(t, doc, bloemDocObject(t, response, "properties", "invitation"))
 	bloemDocFields(t, invitation, "id", "email", "delivery", "role", "access_group_id", "library_ids", "create_profile", "show_tour", "note", "invited_by", "invited_by_name", "status", "expires_at", "accepted_at", "accepted_user_id", "created_at")
-	for _, method := range []string{"put", "delete"} {
-		op := bloemDocObject(t, doc, "paths", BloemPrefix+"/profile-credentials/{id}", method)
-		schema := bloemDocSchema(t, doc, bloemDocObject(t, op, "requestBody", "content", "application/json", "schema"))
-		for _, field := range []string{"current_password", "password"} {
-			if bloemDocObject(t, schema, "properties", field)["writeOnly"] != true {
-				t.Errorf("%s %s must be writeOnly", method, field)
-			}
-		}
-	}
 }
 
 func TestBloemWebCompletionDocumentAuthorityHeaders(t *testing.T) {
@@ -290,9 +274,6 @@ func TestBloemWebCompletionDocumentAuthorityHeaders(t *testing.T) {
 			if headers["X-Profile-Id"]["required"] != true || headers["X-Profile-Token"] == nil {
 				t.Error("seasonal viewer delivery requires the acting profile and documents PIN proof")
 			}
-			if !strings.Contains(op["description"].(string), "excludes direct-profile sessions") {
-				t.Error("seasonal delivery must retain the direct-profile boundary")
-			}
 			bloemDocObject(t, op, "responses", "200", "headers", "Cache-Control")
 		default:
 			if len(headers) != 0 {
@@ -317,7 +298,6 @@ func TestBloemWebCompletionDocumentDomainShapes(t *testing.T) {
 		{"Pack", ambience.Pack{}},
 		{"Wire", ambience.Wire{}},
 		{"StoredAsset", ambience.StoredAsset{}},
-		{"ProfileCredentialStatus", auth.ProfileCredentialStatus{}},
 		{"OrganizationAuditPage", tenancy.OrganizationAuditPage{}},
 	} {
 		t.Run(tc.schema, func(t *testing.T) {

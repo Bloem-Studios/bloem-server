@@ -42,16 +42,16 @@ type nativeCoverReferences interface {
 // Actor metadata reuses the host's credential checks without storing tokens or
 // invoking video playback admission. The account incarnation also fences reused IDs.
 type coverActor struct {
-	UserID                                                                  int
-	Incarnation                                                             uuid.UUID
-	ProfileID, TokenType, LoginSessionID, AuthMethod                        string
-	APIKeyID, APIKeyRevision, ProfilePINRevision, ProfileCredentialRevision int64
-	Tenant                                                                  tenancy.Context
-	ExpiresAt                                                               time.Time
+	UserID                                           int
+	Incarnation                                      uuid.UUID
+	ProfileID, TokenType, LoginSessionID, AuthMethod string
+	APIKeyID, APIKeyRevision, ProfilePINRevision     int64
+	Tenant                                           tenancy.Context
+	ExpiresAt                                        time.Time
 }
 
 func (a coverActor) credential() handlers.NativeVideoAuthority {
-	return handlers.NativeVideoAuthority{UserID: a.UserID, ProfileID: a.ProfileID, TokenType: a.TokenType, LoginSessionID: a.LoginSessionID, AuthMethod: a.AuthMethod, APIKeyID: a.APIKeyID, APIKeyRevision: a.APIKeyRevision, ProfilePINRevision: a.ProfilePINRevision, ProfileCredentialRevision: a.ProfileCredentialRevision, Tenant: a.Tenant, ExpiresAt: a.ExpiresAt}
+	return handlers.NativeVideoAuthority{UserID: a.UserID, ProfileID: a.ProfileID, TokenType: a.TokenType, LoginSessionID: a.LoginSessionID, AuthMethod: a.AuthMethod, APIKeyID: a.APIKeyID, APIKeyRevision: a.APIKeyRevision, ProfilePINRevision: a.ProfilePINRevision, Tenant: a.Tenant, ExpiresAt: a.ExpiresAt}
 }
 
 type coverRecipe struct {
@@ -218,7 +218,7 @@ func freshNativeStorageViewer(ctx context.Context, p nativeVideoPolicy) (context
 		return nil, middleware.ErrCurrentCredentialInvalid
 	}
 	ctx = tenancy.WithContext(ctx, tenant)
-	skip := claims.TokenType == auth.TokenTypeAPIKey || claims.AuthMethod == auth.AuthMethodDirectProfile
+	skip := claims.TokenType == auth.TokenTypeAPIKey
 	fresh, err := p.viewer.ResolveCurrent(ctx, access.ResolveInput{UserID: claims.UserID, ProfileID: scope.ProfileID, SessionID: claims.SessionID, ProfileToken: request.profileToken, SkipPINVerification: skip})
 	if err != nil {
 		return nil, err
@@ -280,7 +280,6 @@ func (s *nativeStorageArtwork) captureActor(ctx context.Context) (coverActor, er
 			return empty, middleware.ErrCurrentCredentialInvalid
 		}
 		a.ProfilePINRevision = profile.PINRevision
-		a.ProfileCredentialRevision = profile.CredentialRevision
 	}
 	return a, nil
 }

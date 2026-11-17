@@ -9,8 +9,7 @@ import (
 
 // mountBloemSeasonalViewer is called inside /api/bloem/v2 alongside the client
 // surface. All three authority resolvers are mandatory; a partially configured
-// server neither mounts nor advertises viewer delivery. RequireAuth retains the
-// existing default-deny direct-profile route guard unchanged.
+// server neither mounts nor advertises viewer delivery.
 func mountBloemSeasonalViewer(r chi.Router, handler *handlers.BloemSeasonalViewerHandler, client bloemClientSurface, system *handlers.BloemSystemHandler) {
 	available := handler != nil && client.auth != nil && client.tenant != nil && client.viewer != nil
 	if system != nil {

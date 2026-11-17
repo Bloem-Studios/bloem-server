@@ -85,39 +85,24 @@ func TestBloemSeasonalViewerMountRequiresAllAuthorityResolvers(t *testing.T) {
 	}
 }
 
-func TestBloemSeasonalViewerMountPreservesPINAndDirectProfileBoundaries(t *testing.T) {
-	for _, direct := range []bool{false, true} {
-		t.Run(map[bool]string{false: "PIN required", true: "direct profile denied"}[direct], func(t *testing.T) {
-			claims := &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}
-			if direct {
-				claims.AuthMethod = auth.AuthMethodDirectProfile
-				claims.ProfileID = "viewer"
-			}
-			authMW := apimw.NewAuthMiddleware(seasonalMountTokens{claims: claims}, seasonalMountSessions{}, nil, nil)
-			client := bloemClientSurface{
-				auth:   authMW,
-				tenant: apimw.NewTenantMiddleware(seasonalMountTenant{tenant: tenancy.Context{AccountID: 7, OrganizationID: uuid.New()}}),
-				viewer: apimw.NewViewerAccessMiddleware(seasonalMountViewer{}),
-			}
-			router := chi.NewRouter()
-			router.Route(NativeAPIPrefix, func(r chi.Router) {
-				mountBloemSeasonalViewer(r, handlers.NewBloemSeasonalViewerHandler(ambience.NewService(nil, nil, nil), seasonalMountProfiles{}), client, handlers.NewBloemSystemHandler(nil))
-			})
-			authMW.SetDirectProfileRouteGuard(newDirectProfileRouteGuard(router.Match))
-			req := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/ambience", nil)
-			req.Header.Set("Authorization", "Bearer fixture")
-			req.Header.Set("X-Profile-Id", "viewer")
-			rec := httptest.NewRecorder()
-			router.ServeHTTP(rec, req)
-			if rec.Code != http.StatusForbidden {
-				t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
-			}
-			if !direct && !strings.Contains(rec.Body.String(), "profile_unverified") {
-				t.Fatalf("PIN check not applied: %s", rec.Body.String())
-			}
-			if direct && directProfileRouteAllowed(http.MethodGet, NativeAPIPrefix+"/ambience") {
-				t.Fatal("direct-profile allowlist expanded")
-			}
-		})
+func TestBloemSeasonalViewerMountPreservesPINBoundary(t *testing.T) {
+	claims := &auth.Claims{UserID: 7, SessionID: "session", TokenType: auth.TokenTypeAccess}
+	authMW := apimw.NewAuthMiddleware(seasonalMountTokens{claims: claims}, seasonalMountSessions{}, nil, nil)
+	client := bloemClientSurface{
+		auth:   authMW,
+		tenant: apimw.NewTenantMiddleware(seasonalMountTenant{tenant: tenancy.Context{AccountID: 7, OrganizationID: uuid.New()}}),
+		viewer: apimw.NewViewerAccessMiddleware(seasonalMountViewer{}),
+	}
+	router := chi.NewRouter()
+	router.Route(NativeAPIPrefix, func(r chi.Router) {
+		mountBloemSeasonalViewer(r, handlers.NewBloemSeasonalViewerHandler(ambience.NewService(nil, nil, nil), seasonalMountProfiles{}), client, handlers.NewBloemSystemHandler(nil))
+	})
+	req := httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/ambience", nil)
+	req.Header.Set("Authorization", "Bearer fixture")
+	req.Header.Set("X-Profile-Id", "viewer")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "profile_unverified") {
+		t.Fatalf("PIN check not applied: status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 }

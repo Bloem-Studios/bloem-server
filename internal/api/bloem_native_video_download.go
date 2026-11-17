@@ -188,7 +188,7 @@ func nativeVideoRequestDownloadActor(ctx context.Context, fileID int, p nativeVi
 		d.TokenType = auth.TokenTypeAccess
 		d.LoginSessionID = claims.SessionID
 		d.AuthMethod = claims.AuthMethod
-		d.PINVerificationSkipped = link || claims.AuthMethod == auth.AuthMethodDirectProfile
+		d.PINVerificationSkipped = link
 		return link, nil
 	case auth.TokenTypeAPIKey:
 		if p.loadAPIKeyMetadata == nil {
@@ -265,7 +265,6 @@ func nativeVideoDownloadTenant(ctx context.Context, p nativeVideoPolicy, d *hand
 		return middleware.ErrCurrentCredentialInvalid
 	}
 	d.ProfilePINRevision = profile.PINRevision
-	d.ProfileCredentialRevision = profile.CredentialRevision
 	return nil
 }
 
@@ -310,7 +309,7 @@ func nativeVideoPreparationAuthority(ctx context.Context, requester *downloads.D
 		if profile == nil || profile.ID != d.ProfileID || profile.OrganizationID != d.Tenant.OrganizationID.String() {
 			return empty, nativestorage.PlaybackAuthority{}, middleware.ErrCurrentCredentialInvalid
 		}
-		d.ProfilePINRevision, d.ProfileCredentialRevision = profile.PINRevision, profile.CredentialRevision
+		d.ProfilePINRevision = profile.PINRevision
 	}
 	if err := verifyNativeVideoActor(ctx, d, p); err != nil {
 		return empty, nativestorage.PlaybackAuthority{}, err

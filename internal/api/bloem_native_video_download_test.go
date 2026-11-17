@@ -32,7 +32,7 @@ func TestNativeVideoDownloadAuthorityFollowsTheLoginSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if delegation.LoginSessionID != "login-session" || delegation.PlaybackSessionID != "" || delegation.ProfilePINRevision != 1 || delegation.ProfileCredentialRevision != 2 || delegation.Tenant != f.tenant.tenant {
+	if delegation.LoginSessionID != "login-session" || delegation.PlaybackSessionID != "" || delegation.ProfilePINRevision != 1 || delegation.Tenant != f.tenant.tenant {
 		t.Fatalf("delegation=%+v", delegation)
 	}
 	if !delegation.ExpiresAt.After(f.claims.ExpiresAt.Time) {
@@ -55,7 +55,7 @@ func TestNativeVideoDownloadAuthorityFollowsTheLoginSession(t *testing.T) {
 }
 
 func TestNativeVideoDownloadAuthorityStopsOnRevocation(t *testing.T) {
-	for _, kind := range []string{"account", "login-revoked", "login-inactive", "pin", "credential", "tenant", "viewer", "catalog", "source"} {
+	for _, kind := range []string{"account", "login-revoked", "login-inactive", "pin", "tenant", "viewer", "catalog", "source"} {
 		t.Run(kind, func(t *testing.T) {
 			d := newNativeVideoDelegationFixture(t)
 			f := d.base
@@ -73,8 +73,6 @@ func TestNativeVideoDownloadAuthorityStopsOnRevocation(t *testing.T) {
 				f.login.active = false
 			case "pin":
 				d.profile.PINRevision++
-			case "credential":
-				d.profile.CredentialRevision++
 			case "tenant":
 				f.tenant.tenant.SecurityRevision++
 			case "viewer":

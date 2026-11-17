@@ -37,21 +37,20 @@ type NativeVideoFile interface {
 // NativeVideoAuthority is a bounded host attestation, never a bearer token.
 // A delegated reader must recheck each fact against current host policy.
 type NativeVideoAuthority struct {
-	UserID                    int
-	ProfileID                 string
-	LoginSessionID            string
-	APIKeyID                  int64
-	APIKeyRevision            int64
-	TokenType                 string
-	AuthMethod                string
-	ProfilePINRevision        int64
-	ProfileCredentialRevision int64
-	PINVerificationSkipped    bool
-	ExpiresAt                 time.Time
-	Tenant                    tenancy.Context
-	OriginalMethod            string
-	OriginalPath              string
-	PlaybackSessionID         string
+	UserID                 int
+	ProfileID              string
+	LoginSessionID         string
+	APIKeyID               int64
+	APIKeyRevision         int64
+	TokenType              string
+	AuthMethod             string
+	ProfilePINRevision     int64
+	PINVerificationSkipped bool
+	ExpiresAt              time.Time
+	Tenant                 tenancy.Context
+	OriginalMethod         string
+	OriginalPath           string
+	PlaybackSessionID      string
 	// CompatSessionDigest identifies a Jellyfin-compatible session by the
 	// SHA-256 of its token, never the token, so delegated reads can recheck
 	// that the session still exists.

@@ -6,8 +6,6 @@ import (
 	"net/textproto"
 	"reflect"
 	"testing"
-
-	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
 // canonicalClientHeaders is the list under test, written out rather than
@@ -168,77 +166,4 @@ func TestNormalizeClientHeadersLeavesUpstreamCompatRequestsUntouched(t *testing.
 	if !reflect.DeepEqual(map[string][]string(sent), map[string][]string(seen)) {
 		t.Fatalf("upstream-compat request was altered:\n sent %v\n seen %v", sent, seen)
 	}
-}
-
-// The guard in RequireAuth refuses a declared device id that conflicts with the
-// session's binding, and the claim-derived value wins. Normalisation runs ahead
-// of it, so the guard must apply to a device declared under either spelling —
-// getting the order wrong would let a session act as a device it never
-// authenticated. A later refactor that reorders the two fails here.
-func TestDeclaredDeviceIDConflictIsRefusedUnderBothSpellings(t *testing.T) {
-	claims := &auth.Claims{
-		UserID: 7, ProfileID: "reader", SessionID: "session-1", DeviceID: "bound-device",
-		TokenType: auth.TokenTypeAccess, AuthMethod: auth.AuthMethodDirectProfile,
-	}
-
-	var handlerSawDeviceID string
-	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handlerSawDeviceID = r.Header.Get("X-Silo-Device-Id")
-		w.WriteHeader(http.StatusNoContent)
-	})
-	chain := func() http.Handler {
-		am := NewAuthMiddleware(staticTokenValidator{claims: claims}, alwaysValidSession{}, nil, nil)
-		am.SetDirectProfileRouteGuard(func(*http.Request) bool { return true })
-		return NormalizeClientHeaders(am.RequireAuth(next))
-	}
-
-	tests := []struct {
-		name       string
-		header     string
-		value      string
-		wantStatus int
-		wantDevice string
-	}{
-		{"silo spelling conflicts", "X-Silo-Device-Id", "somebody-elses-device", http.StatusForbidden, ""},
-		{"bloem spelling conflicts", "X-Bloem-Device-Id", "somebody-elses-device", http.StatusForbidden, ""},
-		{"silo spelling agrees", "X-Silo-Device-Id", "bound-device", http.StatusNoContent, "bound-device"},
-		{"bloem spelling agrees", "X-Bloem-Device-Id", "bound-device", http.StatusNoContent, "bound-device"},
-		{"no device declared", "", "", http.StatusNoContent, "bound-device"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			handlerSawDeviceID = ""
-			req := newRequest()
-			req.Header.Set("Authorization", "Bearer direct-token")
-			if test.header != "" {
-				req.Header.Set(test.header, test.value)
-			}
-			rec := httptest.NewRecorder()
-			chain().ServeHTTP(rec, req)
-			if rec.Code != test.wantStatus {
-				t.Fatalf("status = %d, want %d", rec.Code, test.wantStatus)
-			}
-			if handlerSawDeviceID != test.wantDevice {
-				t.Fatalf("handler saw device %q, want %q", handlerSawDeviceID, test.wantDevice)
-			}
-		})
-	}
-
-	// Both spellings present and the Bloem one conflicting: the canonical value
-	// decides, and the conflicting alias must not survive to be read later.
-	t.Run("canonical agrees while alias conflicts", func(t *testing.T) {
-		handlerSawDeviceID = ""
-		req := newRequest()
-		req.Header.Set("Authorization", "Bearer direct-token")
-		req.Header.Set("X-Silo-Device-Id", "bound-device")
-		req.Header.Set("X-Bloem-Device-Id", "somebody-elses-device")
-		rec := httptest.NewRecorder()
-		chain().ServeHTTP(rec, req)
-		if rec.Code != http.StatusNoContent {
-			t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
-		}
-		if handlerSawDeviceID != "bound-device" {
-			t.Fatalf("handler saw device %q, want %q", handlerSawDeviceID, "bound-device")
-		}
-	})
 }

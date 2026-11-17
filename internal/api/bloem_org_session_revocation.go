@@ -34,8 +34,7 @@ import (
 // Before this, it answered 404 "Profile not found", and clients kept
 // refreshing a session that could never load a profile. The error wraps
 // access.ErrProfileNotFound, so other callers still refuse the profile. Only
-// sessions are checked: an API key has no auth_sessions row, and a
-// direct-profile session is already bound to its profile and revision.
+// sessions are checked: an API key has no auth_sessions row.
 type bloemOrgRevocationViewer struct {
 	inner apimw.ViewerResolver
 	pool  *pgxpool.Pool

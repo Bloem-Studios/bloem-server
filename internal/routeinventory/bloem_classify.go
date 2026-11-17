@@ -6,11 +6,10 @@ package routeinventory
 
 const (
 	// Bloem traits.
-	traitAdminContext   = "admin_context"
-	traitLiveTVAccess   = "live_tv_access"
-	traitTenantScoped   = "tenant_scoped"
-	traitStreamToken    = "stream_token"
-	traitAccountSession = "account_session_required"
+	traitAdminContext = "admin_context"
+	traitLiveTVAccess = "live_tv_access"
+	traitTenantScoped = "tenant_scoped"
+	traitStreamToken  = "stream_token"
 )
 
 const (
@@ -70,20 +69,13 @@ var bloemTraitOnlyRules = []authRule{
 	// session in the path lets RequireAuth and RequireViewerAccess pass for the
 	// delivery routes. It never rejects, so it cannot lower the route's class.
 	//
-	// RejectDirectProfileSession subtracts rather than adds: a direct-profile
-	// session is refused on account- and household-scoped surfaces. The route
-	// still needs whatever its class demands.
-	//
 	// The compatibility listener builds its own rate limiter (`s.rateLimit`)
 	// instead of the api listener's RateLimitMW.
 	{marker: markerLegacyTenant, trait: traitTenantScoped},
 	{marker: ".tenant.ResolveNative", trait: traitTenantScoped},
 	{marker: "StreamTokenAuth", trait: traitStreamToken},
 	{marker: "bloemLiveTVStreamTokens", trait: traitStreamToken},
-	{marker: "RejectDirectProfileSession", trait: traitAccountSession},
 	{marker: "rateLimit.Handler", trait: traitRateLimited},
-	// router_bloem.go supplies AuthEndpointHandler("password_change").
-	{marker: "surfaces.ProfileCredentialLimit", trait: traitRateLimited},
 }
 
 var bloemInfrastructureMiddleware = []string{

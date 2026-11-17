@@ -20,11 +20,8 @@ import (
 
 // HandleGetProfile handles GET /profiles/{id}.
 //
-// The household list at GET /profiles is account-scoped and stays that way. A
-// direct-profile session is bound to one profile and needs to read that
-// profile's own record — its name, avatar, and preferences — which the login
-// response does not carry; RequireOwnDirectProfile holds such a session to its
-// own id, and an account session may read any profile it owns.
+// The household list at GET /profiles is account-scoped and stays that way;
+// an account session may read any profile it owns.
 func (h *ProfileHandler) HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	if userID == 0 {
@@ -232,8 +229,8 @@ func (h *ProfileHandler) bloemInheritedAccessGroupID(ctx context.Context, userID
 }
 
 // bloemUpdateProfilePrelude runs Bloem's pre-store profile update steps: it
-// normalizes the name, validates the canonical settings sync, and refuses a
-// PIN change from a direct profile session, all before any store access.
+// normalizes the name and validates the canonical settings sync, both before
+// any store access.
 // done=true means the caller returns (view, err) as is; otherwise req carries
 // the normalized name and the Silo path below repeats the same (now
 // idempotent) steps.
@@ -248,9 +245,6 @@ func (h *ProfileHandler) bloemUpdateProfilePrelude(ctx context.Context, req *Pro
 	}
 	if _, err := planUpdateProfileSettingsSync(*req); err != nil {
 		return none, true, apiError(http.StatusBadRequest, "bad_request", err.Error())
-	}
-	if req.PIN != nil && apimw.IsDirectProfileSession((&http.Request{}).WithContext(ctx)) {
-		return none, true, apiError(http.StatusForbidden, "forbidden", "Direct profile sessions cannot change the profile PIN")
 	}
 	return none, false, nil
 }

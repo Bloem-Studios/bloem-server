@@ -63,7 +63,6 @@ type adminUserSessionRepository interface {
 	ListByUser(ctx context.Context, userID int) ([]*models.AuthSession, error)
 	RevokeByUserAndSession(ctx context.Context, userID int, sessionID string) error
 	RevokeAllByUser(ctx context.Context, userID int) error
-	RevokeAllByUserAndProfiles(ctx context.Context, userID int, profileIDs []string) error
 	RevokeAllByImpersonator(ctx context.Context, impersonatorUserID int) error
 }
 
@@ -98,7 +97,6 @@ type adminUserAuthSessionResponse struct {
 	CreatedAt              time.Time  `json:"created_at"`
 	ExpiresAt              time.Time  `json:"expires_at"`
 	RevokedAt              *time.Time `json:"revoked_at,omitempty"`
-	ProfileID              *string    `json:"profile_id,omitempty"`
 	AuthMethod             string     `json:"auth_method,omitempty"`
 	IsImpersonationSession bool       `json:"is_impersonation_session"`
 }
@@ -624,22 +622,15 @@ func (h *AdminHandler) HandleListUserAuthSessions(w http.ResponseWriter, r *http
 		return
 	}
 	response := make([]adminUserAuthSessionResponse, 0, len(sessions))
-	organizationProfiles, err := adminResourceOrganizationProfiles(r.Context(), resources.store)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list authentication sessions")
+	// An account sign-in belongs to no one organization, so an organization
+	// administrator lists none of them.
+	if adminResourceOrganization(r.Context()) != uuid.Nil {
+		writeJSON(w, http.StatusOK, response)
 		return
 	}
 	for _, session := range sessions {
 		if session == nil || session.UserID != resources.user.ID {
 			continue
-		}
-		if adminResourceOrganization(r.Context()) != uuid.Nil {
-			if session.ProfileID == nil {
-				continue
-			}
-			if _, ok := organizationProfiles[*session.ProfileID]; !ok {
-				continue
-			}
 		}
 		response = append(response, adminUserAuthSessionResponse{
 			ID:                     session.ID,
@@ -649,7 +640,6 @@ func (h *AdminHandler) HandleListUserAuthSessions(w http.ResponseWriter, r *http
 			CreatedAt:              session.CreatedAt,
 			ExpiresAt:              session.ExpiresAt,
 			RevokedAt:              session.RevokedAt,
-			ProfileID:              session.ProfileID,
 			AuthMethod:             session.AuthMethod,
 			IsImpersonationSession: session.ImpersonatorUserID != nil,
 		})
@@ -690,23 +680,11 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
 		return
 	}
-	organizationID := adminResourceOrganization(r.Context())
-	var scopedProfileID string
-	if organizationID != uuid.Nil {
-		organizationProfiles, scopeErr := adminResourceOrganizationProfiles(r.Context(), resources.store)
-		if scopeErr != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to look up authentication session")
-			return
-		}
-		if session.ProfileID == nil {
-			writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
-			return
-		}
-		if _, ok := organizationProfiles[*session.ProfileID]; !ok {
-			writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
-			return
-		}
-		scopedProfileID = *session.ProfileID
+	// An account sign-in belongs to no one organization; an organization
+	// administrator ends them all through the revoke-all route instead.
+	if adminResourceOrganization(r.Context()) != uuid.Nil {
+		writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
+		return
 	}
 	if err := h.adminSessionRepo().RevokeByUserAndSession(r.Context(), resources.user.ID, sessionID); err != nil {
 		if errors.Is(err, auth.ErrSessionNotFound) {
@@ -716,16 +694,7 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke authentication session")
 		return
 	}
-	if organizationID != uuid.Nil {
-		if h.OnUserProfileSessionsRevoked != nil {
-			if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
-				return h.OnUserProfileSessionsRevoked(callbackCtx, resources.user.ID, []string{scopedProfileID})
-			}); err != nil {
-				writeError(w, http.StatusInternalServerError, "internal_error", "Authentication session was revoked but compatibility-session invalidation failed")
-				return
-			}
-		}
-	} else if h.BloemOnUserSessionsRevoked != nil {
+	if h.BloemOnUserSessionsRevoked != nil {
 		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
 			return h.BloemOnUserSessionsRevoked(callbackCtx, resources.user.ID)
 		}); err != nil {
@@ -766,9 +735,6 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 		}
 		nativeRevoked := false
 		if err := sessioninvalidation.Run(r.Context(), func(invalidationCtx context.Context) error {
-			if err := h.adminSessionRepo().RevokeAllByUserAndProfiles(invalidationCtx, resources.user.ID, scopedProfileIDs); err != nil {
-				return err
-			}
 			// Bloem: the membership itself loses its standing, and an account
 			// with no other organization loses its account-login sessions.
 			accountWide, err := h.revokeOrganizationMemberAccessStandalone(invalidationCtx, organizationID, resources.user.ID)

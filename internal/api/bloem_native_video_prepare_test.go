@@ -39,7 +39,7 @@ func TestNativeVideoPreparationAuthorityFollowsTheDownload(t *testing.T) {
 				t.Fatal(err)
 			}
 			if delegation.TokenType != nativeVideoDownloadPrepareTokenType || delegation.DownloadID != "download-1" || delegation.ArtifactID != "artifact-1" ||
-				delegation.LoginSessionID != "" || delegation.PlaybackSessionID != "" || delegation.ProfileCredentialRevision != 2 || delegation.Tenant != f.tenant.tenant {
+				delegation.LoginSessionID != "" || delegation.PlaybackSessionID != "" || delegation.Tenant != f.tenant.tenant {
 				t.Fatalf("delegation=%+v", delegation)
 			}
 			switch kind {

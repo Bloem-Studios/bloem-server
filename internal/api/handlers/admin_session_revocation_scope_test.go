@@ -38,15 +38,11 @@ func sessionScopeDatabase(t *testing.T, ctx context.Context) *pgxpool.Pool {
 	return pool
 }
 
-// insertScopeSessions gives each account a login session, bound to a profile
-// when one is named.
-func insertScopeSessions(t *testing.T, ctx context.Context, pool *pgxpool.Pool, sessions map[string]struct {
-	account int
-	profile *string
-}) {
+// insertScopeSessions gives each named session to its account.
+func insertScopeSessions(t *testing.T, ctx context.Context, pool *pgxpool.Pool, sessions map[string]int) {
 	t.Helper()
-	for id, session := range sessions {
-		if _, err := pool.Exec(ctx, `INSERT INTO auth_sessions (id,user_id,device_id,expires_at,profile_id,profile_credential_revision,auth_method) VALUES ($1,$2,'test',now()+interval '1 hour',$3,CASE WHEN $3::text IS NULL THEN NULL ELSE 1 END,CASE WHEN $3::text IS NULL THEN 'account' ELSE 'direct_profile' END)`, id, session.account, session.profile); err != nil {
+	for id, account := range sessions {
+		if _, err := pool.Exec(ctx, `INSERT INTO auth_sessions (id,user_id,device_id,expires_at) VALUES ($1,$2,'test',now()+interval '1 hour')`, id, account); err != nil {
 			t.Fatalf("create session: %v", err)
 		}
 	}
@@ -110,10 +106,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationI
 		}
 	}
 	sessionA, sessionB, accountSession := uuid.NewString(), uuid.NewString(), uuid.NewString()
-	insertScopeSessions(t, ctx, pool, map[string]struct {
-		account int
-		profile *string
-	}{sessionA: {target.ID, &profileA}, sessionB: {foreignTarget.ID, &profileB}, accountSession: {target.ID, nil}})
+	insertScopeSessions(t, ctx, pool, map[string]int{sessionA: target.ID, sessionB: foreignTarget.ID, accountSession: target.ID})
 
 	handler := NewAdminHandler(users, pool, pgstore.NewPostgresProvider(pool))
 	var wholeAccount []int
@@ -140,7 +133,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationI
 		t.Fatalf("scoped revoke all = %d: %s", all.Code, all.Body.String())
 	}
 	// Organization A is the target's only organization, so its account-login
-	// session goes too; organization B's account is untouched.
+	// sessions go; organization B's account is untouched.
 	for sessionID, wantActive := range map[string]bool{sessionA: false, sessionB: true, accountSession: false} {
 		var active bool
 		if err := pool.QueryRow(ctx, `SELECT revoked_at IS NULL FROM auth_sessions WHERE id=$1`, sessionID).Scan(&active); err != nil || active != wantActive {

@@ -47,13 +47,6 @@ func TestBloemSeasonalViewerAuthorityClassification(t *testing.T) {
 	}
 }
 
-func TestBloemProfileCredentialRateLimitClassification(t *testing.T) {
-	class, traits := classifyAuth([]string{"authMW.RequireAuth", "surfaces.ProfileCredentialLimit"})
-	if class != authAuthenticated || !slices.Equal(traits, []string{traitAuthenticated, traitRateLimited}) {
-		t.Fatalf("profile credential authority = %q %v", class, traits)
-	}
-}
-
 func TestBloemNativeVideoCapturePreservesRouteAuthority(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

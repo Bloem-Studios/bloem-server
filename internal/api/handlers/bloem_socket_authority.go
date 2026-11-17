@@ -28,6 +28,8 @@ type bloemSocketBinding struct {
 	Principal               auth.Claims     `json:"principal"`
 	Tenant                  tenancy.Context `json:"tenant"`
 	ImpersonatorIncarnation uuid.UUID       `json:"impersonator_incarnation"`
+	// DeviceID is the login session's device, captured at delegation.
+	DeviceID string `json:"device_id,omitempty"`
 }
 
 // bloemSocketAuthority preserves the delegated principal for contextless
@@ -50,18 +52,17 @@ func (h *bloemSocketAuthority) bind(ctx context.Context, identity evt.SocketIden
 		return evt.SocketIdentity{}, evt.ErrSocketTicket
 	}
 	binding := bloemSocketBinding{Version: 1, Principal: *claims, Tenant: tenant}
-	// Ordinary Silo-compatible account/OAuth JWTs omit device_id, while
-	// session creation records the client's device. Capture that server-held
-	// value once at delegation; revalidation still requires an exact match.
-	// Explicit tenant/device bindings must never fall back to this projection.
-	if claims.DeviceID == "" && tenant.Legacy && claims.OrganizationID == "" && claims.MembershipID == "" && claims.PolicyRevision == 0 && claims.SecurityRevision == 0 {
+	// Account/OAuth JWTs carry no device, while session creation records the
+	// client's device. Capture that server-held value once at delegation;
+	// revalidation still requires an exact match.
+	if tenant.Legacy {
 		checkCtx, stop := context.WithTimeout(ctx, 2*time.Second)
 		session, err := h.sessions.GetByID(checkCtx, identity.SessionID)
 		stop()
 		if err != nil || session == nil {
 			return evt.SocketIdentity{}, evt.ErrSocketTicket
 		}
-		binding.Principal.DeviceID = session.DeviceID
+		binding.DeviceID = session.DeviceID
 	}
 	if claims.ImpersonatorUserID != nil {
 		checkCtx, stop := context.WithTimeout(ctx, 2*time.Second)
@@ -96,7 +97,7 @@ func (h *bloemSocketAuthority) validate(ctx context.Context, identity evt.Socket
 	principal := binding.Principal
 	session, err := h.sessions.GetByID(checkCtx, identity.SessionID)
 	if err != nil || session == nil || session.ID != identity.SessionID || session.UserID != identity.UserID || session.RevokedAt != nil || !session.ExpiresAt.After(time.Now()) ||
-		session.AuthMethod != "account" || session.ProfileID != nil || session.ProfileCredentialRevision != nil || session.DeviceID != principal.DeviceID || !bloemSocketSameImpersonator(session.ImpersonatorUserID, principal.ImpersonatorUserID) {
+		session.AuthMethod != "account" || session.DeviceID != binding.DeviceID || !bloemSocketSameImpersonator(session.ImpersonatorUserID, principal.ImpersonatorUserID) {
 		return ctx, nil, evt.ErrSocketTicket
 	}
 	user, err := h.users.GetByID(checkCtx, identity.UserID)
@@ -113,12 +114,7 @@ func (h *bloemSocketAuthority) validate(ctx context.Context, identity evt.Socket
 	if tenant.AccountID != identity.UserID || tenant.OrganizationID == uuid.Nil || tenant.MembershipID == uuid.Nil || tenant.PolicyRevision <= 0 || tenant.SecurityRevision <= 0 {
 		return ctx, nil, evt.ErrSocketTicket
 	}
-	// Partial or stale credential bindings must not become a legacy selection.
-	if principal.OrganizationID != "" || principal.MembershipID != "" || principal.PolicyRevision != 0 || principal.SecurityRevision != 0 {
-		if principal.OrganizationID != tenant.OrganizationID.String() || principal.MembershipID != tenant.MembershipID.String() || principal.PolicyRevision != tenant.PolicyRevision || principal.SecurityRevision != tenant.SecurityRevision || tenant.Legacy {
-			return ctx, nil, evt.ErrSocketTicket
-		}
-	} else if !tenant.Legacy || !tenant.OrganizationDefault {
+	if !tenant.Legacy || !tenant.OrganizationDefault {
 		return ctx, nil, evt.ErrSocketTicket
 	}
 	fresh, err := h.tenants.Resolve(checkCtx, identity.UserID, &tenant.OrganizationID, tenant.Legacy)
@@ -173,10 +169,10 @@ func (h *bloemSocketAuthority) validateKey(ctx context.Context, identity evt.Soc
 }
 
 func bloemSocketPrincipalMatches(claims auth.Claims, identity evt.SocketIdentity) bool {
-	// V2 events is outside the direct-profile allowlist. Refuse it here too,
-	// including a stored ticket whose original credential was profile-bound.
+	// Only an account access token delegates; a preview guest or a
+	// profile-bound credential does not.
 	return claims.TokenType == auth.TokenTypeAccess && (claims.AuthMethod == "" || claims.AuthMethod == "account") &&
-		claims.ProfileID == "" && claims.CredentialRevision == 0 && claims.APIKeyID == 0 && len(claims.APIKeyScopes) == 0 &&
+		claims.ProfileID == "" && claims.APIKeyID == 0 && len(claims.APIKeyScopes) == 0 &&
 		claims.UserID > 0 && claims.UserID == identity.UserID && claims.SessionID != "" && claims.SessionID == identity.SessionID && claims.Role == identity.Role &&
 		claims.AccountIncarnationID != "" && claims.ExpiresAt != nil && claims.ExpiresAt.Equal(identity.AccessExpiresAt) && identity.AccessExpiresAt.After(time.Now()) &&
 		bloemSocketSameImpersonator(claims.ImpersonatorUserID, identity.ImpersonatorUserID) &&

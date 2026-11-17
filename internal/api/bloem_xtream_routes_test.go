@@ -19,7 +19,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/go-chi/chi/v5"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -85,7 +84,6 @@ func TestBloemXtreamMountedAuthority(t *testing.T) {
 		router := chi.NewRouter()
 		useBaseMiddleware(router, Dependencies{})
 		mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, nil, bloemRouteSurfaces{Client: surface})
-		authMW.SetDirectProfileRouteGuard(newDirectProfileRouteGuard(router.Match))
 		return router
 	}
 	router := mount()
@@ -133,14 +131,6 @@ func TestBloemXtreamMountedAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	direct, err := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.Claims{
-		UserID: 7, Role: "admin", SessionID: "xtream-admin-login", TokenType: auth.TokenTypeAccess,
-		AuthMethod: auth.AuthMethodDirectProfile, ProfileID: "primary",
-		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour))},
-	}).SignedString([]byte(signingKey))
-	if err != nil {
-		t.Fatal(err)
-	}
 	for _, tc := range []struct {
 		name, target, bearer, profile string
 		want                          int
@@ -148,7 +138,6 @@ func TestBloemXtreamMountedAuthority(t *testing.T) {
 		{"unauthenticated", path, "", "primary", 401},
 		{"malformed bearer", path, "invalid", "primary", 401},
 		{"delivery proof cannot administer", path + "?st=" + delivery, "", "primary", 401},
-		{"direct profile cannot administer", path, direct, "primary", 403},
 		{"nonadmin", path, user, "foreign", 403},
 		{"profile required", path, admin, "", 400},
 		{"foreign profile", path, admin, "foreign", 404},

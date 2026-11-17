@@ -102,7 +102,6 @@ while true; do sleep 1; done
 	router := chi.NewRouter()
 	useBaseMiddleware(router, Dependencies{})
 	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), nil, authMW, nil, bloemRouteSurfaces{Client: surface})
-	authMW.SetDirectProfileRouteGuard(newDirectProfileRouteGuard(router.Match))
 	bearer, err := tokens.GenerateAccessToken(7, "user", "livetv-login")
 	if err != nil {
 		t.Fatal(err)
@@ -244,16 +243,6 @@ while true; do sleep 1; done
 			request(http.MethodGet, session.HLSURL, "", http.StatusUnauthorized)
 		})
 	}
-	// Native direct-profile admission stays default-deny, including with an
-	// otherwise valid delivery ticket attached to an operational request.
-	directClaims := auth.Claims{UserID: 7, Role: "user", SessionID: "livetv-login", TokenType: auth.TokenTypeAccess, AuthMethod: auth.AuthMethodDirectProfile, ProfileID: "profile", RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour))}}
-	direct, err := jwt.NewWithClaims(jwt.SigningMethodHS256, directClaims).SignedString([]byte(secret))
-	if err != nil {
-		t.Fatal(err)
-	}
-	request(http.MethodPost, "/api/bloem/v2/livetv/channels/channel/session?"+u.RawQuery, direct, http.StatusForbidden)
-	request(http.MethodGet, "/api/bloem/v2/livetv/channels?"+u.RawQuery, direct, http.StatusForbidden)
-
 	// A second API node must route through the durable owner, retain the native
 	// path and rerun authorization there. It has no local encoder session.
 	ownerRouter := router

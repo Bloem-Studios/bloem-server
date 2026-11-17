@@ -153,9 +153,6 @@ func (h *SettingValuesHandler) keyedScopeFor(requestedKey, requestedScope string
 func (h *SettingValuesHandler) sessionIdentity(
 	ctx context.Context, store userstore.UserStore, req SettingIdentityRequest,
 ) (userstore.SettingIdentity, *APIError) {
-	if err := bloemRejectDirectProfileAccountScope(ctx, req); err != nil {
-		return userstore.SettingIdentity{}, err
-	}
 	key, scope, err := h.keyedScopeFor(req.Key, req.Scope)
 	if err != nil {
 		return userstore.SettingIdentity{}, err

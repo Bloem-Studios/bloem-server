@@ -47,10 +47,6 @@ func (m *ViewerAccessMiddleware) RequireViewerAccess(next http.Handler) http.Han
 		}
 
 		profileID := r.Header.Get("X-Profile-Id")
-		profileID, ok := bindDirectProfile(w, r, profileID) // Bloem: a direct-profile session acts as its bound profile
-		if !ok {
-			return
-		}
 		input := access.ResolveInput{
 			UserID:       claims.UserID,
 			SessionID:    claims.SessionID,
@@ -64,10 +60,6 @@ func (m *ViewerAccessMiddleware) RequireViewerAccess(next http.Handler) http.Han
 				claims.TokenType == auth.TokenTypeApplePushDisplay ||
 				claims.TokenType == auth.TokenTypeDirectDownloadLink ||
 				claims.TokenType == auth.TokenTypeStreamReference,
-		}
-		// Bloem: a direct-profile session authenticated as its one profile.
-		if claims.AuthMethod == auth.AuthMethodDirectProfile {
-			input.SkipPINVerification = true
 		}
 
 		scope, err := m.resolver.Resolve(r.Context(), input)

@@ -37,8 +37,8 @@ func TestSignInDomainCheckRefusesBeforeCreating(t *testing.T) {
 	ctx := context.Background()
 	db := &countingExec{}
 	// Silo's lines create sessions through the concrete sessions field (password
-	// and provider sign-in, identity sessions); Bloem's lines (direct-profile
-	// sign-in, setup) through bloemSessions. Every path ends in createWithQuerier.
+	// and provider sign-in, identity sessions); Bloem's lines (setup) through
+	// bloemSessions. Every path ends in createWithQuerier.
 	for name, create := range map[string]func() error{
 		"Silo's sessions.Create":                  func() error { return svc.sessions.Create(ctx, models.AuthSession{UserID: 5}) },
 		"Silo's sessions.createWithQuerier":       func() error { return svc.sessions.createWithQuerier(ctx, db, models.AuthSession{UserID: 5}) },

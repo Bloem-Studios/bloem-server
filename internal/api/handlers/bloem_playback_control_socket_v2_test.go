@@ -10,7 +10,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -21,21 +20,13 @@ type bloemControlSocketFixture struct {
 	socket    *BloemPlaybackControlSocketV2
 }
 
-func newBloemControlSocketFixture(t *testing.T, legacy bool) *bloemControlSocketFixture {
+func newBloemControlSocketFixture(t *testing.T) *bloemControlSocketFixture {
 	t.Helper()
 	f := newControlSocketFixture(t)
 	a := newBloemSocketFixture(t)
 	a.identity.ProfileID, a.identity.ProfileToken = f.session.ProfileID, "pin-proof"
 	a.ctx = apimw.SetProfileID(a.ctx, f.session.ProfileID)
 	a.sessions.session.DeviceID = "shield-device"
-	if legacy {
-		a.claims.OrganizationID, a.claims.MembershipID = "", ""
-		a.claims.PolicyRevision, a.claims.SecurityRevision = 0, 0
-		a.tenants.tenant.Legacy, a.tenants.tenant.OrganizationDefault = true, true
-		a.ctx = tenancy.WithContext(a.ctx, a.tenants.tenant)
-	} else {
-		a.claims.DeviceID = "shield-device"
-	}
 	socket := NewBloemPlaybackControlSocketV2(f.pb, nil, a.sessions, a.users, a.viewer,
 		apimw.NewActingAdminDecider(func(context.Context, int, string) (bool, bool, error) { return true, true, nil }, nil), a.tenants, a.tenants, "")
 	f.handler = socket.PlaybackControlSocketV2
@@ -60,13 +51,9 @@ func (f *bloemControlSocketFixture) mintBound(t *testing.T) string {
 // Mint has authenticated request context; the public WebSocket upgrade has
 // none. It must restore the captured authority rather than reject every owner.
 func TestBloemPlaybackControlContextlessHandshake(t *testing.T) {
-	for _, legacy := range []bool{false, true} {
-		name := "tenant-bound"
-		if legacy {
-			name = "legacy-account"
-		}
+	for _, name := range []string{"account"} {
 		t.Run(name, func(t *testing.T) {
-			f := newBloemControlSocketFixture(t, legacy)
+			f := newBloemControlSocketFixture(t)
 			ticket := f.mintBound(t)
 			conn, resp, err := f.dial(t, ticket, nil) //nolint:bodyclose // dial registers response body cleanup.
 			if err != nil {
@@ -87,7 +74,7 @@ func TestBloemPlaybackControlContextlessHandshake(t *testing.T) {
 func TestBloemPlaybackControlRejectsChangedAuthority(t *testing.T) {
 	for _, change := range []string{"session revoked", "account disabled", "account recreated", "device changed", "policy changed", "membership changed", "profile moved", "PIN changed", "playback stopped"} {
 		t.Run(change, func(t *testing.T) {
-			f := newBloemControlSocketFixture(t, true)
+			f := newBloemControlSocketFixture(t)
 			ticket := f.mintBound(t)
 			switch change {
 			case "session revoked":
@@ -120,7 +107,7 @@ func TestBloemPlaybackControlRejectsChangedAuthority(t *testing.T) {
 }
 
 func TestBloemPlaybackControlMintRequiresAuthenticatedTenant(t *testing.T) {
-	f := newBloemControlSocketFixture(t, true)
+	f := newBloemControlSocketFixture(t)
 	if ticket, _, err := f.socket.Mint(t.Context(), f.authority.identity, f.session.ID, controlInstallation); err == nil || ticket != "" {
 		t.Fatal("contextless mint accepted")
 	}
@@ -131,7 +118,7 @@ func TestBloemPlaybackControlMintRequiresAuthenticatedTenant(t *testing.T) {
 }
 
 func TestBloemPlaybackControlClosesOnTenantAuthorityLoss(t *testing.T) {
-	f := newBloemControlSocketFixture(t, true)
+	f := newBloemControlSocketFixture(t)
 	tenant := &bloemRevocableTenant{source: f.authority.tenants}
 	f.socket.authority.tenants = tenant
 	f.socket.checkInterval = 5 * time.Millisecond

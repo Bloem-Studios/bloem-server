@@ -57,7 +57,7 @@ func TestBloemBookRequestMountRequiresAuthorityResolversAndCapabilityIsTruthful(
 	}
 }
 
-func TestBloemBookRequestAdminPatternsAndDirectProfileBoundary(t *testing.T) {
+func TestBloemBookRequestAdminPatterns(t *testing.T) {
 	router := chi.NewRouter()
 	h := handlers.NewBloemBookRequestsHandler(bookrequests.NewService(nil, nil), nil)
 	h.SetEbookRequests(bookrequests.NewService(nil, nil))
@@ -70,23 +70,6 @@ func TestBloemBookRequestAdminPatternsAndDirectProfileBoundary(t *testing.T) {
 	} {
 		if !slices.Contains(routes, pair) {
 			t.Fatalf("missing admin route %s: %v", pair, routes)
-		}
-		method, path := splitRoute(pair)
-		if directProfileRouteAllowed(method, NativeAPIPrefix+"/admin"+path) {
-			t.Fatalf("direct profile admitted admin action: %s", pair)
-		}
-	}
-	// Ebook requests are open to any user of Bloem, including a session bound
-	// to one profile: filing, history and withdrawal act as that profile.
-	for _, prefix := range []string{"/book-requests", "/ebook-requests"} {
-		for _, pair := range []string{"GET /capability", "GET /mine", "POST ", "GET /{id}", "POST /{id}/cancel"} {
-			method, path := splitRoute(pair)
-			if !directProfileRouteAllowed(method, NativeAPIPrefix+prefix+path) {
-				t.Fatalf("bound profile cannot use owned request route: %s %s%s", method, prefix, path)
-			}
-		}
-		if directProfileRouteAllowed(http.MethodDelete, NativeAPIPrefix+prefix+"/{id}") || directProfileRouteAllowed(http.MethodPost, NativeAPIPrefix+prefix+"/{id}/approve") {
-			t.Fatalf("direct-profile %s mutations expanded beyond filing and withdrawal", prefix)
 		}
 	}
 }

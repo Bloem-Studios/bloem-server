@@ -53,7 +53,6 @@ internal/api/handlers/branding.go
 internal/api/handlers/catalog_transfer_service.go
 internal/api/handlers/downloads_test.go
 internal/api/handlers/home_views_service.go
-internal/api/handlers/household.go
 internal/api/handlers/libraries.go  # native selected-target authorization boundary
 internal/api/handlers/libraries_service.go  # native selected-target authorization boundary
 internal/api/handlers/notifications.go
@@ -68,13 +67,10 @@ internal/api/handlers/plugins.go  # installation store becomes an interface so n
 internal/api/handlers/profiles.go
 internal/api/handlers/sections.go
 internal/api/handlers/session_ws.go
-internal/api/handlers/settings_values_seam.go
 internal/api/handlers/stream.go
 internal/api/handlers/watch_together.go
 internal/api/middleware/auth.go
-internal/api/middleware/household_profile_gate.go  # direct-profile sessions are bound to their one profile and pass the gate
 internal/api/middleware/policy_gates.go
-internal/api/middleware/profile.go
 internal/api/middleware/viewer_access.go
 internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher; four lines put native inputs on core-access transcode nodes: the playback handler's granter, the node control grant issuer and catalog check, Bloem's sources/open in the /self node routes and its source bytes middleware (bloem_native_node_sources.go, 2026-11-16); one line wraps the request lifecycle notifier for admin push (bloemAdminPushLifecycle)
 internal/api/testdata/media_routes.txt
@@ -90,7 +86,6 @@ internal/apiv2/registry.go
 internal/apiv2/router.go
 internal/auth/admin_users_test.go  # complete isolated tenant schema for account paging, revision and session-revocation regressions
 internal/auth/api_key_scopes.go
-internal/auth/client_device.go  # a reported device never replaces the device a direct-profile session is bound to
 internal/auth/jwt.go
 internal/auth/oauth_handler.go  # one field and five call sites: a web sign-in or provider sign-out through an OAuth provider keeps the organization domain it started on (bloem_oauth_domain.go); approved by the owner on 2026-11-01 ("Finish the rest of the open issues")
 internal/auth/password_hash_test.go  # compose upstream bcrypt test initialization with isolated Bloem auth database lifecycle

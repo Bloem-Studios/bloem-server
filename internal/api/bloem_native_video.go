@@ -184,7 +184,7 @@ func nativeVideoCapture(ctx context.Context, p nativeVideoPolicy) (*nativeVideoS
 		frozen := *claims
 		frozen.APIKeyScopes = append([]string(nil), claims.APIKeyScopes...)
 		subject.claims = &frozen
-		subject.skipPIN = claims.TokenType == auth.TokenTypeAPIKey || claims.TokenType == auth.TokenTypeApplePushDisplay || claims.TokenType == auth.TokenTypeDirectDownloadLink || claims.AuthMethod == auth.AuthMethodDirectProfile
+		subject.skipPIN = claims.TokenType == auth.TokenTypeAPIKey || claims.TokenType == auth.TokenTypeApplePushDisplay || claims.TokenType == auth.TokenTypeDirectDownloadLink
 	}
 	capturedTenant, hasTenant := tenancy.FromContext(ctx)
 	if hasTenant {
@@ -554,7 +554,6 @@ func nativeVideoDelegation(ctx context.Context, p nativeVideoPolicy) (handlers.N
 			return empty, middleware.ErrCurrentCredentialInvalid
 		}
 		d.ProfilePINRevision = profile.PINRevision
-		d.ProfileCredentialRevision = profile.CredentialRevision
 	}
 	// Repeat exact local credential/PIN validation after loading metadata. A PIN
 	// rotated while sealing cannot turn the previous proof into a new attestation.
@@ -640,7 +639,7 @@ func verifyNativeVideoActor(ctx context.Context, d handlers.NativeVideoAuthority
 		if err != nil {
 			return err
 		}
-		if profile == nil || profile.ID != d.ProfileID || profile.OrganizationID != d.Tenant.OrganizationID.String() || profile.PINRevision != d.ProfilePINRevision || profile.CredentialRevision != d.ProfileCredentialRevision {
+		if profile == nil || profile.ID != d.ProfileID || profile.OrganizationID != d.Tenant.OrganizationID.String() || profile.PINRevision != d.ProfilePINRevision {
 			return middleware.ErrCurrentCredentialInvalid
 		}
 	}
@@ -667,11 +666,6 @@ func verifyNativeVideoActor(ctx context.Context, d handlers.NativeVideoAuthority
 		}
 		if !active {
 			return middleware.ErrCurrentCredentialInvalid
-		}
-		if login.ProfileID != nil || d.AuthMethod == auth.AuthMethodDirectProfile {
-			if d.AuthMethod != auth.AuthMethodDirectProfile || login.AuthMethod != auth.AuthMethodDirectProfile || login.ProfileID == nil || *login.ProfileID != d.ProfileID || login.ProfileCredentialRevision == nil || profile == nil || *login.ProfileCredentialRevision != profile.CredentialRevision {
-				return middleware.ErrCurrentCredentialInvalid
-			}
 		}
 	case auth.TokenTypeAPIKey:
 		if d.APIKeyID <= 0 || d.APIKeyRevision <= 0 || p.loadAPIKeyMetadata == nil {

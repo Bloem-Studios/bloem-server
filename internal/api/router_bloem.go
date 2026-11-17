@@ -121,30 +121,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			system.SetNativeAudioReadiness(audio.NativeAudioReady)
 		}
 	}
-	// Direct profile login stays unadvertised: /auth/profile-login lived only
-	// on Silo's retired v1 API (Silo #3200), and a capability
-	// that disagrees with the route table is worse than no capability at all.
-	if deps.DB != nil {
-		system.SetProfilePasswordsEnabled(auth.NewProfileCredentialService(deps.DB).ProfilePasswordsEnabled)
-	}
 	system.SetPlaybackOverlaysAvailable(deps.Promotions != nil)
-	var credentialHandler *handlers.BloemProfileCredentialsHandler
-	var credentialLimit func(http.Handler) http.Handler
-	// Profile sign-in is dormant: its sign-in route lived only on Silo's
-	// retired v1 API (Silo #3200), so a profile's own email and
-	// password cannot be used anywhere. The credential routes stay unmounted
-	// and unadvertised until a native profile sign-in exists; set this true
-	// together with that route.
-	const profileSignInActive = false
-	if profileSignInActive && deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" && deps.UserStoreProvider != nil {
-		credentialHandler = handlers.NewBloemProfileCredentialsHandler(deps.UserStoreProvider, auth.NewUserRepository(deps.DB), access.NewProfileTokenService(deps.Config.Auth.JWTSecret, 0), auth.NewProfileCredentialService(deps.DB))
-		if deps.RateLimitMW != nil {
-			// The budget must be one ratelimit.DefaultConfig names: an unknown
-			// name has no endpoint limit at all (bloem_rate_limit_budget_test.go).
-			credentialLimit = deps.RateLimitMW.AuthEndpointHandler("password_change")
-		}
-		system.SetProfileCredentialManagementAvailable(true)
-	}
 	mountBloemRoutes(r, system, session, authMW, adminMW,
 		bloemRouteSurfaces{
 			Preview:        bloemPreviewHandler(deps),
@@ -159,7 +136,6 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			Entitlement: entitlementHandler, AccountPolicy: accountPolicyHandler,
 			Storefront: newBloemPlatformStorefrontHandlers(deps, accountPolicyHandler,
 				handlers.NewAdminPromotionsHandler(deps.Promotions), handlers.NewAmbienceHandler(deps.Ambience)),
-			ProfileCredentials: credentialHandler, ProfileCredentialLimit: credentialLimit,
 			SeasonalViewer:   handlers.NewBloemSeasonalViewerHandler(deps.Ambience, tenants),
 			PromotionsViewer: bloemPromotionsViewerHandler(deps),
 			NativeStorage:    deps.NativeStorageManagement,
@@ -173,29 +149,27 @@ const NativeAPIPrefix = handlers.NativeAPIPrefix
 
 // bloemRouteSurfaces lists optional route groups; nil handlers leave their routes unmounted.
 type bloemRouteSurfaces struct {
-	Preview                *handlers.BloemPreviewHandler
-	PreviewAdmin           *handlers.BloemPreviewAdminHandler
-	LibraryFigures         *handlers.BloemLibraryFiguresHandler
-	SearchMirror           *handlers.BloemSearchMirrorHandler
-	UpgradePrompt          *handlers.BloemUpgradePromptHandler
-	NewArrivals            *handlers.BloemNewArrivalsHandler
-	BookRequests           *handlers.BloemBookRequestsHandler
-	Client                 bloemClientSurface
-	Platform               *handlers.BloemAdminPlatformHandler
-	People                 *handlers.BloemAdminPeopleHandler
-	Support                *handlers.BloemOrganizationSupportHandler
-	OrgLive                *handlers.BloemOrganizationLive
-	Organization           *handlers.BloemAdminOrganizationHandler
-	Explain                *handlers.BloemPolicyExplainHandler
-	Entitlement            *handlers.EntitlementTemplatesHandler
-	AccountPolicy          *handlers.AdminHandler
-	Storefront             bloemPlatformStorefrontHandlers
-	SeasonalViewer         *handlers.BloemSeasonalViewerHandler
-	PromotionsViewer       *handlers.PromotionsHandler
-	ProfileCredentials     *handlers.BloemProfileCredentialsHandler
-	ProfileCredentialLimit func(http.Handler) http.Handler
-	NativeStorage          *handlers.BloemNativeStorageManagementHandler
-	AdminPush              *handlers.BloemAdminPushHandler
+	Preview          *handlers.BloemPreviewHandler
+	PreviewAdmin     *handlers.BloemPreviewAdminHandler
+	LibraryFigures   *handlers.BloemLibraryFiguresHandler
+	SearchMirror     *handlers.BloemSearchMirrorHandler
+	UpgradePrompt    *handlers.BloemUpgradePromptHandler
+	NewArrivals      *handlers.BloemNewArrivalsHandler
+	BookRequests     *handlers.BloemBookRequestsHandler
+	Client           bloemClientSurface
+	Platform         *handlers.BloemAdminPlatformHandler
+	People           *handlers.BloemAdminPeopleHandler
+	Support          *handlers.BloemOrganizationSupportHandler
+	OrgLive          *handlers.BloemOrganizationLive
+	Organization     *handlers.BloemAdminOrganizationHandler
+	Explain          *handlers.BloemPolicyExplainHandler
+	Entitlement      *handlers.EntitlementTemplatesHandler
+	AccountPolicy    *handlers.AdminHandler
+	Storefront       bloemPlatformStorefrontHandlers
+	SeasonalViewer   *handlers.BloemSeasonalViewerHandler
+	PromotionsViewer *handlers.PromotionsHandler
+	NativeStorage    *handlers.BloemNativeStorageManagementHandler
+	AdminPush        *handlers.BloemAdminPushHandler
 }
 
 // mountBloemRoutes assembles every native route inside one chi subtree.
@@ -228,26 +202,6 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 		mountBloemSeasonalViewer(r, surfaces.SeasonalViewer, client, system)
 		mountBloemPromotionsViewer(r, surfaces.PromotionsViewer, client, system)
 		mountBloemBookRequests(r, surfaces.BookRequests, client, system)
-		if authMW != nil && surfaces.ProfileCredentials != nil {
-			r.Group(func(r chi.Router) {
-				r.Use(authMW.RequireAuth)
-				if client.viewer != nil {
-					// Resolves the viewer scope whose PIN verification the
-					// household check reads, as on Silo's /api/v2.
-					r.Use(client.viewer.RequireViewerAccess)
-				}
-				r.Get("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleGet)
-				// Only the writes check the account password, so only they
-				// spend the password-change budget.
-				r.Group(func(r chi.Router) {
-					if surfaces.ProfileCredentialLimit != nil {
-						r.Use(surfaces.ProfileCredentialLimit)
-					}
-					r.Put("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleChange)
-					r.Delete("/profile-credentials/{id}", surfaces.ProfileCredentials.HandleChange)
-				})
-			})
-		}
 		if authMW == nil {
 			r.Get("/organizations", func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")

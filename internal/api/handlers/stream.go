@@ -195,10 +195,6 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return
 	}
-	if userID != 0 && !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, userID) {
-		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
-		return
-	}
 	if !requireNativeSessionAPIEgressV3(w, session) {
 		return
 	}
@@ -399,10 +395,6 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 	session, claims, err := h.loadSidecarSession(r.Context(), r.URL.Query().Get(streamTokenParam), sessionID, userID)
 	if err != nil {
 		writeAPIError(w, err)
-		return
-	}
-	if !callerOwnsPlaybackSession(r, session.UserID, session.ProfileID, userID) {
-		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
 		return
 	}
 	attachPlaybackSession(r.Context(), session, claims)

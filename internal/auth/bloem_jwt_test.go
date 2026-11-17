@@ -36,7 +36,10 @@ func TestJWTAccountIncarnationRoundTrips(t *testing.T) {
 	}
 }
 
-func TestJWT_LegacyTokenLeavesTenantClaimsEmpty(t *testing.T) {
+// TestJWT_AccountTokenCarriesNoProfileSignInClaims: the tenant, device and
+// credential claims a direct-profile token once carried are gone from every
+// token the server issues.
+func TestJWT_AccountTokenCarriesNoProfileSignInClaims(t *testing.T) {
 	svc := newTestJWTService()
 
 	token, err := svc.GenerateAccessToken(1, "user", "sess-legacy")
@@ -47,10 +50,6 @@ func TestJWT_LegacyTokenLeavesTenantClaimsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ValidateToken() error: %v", err)
 	}
-	if claims.OrganizationID != "" || claims.MembershipID != "" || claims.PolicyRevision != 0 || claims.SecurityRevision != 0 {
-		t.Fatalf("legacy token unexpectedly gained tenant claims: %#v", claims)
-	}
-
 	payload, err := json.Marshal(claims)
 	if err != nil {
 		t.Fatalf("marshal claims: %v", err)
@@ -59,41 +58,9 @@ func TestJWT_LegacyTokenLeavesTenantClaimsEmpty(t *testing.T) {
 	if err := json.Unmarshal(payload, &fields); err != nil {
 		t.Fatalf("decode claims: %v", err)
 	}
-	for _, field := range []string{"organization_id", "membership_id", "policy_revision", "security_revision"} {
+	for _, field := range []string{"organization_id", "membership_id", "policy_revision", "security_revision", "credential_revision", "device_id"} {
 		if _, ok := fields[field]; ok {
-			t.Errorf("legacy token payload contains optional field %q", field)
+			t.Errorf("account token payload contains removed field %q", field)
 		}
-	}
-}
-
-func TestJWT_OrganizationClaimsRoundTrip(t *testing.T) {
-	svc := newTestJWTService()
-	want := auth.Claims{
-		UserID:           42,
-		Role:             "tenant-curator",
-		SessionID:        "sess-tenant",
-		ProfileID:        "profile-7",
-		OrganizationID:   "9ee0f0d9-2527-4f5e-bda6-98d3ec049fc8",
-		MembershipID:     "38c9fae8-b802-4b2b-91b0-5668124f6f39",
-		PolicyRevision:   12,
-		SecurityRevision: 19,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-		TokenType: auth.TokenTypeAccess,
-	}
-	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, &want).SignedString([]byte(testSecret))
-	if err != nil {
-		t.Fatalf("sign tenant token: %v", err)
-	}
-
-	got, err := svc.ValidateToken(token)
-	if err != nil {
-		t.Fatalf("ValidateToken() error: %v", err)
-	}
-	if got.OrganizationID != want.OrganizationID || got.MembershipID != want.MembershipID ||
-		got.PolicyRevision != want.PolicyRevision || got.SecurityRevision != want.SecurityRevision {
-		t.Fatalf("tenant claims = %#v, want %#v", got, want)
 	}
 }

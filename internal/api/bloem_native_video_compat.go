@@ -323,9 +323,6 @@ func verifyNativeVideoCompatActor(ctx context.Context, d handlers.NativeVideoAut
 	if login == nil || login.ID != d.LoginSessionID || login.UserID != d.UserID || login.RevokedAt != nil || !time.Now().Before(login.ExpiresAt) {
 		return middleware.ErrCurrentCredentialInvalid
 	}
-	if login.ProfileID != nil && *login.ProfileID != d.ProfileID {
-		return middleware.ErrCurrentCredentialInvalid
-	}
 	_, active, err := p.loginActive(ctx, d.LoginSessionID, d.UserID)
 	if err != nil {
 		return err

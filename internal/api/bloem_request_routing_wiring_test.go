@@ -21,7 +21,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/go-chi/chi/v5"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -104,37 +103,23 @@ func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 	v2deps := apiv2.Dependencies{Auth: authMW, AdminRequests: handler.Service(), ActingAdmin: apimw.NewActingAdminDecider(nil, nil), ViewerAccess: apimw.NewViewerAccessMiddleware(access.NewResolver(auth.NewUserRepository(pool), pgstore.NewPostgresProvider(pool), nil, access.NewTenantGroupStore(pool)))}
 	wireBloemV2(&v2deps, Dependencies{DB: pool}, tenantMW, authMW)
 	v2 := apiv2.NewHandler(v2deps)
-	token := func(account int, role string, bound bool) string {
+	token := func(account int, role string) string {
 		sessionID := uuid.NewString()
 		if err := sessions.Create(t.Context(), models.AuthSession{ID: sessionID, UserID: account, DeviceName: "Routing authority test", ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
 			t.Fatal(err)
 		}
-		if !bound {
-			value, err := tokens.GenerateAccessToken(account, role, sessionID)
-			if err != nil {
-				t.Fatal(err)
-			}
-			return value
-		}
-		context, err := tenantResolver.Resolve(t.Context(), account, &organization, false)
-		if err != nil {
-			t.Fatal(err)
-		}
-		value, err := jwt.NewWithClaims(jwt.SigningMethodHS256, &auth.Claims{UserID: account, Role: role, SessionID: sessionID, TokenType: auth.TokenTypeAccess,
-			OrganizationID: organization.String(), MembershipID: context.MembershipID.String(), PolicyRevision: context.PolicyRevision, SecurityRevision: context.SecurityRevision,
-			RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour))}}).SignedString([]byte(signingKey))
+		value, err := tokens.GenerateAccessToken(account, role, sessionID)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return value
 	}
-	// Current account login issuers omit tenant claims, and direct-profile
-	// issuers use RoleUser. This signed fixture exercises a conditional service
-	// boundary if an admin context is tenant-bound; it does not demonstrate an
-	// organization-only admin obtaining platform authority through login.
-	platformTenant := token(hosted, models.RoleAdmin, true)
-	platformDefault := token(platform, models.RoleAdmin, false)
-	tenantOnly := token(member, models.RoleUser, true)
+	// An administrator of a hosted organization signs in to that
+	// organization; neither it nor an organization-only member holds
+	// platform authority.
+	platformTenant := token(hosted, models.RoleAdmin)
+	platformDefault := token(platform, models.RoleAdmin)
+	tenantOnly := token(member, models.RoleUser)
 	request := func(method, path, body, token, profile, match string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, apiv2.Prefix+path, strings.NewReader(body))
 		r.Header.Set("Authorization", "Bearer "+token)

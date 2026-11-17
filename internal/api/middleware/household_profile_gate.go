@@ -52,12 +52,6 @@ func (g *HouseholdProfileGate) Require(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		// Bloem: a direct-profile session is bound to its one profile, which
-		// viewer access has already resolved; it is never profile-less.
-		if claims.AuthMethod == auth.AuthMethodDirectProfile && claims.ProfileID != "" {
-			next.ServeHTTP(w, r)
-			return
-		}
 
 		if g == nil || g.stores == nil {
 			writeInternalError(w, "Failed to resolve viewer access")

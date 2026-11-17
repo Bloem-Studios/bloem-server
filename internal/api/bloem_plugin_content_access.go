@@ -57,10 +57,7 @@ func (u bloemPluginUsers) GetByID(ctx context.Context, id int) (*models.User, er
 
 // bloemPluginBoundary adds Bloem's refusals to what Silo's resolver decided.
 // Keep denial distinct from anonymous access: public plugin descriptors must
-// not turn an authenticated browse-only viewer into a permitted guest. The
-// plugin entry points authenticate on their own and so never pass
-// RequireAuth, which is where direct-profile sessions are held to their
-// allowlist, so those are refused here too.
+// not turn an authenticated browse-only viewer into a permitted guest.
 type bloemPluginBoundary struct {
 	jwt    *auth.JWTService
 	users  *auth.UserRepository
@@ -80,9 +77,6 @@ func (b bloemPluginBoundary) apply(r *http.Request, result plugins.ContentAccess
 	switch {
 	case !ok:
 		result.PlaybackDenied = true
-		return result
-	case claims != nil && claims.AuthMethod == auth.AuthMethodDirectProfile:
-		result.ProfileBound = true
 		return result
 	case claims != nil:
 		// Silo's resolver verified the profile already; asset access does not

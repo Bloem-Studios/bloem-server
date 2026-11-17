@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
@@ -16,15 +15,9 @@ func decisionResponseForFeaturesV3(response playback.DecisionResponseV3, feature
 }
 
 // playbackRequestDeviceIDV3 is the registered device id the starting client
-// identified with: the device header first, then the session claims.
+// identified with, from its device header.
 func playbackRequestDeviceIDV3(r *http.Request) string {
-	if deviceID := deviceMetadataFromRequest(r).DeviceID; deviceID != "" {
-		return deviceID
-	}
-	if claims := apimw.GetClaims(r.Context()); claims != nil {
-		return claims.DeviceID
-	}
-	return ""
+	return deviceMetadataFromRequest(r).DeviceID
 }
 
 // bloemNegotiateClientFeaturesV3 narrows the start request's client features

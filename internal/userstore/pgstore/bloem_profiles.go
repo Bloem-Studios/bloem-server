@@ -120,11 +120,11 @@ func resolveProfileTenancy(ctx context.Context, exec preferenceSettingsExecutor,
 	return nil
 }
 
-// bloemProfileColumns are the user_profiles columns Bloem adds: a profile's own
-// sign-in, its organization and its access group. Bloem's profile reads select
+// bloemProfileColumns are the user_profiles columns Bloem adds: a profile's
+// organization and its access group. Bloem's profile reads select
 // them after Silo's own columns and scan them through scanProfile's extra
 // targets, so Silo's column list and scan stay as Silo wrote them.
-const bloemProfileColumns = `COALESCE(login_email, ''), credential_revision, organization_id::text, access_group_id`
+const bloemProfileColumns = `organization_id::text, access_group_id`
 
 // bloemProfileByIDQuery is Silo's profileByIDQuery with bloemProfileColumns
 // after its last column.
@@ -145,19 +145,15 @@ func bloemWithProfileColumns(query string) string {
 // bloemProfileFields holds bloemProfileColumns while scanProfile builds the
 // profile.
 type bloemProfileFields struct {
-	loginEmail         string
-	credentialRevision int64
-	organizationID     string
-	accessGroupID      *int64
+	organizationID string
+	accessGroupID  *int64
 }
 
 func (f *bloemProfileFields) targets() []any {
-	return []any{&f.loginEmail, &f.credentialRevision, &f.organizationID, &f.accessGroupID}
+	return []any{&f.organizationID, &f.accessGroupID}
 }
 
 func (f *bloemProfileFields) apply(p *userstore.Profile) {
-	p.LoginEmail = f.loginEmail
-	p.CredentialRevision = f.credentialRevision
 	p.OrganizationID = f.organizationID
 	p.AccessGroupID = f.accessGroupID
 }

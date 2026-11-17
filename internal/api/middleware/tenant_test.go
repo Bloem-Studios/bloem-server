@@ -27,18 +27,6 @@ func (s *tenantResolverStub) Resolve(_ context.Context, accountID int, organizat
 	return s.result, s.err
 }
 
-func tenantClaims(tenant tenancy.Context) *auth.Claims {
-	return &auth.Claims{
-		UserID:           tenant.AccountID,
-		Role:             "custom-operator",
-		ProfileID:        "profile-7",
-		OrganizationID:   tenant.OrganizationID.String(),
-		MembershipID:     tenant.MembershipID.String(),
-		PolicyRevision:   tenant.PolicyRevision,
-		SecurityRevision: tenant.SecurityRevision,
-	}
-}
-
 func runTenantMiddleware(t *testing.T, middleware func(http.Handler) http.Handler, claims *auth.Claims, headers map[string]string) (int, tenancy.Context, bool, *auth.Claims) {
 	t.Helper()
 	var gotTenant tenancy.Context
@@ -61,66 +49,9 @@ func runTenantMiddleware(t *testing.T, middleware func(http.Handler) http.Handle
 	return rec.Code, gotTenant, gotTenantOK, gotClaims
 }
 
-func TestTenantRequireBloemInjectsResolvedContext(t *testing.T) {
-	want := tenancy.Context{
-		OrganizationID:   uuid.New(),
-		MembershipID:     uuid.New(),
-		AccountID:        41,
-		PolicyRevision:   7,
-		SecurityRevision: 11,
-	}
-	resolver := &tenantResolverStub{result: want}
-	middleware := NewTenantMiddleware(resolver)
-	claims := tenantClaims(want)
-
-	status, got, ok, gotClaims := runTenantMiddleware(t, middleware.RequireBloem, claims, map[string]string{
-		"X-Organization-Id": uuid.NewString(),
-	})
-	if status != http.StatusNoContent || !ok || got != want {
-		t.Fatalf("status/context = %d, %#v, %v; want 204, %#v, true", status, got, ok, want)
-	}
-	if resolver.gotAccountID != want.AccountID || resolver.gotOrganizationID == nil || *resolver.gotOrganizationID != want.OrganizationID || resolver.gotLegacy {
-		t.Fatalf("resolver input = account %d organization %v legacy %v", resolver.gotAccountID, resolver.gotOrganizationID, resolver.gotLegacy)
-	}
-	if gotClaims != claims || gotClaims.Role != "custom-operator" || gotClaims.ProfileID != "profile-7" {
-		t.Fatalf("claims changed: got %#v want same pointer %#v", gotClaims, claims)
-	}
-}
-
-func TestTenantRequireBloemRejectsAbsentClaims(t *testing.T) {
-	middleware := NewTenantMiddleware(&tenantResolverStub{})
-	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireBloem, &auth.Claims{UserID: 41}, nil)
-	if status != http.StatusUnauthorized || ok {
-		t.Fatalf("status/context = %d/%v, want 401/false", status, ok)
-	}
-}
-
-func TestTenantRequireBloemRejectsForeignMembership(t *testing.T) {
-	want := tenancy.Context{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 41, PolicyRevision: 7, SecurityRevision: 11}
-	claims := tenantClaims(want)
-	claims.MembershipID = uuid.NewString()
-	middleware := NewTenantMiddleware(&tenantResolverStub{result: want})
-	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireBloem, claims, nil)
-	if status != http.StatusUnauthorized || ok {
-		t.Fatalf("status/context = %d/%v, want 401/false", status, ok)
-	}
-}
-
-func TestTenantRequireBloemRejectsStaleRevisions(t *testing.T) {
-	want := tenancy.Context{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 41, PolicyRevision: 7, SecurityRevision: 11}
-	claims := tenantClaims(want)
-	claims.SecurityRevision--
-	middleware := NewTenantMiddleware(&tenantResolverStub{result: want})
-	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireBloem, claims, nil)
-	if status != http.StatusUnauthorized || ok {
-		t.Fatalf("status/context = %d/%v, want 401/false", status, ok)
-	}
-}
-
-func TestTenantRequireBloemRejectsSuspendedMembership(t *testing.T) {
-	want := tenancy.Context{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 41, PolicyRevision: 7, SecurityRevision: 11}
+func TestTenantResolveLegacyRejectsSuspendedMembership(t *testing.T) {
 	middleware := NewTenantMiddleware(&tenantResolverStub{err: tenancy.ErrTenantSuspended})
-	status, _, ok, _ := runTenantMiddleware(t, middleware.RequireBloem, tenantClaims(want), nil)
+	status, _, ok, _ := runTenantMiddleware(t, middleware.ResolveLegacy, &auth.Claims{UserID: 41}, nil)
 	if status != http.StatusForbidden || ok {
 		t.Fatalf("status/context = %d/%v, want 403/false", status, ok)
 	}
@@ -154,23 +85,17 @@ func TestTenantResolveLegacyRejectsResolverFailure(t *testing.T) {
 	}
 }
 
-func TestTenantResolveNativeHonorsBoundSelectionAndRejectsPartialClaims(t *testing.T) {
-	want := tenancy.Context{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 41, PolicyRevision: 7, SecurityRevision: 11}
+// TestTenantResolveNativeProjectsIntoTheDefaultOrganization: no token selects
+// an organization of its own, so a native request is the account's default
+// organization, whatever the caller sends.
+func TestTenantResolveNativeProjectsIntoTheDefaultOrganization(t *testing.T) {
+	want := tenancy.Context{OrganizationID: uuid.New(), MembershipID: uuid.New(), AccountID: 41, PolicyRevision: 7, SecurityRevision: 11, Legacy: true}
 	resolver := &tenantResolverStub{result: want}
 	middleware := NewTenantMiddleware(resolver)
-	status, got, ok, _ := runTenantMiddleware(t, middleware.ResolveNative, tenantClaims(want), nil)
-	if status != http.StatusNoContent || !ok || got != want || resolver.gotLegacy || resolver.gotOrganizationID == nil || *resolver.gotOrganizationID != want.OrganizationID {
-		t.Fatalf("native selection not preserved: %d %#v", status, got)
-	}
-	partial := &auth.Claims{UserID: 41, OrganizationID: want.OrganizationID.String()}
-	status, _, ok, _ = runTenantMiddleware(t, middleware.ResolveNative, partial, nil)
-	if status != http.StatusUnauthorized || ok {
-		t.Fatalf("partial selection accepted: %d", status)
-	}
-	stale := tenantClaims(want)
-	stale.SecurityRevision--
-	status, _, ok, _ = runTenantMiddleware(t, middleware.ResolveNative, stale, nil)
-	if status != http.StatusUnauthorized || ok {
-		t.Fatalf("stale selection accepted: %d", status)
+	status, got, ok, _ := runTenantMiddleware(t, middleware.ResolveNative, &auth.Claims{UserID: 41}, map[string]string{
+		"X-Organization-Id": uuid.NewString(),
+	})
+	if status != http.StatusNoContent || !ok || got != want || !resolver.gotLegacy || resolver.gotOrganizationID != nil {
+		t.Fatalf("native request not projected into the default organization: %d %#v legacy=%v organization=%v", status, got, resolver.gotLegacy, resolver.gotOrganizationID)
 	}
 }

@@ -35,8 +35,8 @@ func previewRouteAllowed(method, pattern string) bool {
 	return false
 }
 
-// newPreviewRouteGuard resolves a request against the root router, as the
-// direct-profile guard does. Only the v2 delegation pattern defers: a route
+// newPreviewRouteGuard resolves a request against the root router. Only the
+// v2 delegation pattern defers: a route
 // chi serves itself under /api/v2 is judged here like any other.
 func newPreviewRouteGuard(match func(*chi.Context, string, string) bool) apimw.PreviewRouteGuard {
 	return func(r *http.Request) bool {

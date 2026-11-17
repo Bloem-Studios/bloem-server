@@ -10,7 +10,7 @@ import (
 )
 
 type BloemBookRequestViewerInput struct {
-	ProfileID    string `header:"X-Profile-Id" doc:"The acting profile, which must be verified in the authenticated account's current organization. Required except for a direct-profile session, which acts as its bound profile and is refused if it names another."`
+	ProfileID    string `header:"X-Profile-Id" doc:"The acting profile, which must be verified in the authenticated account's current organization. Required."`
 	ProfileToken string `header:"X-Profile-Token" doc:"PIN verification when required."`
 }
 type BloemBookRequestListInput struct {

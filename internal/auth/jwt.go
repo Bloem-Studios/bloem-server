@@ -57,16 +57,9 @@ type Claims struct {
 	// tokens without a profile and on tokens from older releases.
 	ProfilePINRevision *int64 `json:"profile_pin_revision,omitempty"`
 
-	// Bloem: the account incarnation, device, tenancy and credential
-	// bindings Bloem's sessions carry.
+	// Bloem: the account incarnation and how the session signed in.
 	AccountIncarnationID string `json:"account_incarnation_id,omitempty"`
-	DeviceID             string `json:"device_id,omitempty"`
-	OrganizationID       string `json:"organization_id,omitempty"`
-	MembershipID         string `json:"membership_id,omitempty"`
-	PolicyRevision       int64  `json:"policy_revision,omitempty"`
-	SecurityRevision     int64  `json:"security_revision,omitempty"`
 	AuthMethod           string `json:"auth_method,omitempty"`
-	CredentialRevision   int64  `json:"credential_revision,omitempty"`
 
 	jwt.RegisteredClaims
 }

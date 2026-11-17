@@ -26,16 +26,16 @@ import (
 )
 
 type orgRevocationFixture struct {
-	pool                     *pgxpool.Pool
-	actor, target            *models.User
-	orgA                     uuid.UUID
-	profileA                 string
-	sessionA, accountSession string
-	wholeUserCalls           int
-	profileInvalidations     []string
-	handler                  *AdminHandler
-	router                   chi.Router
-	revisionA                int64
+	pool                 *pgxpool.Pool
+	actor, target        *models.User
+	orgA                 uuid.UUID
+	profileA             string
+	accountSession       string
+	wholeUserCalls       int
+	profileInvalidations []string
+	handler              *AdminHandler
+	router               chi.Router
+	revisionA            int64
 }
 
 func newOrgRevocationFixture(t *testing.T) *orgRevocationFixture {
@@ -91,11 +91,9 @@ SELECT $1,$2,'active',$3`, f.orgA, accountID, map[bool]string{true: "admin", fal
 	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,$3,$4,$5)`, f.profileA, f.target.ID, f.profileA, f.orgA, groupID); err != nil {
 		t.Fatalf("create profile: %v", err)
 	}
-	f.sessionA, f.accountSession = uuid.NewString(), uuid.NewString()
-	for sessionID, profileID := range map[string]*string{f.sessionA: &f.profileA, f.accountSession: nil} {
-		if _, err := pool.Exec(ctx, `INSERT INTO auth_sessions (id,user_id,device_id,expires_at,profile_id,profile_credential_revision,auth_method) VALUES ($1,$2,'test',now()+interval '1 hour',$3,CASE WHEN $3::text IS NULL THEN NULL ELSE 1 END,CASE WHEN $3::text IS NULL THEN 'account' ELSE 'direct_profile' END)`, sessionID, f.target.ID, profileID); err != nil {
-			t.Fatalf("create session: %v", err)
-		}
+	f.accountSession = uuid.NewString()
+	if _, err := pool.Exec(ctx, `INSERT INTO auth_sessions (id,user_id,device_id,expires_at) VALUES ($1,$2,'test',now()+interval '1 hour')`, f.accountSession, f.target.ID); err != nil {
+		t.Fatalf("create session: %v", err)
 	}
 	f.revisionA = f.revision(t, f.orgA)
 
@@ -155,9 +153,6 @@ func TestBloemOrganizationRevokeAllInvalidatesMembership(t *testing.T) {
 	// can reach nothing but this organization, so it is revoked too.
 	f := newOrgRevocationFixture(t)
 	f.revokeAll(t)
-	if f.active(t, f.sessionA) {
-		t.Fatal("organization profile session survived")
-	}
 	if f.active(t, f.accountSession) {
 		t.Fatal("account-login session survived although this organization is the account's only membership")
 	}

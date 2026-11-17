@@ -684,7 +684,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var jwtService *auth.JWTService
 	var sessionRepo *auth.SessionRepository
 	var deviceLoginService *auth.DeviceLoginService
-	var profileCredentialService *auth.ProfileCredentialService
 	if deps.DB != nil && deps.Config != nil {
 		userRepo = auth.NewUserRepository(deps.DB)
 		sessionRepo = auth.NewSessionRepository(deps.DB)
@@ -702,7 +701,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 			})
 		}
 		provider := auth.NewLocalProvider(userRepo, sessionRepo)
-		profileCredentialService = auth.NewProfileCredentialService(deps.DB)
 		authService = auth.NewService(
 			provider,
 			jwtService,
@@ -713,7 +711,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			deps.UserStoreProvider,
 		)
 		authService.OnSessionsRevoked(deps.OnUserSessionsRevoked)
-		wireBloemAuthService(authService, profileCredentialService, deps)
+		wireBloemAuthService(authService, deps)
 		for _, registration := range deps.AuthProviders {
 			authService.RegisterProvider(registration.Info, registration.Provider)
 		}
@@ -775,10 +773,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 			authHandler.SetAccessGroupProvider(accessGroupStore)
 		}
 		authMiddleware = apimw.NewAuthMiddleware(jwtService, sessionRepo, apiKeyRepo, userRepo)
-		// Default-deny for direct-profile sessions. Installed here, at the one
-		// place claims are resolved, so a route is out of reach until
-		// directProfileAllowedRoutes names it.
-		authMiddleware.SetDirectProfileRouteGuard(newDirectProfileRouteGuard(r.Match))
 		// Bloem: preview principals browse and nothing else (bloem_preview_routes.go).
 		authMiddleware.SetPreviewPrincipals(sessionRepo)
 		authMiddleware.SetPreviewRouteGuard(newPreviewRouteGuard(r.Match))

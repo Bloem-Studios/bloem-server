@@ -45,15 +45,13 @@ func bloemServerIdentity(deps Dependencies) *serverid.Resolver {
 	return serverid.FromService(serveridentity.New(store))
 }
 
-// wireBloemAuthService installs direct profile credentials and the tenancy
-// ownership/membership seams on the auth service.
-func wireBloemAuthService(authService *auth.Service, profileCredentials *auth.ProfileCredentialService, deps Dependencies) {
-	authService.SetProfileCredentialService(profileCredentials)
+// wireBloemAuthService installs the tenancy ownership seam and preview guests
+// on the auth service.
+func wireBloemAuthService(authService *auth.Service, deps Dependencies) {
 	authService.SetOwnershipBootstrapper(deps.OwnershipBootstrapper)
 	if reader := bloemPreviewReader(deps); reader != nil {
 		authService.EnablePreviewGuests(deps.DB, reader)
 	}
-
 }
 
 // withBloemViewerTenancy applies Bloem tenancy to the policy viewer resolver

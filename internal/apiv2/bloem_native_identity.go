@@ -92,7 +92,7 @@ func registerBloemIdentity(reg *Registry) {
 	organizations.Description = "Requires an account bearer token or API key; no profile or organization needs to be selected. Lists only active memberships in active organizations that have an owner."
 	bloemDocumentErrors[BloemNativeError](reg, &organizations, map[int]string{
 		401: "unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued.",
-		403: "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first.",
+		403: "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first.",
 		503: "service_unavailable: the credential could not be checked; retry after Retry-After. tenant_unavailable: memberships or organizations could not be read, or tenant authorization is not configured.",
 	})
 	organizations.Responses["503"].Headers = map[string]*huma.Header{

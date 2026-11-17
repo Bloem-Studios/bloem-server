@@ -151,7 +151,7 @@ const (
 func bloemLiveTVDocumentOp(reg *Registry, method, path, id, summary string, status int, gate bloemLiveTVGate) huma.Operation {
 	op := bloemClientDocumentOp(reg, method, path, id, "livetv", summary, status)
 	bloemDocumentPathParameters(&op)
-	op.Description = "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted."
+	op.Description = "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority."
 	forbidden := bloemClientGate403
 	failed := "internal_error: the viewer's access could not be resolved, or the Live TV request failed; internal details are withheld."
 	switch gate {

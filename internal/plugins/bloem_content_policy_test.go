@@ -14,7 +14,7 @@ func TestContentBrowseOnlyBlocksPublicAndPrivateBytes(t *testing.T) {
 	if err := os.WriteFile(file, []byte("0123456789"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	denials := []BloemContentDenials{{PlaybackDenied: true}, {ProfileBound: true}}
+	denials := []BloemContentDenials{{PlaybackDenied: true}}
 	for _, policy := range []string{"public", "authenticated", "admin"} {
 		for _, denial := range denials {
 			testContentDenied(t, file, policy, denial)

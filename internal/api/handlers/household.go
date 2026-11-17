@@ -52,9 +52,6 @@ func householdManagerAs(
 	activeProfileID string,
 	verify func(*userstore.Profile) error,
 ) (bool, *userstore.Profile, error) {
-	if bloemDirectProfileClaims(ctx) {
-		return false, nil, nil
-	}
 	// A remote-playback handoff never manages the household, even when it is
 	// bound to the primary profile.
 	if apimw.GetClaims(ctx).IsRemotePlayback() {

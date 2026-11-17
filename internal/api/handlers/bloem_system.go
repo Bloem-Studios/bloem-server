@@ -20,42 +20,24 @@ type BloemOrganizationStore interface {
 }
 
 type BloemSystemHandler struct {
-	organizations BloemOrganizationStore
-	// directProfileLogin reports whether /auth/profile-login is wired. Clients
-	// follow capability discovery rather than version sniffing, so this must
-	// track the actual route.
-	directProfileLogin          bool
-	profileCredentialManagement bool
-	seasonalViewer              bool
-	playbackOverlays            bool
-	promotionsViewer            bool
-	organizationDomains         bool
-	organizationSupport         bool
-	organizationLive            bool
-	bookRequests                bool
-	ebookRequests               bool
-	bookRequestConnectionAdmin  bool
-	nativeAudioReadiness        func(context.Context) bool
+	organizations              BloemOrganizationStore
+	seasonalViewer             bool
+	playbackOverlays           bool
+	promotionsViewer           bool
+	organizationDomains        bool
+	organizationSupport        bool
+	organizationLive           bool
+	bookRequests               bool
+	ebookRequests              bool
+	bookRequestConnectionAdmin bool
+	nativeAudioReadiness       func(context.Context) bool
 	// adminPushReady reports whether the admin push routes are mounted and the
 	// operator has push delivery on. Nil means the routes are not mounted.
 	adminPushReady func(context.Context) bool
-	// profilePasswordsEnabled reads the admin switch that turns profile
-	// passwords on; direct profile login and credential management are
-	// advertised only while it is on.
-	profilePasswordsEnabled func(context.Context) bool
 }
 
 func NewBloemSystemHandler(organizations BloemOrganizationStore) *BloemSystemHandler {
 	return &BloemSystemHandler{organizations: organizations}
-}
-
-// SetDirectProfileLoginAvailable records that direct profile login is served.
-func (h *BloemSystemHandler) SetDirectProfileLoginAvailable(available bool) {
-	h.directProfileLogin = available
-}
-
-func (h *BloemSystemHandler) SetProfileCredentialManagementAvailable(available bool) {
-	h.profileCredentialManagement = available
 }
 
 func (h *BloemSystemHandler) SetBookRequestsAvailable(available bool) { h.bookRequests = available }
@@ -207,18 +189,11 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	if h.nativeAudioReadiness != nil && h.nativeAudioReadiness(request.Context()) {
 		featureTokens = append(featureTokens, "native_audiobook_presentations_v1")
 	}
-	profilePasswords := h.profilePasswordsEnabled != nil && h.profilePasswordsEnabled(request.Context())
-	if h.profileCredentialManagement && profilePasswords {
-		featureTokens = append(featureTokens, "profile_credential_management_v1")
-	}
 	if h.bookRequests {
 		featureTokens = append(featureTokens, "audiobook_requests_v1")
 	}
 	if h.ebookRequests {
-		// The ebook viewer routes admit direct-profile sessions wherever they
-		// are mounted; the second token lets a client tell this server from
-		// one that answers those sessions with 403.
-		featureTokens = append(featureTokens, "ebook_requests_v1", "ebook_requests_direct_profile_v1")
+		featureTokens = append(featureTokens, "ebook_requests_v1")
 	}
 	if h.bookRequestConnectionAdmin {
 		featureTokens = append(featureTokens, "book_request_connection_admin_v1")
@@ -252,7 +227,7 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 			LegacySiloV1:            false, // Silo retired its alpha v1 API (Silo #3200)
 			OrganizationMemberships: true,
 			TenantBoundedMediaScope: true,
-			DirectProfileLogin:      h.directProfileLogin && profilePasswords,
+			DirectProfileLogin:      false, // profile sign-in was removed
 		},
 		MediaTypes:    slices.Clone(mediaTypesServed),
 		FeatureTokens: featureTokens,
@@ -320,12 +295,6 @@ func (h *BloemSystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.
 	}
 
 	writeJSON(w, http.StatusOK, bloemOrganizationListResponse{Organizations: result})
-}
-
-// SetProfilePasswordsEnabled supplies the admin switch for profile passwords.
-// Without it, profile passwords are not advertised.
-func (h *BloemSystemHandler) SetProfilePasswordsEnabled(enabled func(context.Context) bool) {
-	h.profilePasswordsEnabled = enabled
 }
 
 // SetAdminPushReadiness advertises admin_push_v1 while ready reports true. It is

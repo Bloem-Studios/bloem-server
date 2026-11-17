@@ -32,7 +32,7 @@ func (r *SessionRepository) ActiveSessionAuthority(ctx context.Context, id strin
 // Like ActiveSession, the session must belong to userID, the account the
 // credential names.
 func (r *SessionRepository) ActivePreviewSession(ctx context.Context, id string, userID int) (authority SessionAuthority, previewOnly, active bool, err error) {
-	query := `SELECT CASE WHEN s.profile_id IS NOT NULL THEN 'user' ELSE u.role END,
+	query := `SELECT u.role,
 		s.purpose, COALESCE(s.bound_profile_id, ''), ` + previewAccountSQL + `
 		FROM auth_sessions s
 		JOIN users u ON u.id = s.user_id

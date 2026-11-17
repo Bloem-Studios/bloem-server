@@ -44,7 +44,10 @@ func (h *LiveTVHandler) canManageOtherViewers(r *http.Request) bool {
 	if !apimw.IsAdmin(r.Context()) {
 		return false
 	}
-	profileID := apimw.ActiveProfileID(r)
+	profileID := apimw.GetProfileID(r.Context())
+	if profileID == "" {
+		profileID = r.Header.Get("X-Profile-Id")
+	}
 	if profileID == "" {
 		return true
 	}

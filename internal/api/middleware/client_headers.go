@@ -13,10 +13,7 @@ import (
 // The native Bloem clients have always sent X-Bloem-* for the same fields, so
 // the two halves of the device identity never met: X-Silo-Client-Family was
 // read straight from the header with no fallback, which is why profile_client
-// ("like client") settings roaming never resolved for any Bloem client. Device
-// id only appeared to work because a direct-profile session backfills it from
-// the session's device binding in RequireAuth — the client's own header was
-// simply discarded.
+// ("like client") settings roaming never resolved for any Bloem client.
 //
 // Both spellings are accepted indefinitely. An upstream-compatible client that
 // sends only X-Silo-* is untouched by this table: for such a request every
@@ -37,14 +34,9 @@ var clientHeaderAliases = map[string]string{
 // onto the canonical X-Silo-* names every handler already reads, so exactly one
 // spelling exists downstream and no handler has to learn about two.
 //
-// It is mounted at the root of the native chain, ahead of authentication. That
-// ordering is load-bearing rather than incidental: RequireAuth treats
-// X-Silo-Device-Id as a *declared* device and refuses a value that conflicts
-// with the session's binding before overwriting it from the claims. Folding the
-// alias in first means a device id declared under either spelling faces that
-// same guard. Folding it in afterwards would let a session declare
-// X-Bloem-Device-Id and act as a device it never authenticated — the guard
-// would have already run against a header that was empty at the time.
+// It is mounted at the root of the native chain, ahead of authentication and
+// request logging, so every reader, from logging to policy input, sees the
+// device and client under one spelling.
 //
 // Precedence when both spellings are present: the canonical X-Silo-* value
 // wins. A request that already carries the canonical header must keep behaving

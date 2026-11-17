@@ -79,10 +79,10 @@ type bloemSocketFixture struct {
 
 func newBloemSocketFixture(t *testing.T) *bloemSocketFixture {
 	t.Helper()
-	tenant := tenancy.Context{AccountID: 7, OrganizationID: uuid.New(), MembershipID: uuid.New(), PolicyRevision: 2, SecurityRevision: 3, OrganizationStatus: tenancy.OrganizationActive, MembershipStatus: tenancy.MembershipActive}
+	tenant := tenancy.Context{AccountID: 7, OrganizationID: uuid.New(), MembershipID: uuid.New(), PolicyRevision: 2, SecurityRevision: 3, OrganizationStatus: tenancy.OrganizationActive, MembershipStatus: tenancy.MembershipActive, Legacy: true, OrganizationDefault: true}
 	user := &socketUserFixture{user: models.User{ID: 7, Enabled: true, Role: "user", AccountIncarnationID: uuid.New()}}
 	until := time.Now().Add(time.Minute)
-	claims := &auth.Claims{UserID: 7, Role: "user", SessionID: "session", TokenType: auth.TokenTypeAccess, AccountIncarnationID: user.user.AccountIncarnationID.String(), OrganizationID: tenant.OrganizationID.String(), MembershipID: tenant.MembershipID.String(), PolicyRevision: 2, SecurityRevision: 3, RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(until)}}
+	claims := &auth.Claims{UserID: 7, Role: "user", SessionID: "session", TokenType: auth.TokenTypeAccess, AccountIncarnationID: user.user.AccountIncarnationID.String(), RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(until)}}
 	ctx := tenancy.WithContext(apimw.SetClaims(t.Context(), claims), tenant)
 	f := &bloemSocketFixture{ctx: ctx, claims: claims, users: user, viewer: &bloemSocketViewer{}, primary: true,
 		tenants:  &bloemSocketTenantFixture{tenant: tenant, profileOrganization: tenant.OrganizationID},
@@ -129,14 +129,8 @@ func TestBloemEventsSocketContextlessHandshake(t *testing.T) {
 }
 
 func TestBloemEventsSocketRestoresOnlyCapturedAuthority(t *testing.T) {
-	for _, legacy := range []bool{false, true} {
+	{
 		f := newBloemSocketFixture(t)
-		if legacy {
-			f.claims.OrganizationID, f.claims.MembershipID = "", ""
-			f.claims.PolicyRevision, f.claims.SecurityRevision = 0, 0
-			f.tenants.tenant.Legacy, f.tenants.tenant.OrganizationDefault = true, true
-			f.ctx = tenancy.WithContext(f.ctx, f.tenants.tenant)
-		}
 		f.identity.ProfileID, f.identity.ProfileToken = "profile", "pin-proof"
 		f.ctx = apimw.SetProfileID(f.ctx, "profile")
 		proof, err := f.h.Tickets.Consume(t.Context(), f.mint(t))
@@ -149,7 +143,7 @@ func TestBloemEventsSocketRestoresOnlyCapturedAuthority(t *testing.T) {
 			t.Fatal(err)
 		}
 		tenant, _ := tenancy.FromContext(ctx)
-		if tenant != f.tenants.tenant || claims.AccountIncarnationID != f.claims.AccountIncarnationID || claims.OrganizationID != f.claims.OrganizationID || claims.SecurityRevision != f.claims.SecurityRevision || apimw.GetProfileID(ctx) != "profile" || claims.TokenType != auth.TokenTypeAccess {
+		if tenant != f.tenants.tenant || claims.AccountIncarnationID != f.claims.AccountIncarnationID || apimw.GetProfileID(ctx) != "profile" || claims.TokenType != auth.TokenTypeAccess {
 			t.Fatal("minted credential binding was lost or caller tenant was used")
 		}
 	}
@@ -281,8 +275,8 @@ func TestBloemEventsSocketRejectsAuthorityChanges(t *testing.T) {
 			f.sessions.session.ExpiresAt = time.Now().Add(-time.Second)
 		},
 		"session invalid": func(f *bloemSocketFixture, _ *evt.SocketIdentity) { f.sessions.valid = false },
-		"session became direct profile": func(f *bloemSocketFixture, _ *evt.SocketIdentity) {
-			f.sessions.session.AuthMethod = auth.AuthMethodDirectProfile
+		"session became preview guest": func(f *bloemSocketFixture, _ *evt.SocketIdentity) {
+			f.sessions.session.AuthMethod = auth.AuthMethodPreviewGuest
 		},
 		"session device": func(f *bloemSocketFixture, _ *evt.SocketIdentity) { f.sessions.session.DeviceID = "other-device" },
 		"session impersonator": func(f *bloemSocketFixture, _ *evt.SocketIdentity) {
@@ -322,12 +316,9 @@ func TestBloemEventsSocketRejectsInvalidMintingPrincipal(t *testing.T) {
 	for name, change := range map[string]func(*bloemSocketFixture){
 		"anonymous":           func(f *bloemSocketFixture) { f.ctx = t.Context() },
 		"missing tenant":      func(f *bloemSocketFixture) { f.ctx = apimw.SetClaims(t.Context(), f.claims) },
-		"direct profile":      func(f *bloemSocketFixture) { f.claims.AuthMethod = auth.AuthMethodDirectProfile },
+		"preview guest":       func(f *bloemSocketFixture) { f.claims.AuthMethod = auth.AuthMethodPreviewGuest },
 		"API key":             func(f *bloemSocketFixture) { f.claims.TokenType = auth.TokenTypeAPIKey },
 		"missing incarnation": func(f *bloemSocketFixture) { f.claims.AccountIncarnationID = "" },
-		"partial tenant":      func(f *bloemSocketFixture) { f.claims.MembershipID = "" },
-		"stale tenant":        func(f *bloemSocketFixture) { f.claims.SecurityRevision-- },
-		"foreign tenant":      func(f *bloemSocketFixture) { f.claims.OrganizationID = uuid.NewString() },
 		"foreign session":     func(f *bloemSocketFixture) { f.identity.SessionID = "other" },
 		"foreign profile":     func(f *bloemSocketFixture) { f.identity.ProfileID = "other" },
 		"extended expiry":     func(f *bloemSocketFixture) { f.identity.AccessExpiresAt = f.identity.AccessExpiresAt.Add(time.Hour) },
@@ -347,10 +338,6 @@ func TestBloemEventsSocketRejectsInvalidMintingPrincipal(t *testing.T) {
 // from the authenticated session, then continue fencing it on every recheck.
 func TestBloemEventsSocketAccountSessionDeviceCapture(t *testing.T) {
 	f := newBloemSocketFixture(t)
-	f.claims.OrganizationID, f.claims.MembershipID = "", ""
-	f.claims.PolicyRevision, f.claims.SecurityRevision = 0, 0
-	f.tenants.tenant.Legacy, f.tenants.tenant.OrganizationDefault = true, true
-	f.ctx = tenancy.WithContext(f.ctx, f.tenants.tenant)
 	f.sessions.session.DeviceID = "browser-device"
 	proof, err := f.h.Tickets.Consume(t.Context(), f.mint(t))
 	if err != nil {
@@ -358,9 +345,6 @@ func TestBloemEventsSocketAccountSessionDeviceCapture(t *testing.T) {
 	}
 	if _, _, err := f.h.Validate(t.Context(), proof); err != nil {
 		t.Fatalf("account session with recorded device: %v", err)
-	}
-	if f.claims.DeviceID != "" {
-		t.Fatal("mint modified caller claims")
 	}
 	f.sessions.session.DeviceID = "replacement-device"
 	if _, _, err := f.h.Validate(t.Context(), proof); !errors.Is(err, evt.ErrSocketTicket) {

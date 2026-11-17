@@ -23,13 +23,12 @@ import (
 // Gate outcomes of the native client group (router_bloem_client.go). Every
 // route in that group runs, in order: RequireAuth, the default-organization
 // projection (optionalLegacyTenant), the authenticated rate limiter, viewer
-// access and the X-Profile-Id requirement. The direct-profile route boundary
-// admits none of these routes. Operations whose handlers add a code to the
+// access and the X-Profile-Id requirement. Operations whose handlers add a code to the
 // same status restate the gate text in their own description.
 const (
 	bloemClientGate400 = "bad_request: X-Profile-Id is missing."
 	bloemClientGate401 = "unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved."
-	bloemClientGate403 = "forbidden: API key scopes, a direct-profile or preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
+	bloemClientGate403 = "forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid."
 	bloemClientGate404 = "not_found: X-Profile-Id names no profile of this account."
 	bloemClientGate500 = "internal_error: the viewer's access could not be resolved."
 	bloemClientGate503 = "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable."

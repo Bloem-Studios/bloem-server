@@ -4,9 +4,9 @@ package handlers
 // administrator asks for it.
 //
 // Revoking only the sessions bound to the organization's profiles left two
-// ways back in. Anything bound to the membership itself -- admin-context
-// tokens, tenant-bound (v2) sessions, direct-profile refresh -- carried the
-// membership's security_revision and kept validating against it. And an
+// ways back in. Anything bound to the membership itself, such as an
+// admin-context token, carried the membership's security_revision and kept
+// validating against it. And an
 // account-login session (profile_id NULL) is not bound to any organization at
 // all, so it survived and could still select the organization's profiles.
 //
