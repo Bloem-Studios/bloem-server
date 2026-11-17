@@ -25,8 +25,6 @@ type CollectionSyncScheduler struct {
 	// inFlight tracks collection IDs currently being synced to prevent
 	// concurrent syncs of the same collection (manual vs scheduled).
 	inFlight sync.Map
-
-	bloemCollectionSyncLock
 }
 
 // CollectionSyncResult is the JSON summary attached to the task execution.

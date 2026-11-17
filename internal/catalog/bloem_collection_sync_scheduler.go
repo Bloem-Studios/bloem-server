@@ -19,17 +19,13 @@ import (
 // external metadata providers concurrently.
 var collectionSyncSchedulerLockKey = pglock.Key("catalog.collection_sync_scheduler")
 
-// bloemCollectionSyncLock is embedded in CollectionSyncScheduler to carry
-// Bloem's advisory-lock test seam.
-type bloemCollectionSyncLock struct {
-	// tryLockFunc overrides advisory-lock acquisition in tests. Nil in
-	// production, where RunOnce falls back to pglock.TryAcquire.
-	tryLockFunc func(ctx context.Context, key int64) (*pglock.Lock, bool, error)
-}
+// collectionSyncTryLockFunc overrides advisory-lock acquisition in tests. Nil
+// in production, where RunOnce falls back to pglock.TryAcquire.
+var collectionSyncTryLockFunc func(ctx context.Context, key int64) (*pglock.Lock, bool, error)
 
 func (s *CollectionSyncScheduler) acquireLock(ctx context.Context) (*pglock.Lock, bool, error) {
-	if s.tryLockFunc != nil {
-		return s.tryLockFunc(ctx, collectionSyncSchedulerLockKey)
+	if collectionSyncTryLockFunc != nil {
+		return collectionSyncTryLockFunc(ctx, collectionSyncSchedulerLockKey)
 	}
 	if s.repo == nil || s.repo.pool == nil {
 		return nil, false, fmt.Errorf("collection sync scheduler: no database pool available")
