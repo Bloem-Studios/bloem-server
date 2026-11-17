@@ -811,7 +811,6 @@ func main() {
 	if err := telemetry.ConfigureRuntimeMetrics(); err != nil {
 		slog.Warn("runtime metrics configuration failed", "error", err)
 	}
-
 	if len(os.Args) > 1 && os.Args[1] == "compat-web" {
 		if err := runCompatWebCommand(context.Background(), os.Args[2:]); err != nil {
 			log.Fatalf("compat-web: %v", err)
@@ -1051,7 +1050,6 @@ func main() {
 		}
 		settings[auth.JWTSecretSettingKey] = jwtSecret
 	}
-
 	if settings["jellyfin_compat.server_id"] == "" {
 		serverID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("https://silo.local/jellycompat")).String()
 		if err := settingsRepo.Set(ctx, "jellyfin_compat.server_id", serverID); err != nil {
@@ -2741,7 +2739,8 @@ func main() {
 	if deps.Blobs.Assets != nil {
 		brandingStore = deps.Blobs.Assets
 	}
-	brandingSvc := branding.NewService(orgdomains.NewSettingsOverlay(settingsRepo, orgDirectory, orgDomainStore, orgdomains.OverlayOptions{}), brandingStore)
+	brandingSvc := branding.NewService(settingsRepo, brandingStore)
+	brandingSvc = branding.NewService(orgdomains.NewSettingsOverlay(settingsRepo, orgDirectory, orgDomainStore, orgdomains.OverlayOptions{}), brandingStore) // Bloem: per-organization branding
 	deps.EmailBrand = mail.NewBrandLoader(brandingSvc)
 
 	// User-facing release notifications. The system reads user state through
@@ -2754,8 +2753,8 @@ func main() {
 		profileTokens := access.NewProfileTokenService(cfg.Auth.JWTSecret, 0)
 		var notificationScopes notifications.ScopeResolver
 		if policySystem != nil {
-			notificationScopes = newTenantAwareViewerResolver(deps.DB,
-				policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults))
+			notificationScopes = policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
+			notificationScopes = withBloemViewerTenancy(notificationScopes, deps.DB) // Bloem: organization-scoped (bloem_main.go)
 		} else {
 			// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 			notificationScopes = access.NewResolver(userRepo, userStoreProvider, profileTokens, accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
@@ -3038,10 +3037,8 @@ func main() {
 			return worker.SessionSyncRowJSON(buildLiveSessionSync(s, nodeIdentity), nodeIdentity)
 		}
 
-		nodeURL := strings.TrimSpace(os.Getenv("NODE_URL"))
-		if nodeURL == "" {
-			nodeURL = fmt.Sprintf("http://%s%s", nodeIdentity, cfg.Server.Listen)
-		}
+		nodeURL := fmt.Sprintf("http://%s%s", nodeIdentity, cfg.Server.Listen)
+		nodeURL = bloemNodeURL(nodeURL) // Bloem: NODE_URL overrides the advertised URL (bloem_main.go)
 		heartbeatWriter = worker.NewHeartbeatWriter(deps.DB, nodeIdentity, mode, nodeURL)
 	}
 
@@ -3360,7 +3357,8 @@ func main() {
 			// so the owner resolver is wired here, not in the router.
 			var ownerScopes scopeResolver
 			if policySystem != nil {
-				ownerScopes = newTenantAwareViewerResolver(deps.DB, policy.NewViewerResolver(auth.NewUserRepository(deps.DB), deps.UserStoreProvider, nil, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults))
+				ownerScopes = policy.NewViewerResolver(auth.NewUserRepository(deps.DB), deps.UserStoreProvider, nil, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
+				ownerScopes = withBloemViewerTenancy(ownerScopes, deps.DB) // Bloem: organization-scoped (bloem_main.go)
 			} else {
 				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 				ownerScopes = access.NewResolver(auth.NewUserRepository(deps.DB), deps.UserStoreProvider, nil, accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
@@ -3392,9 +3390,8 @@ func main() {
 	if deps.DB != nil && pluginInstallationStore != nil && pluginRuntimeConfigStore != nil && deps.PluginService != nil {
 		// The resolver stores the plugins' refresh_state encrypted with the
 		// server secret, for the provider re-check at session refresh.
-		providerAccounts := auth.NewAccountProvisioner(auth.NewUserRepository(deps.DB), userStoreProvider)
 		accountResolver := auth.NewAccountResolver(deps.DB,
-			providerAccounts,
+			auth.NewAccountProvisioner(auth.NewUserRepository(deps.DB), userStoreProvider),
 			func(ctx context.Context, userID int) {
 				if deps.OnUserSessionsRevoked != nil {
 					deps.OnUserSessionsRevoked(ctx, userID)
@@ -3786,8 +3783,8 @@ func main() {
 			profileTokens := access.NewProfileTokenService(cfg.Auth.JWTSecret, 0)
 			var reconcileResolver scopeResolver
 			if policySystem != nil {
-				reconcileResolver = newTenantAwareViewerResolver(deps.DB,
-					policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults))
+				reconcileResolver = policy.NewViewerResolver(userRepo, userStoreProvider, profileTokens, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
+				reconcileResolver = withBloemViewerTenancy(reconcileResolver, deps.DB) // Bloem: organization-scoped (bloem_main.go)
 			} else {
 				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 				reconcileResolver = access.NewResolver(userRepo, userStoreProvider, profileTokens, accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
@@ -3926,7 +3923,8 @@ func main() {
 		}
 		var absScopeResolver scopeResolver
 		if policySystem != nil {
-			absScopeResolver = newTenantAwareViewerResolver(deps.DB, policy.NewViewerResolver(absUserRepo, userStoreProvider, nil, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults))
+			absScopeResolver = policy.NewViewerResolver(absUserRepo, userStoreProvider, nil, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
+			absScopeResolver = withBloemViewerTenancy(absScopeResolver, deps.DB) // Bloem: organization-scoped (bloem_main.go)
 		} else {
 			absScopeResolver = access.NewResolver(absUserRepo, userStoreProvider, nil, accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
 		}
@@ -4067,7 +4065,8 @@ func main() {
 
 	// Step 8: Build the handler the primary port serves — the API router and
 	// frontend. Metrics use a separate opt-in listener; see newRootHandler.
-	rootHandler := orgdomains.WrapListener(newRootHandler(router), ipResolver, orgDirectory)
+	rootHandler := newRootHandler(router)
+	rootHandler = orgdomains.WrapListener(rootHandler, ipResolver, orgDirectory) // Bloem: organization domains
 	stopMetricsListener, err := startMetricsListener(true)
 	if err != nil {
 		log.Fatalf("metrics listener: %v", err)
@@ -4186,7 +4185,7 @@ func main() {
 	if (mode == "integrated" || mode == "api") && cfg.JellyfinCompat.Enabled && cfg.JellyfinCompat.Listen != "" {
 		compatDeps := jellycompat.Dependencies{
 			AdminDefaults:        adminDefaults,
-			ArtworkHandler:       apiv2.NewBloemArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)),
+			ArtworkHandler:       apiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair),
 			Config:               cfg,
 			AppContext:           appCtx,
 			RegisterShutdownWork: registerShutdownWork,
@@ -4221,6 +4220,7 @@ func main() {
 			// are shared with the native API. Nil when rate limiting is off.
 			RateLimit: deps.RateLimitMW,
 		}
+		compatDeps.ArtworkHandler = apiv2.NewBloemArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)) // Bloem: storage covers
 
 		// Wire direct dependencies when DB is available.
 		if deps.DB != nil {
@@ -4311,7 +4311,8 @@ func main() {
 			compatDeps.PosterPresigner = jellycompat.NewResolverPosterPresigner(deps.ArtworkResolver)
 
 			if deps.FileRepo != nil {
-				compatDeps.FileResolver = bloemGuardNativeStorageFiles(deps.FileRepo)
+				compatDeps.FileResolver = deps.FileRepo
+				compatDeps.FileResolver = bloemGuardNativeStorageFiles(deps.FileRepo) // Bloem: hide native storage files
 				compatDeps.MediaSourceOwners = deps.FileRepo
 			}
 			compatDeps.Downloads = compatDownloads
@@ -4372,13 +4373,14 @@ func main() {
 			if userStoreProvider != nil {
 				var compatScopeResolver jellycompat.ScopeResolver
 				if policySystem != nil {
-					compatScopeResolver = newTenantAwareViewerResolver(deps.DB, policy.NewViewerResolver(
+					compatScopeResolver = policy.NewViewerResolver(
 						userRepo,
 						userStoreProvider,
 						nil, // profile tokens unused: compat login already verifies PINs
 						policySystem.PDP(),
 						accessGroupStore,
-					).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults))
+					).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
+					compatScopeResolver = withBloemViewerTenancy(compatScopeResolver, deps.DB) // Bloem: organization-scoped (bloem_main.go)
 				} else {
 					// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 					compatScopeResolver = access.NewResolver(
@@ -4437,11 +4439,13 @@ func main() {
 	}
 
 	errCh := make(chan error, 3)
-	// Closed after the upstream LAN advertisement has been withdrawn.
+	// Closed when the LAN advertiser has sent its goodbye packets; nil when
+	// discovery is off. Shutdown ends the advertisement through lanCtx before
+	// the rest of appCtx, so LAN clients stop finding a server that is about
+	// to close.
 	var lanDiscoveryDone chan struct{}
 	lanCtx, stopLANDiscovery := context.WithCancel(appCtx)
 	defer stopLANDiscovery()
-
 	// Bind before serving so resident plugins, which reverse-proxy to this
 	// listener, are only started once it exists.
 	apiListener, _, apiListenErr := tcpcongestion.Listen(appCtx, "tcp", cfg.Server.Listen, tcpcongestion.ListenerAPI, opts)

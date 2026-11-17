@@ -6,7 +6,9 @@ package main
 import (
 	"context"
 	"errors"
+	"os"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -151,4 +153,45 @@ func TestBloemShutdownSharedWorkerOwnershipAcceptsNilConcreteWriters(t *testing.
 	var reconciler *worker.Reconciler
 	var heartbeat *worker.HeartbeatWriter
 	bloemShutdownSharedWorkerOwnership(t.Context(), reconciler, heartbeat)
+}
+
+// TestBloemNodeURLPrefersNODEURL keeps a replica's heartbeat on the URL the
+// operator set in NODE_URL (Live TV ownership and cross-replica stops reach it
+// there) and falls back to Silo's derived URL when NODE_URL is unset or blank.
+func TestBloemNodeURLPrefersNODEURL(t *testing.T) {
+	const derived = "http://api-1:8080"
+	t.Setenv("NODE_URL", "")
+	if got := bloemNodeURL(derived); got != derived {
+		t.Fatalf("unset NODE_URL: got %q, want %q", got, derived)
+	}
+	t.Setenv("NODE_URL", "   ")
+	if got := bloemNodeURL(derived); got != derived {
+		t.Fatalf("blank NODE_URL: got %q, want %q", got, derived)
+	}
+	t.Setenv("NODE_URL", " https://api-1.internal:8443 ")
+	if got := bloemNodeURL(derived); got != "https://api-1.internal:8443" {
+		t.Fatalf("set NODE_URL: got %q", got)
+	}
+}
+
+// TestMainKeepsBloemOwnLines keeps the Bloem lines that follow a Silo line in
+// main.go and replace what it built. Each was once folded into the Silo line;
+// as its own line it survives Silo merges cleanly, but a conflict resolved in
+// Silo's favour could drop it silently, so the source is checked here.
+func TestMainKeepsBloemOwnLines(t *testing.T) {
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range []string{
+		"nodeURL = bloemNodeURL(nodeURL)",
+		"brandingSvc = branding.NewService(orgdomains.NewSettingsOverlay(settingsRepo, orgDirectory, orgDomainStore, orgdomains.OverlayOptions{}), brandingStore)",
+		"rootHandler = orgdomains.WrapListener(rootHandler, ipResolver, orgDirectory)",
+		"compatDeps.FileResolver = bloemGuardNativeStorageFiles(deps.FileRepo)",
+		"compatDeps.ArtworkHandler = apiv2.NewBloemArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps))",
+	} {
+		if !strings.Contains(string(src), line) {
+			t.Errorf("main.go lost Bloem's line %q", line)
+		}
+	}
 }

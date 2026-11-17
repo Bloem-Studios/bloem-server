@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -211,6 +212,16 @@ type adminPeopleBackgroundWorker interface {
 
 func startAdminPeopleBackgroundWorker(ctx context.Context, worker adminPeopleBackgroundWorker) {
 	go worker.Run(ctx)
+}
+
+// bloemNodeURL returns the URL this node's heartbeat advertises: NODE_URL when
+// the operator set it (a replica behind its own address, so Live TV ownership
+// and cross-replica playback stops reach it), else Silo's derived URL.
+func bloemNodeURL(derived string) string {
+	if nodeURL := strings.TrimSpace(os.Getenv("NODE_URL")); nodeURL != "" {
+		return nodeURL
+	}
+	return derived
 }
 
 // newTenantAwareViewerResolver turns on Bloem tenancy for a Silo viewer
