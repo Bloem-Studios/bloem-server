@@ -36,6 +36,8 @@ const modules: Record<string, string> = {
   "components/ui/sheet.tsx": "adapters/sheet.tsx",
   // An organization administrator gets the organization's own access groups page.
   "pages/AdminAccessGroups.tsx": "adapters/AdminAccessGroups.tsx",
+  // Bloem's own clients are the app in the sign-in session list.
+  "lib/loginSessionDevice.ts": "adapters/loginSessionDevice.ts",
 };
 
 // Boundaries replaced for one importer only, so every other importer, Silo's

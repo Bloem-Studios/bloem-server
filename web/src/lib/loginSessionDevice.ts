@@ -54,8 +54,7 @@ export function loginSessionDevice(session: { device_name: string; device_platfo
   }
   if (!raw) return { name: t("web.settings.sessions.device.unknown"), kind: "unknown" };
   const platform = platformLabel(raw);
-  // Bloem clients identify as Bloem; upstream Silo clients as Silo.
-  const app = /\b(?:Silo|Bloem)\b/i.test(raw)
+  const app = /\bSilo\b/i.test(raw)
     ? "Silo app"
     : /Edg(?:e|A|iOS)?\//.test(raw)
       ? "Edge"
