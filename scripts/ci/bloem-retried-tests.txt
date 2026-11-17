@@ -17,3 +17,21 @@
 # code stays as Silo wrote it.
 ./internal/chapterthumbs TestTerminatedChapterWorkerCannotReplaceCurrentBlobDB
 ./internal/chapterthumbs TestChapterImageReuseWaitsForCollectorDB
+
+# Silo's tests, in the Go test shards. Each waits one second for a write to
+# resume after a storage fence is released; the wait is on the write's own
+# file or HTTP round trip. Both failed on loaded CI runners and passed alone
+# (Bloem raised the bound to 30 s in f7ec3bf1d, 2026-11-16, "stop six CI flakes
+# under load"). Retried by the owner's decision of 2026-11-17 instead, so
+# Silo's test code stays as Silo wrote it.
+./internal/blobstore TestOpenRecordedS3ForwardsSharedClientFenceAndOptionalInterfaces
+./internal/blobstore TestOpenLocalFencesSharedOperationalStore
+
+# Silo's test, in Go database pins. With a one-connection pool the lock uses a
+# dedicated session, and PostgreSQL ends its backend only after the client
+# disconnects, so the immediate pg_stat_activity count can still see it.
+# TestChapterLockSessionsRespectPoolBudgetDB/1 failed in CI on main for that
+# reason (Bloem polled for it in 7bcf8abae, 2026-10-08; Silo's test has the
+# same race). Retried by the owner's decision of 2026-11-17 instead, so
+# Silo's test code stays as Silo wrote it.
+./internal/scanner TestChapterLockSessionsRespectPoolBudgetDB

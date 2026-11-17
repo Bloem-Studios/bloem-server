@@ -124,7 +124,6 @@ internal/backup/users_apply.go  # a restored account is created in its organizat
 internal/backup/users_plan.go  # one call: the planner names the organization an account is restored into, so its group is matched there (bloem_restore_tenancy.go)
 internal/blobgc/collector_s3_db_test.go  # added lines: collect the test's own queue rows first (collectFirst); dbpins runs listed packages at once and another may hold an older due row (failed in Bloem CI on 2026-11-02, and again for the single-image test on 2026-11-16)
 internal/blobgc/connection_db_test.go  # collectFirst helper and two calls: the one-connection collector and sweeper tests claim their own queue rows before any other due row, which took one of their limited claims and left the deleted count short under CI load (2026-11-16); setup (object writes, first connection, queueing) runs under its own one-minute bound, apart from the 30-second hang guard on the behavior pinned (2026-11-16)
-internal/blobstore/open_test.go  # the two fence tests wait up to 30 s, not 1 s, for a write to resume after the fence is released (fenceResumeTimeout); a real file or HTTP round trip took longer on a loaded runner (2026-11-16)
 internal/branding/branding.go
 internal/branding/render.go
 internal/branding/render_test.go
@@ -250,7 +249,6 @@ internal/routeinventory/testdata/fixtures/derived_router_bound/listener/router.g
 internal/scanner/ebook_scan.go
 internal/scanner/ebook_skip.go  # one Bloem field, coverRetry, which the ebook scan sets after Silo's preload (bloemWithEbookCoverRetries) so a failed local cover is retried
 internal/scanner/file_repo.go  # native selected-target authorization boundary
-internal/scanner/file_repo_chapter_lock_db_test.go  # waits for a closed dedicated session to leave pg_stat_activity instead of racing its backend exit (flaked in CI; same race upstream)
 internal/scanner/scanner.go  # also two Bloem hooks: the video walk takes .strm files (bloemStrmFile) and probeFile hands them to probeBloemStrm
 internal/sections/fetcher.go
 internal/sections/types.go
