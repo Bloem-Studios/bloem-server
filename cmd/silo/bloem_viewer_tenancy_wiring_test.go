@@ -103,7 +103,11 @@ func isConstructor(call *ast.CallExpr, filePkg, pkg, constructor string) bool {
 }
 
 // chainsBloemTenancy reports whether an enclosing expression of the
-// constructor call chains WithBloemTenancy.
+// constructor call chains WithBloemTenancy, or whether the statement that
+// assigns the result is followed at once by Bloem's own line calling
+// WithBloemTenancy on the same variable (v := pkg.New(...); v.WithBloemTenancy()),
+// as Silo's line in router.go is. WithBloemTenancy sets the flag on its
+// receiver, so the call on its own line applies it.
 func chainsBloemTenancy(stack []ast.Node) bool {
 	for i := len(stack) - 2; i >= 0; i-- {
 		switch n := stack[i].(type) {
@@ -111,9 +115,45 @@ func chainsBloemTenancy(stack []ast.Node) bool {
 			if n.Sel.Name == "WithBloemTenancy" {
 				return true
 			}
-		case ast.Stmt, ast.Decl:
+		case ast.Stmt:
+			if i > 0 {
+				if block, ok := stack[i-1].(*ast.BlockStmt); ok {
+					return nextStatementCallsTenancy(block, n)
+				}
+			}
+			return false
+		case ast.Decl:
 			return false
 		}
+	}
+	return false
+}
+
+// nextStatementCallsTenancy reports whether stmt assigns one variable and the
+// statement after it in block is v.WithBloemTenancy() on that variable.
+func nextStatementCallsTenancy(block *ast.BlockStmt, stmt ast.Stmt) bool {
+	name := assignedName(stmt)
+	if name == "" {
+		return false
+	}
+	for i, candidate := range block.List {
+		if candidate != stmt || i+1 >= len(block.List) {
+			continue
+		}
+		next, ok := block.List[i+1].(*ast.ExprStmt)
+		if !ok {
+			return false
+		}
+		call, ok := next.X.(*ast.CallExpr)
+		if !ok {
+			return false
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != "WithBloemTenancy" {
+			return false
+		}
+		recv, ok := sel.X.(*ast.Ident)
+		return ok && recv.Name == name
 	}
 	return false
 }

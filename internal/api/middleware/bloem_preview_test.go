@@ -220,13 +220,13 @@ func TestRequireAuthFiltersPreviewResponsesOutsideV2(t *testing.T) {
 		am.RequireAuth(next).ServeHTTP(w, r)
 		return w.Body.String()
 	}
-	if body := serve("preview", "/api/v1/items/1"); strings.Contains(body, "file_name") || !strings.Contains(body, "Film") {
+	if body := serve("preview", "/api/bloem/v2/items/1"); strings.Contains(body, "file_name") || !strings.Contains(body, "Film") {
 		t.Fatalf("preview v1 body = %s, want the file name scrubbed", body)
 	}
 	if body := serve("preview", "/api/v2/catalog/items/1"); !strings.Contains(body, "file_name") {
 		t.Fatalf("preview v2 body = %s, want it served unfiltered", body)
 	}
-	if body := serve("standard", "/api/v1/items/1"); !strings.Contains(body, "file_name") {
+	if body := serve("standard", "/api/bloem/v2/items/1"); !strings.Contains(body, "file_name") {
 		t.Fatalf("standard body = %s, want it served unfiltered", body)
 	}
 }

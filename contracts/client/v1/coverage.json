@@ -1678,6 +1678,10 @@
       "reason": "Stored diagnostics report (admin console view); clients submit reports as an opaque manifest and receive the registered IngestResult."
     },
     {
+      "type": "internal/events.BloemSocketAuthority",
+      "reason": "Bloem's server-owned authority binding, embedded in SocketIdentity and stored with the ticket on the server. Like SocketIdentity it is never sent to a client."
+    },
+    {
       "type": "internal/events.Envelope",
       "reason": "Server-side event-bus envelope; websocket clients receive the registered Events*Message frames, whose data field is an opaque JSON value."
     },
