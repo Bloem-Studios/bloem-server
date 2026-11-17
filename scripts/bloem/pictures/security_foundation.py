@@ -1,27 +1,17 @@
 """Pictures for docs/architecture/bloem-security-foundation.md."""
 from kit import INK, LINE, MUTED, SOFT, TIERS, Svg, box, footer, no_mark, para, yes_mark
 
-PART = {"fill": "#FFFBEB", "stroke": "#F59E0B", "label": "#B45309"}
-
-
-def _part_mark(s, cx, cy, r=12):
-    """An amber circle with a dash: "only part of it"."""
-    s.add(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="#FFFFFF" stroke="{PART["stroke"]}" stroke-width="2.5"/>')
-    s.add(f'<path d="M{cx - r * 0.45},{cy} L{cx + r * 0.45},{cy}" stroke="{PART["stroke"]}" '
-          f'stroke-width="2.5" stroke-linecap="round"/>')
-
-
 def passes():
-    s = Svg(1200, 720, "Which sign-in opens which door",
-            "A grid. Rows are four kinds of sign-in: an account sign-in, a profile's own sign-in, an organization "
-            "administrator pass and a platform administrator pass. Columns are four kinds of request: watching and "
-            "browsing, managing a profile's own sign-in, running one organization, and running the platform. Each "
-            "cell says yes, partly or no, with the reason.")
+    s = Svg(1200, 616, "Which sign-in opens which door",
+            "A grid. Rows are three kinds of sign-in: an account sign-in, an organization administrator pass and a "
+            "platform administrator pass. Columns are four kinds of request: watching and browsing, managing the "
+            "household's profiles, running one organization, and running the platform. Each cell says yes or no, "
+            "with the reason.")
     s.header("Which sign-in opens which door",
              "Each kind of sign-in opens only its own doors. An administrator pass is a separate, short-lived key.")
-    a, f, o, p = TIERS["account"], TIERS["profile"], TIERS["org"], TIERS["platform"]
+    a, o, p = TIERS["account"], TIERS["org"], TIERS["platform"]
 
-    cols = ["Watch and browse", "A profile's own sign-in", "Run one organization", "Run the platform"]
+    cols = ["Watch and browse", "Manage the household", "Run one organization", "Run the platform"]
     col_x, col_w, row_label_w = 300, 215, 240
     for i, title in enumerate(cols):
         x = col_x + i * col_w
@@ -30,11 +20,8 @@ def passes():
 
     rows = [
         (a, "Account sign-in", "Email and password",
-         [("yes", "With a profile picked"), ("yes", "With the account password"),
+         [("yes", "With a profile picked"), ("yes", "With the main profile picked"),
           ("no", "Swap it for a pass first"), ("no", "Swap it for a pass first")]),
-        (f, "Profile sign-in", "Straight into one profile",
-         [("part", "Browse, play, its own book requests"), ("no", "Account only"),
-          ("no", "Never"), ("no", "Never")]),
         (o, "Organization pass", "15 minutes, one organization",
          [("no", "Not a viewer"), ("no", "Not a household"),
           ("yes", "Its own organization only"), ("no", "Never")]),
@@ -53,15 +40,13 @@ def passes():
             cx, cy = x + 30, y + 30
             if kind == "yes":
                 yes_mark(s, cx, cy)
-            elif kind == "no":
-                no_mark(s, cx, cy)
             else:
-                _part_mark(s, cx, cy)
+                no_mark(s, cx, cy)
             para(s, x + 50, y + 35, note, col_w - 64, size=13.5, gap=18, fill=INK)
         y += h
 
-    s.rect(40, 612, 1120, 72, "#F9FAFB", "#E5E7EB", rx=12)
-    para(s, 60, 640, "An account sign-in is swapped for a pass at POST /api/bloem/v2/admin/session. The pass ends with "
+    s.rect(40, 508, 1120, 72, "#F9FAFB", "#E5E7EB", rx=12)
+    para(s, 60, 536, "An account sign-in is swapped for a pass at POST /api/bloem/v2/admin/session. The pass ends with "
          "the sign-in it came from. A platform administrator's API key opens the storefront's platform routes "
          "too, never an organization's.", 1080, size=14, fill=INK, gap=20)
     return s

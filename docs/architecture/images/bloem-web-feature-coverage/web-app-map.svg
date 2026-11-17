@@ -17,10 +17,8 @@
 <text x="74" y="350" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Playback cards in the player</text>
 <rect x="58" y="372" width="324" height="40" rx="10" fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.2"/>
 <text x="74" y="398" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Inbox and announcements</text>
-<rect x="58" y="420" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2"/>
-<text x="74" y="446" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Profile sign-ins</text>
-<rect x="58" y="468" width="324" height="40" rx="10" fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.2"/>
-<text x="74" y="494" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Catalog, player, profiles, requests</text>
+<rect x="58" y="420" width="324" height="40" rx="10" fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="74" y="446" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Catalog, player, profiles, requests</text>
 <rect x="420" y="124" width="360" height="400" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
 <text x="440" y="160" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Organization administrator</text>
 <rect x="438" y="180" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.2"/>
@@ -56,6 +54,6 @@
 <rect x="620" y="568" width="540" height="120" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
 <text x="640" y="602" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's /api/bloem/v2</text>
 <text x="640" y="630" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's features: organizations, plans, Live TV, campaigns, seasonal</text>
-<text x="640" y="650" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">packs, announcements, profile sign-ins.</text>
+<text x="640" y="650" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">packs, announcements.</text>
 <text x="40" y="770" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each feature's status, evidence and limits are in the tables on this page.</text>
 </svg>

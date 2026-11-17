@@ -31,8 +31,8 @@ def doors():
 
     # Left: apps on the main address.
     box(s, 40, 152, 360, 124, a, "The web app and Bloem's apps",
-        "They use Silo's API, plus Bloem's own extras built for them: Live TV, profile sign-ins, richer title "
-        "pages and server-side search.", size=14)
+        "They use Silo's API, plus Bloem's own extras built for them: Live TV, richer title pages and "
+        "server-side search.", size=14)
     s.arrow(404, 214, 470, 250)
     box(s, 40, 300, 360, 108, g, "Silo's own apps",
         "Work as they do with Silo. They see everything Silo has, and none of Bloem's extras.", size=14)

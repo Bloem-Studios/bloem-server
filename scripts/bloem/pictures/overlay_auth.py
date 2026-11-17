@@ -28,34 +28,22 @@ def _chip(s, x, y, w, label, color, size=13.5, mono=False):
 
 def sign_in_additions():
     s = Svg(1200, 806, "What Bloem adds to signing in",
-            "Four panels. One: a profile with its own email and password signs straight into that profile, "
-            "and the session reaches only a short list of routes. Two: signing in on another organization's "
-            "domain is refused with 409 wrong_organization_domain, naming the address to use. Three: a sign-in "
-            "through the provider starts and finishes on the same organization domain, and sign-out returns to "
-            "that domain's login page. Four: a sign-in that started before its organization revoked the account "
-            "is ended with 401 session_invalid, and the app asks the person to sign in again.")
+            "Three panels. One: signing in on another organization's domain is refused with 409 "
+            "wrong_organization_domain, naming the address to use. Two: a sign-in through the provider starts "
+            "and finishes on the same organization domain, and sign-out returns to that domain's login page. "
+            "Three: a sign-in that started before its organization revoked the account is ended with 401 "
+            "session_invalid, and the app asks the person to sign in again.")
     s.header("What Bloem adds to signing in",
-             "Silo's sign-in, plus profiles with their own sign-in and organizations with their own addresses.")
+             "Silo's sign-in, plus organizations with their own addresses.")
     f, st, o, w, a, g = (TIERS["profile"], TIERS["stop"], TIERS["org"], TIERS["warn"], TIERS["account"],
                          TIERS["grey"])
     pw, ph = 550, 284
 
-    # 1. A profile with its own sign-in.
-    x, y = 40, 120
-    _panel(s, x, y, pw, ph, f, 1, "A profile with its own sign-in")
-    para(s, x + 28, y + 66, "The household's main profile gives one profile an email and password of its own.",
-         pw - 56, size=14, gap=19)
-    _chip(s, x + 28, y + 122, 190, "profile's email", g)
-    _chip(s, x + 28, y + 164, 190, "profile's password", g)
-    s.arrow(x + 224, y + 158, x + 278, y + 158)
-    s.rect(x + 282, y + 122, 238, 76, f["fill"], f["stroke"], rx=12, sw=1.6)
-    s.text(x + 401, y + 154, "Straight into", size=15, weight="700", anchor="middle")
-    s.text(x + 401, y + 176, "that one profile", size=15, weight="700", anchor="middle")
-    para(s, x + 28, y + 236, "The session reaches only a short list of routes.", pw - 56, size=14, gap=19)
+    y = 120
 
-    # 2. Another organization's domain.
-    x = 610
-    _panel(s, x, y, pw, ph, st, 2, "Signing in on another organization's domain")
+    # 1. Another organization's domain.
+    x = 40
+    _panel(s, x, y, pw, ph, st, 1, "Signing in on another organization's domain")
     para(s, x + 28, y + 66, "Sam's account belongs to Riverside Club. Sam signs in on another club's "
          "address.", pw - 56, size=14, gap=19)
     _chip(s, x + 28, y + 122, 210, "harbour.example", g, mono=True)
@@ -68,9 +56,9 @@ def sign_in_additions():
     para(s, x + 28, y + 246, "An organization without a domain signs in at the server's public address.",
          pw - 56, size=14, gap=19)
 
-    # 3. Provider sign-in.
-    x, y = 40, 430
-    _panel(s, x, y, pw, ph, o, 3, "Through the sign-in provider")
+    # 2. Provider sign-in.
+    x = 610
+    _panel(s, x, y, pw, ph, o, 2, "Through the sign-in provider")
     steps = [("riverside.example", "starts"), ("provider", "Authentik"), ("riverside.example", "finishes")]
     cx = x + 28
     for i, (label, note) in enumerate(steps):
@@ -85,9 +73,9 @@ def sign_in_additions():
     para(s, x + 28, y + 230, "So each domain's two callbacks and its /login are registered at the provider.",
          pw - 56, size=14, gap=19, fill=o["label"])
 
-    # 4. Revoked sign-in.
-    x = 610
-    _panel(s, x, y, pw, ph, w, 4, "A sign-in its organization revoked")
+    # 3. Revoked sign-in.
+    x, y = 40, 430
+    _panel(s, x, y, 1120, ph, w, 3, "A sign-in its organization revoked")
     rows = [
         (a, "Monday", "Sam signs in on the web app."),
         (w, "Tuesday", "Riverside Club revokes Sam's account."),

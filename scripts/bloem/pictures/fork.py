@@ -119,7 +119,7 @@ def what_bloem_adds():
         ("Organizations and plans", "Customers kept apart, with accounts, seats and plans."),
         ("Live TV and recordings", "Tuners, Xtream providers, a guide and a recorder."),
         ("Storage sources", "Libraries read from S3 or Bookwarehouse. Experimental."),
-        ("An API for Bloem's apps", "Richer title pages, profile sign-ins, server-side search."),
+        ("An API for Bloem's apps", "Richer title pages and server-side search."),
         ("Domains and branding", "Each organization on its own address, name and colours."),
         ("Switching with Silo", "One database, served by Silo or by Bloem, one at a time."),
     ]

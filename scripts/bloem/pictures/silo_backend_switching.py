@@ -6,11 +6,11 @@ BLOEM = {"fill": "#FFF4EC", "stroke": "#FA6400", "label": "#C2410C"}
 
 
 def silo_writes():
-    s = Svg(1200, 780, "What happens to Silo's writes while switching is on",
-            "Six things Silo can write, and what the database does with each while Silo switching is on. A new "
+    s = Svg(1200, 700, "What happens to Silo's writes while switching is on",
+            "Five things Silo can write, and what the database does with each while Silo switching is on. A new "
             "profile is placed in the default organization; a new account gets a membership when its transaction "
             "commits; an account moved to another group takes its profiles with it; a missing device is stored as "
-            "empty. A second organization and a profile with its own sign-in are refused.")
+            "empty. A second organization is refused.")
     s.header("What happens to Silo's writes while switching is on",
              "Database rules fit Silo's writes into Bloem's model, and refuse what Silo could not honor.")
     a, st = TIERS["account"], TIERS["stop"]
@@ -28,8 +28,6 @@ def silo_writes():
          "The missing device is stored as an empty value instead of NULL."),
         (False, "A second organization",
          "Refused: Silo has no organizations, so it could not keep two apart."),
-        (False, "A profile with its own sign-in",
-         "Refused: Silo would treat that sign-in as the whole account."),
     ]
     y = 152
     for ok, what, result in rows:
@@ -46,14 +44,14 @@ def silo_writes():
         para(s, 556, rows_y, result, 580, size=14.5, fill=INK, gap=20)
         y += 96
     footer(s, "The empty-device rule always applies. The others work only while public.bloem_silo_switching is "
-              "on; switching it off lifts them, and Silo must not serve the database again.", y=744, fill=INK)
+              "on; switching it off lifts them, and Silo must not serve the database again.", y=668, fill=INK)
     return s
 
 
 def commands():
     s = Svg(1200, 620, "Switching on, checking and switching off",
             "Three commands. silo silo-switching status reports whether the database is switchable. enable "
-            "refuses unless there is exactly one organization and no profile has its own sign-in, then gives "
+            "refuses unless there is exactly one organization, then gives "
             "every account its default-organization membership, matches membership roles to the account's role, "
             "and sets the flag. disable clears the flag; after that, Silo must not serve the database.")
     s.header("Switching on, checking and switching off",
@@ -74,13 +72,12 @@ def commands():
         return y + 26 + 19 * len(rows)
 
     y = step(1, "Exactly one organization?", y)
-    y = step(2, "No profile with its own sign-in?", y)
     s.rect(440, y, 320, 40, st["fill"], st["stroke"], rx=10, sw=1.2)
     s.text(456, y + 25, "If not: refused, nothing changes.", size=14, weight="600", fill=st["label"])
     y += 56
-    y = step(3, "Give every account its default-organization membership.", y)
-    y = step(4, "Match membership roles to users.role.", y)
-    y = step(5, "Set the flag.", y)
+    y = step(2, "Give every account its default-organization membership.", y)
+    y = step(3, "Match membership roles to users.role.", y)
+    y = step(4, "Set the flag.", y)
     para(s, 440, y + 14, "Safe to run again: it only fills in what is missing.", 320, size=13.5, fill=MUTED)
 
     box(s, 820, 128, 340, 170, w, "silo silo-switching disable",

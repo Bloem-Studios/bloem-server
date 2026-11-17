@@ -34,7 +34,7 @@ def route_map():
           "/catalog/items/{id}/collections", "/notifications", "/livetv/...", "/ambience", "/promotions",
           "/book-requests", "/ebook-requests"]),
         (TIERS["profile"], "Account only", "An account sign-in, no administrator pass.",
-         ["/organizations", "/admin/session", "/profile-credentials/{id}"]),
+         ["/organizations", "/admin/session"]),
         (TIERS["org"], "Administration", "An administrator pass from /admin/session; some platform routes also "
                                          "take an administrator's API key.",
          ["/admin/organization/...", "/admin/platform/organizations/...", "/admin/platform/tenants/...",
@@ -52,8 +52,8 @@ def route_map():
         para(s, 64, y + 64, who, 270, size=14, gap=19, fill=INK)
         _chips(s, 360, y + 22, 1140, routes)
         y += h + 16
-    footer(s, "Profile sign-ins reach only the book request routes here. A route that is not built on this "
-              "server answers 404; capabilities say what this build can do.", y=y + 30, fill=INK)
+    footer(s, "A route that is not built on this server answers 404; capabilities say what this build can do.",
+           y=y + 30, fill=INK)
     s.h = int(round(y + 74))
     return s
 

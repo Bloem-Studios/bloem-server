@@ -62,7 +62,7 @@ def what_each_sees():
             "Two columns. Shared by both: accounts and passwords, profiles, libraries and the catalog, watch "
             "history, access groups, movie and series requests, and Jellyfin and Audiobookshelf app data. "
             "Bloem's only: organizations beyond the default one, plans, Live TV, storage-source libraries, "
-            "promotions and seasonal packs, and organization domains and branding. Below, the three rules while switching is on.")
+            "promotions and seasonal packs, and organization domains and branding. Below, the two rules while switching is on.")
     s.header("What each server sees",
              "Bloem's extras stay in the database while Silo serves. They wake up again with Bloem.")
     a, g, st = TIERS["account"], TIERS["grey"], TIERS["stop"]
@@ -88,18 +88,17 @@ def what_each_sees():
         s.add(f'<circle cx="652" cy="{y - 5}" r="4" fill="{BLOEM["stroke"]}"/>')
         s.text(668, y, t, size=15.5, fill=INK)
 
-    s.text(40, 524, "Three rules while switching is on", size=18, weight="700")
+    s.text(40, 524, "Two rules while switching is on", size=18, weight="700")
     rules = [
         ("One organization", "Silo has no organizations, so a second one is refused."),
-        ("No profile sign-ins", "Silo would treat a profile's own sign-in as the whole account, so none is allowed."),
         ("Silo's writes fit in", "A new account or profile Silo creates lands in the default organization."),
     ]
     for i, (t, b) in enumerate(rules):
-        x = 40 + i * 380
-        s.rect(x, 544, 360, 120, "#FFFFFF", "#E5E7EB", rx=12)
+        x = 40 + i * 570
+        s.rect(x, 544, 550, 120, "#FFFFFF", "#E5E7EB", rx=12)
         s.rect(x, 544, 6, 120, SILO["stroke"], rx=3)
         s.text(x + 24, 576, t, size=16, weight="700")
-        para(s, x + 24, 602, b, 316, size=14, gap=19)
+        para(s, x + 24, 602, b, 506, size=14, gap=19)
     return s
 
 

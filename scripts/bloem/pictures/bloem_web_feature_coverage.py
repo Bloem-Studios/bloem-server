@@ -16,7 +16,7 @@ def web_app_map():
         (a, "For viewers", [
             ("Home with campaign cards", True), ("Seasonal effects", True), ("Live TV, guide, recordings", True),
             ("Playback cards in the player", True), ("Inbox and announcements", False),
-            ("Profile sign-ins", True), ("Catalog, player, profiles, requests", False),
+            ("Catalog, player, profiles, requests", False),
         ]),
         (o, "Organization administrator", [
             ("People and their plans", True), ("Access groups", True), ("Invitations", True),
@@ -51,7 +51,7 @@ def web_app_map():
     s.rect(620, ay, 540, 120, "#FFFFFF", "#E5E7EB", rx=14)
     s.text(640, ay + 34, "Bloem's /api/bloem/v2", size=17, weight="700")
     para(s, 640, ay + 62, "Bloem's features: organizations, plans, Live TV, campaigns, seasonal packs, "
-         "announcements, profile sign-ins.", 500, size=14, gap=20)
+         "announcements.", 500, size=14, gap=20)
     footer(s, "Each feature's status, evidence and limits are in the tables on this page.", y=770, fill=MUTED)
     return s
 

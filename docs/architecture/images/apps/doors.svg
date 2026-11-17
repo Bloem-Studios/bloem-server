@@ -23,8 +23,8 @@
 <rect x="40" y="152" width="360" height="124" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
 <text x="58" y="184" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The web app and Bloem's apps</text>
 <text x="58" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">They use Silo's API, plus Bloem's own extras</text>
-<text x="58" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">built for them: Live TV, profile sign-ins,</text>
-<text x="58" y="248" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">richer title pages and server-side search.</text>
+<text x="58" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">built for them: Live TV, richer title pages</text>
+<text x="58" y="248" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">and server-side search.</text>
 <line x1="404" y1="214" x2="470" y2="250" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="40" y="300" width="360" height="108" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
 <text x="58" y="332" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's own apps</text>

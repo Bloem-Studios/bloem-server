@@ -55,8 +55,6 @@
 <text x="426.0" y="453.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/organizations</text>
 <rect x="502" y="435.5" width="132" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
 <text x="568.0" y="453.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/admin/session</text>
-<rect x="644" y="435.5" width="218" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
-<text x="753.0" y="453.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/profile-credentials/{id}</text>
 <rect x="40" y="549.5" width="1120" height="141.5" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.6"/>
 <text x="64" y="587.5" font-size="19" font-weight="700" fill="#4338CA" text-anchor="start">Administration</text>
 <text x="64" y="613.5" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An administrator pass from</text>
@@ -76,5 +74,5 @@
 <text x="476.5" y="662.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/admin/platform/preview/...</text>
 <rect x="603" y="644.5" width="288" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
 <text x="747.0" y="662.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/admin/platform/native-storage/...</text>
-<text x="40" y="737.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Profile sign-ins reach only the book request routes here. A route that is not built on this server answers 404; capabilities say what this build can do.</text>
+<text x="40" y="737.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A route that is not built on this server answers 404; capabilities say what this build can do.</text>
 </svg>

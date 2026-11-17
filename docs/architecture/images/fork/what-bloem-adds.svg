@@ -40,8 +40,7 @@
 <text x="428" y="328" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Experimental.</text>
 <rect x="790" y="252" width="360" height="116" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
 <text x="808" y="284" font-size="17" font-weight="700" fill="#101827" text-anchor="start">An API for Bloem's apps</text>
-<text x="808" y="308" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Richer title pages, profile sign-ins,</text>
-<text x="808" y="328" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">server-side search.</text>
+<text x="808" y="308" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Richer title pages and server-side search.</text>
 <rect x="410" y="380" width="360" height="116" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
 <text x="428" y="412" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Domains and branding</text>
 <text x="428" y="436" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Each organization on its own address, name</text>

@@ -142,11 +142,11 @@ def deploy():
 
 def silo_wins():
     s = Svg(1200, 760, "When Silo and Bloem change the same lines",
-            "An example from a household check. Left: Bloem's check folded into Silo's line. "
+            "A made-up example from a household check. Left: Bloem's check folded into Silo's line. "
             "Right: Silo's line as Silo wrote it, and Bloem's check on its own lines above it. Below: where Bloem "
             "keeps its own work, and the seam list, which may only shrink.")
     s.header("When Silo and Bloem change the same lines",
-             "Silo always wins. An example, in the household check.")
+             "Silo always wins. A made-up example, in the household check.")
     st, a = TIERS["stop"], TIERS["account"]
 
     # Before.
@@ -155,7 +155,7 @@ def silo_wins():
     _code(s, 64, 194, [
         ("// A remote-playback handoff never", "#94A3B8"),
         ("// manages the household.", "#94A3B8"),
-        ("if bloemDirectProfileClaims(ctx) ||", "#FCA5A5"),
+        ("if bloemPreviewGuest(ctx) ||", "#FCA5A5"),
         ("    apimw.GetClaims(ctx).IsRemotePlayback() {", "#FCA5A5"),
         ("    return false, nil, nil", "#E2E8F0"),
         ("}", "#E2E8F0"),
@@ -166,7 +166,7 @@ def silo_wins():
     s.text(620, 140, "This: Silo's line as Silo wrote it", size=17, weight="700")
     s.rect(620, 156, 540, 250, "#0F172A", rx=14)
     _code(s, 644, 194, [
-        ("if bloemDirectProfileClaims(ctx) {", "#FDBA74"),
+        ("if bloemPreviewGuest(ctx) {", "#FDBA74"),
         ("    return false, nil, nil", "#FDBA74"),
         ("}", "#FDBA74"),
         ("// A remote-playback handoff never", "#7DD3FC"),
