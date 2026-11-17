@@ -1,0 +1,4 @@
+# Python bytecode from running these scripts and their tests directly
+# (make and the local gate set PYTHONDONTWRITEBYTECODE).
+__pycache__/
+*.pyc

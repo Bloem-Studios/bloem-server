@@ -91,11 +91,3 @@ docker-compose.local.yml
 output/
 /settingsgen
 /playbackfixtures
-
-# Bloem additions (kept as one trailing block so upstream merges stay clean)
-# `go build ./cmd/clientdtogen` output; the Makefile always uses `go run`.
-/clientdtogen
-build/
-# Python bytecode from scripts/apiv2-ledger (verify-migration-ledger imports it)
-__pycache__/
-*.pyc
