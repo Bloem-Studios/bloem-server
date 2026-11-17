@@ -62,10 +62,13 @@ func (m *ViewerAccessMiddleware) requireStreamTokenViewerAccess(next http.Handle
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(errorResponse{
+		// The status is already written; a failed body write has no recovery.
+		if err := json.NewEncoder(w).Encode(errorResponse{
 			Error:   "unauthorized",
 			Message: "Failed to resolve viewer access",
-		})
+		}); err != nil {
+			return
+		}
 		return
 	}
 	ctx := access.SetScope(r.Context(), scope)
