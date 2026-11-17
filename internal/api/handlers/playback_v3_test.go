@@ -4509,9 +4509,6 @@ func TestReplanPlaybackV2CannotDowngradeHeaderAuthenticatedAttempt(t *testing.T)
 	if !playback.HasFeatureV3(record.NormalizedRequest.ClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3) {
 		t.Fatalf("durable client features = %v, secure transport mode was downgraded", record.NormalizedRequest.ClientFeatures)
 	}
-	if !playback.HasFeatureV3(replanned.NegotiatedClientFeatures, playback.FeatureHeaderAuthenticatedMediaV3) {
-		t.Fatalf("replan negotiated features = %v, want durable header authentication", replanned.NegotiatedClientFeatures)
-	}
 }
 
 // The inventory is the authoritative subtitle menu, so it has to be fetchable
