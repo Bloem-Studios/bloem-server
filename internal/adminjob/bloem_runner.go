@@ -1,14 +1,17 @@
 package adminjob
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -100,5 +103,29 @@ func verifyCatalogSeedDigest(data []byte, expected string) error {
 	if subtle.ConstantTimeCompare(actual[:], want) != 1 {
 		return fmt.Errorf("catalog import source digest mismatch")
 	}
+	return nil
+}
+
+// bloemVerifyCatalogSeedSource checks a staged source against the digest the
+// handler recorded when it staged it. Silo's import now streams its source,
+// so a source with a digest is read once, at most the bounded compressed size,
+// checked, and handed on as the checked bytes; *data still closes the
+// original source.
+func bloemVerifyCatalogSeedSource(data *io.ReadCloser, expected string) error {
+	if expected == "" {
+		return nil
+	}
+	source := *data
+	checked, err := io.ReadAll(io.LimitReader(source, catalogseed.MaxCompressedBundleBytes+1))
+	if err != nil {
+		return fmt.Errorf("reading catalog import source: %w", err)
+	}
+	if err := verifyCatalogSeedDigest(checked, expected); err != nil {
+		return err
+	}
+	*data = struct {
+		io.Reader
+		io.Closer
+	}{bytes.NewReader(checked), source}
 	return nil
 }

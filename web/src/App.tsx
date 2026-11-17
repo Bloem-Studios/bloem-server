@@ -175,6 +175,7 @@ const HomeScreenSettings = lazy(() => import("@/pages/settings/HomeScreenSetting
 const TitlePagesSettings = lazy(() => import("@/pages/settings/TitlePagesSettings"));
 const PersonalizeSettings = lazy(() => import("@/pages/settings/PersonalizeSettings"));
 const ConnectAppsSettings = lazy(() => import("@/pages/settings/ConnectAppsSettings"));
+const ApiKeysSettings = lazy(() => import("@/pages/settings/ApiKeysSettings"));
 const InterfaceSettings = lazy(() => import("@/pages/settings/InterfaceSettings"));
 const AccountSettings = lazy(() => import("@/pages/settings/AccountSettings"));
 const WatchPartyHub = lazy(() => import("@/pages/watchtogether/WatchPartyHub"));
@@ -688,6 +689,7 @@ function AppRoutes() {
                   <Route path="notifications" element={<NotificationsSettings />} />
                   <Route path="your-data" element={<YourDataSettings />} />
                   <Route path="connect-apps" element={<ConnectAppsSettings />} />
+                  <Route path="api-keys" element={<ApiKeysSettings />} />
                   <Route path="*" element={<Navigate to="/settings/playback" replace />} />
                 </Route>
                 <Route

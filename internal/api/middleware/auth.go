@@ -189,18 +189,30 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 				return
 			}
 
+			if !bindAPIKeyProfile(r, apiKey.ProfileID, apiKey.Scopes) {
+				writeForbidden(w, "This API key can only act as the profile it was created for")
+				return
+			}
+
 			am.apiKeyLastUsed.Touch(apiKey.ID)
 
 			claims = &auth.Claims{
-				UserID:               user.ID,
-				AccountIncarnationID: user.AccountIncarnationID.String(),
-				Role:                 user.Role,
-				SessionID:            "",
-				TokenType:            auth.TokenTypeAPIKey,
-				APIKeyID:             apiKey.ID,
-				RateTier:             apiKey.RateTier,
-				APIKeyScopes:         apiKey.Scopes,
+				UserID:          user.ID,
+				Role:            user.Role,
+				SessionID:       "",
+				TokenType:       auth.TokenTypeAPIKey,
+				APIKeyID:        apiKey.ID,
+				RateTier:        apiKey.RateTier,
+				APIKeyScopes:    apiKey.Scopes,
+				APIKeyProfileID: apiKey.ProfileID,
 			}
+			if apiKey.ProfileID != "" {
+				// A bound key is a profile's credential, never the
+				// account's: it holds no admin role even when its profile
+				// is the primary one on an admin account.
+				claims.Role = models.RoleUser
+			}
+			claims.AccountIncarnationID = user.AccountIncarnationID.String()
 		} else {
 			// JWT authentication (existing flow).
 			var err error
