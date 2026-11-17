@@ -38,7 +38,6 @@ import {
 } from "@/components/sidebarItemNavigation";
 import { useSidebarItemDetailsGate } from "@/hooks/useSidebarItemDetailsGate";
 import { useViewTransitionNavigate } from "@/hooks/useViewTransition";
-import "@/bloem/mobile-header.css";
 import { catalogKeys } from "@/hooks/queries/keys";
 import { fetchCatalogItemDetail } from "@/hooks/queries/catalogRead";
 import { markCriticalContentLoaded, useCriticalContentLoaded } from "@/lib/startupPriority";
@@ -427,7 +426,7 @@ export default function Layout({ children }: LayoutProps) {
             mobileHeaderHidden ? "-translate-y-[140%]" : "translate-y-0"
           }`}
         >
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileOpen(true)}
               className="text-muted-foreground hover:text-foreground hover:bg-accent/60 flex h-10 w-10 items-center justify-center rounded-xl transition-all active:scale-[0.98]"
@@ -439,7 +438,7 @@ export default function Layout({ children }: LayoutProps) {
               <SiloBrand className="h-10 w-[94px]" />
             </ViewTransitionLink>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <ViewTransitionLink
               to={buildQueryCatalogHref()}
               onPointerDown={prefetchCatalog}
@@ -457,7 +456,7 @@ export default function Layout({ children }: LayoutProps) {
               })}
               className="flex h-9 w-9 items-center justify-center rounded-full transition-transform active:scale-[0.98]"
             >
-              <Avatar className="h-8 w-8">
+              <Avatar className="h-9 w-9 shadow-[0_16px_32px_-22px_rgba(0,0,0,0.7)]">
                 {profile?.avatar_url ? (
                   <AvatarImage src={profile.avatar_url} alt={profile.name} />
                 ) : null}

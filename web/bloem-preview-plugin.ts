@@ -29,6 +29,11 @@ const modules: Record<string, string> = {
   "components/MediaItemMenu.tsx": "adapters/MediaItemMenu.tsx",
   "api/v2/account.ts": "account.ts",
   "pages/audiobooks/player/audiobookPlaybackContext.tsx": "adapters/audiobookPlayback.tsx",
+  // No placeholder "Episode N" title above the episode code; temporary, a mobile
+  // web fix being proposed to Silo.
+  "lib/episodeCardLabels.ts": "adapters/episodeCardLabels.ts",
+  // A darker sheet overlay; temporary, a mobile web fix being proposed to Silo.
+  "components/ui/sheet.tsx": "adapters/sheet.tsx",
 };
 
 // Boundaries replaced for one importer only, so every other importer, Silo's

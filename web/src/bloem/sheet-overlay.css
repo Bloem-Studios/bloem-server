@@ -1,0 +1,7 @@
+/* Bloem: a darker sheet overlay (Silo's is black at 50%), so a phone drawer
+   reads as on top of the page. Unlayered, so it wins over Silo's Tailwind
+   utility while Silo's sheet.tsx stays as Silo wrote it. Temporary, a mobile
+   web fix being proposed to Silo. */
+[data-slot="sheet-overlay"] {
+  background-color: rgb(0 0 0 / 0.6);
+}

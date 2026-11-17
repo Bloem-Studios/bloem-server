@@ -2,7 +2,8 @@
    content scrolls under it, and Silo's see-through, inset header lets that
    content show through and around its controls. The rule is unlayered, so it
    wins over Silo's Tailwind utilities and its glass-dark component class
-   while Silo's className line in Layout.tsx stays as Silo wrote it. */
+   while Silo's className line in Layout.tsx stays as Silo wrote it. Layout
+   loads it through its sidebar adapter (preview/adapters/AppSidebar.tsx). */
 .mobile-header[data-sticky-header] {
   margin: 0;
   min-height: 3.5rem;
@@ -15,5 +16,17 @@
   background: var(--background);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* The header's two control groups sit closer together, and the profile
+   avatar is a size smaller without its drop shadow, so the bar fits a narrow
+   phone. Temporary, a mobile web fix being proposed to Silo. */
+.mobile-header[data-sticky-header] > div {
+  gap: 0.25rem;
+}
+.mobile-header[data-sticky-header] [data-slot="avatar"] {
+  width: 2rem;
+  height: 2rem;
   box-shadow: none;
 }
