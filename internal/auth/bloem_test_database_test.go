@@ -14,8 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Silo-Server/silo-server/internal/database"
-	"github.com/Silo-Server/silo-server/migrations"
+	"github.com/Silo-Server/silo-server/internal/bloemtestdb"
 )
 
 // NewBloemAuthTestDatabase shares the complete fixture with external provider
@@ -119,7 +118,9 @@ func prepareAuthTestDatabase(ctx context.Context, dsn string) (string, func() er
 	if err != nil {
 		return "", nil, fmt.Errorf("connect maintenance database: %w", err)
 	}
-	name := "bloem_auth_suite_" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	// The name marks a test database, so Bloem's fixture shim acts in it as it
+	// does in every other package's test database (bloemtestdb).
+	name := "bloem_auth_suite_test_" + strings.ReplaceAll(uuid.NewString(), "-", "")
 	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize()); err != nil {
 		admin.Close()
 		return "", nil, fmt.Errorf("create auth scratch database: %w", err)
@@ -159,8 +160,11 @@ func prepareAuthTestDatabase(ctx context.Context, dsn string) (string, func() er
 	if connectedDatabase != name {
 		return "", nil, errors.New("auth scratch connection selected a different database")
 	}
-	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
-		return "", nil, fmt.Errorf("migrate auth scratch database: %w", err)
+	// Migrations plus the fixture shim, as cmd/bloem-testdb prepares a test
+	// database: Silo's tests insert profiles and accounts without Bloem's
+	// organizations, and the shim does that bookkeeping for them.
+	if err := bloemtestdb.Prepare(ctx, scratchDSN, bloemtestdb.Options{}); err != nil {
+		return "", nil, fmt.Errorf("prepare auth scratch database: %w", err)
 	}
 	prepared = true
 	return scratchDSN, cleanup, nil

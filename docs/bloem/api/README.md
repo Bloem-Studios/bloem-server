@@ -35,7 +35,7 @@ Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's ex
 
 | Scheme | Description |
 | --- | --- |
-| `bearerAuth` | A session token or an API key in the Authorization header. The server decides which it holds. |
+| `bearerAuth` | A session token or an API key in the Authorization header. The server decides which it holds. An API key is sent as `Authorization: Bearer sa_…`. A profile key (created with profile_id) always acts as its profile: the server supplies X-Profile-Id, and a request naming another profile is 403 permission_denied. An account key chooses the profile per request with X-Profile-Id and needs no X-Profile-Token, even for a PIN-protected profile; GET /api/v2/profiles lists the IDs. Most profile operations require the header and answer 422 validation_failed without it. The few that accept its absence, such as GET /api/v2/profiles and GET /api/v2/user/libraries, then answer for the account as a whole. A key carrying scopes reaches only the operations those scopes admit and is 403 permission_denied everywhere else; GET /api/v2/api-keys/scopes lists them. |
 | `bloemAccountSession` | A non-impersonated account access token backed by a login session. Direct-profile tokens, API keys and administrative-context tokens cannot manage profile credentials. Household management authority is checked separately. |
 | `bloemAdminLoginSession` | Account access token with a current login session and account incarnation, used only to exchange for an administrative context. API keys without a session are refused. |
 | `bloemAdminPushDisplayToken` | A bad_ display token returned by registering an admin app device. It reads that device's own notifications and retires that device, and opens nothing else. |
