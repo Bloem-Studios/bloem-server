@@ -206,7 +206,8 @@ describe("Bloem brand adapter through Vite", () => {
       ),
       writeFile(
         path.join(root, "index.html"),
-        '<script type="module" src="/src/components/SiloBrand.tsx"></script>',
+        '<title>Silo</title><meta name="application-name" content="Silo" />' +
+          '<script type="module" src="/src/components/SiloBrand.tsx"></script>',
       ),
     ]);
   });
@@ -250,6 +251,8 @@ describe("Bloem brand adapter through Vite", () => {
     expect(code).toContain("Welcome to Bloem");
     const custom = await (await fetch(url + "src/custom-brand.ts")).text();
     expect(custom).toContain("/silo-icon-1024.png");
+    // No server renders the dev shell, so the dev server brands its title.
+    expect(await (await fetch(url)).text()).toContain("<title>Bloem</title>");
   });
 
   it("brands Silo's message catalogs and leaves Bloem's own catalog as written", async () => {
@@ -323,6 +326,10 @@ describe("Bloem brand adapter through Vite", () => {
         worker,
       );
     }
+    // The server replaces Silo's literal title with the configured server name.
+    const shell = await readFile(path.join(root, "dist/index.html"), "utf8");
+    expect(shell).toContain("<title>Silo</title>");
+    expect(shell).toContain('content="Bloem"');
     expect(await readFile(path.join(root, "dist/custom.js"), "utf8")).toBe(
       'self.customName = "Silo";',
     );

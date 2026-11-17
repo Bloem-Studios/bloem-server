@@ -15,6 +15,11 @@ const BRANDABLE = /\.(ts|tsx|html)$/;
 // Bloem's own catalog (src/bloem/locales) is Bloem's wording and stays as written.
 const SILO_CATALOG = /\/src\/locales\/[^/]+\.json$/;
 const PUBLIC_ASSETS = ["site.webmanifest", "sw.js"] as const;
+// The server renders the shell's title: branding.RenderIndexHTML replaces this
+// exact upstream literal with the configured server name (Bloem by default), so
+// a build must ship it unchanged. Only the dev server, which has no server
+// rendering in front of it, brands the title itself.
+const SERVER_RENDERED_TITLE = "<title>Silo</title>";
 
 function brandPublicAsset(fileName: (typeof PUBLIC_ASSETS)[number], source: string): string {
   if (fileName === "site.webmanifest") {
@@ -63,8 +68,12 @@ export function bloemBrand(): Plugin {
       branded = applyBrand(/\.test\.tsx?$/.test(sourceId) ? brandTestRegexes(branded) : branded);
       return branded === code ? null : { code: branded, map: null };
     },
-    transformIndexHtml(html) {
-      return applyBrand(html);
+    transformIndexHtml(html, ctx) {
+      if (ctx.server) return applyBrand(html);
+      return html
+        .split(SERVER_RENDERED_TITLE)
+        .map((part) => applyBrand(part))
+        .join(SERVER_RENDERED_TITLE);
     },
     configureServer(server) {
       if (!publicDir) return;

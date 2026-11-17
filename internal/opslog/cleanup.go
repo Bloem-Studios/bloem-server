@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"strings"
 	"time"
 
@@ -441,19 +440,13 @@ func scopeFilterArgs(component, level string) (string, []any, int) {
 }
 
 func parseInt(s string) int {
-	// Malformed input yields 0, which callers treat as "unset".
-	v, err := strconv.Atoi(strings.TrimSpace(s))
-	if err != nil {
-		return 0
-	}
+	var v int
+	fmt.Sscanf(s, "%d", &v)
 	return v
 }
 
 func parseInt64(s string) int64 {
-	// Malformed input yields 0, which callers treat as "unset".
-	v, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
-	if err != nil {
-		return 0
-	}
+	var v int64
+	fmt.Sscanf(s, "%d", &v)
 	return v
 }

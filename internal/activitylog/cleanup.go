@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -154,10 +152,7 @@ func deleteExpiredRowsBefore(ctx context.Context, pool *pgxpool.Pool, cutoff tim
 }
 
 func parseInt(s string) int {
-	// Malformed input yields 0, which callers treat as "unset".
-	v, err := strconv.Atoi(strings.TrimSpace(s))
-	if err != nil {
-		return 0
-	}
+	var v int
+	fmt.Sscanf(s, "%d", &v)
 	return v
 }
