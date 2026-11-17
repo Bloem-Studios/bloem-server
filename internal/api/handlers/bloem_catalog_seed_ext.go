@@ -125,6 +125,9 @@ func (h *CatalogSeedHandler) bloemStageRemoteCatalogSeed(ctx context.Context, re
 	if err != nil {
 		return apiError(500, "internal_error", "Failed to stage catalog seed source")
 	}
+	// The job reads the staged copy: with RemoteURL left set it would fetch
+	// the admin-supplied URL itself.
+	req.RemoteURL = ""
 	req.SourceBucket, req.SourceKey, req.SourceSHA256 = bucket, key, digest
 	req.SourceLabel, req.CleanupSource = remoteCatalogSeedLabel(remoteURL), true
 	return nil
