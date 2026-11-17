@@ -227,3 +227,53 @@ DROP TRIGGER IF EXISTS a_bloem_fixture_heartbeat_capability ON public.node_heart
 DROP TRIGGER IF EXISTS a_bloem_fixture_heartbeat_cleanup ON public.node_heartbeats;
 DROP FUNCTION IF EXISTS public.bloem_fixture_heartbeat_capability();
 DROP FUNCTION IF EXISTS public.bloem_fixture_heartbeat_cleanup();
+
+-- Upstream fixtures copy media_requests into a test schema with
+-- CREATE TABLE ... (LIKE public.media_requests INCLUDING ALL). LIKE keeps
+-- Bloem's NOT NULL organization_id but copies no trigger, so the copy would
+-- refuse the bare request inserts public.media_requests accepts. When such a
+-- copy is created, give it the production trigger that fills organization_id
+-- (bloem_media_requests_default_organization).
+CREATE OR REPLACE FUNCTION public.bloem_fixture_copied_media_requests()
+RETURNS event_trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    copy regclass;
+BEGIN
+    IF NOT public.bloem_fixture_compat_armed() THEN
+        RETURN;
+    END IF;
+    FOR copy IN
+        -- One CREATE TABLE ... LIKE reports the table more than once.
+        SELECT DISTINCT cmd.objid::regclass
+        FROM pg_event_trigger_ddl_commands() AS cmd
+        JOIN pg_class AS rel ON rel.oid = cmd.objid
+        JOIN pg_namespace AS ns ON ns.oid = rel.relnamespace
+        WHERE cmd.object_type = 'table'
+          AND rel.relname = 'media_requests'
+          AND ns.nspname <> 'public'
+          AND NOT EXISTS (
+              SELECT 1 FROM pg_trigger AS trg
+              WHERE trg.tgrelid = rel.oid AND trg.tgname = 'media_requests_default_organization')
+    LOOP
+        EXECUTE format('CREATE TRIGGER media_requests_default_organization BEFORE INSERT ON %s '
+            'FOR EACH ROW EXECUTE FUNCTION public.bloem_media_requests_default_organization()', copy);
+    END LOOP;
+END;
+$$;
+
+-- An event trigger needs a superuser, which the test database bootstrap is.
+-- Installed by another role, the shim leaves the event trigger out.
+DO $$
+BEGIN
+    IF (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) THEN
+        DROP EVENT TRIGGER IF EXISTS a_bloem_fixture_copied_media_requests;
+        CREATE EVENT TRIGGER a_bloem_fixture_copied_media_requests ON ddl_command_end
+            WHEN TAG IN ('CREATE TABLE')
+            EXECUTE FUNCTION public.bloem_fixture_copied_media_requests();
+    ELSE
+        RAISE NOTICE 'bloem fixture compat: not a superuser, copied media_requests tables get no organization trigger';
+    END IF;
+END;
+$$;

@@ -118,3 +118,46 @@ func TestFixtureCompatArmsWithoutTheSettingInATestDatabase(t *testing.T) {
 		t.Fatalf("profile without an organization: org=%v err=%v", org, err)
 	}
 }
+
+// Upstream fixtures copy media_requests into a test schema with LIKE ...
+// INCLUDING ALL, which keeps Bloem's NOT NULL organization_id but not the
+// trigger that fills it. The shim gives the copy that production trigger, so
+// a bare request insert lands in the account's organization as it would in
+// public.media_requests.
+func TestFixtureCopiedMediaRequestsFillTheOrganization(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		if os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
+			t.Fatal("SILO_TEST_DATABASE_URL is required")
+		}
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	ctx := t.Context()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `CREATE SCHEMA fixture_compat_requests;
+		CREATE TABLE fixture_compat_requests.media_requests (LIKE public.media_requests INCLUDING ALL)`); err != nil {
+		t.Fatal(err)
+	}
+	var org, want *string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO fixture_compat_requests.media_requests (id, media_type, tmdb_id, title, status, requested_by_user_id, requested_by_profile_id)
+		VALUES ('fixture-compat-request', 'series', 4242, 'Series', 'approved', -1, 'requester')
+		RETURNING organization_id::text`).Scan(&org); err != nil {
+		t.Fatalf("bare insert into a copied media_requests: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT public.bloem_media_request_fallback_organization(-1)::text`).Scan(&want); err != nil || want == nil {
+		t.Fatalf("fallback organization: %v %v", want, err)
+	}
+	if org == nil || *org != *want {
+		t.Fatalf("organization_id = %v, want %s", org, *want)
+	}
+}
