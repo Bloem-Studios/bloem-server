@@ -28,9 +28,14 @@ import (
 //     the matched item) and is authorized by rule 3. An instance reaching
 //     rule 4 with no item identity is malformed data, not a legitimate
 //     account-level notice, so it must stay excluded here.
+//   - DeliveryTypeWatchlistAvailable is catalog-bound the same way: the
+//     watchlist arrival fanout always sets SeriesID to the arrived item, so
+//     rule 3 authorizes it, and only while the recipient's organization can
+//     see a library holding that item.
 var notAccountLevelDeliveryTypes = map[string]bool{
-	DeliveryTypeEpisodeAvailable: true,
-	DeliveryTypeRequestFulfilled: true,
+	DeliveryTypeEpisodeAvailable:   true,
+	DeliveryTypeRequestFulfilled:   true,
+	DeliveryTypeWatchlistAvailable: true,
 }
 
 // TestEveryDeliveryTypeConstantIsClassified parses every non-test .go file
