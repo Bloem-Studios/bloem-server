@@ -664,9 +664,10 @@ A queued catalog import from a remote URL never fetches the URL in the job. Silo
 first checks the URL with its guarded `catalogseed.DownloadRemoteBundle`; the next
 line, added by Bloem, calls `bloemStageRemoteCatalogSeed`
 (`internal/api/handlers/bloem_catalog_seed_ext.go`), which downloads the seed again
-through the public-address outbound client, stores it in the artifact store and
-records its key and SHA-256 (`SourceSHA256`), so the job reads that artifact and
-checks its digest. The job request never carries `RemoteURL`, so the runner's
+through the public-address outbound client and stores it in the artifact store
+under a key that ends in its SHA-256 (`adminjob.BloemStagedCatalogSeedKey`), so the
+job reads that artifact and checks it against the digest the key names
+(`bloemVerifyCatalogSeedSource`, one hook line in `internal/adminjob/runner.go`). The job request never carries `RemoteURL`, so the runner's
 remote branch, which Silo kept, is not reached. The synchronous import uses
 Silo's guarded download as Silo ships it .
 
