@@ -16,13 +16,17 @@ type stagingCatalogSeedArtifactStore struct {
 	recordingCatalogSeedStagingStore
 }
 
-func (s *stagingCatalogSeedArtifactStore) Bucket() string { return s.recordingCatalogSeedStagingStore.Bucket() }
+func (s *stagingCatalogSeedArtifactStore) Bucket() string {
+	return s.recordingCatalogSeedStagingStore.Bucket()
+}
 
 func (s *stagingCatalogSeedArtifactStore) UploadFile(ctx context.Context, bucket, key, path, contentType string) (int64, error) {
 	return s.recordingCatalogSeedStagingStore.UploadFile(ctx, bucket, key, path, contentType)
 }
 
-func (s *stagingCatalogSeedArtifactStore) DeleteObject(context.Context, string, string) error { return nil }
+func (s *stagingCatalogSeedArtifactStore) DeleteObject(context.Context, string, string) error {
+	return nil
+}
 
 // Silo's CreateCatalogImportJob sets RemoteURL, and the job runner reads
 // RemoteURL before a staged object. Staging must clear it, so the job reads

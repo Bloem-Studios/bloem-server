@@ -47,7 +47,7 @@ func TestBloemVerifyCatalogSeedSourceChecksTheStream(t *testing.T) {
 		t.Fatalf("closing the checked source did not close the original: %v", err)
 	}
 
-	var changed io.ReadCloser = io.NopCloser(bytes.NewReader([]byte("changed")))
+	changed := io.NopCloser(bytes.NewReader([]byte("changed")))
 	if err := bloemVerifyCatalogSeedSource(&changed, digest); err == nil {
 		t.Fatal("changed source accepted")
 	}

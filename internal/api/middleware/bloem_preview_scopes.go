@@ -5,9 +5,9 @@ import (
 	"regexp"
 )
 
-// apiKeyScopeUUIDPattern matches an organization ID in Bloem's entitlement
+// bloemOrganizationIDPattern matches an organization ID in Bloem's entitlement
 // scope routes.
-const apiKeyScopeUUIDPattern = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
+const bloemOrganizationIDPattern = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
 
 // Exact admin routes only: this scope grants neither a guest session nor
 // ordinary user, entitlement, library or server-settings administration.

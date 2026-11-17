@@ -61,4 +61,3 @@ func checkBundleWithinLimits(data []byte, maxCompressed, maxExpanded int64) erro
 	}
 	return nil
 }
-
