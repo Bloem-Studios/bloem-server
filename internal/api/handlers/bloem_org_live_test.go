@@ -457,7 +457,7 @@ func TestOrgLiveTicketAuthPaths(t *testing.T) {
 		events := evt.NewSocketTicketStore(nil, evt.SocketAudienceEvents)
 		other := f.h.Tickets
 		f.h.Tickets = events
-		ticket, err := events.Mint(t.Context(), evt.SocketIdentity{UserID: 41, SessionID: "s", AccessFingerprint: "x", AccessExpiresAt: time.Now().Add(time.Minute), AuthorityBinding: "{}"})
+		ticket, err := events.Mint(t.Context(), evt.SocketIdentity{UserID: 41, SessionID: "s", AccessFingerprint: "x", AccessExpiresAt: time.Now().Add(time.Minute), BloemSocketAuthority: evt.BloemSocketAuthority{AuthorityBinding: "{}"}})
 		f.h.Tickets = other
 		if err != nil {
 			t.Fatal(err)

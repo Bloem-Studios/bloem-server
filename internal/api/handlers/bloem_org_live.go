@@ -246,13 +246,13 @@ func (h *BloemOrganizationLive) HandleTicket(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	identity := evt.SocketIdentity{
-		UserID:            claims.AccountID,
-		SessionID:         claims.SessionID,
-		Role:              orgLiveRole,
-		EffectiveRole:     claims.EffectiveAuthority,
-		AccessFingerprint: orgLiveFingerprint(claims),
-		AccessExpiresAt:   claims.ExpiresAt,
-		AuthorityBinding:  string(binding),
+		UserID:               claims.AccountID,
+		SessionID:            claims.SessionID,
+		Role:                 orgLiveRole,
+		EffectiveRole:        claims.EffectiveAuthority,
+		AccessFingerprint:    orgLiveFingerprint(claims),
+		AccessExpiresAt:      claims.ExpiresAt,
+		BloemSocketAuthority: evt.BloemSocketAuthority{AuthorityBinding: string(binding)},
 	}
 	ticket, err := h.Tickets.Mint(r.Context(), identity)
 	if err != nil {
