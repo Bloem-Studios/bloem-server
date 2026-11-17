@@ -844,9 +844,27 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 	}
 	if deps.SessionMgr != nil && userRepo != nil {
+		deps.SessionMgr.SetLimitProvider(func(ctx context.Context, userID int) (playback.SessionLimits, error) {
+			user, err := userRepo.GetByID(ctx, userID)
+			if err != nil {
+				return playback.SessionLimits{}, err
+			}
+			effective, err := access.EffectivePolicyForUser(ctx, user, accessGroupStore)
+			if err != nil {
+				return playback.SessionLimits{}, err
+			}
+			return playback.SessionLimits{
+				MaxStreams:               effective.MaxStreams,
+				MaxTranscodes:            effective.MaxTranscodes,
+				TranscodingDisabled:      !effective.TranscodeAllowed,
+				AudioTranscodingDisabled: !effective.AudioTranscodeAllowed,
+			}, nil
+		})
+		// Bloem: per-profile, tenant-aware limits replace the provider above.
 		wireBloemPlaybackSessionLimits(deps.SessionMgr, deps.DB, userRepo, accessGroupStore)
 		if deps.PolicySystem != nil {
-			deps.SessionMgr.SetAdmissionDecider(policy.NewBloemPlaybackAdmissionDecider(deps.PolicySystem.PDP()))
+			deps.SessionMgr.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(deps.PolicySystem.PDP()))
+			deps.SessionMgr.SetAdmissionDecider(policy.NewBloemPlaybackAdmissionDecider(deps.PolicySystem.PDP())) // Bloem: replaces Silo's decider
 		}
 	}
 
@@ -2822,7 +2840,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.DownloadCreation = downloadSvc
 		v2deps.AdminAccountDownloads = downloadSvc
 		v2deps.AdminDownloadDevices = downloadSvc
-		v2deps.DownloadPrepareAgain = downloads.NewProfilePrepareAgainService(downloadSvc)
+		v2deps.DownloadPrepareAgain = downloadSvc
+		v2deps.DownloadPrepareAgain = downloads.NewProfilePrepareAgainService(downloadSvc) // Bloem: replaces the line above
 	}
 	if ebookReaderHandler != nil {
 		v2deps.EbookProgress = ebookReaderHandler
@@ -2913,7 +2932,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// a typed nil must not become a non-nil interface, so each is set only
 	// when the v1 handler exists.
 	if authHandler != nil {
-		v2deps.Accounts = bloemPreviewAccounts(authHandler)
+		v2deps.Accounts = authHandler
+		v2deps.Accounts = bloemPreviewAccounts(authHandler) // Bloem: replaces the line above
 		if deps.DB != nil && viewerResolver != nil {
 			v2deps.PreviewPresentation = bloemPreviewPresentation{pool: deps.DB, viewer: viewerResolver}
 		}
@@ -2966,7 +2986,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 	if deps.DB != nil && deps.UserStoreProvider != nil {
 		snapshotResolver, _ := viewerResolver.(*policy.ViewerResolver)
-		bootstrap := progresssync.NewService(deps.DB, deps.UserStoreProvider, settingsRepo, snapshotResolver).WithBloemTenancy()
+		bootstrap := progresssync.NewService(deps.DB, deps.UserStoreProvider, settingsRepo, snapshotResolver)
+		bootstrap.WithBloemTenancy()
 		v2deps.ProgressBootstrap = bootstrap
 		if deps.AppContext != nil {
 			go bootstrap.RunCleanup(deps.AppContext, func(error) { slog.Warn("progress bootstrap cleanup unavailable", "component", "progresssync") })
@@ -3346,7 +3367,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.CatalogBrowse = handlers.BloemPreviewBrowse{CatalogHandler: catalogHandler}
 	}
 	if catalogResourceHandler != nil {
-		v2deps.CatalogItems = handlers.BloemPreviewCatalog{CatalogResourceHandler: catalogResourceHandler}
+		v2deps.CatalogItems = catalogResourceHandler
+		v2deps.CatalogItems = handlers.BloemPreviewCatalog{CatalogResourceHandler: catalogResourceHandler} // Bloem: replaces the line above
 	}
 	if shuffleService != nil {
 		v2deps.Shuffles = shuffleService
