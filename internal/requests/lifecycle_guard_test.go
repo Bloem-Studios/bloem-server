@@ -50,7 +50,6 @@ func lifecycleTestRepository(t *testing.T) (*Repository, *pgxpool.Pool) {
 			t.Fatalf("copy %s: %v", table, err)
 		}
 	}
-	bloemPrepareLifecycleFixture(t, pool)
 	return NewRepository(pool, nil), pool
 }
 
