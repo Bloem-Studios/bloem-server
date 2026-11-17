@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
@@ -92,12 +93,12 @@ func stageRemoteCatalogSeed(ctx context.Context, store catalogSeedStagingStore, 
 	return bucket, key, digestHex, nil
 }
 
-// withBloemCatalogSeedRemoteClient installs the SSRF-guarded outbound client
-// used for remote catalog seed downloads.
-func withBloemCatalogSeedRemoteClient(h *CatalogSeedHandler) *CatalogSeedHandler {
-	h.remoteClient = outbound.NewClient(outbound.PublicHTTPPolicy(), outbound.WithTimeout(catalogseed.RemoteBundleTimeout))
-	return h
-}
+// bloemCatalogSeedRemoteClient returns the SSRF-guarded outbound client
+// remote catalog seed downloads use: public destinations only. Tests replace
+// it.
+var bloemCatalogSeedRemoteClient = sync.OnceValue(func() *outbound.Client {
+	return outbound.NewClient(outbound.PublicHTTPPolicy(), outbound.WithTimeout(catalogseed.RemoteBundleTimeout))
+})
 
 // catalogSeedCleanupStagingStore is the artifact store a remote catalog seed
 // is staged into and cleaned up from.
@@ -117,7 +118,7 @@ func (h *CatalogSeedHandler) bloemStageRemoteCatalogSeed(ctx context.Context, re
 	if !ok {
 		return catalogImportSourceProblem(errCatalogSeedImportSourceUnavailable)
 	}
-	data, err := fetchRemoteCatalogSeed(ctx, h.remoteClient, remoteURL)
+	data, err := fetchRemoteCatalogSeed(ctx, bloemCatalogSeedRemoteClient(), remoteURL)
 	if err != nil {
 		return catalogImportSourceProblem(err)
 	}

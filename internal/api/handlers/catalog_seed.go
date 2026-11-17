@@ -13,7 +13,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/notifications"
-	"github.com/Silo-Server/silo-server/internal/outbound"
 	"github.com/Silo-Server/silo-server/internal/s3client"
 )
 
@@ -28,25 +27,17 @@ type CatalogSeedHandler struct {
 	jobRepo        *adminjob.Repository
 	store          CatalogSeedArtifactStore
 	localImportDir string
-	remoteClient   *outbound.Client
 	RealtimeHub    *notifications.Hub
 }
 
 func NewCatalogSeedHandler(service *catalogseed.Service, jobRepo *adminjob.Repository, store CatalogSeedArtifactStore) *CatalogSeedHandler {
-	return withBloemCatalogSeedRemoteClient(&CatalogSeedHandler{service: service, jobRepo: jobRepo, store: store})
+	return &CatalogSeedHandler{service: service, jobRepo: jobRepo, store: store}
 }
 
 const catalogSeedPublishExpiry = 7 * 24 * time.Hour
 
 const defaultLocalImportDir = "/catalog-seeds"
 
-// These sentinels are matched with errors.Is and then rendered verbatim into
-// the API response body via writeError(..., err.Error()), so their text is
-// client-visible copy rather than an internal error fragment that gets wrapped
-// into a larger sentence. Lowercasing them to satisfy ST1005 would change the
-// message admins see, which is a client-visible contract change.
-//
-//nolint:staticcheck // ST1005: deliberate user-facing sentences, see above.
 var (
 	errCatalogSeedImportSourceUnavailable = errors.New("catalog imports from stored artifacts require configured storage")
 	errCatalogSeedImportInvalidLocalPath  = errors.New("Local path must point to an existing .json.gz file")
