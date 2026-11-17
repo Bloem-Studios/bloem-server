@@ -31,8 +31,6 @@ type SessionView struct {
 	DeviceID       string     `json:"device_id"`
 	DevicePlatform string     `json:"device_platform"`
 	AuthMethod     string     `json:"auth_method"`
-	ProfileID      *string    `json:"profile_id"`
-	ProfileName    *string    `json:"profile_name"`
 	CreatedAt      time.Time  `json:"created_at"`
 	LastSeenAt     *time.Time `json:"last_seen_at"`
 	ExpiresAt      time.Time  `json:"expires_at"`
@@ -70,9 +68,8 @@ func (s *Service) ListSessions(ctx context.Context, organizationID uuid.UUID, ac
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT a.id, COALESCE(a.device_name,''), COALESCE(a.device_id,''), COALESCE(a.device_platform,''), a.auth_method,
-		       a.profile_id, p.name, a.created_at, a.last_seen_at, a.expires_at
+		       a.created_at, a.last_seen_at, a.expires_at
 		FROM auth_sessions a
-		LEFT JOIN user_profiles p ON p.user_id = a.user_id AND p.id = a.profile_id
 		WHERE a.user_id = $1 AND a.revoked_at IS NULL AND a.expires_at > now()
 		  AND a.impersonator_user_id IS NULL AND a.purpose = 'account' AND a.auth_method <> 'preview_guest'
 		ORDER BY a.created_at DESC, a.id DESC LIMIT $2`, accountID, maxListedSessions)
@@ -83,7 +80,7 @@ func (s *Service) ListSessions(ctx context.Context, organizationID uuid.UUID, ac
 	sessions := []SessionView{}
 	for rows.Next() {
 		var view SessionView
-		if err := rows.Scan(&view.ID, &view.DeviceName, &view.DeviceID, &view.DevicePlatform, &view.AuthMethod, &view.ProfileID, &view.ProfileName, &view.CreatedAt, &view.LastSeenAt, &view.ExpiresAt); err != nil {
+		if err := rows.Scan(&view.ID, &view.DeviceName, &view.DeviceID, &view.DevicePlatform, &view.AuthMethod, &view.CreatedAt, &view.LastSeenAt, &view.ExpiresAt); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, view)
@@ -213,8 +210,7 @@ func (s *Service) RevokeSessions(ctx context.Context, organizationID uuid.UUID, 
 // RevokedSession reports one session sign-out.
 type RevokedSession struct {
 	// Changed is false when the session had already ended.
-	Changed   bool
-	ProfileID *string
+	Changed bool
 }
 
 // RevokeSession ends one session of the member. It does not raise the
@@ -234,12 +230,11 @@ func (s *Service) RevokeSession(ctx context.Context, organizationID uuid.UUID, a
 			return zero, err
 		}
 		var deviceID *string
-		var profileID *string
 		var revokedAt *time.Time
 		var impersonation bool
 		var purpose string
-		err = tx.QueryRow(ctx, `SELECT device_id, profile_id, revoked_at, impersonator_user_id IS NOT NULL, purpose FROM auth_sessions WHERE id = $1 AND user_id = $2 FOR UPDATE`, sessionID, accountID).
-			Scan(&deviceID, &profileID, &revokedAt, &impersonation, &purpose)
+		err = tx.QueryRow(ctx, `SELECT device_id, revoked_at, impersonator_user_id IS NOT NULL, purpose FROM auth_sessions WHERE id = $1 AND user_id = $2 FOR UPDATE`, sessionID, accountID).
+			Scan(&deviceID, &revokedAt, &impersonation, &purpose)
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && (impersonation || purpose != "account")) {
 			return zero, ErrNotFound
 		}
@@ -247,7 +242,7 @@ func (s *Service) RevokeSession(ctx context.Context, organizationID uuid.UUID, a
 			return zero, err
 		}
 		if revokedAt != nil {
-			return RevokedSession{Changed: false, ProfileID: profileID}, nil
+			return RevokedSession{Changed: false}, nil
 		}
 		if _, err := tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL`, sessionID); err != nil {
 			return zero, fmt.Errorf("revoke session: %w", err)
@@ -257,7 +252,7 @@ func (s *Service) RevokeSession(ctx context.Context, organizationID uuid.UUID, a
 		if err := RecordAudit(ctx, tx, event); err != nil {
 			return zero, err
 		}
-		return RevokedSession{Changed: true, ProfileID: profileID}, nil
+		return RevokedSession{Changed: true}, nil
 	})
 }
 
@@ -289,14 +284,13 @@ func (s *Service) SignOutDevice(ctx context.Context, organizationID uuid.UUID, a
 		if err != nil {
 			return zero, err
 		}
-		// The organization's profiles that used the device, from the registry,
-		// per-device settings and the sessions opened from it.
+		// The organization's profiles that used the device, from the registry
+		// and per-device settings.
 		rows, err := tx.Query(ctx, `
 			SELECT DISTINCT p.id FROM user_profiles p
 			WHERE p.user_id = $1 AND p.organization_id = $2 AND (
 			      EXISTS (SELECT 1 FROM user_devices d WHERE d.user_id = p.user_id AND d.profile_id = p.id AND d.device_id = $3)
-			   OR EXISTS (SELECT 1 FROM user_device_settings d WHERE d.user_id = p.user_id AND d.profile_id = p.id AND d.device_id = $3)
-			   OR EXISTS (SELECT 1 FROM auth_sessions a WHERE a.user_id = p.user_id AND a.profile_id = p.id AND a.device_id = $3))`,
+			   OR EXISTS (SELECT 1 FROM user_device_settings d WHERE d.user_id = p.user_id AND d.profile_id = p.id AND d.device_id = $3))`,
 			accountID, organizationID, deviceID)
 		if err != nil {
 			return zero, fmt.Errorf("find device profiles: %w", err)
@@ -315,7 +309,7 @@ func (s *Service) SignOutDevice(ctx context.Context, organizationID uuid.UUID, a
 			return zero, err
 		}
 		var accountLogin bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM auth_sessions WHERE user_id = $1 AND device_id = $2 AND profile_id IS NULL AND impersonator_user_id IS NULL AND purpose = 'account')`, accountID, deviceID).Scan(&accountLogin); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM auth_sessions WHERE user_id = $1 AND device_id = $2 AND impersonator_user_id IS NULL AND purpose = 'account')`, accountID, deviceID).Scan(&accountLogin); err != nil {
 			return zero, err
 		}
 		if len(profileIDs) == 0 && !accountLogin {
@@ -325,8 +319,7 @@ func (s *Service) SignOutDevice(ctx context.Context, organizationID uuid.UUID, a
 		}
 		tag, err := tx.Exec(ctx, `
 			UPDATE auth_sessions SET revoked_at = now()
-			WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL AND impersonator_user_id IS NULL AND purpose = 'account'
-			  AND (profile_id IS NULL OR profile_id = ANY($3))`, accountID, deviceID, profileIDs)
+			WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL AND impersonator_user_id IS NULL AND purpose = 'account'`, accountID, deviceID)
 		if err != nil {
 			return zero, fmt.Errorf("revoke device sessions: %w", err)
 		}

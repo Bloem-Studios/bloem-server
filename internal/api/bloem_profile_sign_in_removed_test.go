@@ -43,11 +43,17 @@ func TestProfileSignInRoutesAreGone(t *testing.T) {
 		{http.MethodPut, NativeAPIPrefix + "/profile-credentials/profile-1"},
 		{http.MethodDelete, NativeAPIPrefix + "/profile-credentials/profile-1"},
 		{http.MethodPost, NativeAPIPrefix + "/auth/profile-login"},
-		{http.MethodPost, "/api/v2/auth/profile-login"},
 	} {
 		if router.Match(chi.NewRouteContext(), request.method, request.path) {
 			t.Errorf("%s %s matches a route", request.method, request.path)
 		}
+	}
+	// /api/v2 is delegated whole to the native v2 handler, which has no such
+	// operation either.
+	login := httptest.NewRecorder()
+	router.ServeHTTP(login, httptest.NewRequest(http.MethodPost, "/api/v2/auth/profile-login", strings.NewReader(`{}`)))
+	if login.Code != http.StatusNotFound && login.Code != http.StatusMethodNotAllowed {
+		t.Errorf("POST /api/v2/auth/profile-login = %d, want 404", login.Code)
 	}
 
 	rec := httptest.NewRecorder()

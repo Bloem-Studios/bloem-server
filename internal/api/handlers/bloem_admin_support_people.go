@@ -176,18 +176,9 @@ func (h *BloemOrganizationSupportHandler) HandleRevokeSession(w http.ResponseWri
 		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")
 		return
 	}
-	revoked, err := h.people.RevokeSession(r.Context(), request.Tenant.OrganizationID, request.Actor, accountID, sessionID)
-	if err != nil {
+	if _, err := h.people.RevokeSession(r.Context(), request.Tenant.OrganizationID, request.Actor, accountID, sessionID); err != nil {
 		h.writeSupportError(w, r, err, request.Tenant.OrganizationID, accountID)
 		return
-	}
-	if revoked.Changed && revoked.ProfileID != nil && h.profileSessionsRevoked != nil {
-		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
-			return h.profileSessionsRevoked(callbackCtx, accountID, []string{*revoked.ProfileID})
-		}); err != nil {
-			supportDependencyUnavailable(w)
-			return
-		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -11283,18 +11283,6 @@
               "string",
               "null"
             ]
-          },
-          "profile_id": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "profile_name": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -11303,8 +11291,6 @@
           "device_id",
           "device_platform",
           "auth_method",
-          "profile_id",
-          "profile_name",
           "created_at",
           "last_seen_at",
           "expires_at"

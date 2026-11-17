@@ -51,7 +51,7 @@ func TestBloemEventsSocketPostgresAuthorityBinding(t *testing.T) {
 		}
 	}
 	exec(`INSERT INTO users (id, email, username, password_hash, role, account_incarnation_id) VALUES (7, 'socket@example.test', 'socket', 'unused', 'user', $1)`, f.users.user.AccountIncarnationID)
-	exec(`INSERT INTO organizations (id, slug, name, status, owner_account_id, policy_revision) VALUES ($1, 'socket', 'Socket', 'active', 7, 2)`, organization)
+	exec(`INSERT INTO organizations (id, slug, name, status, owner_account_id, policy_revision, is_default) VALUES ($1, 'socket', 'Socket', 'active', 7, 2, true)`, organization)
 	exec(`INSERT INTO organization_memberships (id, organization_id, account_id, status, legacy_role, security_revision) VALUES ($1, $2, 7, 'active', 'user', 3)`, f.tenants.tenant.MembershipID, organization)
 	exec(`INSERT INTO user_profiles (id, user_id, name, organization_id, access_group_id) VALUES ('profile', 7, 'Viewer', $1, 1)`, organization)
 	sessions := auth.NewSessionRepository(pool)

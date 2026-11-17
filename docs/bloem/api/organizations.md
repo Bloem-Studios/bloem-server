@@ -4369,8 +4369,6 @@ Type: object.
 | `expires_at` | string (date-time) | yes |  |
 | `id` | string | yes |  |
 | `last_seen_at` | string or null (date-time) | yes |  |
-| `profile_id` | string or null | yes |  |
-| `profile_name` | string or null | yes |  |
 
 ### SetOperationInt
 

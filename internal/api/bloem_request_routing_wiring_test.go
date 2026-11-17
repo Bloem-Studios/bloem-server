@@ -114,9 +114,8 @@ func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 		}
 		return value
 	}
-	// An administrator of a hosted organization signs in to that
-	// organization; neither it nor an organization-only member holds
-	// platform authority.
+	// Neither an administrator of a hosted organization nor an
+	// organization-only member holds platform authority.
 	platformTenant := token(hosted, models.RoleAdmin)
 	platformDefault := token(platform, models.RoleAdmin)
 	tenantOnly := token(member, models.RoleUser)
@@ -169,8 +168,11 @@ func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 				{http.MethodDelete, "/admin/request-routes/routing-probe", "", "*"},
 			} {
 				response := request(endpoint.method, endpoint.path, endpoint.body, actor.token, actor.profile, endpoint.match)
-				if response.Code != http.StatusForbidden {
-					t.Fatalf("%s %s: status=%d body=%s, want 403", endpoint.method, endpoint.path, response.Code, response.Body)
+				// An account outside the default organization has no tenant
+				// on the native API (401); one inside it lacks platform
+				// authority (403). Either way nothing is served.
+				if response.Code != http.StatusForbidden && response.Code != http.StatusUnauthorized {
+					t.Fatalf("%s %s: status=%d body=%s, want 401 or 403", endpoint.method, endpoint.path, response.Code, response.Body)
 				}
 			}
 		})
@@ -189,14 +191,6 @@ func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 	stored, err := repo.GetRoutingSettings(t.Context())
 	if err != nil || stored.Mode != mediarequests.RoutingStandard {
 		t.Fatalf("denied requests changed global routing: %+v error=%v", stored, err)
-	}
-
-	// Search reads TMDB, not global routing configuration, and retains its
-	// existing acting-admin authorization even from the conditional context.
-	search := request(http.MethodGet, "/admin/request-routes/titles?media_type=movie&q=fixture", "", platformTenant, fmt.Sprintf("routing-profile-%d", hosted), "")
-	var titles apiv2.Collection[apiv2.AdminRequestRouteTitle]
-	if err := json.Unmarshal(search.Body.Bytes(), &titles); err != nil || search.Code != http.StatusOK || len(titles.Items) != 1 || titles.Items[0].TMDBID != 550 {
-		t.Fatalf("hosted admin TMDB search: status=%d body=%s error=%v", search.Code, search.Body, err)
 	}
 
 	t.Run("default_organization_platform_admin", func(t *testing.T) {

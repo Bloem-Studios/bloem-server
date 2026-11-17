@@ -16,8 +16,8 @@ import (
 //
 // An organization-scoped session revoke bumps the membership's
 // security_revision, which stales every token carrying that revision. An
-// account-login session (auth_sessions.profile_id IS NULL) carries none and
-// picks its profile per request with X-Profile-Id, so without this check it
+// account-login session carries none and picks its profile per request with
+// X-Profile-Id, so without this check it
 // could keep selecting the revoking organization's profiles. The trigger from
 // migration 20260923160000_bloem_org_session_revocations records the
 // revocation time per (account, organization). It records one for every bump
@@ -84,7 +84,6 @@ func sessionProfileOrganizationRevoked(ctx context.Context, pool *pgxpool.Pool, 
 			 AND revocations.organization_id = profiles.organization_id
 			WHERE sessions.id = $1
 			  AND sessions.user_id = $2
-			  AND sessions.profile_id IS NULL
 			  AND sessions.created_at < revocations.revoked_at
 		)`, sessionID, accountID, profileID).Scan(&revoked)
 	if err != nil {
