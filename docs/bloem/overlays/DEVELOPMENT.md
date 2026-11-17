@@ -52,8 +52,8 @@ pre-submission gate are in [CONTRIBUTING.md](../../../.github/CONTRIBUTING.md).
 
 **Location:** section “Prerequisites”. **Bloem adds:**
 
-Bloem's `go.mod` declares `go 1.26.11` above Silo's 1.26.4 minimum, so build with Go
-1.26.11 or later. Bloem CI installs
+Bloem's `go.mod` declares the same Go patch as Silo's, `go 1.27.4`, so build with Go
+1.27.4 or later. Bloem CI installs
 exactly the patch `go.mod` names.
 
 ---

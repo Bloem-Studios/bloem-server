@@ -205,8 +205,8 @@ and runtime checks.
 
 #### Reproduce and verify
 
-Use the Go toolchain declared in the server's `go.mod` (currently `1.26.11`). Go `1.27.1` changes standard-library JSON alias representation
-and is not the validated generation environment. Commands assume the repository root is the
+Use the Go toolchain declared in the server's `go.mod` (currently `1.27.4`), the patch Bloem CI
+generates and checks with. Commands assume the repository root is the
 cwd:
 
 ```sh

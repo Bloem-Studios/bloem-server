@@ -164,6 +164,26 @@ IDs; other policy changes remain fenced. Already-adapted migration files carry a
 versioned marker (`-- bloem-schema-adapter:v1:<name>`) so filtered filesystems cannot
 apply an adapter twice.
 
+### Silo's database tests
+
+Silo's database tests run unchanged on Bloem's schema. `cmd/bloem-testdb` prepares the
+test database and installs a test-only fixture compatibility shim
+([`internal/bloemtestdb/sql/fixture_compat.sql`](../../internal/bloemtestdb/sql/fixture_compat.sql)),
+which does the tenancy bookkeeping Bloem's production writes do. It gives a fixture's
+account its default-organization membership and its profile an organization, and it
+releases a library's or plugin installation's default entitlements when a fixture
+deletes it.
+
+A Silo test that copies `media_requests` into its own schema
+(`CREATE TABLE ... (LIKE public.media_requests INCLUDING ALL)`) keeps Bloem's NOT NULL
+`organization_id` but no trigger. An event trigger in the shim gives each such copy the
+production trigger that fills that column
+(`TestFixtureCopiedMediaRequestsFillTheOrganization`).
+
+The shim acts only in a database whose name marks it as a test database, and production
+never has it. When a Silo test clashes with Bloem's schema, extend the shim; never edit
+Silo's test.
+
 ### Profile-aware extensions
 
 - [`SetProfileLimitProvider`](../../internal/playback/bloem_profile_limits.go)

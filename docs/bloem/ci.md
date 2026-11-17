@@ -490,7 +490,7 @@ day.
 - It builds Bloem's server image only. It does not build Silo's all-in-one
   image, which bundles PostgreSQL, Redis and Meilisearch.
 - It does not deploy. Deployment is a separate step.
-- The image's Go build stage uses the Dockerfile's floating `golang:1.26` tag
+- The image's Go build stage uses the Dockerfile's floating `golang:1.27` tag
   (Silo's choice), not the exact patch `go.mod` names, which the CI jobs use.
 
 ### Bloem Release
@@ -550,7 +550,7 @@ options when the frames carry their own color properties.
 
 ### Go patch
 
-Silo's setup action (`.github/actions/setup-go`) installs the newest Go 1.26
+Silo's setup action (`.github/actions/setup-go`) installs the newest Go 1.27
 patch. Bloem's lint, contract-check, test and scenario jobs then install
 exactly the patch `go.mod` names (step `Use the Go patch go.mod requires`). The
 tenant and native authentication jobs install that patch directly
