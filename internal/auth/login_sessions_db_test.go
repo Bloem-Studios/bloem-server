@@ -58,15 +58,6 @@ func TestLoginSessionActivityAndAdminRevocationDB(t *testing.T) {
 			t.Fatal(err)
 		}
 		ids = append(ids, id)
-		// Bloem: a profile lives in an organization, so a directly inserted
-		// account needs its default-organization membership.
-		if _, err := pool.Exec(ctx, `
-			INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-			SELECT id, $1, 'active', CASE WHEN $2 = 'admin' THEN 'admin' ELSE 'user' END FROM organizations
-			WHERE is_default
-			ON CONFLICT (organization_id, account_id) DO NOTHING`, id, role); err != nil {
-			t.Fatalf("seed account membership: %v", err)
-		}
 		return id
 	}
 	actor, target, other := account("admin"), account("user"), account("user")
