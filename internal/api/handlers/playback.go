@@ -364,7 +364,8 @@ func NewPlaybackHandler(sessionMgr SessionManagerInterface, opts ...FilePathReso
 	}
 	h.wireRemotePlaybackStop()
 	if len(opts) > 0 {
-		h.fileResolver = guardNativePlaybackFiles(opts[0])
+		h.fileResolver = opts[0]
+		h.fileResolver = guardNativePlaybackFiles(h.fileResolver) // Bloem: native storage files never reach Silo's filesystem paths
 	}
 	// Wire the shared transcode manager with closures so it reads the handler's
 	// (often late-set) config/store/secret fields lazily at call time, avoiding a
