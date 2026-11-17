@@ -41,3 +41,18 @@ func TestAnalyzeRefusesRecursiveHelper(t *testing.T) {
 		t.Fatalf("Analyze() error = %v, want a recursive-helper refusal", err)
 	}
 }
+
+// TestAnalyzeKeepsRereadBodyAsJSONRequest covers the bytes.NewReader and
+// bytes.NewBuffer case in bodyOrigins.expression: bytes re-read from the
+// request body are still the request body.
+func TestAnalyzeKeepsRereadBodyAsJSONRequest(t *testing.T) {
+	inv := analyzeFixture(t, "bloem_reread_body")
+	if len(inv.Routes) != 2 {
+		t.Fatalf("got %d routes, want 2", len(inv.Routes))
+	}
+	for _, route := range inv.Routes {
+		if route.RequestKind != KindJSON {
+			t.Errorf("%s request_kind = %q, want %q", route.Path, route.RequestKind, KindJSON)
+		}
+	}
+}
