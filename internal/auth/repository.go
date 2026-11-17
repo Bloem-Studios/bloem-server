@@ -287,7 +287,10 @@ func createUser(ctx context.Context, db interface {
 		return nil, fmt.Errorf("creating user: %w", err)
 	}
 
-	return user, linkAccountMembership(ctx, db, user)
+	if err := linkAccountMembership(ctx, db, user); err != nil { // Bloem: the account's one membership (bloem_repository.go)
+		return user, err
+	}
+	return user, nil
 }
 
 // GetByID retrieves a user by their numeric ID.

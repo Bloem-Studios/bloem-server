@@ -105,13 +105,13 @@ func (r *Resolver) Resolve(ctx context.Context, input ResolveInput) (Scope, erro
 		AllowedLibraryIDs:          cloneInts(effective.LibraryIDs),
 		LibrariesRestricted:        effective.LibraryIDs != nil,
 		MaxPlaybackQuality:         NormalizePlaybackQuality(effective.MaxPlaybackQuality),
+		MaxRemoteStreamBitrateKbps: effective.MaxRemoteStreamBitrateKbps,
+		MaxLocalStreamBitrateKbps:  effective.MaxLocalStreamBitrateKbps,
+		PolicyRevision:             user.AccessPolicyRevision,
+		ProfileVerified:            input.ProfileID == "",
 		PlaybackAllowed:            effective.PlaybackAllowed,
 		LiveTVAllowed:              LiveTVAllowed(user, bloemProfile, effective),
 		DownloadAllowed:            effective.DownloadAllowed,
-		PolicyRevision:             user.AccessPolicyRevision,
-		ProfileVerified:            input.ProfileID == "",
-		MaxRemoteStreamBitrateKbps: effective.MaxRemoteStreamBitrateKbps,
-		MaxLocalStreamBitrateKbps:  effective.MaxLocalStreamBitrateKbps,
 	}
 	if r.unrated != nil {
 		scope.AllowUnratedContent = r.unrated.AllowUnratedContent(ctx)
