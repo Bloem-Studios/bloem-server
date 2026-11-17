@@ -26,10 +26,7 @@ export function applyBloemTestConfig(config: UserConfig): void {
   const test = (config as UserConfig & { test?: InlineConfig }).test;
   if (!test) return;
   const setupFiles = test.setupFiles ?? [];
-  test.setupFiles = [
-    ...(Array.isArray(setupFiles) ? setupFiles : [setupFiles]),
-    BLOEM_TEST_SETUP,
-  ];
+  test.setupFiles = [...(Array.isArray(setupFiles) ? setupFiles : [setupFiles]), BLOEM_TEST_SETUP];
   // CI shards run Bloem's and Silo's suites together, four workers each, and
   // Vitest's 5 s default cuts off Silo's heavier page tests (AdminCollections
   // List peeks takes about 4 s on its own).
