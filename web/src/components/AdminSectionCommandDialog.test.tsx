@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -50,37 +50,6 @@ describe("AdminSectionCommandDialog", () => {
 
     await waitFor(() => expect(searchBox).toHaveFocus());
     expect(screen.getByRole("option", { name: /Dashboard/ })).toBeInTheDocument();
-  });
-
-  it("preserves typing that starts before the next animation frame", async () => {
-    const frames: FrameRequestCallback[] = [];
-    const frame = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
-      frames.push(callback);
-      return frames.length;
-    });
-    try {
-      renderDialog();
-      const searchBox = await openDialog();
-      await userEvent.keyboard("l");
-      act(() => frames.splice(0).forEach((callback) => callback(0)));
-      await userEvent.keyboard("ogs");
-      expect(searchBox).toHaveValue("logs");
-      expect(
-        screen.getByRole("option", { name: /^Server LogServer log stream/ }),
-      ).toBeInTheDocument();
-    } finally {
-      frame.mockRestore();
-    }
-  });
-
-  it("searches all admin section groups", async () => {
-    renderDialog();
-
-    const searchBox = await openDialog();
-    await userEvent.type(searchBox, "history import");
-
-    expect(screen.getByRole("option", { name: /History Import/ })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: /Settings/ })).not.toBeInTheDocument();
   });
 
   it("searches individual admin setting labels from the admin dialog", async () => {

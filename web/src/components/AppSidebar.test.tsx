@@ -31,10 +31,6 @@ let mockPrimaryMenu: {
       }
   >;
 } | null = null;
-let mockLiveTVAccess = {
-  data: { supported: true, allowed: false, available: false },
-  isError: false,
-};
 let mockLibraries = [{ id: 7, name: "Movies", type: "movies" }];
 let mockRequestsEnabled = false;
 let mockProfileRequestsAllowed = true;
@@ -137,13 +133,6 @@ vi.mock("@/hooks/queries/useRequests", () => ({
   useMyMediaRequests: (_params: unknown, options: { enabled?: boolean }) => ({
     data: options.enabled ? mockMyRequests : undefined,
   }),
-}));
-
-vi.mock("@/hooks/queries/useLiveTV", () => ({
-  useLiveTVChannels: () => ({ data: [] }),
-}));
-vi.mock("@/hooks/queries/useLiveTVAccess", () => ({
-  useLiveTVAccess: () => mockLiveTVAccess,
 }));
 
 vi.mock("@/hooks/queries/notifications", () => ({
@@ -506,26 +495,5 @@ describe("groupAppNavLinks", () => {
 
     expect(groups?.map((g) => g.category)).toEqual(["Extras", "Other"]);
     expect(groups?.[1]?.links.map((l) => l.id)).toEqual(["a", "b"]);
-  });
-});
-
-describe("Live TV navigation permission", () => {
-  it("hides a denied Live TV destination even on a direct link", () => {
-    mockLiveTVAccess = {
-      data: { supported: true, allowed: false, available: false },
-      isError: false,
-    };
-    expect(renderSidebar("/livetv")).not.toContain('href="/livetv"');
-  });
-  it("shows Live TV when the viewer is allowed and channels are available", () => {
-    mockLiveTVAccess = {
-      data: { supported: true, allowed: true, available: true },
-      isError: false,
-    };
-    expect(renderSidebar("/")).toContain('href="/livetv"');
-  });
-  it("hides Live TV when the latest permission check fails", () => {
-    mockLiveTVAccess = { data: { supported: true, allowed: true, available: true }, isError: true };
-    expect(renderSidebar("/")).not.toContain('href="/livetv"');
   });
 });

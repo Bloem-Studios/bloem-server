@@ -25,13 +25,6 @@ const THREADS_TESTS = [
   "src/player/player-auth-refresh.test.ts",
   "src/hooks/queries/authCore.v2.test.ts",
   "vite.config.test.ts",
-  // Bloem: imports vite.config.ts, whose Tailwind plugin registers a Node
-  // module hook at load.
-  "bloem-brand-plugin.test.ts",
-  // Bloem: redefines window.location, which VM contexts do not allow.
-  "src/api/bloemClient.test.ts",
-  // Bloem: runs ESLint, whose module loading fails inside a VM context.
-  "scripts/bloem-i18n-coverage.test.mjs",
 ];
 
 // React and the router change far less often than the app, so they get a chunk
@@ -321,20 +314,6 @@ export default defineConfig(({ mode }) => {
       environment: "jsdom",
       globals: true,
       setupFiles: ["./src/test-setup.ts"],
-      // Bloem: CI shards run Bloem's and Silo's suites together, four workers
-      // each, and Vitest's 5 s default cuts off Silo's heavier page tests
-      // (AdminCollections List peeks takes about 4 s on its own).
-      testTimeout: 15_000,
-      // Bloem: worker recycling reads the root config, even with projects.
-      // The host-RAM default can exceed Node's heap limit on large hosts.
-      vmMemoryLimit: "512MiB",
-      // Bloem: WEBTEST_EXCLUDE (comma-separated, from the Makefile's known
-      // failures) reaches every project through the shared exclude; the
-      // command line's --exclude does not apply to projects.
-      exclude: [
-        ...configDefaults.exclude,
-        ...(process.env.WEBTEST_EXCLUDE ?? "").split(",").filter(Boolean),
-      ],
       projects: [
         {
           extends: true,

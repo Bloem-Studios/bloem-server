@@ -2,13 +2,10 @@ import "@testing-library/jest-dom";
 import { vi } from "vitest";
 
 import { loadAdminEnglishForTests } from "@/i18n";
-import { loadBloemAdminEnglishForTests } from "@/bloem/i18n";
 
 // Tests render admin pages and call admin helpers without the admin layout
 // that would load their text.
 await loadAdminEnglishForTests();
-// Bloem's admin text, likewise (src/bloem/i18n).
-await loadBloemAdminEnglishForTests();
 
 // Components render inside the app's message provider. Tests render them alone,
 // so every render and renderHook gets the English one, which formats from the
@@ -58,40 +55,4 @@ if (typeof HTMLDialogElement !== "undefined" && !HTMLDialogElement.prototype.sho
     this.open = false;
     this.dispatchEvent(new Event("close"));
   };
-}
-
-function createMemoryStorage(): Storage {
-  const values = new Map<string, string>();
-
-  return {
-    get length() {
-      return values.size;
-    },
-    clear() {
-      values.clear();
-    },
-    getItem(key: string) {
-      return values.get(key) ?? null;
-    },
-    key(index: number) {
-      return Array.from(values.keys())[index] ?? null;
-    },
-    removeItem(key: string) {
-      values.delete(key);
-    },
-    setItem(key: string, value: string) {
-      values.set(key, String(value));
-    },
-  };
-}
-
-// Node 26 exposes an experimental global localStorage whose value is undefined
-// unless the process receives --localstorage-file. That property can shadow
-// jsdom's implementation, so replace it with deterministic per-file storage in
-// browser tests. Node-environment tests have no window and remain untouched.
-if (typeof window !== "undefined") {
-  Object.defineProperty(window, "localStorage", {
-    configurable: true,
-    value: createMemoryStorage(),
-  });
 }

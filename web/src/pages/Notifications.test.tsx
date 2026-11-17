@@ -389,27 +389,3 @@ it("marks the selected rows read and mutes their series together", () => {
   fireEvent.click(within(bar).getByRole("button", { name: "Mark read" }));
   expect(state.markMany.mutate).toHaveBeenCalledWith(["e4", "b1", "req"]);
 });
-
-it("shows announcement title, message and severity", () => {
-  state.list.data = {
-    pages: [
-      {
-        notifications: [
-          {
-            ...row,
-            id: "notice",
-            type: "system.announcement",
-            title: "Maintenance tonight",
-            body: "Playback resumes at 22:00.",
-            severity: "warning",
-          },
-        ],
-        read_cutoff: "frozen-cutoff",
-      },
-    ],
-  };
-  renderAt("/notifications");
-  expect(screen.getByText("Maintenance tonight")).toBeInTheDocument();
-  expect(screen.getByText("Playback resumes at 22:00.")).toBeInTheDocument();
-  expect(screen.getByText("Warning")).toBeInTheDocument();
-});

@@ -22,7 +22,6 @@ const hlsJS = vi.hoisted(() => ({
   latest: null as null | { emit: (event: string, data: unknown) => void },
 }));
 
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null, profile: null }) }));
 vi.mock("sonner", () => ({
   toast: { error: vi.fn(), info: vi.fn(), success: vi.fn(), message: vi.fn() },
 }));
@@ -212,7 +211,6 @@ function Harness({
   if (!playback.plan || !playback.streamUrl || !playback.sessionId) return null;
   return createElement(VideoPlayer, {
     title: "Test episode",
-    contentId: "request-1",
     streamUrl: playback.streamUrl,
     plan: playback.plan,
     planRevision: playback.planRevision,

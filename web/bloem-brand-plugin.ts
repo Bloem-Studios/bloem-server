@@ -9,6 +9,7 @@ import path from "node:path";
 import type { Plugin } from "vite";
 import { brandTestRegexes } from "./product-brand-regex";
 import { applyBrand, PRODUCT_NAME } from "./src/lib/product-brand";
+import { applyBloemTestConfig } from "./bloem-test-config";
 
 const BRANDABLE = /\.(ts|tsx|html)$/;
 // Silo's generated message catalogs, where its interface text lives (src/i18n).
@@ -40,6 +41,10 @@ export function bloemBrand(): Plugin {
     name: "bloem-brand",
     // After other transforms, so the string we rewrite is the one that ships.
     enforce: "post",
+    // Bloem's Vitest settings (bloem-test-config.ts) ride on this plugin.
+    config(config) {
+      applyBloemTestConfig(config);
+    },
     configResolved(config) {
       publicDir = config.publicDir;
     },

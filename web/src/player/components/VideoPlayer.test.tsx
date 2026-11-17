@@ -71,7 +71,6 @@ const hlsJS = vi.hoisted(() => ({
   forwardBufferSeconds: 0,
 }));
 
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null, profile: null }) }));
 vi.mock("sonner", () => ({
   toast: { error: toastError, info: toastInfo, success: vi.fn(), message: vi.fn() },
 }));
@@ -259,7 +258,6 @@ const directPlan = fixturePlanV3({
 function playerProps(overrides: Partial<Parameters<typeof VideoPlayer>[0]> = {}) {
   return {
     title: "Test movie",
-    contentId: "episode-1",
     streamUrl: "/api/v1/stream/session-1?token=token",
     plan: directPlan,
     planRevision: 1,

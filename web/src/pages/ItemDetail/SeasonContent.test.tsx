@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -123,13 +122,10 @@ function makeSeasonItem(overrides: Partial<ItemDetail> = {}) {
 }
 
 function renderSeasonMarkup(item = makeSeasonItem()) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return renderToStaticMarkup(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/item/season-1"]}>
-        <SeasonContent item={item} />
-      </MemoryRouter>
-    </QueryClientProvider>,
+    <MemoryRouter initialEntries={["/item/season-1"]}>
+      <SeasonContent item={item} />
+    </MemoryRouter>,
   );
 }
 
@@ -341,24 +337,6 @@ describe("SeasonContent", () => {
       contentId: "episode-1",
       mediaType: "episode",
       hasPartialProgress: true,
-    });
-  });
-
-  it("passes on-view translation controls to the hero", () => {
-    const onTranslate = vi.fn();
-    mocks.useOnViewTranslation.mockReturnValue({
-      translating: true,
-      onTranslate,
-    });
-
-    renderSeasonMarkup(makeSeasonItem({ pending_translation_language: "fr" }));
-
-    expect(mocks.useOnViewTranslation).toHaveBeenCalledWith(
-      expect.objectContaining({ content_id: "season-1", type: "season" }),
-    );
-    expect(mocks.capturedDetailHeroProps.value).toMatchObject({
-      overviewTranslating: true,
-      onTranslateOverview: onTranslate,
     });
   });
 

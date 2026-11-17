@@ -1,6 +1,3 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
-
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -41,16 +38,6 @@ vi.mock("@/hooks/queries/admin/libraries", () => ({
 
 beforeEach(() => setChain.mockClear());
 
-function wrapper({ children }: { children: ReactNode }) {
-  return (
-    <QueryClientProvider
-      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-    >
-      {children}
-    </QueryClientProvider>
-  );
-}
-
 const library = { id: 7, name: "Shows", type: "series", paths: ["/tv"] } as Library;
 
 describe("local metadata in the provider chain", () => {
@@ -62,7 +49,7 @@ describe("local metadata in the provider chain", () => {
   });
 
   it("shows one switch, on when any level reads local files, and keeps it out of the level lists", () => {
-    const { result } = renderHook(() => useLibraryForm({ library }), { wrapper });
+    const { result } = renderHook(() => useLibraryForm({ library }));
     expect(result.current.hasLocalMetadata).toBe(true);
     expect(result.current.localMetadataEnabled).toBe(true);
     expect(result.current.remoteLevelChains["series"]!.map((item) => item.provider_slug)).toEqual([
@@ -72,7 +59,7 @@ describe("local metadata in the provider chain", () => {
   });
 
   it("switches every level at once and saves local metadata first", () => {
-    const { result } = renderHook(() => useLibraryForm({ library }), { wrapper });
+    const { result } = renderHook(() => useLibraryForm({ library }));
     act(() => result.current.toggleLocalMetadata(false));
     expect(result.current.localMetadataEnabled).toBe(false);
     act(() => result.current.toggleLocalMetadata(true));
