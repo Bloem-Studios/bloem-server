@@ -64,7 +64,7 @@ func TestBloemVerifyCatalogSeedSourceSkipsUnstagedKeys(t *testing.T) {
 		"catalog-seeds/imports/01/" + strings.Repeat("a", 64) + ".json.gz",
 		"x/catalog-seeds/imports/" + strings.Repeat("0", 32) + "/" + strings.Repeat("a", 64) + ".json.gz",
 	} {
-		var data io.ReadCloser = io.NopCloser(bytes.NewReader([]byte("anything")))
+		data := io.NopCloser(bytes.NewReader([]byte("anything")))
 		if err := bloemVerifyCatalogSeedSource(&data, key); err != nil {
 			t.Fatalf("key %q: %v", key, err)
 		}
