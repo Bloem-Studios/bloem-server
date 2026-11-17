@@ -2,7 +2,7 @@ import { useBloemT } from "@/bloem/i18n";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { nativeApi } from "@/api/bloemClient";
-import { useAuth } from "@/hooks/useAuth";
+import { useOptionalAuth } from "@/hooks/useAuth";
 import { ChapterGate } from "./playback-policy";
 import "./playback-engagement.css";
 export type PlaybackCard = {
@@ -29,16 +29,21 @@ export function PlaybackEngagement({
   blocked,
   chapters,
 }: {
-  contentId: string;
+  /** Absent when the player plays no catalog title (Silo's own player tests). */
+  contentId?: string;
   position: number;
   playing: boolean;
   seeking: boolean;
   blocked: boolean;
   chapters: number[];
 }) {
-  const { user, profile } = useAuth();
-  const scope = user && profile && !profile.is_child ? `${user.id}:${profile.id}:${contentId}` : "";
-  return scope ? (
+  // Optional: Silo's own player tests render the player without an AuthProvider.
+  const { user, profile } = useOptionalAuth() ?? {};
+  const scope =
+    contentId && user && profile && !profile.is_child
+      ? `${user.id}:${profile.id}:${contentId}`
+      : "";
+  return scope && contentId ? (
     <PlaybackSession
       key={scope}
       {...{ scope, contentId, position, playing, seeking, blocked, chapters }}

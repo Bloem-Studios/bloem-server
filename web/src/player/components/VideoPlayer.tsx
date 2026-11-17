@@ -223,7 +223,7 @@ function skipMarkerLabel(t: Translate, kind: MarkerKind): string {
 }
 
 interface VideoPlayerProps {
-  contentId: string;
+  contentId?: string;
   title: string;
   year?: number;
   /** Shown dimmed behind the spinner until the first frame. */

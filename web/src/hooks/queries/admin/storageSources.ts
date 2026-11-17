@@ -1,4 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientContext,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useContext } from "react";
 import { toast } from "sonner";
 
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
@@ -50,6 +57,10 @@ export function useStorageScope() {
   return { active, scope: active?.scope ?? "platform", key: active?.key ?? "platform" };
 }
 
+// Silo's own library form tests render the form without a query client; the
+// read then stays disabled against a client of its own.
+const detachedClient = new QueryClient();
+
 /**
  * The storage sources visible in the active administrative context. Only
  * enabled, configured sources can back a new library. Outside an
@@ -57,15 +68,19 @@ export function useStorageScope() {
  */
 export function useStorageSources(enabled: boolean) {
   const { active, scope, key } = useStorageScope();
-  return useQuery({
-    queryKey: adminV2QueryKey(key, "native-storage", "sources"),
-    queryFn: () =>
-      adminV2Api<StorageSourcePage>(`/${scope}/native-storage/sources?limit=100`).then(
-        (page) => page.sources,
-      ),
-    enabled: enabled && active !== null,
-    staleTime: 30_000,
-  });
+  const queryClient = useContext(QueryClientContext);
+  return useQuery(
+    {
+      queryKey: adminV2QueryKey(key, "native-storage", "sources"),
+      queryFn: () =>
+        adminV2Api<StorageSourcePage>(`/${scope}/native-storage/sources?limit=100`).then(
+          (page) => page.sources,
+        ),
+      enabled: enabled && active !== null && queryClient !== undefined,
+      staleTime: 30_000,
+    },
+    queryClient ?? detachedClient,
+  );
 }
 
 export function useStorageArtifacts(enabled: boolean) {
