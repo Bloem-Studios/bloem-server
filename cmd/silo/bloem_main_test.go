@@ -177,7 +177,7 @@ func TestBloemNodeURLPrefersNODEURL(t *testing.T) {
 // TestMainKeepsBloemOwnLines keeps the Bloem lines that follow a Silo line in
 // main.go and replace what it built. Each was once folded into the Silo line;
 // as its own line it survives Silo merges cleanly, but a conflict resolved in
-// Silo's favour could drop it silently, so the source is checked here.
+// Silo's favor could drop it silently, so the source is checked here.
 func TestMainKeepsBloemOwnLines(t *testing.T) {
 	src, err := os.ReadFile("main.go")
 	if err != nil {
