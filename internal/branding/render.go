@@ -82,8 +82,10 @@ const indexFaviconLink = `<link rel="icon" href="/favicon.ico" sizes="any" />`
 func RenderIndexHTML(index []byte, snap Snapshot) []byte {
 	out := string(index)
 
-	out = indexTitleTag.ReplaceAllLiteralString(out,
+	out = strings.Replace(out,
+		"<title>Silo</title>",
 		"<title>"+html.EscapeString(snap.ServerName)+"</title>",
+		1,
 	)
 
 	if u := snap.AssetURL(KindFavicon); u != "" {
