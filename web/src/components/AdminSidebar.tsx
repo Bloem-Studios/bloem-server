@@ -29,7 +29,8 @@ import { useAdminRequestCounts } from "@/hooks/queries/admin/requests";
 import { usePrefetchAdminServerSettings } from "@/hooks/queries/admin/settings";
 import { cn } from "@/lib/utils";
 import AdminContextSwitcher from "@/components/admin/AdminContextSwitcher";
-import { useAdminContext } from "@/contexts/AdminContextProvider";
+import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
+import { platformAdminScope } from "@/bloem/adminScope";
 import { numberText, useT } from "@/i18n";
 
 interface AdminSidebarProps {
@@ -49,8 +50,8 @@ function preloadSettingsPages() {
   void import("@/pages/admin-settings/AdminSettingsLayout");
 }
 
-function useSessionCount(enabled: boolean) {
-  const { data: sessions = [] } = useAdminSessions(enabled);
+function useSessionCount() {
+  const { data: sessions = [] } = useAdminSessions();
   return sessions.length;
 }
 
@@ -85,11 +86,11 @@ export default function AdminSidebar({
   const t = useT();
   const location = useLocation();
   const prefetchSettings = usePrefetchAdminServerSettings();
-  const { active } = useAdminContext();
-  const platformScope = active?.scope === "platform";
-  const sessionCount = useSessionCount(platformScope);
+  const adminContext = useOptionalAdminContext();
+  const platformScope = platformAdminScope(adminContext);
+  const sessionCount = useSessionCount();
   const buildInfo = useBuildInfo();
-  const policyCapability = usePolicyCapability(platformScope);
+  const policyCapability = usePolicyCapability();
   // Falls back to "dev build" when the binary carries no VCS/ldflags revision
   // (e.g. `go run` or an image built without BUILD_REVISION) rather than a stark
   // "unavailable".
@@ -133,7 +134,7 @@ export default function AdminSidebar({
   };
   const sections = buildAdminNavSections({
     policyEditorAvailable: policyCapability.data?.editor_available === true,
-    scope: active?.scope,
+    scope: adminContext?.active?.scope,
   });
 
   // Use the admin installations endpoint, not /settings/plugins — the user
@@ -141,7 +142,7 @@ export default function AdminSidebar({
   // navigable route, which excludes admin-only plugins like arrproxy and
   // arrouter. The admin sidebar needs the full installation list to render
   // its "Plugin Apps" group.
-  const { data: adminInstallations } = useAdminPluginInstallations(platformScope);
+  const { data: adminInstallations } = useAdminPluginInstallations();
   const adminPluginItems = platformScope ? buildAdminPluginNavItems(adminInstallations) : [];
 
   function isActive(item: AdminNavItem) {

@@ -188,7 +188,7 @@ export function SeriesDrilldown({
   // rather than flash an empty season.
   const loadingEpisodes = episodesQuery.isLoading || (season === null && resolvingSeason);
   const episodes = useMemo(
-    () => (episodesQuery.data?.episodes ?? []).filter((e) => (e.files?.length ?? 0) > 0),
+    () => (episodesQuery.data?.episodes ?? []).filter((e) => e.files.length > 0),
     [episodesQuery.data?.episodes],
   );
   const ids = useMemo(() => episodes.map((e) => e.content_id), [episodes]);

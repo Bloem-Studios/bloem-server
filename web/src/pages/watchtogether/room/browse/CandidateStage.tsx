@@ -77,7 +77,7 @@ function CandidateBody({
     pick ? pick.seasonNumber : -1,
   );
   const seasonEpisodes = useMemo(
-    () => (seasonEpisodesQuery.data?.episodes ?? []).filter((e) => (e.files?.length ?? 0) > 0),
+    () => (seasonEpisodesQuery.data?.episodes ?? []).filter((e) => e.files.length > 0),
     [seasonEpisodesQuery.data?.episodes],
   );
   const risk = useMemo(

@@ -49,7 +49,10 @@ const importerModules: Record<string, Record<string, string>> = {
   "components/AdminLayout.tsx": {
     "components/ServerActivity.tsx": "adapters/AdminServerActivity.tsx",
   },
-  "components/AdminSidebar.tsx": { "hooks/queries/admin/system.ts": "adapters/adminBuildInfo.ts" },
+  "components/AdminSidebar.tsx": {
+    "hooks/queries/admin/system.ts": "adapters/adminBuildInfo.ts",
+    "hooks/queries/admin/stats.ts": "adapters/adminSessions.ts",
+  },
   // Silo's all-libraries switch gets an accessible name naming the scope.
   "components/LibraryAccessSelector.tsx": {
     "components/ui/switch.tsx": "adapters/LibraryAccessSwitch.tsx",

@@ -1,12 +1,13 @@
 import { useBloemT } from "@/bloem/i18n";
 import { Building2, ShieldCheck } from "lucide-react";
-import { useAdminContext } from "@/contexts/AdminContextProvider";
+import { useAdminContext, useOptionalAdminContext } from "@/contexts/AdminContextProvider";
 
-export default function AdminContextSwitcher({
-  onSwitchSuccess,
-}: {
-  onSwitchSuccess?: () => void;
-}) {
+/** The context chooser; nothing outside an AdminContextProvider (Silo's own sidebar tests). */
+export default function AdminContextSwitcher(props: { onSwitchSuccess?: () => void }) {
+  return useOptionalAdminContext() ? <ContextSwitcher {...props} /> : null;
+}
+
+function ContextSwitcher({ onSwitchSuccess }: { onSwitchSuccess?: () => void }) {
   const bt = useBloemT();
   const { active, available, switching, switchContext, failure } = useAdminContext();
 

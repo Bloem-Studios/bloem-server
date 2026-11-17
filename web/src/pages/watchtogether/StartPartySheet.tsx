@@ -92,7 +92,7 @@ function EpisodeChooser({
     }
   }, [season, seasonList]);
   const episodes = useSeasonEpisodes(season === null ? undefined : seriesId, season ?? -1);
-  const playable = (episodes.data?.episodes ?? []).filter((e) => (e.files?.length ?? 0) > 0);
+  const playable = (episodes.data?.episodes ?? []).filter((e) => e.files.length > 0);
   return (
     <div className="surface-panel-subtle flex flex-col gap-3 rounded-xl p-3">
       <div className="flex flex-wrap gap-1.5">

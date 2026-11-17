@@ -1,7 +1,8 @@
 import { useEffect, useSyncExternalStore } from "react";
 
 import { v2 } from "@/api/v2/request";
-import { useAdminContext } from "@/contexts/AdminContextProvider";
+import { platformAdminScope } from "@/bloem/adminScope";
+import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
 import { useBuildInfo as useSiloBuildInfo, type BuildInfo } from "@/hooks/queries/admin/system";
 
 // The public server version, read once per page load. A small store rather
@@ -45,7 +46,7 @@ const snapshot = () => publicBuild;
  */
 export function useBuildInfo() {
   // The sidebar reads the same context (AdminSidebar.tsx).
-  const platformScope = useAdminContext().active?.scope === "platform";
+  const platformScope = platformAdminScope(useOptionalAdminContext());
   const platform = useSiloBuildInfo(platformScope);
   const data = useSyncExternalStore(subscribe, snapshot, snapshot);
   useEffect(() => {

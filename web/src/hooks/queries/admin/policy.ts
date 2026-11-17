@@ -31,12 +31,11 @@ function invalidatePolicyDocuments(client: QueryClient, id?: string) {
     void client.invalidateQueries({ queryKey: adminKeys.policyVersions(id) });
   }
 }
-export function usePolicyCapability(enabled = true) {
+export function usePolicyCapability() {
   return useQuery({
     queryKey: adminKeys.policyCapability(),
     queryFn: () => v2("GET /api/v2/policy/capability"),
     staleTime: 30_000,
-    enabled,
   });
 }
 export function usePolicyVendor() {

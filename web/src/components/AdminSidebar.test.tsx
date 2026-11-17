@@ -258,9 +258,3 @@ describe("AdminSidebar", () => {
     expect(markup).toContain(">b4c5aae1+dirty<");
   });
 });
-
-vi.mock("@/contexts/AdminContextProvider", () => ({
-  useAdminContext: () => ({ active: { key: "platform", scope: "platform" } }),
-}));
-
-vi.mock("./admin/AdminContextSwitcher", () => ({ default: () => null }));
