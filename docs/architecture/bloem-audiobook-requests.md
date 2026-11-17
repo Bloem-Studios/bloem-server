@@ -210,9 +210,7 @@ organization administrative context and filters before pagination. A platform
 context alone grants no organization queue access. Requester-supplied headers,
 query parameters and JSON fields cannot select another organization.
 
-Verified direct-profile sessions may use only the explicit viewer routes. They
-cannot use the administrative request routes. Jellyfin and Audiobookshelf do
-not expose this Bloem-native request API.
+Jellyfin and Audiobookshelf do not expose this Bloem-native request API.
 
 ### Identity and concurrency
 

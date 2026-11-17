@@ -150,8 +150,7 @@ lifecycle below.
   `expires_at`. `content_id` is required for `in_playback`.
 - The native routes require authentication, native tenant resolution, the rate limit,
   viewer and PIN verification and a selected profile
-  (`mountBloemPromotionsViewer`, `internal/api/bloem_promotions_viewer.go`); the
-  default-deny route boundary excludes direct-profile sessions.
+  (`mountBloemPromotionsViewer`, `internal/api/bloem_promotions_viewer.go`).
 - The profile must be known and adult. A missing profile classification fails closed
   before any campaign lookup (`promotions.Service`, "Unknown profile classification
   must never deliver an overlay"). Scheduling, organization membership and audience

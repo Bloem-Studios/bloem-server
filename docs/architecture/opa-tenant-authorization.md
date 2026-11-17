@@ -117,11 +117,9 @@ returned scope to catalog and playback reads.
 ### Shipped boundary
 
 `GET /api/bloem/v2/capabilities` advertises `organization_memberships` and
-`tenant_bounded_media_scope` as `true`. It advertises direct-profile login
-(`direct_profile_login`) as `false`: no profile sign-in route is mounted. That capability does not admit direct sessions to the native namespace or the browser's
-Silo v2 calls. Shared-device profile pairing (`shared_device_pairing`) and delegated
-administrative roles (`delegated_admin_roles`) remain `false`. Household credential
-management has its own capability and account/PIN/reauthentication boundary; see
+`tenant_bounded_media_scope` as `true`. A profile has no sign-in of its own: every
+session belongs to an account. Shared-device profile pairing (`shared_device_pairing`)
+and delegated administrative roles (`delegated_admin_roles`) remain `false`; see
 [the security foundation](bloem-security-foundation.md).
 
 Native administration is additive under `/api/bloem/v2/admin`: an authenticated
@@ -141,8 +139,7 @@ Silo's `/api/v2` is the Silo-compatible surface. Existing users and profiles are
 backfilled into the default organization without changing profile IDs, PINs, login
 payloads, profile switching, or legacy token claims. Legacy account requests ignore
 caller-supplied organization headers and use the server's account/profile tenant
-projection. Direct-profile sessions revalidate their explicitly bound tenant and
-cannot be projected into another organization. Bridge and native policy adapters use
+projection. Bridge and native policy adapters use
 the same live OPA bundle and expose the same decision generation in policy decision
 evidence.
 

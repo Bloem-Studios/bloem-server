@@ -135,8 +135,7 @@ the ordinary redacted tuner DTO; `type` is `xtream` and `model` carries the publ
 The separate endpoint prevents an older server from interpreting this request as
 unauthenticated HDHomeRun setup. Generic `POST /livetv/tuners` refuses the Xtream kind
 (`400 invalid_argument`), and refuses provider credentials for any other kind.
-Administrative-context tokens do not replace the profile/PIN gate, and direct-profile
-sessions are not admitted. Creation is not replay-safe: after an uncertain response,
+Administrative-context tokens do not replace the profile/PIN gate. Creation is not replay-safe: after an uncertain response,
 read `/livetv/tuners` and review the saved providers before trying again.
 
 Creation authenticates the account and imports a nonempty live lineup before atomically

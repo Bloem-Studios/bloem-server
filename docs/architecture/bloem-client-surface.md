@@ -27,13 +27,13 @@ The routes fall into four groups, by what a caller must show:
    with the PIN proof when the profile has one. Everything shown is that profile's view: only
    titles it may see, and its own progress.
 3. **Account only.** An account sign-in without a profile: the list of the account's
-   organizations, swapping the sign-in for an administrator pass, and managing a profile's
-   own sign-in.
+   organizations, and swapping the sign-in for an administrator pass.
 4. **Administration.** A short-lived **administrator pass**, for a platform or one
    organization. The storefront's platform routes also take a platform administrator's API
    key. See [how Bloem's security foundation works](bloem-security-foundation.md).
 
-A **profile sign-in** (straight into one profile; dormant, as no sign-in route is mounted) reaches only the book request routes on Bloem's API. Everything else there needs an account sign-in.
+A profile has no sign-in of its own: every route on Bloem's API that is not public needs an
+account sign-in or an administrator pass.
 
 ## How an app finds out what a server can do
 
@@ -81,7 +81,6 @@ This example is made up.
 | --- | --- |
 | Bloem's API | `/api/bloem/v2`, built by `mountBloem` (`internal/api/router_bloem.go`) and `bloemClientSurface` (`internal/api/router_bloem_client.go`) |
 | Viewer group | `RequireAuth`, `optionalLegacyTenant`, rate limiting, `RequireViewerAccess`, `requireBloemLiveTVProfile` |
-| Profile sign-in limits | the direct-profile allowlist, `internal/api/direct_profile_routes.go` |
 | What a server can do | `GET /api/bloem/v2/capabilities` (`internal/api/handlers/bloem_system.go`) |
 | Which server it is | `GET /api/bloem/v2/server/identity` (`internal/api/handlers/server_identity.go`) |
 | Home and title documents | Watch documents, `watch_document_v1` (`internal/watchdoc`) |
@@ -90,7 +89,7 @@ This example is made up.
 ## For developers
 
 - **API:** [apps and clients](../bloem/api/apps.md) (capabilities, identity, Watch,
-  persons, collections, profile credentials) and the full
+  persons, collections) and the full
   [API by topic](../bloem/api/README.md). The [wire reference](../bloem-api-reference.md) adds
   behavior that does not fit a schema.
 
@@ -121,8 +120,8 @@ which admits a headerless request only on Live TV's signed delivery paths). They
 require an explicit tenant-selected account token. Administrative routes use their separate
 validated administrative-context authority.
 
-The native namespace also owns operational `/livetv` routes, account-only
-`/profile-credentials/{id}` management, scoped organization invitation/audit adapters,
+The native namespace also owns operational `/livetv` routes, scoped organization
+invitation/audit adapters,
 platform campaign/seasonal authoring, the storefront's platform routes (reseller
 organizations, accounts, announcements, campaigns, seasonal packs, and organization domains
 and branding under `/admin/platform/tenants/{id}/domains` and `.../branding`), the campaign
@@ -139,12 +138,7 @@ bindings include this field with absent/false handling. The embedded web uses
 primary profile and required PIN proof. No Silo `/api/v2` alias or sibling-client provider
 administration is supplied. See [Xtream boundaries](xtream-live-tv.md).
 
-The viewer routes use ordinary account sessions and require `X-Profile-Id`. Direct-profile
-sessions are limited by the router's allowlist (`internal/api/direct_profile_routes.go`),
-which admits only the audiobook and ebook request viewer
-routes under `/api/bloem/v2`; everything else is rejected before native viewer
-middleware runs. The browser's Silo v2 calls are also outside that allowlist: credential
-management does not imply direct-profile browser login.
+The viewer routes use ordinary account sessions and require `X-Profile-Id`.
 
 `feature_tokens` describe additive capabilities, including `watch_document_v1` and
 `device_pairing_v1`, and clients must not use a server version for

@@ -232,8 +232,8 @@ itself (`profileOrganization` in `internal/api/handlers/bloem_profiles_ext.go`).
 For another account, the account's own access group decides
 (`GetForAccount`), and the store stamps the profile with the account's
 organization. Taking the caller's default group instead would break
-`user_profiles_organization_access_group_fkey`. Platform campaign/seasonal authoring and account-session
-household credential management have separate authorities. See the
+`user_profiles_organization_access_group_fkey`. Platform campaign/seasonal authoring has a separate
+authority. See the
 [native workflow contract](../bloem-api-reference.md#embedded-web-workflow-adapters)
 and [web coverage](bloem-web-feature-coverage.md).
 

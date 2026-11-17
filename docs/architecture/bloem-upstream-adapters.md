@@ -352,9 +352,8 @@ These are compatibility semantics, not new optional plugin behavior.
 
 ### Profile columns and the viewer gate
 
-Bloem's `user_profiles` rows carry four columns Silo does not have: the profile's
-own sign-in (`login_email`, `credential_revision`), its organization and its access
-group. [`bloemGetProfile` and `bloemListProfiles`](../../internal/userstore/pgstore/bloem_profiles.go)
+Bloem's `user_profiles` rows carry two columns Silo does not have: the profile's
+organization and its access group. [`bloemGetProfile` and `bloemListProfiles`](../../internal/userstore/pgstore/bloem_profiles.go)
 read them after Silo's own columns (`bloemProfileColumns`) and scan them through the
 extra targets of Silo's `scanProfile`, so Silo's column list and scan stay as Silo
 wrote them. `getProfile` and `ListProfiles` in `internal/userstore/pgstore/profiles.go`
@@ -572,12 +571,11 @@ Upstream's current-role session check also applies to Bloem. Since Silo #3140 it
 `SessionRepository.ActiveSession` takes the account the credential names. Bloem's
 preview-aware lookups, the administrative-context middleware and the native-video
 recheck pass that account too, and Silo's own `IsValid` again backs
-`LoginSessionActive`. A direct-profile session retains the restricted `user` role even
-when its owning account is an administrator. Initial setup sets both the owner and
+`LoginSessionActive`. Initial setup sets both the owner and
 break-glass flags inside the account-creation transaction, retaining an administrator
 recovery path when local password sign-in is disabled. Provider identity and
-refresh-chain fields coexist with Bloem's device, profile, credential revision, and
-authentication-method bindings.
+refresh-chain fields coexist with Bloem's device, profile and authentication-method
+bindings.
 
 A sign-in that started before its organization revoked the account cannot select any
 of the account's profiles. The viewer-access gate ends
@@ -707,8 +705,8 @@ than new functionality to send to Silo.
 The web player keeps Silo's stream URL builder, subtitle inventory mapping, subtitle
 loaders and audiobook playback hook unchanged. Media URLs carry the access token using
 Silo's `token` query parameter; authentication keeps Silo's header-first,
-query-fallback extraction. Bloem's session validation, direct-profile route boundary,
-tenant identity and viewer policy still run after extraction. Removing URL
+query-fallback extraction. Bloem's session validation, tenant identity and viewer
+policy still run after extraction. Removing URL
 authentication without replacing every media loader caused subtitle and attached-font
 requests to fail with 401. Follow upstream here rather than adding a second subtitle
 transport.

@@ -36,8 +36,8 @@ plain Markdown, so it reads the same on GitHub and in a synced wiki.
 
 - [Getting in](../../../wiki/user-guide.md#1-getting-in): invitations, the server address, signing
   in on another organization's address, and being asked to sign in again.
-- [Profiles and profile sign-ins](../../../wiki/user-guide.md#2-profiles): managing a household,
-  and why the browser always signs in to the account.
+- [Profiles](../../../wiki/user-guide.md#2-profiles): managing a household, and why everyone
+  signs in to the account.
 - [Watching](../../../wiki/user-guide.md#4-watching): player controls, subtitles, quality,
   audiobooks, the reader and watching together.
 - [Live TV and recordings](../../../wiki/user-guide.md#live-tv-and-recordings): scheduling from the

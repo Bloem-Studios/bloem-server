@@ -193,11 +193,8 @@ account bearer token and `X-Profile-Id`, and resolve the organization natively
 - the Live TV routes under `/api/bloem/v2/livetv` ([Live TV routes](#live-tv-routes)), whose
   signed HLS delivery paths also accept a headerless delivery ticket
 
-Direct-profile sessions are admitted to `/api/bloem/v2` only for
-the audiobook and ebook request viewer routes (capability, history, filing,
-read and withdrawal). Authentication rejects them on every other native route
-before `RequireProfile` runs. The
-`direct_profile_login` capability field is `false`: there is no native direct-profile sign-in.
+A profile has no sign-in of its own: every viewer request uses an account session and
+names its profile.
 
 Client handlers other than identity are conditionally assembled. A handler
 that is absent from the router returns `404`; this is not inferred from a
@@ -250,9 +247,6 @@ administration) is a separate reference.
   only on its signed HLS paths, as documented in
   [Live TV client access](architecture/live-tv-client-access.md). The dedicated seasonal
   viewer route uses `ResolveNative` to select the current organization.
-- **Household credential management** uses the account session and household/PIN checks,
-  with local account reauthentication for writes. Administrative-context tokens cannot
-  replace that authority.
 - **Public probes** include `/capabilities`, `/server/identity`, `/ambience/public` and
   `/ambience/assets/{ref}`. Organization discovery and the admin-session exchange require
   account authentication.
@@ -285,8 +279,7 @@ account across profiles can do. Silo's masking of signed stream and
 download tokens in logs (#3137) and its profile check on account-level downloads (#3123) apply too.
 
 The embedded browser retains Silo v2 consumers alongside these native adapters.
-Direct-profile credentials do not authorize that browser surface. A primary household
-profile is not a platform administrator, and organization authority never grants
+A primary household profile is not a platform administrator, and organization authority never grants
 platform campaign publication.
 
 **Every `/api/bloem/v2` client-surface dependency is optional at construction.** `newBloemClientSurface`
@@ -300,9 +293,7 @@ of its way to always be able to return the latter for identity specifically.
 
 **`X-Profile-Id` header.** Ordinary authenticated viewer requests require it
 (the profile gate delegates to `middleware.RequireProfile`); a request without it gets `400 {"error":"bad_request","message":"X-Profile-Id header is required"}` before the handler runs. `/api/bloem/v2` accepts ordinary
-account sessions only, apart from the audiobook and ebook request viewer routes:
-direct-profile sessions are rejected elsewhere by the router's default-deny allowlist
-(`internal/api/direct_profile_routes.go`) before this middleware runs.
+account sessions.
 
 ---
 
@@ -330,7 +321,6 @@ has no receipt system; see [Retrying mutations](#retrying-mutations).
     "legacy_silo_v1": false,
     "organization_memberships": true,
     "tenant_bounded_media_scope": true,
-    "direct_profile_login": false,
     "shared_device_pairing": false,
     "delegated_admin_roles": false
   },
@@ -373,9 +363,7 @@ Field notes:
   identify the embedded-web adapters below. `organization_invitation_links_v1` says the organization invitation create accepts Silo's `delivery: "link"`
   for an invitation without an address. Conditional tokens are appended only when the
   matching service is wired: `native_audiobook_presentations_v1` (native audio ready),
-  `profile_credential_management_v1` (credential management, separate from
-  `direct_profile_login`), `audiobook_requests_v1`, `ebook_requests_v1` with
-  `ebook_requests_direct_profile_v1`, `book_request_connection_admin_v1`,
+  `audiobook_requests_v1`, `ebook_requests_v1`, `book_request_connection_admin_v1`,
   `seasonal_viewer_v1` (the fully wired authenticated native `/ambience` route),
   `playback_overlays_v1` (a campaign registry is wired), `promotions_viewer_v1` (the
   [campaign viewer routes](#campaign-viewer-routes) and their resolvers are wired) and
@@ -388,7 +376,7 @@ Field notes:
   has push delivery on for a platform; asked on every probe; see
   [Admin app push notifications](architecture/bloem-admin-push.md)) with `admin_widget_wakes_v1` (the
   server also accepts the app's widget report and sends silent widget wakes).
-- `features.legacy_silo_v1` and `features.direct_profile_login` are `false`; `shared_device_pairing` and `delegated_admin_roles` are always `false`.
+- `features.legacy_silo_v1` is `false`; `shared_device_pairing` and `delegated_admin_roles` are always `false`.
 - `media_types`: the fixed vocabulary of `mediaTypesServed` — the item types *this build* can
   serve at all (a property of the software, not of what an operator's libraries happen to
   contain). A type absent from the list means the build cannot serve it; a client should not infer
@@ -1324,40 +1312,6 @@ every mutation emits an event. Policy Decisions remains a separate diagnostic su
 Malformed/oversized cursors return `400 invalid_cursor`; unavailable storage returns
 `503 tenant_unavailable`. Support token: `organization_activity_v1`.
 
-##### GET /api/bloem/v2/profile-credentials/{id}
-
-Requires a non-impersonated **account login session**, not an administrative context,
-API key or direct-profile session, plus existing household-management/PIN checks.
-The profile must belong to that account. Returns `profile_id`, `login_email`,
-`configured` and `credential_revision`; never a password or hash. Missing/foreign
-profiles return `404 not_found`. Support token: `profile_credential_management_v1`.
-
-##### PUT /api/bloem/v2/profile-credentials/{id}
-
-Same account/household authority. Body fields: `current_password` (the account's
-current local password), `login_email`, `password` (the new profile password), and
-a positive `expected_revision` from the reviewed status.
-The shared password policy applies; `login_email` must be a bare address accepted
-by `net/mail.ParseAddress` (not the stricter v2 account-email validator). Returns `204`; existing direct
-sessions are revoked and credential revisions rotate. Errors include
-`403 account_session_required`, `403 reauthentication_failed`, `409 credential_email_in_use`,
-`409 credential_revision_conflict`,
-`422 validation_failed`, and `503 unavailable`, plus household/PIN permission errors.
-
-##### DELETE /api/bloem/v2/profile-credentials/{id}
-
-Same authority, with `{ "current_password": "...", "expected_revision": 2 }`.
-`expected_revision` must be positive. Returns `204`, disables
-credentials and revokes direct sessions. SSO-only reauthentication is unsupported.
-These management routes do **not** widen the direct-session route allowlist: the
-embedded browser still requires account login because it consumes Silo v2.
-
-Both writes compare the expected revision while holding the profile row lock. A stale
-confirmation returns `409 credential_revision_conflict` without changing the newer
-credential or revoking its sessions. Reload status and review again; do not replay the
-old confirmation. The browser binds confirmation to that revision, clears secrets
-after attempts and awaits readback.
-
 ##### GET /api/bloem/v2/ambience
 
 `seasonal_viewer_v1` is advertised only when this route and all account, tenant and
@@ -1367,7 +1321,7 @@ membership and a profile belonging to that organization. It returns `{ "ambience
 with active public packs and active packs targeted to the verified current organization.
 Other memberships do not widen the selection. Content, targeting and membership are
 read in one database snapshot to prevent disclosure during concurrent retargeting.
-The response is private and not cacheable. Direct-profile route admission is unchanged.
+The response is private and not cacheable.
 
 Signed-out pages stay public-only: the web app reads the deployment-wide packs from the
 public [`GET /api/bloem/v2/ambience/public`](#public-seasonal-packs). The `ambience` block of
@@ -2938,10 +2892,7 @@ alternate file-delivery path.
 capability reports the current default-off policy and an independent quota.
 Only the durable default organization can file; hosted organizations cannot.
 Authentication, current membership and profile/PIN checks match the audiobook
-viewer boundary. The five viewer routes are in the direct-profile allowlist: a
-session bound to one profile files, reads and withdraws as that profile.
-`ebook_requests_direct_profile_v1` is advertised with `ebook_requests_v1` by
-servers that admit those sessions; an older server answers them with 403.
+viewer boundary.
 
 All paths below have the `/api/bloem/v2` prefix.
 
@@ -3317,8 +3268,7 @@ Advertised by `promotions_viewer_v1` and mounted by `mountBloemPromotionsViewer`
 (`internal/api/bloem_promotions_viewer.go`) with the seasonal viewer route's authority chain:
 `RequireAuth`, `ResolveNative`, rate limiting, `RequireViewerAccess` (viewer and PIN
 verification) and `RequireProfile`. The token is advertised only when the handler and all of
-those resolvers are wired. Direct-profile sessions are excluded by the default-deny route
-boundary.
+those resolvers are wired.
 
 | Method and path | Contract |
 | --- | --- |

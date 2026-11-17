@@ -59,8 +59,6 @@ Each area has a plain-language overview page, with pictures, and a "For develope
 - **Domains and branding.** An organization can be served on its own web addresses, under its own name, logo and
   colours, and its emails link to its own domain. A sign-in on another organization's domain is refused. See
   [organization domains and branding](../architecture/bloem-organization-domains.md).
-- **Household profile credentials.** Account holders can give profiles their own sign-in credentials. A database that
-  uses them cannot be switched back to Silo.
 - **Live TV and DVR.** HDHomeRun and Dispatcharr tuners, authenticated Xtream live providers, XMLTV guides, live
   playback, recording rules and recordings, and a `watch_live_tv` permission. `.strm` files may point at remote web
   addresses, with private network addresses refused by default. See [how Live TV works](../architecture/bloem-live-tv.md)
@@ -76,7 +74,7 @@ Each area has a plain-language overview page, with pictures, and a "For develope
   apps that support it. Library access is checked again where bytes leave the server. See
   [how remote control works](../architecture/admin-remote-control.md).
 - **Native API for Bloem's apps.** Bloem-only features live under `/api/bloem/v2`, beside Silo's `/api/v2`: richer
-  title pages, server-side search, profile sign-ins and generated Kotlin and Swift contracts. See
+  title pages, server-side search and generated Kotlin and Swift contracts. See
   [how apps connect](../architecture/bloem-apps.md) and the [API by topic](api/README.md).
 - **Search.** Search can combine words and meaning (embeddings), and an optional second Meilisearch can take over after
   a failover. See [how search works](../architecture/bloem-search-and-embeddings.md).

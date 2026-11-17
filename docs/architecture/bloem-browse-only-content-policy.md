@@ -179,7 +179,7 @@ The native listener enforces these boundaries:
   independent authentication. Playback denial is explicit, rather than treating
   the viewer as anonymous, and precedes plugin dispatch or asset file opening.
   Bearer, query, plugin-launch-cookie and unscoped API-key credentials use the
-  same check. Direct-profile sessions keep their existing plugin prohibition.
+  same check.
   Anonymous public descriptors and public sign-in icons keep their existing
   behavior.
 

@@ -989,7 +989,7 @@ or less, because of the address they used.
 | The server owner | Other administrators' accounts: only the server owner can change them. |
 | Organization administrator | Their own organization only: people, policy cohorts, access groups, libraries and grants already made to it, storage sources, invitations, policy decisions and activity. Not its domains or branding. |
 | The storefront (Bloem HQ) | Reseller organizations, accounts on plans, domains and branding, campaigns and preview links, using a platform administrator's API key. A domain it adds is marked as from the storefront. |
-| A household's main profile | The household's profiles, PINs, Kids limits and profile sign-in credentials, the account password and its signed-in sessions. |
+| A household's main profile | The household's profiles, PINs and Kids limits, the account password and its signed-in sessions. |
 
 ## Words used in the code
 

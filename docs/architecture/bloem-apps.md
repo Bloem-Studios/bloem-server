@@ -1,8 +1,8 @@
 # How apps connect
 
 Silo's API and its Jellyfin and Audiobookshelf servers run in Bloem as Silo ships them. Bloem adds its own API,
-`/api/bloem/v2`, for its own apps, scopes every entrance to an organization, and adds organization domains,
-profile sign-ins and remote control. This page explains it in plain language; the technical rules are in the
+`/api/bloem/v2`, for its own apps, scopes every entrance to an organization, and adds organization domains
+and remote control. This page explains it in plain language; the technical rules are in the
 [For developers](#for-developers) section and the pages it links.
 
 ## Which apps connect, and where
@@ -21,7 +21,7 @@ A Bloem server has three entrances:
 
 Silo's apps work with Bloem as they do with Silo. They see everything Silo has
 and none of Bloem's extras, because Bloem never changes what Silo's API means.
-Bloem's own apps use the extras: Live TV, profile sign-ins, richer title pages
+Bloem's own apps use the extras: Live TV, richer title pages
 and server-side search. The web app uses only Silo's `/api/v2` and Bloem's
 `/api/bloem/v2`.
 
@@ -34,16 +34,12 @@ by themselves; an administrator has to turn that on.
 
 ![Account, profile and PIN in Bloem's and Silo's apps; account#profile in Jellyfin and Audiobookshelf apps](images/apps/sign-in.svg)
 
-Every way in ends in one profile of one account:
+Every way in ends in one profile of one account. A profile has no sign-in of its
+own; people always sign in to the account:
 
 - **Bloem's apps, Silo's apps and the web app** sign in to the account with
   email and password, then ask who is watching, then ask for that profile's PIN
   if it has one.
-- **A profile sign-in** (dormant). The household's main profile can give a
-  profile a sign-in of its own, for apps that sign straight into that one
-  profile. It is parked: no sign-in route is mounted, and the setting and the
-  credentials panel are hidden until a native sign-in route exists. The browser always signs in to
-  the account.
 - **Jellyfin and Audiobookshelf apps** have one username box and one password
   box, so the profile goes in the username as `account#profile` (for example
   `sam#Kids`), and a PIN goes after the password as `password#PIN`.
@@ -102,7 +98,7 @@ also end a session, with a reason.
 | --- | --- |
 | Platform administrator | Whether Jellyfin and Audiobookshelf apps may connect, their addresses, local network announcement, remote control of any session in scope. Each organization's domains and branding. |
 | The storefront (Bloem HQ) | An organization's domains and branding, with a platform administrator's API key. |
-| An account's main profile | Profile sign-ins, and remote control of the household's own sessions. |
+| An account's main profile | Remote control of the household's own sessions. |
 | Viewer | Which apps they sign in to. |
 
 ## Words used in the code
@@ -113,7 +109,6 @@ also end a session, with a reason.
 | Composed title pages | Watch documents (`watch_document_v1`) |
 | Jellyfin entrance | Silo's `internal/jellycompat`, port `JF_PORT` |
 | Audiobookshelf entrance | Silo's `internal/audiobooks/abs`, port `ABS_PORT` |
-| Profile sign-in | profile credentials (`/api/bloem/v2/profile-credentials/{id}`) and direct-profile sessions |
 | Organization domains and branding | `internal/orgdomains`, table `bloem_organization_domains`, routes `/api/bloem/v2/admin/platform/tenants/{id}/domains` and `/branding`, capability `organization_domains_v1` |
 | Refused on another organization's domain | `409 wrong_organization_domain` |
 | A sign-in that has ended | `401` with reason `session_invalid` (`session_expired` on `/api/v2`) |

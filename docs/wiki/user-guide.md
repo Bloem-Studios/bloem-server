@@ -147,22 +147,9 @@ belongs to the profile that started it: another profile on the same login cannot
 **Settings → Profiles**, **Settings → Account** and **Settings → Signed-in sessions** are for the
 household's **main profile** (or an administrator). Other profiles do not see them.
 
-**Separate sign-in for a profile** (a Bloem addition), under **Settings → Profiles**, let a permitted
-household manager set, change or switch off a separate sign-in for one profile, for apps that
-support it:
-
-1. Select and unlock the main profile.
-2. Set, rotate or disable the profile's sign-in.
-3. Confirm with the account's current password.
-
-If someone else's change landed first, reload and review it: your older action is refused and
-leaves the newer credentials and sessions as they are. Rotating or disabling a profile's sign-in
-signs that profile out of the apps that used it. Accounts that sign in only through an outside
-sign-in service cannot confirm here.
-
-The browser always signs in to the **account**. Profile credentials do not let a profile sign in
-to the browser directly, and do not pair a shared device with one profile. Signing in a TV is a
-separate flow.
+A profile has no sign-in of its own. Everyone in the household signs in to the **account** with
+its email and password, then picks their profile. Someone who needs a password of their own needs
+an account of their own: ask the administrator for an invitation.
 
 ---
 
@@ -393,7 +380,7 @@ them. Phone push notifications are set up in the app.
 | Connections | **Webhook Sync** | Take watch progress from Plex, Emby or Jellyfin as it happens. |
 | Connections | **History Import** | Copy watch history, watchlist and favorites from Emby, Plex or Jellyfin once. |
 | Account | **Notifications** | Which alerts you get, and where. |
-| Account | **Profiles** | Names, PINs, Kids limits, profile sign-in credentials (main profile only). |
+| Account | **Profiles** | Names, PINs and Kids limits (main profile only). |
 | Account | **Account** | Password and sign-in providers shared by the household (main profile only). |
 | Account | **Signed-in sessions** | Where the account is signed in; sign out a browser or app, or everywhere (main profile only). |
 
@@ -449,7 +436,7 @@ of which app uses which entrance, see [How apps connect](../architecture/bloem-a
 | Who | What they manage |
 | --- | --- |
 | You, on your profile | Your Home rows, settings, lists, requests and notification choices. With the Live TV permission, your recordings and recording rules. |
-| The household's main profile | The household's profiles, PINs, Kids limits and profile sign-in credentials; the account password and its signed-in sessions. |
+| The household's main profile | The household's profiles, PINs and Kids limits; the account password and its signed-in sessions. |
 | Your organization's administrator | Your account, its access and limits, invitations, and signing people out. |
 | The server's administrator | The libraries, what the server offers (requests, downloads, Live TV, compatibility apps), and each organization's address and look. |
 
@@ -464,7 +451,6 @@ of which app uses which entrance, see [How apps connect](../architecture/bloem-a
 | "This account signs in at …" | `409 wrong_organization_domain` (`conflict` on `/api/v2`) |
 | Asked to sign in again | `401` with reason `session_invalid` (`session_expired` on `/api/v2`) |
 | Sign in a TV | `/activate` |
-| Profile sign-in credentials | `/api/bloem/v2/profile-credentials/{id}` |
 | Live TV permission | `watch_live_tv` |
 | Seasonal artwork on the sign-in page | `GET /api/bloem/v2/ambience/public` |
 | Compatibility sign-in | `account#profile`, with `#PIN` after the password |
@@ -485,7 +471,7 @@ of which app uses which entrance, see [How apps connect](../architecture/bloem-a
 
 ## For developers
 
-- **API:** [apps](../bloem/api/apps.md) (profile sign-in credentials and what Bloem's apps read),
+- **API:** [apps](../bloem/api/apps.md) (what Bloem's apps read),
   [messages](../bloem/api/messages.md) (campaign cards and seasonal packs, including
   `GET /api/bloem/v2/ambience/public`), [Live TV](../bloem/api/live-tv.md),
   [requests](../bloem/api/requests.md) and [organizations](../bloem/api/organizations.md)
@@ -517,11 +503,6 @@ closely. Silo's labels stay, for example "Silo app or website" on the Connect Ap
 
 ### Profiles and playback
 
-- Profile sign-in credentials: confirmed with the account's current local password; SSO-only
-  confirmation is not supported. A stale action is refused and leaves the newer credentials and
-  sessions intact. Rotation or disable signs out that profile's direct sessions. The browser
-  requires account sign-in: credentials do not enable direct-profile browser login or
-  shared-device profile pairing, and TV account activation is separate.
 - A profile can report progress for and stop only its own playback.
 - The automatic audio choice is Silo's (`internal/playback/audio_select_v3.go`).
 - Watch Party rooms end two minutes after the host disconnects (`internal/watchtogether`).

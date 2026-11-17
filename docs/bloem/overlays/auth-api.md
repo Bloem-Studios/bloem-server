@@ -4,17 +4,14 @@ This overlay covers Silo's [`docs/auth-api.md`](../../auth-api.md), which stays 
 
 Silo's authentication page explains how people sign in, how passwords and login
 sessions work, and how the server protects them. Bloem signs people in the same
-way. It differs where Bloem has something Silo does not: profiles with a sign-in of
-their own, and organizations.
+way: a person signs in to the account, then picks a profile, and a profile has no
+sign-in of its own. Bloem differs where it has something Silo does not:
+organizations.
 
-![Four things Bloem adds to signing in: a profile with its own sign-in, the domain check that refuses a sign-in on another organization's domain and names where to sign in, a provider sign-in that stays on the domain it started on, and a sign-in its organization revoked, which ends so the app asks to sign in again](../../architecture/images/overlay-auth/sign-in-additions.svg)
+![Three things Bloem adds to signing in: the domain check that refuses a sign-in on another organization's domain and names where to sign in, a provider sign-in that stays on the domain it started on, and a sign-in its organization revoked, which ends so the app asks to sign in again](../../architecture/images/overlay-auth/sign-in-additions.svg)
 
 ## What Bloem changes
 
-- **A profile can have its own sign-in.** The household's main profile can give a
-  profile an email address and password of its own, a **direct-profile
-  credential**. Signing in with it goes straight to that one profile, and the
-  session reaches only a short list of routes.
 - **Every account belongs to one organization.** Creating an account also makes it
   a member of an organization.
 - **Each organization signs in on its own address.** An organization can be served
@@ -26,14 +23,14 @@ their own, and organizations.
 - **A sign-in its organization revoked ends.** When an organization revokes an
   account, a sign-in that started before that is ended, and the app asks the
   person to sign in again.
-- **Bloem's own password checks wait their turn.** When the server is too busy to
-  check a password, Bloem's own sign-ins answer "try again shortly", as Silo's do.
+- **Bloem's own password work waits its turn.** When the server is too busy to
+  check or store a password, Bloem's own account routes answer "try again
+  shortly", as Silo's do.
 
 ## Words used in the code
 
 | On this page | In the code and API |
 | --- | --- |
-| Direct-profile credential, profile sign-in | dormant: no sign-in route is mounted; credentials are managed at `/api/bloem/v2/profile-credentials/{id}` (capability `profile_credential_management_v1`) |
 | The domain check | `auth.SignInDomainCheck`, `orgdomains.Directory.SignInCheck`, refusal `409 wrong_organization_domain` |
 | A provider sign-in staying on its domain | `orgdomains.Directory.OAuthBaseURL`, `auth.OAuthHandler.SetRequestBaseURL` |
 | A sign-in its organization revoked | `apimw.ErrSessionRevokedByOrganization`, answered `401 session_invalid` (`session_expired` on `/api/v2`) |
@@ -42,17 +39,6 @@ their own, and organizations.
 ## For developers
 
 ### Section by section
-
----
-
-**Location:** section “Account passwords”, the first paragraph. **Bloem replaces** it with:
-
-The password managed by this API belongs to the login account. Household profiles use
-that account login; Bloem's optional direct-profile credentials are a separate contract
-described below. Self-service password changes are restricted to the
-active primary profile. An admin account may also change its password before selecting a profile,
-but selecting a secondary profile removes that authority. API keys and impersonation sessions can
-never change an account password.
 
 ---
 
@@ -78,8 +64,7 @@ out on; answering `404 "Profile not found"` instead would leave the session aliv
 the web app would keep refreshing it and show a broken home page with no sign-in
 prompt. The refusal, `apimw.ErrSessionRevokedByOrganization`, still wraps
 `access.ErrProfileNotFound`, so callers outside the gate keep refusing the
-profile. Only sessions are checked: an API key has no `auth_sessions` row, and a
-direct-profile session is already bound to its profile and revision.
+profile. Only sessions are checked: an API key has no `auth_sessions` row.
 
 ---
 
@@ -87,31 +72,16 @@ direct-profile session is already bound to its profile and revision.
 busy to check a password”, after the paragraph beginning “The refusal is `503`
 with `Retry-After: 1`…”. **Bloem adds:**
 
-Bloem's own password hashing and checks run under
-Silo's admission limit (`internal/auth/passwordhash`). The following answer a
-busy refusal with Silo's `503 service_unavailable` and `Retry-After`:
-
-- setting or rotating a profile credential (hashing the new credential).
-
-Two account-password re-checks also run under the limit, but any failure there,
-busy included, answers `503` without `Retry-After`: the check before a
-profile-credential write (`unavailable`) and the check before an organization
-ownership transfer (`tenant_unavailable`). Setup, signup and invitation
-acceptance run Silo's handlers unchanged, on
-`/api/v2`. All of them answer as described above.
-
----
-
-**Location:** section “Sign-in attempts per name”, after the paragraph beginning
-“Every password sign-in also spends a budget kept for the name it signs in with…”.
-**Bloem adds:**
-
-Setting or clearing a profile credential (`PUT` and `DELETE`
-`/api/bloem/v2/profile-credentials/{id}`) checks the account password and spends
-the `password_change` budget; reading the status spends none. A budget must be one
-`ratelimit.DefaultConfig` defines, because an unknown name gets no endpoint limit
-and cannot be configured. `TestAuthEndpointBudgetsAreDefined`
-(`internal/api/bloem_rate_limit_budget_test.go`) refuses an undefined name.
+Bloem's own password hashing and checks run under Silo's admission limit
+(`internal/auth/passwordhash`). Creating a member account in an organization
+(`internal/api/handlers/admin_tenant_members.go`) and creating an account through
+the storefront's platform routes (`bloem_platform_accounts.go`) answer a busy
+refusal with Silo's `503 service_unavailable` and `Retry-After`. The
+account-password re-check before an organization ownership transfer also runs
+under the limit, but any failure there, busy included, answers
+`503 tenant_unavailable` without `Retry-After`. Setup,
+signup and invitation acceptance run Silo's handlers unchanged, on `/api/v2`, and
+answer as described above.
 
 ---
 
@@ -186,46 +156,6 @@ keep their existing behavior; no cross-store transaction or backend conversion i
 **Location:** section “Ordinary v2 authentication”, after the paragraph beginning
 “Apple and Android adoption must be verified against each client's…”. **Bloem adds:**
 
-#### Bloem household profile credentials
-
-When `profile_credential_management_v1` is advertised, the embedded web exposes
-status, set/rotate and disable at `/api/bloem/v2/profile-credentials/{id}`. These
-GET/PUT/DELETE operations require a non-impersonated account session and the existing
-household/PIN authority. Writes additionally require the enabled local account password
-and a positive `expected_revision`, compared under the profile row lock. A stale write
-returns `409 credential_revision_conflict` and preserves newer credentials and direct
-sessions. Successful rotation or disable revokes direct sessions for that profile.
-
-Profile passwords are offered only while the server setting
-`bloem.auth.profile_sign_in_enabled` is on; it is off by default. While it is off,
-the capability probe advertises neither `profile_credential_management_v1` nor
-direct-profile login, a correct profile password is refused with
-`403 profile_passwords_disabled` after the password comparison (so a refusal does not
-reveal which emails are registered), and PUT answers the same code. GET and DELETE keep
-working, so a household can see and clear a stored password. Stored passwords are kept
-and work again when the setting is turned on. Existing direct-profile sessions are not
-ended, as with the server's password sign-in switch.
-
-A profile password follows the server's password sign-in policy, like the account
-password. Direct-profile login checks it after the password, so a refusal does not
-reveal which emails are registered: `403 local_login_disabled` while password sign-in
-is off for the server, `403 not_permitted` while an enabled network provider refuses
-the account's person, and `401 invalid_credentials` while the account's own password
-sign-in is off (linking an OIDC or LDAP identity turns it off). A break-glass account
-gets no exemption, because a direct-profile session has the user role and cannot
-recover the server. The session insert repeats these checks under the account row
-lock and the settings lock (`CreateProfileSessionIfCurrent`). Refresh ends a
-direct-profile session when the account's password sign-in is off or a network
-provider refuses the person. Turning the server switch off does not end existing
-direct-profile sessions, just as it leaves account sessions running.
-
-This is separate from account-password changes and admin-context authority. Direct
-sessions, API keys and SSO-only reauthentication cannot manage profile credentials.
-Browser direct-profile login and shared-device profile pairing remain unsupported;
-the existing direct-session allowlist is unchanged. See the
-[native contract](../../bloem-api-reference.md#embedded-web-workflow-adapters) for fields
-and errors. Account-device activation remains a separate sign-in protocol.
-
 #### Password resets and account policy
 
 Upstream account password-reset links and temporary-password flows are described
@@ -245,20 +175,9 @@ the preview-aware `ActivePreviewSession` and `ActiveSessionAuthority`, the
 middleware's `sessionAuthority`, the native-video session check
 (`ActiveSessionRole`) and the tenant administrative context. So the
 plugin router, preview, tenant-admin and native-video paths keep Silo's
-binding. A direct-profile session still answers with the user role inside
-Silo's query.
+binding.
 
 #### Credential checks and network identity
-
-The upstream distinction between invalid credentials and an
-unavailable session store also applies to Bloem's direct-profile refresh
-adapter. A missing credential service or a store/transport failure while
-revalidating the current profile returns an unavailable error without revoking
-the session. A mismatched retained binding or confirmed revoked subject still
-ends it. The shared HTTP contract uses `503` with `Retry-After` (`/api/v2`
-`dependency_unavailable`); clients retain their
-credentials and retry with bounded backoff. This does not broaden the
-direct-profile route allowlist or grant access to native administration.
 
 Linking a network-only identity provider, such as the Tailscale provider,
 retains the account's local password. A confirmed refusal by an enabled network
@@ -282,9 +201,7 @@ admission.
   domain picks its organization, branding and email links, and how to add one.
 - [How organizations work](../../architecture/bloem-organizations.md).
 - [Security foundation](../../architecture/bloem-security-foundation.md): session
-  revocation and direct-profile sessions.
-- [Settings API overlay](settings-api.md): the direct-profile session's settings
-  routes.
+  revocation.
 - [Writing Bloem documentation](../documentation-workflow.md#overlays): how an
   overlay is written and kept up to date.
 - Index: [Bloem documentation](../README.md).

@@ -276,15 +276,14 @@ Every sign-in creates a session through the auth service's session repository.
 service its own copy of that repository with `Directory.SignInCheck` set on it
 (`bloemSignInCheck`). The copy runs the check in `createWithQuerier`, which every way
 of creating a session goes through: Silo's password, provider and identity sign-ins
-and Bloem's direct-profile sign-in and setup. The repository the service was built
+and Bloem's setup. The repository the service was built
 with is shared with device sign-in and stays unchecked. An impersonation session is
 not checked, and setting the check again replaces it rather than stacking.
 
 When the request's domain is registered to another organization than the account's
 active membership, the sign-in is refused before a session exists, with
-`auth.OrganizationDomainError`. The password and profile sign-in handlers
-(`internal/api/handlers/auth.go`, `bloem_auth_ext.go`, through
-`organizationDomainAPIError`) answer `409 wrong_organization_domain`,
+`auth.OrganizationDomainError`. The password sign-in handler
+(`internal/api/handlers/auth.go`, through `organizationDomainAPIError`) answers `409 wrong_organization_domain`,
 "This account signs in at https://<primary domain>." The scheme follows the server
 public URL's. That address falls back to the server public URL when the account's
 organization has no primary domain. `/api/v2` renders it as `conflict`, and the

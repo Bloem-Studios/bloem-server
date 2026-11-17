@@ -87,8 +87,8 @@ Good to know:
 - **API:** [requests](../bloem/api/requests.md): filing and reading book
   requests, organization queues and acquisition connections. Movie and series
   requests are Silo's `/api/v2`; see Silo's [media requests](media-requests.md).
-- Capabilities: `audiobook_requests_v1`, `ebook_requests_v1`,
-  `ebook_requests_direct_profile_v1` and `book_request_connection_admin_v1`, each
+- Capabilities: `audiobook_requests_v1`, `ebook_requests_v1` and
+  `book_request_connection_admin_v1`, each
   advertised only when its routes are mounted.
 - [How request rules apply](bloem-request-policy.md): profile-verified quotas and
   organization scope on Silo's request service.

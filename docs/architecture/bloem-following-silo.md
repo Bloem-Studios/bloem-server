@@ -87,7 +87,7 @@ people watching are not reasons to stop.
 
 ## When Silo and Bloem change the same lines
 
-![An example: Bloem's check folded into Silo's line, and Silo's line as Silo wrote it with Bloem's check beside it](images/following-silo/silo-wins.svg)
+![A made-up example: Bloem's check folded into Silo's line, and Silo's line as Silo wrote it with Bloem's check beside it](images/following-silo/silo-wins.svg)
 
 **Silo always wins.** In the household code, for example, Bloem's check sits on its own
 lines just above Silo's line, and Silo's line stays exactly as Silo wrote it. Folding

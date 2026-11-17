@@ -66,7 +66,7 @@ Two sign-in rules show up in the web app:
 | --- | --- |
 | Platform administrator | The Platform context: organizations, domains and branding, plans, campaigns and seasonal packs, announcements, Live TV administration, Silo's server settings. |
 | Organization administrator | The Organization context for their own organization: people, access groups, invitations, library grants, activity, policy decisions. |
-| An account's main profile | The household's profiles, PINs and profile sign-ins. |
+| An account's main profile | The household's profiles and PINs. |
 | Viewer | Home, the catalog and player, Live TV (with the permission), the inbox, seasonal effects. |
 
 ## Words used in the code
@@ -168,7 +168,6 @@ network.
 | ID | Feature / role | Reachable surface and coverage | Boundaries / evidence | Ownership |
 | --- | --- | --- | --- | --- |
 | V01 | Account/profile/PIN/device sessions / households and viewers | **Shared.** Login, profile picker, settings, activation and device/session pages. | Fresh real-server setup and account login passed after restoring two transactional adapter interfaces. Existing profile/PIN boundaries remain. A sign-in on a domain registered to another organization is refused with `409 wrong_organization_domain` (v2 `conflict`) and the sign-in page shows the detail naming the account's address (`pages/Login.organizationDomain.test.tsx`); a session that predates its organization's revocation is ended with `401 session_invalid` (`session_expired` on `/api/v2`), so the client signs in again. | Existing UI; additive setup adapters. |
-| V02 | Direct-profile credentials/sign-in / household manager and viewer | **Partial / Boundary.** Profiles settings now expose credential status, set/rotate and disable with current account password and explicit confirmation. | Rebuilt two-tab acceptance passed: set/rotate 204, stale disable 409, current disable 204; the newer direct session stayed valid after conflict and was revoked after current disable. Writes require the reviewed positive credential revision under the row lock. Direct-profile **browser login is not supported**: its default-deny allowlist does not admit Silo v2. SSO-only reauthentication is absent. | UI + account-scoped API; no allowlist expansion. |
 | V03 | Shared-device pairing/delegated admin roles | **Boundary.** Capability booleans remain false. | Account-device activation is not shared-device profile pairing; access groups are not delegated roles. | Backend/product decision. |
 | V04 | Live TV guide/watch / permitted viewer | **Present.** `/livetv`, `/watch/live/:channelId`, capability gate, tune/renew/release and HLS player. Operational requests use `/api/bloem/v2/livetv`. | Native-HLS fallback requires browser support and server-issued `st`; account credentials are never placed in stream URLs or forwarded to foreign origins. Actual tuner, Safari and owner-loss playback remain unverified. | Bloem UI + small request-policy SEAM. |
 | V05 | Tuner/guide/transcoding administration / acting server administrator | **Present.** `/admin/livetv`: discovery, lineup, sources, recordings and settings, plus encrypted Xtream live-provider setup and provider-bound XMLTV. | Xtream credentials bypass mutation caches; unconfirmed creation requires explicit reload, and removal confirms channel/DVR consequences. Protocol, PostgreSQL, component and fixture-encoder tests do not prove real-provider playback. See [Xtream limits](xtream-live-tv.md). | Existing Bloem UI + owned Xtream adapters. |
@@ -206,11 +205,6 @@ network.
 - Audit reads union only the selected organization's `admin_audit_events` and
   `entitlement_audit_events`. No before/after JSON, credential documents or
   unrestricted platform activity is exposed. The fixed page size is 50.
-- Direct-profile management reuses household and PIN checks and existing credential
-  services. It requires a non-impersonated account login and the current local password
-  for writes. Positive `expected_revision` is compared under the profile row lock; a
-  conflict preserves newer credentials and sessions. Secrets stay out of query and
-  mutation caches and clear after attempts.
 - Home promotions are off by default, scoped to browser origin, account and profile.
   Blocked storage permits tab-local choice. Pre-playback is always skippable
   immediately; once admitted, campaigns cannot unmount the player. Artwork and link
@@ -247,9 +241,6 @@ Bloem-owned implementations:
 
 - `internal/api/handlers/bloem_organization_workflows.go`,
   `internal/invitations/bloem_lifecycle.go`, `internal/tenancy/bloem_audit_read.go`.
-- `internal/api/handlers/bloem_profile_credentials.go`,
-  `internal/auth/bloem_profile_credential_status.go`,
-  `internal/auth/bloem_profile_credential_revision.go`.
 - `internal/api/router_bloem_engagement.go` (now only the Home section hook,
   `configureBloemSectionExtensions`), `internal/api/router_bloem_storefront.go` (the platform campaign, seasonal and announcement routes),
   `internal/api/bloem_promotions_viewer.go` and
@@ -262,8 +253,8 @@ Bloem-owned implementations:
 
 Shared seams are recorded in `contracts/seams.txt`: route and navigation registration,
 request policy, optional home supplemental rows, pre-playback placement, and the
-existing promotion and ambience actor extraction, locked credential revision comparison
-and optional server-owned socket identity binding. The two setup fixes are additive
+existing promotion and ambience actor extraction and optional server-owned socket
+identity binding. The two setup fixes are additive
 adapters; the shared account provisioner adds the early provider check above. Shared
 test seams cover migrated invitation fixtures, platform capability expectations, tenant
 reseeding and catalog execution prerequisites. Additive executor helpers, including
@@ -273,8 +264,7 @@ shared runner hooks are ledgered. Bloem keeps Silo's module path and player.
 Native Apple and Android implementation is outside this page. Additive management
 tokens and native routes are documented for future clients; existing clients ignore
 unknown capabilities. Live TV is not served through Jellyfin. Do not
-advertise browser direct-profile sign-in, shared-device pairing or enforced DVR
-retention.
+advertise shared-device pairing or enforced DVR retention.
 
 ### Running the checks
 

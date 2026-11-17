@@ -17,25 +17,24 @@ while the flag is on, and how to switch.
 
 Account settings live on the accounts table, where Silo keeps them, so both servers
 read and write the same columns. What is left is the part of Bloem that Silo cannot
-handle: several **organizations** (customers kept apart on one server) and
-**profile sign-ins** (a profile with its own email and password). One flag in the
+handle: several **organizations** (customers kept apart on one server). One flag in the
 database, **Silo switching**, keeps the database inside what Silo can handle while it
 is on.
 
 ## Switching on, and off again
 
-![Three commands: status reports, enable checks for one organization and no profile sign-ins and then sets the flag, disable clears it](images/silo-backend-switching/commands.svg)
+![Three commands: status reports, enable checks for one organization and then sets the flag, disable clears it](images/silo-backend-switching/commands.svg)
 
 1. **Check.** `silo silo-switching status` says whether the database is switchable.
 2. **Switch on.** `silo silo-switching enable` refuses unless the database has exactly
-   one organization and no profile has its own sign-in. Then it gives every account
+   one organization. Then it gives every account
    its place in the default organization and sets the flag. Running it again is safe.
 3. **Switch off.** `silo silo-switching disable` clears the flag. From then on, Silo
    must not serve the database.
 
 ## What happens to Silo's writes
 
-![Six things Silo writes and what the database does with each: four are fitted in, a second organization and a profile sign-in are refused](images/silo-backend-switching/silo-writes.svg)
+![Five things Silo writes and what the database does with each: four are fitted in, a second organization is refused](images/silo-backend-switching/silo-writes.svg)
 
 Silo writes accounts, profiles and groups the way Silo always has. While the flag is
 on, rules inside the database fit those writes into Bloem's model:
@@ -43,7 +42,7 @@ on, rules inside the database fit those writes into Bloem's model:
 - A new profile lands in the **default organization**, with the account's group.
 - A new account gets its place in the default organization when it is saved.
 - An account moved to another group takes its profiles on the old group with it.
-- A second organization, or a profile with its own sign-in, is refused.
+- A second organization is refused.
 
 ## What Silo doesn't see
 
@@ -59,7 +58,7 @@ servers.
 | Who | What they manage |
 | --- | --- |
 | The person running the server | Which server runs, the snapshot before the first switch, and switching on and off with the Bloem binary. |
-| Platform administrator | Nothing extra. While switching is on, the database refuses a second organization or a profile sign-in. |
+| Platform administrator | Nothing extra. While switching is on, the database refuses a second organization. |
 
 ## Words used in the code
 
@@ -69,7 +68,7 @@ servers.
 | Switching on, off, check | `silo silo-switching enable`, `disable`, `status` (`cmd/silo/silo_switching_cmd.go`, `internal/tenancy/silo_switching.go`) |
 | Default organization | `public.bloem_default_organization_id()` |
 | A place in the organization | an `organization_memberships` row |
-| Refused | `bloem_silo_switching_single_organization`, `bloem_silo_switching_direct_profile_login` |
+| Refused | `bloem_silo_switching_single_organization` |
 | Fitting Silo's writes in | `user_profiles_00_silo_tenancy`, `users_silo_default_membership`, `users_silo_profiles_follow_group` |
 | The switch check | `make silo-switch-check`, `make silo-switch-check-all-in-one` (`cmd/bloem-silo-switch-check`) |
 
@@ -111,9 +110,6 @@ policy back onto `users`) kept switching enabled through that migration.
   also lets Silo delete a group after moving its members). `users.role` and the
   membership's `legacy_role` are kept in step (admin or user; other account roles are
   ordinary members). An ungrouped admin stays ungrouped.
-- **No direct profile logins.** A profile with its own `login_email` or `password_hash`
-  raises `bloem_silo_switching_direct_profile_login`. Silo would treat such a session
-  as the whole account.
 - **Silo-shaped writes are placed in the default organization.** A profile inserted
   without an organization gets the default organization, the account's membership
   (created if missing) and the account's access group (`user_profiles_00_silo_tenancy`).
@@ -137,7 +133,7 @@ switchable, with a test beside the existing switching tests
 ### What Silo does not see
 
 While Silo serves the database, Bloem-only features do nothing: organizations beyond
-the default one, entitlement templates, profile logins, Live TV and DVR, native
+the default one, entitlement templates, Live TV and DVR, native
 storage, promotions and ambience, and organization domains and branding
 (`bloem_organization_domains`, `bloem_organization_branding`). Their rows stay in the
 database and work again when Bloem serves it. Silo answers every host with the

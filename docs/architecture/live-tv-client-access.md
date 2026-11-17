@@ -145,8 +145,8 @@ The native constructor returns native media URLs and supplies the signing secret
 `GET /api/bloem/v2/livetv/live-hls/{id}/index.m3u8` and its segment paths accept
 headerless `st` delivery, with the signed `bloem_livetv_hls` purpose, delivery ID, expiry
 and freshly resolved tenant/profile grant. The raw MPEG-TS proxy retains normal
-account/profile authentication. Tokens cannot authorize operational routes or broaden
-direct-profile admission. The native household checker reads the authoritative profile
+account/profile authentication. Tokens cannot authorize operational routes. The native
+household checker reads the authoritative profile
 store before allowing a primary admin to manage another viewer's sessions or DVR
 entries.
 

@@ -5,7 +5,7 @@ This overlay covers Silo's [`docs/architecture/invitations-onboarding.md`](../..
 Silo's page explains how an invitation becomes an account and how a new person is
 shown around the app. Everything there applies to Bloem: link invitations without
 an address, Owner-only administrator invitations, recorded delivery and the
-onboarding tour. Bloem changes only what organizations and profile sign-ins touch.
+onboarding tour. Bloem changes only what organizations touch.
 
 ![Two ways to invite someone: Silo's administrator routes in the default organization, which can email the link, and the organization console in its own organization, which sends no email and shows a one-time link. Both keep one live invitation per address in each organization](../../../architecture/images/overlay-invitations/two-paths.svg)
 
@@ -19,8 +19,6 @@ onboarding tour. Bloem changes only what organizations and profile sign-ins touc
   forwarded copy of the old link stops working.
 - **The organization must be active.** Accepting an invitation into an
   organization that is not active is refused.
-- **A profile's own sign-in is not a second account.** Someone who needs their own
-  password still gets a second invitation and a second account.
 
 ## Words used in the code
 
@@ -85,17 +83,6 @@ support the transaction.**”. **Bloem replaces** it with:
   organization also requires that organization to be active at accept. This
   restriction applies to emailed and link invitations; ordinary signup
   invite-code behavior is unchanged.
-
----
-
-**Location:** section “Accounts vs household profiles”, the sentence beginning
-“A spouse who needs their own password…”. **Bloem replaces** it with:
-
-Someone needing a separate login account receives a second invitation, which
-creates a second account. Bloem's optional direct-profile credentials stay
-owned by the account and only work on their supported routes. They do not
-create another account or enable browser direct-profile login; see the
-[authentication overlay](../auth-api.md).
 
 ### Related pages
 

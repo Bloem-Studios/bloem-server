@@ -59,7 +59,7 @@ different from Silo's.
 - **Live TV.** Tuners, Xtream providers, a programme guide and recordings
   ([how Live TV works](docs/architecture/bloem-live-tv.md)).
 - **Storage sources.** Libraries read from S3 or Bookwarehouse as well as folders. This is still experimental.
-- **An API for Bloem's own apps,** with richer title pages, profile sign-ins and server-side search.
+- **An API for Bloem's own apps,** with richer title pages and server-side search.
 - **Switching with Silo.** A Silo installation can try Bloem on the same database and go back
   ([switching between Silo and Bloem](docs/architecture/bloem-silo-switching-explained.md)).
 
@@ -198,8 +198,6 @@ document itself stays Silo's. The [documentation index](docs/bloem/README.md) li
   stays on the domain it started on. A domain decides presentation, never access.
 - [Silo backend switching](docs/architecture/silo-backend-switching.md): a database limited to one organization can be
   served by Silo or Bloem, one at a time.
-- Direct-profile login for supported native routes, plus household credential management. Browser direct-profile login
-  and shared-device profile pairing remain unsupported; account-device activation is a separate protocol.
 - A native client API surface built for Bloem's own Android and Apple clients: richer Watch documents (cast and crew,
   chapter and skip-intro markers, file editions, server-side search, poster resolution), a person-detail endpoint and a
   batch-resolved similar-items endpoint. Client contract conformance tests (`internal/clientcontract`) and an
@@ -207,7 +205,7 @@ document itself stays Silo's. The [documentation index](docs/bloem/README.md) li
 - [Native storage](docs/architecture/bloem-native-storage.md): ebook, movie and audiobook libraries that read from
   storage plugins (S3, Bookwarehouse) alongside filesystem paths. It remains experimental.
 - A separately maintained plugin SDK, catalog and first-party plugin set.
-- Embedded-web organization workflows, household profile-credential management, platform campaign and seasonal
+- Embedded-web organization workflows, platform campaign and seasonal
   authoring, and native Live TV and DVR controls. The [coverage matrix](docs/architecture/bloem-web-feature-coverage.md)
   records the tested behaviour and remaining limits.
 - Encrypted Xtream live-provider consumption and provider-bound XMLTV, with shared physical-connection budgets and

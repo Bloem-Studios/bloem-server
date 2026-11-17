@@ -153,7 +153,7 @@ and only after they sign in.
   and membership share one database snapshot, so a concurrent retarget cannot
   authorize an older pack's contents. Legacy account sessions resolve to the default
   organization; while it is still initializing they receive deployment-wide packs
-  only. The default-deny route boundary excludes direct-profile sessions. Responses
+  only. Responses
   use `Cache-Control: private, no-store`.
 - Publication or removal is visible on the next client refresh. Scheduled expiry does
   not require another network response. This matters when the storefront or the

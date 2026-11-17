@@ -5,8 +5,7 @@ This overlay covers Silo's [`docs/settings-api.md`](../../settings-api.md), whic
 Silo's settings page explains how apps read and change settings: the server's,
 an account's, a profile's and a device's. Bloem serves Silo's settings contract as
 Silo documents it: the `/api/v2` settings operations with their headers, scopes,
-write mirror, atomic shortcuts and device registry. Bloem adds three notes, because Bloem has **organizations** and
-**profiles with a sign-in of their own**.
+write mirror, atomic shortcuts and device registry. Bloem adds two notes, because Bloem has **organizations**.
 
 ## What Bloem changes
 
@@ -14,8 +13,6 @@ write mirror, atomic shortcuts and device registry. Bloem adds three notes, beca
   set a default value for some settings. On Bloem that default is the server's,
   and it applies in every organization alike. There is no per-organization
   default.
-- **A profile's own sign-in reaches no settings.** A session signed in straight to
-  one profile reaches no settings route. Profile sign-in is dormant.
 - **Each organization's domain shows its own brand.** On an organization's own
   domain, the public branding Silo serves before sign-in (name, logo, colours)
   is that organization's. Silo's own branding settings stay the server's.
@@ -25,8 +22,6 @@ write mirror, atomic shortcuts and device registry. Bloem adds three notes, beca
 | On this page | In the code and API |
 | --- | --- |
 | An administrator's default | a server setting `defaults.<key>`, for definitions marked `admin_default` |
-| A profile's own sign-in | a direct-profile session (dormant: no sign-in route is mounted) |
-| Its allowed routes | the default-deny allowlist in `internal/api/direct_profile_routes.go` |
 | An organization's brand | `bloem_organization_branding`, served through `orgdomains.SettingsOverlay` |
 
 ## For developers
@@ -71,23 +66,11 @@ organization with `409 default_organization`. Every other write, including Silo'
 own branding settings and asset uploads made on an organization's domain, is the
 server's. See [organization domains](../../architecture/bloem-organization-domains.md).
 
----
-
-**Location:** section “Settings semantics”, subsection “Request identity headers”, after
-the paragraph beginning “Authenticated settings routes use the active account and
-profile…”. **Bloem adds:**
-
-A Bloem direct-profile session is bound to its token's profile. Its default-deny
-route allowlist (`internal/api/direct_profile_routes.go`) admits no `/api/v2` settings
-operation, so the session reaches no settings route. Profile sign-in itself is
-dormant: no sign-in route is mounted.
-
 ### Related pages
 
 - [Settings contract overlay](architecture/settings-contract.md): the Kotlin and
   Swift bindings Bloem commits.
-- [Authentication overlay](auth-api.md): direct-profile sessions and sign-in on
-  organization domains.
+- [Authentication overlay](auth-api.md): sign-in on organization domains.
 - [Organization domains](../../architecture/bloem-organization-domains.md).
 - [Writing Bloem documentation](../documentation-workflow.md#overlays): how an
   overlay is written and kept up to date.

@@ -12,15 +12,12 @@ an organization's own web address, and how a server gets its first owner.
 
 ## Kinds of sign-in
 
-![A grid of four kinds of sign-in against four kinds of request, showing which sign-in opens which door](images/security-foundation/passes.svg)
+![A grid of three kinds of sign-in against four kinds of request, showing which sign-in opens which door](images/security-foundation/passes.svg)
 
 - **An account sign-in** is what an app gets from an email address and password, the same
   sign-in Silo's apps use. It acts for the account. The app names a **profile** on each
-  request, and enters the profile's PIN where it has one.
-- **A profile sign-in** (dormant, see below) goes straight into one profile,
-  with that profile's own email address and password. The household's main profile sets it up. It can browse, play, and keep its own
-  progress, settings and book requests. It cannot manage the household or administer
-  anything.
+  request, and enters the profile's PIN where it has one. A profile has no sign-in of its
+  own: every profile on an account is reached through the account's sign-in.
 - **An administrator pass** is a separate key for running things. An administrator swaps an
   account sign-in for one, and it lasts at most 15 minutes. A **platform pass** runs the whole
   platform; an **organization pass** runs one organization. A pass is never both, and it ends
@@ -128,7 +125,7 @@ Riverside Club is a reseller organization served on its own address, `watch.rive
 | Platform administrator | With a platform pass: every organization, its owner (with their own password), memberships, domains and branding. The server Owner can also open a customer's organization with a stated reason, for at most four hours, shown to that organization's administrators ([break-glass access](bloem-organization-support.md#when-the-administrator-is-the-one-who-is-stuck)). |
 | Organization administrator | With an organization pass: their own organization only. Ordinary members: reset links (the administrator never sees a password), signing out everywhere, one session or one device, adding, renaming and removing profiles, clearing a forgotten PIN, stopping streams. The organization owner may also do this for the organization's other administrators; nobody does it to themselves ([who may act on whom](bloem-organization-support.md#who-may-do-it-to-whom)). |
 | The storefront (Bloem HQ) | Reseller organizations, accounts, domains and branding, using a platform administrator's API key. |
-| An account's main profile | The household's profiles, PINs and profile sign-ins. Profile sign-ins also need the account password. |
+| An account's main profile | The household's profiles and PINs. |
 | The server's operator | Picking the owner of an upgraded server with several administrators, directly in the database. |
 
 ## Words used in the code
@@ -136,7 +133,6 @@ Riverside Club is a reseller organization served on its own address, `watch.rive
 | On this page | In the code and database |
 | --- | --- |
 | Account sign-in | an account login session (`auth_sessions` row) and its access token |
-| Profile sign-in | a direct-profile session, dormant, as no sign-in route is mounted; credentials at `/api/bloem/v2/profile-credentials/{id}` |
 | Administrator pass | an administrative context token (`auth.AdminContextClaims`, `internal/auth/admin_context.go`) from `POST /api/bloem/v2/admin/session` |
 | Platform pass, organization pass | scope `platform` (`AdminScopePlatform`) or `organization` (`AdminScopeOrganization`) |
 | API key | an `sa_` bearer key |
@@ -151,8 +147,7 @@ Riverside Club is a reseller organization served on its own address, `watch.rive
 
 - **API:** [organizations and administration](../bloem/api/organizations.md) (the
   administrator-pass exchange, organization and platform administration, domains and
-  branding) and [apps and clients](../bloem/api/apps.md) (capabilities, identity and
-  profile credentials). The behaviour that does not fit a schema is in the
+  branding) and [apps and clients](../bloem/api/apps.md) (capabilities and identity). The behaviour that does not fit a schema is in the
   [wire reference](../bloem-api-reference.md#auth-model-account-viewer-and-administrative-authority).
   Silo's own authentication model is in [API contract](api-contract.md) and
   [external sign-in](external-sign-in.md).
@@ -181,7 +176,6 @@ not an exhaustive token list; consult the runtime response and the
   "features": {
     "organization_memberships": true,
     "tenant_bounded_media_scope": true,
-    "direct_profile_login": false,
     "shared_device_pairing": false,
     "delegated_admin_roles": false
   },
@@ -214,23 +208,6 @@ administrator gate.
 mounted with both gates, and `GET /api/bloem/v2/admin/organization/support-capabilities` says
 which of them this server can serve.
 
-Profile sign-in is dormant: no sign-in route is mounted. The credential routes are not mounted, `profile_credential_management_v1` and `direct_profile_login` are not advertised, and the web hides the credentials panel and the Profile passwords setting. The code stays; it needs a native profile sign-in route under `/api/bloem/v2`. Until then, the rest of
-this section describes how it is designed to work. The default-deny direct-session route
-allowlist (`internal/api/direct_profile_routes.go`) still rejects Silo v2 and the native Bloem
-namespace (apart from the audiobook and ebook request viewer routes), so the embedded browser
-must use account login. A profile password follows the server's password sign-in policy
-like an account password, with no break-glass exemption
-([auth overlay](../bloem/overlays/auth-api.md#bloem-household-profile-credentials)).
-Household credential status, set and clear are available through
-`/api/bloem/v2/profile-credentials/{id}` when `profile_credential_management_v1` is
-advertised. They require a non-impersonated account login, existing household/PIN permission,
-and the current local account password for writes. Direct sessions and API keys cannot manage
-these credentials; SSO-only reauthentication is not implemented. Credential changes require a
-positive `expected_revision`, checked under the profile row lock, then rotate revisions and
-revoke direct sessions. Stale writes return `409 credential_revision_conflict` without
-changing the newer credentials or sessions. The browser clears form secrets after attempts and
-does not keep them in query or mutation caches.
-
 Shared-device pairing and delegated administrative roles remain unimplemented and their
 booleans remain false. The initial organization authority is the broad, structured
 `organization_admin` role; organization administrators cannot upload, edit or activate Rego.
@@ -242,8 +219,7 @@ Clients must not infer features from version strings. `/api/v10/*` is not an ali
 - Account JWTs carry no organization authority.
 - Legacy account requests ignore organization-selection headers and project into the account's
   own organization: its one active membership, which is the default organization for upgraded
-  accounts. Direct-profile sessions instead revalidate their explicit organization, membership
-  and revisions; they cannot be projected into another tenant.
+  accounts.
 - Administrative context JWTs live separately from account sessions, expire within 15 minutes
   (`auth.AdminContextTokenLifetime`), and bind exactly one Platform or Organization authority.
   Browsers retain the token in memory only; persistent storage contains at most the selected
@@ -358,11 +334,11 @@ way the tenant can be refused.
 
 The account-password capability and mutation routes preserve profileless account
 administration. A selected profile first resolves tenant authority, then passes the shared
-ownership/PIN viewer guard. Direct-profile sessions remain rejected before either lookup.
+ownership/PIN viewer guard.
 
 Logout revokes a login session, not an API key. The shared handler refuses API-key or
-sessionless claims before invoking session revocation; valid account and admitted
-direct-profile sessions keep self-logout. Invitation acceptance hides unknown, expired,
+sessionless claims before invoking session revocation; a valid account session keeps
+self-logout. Invitation acceptance hides unknown, expired,
 revoked and consumed invitations behind `404 not_found`; a pending invitation's
 duplicate-account conflict remains `409 already_used`.
 
@@ -371,7 +347,7 @@ duplicate-account conflict remains `409 already_used`.
 An organization administrator's "revoke all sessions"
 (`internal/api/handlers/bloem_org_session_revocation.go`) bumps the membership's
 `security_revision`, which stales every membership-bound token (administrative contexts,
-tenant-bound v2 sessions, direct-profile refresh) at its next check, and revokes the
+tenant-bound v2 sessions) at its next check, and revokes the
 account's login sessions too. An account that is not a member of that organization is left
 alone: one tenant's administrator must not sign another tenant's member out.
 
@@ -387,8 +363,7 @@ profile. The viewer-access gate ends the session and answers `401` with reason
 `session_expired`. Its refresh is then refused because the session is revoked, and the client
 signs in again. Callers that resolve a viewer outside the gate still see
 `access.ErrProfileNotFound`, because the refusal wraps it. Only sessions are checked: an API
-key has no `auth_sessions` row, and a direct-profile session is already bound to its profile
-and revision. See `internal/api/bloem_org_session_revocation.go`.
+key has no `auth_sessions` row. See `internal/api/bloem_org_session_revocation.go`.
 
 ### Organization domains at sign-in
 
@@ -516,8 +491,7 @@ Before enabling native tenant administration in an environment:
 1. run migration up/down/up tests on a disposable database;
 2. run the account-login compatibility suite for setup, login, profile list, PIN unlock, admin
    projection and refresh;
-3. confirm legacy account login tokens do not acquire administrative-context authority, and
-   direct-profile sessions keep their explicit tenant binding;
+3. confirm legacy account login tokens do not acquire administrative-context authority;
 4. confirm every native organization/platform administrative route requires the matching
    short-lived context and advertises only implemented features;
 5. resolve ownership ambiguity, if present; and
@@ -531,8 +505,8 @@ are in [OPA tenant authorization](opa-tenant-authorization.md).
 Live TV administration is distinct from organization/platform administrative context. It
 requires authenticated account authority, the acting-administrator gate, the account's
 selected primary profile and any required PIN proof. General profileless account
-administration does not imply profileless Live TV access. Direct-profile credentials and
-signed delivery proofs cannot create providers or manage guides.
+administration does not imply profileless Live TV access. Signed delivery proofs cannot
+create providers or manage guides.
 
 [Xtream integration](xtream-live-tv.md) keeps provider credentials encrypted with
 tuner/origin binding and no plaintext fallback. Only fixed live/XMLTV endpoints are
@@ -555,8 +529,7 @@ during Silo-compatible switching; this does not activate that organization or pe
 organization-targeted packs. Public packs and current-organization packs are filtered with
 active membership in the same database read as their contents. Public login branding and the
 public `GET /api/bloem/v2/ambience/public` (the deployment-wide packs that the web app's
-signed-out seasonal layer reads) never include organization-targeted packs. Direct-profile
-admission remains default-deny.
+signed-out seasonal layer reads) never include organization-targeted packs.
 
 The Bloem v2 events adapter captures the original authenticated principal and resolved tenant
 in the ticket store's optional, server-owned `SocketIdentity.AuthorityBinding`

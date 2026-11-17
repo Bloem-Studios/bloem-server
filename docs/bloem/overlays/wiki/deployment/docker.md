@@ -530,7 +530,7 @@ on the same data; only one runs at a time. See
 1. Stop Silo and start Bloem. Bloem applies its migrations to the Silo database as it
    starts; on the first takeover this is one-off work.
 2. Run `silo silo-switching enable` in the Bloem container. It needs exactly one
-   organization and no profile logins, creates missing memberships, reconciles roles
+   organization, creates missing memberships, reconciles roles
    from Silo's accounts, and prints a report line
    (`silo switching enabled: memberships_created=… roles_reconciled=… already=…`)
    followed by `silo switching: true`. `silo silo-switching status` prints the
@@ -547,10 +547,10 @@ on the same data; only one runs at a time. See
 The server ID apps see is stored in the database, so apps follow the switch without
 signing in again.
 
-While Silo serves, Bloem-only features are unused but kept: more organizations and
-profile logins are refused, and Live TV, DVR and plans wait for Bloem. A second
-organization ends switching. `silo silo-switching disable` ends switching: it lifts the one-organization and
-profile-login guards, and Silo must not serve the database afterwards.
+While Silo serves, Bloem-only features are unused but kept: more organizations are
+refused, and Live TV, DVR and plans wait for Bloem. A second
+organization ends switching. `silo silo-switching disable` ends switching: it lifts the one-organization
+guard, and Silo must not serve the database afterwards.
 
 ## Migrating from Continuum
 

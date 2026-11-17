@@ -31,7 +31,7 @@ adapted to, and a much older one may not understand a later Silo change.
 
 ## What each server sees
 
-![Shared data on the left, Bloem-only data on the right, and three rules while switching is on](images/silo-switching/what-each-sees.svg)
+![Shared data on the left, Bloem-only data on the right, and two rules while switching is on](images/silo-switching/what-each-sees.svg)
 
 Both servers read and change the same accounts, passwords, profiles, libraries,
 watch history, access groups, account settings, movie and series requests, and
@@ -42,12 +42,10 @@ when Bloem serves: plans, Live TV and recordings, libraries on storage sources,
 audiobook and ebook requests, campaigns and seasonal packs, and organization domains
 and branding. While Silo serves, every address shows the server's own name and look.
 
-While switching is on, three rules keep the database inside what Silo can
+While switching is on, two rules keep the database inside what Silo can
 handle:
 
 - **One organization.** Silo has no organizations, so a second one is refused.
-- **No profile sign-ins.** Silo would treat a profile's own sign-in as the whole
-  account, so none is allowed.
 - **Silo's writes fit in.** A new account or profile that Silo creates lands in
   the default organization, in the right group.
 
@@ -81,7 +79,7 @@ the one before wrote and write something for the next one to read.
 | Who | What they manage |
 | --- | --- |
 | The person running the server | Which server runs, the snapshot, switching on and off. |
-| Platform administrator | Nothing extra. While switching is on, Bloem refuses a second organization or a profile sign-in. |
+| Platform administrator | Nothing extra. While switching is on, Bloem refuses a second organization. |
 
 ## Words used in the code
 
@@ -89,7 +87,7 @@ the one before wrote and write something for the next one to read.
 | --- | --- |
 | Silo switching | the flag `public.bloem_silo_switching` |
 | Switching on, off | `silo silo-switching enable`, `silo silo-switching disable` |
-| The three rules | database triggers that refuse `bloem_silo_switching_single_organization` and `bloem_silo_switching_direct_profile_login`, and place Silo's writes in the default organization |
+| The two rules | database triggers that refuse `bloem_silo_switching_single_organization` and place Silo's writes in the default organization |
 | Silo's all-in-one container | Silo's omnibus image, built from `omnibus/` |
 | The switch check | `make silo-switch-check`, `make silo-switch-check-all-in-one` |
 
