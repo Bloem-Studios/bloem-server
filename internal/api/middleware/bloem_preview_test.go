@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -201,5 +202,31 @@ func TestPreviewGuestLimiterCapsOneGuestAndAllGuests(t *testing.T) {
 	}
 	if total > 140 {
 		t.Fatalf("all guests together got %d immediate requests, want about the burst of 120", total)
+	}
+}
+
+// RequireAuth filters a preview principal's JSON outside /api/v2 (v2 answers
+// through its own writer) and leaves every other caller's response alone.
+func TestRequireAuthFiltersPreviewResponsesOutsideV2(t *testing.T) {
+	am, _ := previewMiddleware(func(*http.Request) bool { return true })
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"title":"Film","file_name":"film.mkv"}`))
+	})
+	serve := func(token, path string) string {
+		r := httptest.NewRequest(http.MethodGet, path, nil)
+		r.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+		am.RequireAuth(next).ServeHTTP(w, r)
+		return w.Body.String()
+	}
+	if body := serve("preview", "/api/v1/items/1"); strings.Contains(body, "file_name") || !strings.Contains(body, "Film") {
+		t.Fatalf("preview v1 body = %s, want the file name scrubbed", body)
+	}
+	if body := serve("preview", "/api/v2/catalog/items/1"); !strings.Contains(body, "file_name") {
+		t.Fatalf("preview v2 body = %s, want it served unfiltered", body)
+	}
+	if body := serve("standard", "/api/v1/items/1"); !strings.Contains(body, "file_name") {
+		t.Fatalf("standard body = %s, want it served unfiltered", body)
 	}
 }

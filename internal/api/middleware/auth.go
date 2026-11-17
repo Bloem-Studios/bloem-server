@@ -71,34 +71,7 @@ type AuthMiddleware struct {
 	// nil disables RequireStreamReferenceAuth's reference path.
 	streamReference        StreamReferenceVerifier
 	streamReferenceSession StreamReferenceSession
-
-	// directProfileRoutes decides whether a direct-profile session may reach
-	// the route a request matched. Nil fails closed: every direct-profile
-	// request is refused until a guard is installed. A fixture that wants an
-	// unrestricted middleware installs an explicit allow-all guard.
-	directProfileRoutes DirectProfileRouteGuard
-	// Bloem: preview principals (bloem_preview.go). Nil routes fail closed.
-	previewPrincipals PreviewPrincipals
-	previewRoutes     PreviewRouteGuard
-	previewGuests     auth.PreviewGuestSettingsSource
-	previewGuestLimit *PreviewGuestLimiter
-}
-
-// DirectProfileRouteGuard reports whether a direct-profile session may use the
-// route a request matches.
-type DirectProfileRouteGuard func(r *http.Request) bool
-
-// SetDirectProfileRouteGuard installs the direct-profile route boundary.
-//
-// It hangs off authentication rather than off individual routes because the
-// boundary is default-deny: a direct-profile session authenticates one profile
-// and may use only the routes that serve one profile. Enumerating the routes
-// it may *not* use was tried and does not converge — the API has hundreds of
-// routes, every new one is account-scoped until someone says otherwise, and
-// three review rounds each found more escapes. Putting the decision where
-// claims are resolved means a route is unreachable until it is named.
-func (am *AuthMiddleware) SetDirectProfileRouteGuard(guard DirectProfileRouteGuard) {
-	am.directProfileRoutes = guard
+	bloemAuthMiddlewareExt
 }
 
 // NewAuthMiddleware creates a new AuthMiddleware with the given token validator
@@ -137,13 +110,15 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		var claims *auth.Claims
-		var previewOnly bool
 		token, ok := extractBearerToken(r)
 		if !ok {
 			writeUnauthorized(w, "Missing or malformed authorization header", ReasonAuthenticationRequired)
 			return
 		}
+
+		var claims *auth.Claims
+		var previewOnly bool
+
 		if strings.HasPrefix(token, "sa_") {
 			// API key authentication.
 			if am.apiKeyValidator == nil {
@@ -273,49 +248,11 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), claimsKey, claims)
-		if previewOnly {
-			ctx = withPreviewPrincipal(ctx)
-			if claims.AuthMethod == auth.AuthMethodPreviewGuest {
-				ctx = am.markPreviewGuest(ctx, claims)
-			}
-
-			if am.previewRoutes == nil || !am.previewRoutes(r.WithContext(ctx)) {
-				WritePreviewOnly(w)
-				return
-			}
+		ctx, handled := am.bloemServeAuthenticated(ctx, next, w, r, claims, previewOnly)
+		if handled {
+			return
 		}
-		if claims.AuthMethod == auth.AuthMethodDirectProfile {
-			// Fail closed: with no guard installed, a direct-profile session
-			// reaches nothing. The boundary is default-deny, and "the caller
-			// forgot to install the allowlist" must not mean "every endpoint
-			// is open" — a fixture that genuinely wants an unrestricted
-			// middleware installs an allow-all guard on purpose.
-			if am.directProfileRoutes == nil || !am.directProfileRoutes(r) {
-				writeForbidden(w, "Direct profile sessions cannot use this endpoint")
-				return
-			}
-			// The session was bound to one device at login, and device
-			// identity feeds downloads, device settings, and policy input.
-			// Handlers read the X-Silo-Device-Id header, so the header is made
-			// canonical here: a conflicting value is refused rather than
-			// letting the session act as a device it never authenticated, and
-			// an absent one is filled in from the binding so every consumer
-			// sees the same identity. NormalizeClientHeaders has already
-			// folded the X-Bloem-Device-Id spelling onto this name upstream,
-			// so a device declared under either spelling meets this guard;
-			// keep that middleware ahead of RequireAuth.
-			if declared := strings.TrimSpace(r.Header.Get("X-Silo-Device-Id")); declared != "" && declared != claims.DeviceID {
-				writeForbidden(w, "Device does not match this session's binding")
-				return
-			}
-			r.Header.Set("X-Silo-Device-Id", claims.DeviceID)
-		}
-		// Native structured responses use their actual Huma writer, after the gates.
-		if strings.HasPrefix(r.URL.Path, "/api/v2/") {
-			next.ServeHTTP(w, r.WithContext(ctx))
-		} else {
-			servePreviewResponse(next, w, r.WithContext(ctx))
-		}
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -470,11 +407,16 @@ func profileLessAdminRefused(ctx context.Context, claims *auth.Claims, requiresP
 }
 
 // declaredProfileID returns the active profile the request declares: the
-// token-bound profile for a direct-profile session, the profile context when
-// RequireProfile ran earlier in the chain, otherwise the raw X-Profile-Id
-// header.
+// profile context when RequireProfile ran earlier in the chain, otherwise
+// the raw X-Profile-Id header.
 func declaredProfileID(r *http.Request) string {
-	return ActiveProfileID(r)
+	if IsDirectProfileSession(r) { // Bloem: the token-bound profile
+		return ActiveProfileID(r)
+	}
+	if id := GetProfileID(r.Context()); id != "" {
+		return id
+	}
+	return r.Header.Get("X-Profile-Id")
 }
 
 // SetClaims stores JWT claims in the context. This is useful for testing
