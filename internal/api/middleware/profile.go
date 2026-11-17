@@ -11,11 +11,11 @@ const profileKey contextKey = "profile_id"
 
 // RequireProfile is an HTTP middleware that reads the X-Profile-Id header
 // and stores it in the request context. Returns 400 if the header is missing
-// or empty. A direct-profile session supplies its own bound profile instead:
-// the header is optional there, and a header naming a sibling is refused.
+// or empty.
 func RequireProfile(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		profileID, ok := bindDirectProfile(w, r, r.Header.Get("X-Profile-Id"))
+		profileID := r.Header.Get("X-Profile-Id")
+		profileID, ok := bindDirectProfile(w, r, profileID) // Bloem: a direct-profile session acts as its bound profile; a sibling is refused
 		if !ok {
 			return
 		}
