@@ -5,8 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Silo-Server/silo-server/internal/tenancy"
-
 	"github.com/Silo-Server/silo-server/internal/access"
 )
 
@@ -32,7 +30,7 @@ func (s *memberMovingTestStore) DeleteConditional(context.Context, int64, access
 	return nil
 }
 
-func (s *memberMovingTestStore) DeleteMovingMembers(_ context.Context, _ int64, _ access.GroupPrecondition) error {
+func (s *memberMovingTestStore) DeleteMovingMembers(context.Context, int64, access.GroupPrecondition) error {
 	if s.deleteErr != nil {
 		return s.deleteErr
 	}
@@ -46,7 +44,7 @@ func TestDeleteAdminAccessGroupMovesMembersThroughTheStore(t *testing.T) {
 	store := &memberMovingTestStore{accessGroupHandlerTestStore: newAccessGroupHandlerTestStore()}
 	handler := NewAccessGroupHandler(store)
 
-	if err := handler.DeleteAdminAccessGroup(tenancy.WithContext(t.Context(), tenancy.Context{OrganizationID: accessGroupHandlerOrganizationID, AccountID: 1}), 5, access.GroupPrecondition{Any: true}); err != nil {
+	if err := handler.DeleteAdminAccessGroup(t.Context(), 5, access.GroupPrecondition{Any: true}); err != nil {
 		t.Fatalf("DeleteAdminAccessGroup() error: %v", err)
 	}
 	if store.plainDeletes != 0 || store.movingDelete != 1 {

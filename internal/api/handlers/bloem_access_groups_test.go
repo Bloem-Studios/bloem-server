@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,7 +15,7 @@ import (
 var accessGroupHandlerOrganizationID = uuid.MustParse("10000000-0000-0000-0000-000000000001")
 
 func TestAccessGroupHandlerUsesOnlyValidatedTenantContext(t *testing.T) {
-	store := newAccessGroupHandlerTestStore()
+	store := &tenantRecordingAccessGroupStore{accessGroupHandlerTestStore: newAccessGroupHandlerTestStore()}
 	handler := NewAccessGroupHandler(store)
 	foreignOrganizationID := uuid.MustParse("20000000-0000-0000-0000-000000000002")
 	// The v2 service takes no organization from the caller; only the tenant
@@ -30,6 +31,42 @@ func TestAccessGroupHandlerUsesOnlyValidatedTenantContext(t *testing.T) {
 	if store.lastOrganizationID == foreignOrganizationID {
 		t.Fatal("request-selected organization reached store")
 	}
+}
+
+// tenantRecordingAccessGroupStore records the tenant each store call saw.
+type tenantRecordingAccessGroupStore struct {
+	*accessGroupHandlerTestStore
+	lastOrganizationID uuid.UUID
+}
+
+func (s *tenantRecordingAccessGroupStore) record(ctx context.Context) {
+	tenant, _ := tenancy.FromContext(ctx)
+	s.lastOrganizationID = tenant.OrganizationID
+}
+
+func (s *tenantRecordingAccessGroupStore) List(ctx context.Context) ([]access.Group, error) {
+	s.record(ctx)
+	return s.accessGroupHandlerTestStore.List(ctx)
+}
+
+func (s *tenantRecordingAccessGroupStore) Get(ctx context.Context, id int64) (*access.Group, error) {
+	s.record(ctx)
+	return s.accessGroupHandlerTestStore.Get(ctx, id)
+}
+
+func (s *tenantRecordingAccessGroupStore) Create(ctx context.Context, input access.CreateGroupInput) (*access.Group, error) {
+	s.record(ctx)
+	return s.accessGroupHandlerTestStore.Create(ctx, input)
+}
+
+func (s *tenantRecordingAccessGroupStore) Update(ctx context.Context, id int64, input access.UpdateGroupInput) (*access.Group, error) {
+	s.record(ctx)
+	return s.accessGroupHandlerTestStore.Update(ctx, id, input)
+}
+
+func (s *tenantRecordingAccessGroupStore) Delete(ctx context.Context, id int64) error {
+	s.record(ctx)
+	return s.accessGroupHandlerTestStore.Delete(ctx, id)
 }
 
 func accessGroupRequestWithTenant(req *http.Request) *http.Request {

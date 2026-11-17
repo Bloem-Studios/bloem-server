@@ -6,16 +6,12 @@ import (
 	"sort"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/Silo-Server/silo-server/internal/access"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
 type accessGroupHandlerTestStore struct {
-	nextID             int64
-	groups             map[int64]access.Group
-	lastOrganizationID uuid.UUID
+	nextID int64
+	groups map[int64]access.Group
 }
 
 func newAccessGroupHandlerTestStore() *accessGroupHandlerTestStore {
@@ -25,9 +21,7 @@ func newAccessGroupHandlerTestStore() *accessGroupHandlerTestStore {
 	}
 }
 
-func (s *accessGroupHandlerTestStore) List(ctx context.Context) ([]access.Group, error) {
-	tenant, _ := tenancy.FromContext(ctx)
-	s.lastOrganizationID = tenant.OrganizationID
+func (s *accessGroupHandlerTestStore) List(context.Context) ([]access.Group, error) {
 	groups := make([]access.Group, 0, len(s.groups))
 	for _, group := range s.groups {
 		groups = append(groups, group)
@@ -38,9 +32,7 @@ func (s *accessGroupHandlerTestStore) List(ctx context.Context) ([]access.Group,
 	return groups, nil
 }
 
-func (s *accessGroupHandlerTestStore) Get(ctx context.Context, id int64) (*access.Group, error) {
-	tenant, _ := tenancy.FromContext(ctx)
-	s.lastOrganizationID = tenant.OrganizationID
+func (s *accessGroupHandlerTestStore) Get(_ context.Context, id int64) (*access.Group, error) {
 	group, ok := s.groups[id]
 	if !ok {
 		return nil, access.ErrGroupNotFound
@@ -48,9 +40,7 @@ func (s *accessGroupHandlerTestStore) Get(ctx context.Context, id int64) (*acces
 	return &group, nil
 }
 
-func (s *accessGroupHandlerTestStore) Create(ctx context.Context, input access.CreateGroupInput) (*access.Group, error) {
-	tenant, _ := tenancy.FromContext(ctx)
-	s.lastOrganizationID = tenant.OrganizationID
+func (s *accessGroupHandlerTestStore) Create(_ context.Context, input access.CreateGroupInput) (*access.Group, error) {
 	now := time.Unix(1, 0).UTC()
 	group := access.Group{
 		ID:                       s.nextID,
@@ -76,9 +66,7 @@ func (s *accessGroupHandlerTestStore) Create(ctx context.Context, input access.C
 	return &group, nil
 }
 
-func (s *accessGroupHandlerTestStore) Update(ctx context.Context, id int64, input access.UpdateGroupInput) (*access.Group, error) {
-	tenant, _ := tenancy.FromContext(ctx)
-	s.lastOrganizationID = tenant.OrganizationID
+func (s *accessGroupHandlerTestStore) Update(_ context.Context, id int64, input access.UpdateGroupInput) (*access.Group, error) {
 	group, ok := s.groups[id]
 	if !ok {
 		return nil, access.ErrGroupNotFound
@@ -126,9 +114,7 @@ func (s *accessGroupHandlerTestStore) Update(ctx context.Context, id int64, inpu
 	return &group, nil
 }
 
-func (s *accessGroupHandlerTestStore) Delete(ctx context.Context, id int64) error {
-	tenant, _ := tenancy.FromContext(ctx)
-	s.lastOrganizationID = tenant.OrganizationID
+func (s *accessGroupHandlerTestStore) Delete(_ context.Context, id int64) error {
 	group, ok := s.groups[id]
 	if !ok {
 		return access.ErrGroupNotFound
