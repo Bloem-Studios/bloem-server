@@ -77,15 +77,7 @@ type AccessFilter struct {
 	// "podcast" — they're served by the ABS-compat API instead). Applied by
 	// every query builder that consumes an AccessFilter.
 	ExcludedMediaTypes []string
-
-	// PlaybackDenied is transport metadata for compatibility surfaces (Bloem).
-	// It is deliberately not a catalog predicate: browse-only members can still
-	// see the catalog, but cannot advertise or enter a playback transport.
-	PlaybackDenied bool
-	// DownloadDenied is separate from playback: Jelly's Download transport is
-	// also used by some direct-play clients, but may not bypass offline-download
-	// policy when a custom template permits playback and forbids downloads.
-	DownloadDenied bool
+	BloemTransportDenials
 }
 
 // LibraryScope resolves the libraries a read may touch: the requested

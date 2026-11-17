@@ -4,6 +4,19 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
+// BloemTransportDenials is Bloem's transport metadata on AccessFilter, embedded
+// there by one line so its fields are promoted (filter.PlaybackDenied).
+type BloemTransportDenials struct {
+	// PlaybackDenied is transport metadata for compatibility surfaces. It is
+	// deliberately not a catalog predicate: browse-only members can still see
+	// the catalog, but cannot advertise or enter a playback transport.
+	PlaybackDenied bool
+	// DownloadDenied is separate from playback: Jelly's Download transport is
+	// also used by some direct-play clients, but may not bypass offline-download
+	// policy when a custom template permits playback and forbids downloads.
+	DownloadDenied bool
+}
+
 // FileAllowedByLibraryScope reports whether a file's library membership fits
 // the allowed/disabled library sets alone, ignoring quality ceiling and every
 // other facet of the viewer's access policy.

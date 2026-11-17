@@ -76,7 +76,7 @@ func TestThemeBrowseOnlyAndRevocation(t *testing.T) {
 	h := &BloemThemeSongsHandler{ThemeSongsHandler: &ThemeSongsHandler{Service: themesongs.NewService(store, "test secret"), Sessions: &socketSessionFixture{valid: true, account: &socketUserFixture{user: models.User{Role: models.RoleUser}}}, Users: &socketUserFixture{user: models.User{ID: 7, Enabled: true, AccessPolicyRevision: 2}}, Resolver: viewer}}
 	identity := themesongs.Identity{UserID: 7, ProfileID: "profile", SessionID: "session", PolicyRevision: 2}
 	denied := access.SetScope(context.Background(), access.Scope{})
-	grant, err := h.Authorize(denied, identity, "movie", "7", catalog.AccessFilter{PlaybackDenied: true}, nil, time.Now().Add(time.Minute))
+	grant, err := h.Authorize(denied, identity, "movie", "7", catalog.AccessFilter{BloemTransportDenials: catalog.BloemTransportDenials{PlaybackDenied: true}}, nil, time.Now().Add(time.Minute))
 	if err == nil || grant.Grant != "" || grant.URL != "" {
 		t.Error("browse-only minted theme access")
 	}
