@@ -55,6 +55,13 @@ type Profile struct {
 	MaxPlaybackQuality string
 	CreatedAt          string
 	UpdatedAt          string
+
+	// Bloem: the profile's organization and access group, and its own
+	// sign-in (bloem_profiles.go in pgstore reads and writes them).
+	OrganizationID     string
+	AccessGroupID      *int64
+	LoginEmail         string
+	CredentialRevision int64
 }
 
 // DeviceSettingEntry is a server-managed setting override scoped to one
