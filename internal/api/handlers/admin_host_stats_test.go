@@ -39,7 +39,8 @@ func TestHandleGetHostStats_NoSourceConfigured(t *testing.T) {
 }
 
 func TestHandleGetHostStats_UnsupportedSnapshot(t *testing.T) {
-	h := &AdminHandler{HostStatsSource: fakeHostStatsSource{snapshot: nodemetrics.Snapshot{Available: false}}}
+	h := &AdminHandler{}
+	h.HostStatsSource = fakeHostStatsSource{snapshot: nodemetrics.Snapshot{Available: false}}
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/host-stats", nil)
 	rr := httptest.NewRecorder()
@@ -62,7 +63,8 @@ func TestHandleGetHostStats_UnsupportedSnapshot(t *testing.T) {
 
 func TestHandleGetHostStats_SupportedSnapshot(t *testing.T) {
 	sampledAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	h := &AdminHandler{HostStatsSource: fakeHostStatsSource{snapshot: nodemetrics.Snapshot{
+	h := &AdminHandler{}
+	h.HostStatsSource = fakeHostStatsSource{snapshot: nodemetrics.Snapshot{
 		Available: true,
 		SampledAt: sampledAt,
 		System: &nodemetrics.SystemStats{
@@ -72,7 +74,7 @@ func TestHandleGetHostStats_SupportedSnapshot(t *testing.T) {
 			NetRxBps:   1000,
 			NetTxBps:   500,
 		},
-	}}}
+	}}
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/host-stats", nil)
 	rr := httptest.NewRecorder()

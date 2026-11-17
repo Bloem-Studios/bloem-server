@@ -77,8 +77,18 @@ var errTenantMembership = errors.New("tenant membership")
 // bloemAdminHandlerExt holds every Bloem-only AdminHandler dependency so the
 // Silo-owned struct carries a single embedded line.
 type bloemAdminHandlerExt struct {
-	sessionRepo    adminUserSessionRepository
-	profileHandler *ProfileHandler
+	// sessionRepo overrides the login-session store the account session
+	// routes use (tests); nil reads Silo's loginSessions (adminSessionRepo).
+	sessionRepo adminUserSessionRepository
+	// HostStatsSource samples host resource usage for the admin dashboard.
+	HostStatsSource HostStatsSource
+	// BloemOnUserSessionsRevoked is the account session-revoked hook for
+	// callers that fail closed.
+	BloemOnUserSessionsRevoked func(ctx context.Context, userID int) error
+	// OnUserProfileSessionsRevoked invalidates sessions bound to the listed
+	// profiles of an account.
+	OnUserProfileSessionsRevoked func(ctx context.Context, userID int, profileIDs []string) error
+	profileHandler               *ProfileHandler
 	// tenantStore gates tenant-scoped account creation (bloem-park growth
 	// G2); nil means tenants are not wired and an organization_id request
 	// is refused.

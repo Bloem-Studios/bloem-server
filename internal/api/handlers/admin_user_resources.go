@@ -67,6 +67,19 @@ type adminUserSessionRepository interface {
 	RevokeAllByImpersonator(ctx context.Context, impersonatorUserID int) error
 }
 
+// adminSessionRepo is the login-session store the account session routes use:
+// an explicitly set sessionRepo, else the session repository Silo's
+// NewAdminHandler builds from the pool, else nil.
+func (h *AdminHandler) adminSessionRepo() adminUserSessionRepository {
+	if h.sessionRepo != nil {
+		return h.sessionRepo
+	}
+	if repo, ok := h.loginSessions.(adminUserSessionRepository); ok {
+		return repo
+	}
+	return nil
+}
+
 type adminUserResources struct {
 	user  *models.User
 	store userstore.UserStore
@@ -601,11 +614,11 @@ func (h *AdminHandler) HandleListUserAuthSessions(w http.ResponseWriter, r *http
 	if !ok {
 		return
 	}
-	if h.sessionRepo == nil {
+	if h.adminSessionRepo() == nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions are not configured")
 		return
 	}
-	sessions, err := h.sessionRepo.ListByUser(r.Context(), resources.user.ID)
+	sessions, err := h.adminSessionRepo().ListByUser(r.Context(), resources.user.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list authentication sessions")
 		return
@@ -651,7 +664,7 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 	if !ok {
 		return
 	}
-	if h.sessionRepo == nil {
+	if h.adminSessionRepo() == nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions are not configured")
 		return
 	}
@@ -660,7 +673,7 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusBadRequest, "bad_request", "Session ID is required")
 		return
 	}
-	session, err := h.sessionRepo.GetByID(r.Context(), sessionID)
+	session, err := h.adminSessionRepo().GetByID(r.Context(), sessionID)
 	if err != nil {
 		if errors.Is(err, auth.ErrSessionNotFound) {
 			w.WriteHeader(http.StatusNoContent)
@@ -695,7 +708,7 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 		}
 		scopedProfileID = *session.ProfileID
 	}
-	if err := h.sessionRepo.RevokeByUserAndSession(r.Context(), resources.user.ID, sessionID); err != nil {
+	if err := h.adminSessionRepo().RevokeByUserAndSession(r.Context(), resources.user.ID, sessionID); err != nil {
 		if errors.Is(err, auth.ErrSessionNotFound) {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -730,14 +743,14 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 	if !ok {
 		return
 	}
-	if h.sessionRepo == nil {
+	if h.adminSessionRepo() == nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions are not configured")
 		return
 	}
 	organizationID := adminResourceOrganization(r.Context())
 	var scopedProfileIDs []string
 	if organizationID == uuid.Nil {
-		if err := h.sessionRepo.RevokeAllByUser(r.Context(), resources.user.ID); err != nil {
+		if err := h.adminSessionRepo().RevokeAllByUser(r.Context(), resources.user.ID); err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke authentication sessions")
 			return
 		}
@@ -753,7 +766,7 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 		}
 		nativeRevoked := false
 		if err := sessioninvalidation.Run(r.Context(), func(invalidationCtx context.Context) error {
-			if err := h.sessionRepo.RevokeAllByUserAndProfiles(invalidationCtx, resources.user.ID, scopedProfileIDs); err != nil {
+			if err := h.adminSessionRepo().RevokeAllByUserAndProfiles(invalidationCtx, resources.user.ID, scopedProfileIDs); err != nil {
 				return err
 			}
 			// Bloem: the membership itself loses its standing, and an account

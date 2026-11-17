@@ -169,7 +169,6 @@ type AdminHandler struct {
 	accountProvisioner *auth.AccountProvisioner
 	DetailSvc          *catalog.DetailService
 	StatsSource        AdminStatsSource
-	HostStatsSource    HostStatsSource
 	// WatchProviders lists the registered watch providers for the uncached
 	// stats path. Nil on a deployment without the watchsync registry, which
 	// degrades to "only providers with stored activity".
@@ -195,8 +194,6 @@ type AdminHandler struct {
 	BootstrapSensitiveValues     map[string]string
 	RedisBootstrapAvailable      bool
 	OnUserSessionsRevoked        func(ctx context.Context, userID int)
-	BloemOnUserSessionsRevoked   func(ctx context.Context, userID int) error // Bloem: callers that fail closed
-	OnUserProfileSessionsRevoked func(ctx context.Context, userID int, profileIDs []string) error
 	OnServerSettingUpdated       func(ctx context.Context, key, value string)
 	RestartStatus                *ServerRestartStatusTracker
 	CatalogSearchStatus          catalog.CatalogSearchStatusProvider
@@ -246,9 +243,7 @@ func NewAdminHandler(
 		logLevelCounts:     cache.NewTTLCache[adminLogLevelCounts](),
 	}
 	if pool != nil {
-		sessions := auth.NewSessionRepository(pool)
-		h.sessionRepo = sessions
-		h.loginSessions = sessions
+		h.loginSessions = auth.NewSessionRepository(pool)
 	}
 	return h
 }
