@@ -404,8 +404,7 @@ type SessionLimits struct {
 	TenantFrozen        bool
 }
 
-// SessionLimitProvider returns the current admission limits for a playback
-// user. Bloem profile-aware admission is installed through SetProfileLimitProvider.
+// SessionLimitProvider returns the current admission limits for a user.
 type SessionLimitProvider func(ctx context.Context, userID int) (SessionLimits, error)
 
 // AdmissionRequest is the fact set passed to an optional policy admission
