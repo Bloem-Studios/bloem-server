@@ -146,19 +146,28 @@ func (h *bloemSocketAuthority) validate(ctx context.Context, identity evt.Socket
 	return validated, &principal, nil
 }
 
-// validateKey admits a monitoring API key as an HTTP request with that key is
-// admitted: Silo's key checks decide it, in the tenant its owner's requests
-// resolve to. A key holds no login session to bind, so its ticket carries no
-// Bloem binding, and one that does was not minted for a key.
+// validateKey admits an API key as an HTTP request with that key is admitted:
+// Silo's key checks decide it, in the tenant its owner's requests resolve to.
+// A key holds no login session to bind, so its ticket carries no Bloem
+// binding, and one that does was not minted for a key. A user key's ticket
+// may name the profile the key acts as (Silo's profile keys, or an account
+// key sent with X-Profile-Id); that profile must belong to the same
+// organization, as it must for a sign-in ticket.
 func (h *bloemSocketAuthority) validateKey(ctx context.Context, identity evt.SocketIdentity) (context.Context, *auth.Claims, error) {
-	if identity.AuthorityBinding != "" || identity.SessionID != "" || identity.ProfileID != "" {
+	if identity.AuthorityBinding != "" || identity.SessionID != "" {
 		return ctx, nil, evt.ErrSocketTicket
 	}
 	checkCtx, stop := context.WithTimeout(ctx, 2*time.Second)
+	defer stop()
 	tenant, err := h.tenants.Resolve(checkCtx, identity.UserID, nil, true)
-	stop()
 	if err != nil {
 		return ctx, nil, evt.ErrSocketTicket
+	}
+	if identity.ProfileID != "" {
+		organization, err := h.profiles.ProfileOrganization(checkCtx, identity.UserID, identity.ProfileID)
+		if err != nil || organization == uuid.Nil || organization != tenant.OrganizationID {
+			return ctx, nil, evt.ErrSocketTicket
+		}
 	}
 	return h.base(tenancy.WithContext(ctx, tenant), identity)
 }

@@ -371,8 +371,9 @@ func TestBloemEventsSocketAccountSessionDeviceCapture(t *testing.T) {
 // bloemKeyTenants resolves an account's own requests to its legacy tenant, as
 // the tenant middleware does for an API key.
 type bloemKeyTenants struct {
-	tenant tenancy.Context
-	err    error
+	tenant   tenancy.Context
+	err      error
+	profiles map[string]uuid.UUID
 }
 
 func (s *bloemKeyTenants) Resolve(_ context.Context, accountID int, organization *uuid.UUID, legacy bool) (tenancy.Context, error) {
@@ -382,8 +383,11 @@ func (s *bloemKeyTenants) Resolve(_ context.Context, accountID int, organization
 	return s.tenant, s.err
 }
 
-func (s *bloemKeyTenants) ProfileOrganization(context.Context, int, string) (uuid.UUID, error) {
-	return uuid.Nil, errors.New("a key has no profile")
+func (s *bloemKeyTenants) ProfileOrganization(_ context.Context, accountID int, profileID string) (uuid.UUID, error) {
+	if organization, ok := s.profiles[profileID]; ok && accountID == s.tenant.AccountID {
+		return organization, nil
+	}
+	return uuid.Nil, errors.New("no such profile")
 }
 
 // A monitoring key passes Bloem's socket wrapper to Silo's key checks, in its
@@ -415,9 +419,9 @@ func TestBloemEventsSocketAdmitsMonitorKey(t *testing.T) {
 	}
 
 	for name, forged := range map[string]func(*evt.SocketIdentity){
-		"binding": func(i *evt.SocketIdentity) { i.AuthorityBinding = `{"version":1}` },
-		"session": func(i *evt.SocketIdentity) { i.SessionID = "session" },
-		"profile": func(i *evt.SocketIdentity) { i.ProfileID = "profile" },
+		"binding":                          func(i *evt.SocketIdentity) { i.AuthorityBinding = `{"version":1}` },
+		"session":                          func(i *evt.SocketIdentity) { i.SessionID = "session" },
+		"profile outside the organization": func(i *evt.SocketIdentity) { i.ProfileID = "profile" },
 	} {
 		changed := proof
 		forged(&changed)
@@ -436,5 +440,52 @@ func TestBloemEventsSocketAdmitsMonitorKey(t *testing.T) {
 	}
 	if _, err := h.Mint(t.Context(), identity); err == nil {
 		t.Fatal("a key without admin:monitor:read minted a ticket")
+	}
+}
+
+// Silo's user keys open the events socket as the profile they act as. On
+// Bloem that profile must belong to the organization the key's owner resolves
+// to, as a sign-in ticket's profile must; Silo's key checks then decide.
+func TestBloemEventsSocketAdmitsProfileKeyInItsOrganization(t *testing.T) {
+	keys := new(socketKeyFixture)
+	keys.key.Store(&models.APIKeyMetadata{ID: 3, UserID: 7, ProfileID: "kid", Scopes: []string{auth.ScopeWatchRead}, Revision: 40})
+	users := &socketUserFixture{user: models.User{ID: 7, Role: "user", Enabled: true, AccountIncarnationID: uuid.New()}}
+	organization := uuid.New()
+	tenants := &bloemKeyTenants{
+		tenant:   tenancy.Context{AccountID: 7, OrganizationID: organization, MembershipID: uuid.New(), PolicyRevision: 1, SecurityRevision: 1, Legacy: true, OrganizationDefault: true},
+		profiles: map[string]uuid.UUID{"kid": organization, "elsewhere": uuid.New()},
+	}
+	sessions := &bloemSocketSessionFixture{socketSessionFixture: socketSessionFixture{valid: true, account: users}}
+	decide := func(context.Context, apimw.ActingAdminRequest) (bool, error) { return true, nil }
+	viewer := &socketViewerFixture{scope: access.Scope{UserID: 7, ProfileID: "kid", ProfileVerified: true, PolicyRevision: 1}}
+	h := NewBloemEventsSocketV2(NewEventsHandler(evt.NewHub("bloem-profile-key-socket-test", nil), nil, nil, nil, nil, nil, nil), evt.NewSocketTicketStore(nil, evt.SocketAudienceEvents), sessions, users, viewer, decide, keys, tenants, tenants, "")
+	identity := evt.SocketIdentity{UserID: 7, Role: "user", APIKeyID: 3, ProfileID: "kid", AccessExpiresAt: time.Now().Add(evt.APIKeySocketMaxLifetime)}
+
+	ticket, err := h.Mint(t.Context(), identity)
+	if err != nil {
+		t.Fatalf("profile key mint: %v", err)
+	}
+	proof, err := h.Tickets.Consume(t.Context(), ticket)
+	if err != nil || proof.ProfileID != "kid" || proof.AuthorityBinding != "" {
+		t.Fatalf("profile key ticket = %+v, %v", proof, err)
+	}
+	validated, claims, err := h.Validate(t.Context(), proof)
+	if err != nil || claims.TokenType != auth.TokenTypeAPIKey || claims.APIKeyProfileID != "kid" || claims.Role != "user" {
+		t.Fatalf("profile key claims = %+v, %v", claims, err)
+	}
+	if tenant, ok := tenancy.FromContext(validated); !ok || tenant != tenants.tenant {
+		t.Fatalf("profile key socket tenant = %+v, %v", tenant, ok)
+	}
+
+	for name, profile := range map[string]string{"profile in another organization": "elsewhere", "unknown profile": "missing"} {
+		changed := proof
+		changed.ProfileID = profile
+		if _, _, err := h.Validate(t.Context(), changed); !errors.Is(err, evt.ErrSocketTicket) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	tenants.profiles["kid"] = uuid.New()
+	if _, _, err := h.Validate(t.Context(), proof); !errors.Is(err, evt.ErrSocketTicket) {
+		t.Fatalf("profile moved to another organization: %v", err)
 	}
 }
