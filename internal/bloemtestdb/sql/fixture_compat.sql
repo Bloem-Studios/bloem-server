@@ -231,49 +231,54 @@ DROP FUNCTION IF EXISTS public.bloem_fixture_heartbeat_cleanup();
 -- Upstream fixtures copy media_requests into a test schema with
 -- CREATE TABLE ... (LIKE public.media_requests INCLUDING ALL). LIKE keeps
 -- Bloem's NOT NULL organization_id but copies no trigger, so the copy would
--- refuse the bare request inserts public.media_requests accepts. When such a
--- copy is created, give it the production trigger that fills organization_id
--- (bloem_media_requests_default_organization).
-CREATE OR REPLACE FUNCTION public.bloem_fixture_copied_media_requests()
-RETURNS event_trigger
+-- refuse the bare request inserts public.media_requests accepts. LIKE does
+-- copy column defaults, so the column gets a placeholder default: a copy's
+-- bare insert takes the placeholder (a copy has no foreign keys, and nothing
+-- reads a copy's organization). On public.media_requests a trigger that sorts
+-- before the production one turns the placeholder back into NULL, so the
+-- production trigger still files the request under the requester's
+-- organization. It does so armed or not: only this shim's default sets the
+-- placeholder.
+--
+-- Everything here is an ordinary table object, so a dump of a test database
+-- restores as a role that is not a superuser (internal/backup's restore drill
+-- does exactly that). An event trigger would not: only a superuser can create
+-- one.
+CREATE OR REPLACE FUNCTION public.bloem_fixture_media_request_placeholder_organization()
+RETURNS uuid
+LANGUAGE sql
+IMMUTABLE
+AS $$ SELECT 'b10e0000-0000-4000-8000-00000000f1c5'::uuid $$;
+
+CREATE OR REPLACE FUNCTION public.bloem_fixture_media_request_unset_placeholder()
+RETURNS trigger
 LANGUAGE plpgsql
 AS $$
-DECLARE
-    copy regclass;
 BEGIN
-    IF NOT public.bloem_fixture_compat_armed() THEN
-        RETURN;
+    IF NEW.organization_id = public.bloem_fixture_media_request_placeholder_organization() THEN
+        NEW.organization_id := NULL;
     END IF;
-    FOR copy IN
-        -- One CREATE TABLE ... LIKE reports the table more than once.
-        SELECT DISTINCT cmd.objid::regclass
-        FROM pg_event_trigger_ddl_commands() AS cmd
-        JOIN pg_class AS rel ON rel.oid = cmd.objid
-        JOIN pg_namespace AS ns ON ns.oid = rel.relnamespace
-        WHERE cmd.object_type = 'table'
-          AND rel.relname = 'media_requests'
-          AND ns.nspname <> 'public'
-          AND NOT EXISTS (
-              SELECT 1 FROM pg_trigger AS trg
-              WHERE trg.tgrelid = rel.oid AND trg.tgname = 'media_requests_default_organization')
-    LOOP
-        EXECUTE format('CREATE TRIGGER media_requests_default_organization BEFORE INSERT ON %s '
-            'FOR EACH ROW EXECUTE FUNCTION public.bloem_media_requests_default_organization()', copy);
-    END LOOP;
+    RETURN NEW;
 END;
 $$;
 
--- An event trigger needs a superuser, which the test database bootstrap is.
--- Installed by another role, the shim leaves the event trigger out.
+DROP TRIGGER IF EXISTS a_bloem_fixture_media_request_placeholder ON public.media_requests;
+CREATE TRIGGER a_bloem_fixture_media_request_placeholder
+BEFORE INSERT ON public.media_requests
+FOR EACH ROW EXECUTE FUNCTION public.bloem_fixture_media_request_unset_placeholder();
+
+ALTER TABLE public.media_requests
+    ALTER COLUMN organization_id SET DEFAULT public.bloem_fixture_media_request_placeholder_organization();
+
+-- An earlier version gave each copy the production trigger from an event
+-- trigger, which a dump restored as an ordinary role cannot recreate.
 DO $$
 BEGIN
-    IF (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) THEN
-        DROP EVENT TRIGGER IF EXISTS a_bloem_fixture_copied_media_requests;
-        CREATE EVENT TRIGGER a_bloem_fixture_copied_media_requests ON ddl_command_end
-            WHEN TAG IN ('CREATE TABLE')
-            EXECUTE FUNCTION public.bloem_fixture_copied_media_requests();
-    ELSE
-        RAISE NOTICE 'bloem fixture compat: not a superuser, copied media_requests tables get no organization trigger';
+    IF EXISTS (SELECT 1 FROM pg_event_trigger WHERE evtname = 'a_bloem_fixture_copied_media_requests') THEN
+        DROP EVENT TRIGGER a_bloem_fixture_copied_media_requests;
     END IF;
+EXCEPTION WHEN insufficient_privilege THEN
+    RAISE NOTICE 'bloem fixture compat: not a superuser, the old event trigger a_bloem_fixture_copied_media_requests stays';
 END;
 $$;
+DROP FUNCTION IF EXISTS public.bloem_fixture_copied_media_requests();

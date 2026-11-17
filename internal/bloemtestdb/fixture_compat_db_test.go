@@ -121,10 +121,12 @@ func TestFixtureCompatArmsWithoutTheSettingInATestDatabase(t *testing.T) {
 
 // Upstream fixtures copy media_requests into a test schema with LIKE ...
 // INCLUDING ALL, which keeps Bloem's NOT NULL organization_id but not the
-// trigger that fills it. The shim gives the copy that production trigger, so
-// a bare request insert lands in the account's organization as it would in
-// public.media_requests.
-func TestFixtureCopiedMediaRequestsFillTheOrganization(t *testing.T) {
+// trigger that fills it. The shim's placeholder default lets a bare insert
+// into the copy succeed, while a bare insert into public.media_requests still
+// lands in the requester's organization. The shim must also stay restorable
+// by an ordinary role (internal/backup's restore drill), so it creates no
+// event trigger.
+func TestFixtureCopiedMediaRequestsAcceptBareInserts(t *testing.T) {
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		if os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
@@ -138,6 +140,13 @@ func TestFixtureCopiedMediaRequestsFillTheOrganization(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Close()
+	var eventTriggers int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_event_trigger`).Scan(&eventTriggers); err != nil {
+		t.Fatal(err)
+	}
+	if eventTriggers != 0 {
+		t.Fatalf("the test database has %d event triggers; a dump of it cannot be restored by an ordinary role", eventTriggers)
+	}
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -147,17 +156,32 @@ func TestFixtureCopiedMediaRequestsFillTheOrganization(t *testing.T) {
 		CREATE TABLE fixture_compat_requests.media_requests (LIKE public.media_requests INCLUDING ALL)`); err != nil {
 		t.Fatal(err)
 	}
-	var org, want *string
+	var copied *string
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO fixture_compat_requests.media_requests (id, media_type, tmdb_id, title, status, requested_by_user_id, requested_by_profile_id)
 		VALUES ('fixture-compat-request', 'series', 4242, 'Series', 'approved', -1, 'requester')
-		RETURNING organization_id::text`).Scan(&org); err != nil {
+		RETURNING organization_id::text`).Scan(&copied); err != nil {
 		t.Fatalf("bare insert into a copied media_requests: %v", err)
 	}
-	if err := tx.QueryRow(ctx, `SELECT public.bloem_media_request_fallback_organization(-1)::text`).Scan(&want); err != nil || want == nil {
+	if copied == nil {
+		t.Fatal("copied media_requests row has no organization_id")
+	}
+
+	var account int
+	if err := tx.QueryRow(ctx, `INSERT INTO users (email, username, password_hash, role, enabled) VALUES ('fixture-compat-requester@example.test', 'fixture-compat-requester', 'hash', 'user', true) RETURNING id`).Scan(&account); err != nil {
+		t.Fatalf("seed requester: %v", err)
+	}
+	var org, want *string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO public.media_requests (id, media_type, tmdb_id, title, status, requested_by_user_id, requested_by_profile_id)
+		VALUES ('fixture-compat-public-request', 'series', 4242, 'Series', 'approved', $1, 'requester')
+		RETURNING organization_id::text`, account).Scan(&org); err != nil {
+		t.Fatalf("bare insert into public.media_requests: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT public.bloem_media_request_fallback_organization($1)::text`, account).Scan(&want); err != nil || want == nil {
 		t.Fatalf("fallback organization: %v %v", want, err)
 	}
 	if org == nil || *org != *want {
-		t.Fatalf("organization_id = %v, want %s", org, *want)
+		t.Fatalf("public organization_id = %v, want the requester's %s", org, *want)
 	}
 }

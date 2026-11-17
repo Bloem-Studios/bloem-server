@@ -176,9 +176,15 @@ deletes it.
 
 A Silo test that copies `media_requests` into its own schema
 (`CREATE TABLE ... (LIKE public.media_requests INCLUDING ALL)`) keeps Bloem's NOT NULL
-`organization_id` but no trigger. An event trigger in the shim gives each such copy the
-production trigger that fills that column
-(`TestFixtureCopiedMediaRequestsFillTheOrganization`).
+`organization_id` but no trigger. LIKE does copy column defaults, so the shim gives that
+column a placeholder default: a bare insert into the copy succeeds, and on
+`public.media_requests` a shim trigger turns the placeholder back into NULL before the
+production trigger fills in the requester's organization
+(`TestFixtureCopiedMediaRequestsAcceptBareInserts`).
+
+The shim creates only ordinary table objects, never an event trigger. Silo's backup tests
+restore a dump of the test database as a role that is not a superuser, and only a
+superuser can create an event trigger.
 
 The shim acts only in a database whose name marks it as a test database, and production
 never has it. When a Silo test clashes with Bloem's schema, extend the shim; never edit
