@@ -43,6 +43,10 @@ const importerModules: Record<string, Record<string, string>> = {
   // ebook request tabs around Silo's and imports Silo's page itself.
   "App.tsx": {
     "pages/Requests.tsx": "../BloemRequests.tsx",
+    // Home carries Bloem's campaign rail, and the admin requests route adds
+    // the audiobook and ebook queues around Silo's page.
+    "pages/Home.tsx": "../../pages/BloemHome.tsx",
+    "pages/AdminRequests.tsx": "../BloemAdminRequests.tsx",
     // The app shell's one route outlet sits behind the preview's route gate.
     "npm:react-router": "adapters/appRouter.tsx",
     // The preview chrome sits inside Silo's branding provider.

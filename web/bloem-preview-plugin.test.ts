@@ -77,7 +77,11 @@ describe("bloemPreview importer-scoped swaps", () => {
       "@/i18n/index.ts",
       `${ADAPTERS}/i18nWithBloem.ts`,
     ],
-    ["components/admin/access-groups/AccessGroupPermissionsSection.tsx", "@/i18n/index.ts", `${ADAPTERS}/i18nWithBloem.ts`],
+    [
+      "components/admin/access-groups/AccessGroupPermissionsSection.tsx",
+      "@/i18n/index.ts",
+      `${ADAPTERS}/i18nWithBloem.ts`,
+    ],
     ["lib/documentTitle.ts", "@/i18n/index.ts", `${ADAPTERS}/i18nWithBloem.ts`],
   ])("gives %s Bloem's %s", async (importer, source, adapter) => {
     await expect(resolveFrom(importer, source)).resolves.toBe(path.join(SRC, adapter));
@@ -92,6 +96,25 @@ describe("bloemPreview importer-scoped swaps", () => {
     await expect(resolveFrom("components/Layout.tsx", "react-router")).resolves.toBeNull();
     await expect(
       resolveFrom(`bloem/preview/adapters/appRouter.tsx`, "react-router"),
+    ).resolves.toBeNull();
+  });
+});
+
+describe("bloemPreview app routes", () => {
+  it("gives the app's home and admin requests routes Bloem's pages", async () => {
+    await expect(resolveFrom("App.tsx", "@/pages/Home")).resolves.toBe(
+      path.join(SRC, "pages/BloemHome.tsx"),
+    );
+    await expect(resolveFrom("App.tsx", "@/pages/AdminRequests")).resolves.toBe(
+      path.join(SRC, "bloem/BloemAdminRequests.tsx"),
+    );
+  });
+
+  it("leaves the original pages to Bloem's own imports", async () => {
+    // null: the plugin leaves the import to Vite, which resolves the original.
+    await expect(resolveFrom("pages/BloemHome.tsx", "./Home")).resolves.toBeNull();
+    await expect(
+      resolveFrom("bloem/BloemAdminRequests.tsx", "@/pages/AdminRequests"),
     ).resolves.toBeNull();
   });
 });
