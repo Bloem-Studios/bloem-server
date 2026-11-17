@@ -185,11 +185,6 @@ type ImageCacheProcessor struct {
 	// a background worker. Zero means immediateImageCacheIdleTimeout.
 	idleWaitTimeout time.Duration
 
-	// jobTimeout bounds a single job's download/read, resize, and upload, so
-	// one stalled network call cannot block processClaimedJobs' wg.Wait()
-	// forever. Zero means ImageCacheJobTimeout.
-	jobTimeout time.Duration
-
 	// runGate serializes the scheduled queue drain and explicit full backfill.
 	// They are separate TaskManager tasks, so TaskManager's per-key guard cannot
 	// prevent them from racing each other through the shared durable queue. A
@@ -249,7 +244,6 @@ func NewImageCacheProcessorWithTargets(
 		targets:         targets,
 		logger:          slog.Default(),
 		idleWaitTimeout: immediateImageCacheIdleTimeout,
-		jobTimeout:      ImageCacheJobTimeout,
 		runGate:         make(chan struct{}, 1),
 	}
 	p.runGate <- struct{}{}
@@ -529,13 +523,9 @@ loop:
 			defer wg.Done()
 			defer func() { <-sem }()
 			defer release()
-			jobTimeout := p.jobTimeout
-			if jobTimeout <= 0 {
-				jobTimeout = ImageCacheJobTimeout
-			}
-			jobCtx, cancel := context.WithTimeout(ctx, jobTimeout)
-			defer cancel()
+			jobCtx, cancelJob := context.WithTimeout(ctx, ImageCacheJobTimeout)
 			result := p.processOne(jobCtx, job)
+			cancelJob()
 			mu.Lock()
 			switch result.outcome {
 			case "succeeded":

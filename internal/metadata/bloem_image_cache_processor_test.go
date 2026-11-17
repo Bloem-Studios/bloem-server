@@ -1,7 +1,8 @@
 package metadata
 
-// Bloem per-job image-cache timeout coverage moved out of Silo's
-// image_cache_processor_test.go.
+// Per-job image-cache timeout coverage. Silo bounds each job by
+// ImageCacheJobTimeout itself; this test pins that a job's context carries
+// that deadline, so one stalled download or upload cannot block a batch.
 
 import (
 	"context"
@@ -47,72 +48,13 @@ func TestImageCacheProcessorAppliesPerJobTimeout(t *testing.T) {
 	}
 }
 
-func TestImageCacheProcessorStuckJobDoesNotBlockBatchForever(t *testing.T) {
-	// Reproduces the production deadlock this fix closes: one job's CacheImage
-	// call hangs indefinitely (e.g. a stalled upload). Without a per-job
-	// timeout, processClaimedJobs' wg.Wait() never returns, which holds
-	// runUntilIdle's single-execution gate forever — no future scheduler tick
-	// can start a new run to reclaim the lease.
-	stuckJob := &models.MetadataImageCacheJob{
-		ID:                6,
-		TargetType:        ImageCacheTargetEpisode,
-		TargetContentID:   "episode-tvdb-1-1-1",
-		SourcePath:        "tvdb://banners/stuck.jpg",
-		ProviderID:        "tvdb",
-		ProviderContentID: "1",
-		ContentType:       "series",
-		ImageType:         ImageCacheImageStill,
-		SeasonNumber:      intPointer(1),
-		EpisodeNumber:     intPointer(1),
-	}
-	jobs := &fakeImageCacheJobs{claimed: []*models.MetadataImageCacheJob{stuckJob}}
-	cacher := &bloemContextImageCacher{block: make(chan struct{})} // never closed: only returns via ctx cancellation
-	resolver := &fakeImageResolver{url: "https://artworks.thetvdb.com/banners/stuck.jpg"}
-	episodes := &fakeEpisodeStillUpdater{}
-
-	processor := NewImageCacheProcessor(jobs, cacher, resolver, nil, episodes)
-	processor.jobTimeout = 20 * time.Millisecond
-
-	done := make(chan struct{})
-	var stats ImageCacheRunStats
-	var runErr error
-	go func() {
-		stats, runErr = processor.RunOnce(context.Background(), "test-worker", 10, 1)
-		close(done)
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("RunOnce did not return; a stuck job blocked the batch forever")
-	}
-	if runErr != nil {
-		t.Fatalf("RunOnce() error = %v", runErr)
-	}
-	if stats.Failed != 1 {
-		t.Fatalf("Failed = %d, want 1", stats.Failed)
-	}
-	if jobs.failedID != stuckJob.ID {
-		t.Fatalf("failedID = %d, want %d", jobs.failedID, stuckJob.ID)
-	}
-}
-
-// bloemContextImageCacher records the context CacheImage receives and can
-// block until that context ends, standing in for a stalled download/upload.
+// bloemContextImageCacher records the context CacheImage receives.
 type bloemContextImageCacher struct {
 	result  *CacheImageResult
 	lastCtx context.Context
-	block   <-chan struct{}
 }
 
 func (f *bloemContextImageCacher) CacheImage(ctx context.Context, _ CacheImageRequest) (*CacheImageResult, error) {
 	f.lastCtx = ctx
-	if f.block != nil {
-		select {
-		case <-f.block:
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
 	return f.result, nil
 }
