@@ -5,7 +5,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/models"
 )
 
 // TestBloemEntitlementBulkAPIKeyScope covers Bloem's admin:entitlements:bulk
@@ -71,5 +74,33 @@ func TestBloemEntitlementAccountsAPIKeyScope(t *testing.T) {
 				t.Fatalf("apiKeyScopesAllow(%v, %s %s) = %v, want %v", tt.scopes, tt.method, tt.path, got, tt.want)
 			}
 		})
+	}
+}
+
+// TestBloemAPIKeyClaimsCarryAccountIncarnation: an API key's claims carry the
+// owner's account incarnation, so a key cannot outlive an account that was
+// deleted and recreated under the same ID.
+func TestBloemAPIKeyClaimsCarryAccountIncarnation(t *testing.T) {
+	key := &models.APIKey{ID: 1, UserID: 7, Key: "sa_test", Scopes: []string{auth.ScopeAdminUsers}}
+	incarnation := uuid.MustParse("11111111-2222-4333-8444-555555555555")
+	owner := &models.User{ID: 7, AccountIncarnationID: incarnation, Role: "admin", Enabled: true}
+	am := NewAuthMiddleware(nil, nil, &fakeAPIKeyValidator{key: key}, &fakeAPIKeyUserLoader{user: owner})
+
+	var got string
+	handler := am.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if claims := GetClaims(r.Context()); claims != nil {
+			got = claims.AccountIncarnationID
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/api/v2/admin/users", nil)
+	req.Header.Set("Authorization", "Bearer sa_test")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if got != incarnation.String() {
+		t.Fatalf("claims account incarnation = %q, want %q", got, incarnation)
 	}
 }

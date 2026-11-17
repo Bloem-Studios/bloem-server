@@ -157,28 +157,6 @@ var apiKeyScopeRoutes = map[string][]scopeRoute{
 		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/access-groups$`)},
 		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/access-groups/[0-9]+$`)},
 	},
-	auth.ScopeAdminEntitlementsBulk: {
-		{http.MethodGet, regexp.MustCompile(`^/api/bloem/v2/admin/platform/organizations/` + bloemOrganizationIDPattern + `/entitlement-cohorts$`)},
-		{http.MethodGet, regexp.MustCompile(`^/api/bloem/v2/admin/platform/organizations/` + bloemOrganizationIDPattern + `/entitlement-cohorts/` + bloemOrganizationIDPattern + `$`)},
-		{http.MethodGet, regexp.MustCompile(`^/api/bloem/v2/admin/platform/organizations/` + bloemOrganizationIDPattern + `/accounts/[0-9]+/entitlement$`)},
-		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/organizations/` + bloemOrganizationIDPattern + `/entitlement-snapshots$`)},
-		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/organizations/` + bloemOrganizationIDPattern + `/entitlement-bulk/policy-previews$`)},
-		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/organizations/` + bloemOrganizationIDPattern + `/entitlement-bulk/policy-jobs$`)},
-		{http.MethodGet, regexp.MustCompile(`^/api/bloem/v2/admin/platform/organizations/` + bloemOrganizationIDPattern + `/entitlement-bulk/policy-jobs/[^/]+$`)},
-		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/organizations/` + bloemOrganizationIDPattern + `/entitlement-bulk/policy-jobs/[^/]+/cancel$`)},
-		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-previews$`)},
-		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs$`)},
-		{http.MethodGet, regexp.MustCompile(`^/api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/[^/]+$`)},
-		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs/[^/]+/cancel$`)},
-		{http.MethodGet, regexp.MustCompile(`^/api/bloem/v2/admin/platform/accounts/[0-9]+/entitlement$`)},
-		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/accounts/entitlement-snapshots$`)},
-	},
-	auth.ScopeAdminPreview: bloemPreviewScopeRoutes(),
-	auth.ScopeAdminEntitlementsAccounts: {
-		{http.MethodGet, regexp.MustCompile(`^/api/bloem/v2/admin/platform/entitlement-templates$`)},
-		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/accounts/[0-9]+/entitlement/dry-run$`)},
-		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/accounts/[0-9]+/entitlement/apply$`)},
-	},
 }
 
 // apiKeyScopesAllow reports whether a key carrying scopes may perform the

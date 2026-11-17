@@ -14,7 +14,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/google/uuid"
 )
 
 func TestAPIKeyScopesAllow(t *testing.T) {
@@ -170,8 +169,7 @@ func TestRequireAuthEnforcesAPIKeyScopes(t *testing.T) {
 		Key:    "sa_test",
 		Scopes: []string{auth.ScopeAdminUsers},
 	}
-	incarnation := uuid.MustParse("11111111-2222-4333-8444-555555555555")
-	owner := &models.User{ID: 7, AccountIncarnationID: incarnation, Role: "admin", Enabled: true}
+	owner := &models.User{ID: 7, Role: "admin", Enabled: true}
 	am := NewAuthMiddleware(nil, nil, &fakeAPIKeyValidator{key: key}, &fakeAPIKeyUserLoader{user: owner})
 
 	handler := am.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -181,9 +179,6 @@ func TestRequireAuthEnforcesAPIKeyScopes(t *testing.T) {
 		}
 		if len(claims.APIKeyScopes) != 1 || claims.APIKeyScopes[0] != auth.ScopeAdminUsers {
 			t.Fatalf("claims scopes = %v", claims.APIKeyScopes)
-		}
-		if claims.AccountIncarnationID != incarnation.String() {
-			t.Fatalf("claims account incarnation = %q", claims.AccountIncarnationID)
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
