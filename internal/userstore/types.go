@@ -10,17 +10,13 @@ import (
 
 // Profile represents a user profile.
 type Profile struct {
-	ID                 string
-	OrganizationID     string
-	AccessGroupID      *int64
-	Name               string
-	Avatar             string
-	PINHash            string
-	LoginEmail         string
-	CredentialRevision int64
-	IsChild            bool
-	IsPrimary          bool
-	MaxContentRating   string
+	ID               string
+	Name             string
+	Avatar           string
+	PINHash          string
+	IsChild          bool
+	IsPrimary        bool
+	MaxContentRating string
 	// MaxAdvisoryAge is the profile's advisory-age limit (see
 	// access.MaturityLimits.MaxAdvisoryAge); 0 means no limit and is stored
 	// as NULL.

@@ -103,9 +103,7 @@ func ClientDeviceFromContext(ctx context.Context) ClientDevice {
 // started; a value the device did not send leaves the caller's in place.
 func applyClientDevice(ctx context.Context, session *models.AuthSession) {
 	device := ClientDeviceFromContext(ctx)
-	// Bloem: a direct-profile session is bound to the device it was issued
-	// for; a reported device never replaces that binding.
-	if device.ID != "" && session.DeviceID == "" {
+	if device.ID != "" {
 		session.DeviceID = device.ID
 	}
 	if device.Name != "" {

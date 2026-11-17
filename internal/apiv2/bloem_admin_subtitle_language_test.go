@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	"github.com/Silo-Server/silo-server/internal/subtitles"
 )
 
 type bloemAdminSubtitleLanguageService struct {
@@ -87,5 +88,18 @@ func TestBloemAdminStoredSubtitleRejectsInvalidLanguageWithoutPartialPage(t *tes
 	}
 	if !slices.Equal(fake.page.Items, before) {
 		t.Fatal("failed language projection changed the source subtitle rows")
+	}
+}
+
+// TestAdminSubtitleMetadataProjectionPreservesLegacyRow: the metadata
+// projection answers the canonical language without rewriting the stored row.
+func TestAdminSubtitleMetadataProjectionPreservesLegacyRow(t *testing.T) {
+	row := subtitles.DownloadedSubtitle{ID: 9, MediaFileID: 42, Provider: "subdl", Language: "English", Format: subtitles.FormatSRT, Revision: 4}
+	projected := adminSubtitleMetadataProjection(&row)
+	if projected.Language != "en" {
+		t.Fatalf("projected language = %q", projected.Language)
+	}
+	if row.Language != "English" || row.Revision != 4 {
+		t.Fatalf("projection changed legacy row: %+v", row)
 	}
 }
