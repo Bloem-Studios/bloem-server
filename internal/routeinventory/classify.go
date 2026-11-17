@@ -113,7 +113,7 @@ func newClassifier(set *sourceSet) *classifier {
 // is keyed by listener and path.
 func (c *classifier) describe(handler ast.Expr, method, fullPath string, env *walkEnv) handlerInfo {
 	info := handlerInfo{expr: c.set.exprText(handler)}
-	inner, streams := unwrapBloemHandler(handler, env.info())
+	inner, streams := unwrapHandler(handler)
 	info.streams = streams
 
 	var body *ast.BlockStmt
@@ -294,7 +294,9 @@ func (origins bodyOrigins) expression(expr ast.Expr, info *types.Info) httpOrigi
 		}
 		name := qualifiedCallee(value.Fun, info)
 		switch name {
-		case "io.LimitReader", "io.ReadAll", "io.NopCloser", "bytes.NewReader", "bytes.NewBuffer":
+		case "bytes.NewReader", "bytes.NewBuffer": // Bloem: re-wrapped request bytes (bloem_classify.go)
+			fallthrough
+		case "io.LimitReader", "io.ReadAll", "io.NopCloser":
 			if len(value.Args) > 0 {
 				return origins.expression(value.Args[0], info) & incomingBody
 			}

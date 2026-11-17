@@ -123,17 +123,6 @@ func DefaultConfig(root string) Config {
 					"out of scope for the native v2 migration",
 			},
 			{
-				File:   "cmd/silo/metrics_listener.go",
-				Func:   "newMetricsMux",
-				Reason: "Prometheus scrape listener: one /metrics route on its own port, operational rather than part of the native API surface.",
-			},
-			{
-				File: "internal/audiobooks/abs/handler.go",
-				Func: "Handler.Router",
-				Reason: "Audiobookshelf-protocol compatibility router, the handler-side twin of the " +
-					"listener exclusion below; an external wire contract, out of scope for the native v2 migration",
-			},
-			{
 				File: absListenerFile,
 				Func: absListenerFunc,
 				Reason: "Audiobookshelf-protocol compatibility listener; an external wire contract, " +

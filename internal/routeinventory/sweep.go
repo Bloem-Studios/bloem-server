@@ -121,9 +121,7 @@ func (s *sweeper) file(file *ast.File) {
 		if fn.Recv != nil && len(fn.Recv.List) > 0 {
 			name = recvTypeName(fn.Recv.List[0].Type) + "." + name
 		}
-		// reachedFuncs, not enteredFuncs: the latter is the walk's recursion
-		// stack and is empty by the time the sweep runs.
-		allowed := s.a.reachedFuncs[fn] || s.excluded[rel+"#"+name]
+		allowed := s.a.enteredFuncs[fn] || s.excluded[rel+"#"+name]
 		s.visit(fn, "in "+name, allowed)
 	}
 }

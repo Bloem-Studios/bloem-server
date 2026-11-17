@@ -241,6 +241,9 @@ func TestAnalyzeRefusesHiddenRegistration(t *testing.T) {
 		// chi.NewMux is a router constructor too: a stray listener built with
 		// it has to fail the same way one built with chi.NewRouter does.
 		{fixture: "stray_mux", want: []string{"chi.NewMux() constructed in Handler outside the inventoried listeners"}},
+		// A router derived from the listener's router and bound to a name is
+		// one the walk did not model; a method call on it is refused.
+		{fixture: "derived_router_bound", want: []string{"r.With(mw), which the route inventory does not model"}},
 		// A second router in the entry point is attached somewhere the walk
 		// cannot prove, so its rows would claim the wrong paths. The variants
 		// below are the same defect in the binding forms a walk that matched

@@ -116,15 +116,6 @@ func loadSources(root string, analyzed []string) (*sourceSet, error) {
 			}
 			continue
 		}
-		if isVendoredFrontendPackage(pkg) {
-			// web/node_modules ships JavaScript, and a handful of those
-			// packages carry a Go implementation alongside it. `./...` sweeps
-			// them in because they sit inside the module with no go.mod of
-			// their own. They are not this server's code and register no
-			// routes, but their reflect use trips the leak checks and stops the
-			// whole inventory from building.
-			continue
-		}
 		if len(pkg.GoFiles) == 0 && len(pkg.Syntax) == 0 {
 			// A directory whose files are all excluded by build constraints
 			// (the ruleguard rules in lintrules/) lists as a package with an

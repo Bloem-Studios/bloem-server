@@ -176,9 +176,11 @@ type Analyzer struct {
 
 	routes []Route
 
-	enteredFuncs map[*ast.FuncDecl]bool // currently on the walk stack: a recursion guard
-	reachedFuncs map[*ast.FuncDecl]bool // ever entered: proves a router-taking helper is not orphaned
+	enteredFuncs map[*ast.FuncDecl]bool
 	enteredLits  map[*ast.FuncLit]bool
+
+	// Bloem: the helpers on the walk's stack (bloem_analyze.go).
+	bloemHelperStack map[*ast.FuncDecl]bool
 
 	// rootConstructed guards the current listener walk against a second router
 	// construction. The first one is the value the entry point returns and is
@@ -224,7 +226,6 @@ func Analyze(cfg Config) (*Inventory, error) {
 		cfg:          cfg,
 		set:          set,
 		enteredFuncs: map[*ast.FuncDecl]bool{},
-		reachedFuncs: map[*ast.FuncDecl]bool{},
 		enteredLits:  map[*ast.FuncLit]bool{},
 		classifier:   newClassifier(set),
 	}
@@ -460,7 +461,6 @@ func (a *Analyzer) walkListener(spec ListenerSpec) error {
 		return err
 	}
 	a.enteredFuncs[decl] = true
-	a.reachedFuncs[decl] = true
 	a.rootConstructed = false
 	a.routerConsumed = false
 	a.rootScope = nil
@@ -921,23 +921,6 @@ func (a *Analyzer) bindOne(stmt ast.Stmt, binding valueBinding, env *walkEnv, ki
 			"the route inventory recognizes only chi.NewRouter(), chi.NewMux() and http.NewServeMux(), "+
 			"so this value would carry registrations it never sees", produced, env.listener.ID)
 	}
-	// `sub := r.With(mw)` is a router over the SAME mux, carrying extra
-	// middleware. Registrations through it land at r's prefix, so binding it to
-	// r's scope attributes their paths correctly -- and middleware does not
-	// change a path. Refusing it instead forced every call site to inline
-	// r.With(...) per route, which re-runs the middleware constructor once per
-	// registration and reads worse.
-	if obj, ok := a.chiWithReceiver(call, env); ok {
-		if !binding.attributed || binding.obj == nil {
-			return a.errorf(stmt, "%s is bound from r.With(...) in a form the route inventory does not model; "+
-				"bind it with a single `name := router.With(...)`", produced)
-		}
-		if err := a.leakCheck(call.Args[len(call.Args)-1], env); err != nil {
-			return err
-		}
-		env.routers[binding.obj] = env.routers[obj]
-		return nil
-	}
 	if isRouterCtor(calleeFunc(call, env.info())) == ctorNone {
 		return a.errorf(stmt, "%s is produced by %s, which the route inventory does not model; "+
 			"it recognizes only chi.NewRouter(), chi.NewMux() and http.NewServeMux(), "+
@@ -1128,20 +1111,15 @@ func (a *Analyzer) followHelper(call *ast.CallExpr, env *walkEnv) error {
 		return a.errorf(call, "a chi router is passed to %s, which the route inventory cannot follow; "+
 			"register routes inside an enumerated listener or an analyzed helper", a.set.exprText(call.Fun))
 	}
-	// Recursion guard, not a visit-once guard. A helper legitimately mounts at
-	// more than one prefix -- one definition can serve both Silo's /api/v2 and
-	// the Bloem-native surface -- and each call really does
-	// produce its own set of routes, which the inventory should record under
-	// each prefix. What must never happen is following a helper that is already
-	// on the stack, which would not terminate. So the mark is cleared on the
-	// way out rather than left set forever.
+	if err := a.bloemEnterHelper(call, decl); err != nil {
+		return err
+	}
+	defer a.bloemLeaveHelper(decl)
 	if a.enteredFuncs[decl] {
-		return a.errorf(call, "route registration helper %s is recursive; "+
-			"the inventory cannot enumerate a cycle", decl.Name.Name)
+		return a.errorf(call, "route registration helper %s is reached more than once; "+
+			"the inventory would duplicate or lose its routes", decl.Name.Name)
 	}
 	a.enteredFuncs[decl] = true
-	a.reachedFuncs[decl] = true
-	defer delete(a.enteredFuncs, decl)
 
 	child := &walkEnv{
 		pkg:       declPkg,
@@ -1533,16 +1511,8 @@ func (a *Analyzer) leakCheck(node ast.Node, env *walkEnv) error {
 		if _, isKey := n.(*ast.KeyValueExpr); isKey {
 			return true
 		}
-		// A bound chi Match method value exposes only a boolean lookup,
-		// never the router or a registration method. Retaining it for an
-		// authorization guard is safe; arbitrary selectors still fail closed.
-		if selector, ok := expr.(*ast.SelectorExpr); ok {
-			selection := env.info().Selections[selector]
-			if selection != nil && selection.Kind() == types.MethodVal && selection.Obj().Name() == "Match" && selection.Obj().Pkg() != nil && selection.Obj().Pkg().Path() == chiImportPath {
-				if obj := env.varOf(selector.X); obj != nil && env.routers[obj] != nil {
-					return false
-				}
-			}
+		if bloemRouterMatchValue(expr, env) {
+			return false
 		}
 		tv, known := env.info().Types[expr]
 		if !known {
@@ -1603,7 +1573,7 @@ func (a *Analyzer) auditFile(pkg *pkgSource, file *ast.File) error {
 		}
 		switch typed := node.(type) {
 		case *ast.FuncDecl:
-			if a.reachedFuncs[typed] || !a.hasRouterParam(typed.Type, pkg) {
+			if a.enteredFuncs[typed] || !a.hasRouterParam(typed.Type, pkg) {
 				return true
 			}
 			err = a.errorf(typed, "%s.%s takes a router but is never reached from a declared listener entry point; "+
