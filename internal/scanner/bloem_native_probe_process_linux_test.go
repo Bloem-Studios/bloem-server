@@ -73,7 +73,9 @@ func TestNativeProbeExitedWrapperCannotLeavePipeOwnerRunning(t *testing.T) {
 	}
 	nativeProbeWaitLinuxState(t, func() bool {
 		stat, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
-		if errors.Is(err, os.ErrNotExist) {
+		// A process reaped while its stat file is read answers ESRCH, not
+		// ENOENT; either way it is gone.
+		if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ESRCH) {
 			return true
 		}
 		if err != nil {
