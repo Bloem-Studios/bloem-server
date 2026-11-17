@@ -13,9 +13,12 @@ Silo's sockets and tickets unchanged, with one addition.
   was issued for, inside the ticket, where the app cannot see or change it. Each
   time the server checks the connection again, it checks that same person,
   profile and organization. A socket can never drift into another organization.
-- **A ticket without that record is refused**, except a monitoring tool's ticket,
-  which belongs to an API key rather than a sign-in and is checked the way an
-  ordinary request with that key is.
+- **A ticket without that record is refused**, except an API key's ticket that
+  names no profile, such as a monitoring tool's. It belongs to a key rather than a
+  sign-in and is checked the way an ordinary request with that key is.
+- **An API key's ticket that names a profile is refused.** That is a profile key's
+  ticket, or an account key's sent with a profile. Bloem does not check a key's
+  profile against the organization on a socket, so it opens none.
 
 ## Words used in the code
 
@@ -24,6 +27,7 @@ Silo's sockets and tickets unchanged, with one addition.
 | The organization recorded in a ticket | the ticket's server-owned `AuthorityBinding` (`internal/events/socket_ticket.go`) |
 | Bloem's check | `bloemSocketAuthority` in `internal/api/handlers/bloem_socket_authority.go` |
 | A monitoring tool's ticket | a ticket minted by an API key with Silo's `admin:monitor:read` scope |
+| An API key's ticket that names a profile | a key `SocketIdentity` with a `ProfileID` (Silo's "User keys") |
 
 ## For developers
 
@@ -48,8 +52,14 @@ and [bounded browser evidence](../../architecture/bloem-web-feature-coverage.md#
 A ticket minted by an API key (the subsection “API-key handshake”) has no login
 session to bind, so it carries no Bloem binding. Bloem admits it as an HTTP
 request with that key is admitted: Silo's key checks decide, in the tenant its
-owner's requests resolve to (`validateKey`). A key ticket that carries a binding, a
-session or a profile was not minted for a key and is refused.
+owner's requests resolve to (`validateKey`). A key ticket that carries a binding or a
+session was not minted for a key and is refused.
+
+Of Silo's user keys (the subsection “User keys”), only a ticket minted with no
+profile opens a socket on Bloem: an account key sent without `X-Profile-Id`.
+`validateKey` refuses every key ticket that names a profile, which covers every
+profile key and an account key sent with `X-Profile-Id`, because it resolves only
+the owner's tenant and never checks the profile against it.
 
 ### Related pages
 
