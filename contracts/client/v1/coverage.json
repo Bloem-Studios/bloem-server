@@ -1802,6 +1802,10 @@
       "reason": "Decode type for the reason_flags blob of request.* deliveries; DeliveryRowPayload exposes it as an opaque JSON value, so no typed client contract exists."
     },
     {
+      "type": "internal/notifications.TitleFlags",
+      "reason": "Decode type for the reason_flags blob of watchlist.available deliveries; DeliveryRowPayload exposes it as an opaque JSON value, so no typed client contract exists."
+    },
+    {
       "type": "internal/notifications.WebhookTestResult",
       "reason": "Result of an admin webhook test run in the bundled web UI."
     },
