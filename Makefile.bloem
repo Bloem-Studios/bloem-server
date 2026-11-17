@@ -1,4 +1,6 @@
-# Bloem-owned additions. Shared target recipes and behavioral hooks stay in Makefile.
+# Bloem-owned additions. Makefile is Silo's and carries only the line that
+# includes this file: where Bloem changes a Silo target, it adds prerequisites
+# or target-specific variables here instead of editing the Silo recipe.
 
 .PHONY: bloem-openapi verify-bloem-openapi migrate-continuum-check verify-upstream-sync-merge settings-bindings-native client-dtos verify-client-dtos client-digest verify-client-digest verify-client-coverage verify-seams test-db-prepare test-bloem-library-locations client-copies client-copies-settings client-copies-dtos silo-switch-check silo-switch-check-all-in-one
 
@@ -40,8 +42,25 @@ verify-bloem-api-catalogue:
 # instead of the whole list silently expanding to nothing.
 GO_TEST_PACKAGES = $(shell go list -e ./...)
 
+# make test-go keeps Silo's recipe (go test ./...). Bloem prepares the shared
+# test database first when SILO_TEST_DATABASE_URL names one, and gives each
+# test binary 20 minutes instead of go test's 10: the scenario executor's
+# package measures about 15. GOFLAGS carries -timeout only to go test.
+test-go: test-db-prepare-if-set
+test-go: export GOFLAGS += -timeout=20m
+
+# One Go test shard: make test-go for the packages in GO_TEST_PACKAGES instead
+# of ./... CI and the local gate deal the packages with scripts/ci/deal.sh.
+.PHONY: test-go-shard test-db-prepare-if-set
+test-go-shard: embed-stub test-db-prepare-if-set
+	go test -timeout=20m $(GO_TEST_PACKAGES)
+	go test -race -count=1 ./internal/database/queryattr/
+
+test-db-prepare-if-set:
+	@if [ -n "$$SILO_TEST_DATABASE_URL" ]; then $(MAKE) --no-print-directory test-db-prepare || exit 1; fi
+
 # Print make test-go's packages, one per line. CI deals them to the Go test
-# shards with scripts/ci/deal.sh.
+# shards (make test-go-shard) with scripts/ci/deal.sh.
 .PHONY: go-test-packages
 go-test-packages:
 	@printf '%s\n' $(GO_TEST_PACKAGES)
@@ -118,6 +137,36 @@ SETTINGS_KOTLIN_OUT := contracts/settings/v1/kotlin/SettingKeys.kt
 SETTINGS_SWIFT_OUT := contracts/settings/v1/swift/SettingKeys.generated.swift
 BLOEM_ANDROID_SETTINGS_OUT := $(BLOEM_ANDROID_DIR)/core/src/commonMain/kotlin/org/bloemserver/bloem/model/settings/SettingKeys.kt
 BLOEM_APPLE_SETTINGS_OUT := $(BLOEM_APPLE_DIR)/iosApp/iosApp/Networking/SettingKeys.generated.swift
+
+# Silo's settings-bindings also writes Kotlin and Swift into sibling
+# silo-android and silo-apple checkouts. Bloem's clients are bloem-android and
+# bloem-apple, served by settings-bindings-native below, so Silo's two arms
+# point at a directory that cannot exist and print "not checked out" instead of
+# writing Bloem's keys into Silo's clients.
+override SILO_ANDROID_DIR := /dev/null/silo-android
+override SILO_APPLE_DIR := /dev/null/silo-apple
+settings-bindings: settings-bindings-native
+verify-settings-bindings: verify-settings-bindings-native
+
+# Fail when the committed native bindings disagree with the manifest. Every
+# input to these two runs is the embedded manifest and the generator source —
+# nothing is read back out of the committed file — so a committed copy can
+# never make itself look current, which is the property verify-client-dtos has
+# to work for by feeding the recorded revision stamp back in. These bindings
+# carry no such stamp (their REVISION comes from the manifest), so a plain diff
+# is total. Runs as part of make verify-settings-bindings.
+.PHONY: verify-settings-bindings-native
+verify-settings-bindings-native:
+	@CHECK_DIR=$$(mktemp -d) && trap 'rm -rf "$$CHECK_DIR"' EXIT && \
+	go run ./cmd/settingsgen -lang kotlin -package $(SETTINGS_KOTLIN_PACKAGE) \
+		-out "$$CHECK_DIR/SettingKeys.kt" && \
+	diff -u $(SETTINGS_KOTLIN_OUT) "$$CHECK_DIR/SettingKeys.kt" \
+		|| { echo "::error::$(SETTINGS_KOTLIN_OUT) is stale; run make settings-bindings-native"; exit 1; }
+	@CHECK_DIR=$$(mktemp -d) && trap 'rm -rf "$$CHECK_DIR"' EXIT && \
+	go run ./cmd/settingsgen -lang swift -out "$$CHECK_DIR/SettingKeys.generated.swift" && \
+	diff -u $(SETTINGS_SWIFT_OUT) "$$CHECK_DIR/SettingKeys.generated.swift" \
+		|| { echo "::error::$(SETTINGS_SWIFT_OUT) is stale; run make settings-bindings-native"; exit 1; }
+	@echo "native settings bindings are current"
 
 # The native half, split out for the same reason the verify targets are split:
 # the web half needs pnpm, and a server-only developer who cannot run prettier
@@ -223,6 +272,8 @@ verify-upstream-sync-merge:
 
 # Check committed content for local machine path leaks. This target is part of
 # the CI/release gate, so keep the upstream merge fixture attached here too.
+verify-local-paths: verify-upstream-sync-merge
+
 BLOEM_OPENAPI := contracts/api/bloem/v2/openapi.json
 
 # The Bloem-native surface's OpenAPI artifact. /api/v2 has had one since it

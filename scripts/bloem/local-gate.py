@@ -74,7 +74,7 @@ def _go_shard(n):
         "skip=$(python3 scripts/ci/bloem-db-list-skip.py) && retried=$(python3 scripts/ci/bloem-retried-tests.py skip)"
         + f" && packages=\"$(make -s --no-print-directory go-test-packages | scripts/ci/deal.sh 4 {n} | paste -sd ' ')\""
         + " && export SILO_TEST_DATABASE_URL=" + _pg(f"bloem_test_s{n}") + " && status=0"
-        + " && { GOFLAGS=\"-count=1 -p=4 -skip=$skip|$retried\" make test-go GO_TEST_PACKAGES=\"$packages\" || status=$?; }"
+        + " && { GOFLAGS=\"-count=1 -p=4 -skip=$skip|$retried\" make test-go-shard GO_TEST_PACKAGES=\"$packages\" || status=$?; }"
         + " && { GOFLAGS=\"-count=1 -p=4\" python3 scripts/ci/bloem-retried-tests.py run $packages || status=$?; }"
         + " && exit $status",
         _needs("pg", f"fresh_db:bloem_test_s{n}"),

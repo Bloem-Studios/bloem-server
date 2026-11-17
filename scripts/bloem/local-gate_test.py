@@ -128,7 +128,7 @@ class LocalGateTest(unittest.TestCase):
         self.assertIn("\nskip=$(python3 scripts/ci/bloem-db-list-skip.py)\n", "\n" + "\n".join(
             line.strip() for line in block.split("\n")) + "\n")
         test_go = next(line for line in block.split("\n") if "make test-go" in line)
-        self.assertIn('GOFLAGS="$GOFLAGS -skip=$skip|$retried" make test-go', test_go)
+        self.assertIn('GOFLAGS="$GOFLAGS -skip=$skip|$retried" make test-go-shard ', test_go)
 
     def test_go_shards_run_the_retried_tests_after_the_suite(self):
         # scripts/ci/bloem-retried-tests.txt: tests that fail only under the
@@ -141,7 +141,7 @@ class LocalGateTest(unittest.TestCase):
         block = "\n".join(line.strip() for line in next(
             b for b in run_blocks(WORKFLOW.read_text()) if "make test-go" in b).split("\n"))
         self.assertIn("\nretried=$(python3 scripts/ci/bloem-retried-tests.py skip)\n", "\n" + block + "\n")
-        self.assertIn("make test-go GO_TEST_PACKAGES=", block)
+        self.assertIn("make test-go-shard GO_TEST_PACKAGES=", block)
         self.assertIn("|| status=$?\npython3 scripts/ci/bloem-retried-tests.py run $packages || status=$?\nexit $status", block)
 
     def test_redis_steps_declare_their_disposable_server(self):

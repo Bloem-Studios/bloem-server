@@ -691,7 +691,7 @@ jobs:
       # Bloem: migrate the shared test database, finalize the membership
       # policy authority, and install the test-only fixture-compatibility
       # triggers (internal/bloemtestdb; never a migration) so upstream Silo
-      # fixtures run unedited against the tenancy schema. make test-go repeats
+      # fixtures run unedited against the tenancy schema. make test-go-shard repeats
       # this idempotently.
       # The parallel suite migrates many disposable databases at once; the
       # stock lock table (64 locks x 100 connections) runs out of shared
@@ -760,7 +760,7 @@ jobs:
           # with up to two retries and still has to pass once.
           retried=$(python3 scripts/ci/bloem-retried-tests.py skip)
           status=0
-          GOFLAGS="$GOFLAGS -skip=$skip|$retried" make test-go GO_TEST_PACKAGES="$(paste -sd ' ' <<< "$packages")" || status=$?
+          GOFLAGS="$GOFLAGS -skip=$skip|$retried" make test-go-shard GO_TEST_PACKAGES="$(paste -sd ' ' <<< "$packages")" || status=$?
           python3 scripts/ci/bloem-retried-tests.py run $packages || status=$?
           exit $status
 
