@@ -58,7 +58,6 @@ func newGrantProxyServer(t *testing.T, cards map[string]playback.RecipeCard) *Se
 	t.Helper()
 	srv := NewServer(testWatcher(grantTestSecret), nodesessions.NewTracker(nil, "http://proxy-1", "proxy-1", "proxy"))
 	srv.SetNodeKeys(nodeauthtest.NodeKey(grantTestSecret))
-	srv.SetSourceAccess(allowAllSourceAccess{})
 	srv.SetMediaGrantAuthority(stubGrantStore{cards: cards}, stubLoginSessions{valid: map[string]bool{"login-1": true},
 		remote: map[string]string{"handoff-own": "profile-1", "handoff-other": "profile-2"}})
 	return srv

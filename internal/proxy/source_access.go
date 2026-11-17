@@ -56,11 +56,15 @@ var ErrAuthorityUnavailable = errors.New("media source authority unavailable")
 // the account-scoped media routes in the egress-metered route group; the
 // shared-node-secret admin/worker routes (requireBearer) never call this.
 func (s *Server) checkSourceAccess(w http.ResponseWriter, r *http.Request, claims *streamtoken.Claims) bool {
-	if s.sourceAccess == nil {
+	access := s.sourceAccess
+	if access == nil {
+		access = unwiredSourceAccess
+	}
+	if access == nil {
 		http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 		return false
 	}
-	switch err := s.sourceAccess.AllowMediaSource(r.Context(), claims.UserID, claims.MediaFileID); {
+	switch err := access.AllowMediaSource(r.Context(), claims.UserID, claims.MediaFileID); {
 	case err == nil:
 		// A valid old token cannot turn a reserved identity into a local path.
 		// Keep fresh source authority first, including its unavailable result.
@@ -77,6 +81,13 @@ func (s *Server) checkSourceAccess(w http.ResponseWriter, r *http.Request, claim
 		return false
 	}
 }
+
+// unwiredSourceAccess answers for a Server whose SourceAccess was never wired.
+// It is nil in every build, so an unwired proxy answers 503 (see
+// checkSourceAccess). Only this package's tests set it, to the permissive
+// default Silo's proxy tests predate (source_access_test.go), so those tests
+// stay as Silo wrote them. Production code must never assign it.
+var unwiredSourceAccess SourceAccess
 
 // bloemSourceAccess is Server's source-entitlement recheck, embedded so
 // upstream's field list stays untouched.

@@ -24,6 +24,31 @@ type allowAllSourceAccess struct{}
 
 func (allowAllSourceAccess) AllowMediaSource(context.Context, int, int) error { return nil }
 
+// unwiredSourceAccessAtStart is unwiredSourceAccess as the package declares
+// it, read before init below replaces it for this package's tests.
+var unwiredSourceAccessAtStart = unwiredSourceAccess
+
+// Silo's proxy tests build servers without SetSourceAccess; they predate the
+// recheck and are not testing it, so an unwired server allows every source in
+// this package's tests. Tests of the unwired default use withoutUnwiredAccess.
+func init() { unwiredSourceAccess = allowAllSourceAccess{} }
+
+// withoutUnwiredAccess restores the production default (nil, fail closed)
+// for the rest of the test. Tests in this package do not run in parallel.
+func withoutUnwiredAccess(t *testing.T) {
+	t.Helper()
+	previous := unwiredSourceAccess
+	unwiredSourceAccess = nil
+	t.Cleanup(func() { unwiredSourceAccess = previous })
+}
+
+// The production default must fail closed: an unwired proxy serves nothing.
+func TestUnwiredSourceAccessIsNilOutsideTests(t *testing.T) {
+	if unwiredSourceAccessAtStart != nil {
+		t.Fatalf("unwiredSourceAccess = %T, want nil so an unwired proxy answers 503", unwiredSourceAccessAtStart)
+	}
+}
+
 // fakeSourceAccess returns a configurable error for every call, and records
 // the last account/file it was asked about so a test can assert the recheck
 // actually ran with the request's own identity rather than a stub value.
@@ -116,6 +141,7 @@ func TestProxySourceAccessGatesDirectPlayToken(t *testing.T) {
 // A proxy this dependency was never wired for must not fail open: nil is not
 // "allow" for an account-scoped media route.
 func TestProxySourceAccessNilAnswersUnavailable(t *testing.T) {
+	withoutUnwiredAccess(t)
 	srv, path := newSourceAccessProxyServer(t, nil)
 	token := signDirectPlayToken(t, grantTestSecret, path, 7, 42)
 

@@ -112,7 +112,6 @@ func TestTranscodeProxyDoesNotAcknowledgeFailedDownstreamWrite(t *testing.T) {
 func newCompletionTestProxy(client *http.Client) *Server {
 	server := NewServer(testWatcher("proxy-test-secret"), nil)
 	server.SetNodeKeys(nodeauthtest.NodeKey("proxy-test-secret"))
-	server.SetSourceAccess(allowAllSourceAccess{})
 	server.httpClient = client
 	return server
 }
