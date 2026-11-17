@@ -342,29 +342,7 @@ func (r *FolderRepository) loadPaths(ctx context.Context, folders []*models.Medi
 	if err := rows.Err(); err != nil {
 		return err
 	}
-	rows.Close()
-
-	locations, err := r.pool.Query(ctx,
-		`SELECT folder_id, (array_agg(source_key ORDER BY source_key))[1]
-         FROM library_storage_locations WHERE folder_id = ANY($1)
-         GROUP BY folder_id HAVING count(*) = 1`,
-		ids,
-	)
-	if err != nil {
-		return fmt.Errorf("loading folder storage locations: %w", err)
-	}
-	defer locations.Close()
-	for locations.Next() {
-		var folderID int
-		var source uuid.UUID
-		if err := locations.Scan(&folderID, &source); err != nil {
-			return fmt.Errorf("scanning folder storage location row: %w", err)
-		}
-		if f, ok := folderByID[folderID]; ok && len(f.Paths) == 0 {
-			f.StorageSourceKey = &source
-		}
-	}
-	return locations.Err()
+	return r.loadStorageSourceKeys(ctx, ids, folderByID)
 }
 
 // Create inserts a new media folder with its paths and returns the created row.

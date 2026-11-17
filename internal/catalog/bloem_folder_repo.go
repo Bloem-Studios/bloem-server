@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -156,4 +158,31 @@ func moveCollectionsOffGuardedFolder(ctx context.Context, tx pgx.Tx, id int) err
 		err = retryOnDeadlock(ctx, attemptMove)
 	}
 	return err
+}
+
+// loadStorageSourceKeys gives each pathless folder backed by exactly one
+// native storage location that location's source key. loadPaths calls it
+// after the folder paths are loaded.
+func (r *FolderRepository) loadStorageSourceKeys(ctx context.Context, ids []int, folderByID map[int]*models.MediaFolder) error {
+	locations, err := r.pool.Query(ctx,
+		`SELECT folder_id, (array_agg(source_key ORDER BY source_key))[1]
+         FROM library_storage_locations WHERE folder_id = ANY($1)
+         GROUP BY folder_id HAVING count(*) = 1`,
+		ids,
+	)
+	if err != nil {
+		return fmt.Errorf("loading folder storage locations: %w", err)
+	}
+	defer locations.Close()
+	for locations.Next() {
+		var folderID int
+		var source uuid.UUID
+		if err := locations.Scan(&folderID, &source); err != nil {
+			return fmt.Errorf("scanning folder storage location row: %w", err)
+		}
+		if f, ok := folderByID[folderID]; ok && len(f.Paths) == 0 {
+			f.StorageSourceKey = &source
+		}
+	}
+	return locations.Err()
 }
