@@ -13050,36 +13050,6 @@
       "value": "是"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "无法加载个人资料密码设置。"
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "正在加载设置"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "重试"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "允许家庭为每个个人资料设置独立的电子邮件和密码用于登录。默认关闭。关闭后，个人资料密码将无法用于登录；已保存的密码会保留，已登录的个人资料保持登录状态。"
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "个人资料密码"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Inspelningarna har lästs in igen. Granska listan innan nästa inspelningsåtgärd.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Det gick inte att schemalägga inspelningen",
   "bloem.liveTv.recordingWrites.scheduled": "Inspelningen är schemalagd",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Vänta på att inspelningarna läses tillbaka innan du läser in igen.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Det gick inte att bekräfta ändringen.",
-  "bloem.profiles.directCredentials.confirmRequired": "Ange ditt kontolösenord och kryssa i rutan för att bekräfta.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Ange en e-postadress och ett nytt lösenord för profilen.",
-  "bloem.profiles.directCredentials.signInSaved": "Inloggningen har sparats. Profilen loggades ut från sina appar och måste logga in igen.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Profilens egen inloggning är avstängd, och den har loggats ut från sina appar."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Vänta på att inspelningarna läses tillbaka innan du läser in igen."
 }

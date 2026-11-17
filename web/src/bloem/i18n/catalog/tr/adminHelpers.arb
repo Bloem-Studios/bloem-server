@@ -397,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Kayıtlar yeniden yüklendi. Başka bir kayıt işleminden önce listeyi gözden geçirin.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Kayıt planlanamadı",
   "bloem.liveTv.recordingWrites.scheduled": "Kayıt planlandı",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Yeniden yüklemeden önce kayıt okuma doğrulamasını bekleyin.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Değişiklik doğrulanamadı.",
-  "bloem.profiles.directCredentials.confirmRequired": "Hesap parolanızı girin ve onaylamak için kutuyu işaretleyin.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Profil için bir e-posta ve yeni bir parola girin.",
-  "bloem.profiles.directCredentials.signInSaved": "Oturum açma bilgisi kaydedildi. Profilin uygulamalardaki oturumu kapatıldı; yeniden oturum açması gerekir.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Profilin kendi oturum açma özelliği kapalı ve uygulamalardaki oturumu kapatıldı."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Yeniden yüklemeden önce kayıt okuma doğrulamasını bekleyin."
 }

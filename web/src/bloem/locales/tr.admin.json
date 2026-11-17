@@ -13476,36 +13476,6 @@
       "value": "Evet"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Profil parolası ayarları yüklenemedi."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Ayarlar yükleniyor"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Yeniden dene"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Bir hanenin her profile oturum açmak için kendi e-postasını ve parolasını vermesine izin verin. Varsayılan olarak kapalıdır. Kapatmak, profil parolalarıyla oturum açmayı durdurur; kayıtlı parolalar korunur ve oturumu açık profiller açık kalır."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Profil parolaları"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

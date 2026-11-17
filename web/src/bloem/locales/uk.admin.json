@@ -14521,36 +14521,6 @@
       "value": "Так"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Не вдалося завантажити налаштування паролів профілів."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Завантаження налаштувань"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Повторити спробу"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Дозвольте домогосподарству давати кожному профілю власну електронну адресу й пароль для входу. Типово вимкнено. Вимкнення припиняє вхід за паролями профілів; збережені паролі зберігаються, а профілі, що вже увійшли, залишаються у системі."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Паролі профілів"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

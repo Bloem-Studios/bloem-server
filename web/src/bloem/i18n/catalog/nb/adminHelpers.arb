@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Opptakene er lastet inn på nytt. Se gjennom listen før en ny opptakshandling.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Kunne ikke planlegge opptaket",
   "bloem.liveTv.recordingWrites.scheduled": "Opptaket er planlagt",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Vent på tilbakelesing av opptaket før du laster inn på nytt.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Kunne ikke bekrefte endringen.",
-  "bloem.profiles.directCredentials.confirmRequired": "Skriv inn kontopassordet ditt og huk av i boksen for å bekrefte.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Skriv inn en e-postadresse og et nytt passord for profilen.",
-  "bloem.profiles.directCredentials.signInSaved": "Påloggingen er lagret. Profilen ble logget ut av appene sine og må logge på igjen.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Profilens egen pålogging er av, og profilen er logget ut av appene sine."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Vent på tilbakelesing av opptaket før du laster inn på nytt."
 }

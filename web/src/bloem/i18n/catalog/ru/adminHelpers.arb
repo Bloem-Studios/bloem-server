@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Записи перезагружены. Проверьте список перед следующим действием с записью.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Не удалось запланировать запись",
   "bloem.liveTv.recordingWrites.scheduled": "Запись запланирована",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Дождитесь обратного чтения записей, прежде чем перезагружать.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Не удалось подтвердить изменение.",
-  "bloem.profiles.directCredentials.confirmRequired": "Введите пароль вашего аккаунта и отметьте флажок для подтверждения.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Введите email и новый пароль для профиля.",
-  "bloem.profiles.directCredentials.signInSaved": "Вход сохранён. Профиль вышел из своих приложений и должен войти снова.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Собственный вход профиля отключён, и профиль вышел из своих приложений."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Дождитесь обратного чтения записей, прежде чем перезагружать."
 }

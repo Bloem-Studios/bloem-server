@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "أُعيد تحميل التسجيلات. راجع القائمة قبل أي إجراء تسجيل آخر.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "تعذّرت جدولة التسجيل",
   "bloem.liveTv.recordingWrites.scheduled": "تمت جدولة التسجيل",
-  "bloem.liveTv.recordingWrites.waitForReadback": "انتظر حتى تكتمل قراءة التسجيلات قبل إعادة التحميل.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "تعذّر تأكيد التغيير.",
-  "bloem.profiles.directCredentials.confirmRequired": "أدخل كلمة مرور حسابك وحدّد المربع للتأكيد.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "أدخل بريدًا إلكترونيًا وكلمة مرور جديدة للملف الشخصي.",
-  "bloem.profiles.directCredentials.signInSaved": "تم حفظ تسجيل الدخول. سُجّل خروج الملف الشخصي من تطبيقاته ويجب أن يسجّل الدخول مرة أخرى.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "تم تعطيل تسجيل الدخول الخاص بالملف الشخصي، وسُجّل خروجه من تطبيقاته."
+  "bloem.liveTv.recordingWrites.waitForReadback": "انتظر حتى تكتمل قراءة التسجيلات قبل إعادة التحميل."
 }

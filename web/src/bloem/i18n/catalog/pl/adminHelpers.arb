@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Nagrania odświeżono. Przejrzyj listę przed kolejną czynnością na nagraniach.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Nie udało się zaplanować nagrania",
   "bloem.liveTv.recordingWrites.scheduled": "Zaplanowano nagranie",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Poczekaj na odczyt nagrania, zanim odświeżysz.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Nie udało się potwierdzić zmiany.",
-  "bloem.profiles.directCredentials.confirmRequired": "Wpisz hasło do swojego konta i zaznacz pole, aby potwierdzić.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Wpisz e-mail i nowe hasło dla profilu.",
-  "bloem.profiles.directCredentials.signInSaved": "Zapisano logowanie. Profil został wylogowany ze swoich aplikacji i musi zalogować się ponownie.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Własne logowanie profilu jest wyłączone, a profil został wylogowany ze swoich aplikacji."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Poczekaj na odczyt nagrania, zanim odświeżysz."
 }

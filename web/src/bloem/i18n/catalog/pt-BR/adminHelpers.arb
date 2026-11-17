@@ -397,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Gravações recarregadas. Confira a lista antes de outra ação de gravação.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Não foi possível agendar a gravação",
   "bloem.liveTv.recordingWrites.scheduled": "Gravação agendada",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Aguarde a releitura das gravações antes de recarregar.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Não foi possível confirmar a alteração.",
-  "bloem.profiles.directCredentials.confirmRequired": "Informe a senha da sua conta e marque a caixa para confirmar.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Informe um e-mail e uma nova senha para o perfil.",
-  "bloem.profiles.directCredentials.signInSaved": "Login salvo. O perfil foi desconectado dos apps dele e precisa entrar novamente.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "O login próprio do perfil está desativado, e ele foi desconectado dos apps dele."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Aguarde a releitura das gravações antes de recarregar."
 }

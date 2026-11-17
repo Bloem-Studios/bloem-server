@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Tallennukset ladattu uudelleen. Tarkista luettelo ennen seuraavaa tallennustoimintoa.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Tallennuksen ajastus epäonnistui",
   "bloem.liveTv.recordingWrites.scheduled": "Tallennus ajastettu",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Odota tallennuksen takaisinlukua ennen uudelleenlatausta.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Muutosta ei voitu vahvistaa.",
-  "bloem.profiles.directCredentials.confirmRequired": "Anna tilisi salasana ja valitse ruutu vahvistaaksesi.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Anna profiilille sähköpostiosoite ja uusi salasana.",
-  "bloem.profiles.directCredentials.signInSaved": "Kirjautuminen tallennettu. Profiili kirjattiin ulos sovelluksistaan, ja sen on kirjauduttava uudelleen.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Profiilin oma kirjautuminen on pois päältä, ja se on kirjattu ulos sovelluksistaan."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Odota tallennuksen takaisinlukua ennen uudelleenlatausta."
 }

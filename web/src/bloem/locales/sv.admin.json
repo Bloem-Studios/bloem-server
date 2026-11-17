@@ -13504,36 +13504,6 @@
       "value": "Ja"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Det gick inte att läsa in inställningarna för profillösenord."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Läser in inställningar"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Försök igen"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Låt ett hushåll ge varje profil sin egen e-postadress och sitt eget lösenord att logga in med. Av som standard. Om du stänger av det kan profillösenord inte längre användas för att logga in; sparade lösenord behålls, och profiler som redan är inloggade förblir inloggade."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Profillösenord"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

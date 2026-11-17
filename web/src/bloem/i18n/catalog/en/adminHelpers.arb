@@ -774,7 +774,7 @@
   "bloem.adminNav.contextSwitcher.statusName": "{status, select, active {active} suspended {suspended} other {{status}}}",
   "@bloem.adminNav.contextSwitcher.statusName": { "description": "Admin context switcher (sidebar): the status of the administrative context, after its kind. {status} is the status code." },
   "bloem.capabilities.checkFailed": "Could not check this server’s supported Bloem features.",
-  "@bloem.capabilities.checkFailed": { "description": "Profile settings, profile passwords section: error when the server's list of Bloem features could not be read." },
+  "@bloem.capabilities.checkFailed": { "description": "Error when the server's list of Bloem features could not be read." },
   "bloem.liveTv.recordingWrites.blocked": "Recording actions are blocked. Reload recordings before another action.",
   "@bloem.liveTv.recordingWrites.blocked": { "description": "Live TV recordings: toast and error when an earlier recording action has not been confirmed." },
   "bloem.liveTv.recordingWrites.cancelFailed": "Failed to cancel recording",
@@ -796,15 +796,5 @@
   "bloem.liveTv.recordingWrites.scheduled": "Recording scheduled",
   "@bloem.liveTv.recordingWrites.scheduled": { "description": "Live TV recordings: toast after a recording is scheduled." },
   "bloem.liveTv.recordingWrites.waitForReadback": "Wait for recording readback before reloading.",
-  "@bloem.liveTv.recordingWrites.waitForReadback": { "description": "Live TV recordings: error when reloading while the recordings list is still being read back." },
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Could not confirm the change.",
-  "@bloem.profiles.directCredentials.changeNotConfirmed": { "description": "Profile sign-in credentials: error when saving failed without a message." },
-  "bloem.profiles.directCredentials.confirmRequired": "Enter your account password and tick the box to confirm.",
-  "@bloem.profiles.directCredentials.confirmRequired": { "description": "Profile sign-in credentials: error when the account password or the confirmation box is missing." },
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Enter an email and a new password for the profile.",
-  "@bloem.profiles.directCredentials.emailAndPasswordRequired": { "description": "Profile sign-in credentials: error when saving without an email or a new password." },
-  "bloem.profiles.directCredentials.signInSaved": "Sign-in saved. The profile was signed out of its apps and must sign in again.",
-  "@bloem.profiles.directCredentials.signInSaved": { "description": "Profile sign-in credentials: notice after saving a profile's email and password." },
-  "bloem.profiles.directCredentials.signInTurnedOff": "The profile’s own sign-in is off, and it has been signed out of its apps.",
-  "@bloem.profiles.directCredentials.signInTurnedOff": { "description": "Profile sign-in credentials: notice after turning off a profile's own sign-in." }
+  "@bloem.liveTv.recordingWrites.waitForReadback": { "description": "Live TV recordings: error when reloading while the recordings list is still being read back." }
 }

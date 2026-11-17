@@ -13508,36 +13508,6 @@
       "value": "Ja"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Indstillingerne for profiladgangskoder kunne ikke indlæses."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Indlæser indstillinger"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Prøv igen"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Lad en husstand give hver profil sin egen e-mail og adgangskode til at logge ind med. Slået fra som standard. Når du slår det fra, kan profiladgangskoder ikke længere bruges til at logge ind; gemte adgangskoder beholdes, og profiler, der allerede er logget ind, forbliver logget ind."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Profiladgangskoder"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

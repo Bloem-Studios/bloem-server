@@ -397,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "録画を再読み込みしました。次の録画操作の前に一覧を確認してください。",
   "bloem.liveTv.recordingWrites.scheduleFailed": "録画を予約できませんでした",
   "bloem.liveTv.recordingWrites.scheduled": "録画を予約しました",
-  "bloem.liveTv.recordingWrites.waitForReadback": "再読み込みする前に、録画の読み戻しが完了するまでお待ちください。",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "変更を確認できませんでした。",
-  "bloem.profiles.directCredentials.confirmRequired": "確認のため、アカウントのパスワードを入力してチェックボックスをオンにしてください。",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "プロフィールのメールアドレスと新しいパスワードを入力してください。",
-  "bloem.profiles.directCredentials.signInSaved": "サインインを保存しました。プロフィールはアプリからサインアウトされたため、もう一度サインインする必要があります。",
-  "bloem.profiles.directCredentials.signInTurnedOff": "プロフィール独自のサインインをオフにし、アプリからサインアウトしました。"
+  "bloem.liveTv.recordingWrites.waitForReadback": "再読み込みする前に、録画の読み戻しが完了するまでお待ちください。"
 }

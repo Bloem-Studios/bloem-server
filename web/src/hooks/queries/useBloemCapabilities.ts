@@ -5,7 +5,6 @@ import { bloemT } from "@/bloem/i18n";
 export interface BloemCapabilities {
   feature_tokens: string[];
   features: {
-    direct_profile_login?: boolean;
     shared_device_pairing?: boolean;
     delegated_admin_roles?: boolean;
   };

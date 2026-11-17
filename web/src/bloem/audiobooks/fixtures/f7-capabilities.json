@@ -5,7 +5,6 @@
     "legacy_silo_v1": true,
     "organization_memberships": true,
     "tenant_bounded_media_scope": true,
-    "direct_profile_login": false,
     "shared_device_pairing": false,
     "delegated_admin_roles": false
   },

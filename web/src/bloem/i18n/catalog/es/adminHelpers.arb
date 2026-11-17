@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Grabaciones cargadas de nuevo. Revisa la lista antes de hacer otra acción de grabación.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "No se pudo programar la grabación",
   "bloem.liveTv.recordingWrites.scheduled": "Grabación programada",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Espera a que se confirmen las grabaciones antes de volver a cargarlas.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "No se pudo confirmar el cambio.",
-  "bloem.profiles.directCredentials.confirmRequired": "Introduce la contraseña de tu cuenta y marca la casilla para confirmar.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Introduce un correo electrónico y una nueva contraseña para el perfil.",
-  "bloem.profiles.directCredentials.signInSaved": "Inicio de sesión guardado. Se cerró la sesión del perfil en sus apps y tendrá que volver a iniciarla.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "El inicio de sesión propio del perfil está desactivado y se cerró su sesión en sus apps."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Espera a que se confirmen las grabaciones antes de volver a cargarlas."
 }

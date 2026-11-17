@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Optagelserne er genindlæst. Gennemgå listen, før du udfører en anden handling på optagelser.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Optagelsen kunne ikke planlægges",
   "bloem.liveTv.recordingWrites.scheduled": "Optagelse planlagt",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Vent på tilbagelæsning af optagelsen, før du genindlæser.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Ændringen kunne ikke bekræftes.",
-  "bloem.profiles.directCredentials.confirmRequired": "Angiv din kontoadgangskode, og sæt flueben for at bekræfte.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Angiv en e-mail og en ny adgangskode til profilen.",
-  "bloem.profiles.directCredentials.signInSaved": "Login gemt. Profilen blev logget ud af sine apps og skal logge ind igen.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Profilens eget login er slået fra, og den er blevet logget ud af sine apps."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Vent på tilbagelæsning af optagelsen, før du genindlæser."
 }

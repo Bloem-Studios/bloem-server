@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Aufnahmen neu geladen. Prüfe die Liste, bevor du eine weitere Aufnahmeaktion ausführst.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Die Aufnahme konnte nicht geplant werden",
   "bloem.liveTv.recordingWrites.scheduled": "Aufnahme geplant",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Warte, bis die Aufnahmen zurückgelesen wurden, bevor du neu lädst.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Die Änderung konnte nicht bestätigt werden.",
-  "bloem.profiles.directCredentials.confirmRequired": "Gib dein Kontopasswort ein und setze zur Bestätigung das Häkchen.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Gib eine E-Mail-Adresse und ein neues Passwort für das Profil ein.",
-  "bloem.profiles.directCredentials.signInSaved": "Anmeldung gespeichert. Das Profil wurde von seinen Apps abgemeldet und muss sich erneut anmelden.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Die eigene Anmeldung des Profils ist ausgeschaltet, und es wurde von seinen Apps abgemeldet."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Warte, bis die Aufnahmen zurückgelesen wurden, bevor du neu lädst."
 }

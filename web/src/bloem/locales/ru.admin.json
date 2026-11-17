@@ -14535,36 +14535,6 @@
       "value": "Да"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Не удалось загрузить настройки паролей профилей."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Загрузка настроек"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Повторить"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Позвольте семье задать каждому профилю собственные email и пароль для входа. По умолчанию выключено. Если выключить, вход с паролями профилей прекращается; сохранённые пароли остаются, а профили, которые уже вошли, остаются в системе."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Пароли профилей"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

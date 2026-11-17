@@ -15118,36 +15118,6 @@
       "value": "نعم"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "تعذّر تحميل إعدادات كلمات مرور الملفات الشخصية."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "جارٍ تحميل الإعدادات"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "إعادة المحاولة"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "السماح للأسرة بمنح كل ملف شخصي بريدًا إلكترونيًا وكلمة مرور خاصين به لتسجيل الدخول. معطّل افتراضيًا. يؤدي تعطيله إلى منع تسجيل الدخول بكلمات مرور الملفات الشخصية؛ وتبقى كلمات المرور المحفوظة، وتظل الملفات الشخصية التي سجّلت الدخول مسجّلةً."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "كلمات مرور الملفات الشخصية"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

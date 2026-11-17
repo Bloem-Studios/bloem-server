@@ -71,7 +71,6 @@ import {
   bloemPlatformAdminRoutes,
   bloemViewerRoutes,
   liveTVWatchRoute,
-  withDirectProfileCredentials,
   withItemCampaigns,
 } from "@/bloem/routes";
 import { audiobookItemRoute, audiobookLibraryRoute } from "@/bloem/audiobooks/routes";
@@ -659,7 +658,7 @@ function AppRoutes() {
                     path="profiles"
                     element={
                       <RequirePrimaryOrAdmin>
-                        {withDirectProfileCredentials(<ProfilesSettings />)}
+                        <ProfilesSettings />
                       </RequirePrimaryOrAdmin>
                     }
                   />

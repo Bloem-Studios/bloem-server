@@ -13188,36 +13188,6 @@
       "value": "예"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "프로필 비밀번호 설정을 불러올 수 없었어요."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "설정을 불러오는 중"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "다시 시도"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "가족이 각 프로필에 로그인용 이메일과 비밀번호를 따로 지정할 수 있게 해요. 기본적으로 꺼져 있어요. 끄면 프로필 비밀번호로 로그인할 수 없지만, 저장된 비밀번호는 유지되고 이미 로그인한 프로필은 로그인 상태를 유지해요."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "프로필 비밀번호"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

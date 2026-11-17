@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "录像已重新加载。请先查看列表，再执行其他录像操作。",
   "bloem.liveTv.recordingWrites.scheduleFailed": "安排录像失败。",
   "bloem.liveTv.recordingWrites.scheduled": "已安排录像",
-  "bloem.liveTv.recordingWrites.waitForReadback": "请等待录像回读完成后再重新加载。",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "无法确认此更改。",
-  "bloem.profiles.directCredentials.confirmRequired": "请输入你的账户密码并勾选复选框以确认。",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "请为该个人资料输入电子邮件和新密码。",
-  "bloem.profiles.directCredentials.signInSaved": "登录方式已保存。该个人资料已从其应用中退出登录，必须重新登录。",
-  "bloem.profiles.directCredentials.signInTurnedOff": "该个人资料的独立登录已关闭，并已从其应用中退出登录。"
+  "bloem.liveTv.recordingWrites.waitForReadback": "请等待录像回读完成后再重新加载。"
 }

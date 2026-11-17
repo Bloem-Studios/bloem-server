@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Записи перезавантажено. Перегляньте список, перш ніж виконувати іншу дію із записами.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Не вдалося запланувати запис",
   "bloem.liveTv.recordingWrites.scheduled": "Запис заплановано",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Дочекайтеся зчитування запису, перш ніж перезавантажувати.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Не вдалося підтвердити зміну.",
-  "bloem.profiles.directCredentials.confirmRequired": "Введіть пароль свого облікового запису й поставте позначку, щоб підтвердити.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Введіть електронну адресу й новий пароль для профілю.",
-  "bloem.profiles.directCredentials.signInSaved": "Вхід збережено. Профіль вийшов зі своїх застосунків і має увійти знову.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Власний вхід профілю вимкнено, і він вийшов зі своїх застосунків."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Дочекайтеся зчитування запису, перш ніж перезавантажувати."
 }

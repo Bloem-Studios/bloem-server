@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Snimanja su ponovno učitana. Pregledajte popis prije sljedeće radnje snimanja.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Zakazivanje snimanja nije uspjelo",
   "bloem.liveTv.recordingWrites.scheduled": "Snimanje je zakazano",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Pričekajte očitanje snimanja prije ponovnog učitavanja.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Promjenu nije bilo moguće potvrditi.",
-  "bloem.profiles.directCredentials.confirmRequired": "Unesite lozinku svog računa i označite okvir za potvrdu.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Unesite e-adresu i novu lozinku za profil.",
-  "bloem.profiles.directCredentials.signInSaved": "Prijava je spremljena. Profil je odjavljen iz svojih aplikacija i mora se ponovno prijaviti.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Vlastita prijava profila je isključena, a profil je odjavljen iz svojih aplikacija."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Pričekajte očitanje snimanja prije ponovnog učitavanja."
 }

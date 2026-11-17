@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Nahrávky byly znovu načteny. Před další akcí nahrávání zkontrolujte seznam.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Nahrávání se nepodařilo naplánovat",
   "bloem.liveTv.recordingWrites.scheduled": "Nahrávání bylo naplánováno",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Před opětovným načtením počkejte na zpětné načtení nahrávek.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Změnu se nepodařilo potvrdit.",
-  "bloem.profiles.directCredentials.confirmRequired": "Zadejte heslo ke svému účtu a potvrďte zaškrtnutím políčka.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Zadejte e-mail a nové heslo profilu.",
-  "bloem.profiles.directCredentials.signInSaved": "Přihlášení bylo uloženo. Profil byl odhlášen ze svých aplikací a musí se přihlásit znovu.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Vlastní přihlášení profilu je vypnuto a profil byl odhlášen ze svých aplikací."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Před opětovným načtením počkejte na zpětné načtení nahrávek."
 }

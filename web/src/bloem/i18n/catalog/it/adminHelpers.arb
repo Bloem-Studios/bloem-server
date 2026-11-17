@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Registrazioni ricaricate. Controlla l’elenco prima di un’altra azione di registrazione.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Pianificazione della registrazione non riuscita",
   "bloem.liveTv.recordingWrites.scheduled": "Registrazione pianificata",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Attendi la rilettura della registrazione prima di ricaricare.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Non è stato possibile confermare la modifica.",
-  "bloem.profiles.directCredentials.confirmRequired": "Inserisci la password del tuo account e seleziona la casella per confermare.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Inserisci un’email e una nuova password per il profilo.",
-  "bloem.profiles.directCredentials.signInSaved": "Accesso salvato. Il profilo è stato disconnesso dalle sue app e deve accedere di nuovo.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "L’accesso proprio del profilo è disattivato ed è stato disconnesso dalle sue app."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Attendi la rilettura della registrazione prima di ricaricare."
 }

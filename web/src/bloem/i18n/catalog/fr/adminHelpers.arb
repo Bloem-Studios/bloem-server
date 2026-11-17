@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Enregistrements rechargés. Vérifiez la liste avant une autre action d’enregistrement.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Impossible de programmer l’enregistrement",
   "bloem.liveTv.recordingWrites.scheduled": "Enregistrement programmé",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Attendez la relecture des enregistrements avant de recharger.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Impossible de confirmer la modification.",
-  "bloem.profiles.directCredentials.confirmRequired": "Saisissez le mot de passe de votre compte et cochez la case pour confirmer.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Saisissez une adresse e-mail et un nouveau mot de passe pour le profil.",
-  "bloem.profiles.directCredentials.signInSaved": "Connexion enregistrée. Le profil a été déconnecté de ses applications et doit se reconnecter.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "La connexion propre au profil est désactivée, et il a été déconnecté de ses applications."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Attendez la relecture des enregistrements avant de recharger."
 }

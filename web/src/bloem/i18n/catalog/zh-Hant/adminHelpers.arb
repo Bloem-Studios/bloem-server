@@ -398,10 +398,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "錄影已重新載入。執行其他錄影動作之前，請先檢視清單。",
   "bloem.liveTv.recordingWrites.scheduleFailed": "無法排程錄影",
   "bloem.liveTv.recordingWrites.scheduled": "已排程錄影",
-  "bloem.liveTv.recordingWrites.waitForReadback": "重新載入之前，請先等待錄影讀回完成。",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "無法確認這項變更。",
-  "bloem.profiles.directCredentials.confirmRequired": "請輸入你的帳號密碼並勾選核取方塊以確認。",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "請為個人檔案輸入電子郵件和新密碼。",
-  "bloem.profiles.directCredentials.signInSaved": "登入資訊已儲存。個人檔案已從其應用程式登出，必須重新登入。",
-  "bloem.profiles.directCredentials.signInTurnedOff": "個人檔案的專屬登入已關閉，並已從其應用程式登出。"
+  "bloem.liveTv.recordingWrites.waitForReadback": "重新載入之前，請先等待錄影讀回完成。"
 }
