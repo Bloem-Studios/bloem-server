@@ -254,13 +254,21 @@ func TestWatchDocumentsAreServedByTheRealRouter(t *testing.T) {
 		}
 	})
 
-	// Restricting the profile to the movie library must remove the series from
-	// both arrays and make its detail document unreachable.
+	// Restricting a profile to the movie library must remove the series from
+	// both arrays and make its detail document unreachable. The household's
+	// other profile carries the limit: the primary profile has none of its own
+	// and sees every library its account allows (Silo #3915).
 	t.Run("library restrictions", func(t *testing.T) {
 		store, err := provider.ForUser(ctx, fixture.userID)
 		if err != nil {
 			t.Fatalf("open user store: %v", err)
 		}
+		profileID := "watch-limited"
+		if err := store.CreateProfile(ctx, userstore.Profile{ID: profileID, Name: "Limited Viewer"}); err != nil {
+			t.Fatalf("create the limited profile: %v", err)
+		}
+		seedWatchProgress(t, provider, fixture.userID, profileID)
+		profileHeaders := map[string]string{"X-Profile-Id": profileID}
 		// Two decoy versions of the permitted movie, both with lower
 		// identifiers than the playable one: a 4K version inside the permitted
 		// library, and a 1080p version in the library the profile loses. A
