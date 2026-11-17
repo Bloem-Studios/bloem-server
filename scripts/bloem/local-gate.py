@@ -117,7 +117,7 @@ STEPS = [
     # go-lint.
     Step("lint", "govulncheck", "go tool govulncheck ./..."),
     Step("lint", "changed-lines", "BASE_SHA=@BASE@ PATH=@GOLANGCI_DIR@:$PATH scripts/bloem-lint-changed-ci.sh"),
-    Step("lint", "router-recovery", "make lint-router-recovery"),
+    Step("lint", "router-recovery", "PATH=@GOLANGCI_DIR@:$PATH make lint-router-recovery"),
     # web and web-test.
     Step("web", "install", "cd web && pnpm install --frozen-lockfile"),
     Step("web", "eslint", "cd web && pnpm run lint"),
