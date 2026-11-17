@@ -69,19 +69,6 @@ organization of the owner's resolved tenant, the check a sign-in ticket's profil
 gets; Silo's key checks then decide. A profile in another organization, or one that
 moved there, is refused on the next check.
 
----
-
-**Location:** subsection “Owner-bound playback control handshake (v2)”, the
-paragraph beginning “`GET /api/v2/playback/sessions/control/capabilities` reports…”.
-**Bloem replaces** “retries a refused mint with bounded backoff under the same
-authority” **with:**
-
-retries a refused mint under the same authority with a backoff that grows to one
-attempt every 30 seconds.
-
-This is the change proposed upstream as Silo-Server/silo-server#4392; drop this
-entry, and Bloem's edit to the player, once Silo merges it.
-
 ### Related pages
 
 - [Security foundation](../../architecture/bloem-security-foundation.md): events
