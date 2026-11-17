@@ -261,7 +261,13 @@ func TestPastimeRemovalKeepsSiloDataAndWritesInMirroredPhase(t *testing.T) {
 		VALUES ($1::uuid, $2, $3, 'pr-main', '{}', gen_random_uuid(), decode(repeat('00', 32), 'hex'), 'source', repeat('A', 43), 'fixture', 'personal', 'pr-list')`,
 		binding, install, user)
 
-	watchSyncBefore, watchSyncColumns := watchSyncRows(t, ctx, pool, nil)
+	// Silo's ten-point ratings migration doubles every synced rating as it
+	// passes; that column is checked on its own below, every other column
+	// must come through unchanged.
+	_, watchSyncColumns := watchSyncRows(t, ctx, pool, nil)
+	watchSyncColumns["watch_provider_rating_items"] = slices.DeleteFunc(slices.Clone(watchSyncColumns["watch_provider_rating_items"]),
+		func(column string) bool { return column == "synced_rating" })
+	watchSyncBefore, _ := watchSyncRows(t, ctx, pool, watchSyncColumns)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("apply the removal in the mirrored phase: %v", err)
 	}
@@ -283,6 +289,10 @@ func TestPastimeRemovalKeepsSiloDataAndWritesInMirroredPhase(t *testing.T) {
 	}
 	if !maps.Equal(after, watchSyncBefore) {
 		t.Errorf("watch-sync rows changed:\nbefore %v\nafter  %v", watchSyncBefore, after)
+	}
+	if n := pastimeRemovalCount(t, ctx, pool, `SELECT count(*) FROM watch_provider_rating_items
+		WHERE connection_id=$1::uuid AND synced_rating=8`, managed); n != 1 {
+		t.Errorf("synced rating 4 after Silo's ten-point migration: %d rows at 8, want 1", n)
 	}
 	connections := func(id string) int {
 		t.Helper()
@@ -328,7 +338,7 @@ func TestPastimeRemovalKeepsSiloDataAndWritesInMirroredPhase(t *testing.T) {
 		+ (SELECT count(*) FROM user_watch_progress WHERE user_id=$1 AND position_seconds=42)
 		+ (SELECT count(*) FROM user_favorites WHERE user_id=$1)
 		+ (SELECT count(*) FROM user_watchlist WHERE user_id=$1)
-		+ (SELECT count(*) FROM user_ratings WHERE user_id=$1 AND rating=4)
+		+ (SELECT count(*) FROM user_ratings WHERE user_id=$1 AND rating=8) -- 4 stars, doubled by Silo's ten-point migration
 		+ (SELECT count(*) FROM user_watch_history WHERE user_id=$1)`, user); n != 6 {
 		t.Errorf("Silo user data rows = %d, want 6", n)
 	}
