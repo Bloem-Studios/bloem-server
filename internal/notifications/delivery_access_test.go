@@ -228,11 +228,11 @@ func TestListActiveBySeriesRejectsStaleInterestForAnotherTenantsLibrary(t *testi
 	// private library) — e.g. left over from before a library was
 	// reassigned, or forged.
 	f.exec(`
-		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, favorite)
+		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, next_up_candidate)
 		VALUES ($1, $2, $3, $4, true)`, f.userB, f.profileB, libraryA, seriesID)
 	// profileA's own interest row is the control: it must still be selected.
 	f.exec(`
-		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, favorite)
+		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, next_up_candidate)
 		VALUES ($1, $2, $3, $4, true)`, f.userA, f.profileA, libraryA, seriesID)
 
 	tx, err := f.pool.Begin(f.ctx)
@@ -251,7 +251,7 @@ func TestListActiveBySeriesRejectsStaleInterestForAnotherTenantsLibrary(t *testi
 	// when queried against that library — the join rejects the wrong
 	// library, not profileB's organization outright.
 	f.exec(`
-		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, favorite)
+		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, next_up_candidate)
 		VALUES ($1, $2, $3, $4, true)`, f.userB, f.profileB, libraryB, seriesID)
 	gotB, err := repo.ListActiveBySeries(f.ctx, tx, libraryB, seriesID)
 	if err != nil {
@@ -271,7 +271,7 @@ func TestListActiveBySeriesRejectsRevokedEntitlement(t *testing.T) {
 	const seriesID = "dax-series-2"
 
 	f.exec(`
-		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, favorite)
+		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, next_up_candidate)
 		VALUES ($1, $2, $3, $4, true)`, f.userA, f.profileA, platformLibrary, seriesID)
 
 	tx, err := f.pool.Begin(f.ctx)
@@ -301,6 +301,29 @@ func TestListActiveBySeriesRejectsRevokedEntitlement(t *testing.T) {
 	assertRecipients(t, got, nil)
 }
 
+// Only Next Up candidates are recipients, under the tenancy join as under
+// Silo's query: a row kept for its last completed episode alone never notifies.
+func TestListActiveBySeriesForTenantsSkipsNonCandidates(t *testing.T) {
+	f := newDeliveryAccessFixture(t)
+	repo := NewInterestRepository(f.pool).WithBloemTenancy()
+	library := f.createOrgFolder(f.ownerA, "org-a-candidate-library")
+	const seriesID = "dax-series-candidate"
+	f.exec(`
+		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, next_up_candidate, last_completed_episode_key)
+		VALUES ($1, $2, $3, $4, false, 1000001)`, f.userA, f.profileA, library, seriesID)
+
+	tx, err := f.pool.Begin(f.ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(t.Context()) }()
+	got, err := repo.ListActiveBySeries(f.ctx, tx, library, seriesID)
+	if err != nil {
+		t.Fatalf("ListActiveBySeries: %v", err)
+	}
+	assertRecipients(t, got, nil)
+}
+
 // A profile that muted the series is not a recipient, under the tenancy join
 // as under Silo's query.
 func TestListActiveBySeriesForTenantsSkipsMutedSeries(t *testing.T) {
@@ -309,7 +332,7 @@ func TestListActiveBySeriesForTenantsSkipsMutedSeries(t *testing.T) {
 	library := f.createOrgFolder(f.ownerA, "org-a-muted-library")
 	const seriesID = "dax-series-muted"
 	f.exec(`
-		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, favorite)
+		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, next_up_candidate)
 		VALUES ($1, $2, $3, $4, true)`, f.userA, f.profileA, library, seriesID)
 	f.exec(`
 		INSERT INTO profile_series_notification_mutes (user_id, profile_id, series_id)

@@ -36,7 +36,7 @@ func (r *InterestRepository) WithBloemTenancy() *InterestRepository {
 func (r *InterestRepository) listActiveBySeriesForTenants(ctx context.Context, tx pgx.Tx, libraryID int, seriesID string) ([]SeriesInterest, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT psi.user_id, psi.profile_id, psi.library_id, psi.series_id,
-		       psi.favorite, psi.watchlist, psi.continue_watching, psi.next_up_candidate,
+		       psi.next_up_candidate,
 		       psi.last_completed_episode_key, psi.next_expected_episode_key, psi.last_notified_episode_key,
 		       psi.updated_at
 		FROM profile_series_interest psi
@@ -50,7 +50,7 @@ func (r *InterestRepository) listActiveBySeriesForTenants(ctx context.Context, t
 		 AND ent.media_folder_id = folders.id
 		 AND ent.status = 'active'
 		WHERE psi.library_id = $1 AND psi.series_id = $2
-		  AND (psi.favorite OR psi.watchlist OR psi.continue_watching OR psi.next_up_candidate)
+		  AND psi.next_up_candidate
 		  AND ((owners.kind = 'organization' AND owners.organization_id = prof.organization_id)
 		       OR (owners.kind = 'platform' AND ent.id IS NOT NULL))
 		  AND NOT EXISTS (
@@ -67,7 +67,7 @@ func (r *InterestRepository) listActiveBySeriesForTenants(ctx context.Context, t
 		var interest SeriesInterest
 		if err := rows.Scan(
 			&interest.UserID, &interest.ProfileID, &interest.LibraryID, &interest.SeriesID,
-			&interest.Favorite, &interest.Watchlist, &interest.ContinueWatching, &interest.NextUpCandidate,
+			&interest.NextUpCandidate,
 			&interest.LastCompletedEpisodeKey, &interest.NextExpectedEpisodeKey, &interest.LastNotifiedEpisodeKey,
 			&interest.UpdatedAt,
 		); err != nil {
