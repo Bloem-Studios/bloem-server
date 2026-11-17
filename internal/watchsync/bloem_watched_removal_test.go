@@ -72,6 +72,39 @@ func TestRemoteWatchRemovalDecodesASeriesAndRejectsPlays(t *testing.T) {
 	}
 }
 
+// FetchWatchedBatch's hook line (plugin_provider_state.go) turns a removal
+// into a removal row; without it Silo's decode refuses it for having no plays.
+func TestFetchWatchedBatchDecodesAWatchedRemoval(t *testing.T) {
+	at := time.Date(2026, 11, 4, 21, 0, 0, 0, time.UTC)
+	movie := &pluginv1.WatchSyncMedia{
+		MediaType: pluginv1.WatchSyncMediaType_WATCH_SYNC_MEDIA_TYPE_MOVIE,
+		Title:     "Movie", ExternalIds: map[string]string{"imdb": "tt1"},
+	}
+	client := &fakeWatchSyncPluginClient{listResponses: []*pluginv1.WatchSyncListRemoteStateResponse{{
+		CompleteSnapshot: true,
+		Items: []*pluginv1.WatchSyncRemoteState{
+			{ProviderItemKey: "removed", Media: movie, Watched: removedWatched(t, 1, at)},
+			{ProviderItemKey: "watched", Media: movie, Watched: &pluginv1.WatchSyncRemoteWatchedState{PlayCount: 2, LastWatchedAt: timestamppb.New(at)}},
+		},
+	}}}
+	batch, err := testPluginProvider(t, client).FetchWatchedBatch(context.Background(), ServerConfig{}, Connection{
+		ID: "connection", Provider: testPluginProviderKey, UserID: 1, ProfileID: "profile", AccessToken: "token",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(batch.Rows) != 2 || len(batch.Warnings) != 0 {
+		t.Fatalf("rows = %+v warnings = %q, want a removal and a watch", batch.Rows, batch.Warnings)
+	}
+	removal, watched := batch.Rows[0], batch.Rows[1]
+	if !removal.Removed || removal.PlayCount != 0 || !removal.LastWatchedAt.Equal(at) || removal.IMDbID != "tt1" {
+		t.Fatalf("removal row = %+v", removal)
+	}
+	if watched.Removed || watched.PlayCount != 2 {
+		t.Fatalf("watched row = %+v", watched)
+	}
+}
+
 const (
 	lauraProfile = "profile-laura"
 	jimProfile   = "profile-jim"

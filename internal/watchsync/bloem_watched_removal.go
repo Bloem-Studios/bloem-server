@@ -56,6 +56,18 @@ func watchedRemoved(watched *pluginv1.WatchSyncRemoteWatchedState) bool {
 	return removed
 }
 
+// watchedRemovalOr is FetchWatchedBatch's hook after Silo's
+// remoteWatchFromProto: a watched removal replaces that decode (which refuses
+// a removal for having no plays) with the removal row; any other state keeps
+// Silo's row and error.
+func watchedRemovalOr(provider string, state *pluginv1.WatchSyncRemoteState, row RemoteWatch, err error) (RemoteWatch, error) {
+	removalRow, removal, removalErr := remoteWatchRemovalFromProto(provider, state)
+	if !removal {
+		return row, err
+	}
+	return removalRow, removalErr
+}
+
 // remoteWatchRemovalFromProto decodes a watched removal. removal is false when
 // the state is an ordinary watched state, which remoteWatchFromProto decodes.
 func remoteWatchRemovalFromProto(provider string, state *pluginv1.WatchSyncRemoteState) (row RemoteWatch, removal bool, err error) {

@@ -106,10 +106,8 @@ func (p *PluginProvider) FetchWatchedBatch(
 		if state.GetWatched() == nil {
 			continue
 		}
-		row, removal, err := remoteWatchRemovalFromProto(p.Key(), state)
-		if !removal {
-			row, err = remoteWatchFromProto(p.Key(), state)
-		}
+		row, err := remoteWatchFromProto(p.Key(), state)
+		row, err = watchedRemovalOr(p.Key(), state, row, err) // Bloem: bloem_watched_removal.go
 		if err != nil {
 			batch.Warnings = append(batch.Warnings, err.Error())
 			continue
