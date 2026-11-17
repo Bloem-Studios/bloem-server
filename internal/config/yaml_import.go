@@ -164,12 +164,22 @@ func YAMLToSettingsMap(path string) (map[string]string, error) {
 	setIfNonEmpty(m, "s3.private_access_key", firstNonEmpty(raw.S3.PrivateAccessKey, raw.S3.OperationalAccessKey))
 	setIfNonEmpty(m, "s3.private_secret_key", firstNonEmpty(raw.S3.PrivateSecretKey, raw.S3.OperationalSecretKey))
 
+	// S3 — User DB
+	setIfNonEmpty(m, "s3.user_db_endpoint", raw.S3.UserDBEndpoint)
+	setIfNonEmpty(m, "s3.user_db_region", raw.S3.UserDBRegion)
+	m["s3.user_db_path_style"] = strconv.FormatBool(raw.S3.UserDBPathStyle)
+	setIfNonEmpty(m, "s3.user_db_bucket", raw.S3.UserDBBucket)
+	setIfNonEmpty(m, "s3.user_db_key_prefix", raw.S3.UserDBKeyPrefix)
+	setIfNonEmpty(m, "s3.user_db_access_key", raw.S3.UserDBAccessKey)
+	setIfNonEmpty(m, "s3.user_db_secret_key", raw.S3.UserDBSecretKey)
+
 	// UserDB (YAML key: user_db)
 	setIfNonEmpty(m, "userdb.backend", raw.UserDB.Backend)
 	if raw.UserDB.PoolMaxOpen != 0 {
 		m["userdb.pool_max_open"] = strconv.Itoa(raw.UserDB.PoolMaxOpen)
 	}
 	setIfNonEmpty(m, "userdb.idle_timeout", raw.UserDB.IdleTimeout)
+	setIfNonEmpty(m, "userdb.litestream_sync", raw.UserDB.LitestreamSync)
 	if raw.UserDB.StaleGraceSeconds != 0 {
 		m["userdb.stale_grace_seconds"] = strconv.Itoa(raw.UserDB.StaleGraceSeconds)
 	}
@@ -215,7 +225,9 @@ func YAMLToSettingsMap(path string) (map[string]string, error) {
 	}
 	m["playback.transcode_enabled"] = strconv.FormatBool(raw.Playback.TranscodeEnabled)
 
-	setBloemLiveTVSettings(m, raw.LiveTV)
+	if err := setBloemYAMLSettings(m, data); err != nil {
+		return nil, err
+	}
 
 	// Redis
 	m["redis.url"] = raw.Redis.URL

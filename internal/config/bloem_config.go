@@ -33,7 +33,7 @@ type LANConfig struct {
 	AdvertisementEnabled bool `yaml:"-"`
 }
 
-// defaultLiveTVConfig is setDefaults' Live TV block.
+// defaultLiveTVConfig is the Live TV block a YAML import starts from.
 func defaultLiveTVConfig() LiveTVConfig {
 	return LiveTVConfig{
 		DVRPath:       DefaultLiveTVDVRPath,

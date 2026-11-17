@@ -208,6 +208,18 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 	cfg.S3.Private.SecretKey = firstConfiguredString(m, "", "s3.private_secret_key", "s3.operational_secret_key")
 
 	// S3 — User DB
+	cfg.S3.UserDB.Endpoint = stringOr(m, "s3.user_db_endpoint", "")
+	cfg.S3.UserDB.Region = stringOr(m, "s3.user_db_region", "")
+	userDBPathStyle, err := boolOr(m, "s3.user_db_path_style", true)
+	if err != nil {
+		return nil, err
+	}
+	cfg.S3.UserDB.PathStyle = userDBPathStyle
+	cfg.S3.UserDB.Bucket = stringOr(m, "s3.user_db_bucket", "")
+	cfg.S3.UserDB.KeyPrefix = stringOr(m, "s3.user_db_key_prefix", "")
+	cfg.S3.UserDB.AccessKey = stringOr(m, "s3.user_db_access_key", "")
+	cfg.S3.UserDB.SecretKey = stringOr(m, "s3.user_db_secret_key", "")
+
 	// Client IP resolution ("" = clientip package defaults). Kept in the
 	// config snapshot so the nodeconfig watcher hot-reloads the resolver.
 	cfg.ClientIP.TrustedProxies = stringOr(m, "clientip.trusted_proxies", "")
@@ -218,10 +230,6 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 		return nil, err
 	}
 	cfg.Server.LANDiscovery = lanDiscovery
-
-	if err := loadBloemLANConfig(m, cfg); err != nil {
-		return nil, err
-	}
 
 	// TMDB collection presets (independent of metadata providers)
 	cfg.TMDBAPIKey = stringOr(m, "tmdb.api_key", "")
@@ -242,6 +250,11 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 		return nil, err
 	}
 	cfg.UserDB.IdleTimeout = idleTimeout
+	litestreamSync, err := durationOr(m, "userdb.litestream_sync", 1*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	cfg.UserDB.LitestreamSync = litestreamSync
 	staleGrace, err := intOr(m, "userdb.stale_grace_seconds", 120)
 	if err != nil {
 		return nil, err
@@ -400,7 +413,7 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 		return nil, err
 	}
 
-	if err := loadBloemLiveTVConfig(m, cfg); err != nil {
+	if err := loadBloemConfig(m, cfg); err != nil {
 		return nil, err
 	}
 

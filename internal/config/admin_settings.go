@@ -730,7 +730,7 @@ func applyLegacyPositiveIntAdminSettingFallback(
 // layer stricter checks on top of this function.
 func NormalizeAdminSetting(key, raw string) (string, error) {
 	value := strings.TrimSpace(raw)
-	if normalized, handled, err := normalizeBloemAdminSetting(key, raw, value); handled {
+	if normalized, handled, err := normalizeBloemAdminSetting(key, value); handled {
 		return normalized, err
 	}
 
@@ -982,7 +982,7 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 	case "catalog.search.provider":
 		return normalizeAdminEnum(key, value, "postgres", "meilisearch")
 	case "catalog.search.meilisearch.matching_strategy":
-		return normalizeAdminEnum(key, value, "last", "all", "frequency")
+		return normalizeAdminEnum(key, value, "last", "all")
 	case "s3.public_url_auth":
 		return normalizeAdminEnum(key, value, "", "presigned", "public", "cloudflare_token")
 

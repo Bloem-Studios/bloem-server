@@ -43,18 +43,18 @@ func init() {
 	}
 }
 
-// normalizeBloemAdminSetting validates Bloem-owned admin settings before
-// Silo's NormalizeAdminSetting switch. The per-user SQLite S3 replica keys
-// were removed from Bloem, so they fall through unvalidated exactly like any
-// other unknown key.
-func normalizeBloemAdminSetting(key, raw, value string) (string, bool, error) {
+// normalizeBloemAdminSetting validates Bloem-owned admin settings, and Bloem's
+// wider choices for Silo settings, before Silo's NormalizeAdminSetting switch.
+// value is the trimmed input.
+func normalizeBloemAdminSetting(key, value string) (string, bool, error) {
 	var (
 		normalized string
 		err        error
 	)
 	switch key {
-	case "s3.user_db_path_style", "s3.user_db_endpoint":
-		return raw, true, nil
+	case "catalog.search.meilisearch.matching_strategy":
+		// Bloem adds Meilisearch's "frequency" strategy to Silo's last/all.
+		normalized, err = normalizeAdminEnum(key, value, "last", "all", "frequency")
 	case EbookRequestsEnabledSettingKey, ProfilePasswordsEnabledSettingKey, StrmAllowPrivateAddressesSettingKey, "lan.advertisement_enabled":
 		normalized, err = normalizeAdminBool(key, value)
 	case "livetv.max_transcodes":

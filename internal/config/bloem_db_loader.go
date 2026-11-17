@@ -1,6 +1,19 @@
 package config
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+
+	"gopkg.in/yaml.v3"
+)
+
+// loadBloemConfig reads Bloem's settings into cfg. LoadFromDB calls it.
+func loadBloemConfig(m map[string]string, cfg *Config) error {
+	if err := loadBloemLANConfig(m, cfg); err != nil {
+		return err
+	}
+	return loadBloemLiveTVConfig(m, cfg)
+}
 
 // loadBloemLANConfig reads the LAN service advertisement toggle. Read at
 // startup only: the mDNS service is registered when the process starts and
@@ -31,8 +44,17 @@ func loadBloemLiveTVConfig(m map[string]string, cfg *Config) error {
 	return nil
 }
 
-// setBloemLiveTVSettings maps the YAML livetv block onto settings keys.
-func setBloemLiveTVSettings(m map[string]string, liveTV LiveTVConfig) {
+// setBloemYAMLSettings maps the YAML config's livetv block onto settings
+// keys. YAMLToSettingsMap calls it with the file it already parsed; an absent
+// block imports the defaults, as Silo's own blocks do.
+func setBloemYAMLSettings(m map[string]string, data []byte) error {
+	raw := struct {
+		LiveTV LiveTVConfig `yaml:"livetv"`
+	}{LiveTV: defaultLiveTVConfig()}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("parsing YAML config: %w", err)
+	}
+	liveTV := raw.LiveTV
 	setIfNonEmpty(m, "livetv.dvr_path", liveTV.DVRPath)
 	if liveTV.MaxTranscodes != 0 {
 		m["livetv.max_transcodes"] = strconv.Itoa(liveTV.MaxTranscodes)
@@ -43,4 +65,5 @@ func setBloemLiveTVSettings(m map[string]string, liveTV LiveTVConfig) {
 	setIfNonEmpty(m, "livetv.framerate_cap", liveTV.FrameRateCap)
 	setIfNonEmpty(m, "livetv.max_resolution", liveTV.MaxResolution)
 	setIfNonEmpty(m, "livetv.play_method", liveTV.PlayMethod)
+	return nil
 }
