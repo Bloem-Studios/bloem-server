@@ -91,7 +91,6 @@ import {
   type WatchRouteRequest,
 } from "@/pages/watchRouteHelpers";
 import { canEditMarkers as canEditMarkersForUser } from "@/lib/permissions";
-import { PrePlaybackCampaign } from "@/components/engagement/CampaignPlacements";
 import { markPlaybackIntent } from "@/player/first-frame";
 import { onMeteredConnection } from "@/player/bandwidth-probe";
 import { playbackQualitySettings } from "./playbackQualitySettings";
@@ -1307,39 +1306,32 @@ function WatchPlaybackHostContent() {
   return (
     <PlayerConfigProvider config={playerConfig}>
       {(isForeground || isPostRoll) && <WatchPlaybackTitle title={activeItem.title} />}
-      <PrePlaybackCampaign
-        key={requestKeyValue}
-        contentId={activeItem.content_id}
-        enabled={isForeground && !isPostRoll}
-        onCancel={handleExit}
-      >
-        <Suspense fallback={isForeground || isPostRoll ? <PlaybackPreparingScreen /> : null}>
-          <WatchPage
-            {...watchPageProps}
-            maxBitrateKbps={maxBitrateKbps ?? null}
-            introSkipMode={introSkipMode}
-            showMarkerConfidence={showMarkerConfidence}
-            showMarkerSource={showMarkerSource}
-            bufferingMode={bufferingMode}
-            autoSkipRecap={autoSkipRecap}
-            autoPlayNextPreview={autoPlayNextPreview}
-            autoPlayNext={autoPlayNext}
-            canEditMarkers={canEditMarkers}
-            playbackRequestKey={requestKeyValue}
-            onNavigateEpisode={handleNavigateEpisode}
-            onEnded={handleEnded}
-            onExit={handleExit}
-            onMinimize={handleMinimize}
-            displayMode={playerDisplayMode}
-            autoEnterPictureInPicture={state.autoEnterPictureInPicture}
-            onPictureInPictureChange={handlePictureInPictureChange}
-            onPlaybackStateChange={handlePlaybackStateChange}
-            onPlaybackTransportReady={handlePlaybackTransportReady}
-            seekIntervals={{ back: seekPreferences.skipBack, forward: seekPreferences.skipForward }}
-            onReturnFromPostRoll={isPostRoll ? handleReturnFromPostRoll : undefined}
-          />
-        </Suspense>
-      </PrePlaybackCampaign>
+      <Suspense fallback={isForeground || isPostRoll ? <PlaybackPreparingScreen /> : null}>
+        <WatchPage
+          {...watchPageProps}
+          maxBitrateKbps={maxBitrateKbps ?? null}
+          introSkipMode={introSkipMode}
+          showMarkerConfidence={showMarkerConfidence}
+          showMarkerSource={showMarkerSource}
+          bufferingMode={bufferingMode}
+          autoSkipRecap={autoSkipRecap}
+          autoPlayNextPreview={autoPlayNextPreview}
+          autoPlayNext={autoPlayNext}
+          canEditMarkers={canEditMarkers}
+          playbackRequestKey={requestKeyValue}
+          onNavigateEpisode={handleNavigateEpisode}
+          onEnded={handleEnded}
+          onExit={handleExit}
+          onMinimize={handleMinimize}
+          displayMode={playerDisplayMode}
+          autoEnterPictureInPicture={state.autoEnterPictureInPicture}
+          onPictureInPictureChange={handlePictureInPictureChange}
+          onPlaybackStateChange={handlePlaybackStateChange}
+          onPlaybackTransportReady={handlePlaybackTransportReady}
+          seekIntervals={{ back: seekPreferences.skipBack, forward: seekPreferences.skipForward }}
+          onReturnFromPostRoll={isPostRoll ? handleReturnFromPostRoll : undefined}
+        />
+      </Suspense>
       {isPostRoll && (
         <LocalErrorBoundary onError={handlePostRollUnavailable}>
           <Suspense fallback={null}>

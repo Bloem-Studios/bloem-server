@@ -52,6 +52,10 @@ const importerModules: Record<string, Record<string, string>> = {
     // The preview chrome sits inside Silo's branding provider.
     "contexts/BrandingProvider.tsx": "BrandingWithPreview.tsx",
   },
+  // The watch host's player sits behind Bloem's pre-playback campaign.
+  "playback/WatchPlaybackChrome.tsx": {
+    "player/components/WatchPage.tsx": "adapters/WatchPage.tsx",
+  },
   // A guest previewing gets the preview's sidebar.
   "components/Layout.tsx": { "components/AppSidebar.tsx": "adapters/AppSidebar.tsx" },
   // Server activity and the build route are the platform administrator's.

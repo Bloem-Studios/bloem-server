@@ -118,3 +118,14 @@ describe("bloemPreview app routes", () => {
     ).resolves.toBeNull();
   });
 });
+
+describe("bloemPreview watch host", () => {
+  it("gives the watch host's player the pre-playback campaign", async () => {
+    await expect(
+      resolveFrom("playback/WatchPlaybackChrome.tsx", "@/player/components/WatchPage"),
+    ).resolves.toBe(path.join(SRC, "bloem/preview/adapters/WatchPage.tsx"));
+    await expect(
+      resolveFrom("bloem/preview/adapters/WatchPage.tsx", "@/player/components/WatchPage"),
+    ).resolves.toBeNull();
+  });
+});
