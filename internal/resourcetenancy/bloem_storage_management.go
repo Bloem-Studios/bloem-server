@@ -147,17 +147,16 @@ func retainNativeManagementActor(ctx context.Context, tx pgx.Tx, a auth.AdminCon
 		}
 	}
 	var userID int
-	var profile *string
 	var revoked *time.Time
 	var expires, now time.Time
-	err = tx.QueryRow(ctx, "SELECT user_id,profile_id,revoked_at,expires_at,clock_timestamp() FROM auth_sessions WHERE id=$1 FOR SHARE", a.SessionID).Scan(&userID, &profile, &revoked, &expires, &now)
+	err = tx.QueryRow(ctx, "SELECT user_id,revoked_at,expires_at,clock_timestamp() FROM auth_sessions WHERE id=$1 FOR SHARE", a.SessionID).Scan(&userID, &revoked, &expires, &now)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrInvalidActor
 	}
 	if err != nil {
 		return storageScanError(err)
 	}
-	if userID != a.AccountID || profile != nil || revoked != nil || !expires.After(now) || !a.ExpiresAt.After(now) {
+	if userID != a.AccountID || revoked != nil || !expires.After(now) || !a.ExpiresAt.After(now) {
 		return ErrInvalidActor
 	}
 	return nil

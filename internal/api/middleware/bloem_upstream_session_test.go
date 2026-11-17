@@ -6,14 +6,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
-type staticTokenValidator struct{ claims *auth.Claims }
-
-func (v staticTokenValidator) ValidateToken(string) (*auth.Claims, error) { return v.claims, nil }
-
-type alwaysValidSession struct{}
-
-func (alwaysValidSession) IsValid(context.Context, string) (bool, error) { return true, nil }
-
 type fixedSessionValidator struct{ valid bool }
 
 func (v fixedSessionValidator) IsValid(context.Context, string) (bool, error) { return v.valid, nil }
@@ -22,10 +14,6 @@ func (v fixedSessionValidator) ActiveSession(context.Context, string, int) (auth
 	return auth.SessionAuthority{Role: "user"}, v.valid, nil
 }
 func (v failingSessionValidator) ActiveSession(ctx context.Context, id string, _ int) (auth.SessionAuthority, bool, error) {
-	valid, err := v.IsValid(ctx, id)
-	return auth.SessionAuthority{}, valid, err
-}
-func (v alwaysValidSession) ActiveSession(ctx context.Context, id string, _ int) (auth.SessionAuthority, bool, error) {
 	valid, err := v.IsValid(ctx, id)
 	return auth.SessionAuthority{}, valid, err
 }

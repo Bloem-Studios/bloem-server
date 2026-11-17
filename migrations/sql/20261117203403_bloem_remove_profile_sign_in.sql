@@ -23,13 +23,23 @@ DROP FUNCTION IF EXISTS public.bloem_sync_account_login_email_registry();
 DROP TABLE IF EXISTS public.login_email_registry;
 
 -- The guard keeps refusing what Silo cannot honor while switching is on: a
--- second organization and a membership outside the default organization.
+-- second organization and a membership outside the default organization. It
+-- keeps the form the database has: keyed to the switching flag
+-- (20261026003000) or, before that, to the policy phase (20261009131027).
+DO $do$
+DECLARE
+    off_check text := 'NOT public.bloem_silo_switching_enabled()';
+BEGIN
+    IF to_regprocedure('public.bloem_silo_switching_enabled()') IS NULL THEN
+        off_check := '(SELECT phase FROM public.membership_policy_authority WHERE singleton) <> ''mirrored''';
+    END IF;
+    EXECUTE format($fn$
 CREATE OR REPLACE FUNCTION public.bloem_mirrored_guard()
 RETURNS trigger
 LANGUAGE plpgsql
-AS $fn$
+AS $body$
 BEGIN
-    IF NOT public.bloem_silo_switching_enabled() THEN
+    IF %s THEN
         RETURN NEW;
     END IF;
     -- Nested IFs: PL/pgSQL resolves every NEW field in an expression, so a
@@ -43,7 +53,10 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$fn$;
+$body$
+$fn$, off_check);
+END;
+$do$;
 
 DROP INDEX IF EXISTS public.auth_sessions_direct_profile_idx;
 ALTER TABLE public.auth_sessions
@@ -238,12 +251,20 @@ CREATE TRIGGER user_profiles_revoke_rotated_sessions
 AFTER UPDATE OF login_email, password_hash ON public.user_profiles
 FOR EACH ROW EXECUTE FUNCTION public.bloem_revoke_rotated_profile_sessions();
 
+DO $do$
+DECLARE
+    off_check text := 'NOT public.bloem_silo_switching_enabled()';
+BEGIN
+    IF to_regprocedure('public.bloem_silo_switching_enabled()') IS NULL THEN
+        off_check := '(SELECT phase FROM public.membership_policy_authority WHERE singleton) <> ''mirrored''';
+    END IF;
+    EXECUTE format($fn$
 CREATE OR REPLACE FUNCTION public.bloem_mirrored_guard()
 RETURNS trigger
 LANGUAGE plpgsql
-AS $fn$
+AS $body$
 BEGIN
-    IF NOT public.bloem_silo_switching_enabled() THEN
+    IF %s THEN
         RETURN NEW;
     END IF;
     IF TG_TABLE_NAME = 'organizations' THEN
@@ -259,7 +280,10 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$fn$;
+$body$
+$fn$, off_check);
+END;
+$do$;
 
 CREATE TRIGGER user_profiles_mirrored_no_direct_login
 BEFORE INSERT OR UPDATE OF login_email, password_hash ON public.user_profiles
