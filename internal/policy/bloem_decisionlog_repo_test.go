@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -31,5 +32,21 @@ func TestDecisionRepositoryOrganizationMethodsNeverReturnForeignRows(t *testing.
 	}
 	if _, err := repo.GetForOrganization(ctx, localOrganizationID, foreign.ID, nil); !errors.Is(err, ErrDecisionNotFound) {
 		t.Fatalf("foreign GetForOrganization error = %v, want ErrDecisionNotFound", err)
+	}
+	if _, err := repo.GetForOrganization(ctx, localOrganizationID, foreign.ID, &foreign.Timestamp); !errors.Is(err, ErrDecisionNotFound) {
+		t.Fatalf("foreign GetForOrganization with timestamp error = %v, want ErrDecisionNotFound", err)
+	}
+	for _, at := range []*time.Time{nil, &local.Timestamp} {
+		got, err := repo.GetForOrganization(ctx, localOrganizationID, local.ID, at)
+		if err != nil || got.ID != local.ID || got.OrganizationID != localOrganizationID {
+			t.Fatalf("local GetForOrganization(timestamp %v) = %+v, %v", at, got, err)
+		}
+	}
+	if _, err := repo.ListForOrganization(ctx, uuid.Nil, ListOptions{}); !errors.Is(err, ErrDecisionNotFound) {
+		t.Fatalf("ListForOrganization(nil organization) error = %v, want ErrDecisionNotFound", err)
+	}
+	all, err := repo.List(ctx, ListOptions{})
+	if err != nil || len(all.Entries) != 2 {
+		t.Fatalf("unscoped List = %d entries, %v; want both organizations", len(all.Entries), err)
 	}
 }

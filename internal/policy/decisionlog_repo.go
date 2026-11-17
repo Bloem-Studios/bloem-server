@@ -26,6 +26,9 @@ type ListOptions struct {
 	To           *time.Time
 	Limit        int
 	Cursor       string
+
+	// Bloem: set by ListForOrganization (bloem_decisionlog_repo.go).
+	organizationID *uuid.UUID
 }
 
 // ListResult is one page of policy decision log rows.
@@ -46,10 +49,6 @@ func NewDecisionRepository(pool *pgxpool.Pool) *DecisionRepository {
 
 // List returns a cursor-paginated page ordered newest-first.
 func (r *DecisionRepository) List(ctx context.Context, opts ListOptions) (ListResult, error) {
-	return r.list(ctx, nil, opts)
-}
-
-func (r *DecisionRepository) list(ctx context.Context, organizationID *uuid.UUID, opts ListOptions) (ListResult, error) {
 	limit := opts.Limit
 	if limit <= 0 || limit > 200 {
 		limit = 100
@@ -58,9 +57,9 @@ func (r *DecisionRepository) list(ctx context.Context, organizationID *uuid.UUID
 	conditions := []string{"1=1"}
 	args := make([]any, 0, 8)
 	argIdx := 1
-	if organizationID != nil {
+	if opts.organizationID != nil {
 		conditions = append(conditions, fmt.Sprintf("organization_id = $%d", argIdx))
-		args = append(args, *organizationID)
+		args = append(args, *opts.organizationID)
 		argIdx++
 	}
 
@@ -143,10 +142,6 @@ func (r *DecisionRepository) list(ctx context.Context, organizationID *uuid.UUID
 // with the id is returned; callers that need the partition primary key can pass
 // both id and timestamp.
 func (r *DecisionRepository) Get(ctx context.Context, id int64, timestamp *time.Time) (Entry, error) {
-	return r.get(ctx, nil, id, timestamp)
-}
-
-func (r *DecisionRepository) get(ctx context.Context, organizationID *uuid.UUID, id int64, timestamp *time.Time) (Entry, error) {
 	query := `
 		SELECT id, "timestamp", organization_id, membership_id, decision_name, policy_generation, user_id,
 		       COALESCE(profile_id, ''), COALESCE(session_id, ''), COALESCE(request_id, ''),
@@ -158,29 +153,16 @@ func (r *DecisionRepository) get(ctx context.Context, organizationID *uuid.UUID,
 		LIMIT 1
 	`
 	args := []any{id}
-	conditions := "id = $1"
-	if organizationID != nil {
-		args = append(args, *organizationID)
-		conditions += " AND organization_id = $2"
-	}
 	if timestamp != nil {
-		args = append(args, *timestamp)
-		conditions += fmt.Sprintf(` AND "timestamp" = $%d`, len(args))
 		query = `
 			SELECT id, "timestamp", organization_id, membership_id, decision_name, policy_generation, user_id,
 			       COALESCE(profile_id, ''), COALESCE(session_id, ''), COALESCE(request_id, ''),
 			       COALESCE(node_id, ''), allowed, eval_time_ns, input_digest,
 			       input_sample, result_sample, COALESCE(error, '')
 			FROM policy_decisions
-			WHERE ` + conditions + `
+			WHERE id = $1 AND "timestamp" = $2
 		`
-	} else if organizationID != nil {
-		query = `
-			SELECT id, "timestamp", organization_id, membership_id, decision_name, policy_generation, user_id,
-			       COALESCE(profile_id, ''), COALESCE(session_id, ''), COALESCE(request_id, ''),
-			       COALESCE(node_id, ''), allowed, eval_time_ns, input_digest,
-			       input_sample, result_sample, COALESCE(error, '')
-			FROM policy_decisions WHERE ` + conditions + ` ORDER BY "timestamp" DESC LIMIT 1`
+		args = append(args, *timestamp)
 	}
 
 	entry, err := scanDecisionEntry(r.pool.QueryRow(ctx, query, args...))
