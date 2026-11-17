@@ -31,7 +31,7 @@ type atomicInvitationFixture struct {
 func atomicInvitationDB(t *testing.T) atomicInvitationFixture {
 	t.Helper()
 	ctx := t.Context()
-	// Membership, profile-entitlement and login-registry functions explicitly
+	// Membership and profile-entitlement functions explicitly
 	// reference public. A partial LIKE clone with a custom search_path can write
 	// into the source database and omits its foreign keys and triggers. Migrate
 	// a disposable database instead so every dependency remains real and local.
@@ -83,18 +83,17 @@ func (f atomicInvitationFixture) provision(provider userstore.UserStoreProvider)
 }
 func (f atomicInvitationFixture) counts(t *testing.T, inv *models.Invitation, wantUsers, wantProfiles, wantClaims int) {
 	t.Helper()
-	var users, profiles, claims, memberships, loginEmails int
+	var users, profiles, claims, memberships int
 	if err := f.pool.QueryRow(t.Context(), `SELECT
 		(SELECT count(*) FROM users WHERE username=$1),
 		(SELECT count(*) FROM user_profiles p JOIN users u ON u.id=p.user_id WHERE u.username=$1),
 		(SELECT count(*) FROM invitations WHERE id=$2 AND accepted_at IS NOT NULL),
-		(SELECT count(*) FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE u.username=$1),
-		(SELECT count(*) FROM login_email_registry WHERE normalized_email=$1)`, inv.Email, inv.ID).
-		Scan(&users, &profiles, &claims, &memberships, &loginEmails); err != nil {
+		(SELECT count(*) FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE u.username=$1)`, inv.Email, inv.ID).
+		Scan(&users, &profiles, &claims, &memberships); err != nil {
 		t.Fatal(err)
 	}
-	if users != wantUsers || profiles != wantProfiles || claims != wantClaims || memberships != wantUsers || loginEmails != wantUsers {
-		t.Fatalf("users/profiles/claims/memberships/loginEmails=%d/%d/%d/%d/%d want %d/%d/%d/%d/%d", users, profiles, claims, memberships, loginEmails, wantUsers, wantProfiles, wantClaims, wantUsers, wantUsers)
+	if users != wantUsers || profiles != wantProfiles || claims != wantClaims || memberships != wantUsers {
+		t.Fatalf("users/profiles/claims/memberships=%d/%d/%d/%d want %d/%d/%d/%d", users, profiles, claims, memberships, wantUsers, wantProfiles, wantClaims, wantUsers)
 	}
 }
 func (f atomicInvitationFixture) waitBlocked(t *testing.T) {

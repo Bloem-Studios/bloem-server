@@ -219,10 +219,10 @@ type bloemTransactionalAccountProvider struct {
 	bloemProviderProfileWriter
 }
 
-func bloemAccountTransactionCounts(t *testing.T, tx pgx.Tx) [4]int {
+func bloemAccountTransactionCounts(t *testing.T, tx pgx.Tx) [3]int {
 	t.Helper()
-	var counts [4]int
-	if err := tx.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM organization_memberships), (SELECT count(*) FROM user_profiles), (SELECT count(*) FROM login_email_registry)`).Scan(&counts[0], &counts[1], &counts[2], &counts[3]); err != nil {
+	var counts [3]int
+	if err := tx.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM organization_memberships), (SELECT count(*) FROM user_profiles)`).Scan(&counts[0], &counts[1], &counts[2]); err != nil {
 		t.Fatal(err)
 	}
 	return counts

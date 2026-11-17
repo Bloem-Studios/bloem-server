@@ -134,22 +134,6 @@ func TestEnableSiloSwitchingRefusesTwoOrganizations(t *testing.T) {
 	}
 }
 
-func TestEnableSiloSwitchingRefusesDirectProfileLogins(t *testing.T) {
-	ctx, pool, _ := buildTenantPool(t)
-	user := siloAccount(t, ctx, pool, "u1", "user")
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO user_profiles (id, user_id, name, is_primary, organization_id, access_group_id, login_email, password_hash)
-		SELECT 'p1', id, 'Main', true, public.bloem_default_organization_id(), access_group_id, 'p1@example.invalid', 'x'
-		FROM users WHERE id = $1`, user); err != nil {
-		t.Fatalf("profile with login: %v", err)
-	}
-	_, err := tenancy.EnableSiloSwitching(ctx, pool)
-	wantError(t, err, "direct profile login")
-	if switching(t, ctx, pool) {
-		t.Fatal("switching enabled with a direct profile login")
-	}
-}
-
 func TestDisableSiloSwitchingLiftsTheGuards(t *testing.T) {
 	ctx, pool, _, admin := switchablePool(t)
 	if err := tenancy.DisableSiloSwitching(ctx, pool); err != nil {
@@ -194,15 +178,24 @@ func TestSwitchableRefusesSecondOrganization(t *testing.T) {
 	wantError(t, err, "bloem_silo_switching_single_organization")
 }
 
-func TestSwitchableRefusesDirectProfileLogin(t *testing.T) {
+// TestSwitchableAcceptsSilosLoginSessionWrites: upstream Silo opens a login
+// session naming none of Bloem's columns, and a profile with no login of its
+// own is all Silo knows; both stay writable while switchable.
+func TestSwitchableAcceptsSilosLoginSessionWrites(t *testing.T) {
 	ctx, pool, user, _ := switchablePool(t)
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO user_profiles (id, user_id, name, is_primary, organization_id, access_group_id)
-		VALUES ('p1', $1, 'Main', true, public.bloem_default_organization_id(), (SELECT id FROM access_groups WHERE is_default))`, user); err != nil {
-		t.Fatalf("create profile: %v", err)
+		INSERT INTO auth_sessions
+			(id, user_id, device_name, ip_address, expires_at, impersonator_user_id, impersonation_started_at, identity_id, provider_since, device_id, device_platform, purpose, bound_profile_id, absolute_expires_at)
+		VALUES ('silo-login', $1, 'Silo Web', NULL, now() + interval '1 hour', NULL, NULL, NULL, NULL, NULLIF('', ''), NULLIF('', ''), 'account', NULLIF('', ''), NULL)`, user); err != nil {
+		t.Fatalf("a Silo login session insert is refused: %v", err)
 	}
-	_, err := pool.Exec(ctx, `UPDATE user_profiles SET login_email = 'p@example.invalid', password_hash = 'x' WHERE id = 'p1'`)
-	wantError(t, err, "bloem_silo_switching_direct_profile_login")
+	var method string
+	if err := pool.QueryRow(ctx, `SELECT auth_method FROM auth_sessions WHERE id = 'silo-login'`).Scan(&method); err != nil || method != "account" {
+		t.Fatalf("Silo login session auth_method = %q, %v; want account", method, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE auth_sessions SET revoked_at = now() WHERE id = 'silo-login'`); err != nil {
+		t.Fatalf("a Silo login session revoke is refused: %v", err)
+	}
 }
 
 // TestSwitchableAcceptsSilosProfileAndRoleWrites pins the organization support

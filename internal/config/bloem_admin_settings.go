@@ -5,12 +5,6 @@ const (
 	// Public audiobook requests do not depend on this opt-in.
 	EbookRequestsEnabledSettingKey = "bloem.requests.ebooks_enabled"
 
-	// ProfilePasswordsEnabledSettingKey lets household profiles sign in with
-	// their own email and password. Off by default.
-	// The key avoids the word "password": tools that look for stored secrets
-	// (the scenario executor's scratch-database guard) read it as one.
-	ProfilePasswordsEnabledSettingKey = "bloem.auth.profile_sign_in_enabled" //nolint:gosec // G101: a setting key, not a credential
-
 	// StrmAllowPrivateAddressesSettingKey lets `.strm` URLs reach addresses
 	// on the server's private network (loopback, link-local, private, CGNAT,
 	// metadata). Off by default; internal/remotesource reads it.
@@ -20,7 +14,6 @@ const (
 // bloemAdminSettingDefaults extends Silo's adminSettingDefaults.
 var bloemAdminSettingDefaults = map[string]string{
 	EbookRequestsEnabledSettingKey:      "false",
-	ProfilePasswordsEnabledSettingKey:   "false",
 	StrmAllowPrivateAddressesSettingKey: "false",
 	"livetv.dvr_path":                   DefaultLiveTVDVRPath,
 	"livetv.max_transcodes":             "3",
@@ -55,7 +48,7 @@ func normalizeBloemAdminSetting(key, value string) (string, bool, error) {
 	case "catalog.search.meilisearch.matching_strategy":
 		// Bloem adds Meilisearch's "frequency" strategy to Silo's last/all.
 		normalized, err = normalizeAdminEnum(key, value, "last", "all", "frequency")
-	case EbookRequestsEnabledSettingKey, ProfilePasswordsEnabledSettingKey, StrmAllowPrivateAddressesSettingKey, "lan.advertisement_enabled":
+	case EbookRequestsEnabledSettingKey, StrmAllowPrivateAddressesSettingKey, "lan.advertisement_enabled":
 		normalized, err = normalizeAdminBool(key, value)
 	case "livetv.max_transcodes":
 		normalized, err = normalizeAdminInt(key, value, -1, 1024)

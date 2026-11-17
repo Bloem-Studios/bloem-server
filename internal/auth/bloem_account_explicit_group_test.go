@@ -93,25 +93,22 @@ func TestBloemAccountExplicitOrganizationGroup(t *testing.T) {
 				if err := tx.Rollback(ctx); err != nil {
 					t.Fatal(err)
 				}
-				var after [4]int
+				var after [3]int
 				if err := pool.QueryRow(ctx, `SELECT
 					(SELECT count(*) FROM users),
 					(SELECT count(*) FROM organization_memberships),
-					(SELECT count(*) FROM user_profiles),
-					(SELECT count(*) FROM login_email_registry)`).Scan(&after[0], &after[1], &after[2], &after[3]); err != nil {
+					(SELECT count(*) FROM user_profiles)`).Scan(&after[0], &after[1], &after[2]); err != nil {
 					t.Fatal(err)
 				}
 				if after != before {
-					t.Fatalf("foreign group rollback left account/membership/profile/email rows: before=%v after=%v", before, after)
+					t.Fatalf("foreign group rollback left account/membership/profile rows: before=%v after=%v", before, after)
 				}
-				var accountsLeft, emailsLeft int
-				if err := pool.QueryRow(ctx, `SELECT
-					(SELECT count(*) FROM users WHERE username = $1 OR email = $2),
-					(SELECT count(*) FROM login_email_registry WHERE normalized_email = $2)`, input.User.Username, input.User.Email).Scan(&accountsLeft, &emailsLeft); err != nil {
+				var accountsLeft int
+				if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE username = $1 OR email = $2`, input.User.Username, input.User.Email).Scan(&accountsLeft); err != nil {
 					t.Fatal(err)
 				}
-				if accountsLeft != 0 || emailsLeft != 0 {
-					t.Fatalf("rejected identity survived rollback: accounts=%d emails=%d", accountsLeft, emailsLeft)
+				if accountsLeft != 0 {
+					t.Fatalf("rejected identity survived rollback: accounts=%d", accountsLeft)
 				}
 				return
 			}
@@ -130,16 +127,15 @@ func TestBloemAccountExplicitOrganizationGroup(t *testing.T) {
 			if err := tx.Commit(ctx); err != nil {
 				t.Fatal(err)
 			}
-			var accountCount, membershipCount, profileCount, emailCount int
+			var accountCount, membershipCount, profileCount int
 			if err := pool.QueryRow(ctx, `SELECT
 				(SELECT count(*) FROM users WHERE id = $1),
 				(SELECT count(*) FROM organization_memberships WHERE account_id = $1),
-				(SELECT count(*) FROM user_profiles WHERE user_id = $1),
-				(SELECT count(*) FROM login_email_registry WHERE account_id = $1 AND normalized_email = $2)`, user.ID, input.User.Email).Scan(&accountCount, &membershipCount, &profileCount, &emailCount); err != nil {
+				(SELECT count(*) FROM user_profiles WHERE user_id = $1)`, user.ID).Scan(&accountCount, &membershipCount, &profileCount); err != nil {
 				t.Fatal(err)
 			}
-			if accountCount != 1 || membershipCount != 1 || profileCount != 1 || emailCount != 1 {
-				t.Fatalf("committed account/membership/profile/email counts = %d/%d/%d/%d, want 1/1/1/1", accountCount, membershipCount, profileCount, emailCount)
+			if accountCount != 1 || membershipCount != 1 || profileCount != 1 {
+				t.Fatalf("committed account/membership/profile counts = %d/%d/%d, want 1/1/1", accountCount, membershipCount, profileCount)
 			}
 			var membershipOrganization, profileOrganization uuid.UUID
 			var membershipGroup, profileGroup int64

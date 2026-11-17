@@ -24,7 +24,6 @@ func init() {
 
 	interruptedWork = append(interruptedWork, bloemInterruptedWork...)
 
-	accountFieldTables = append(accountFieldTables, bloemAccountFieldTables...)
 	maps.Copy(excludedUserTables, bloemExcludedUserTables)
 
 	serverSpecificSettings = append(serverSpecificSettings, bloemServerSpecificSettings...)
@@ -80,7 +79,7 @@ var bloemServerStateTables = strings.Fields(`
 	bloem_storage_location_entries bloem_storage_scan_cursors bloem_storage_scan_directories
 	bloem_storage_scan_directory_entries bloem_storage_scan_directory_roots bloem_storage_scan_runs
 	ebook_cover_retries entitlement_apply_receipts livetv_artwork_cache livetv_programs livetv_sessions
-	login_email_registry playback_capacity_reservations remote_device_capabilities
+	playback_capacity_reservations remote_device_capabilities
 	resource_tenancy_migration_ledger tenant_member_command_receipts userdb_sqlite_owner
 `)
 
@@ -200,10 +199,6 @@ var bloemInterruptedWork = []struct{ table, sql string }{
 		WHERE outcome IN ('pending', 'retrying')`},
 }
 
-// bloemAccountFieldTables are kept from the account and profile fields:
-// login_email_registry is kept by triggers on users and user_profiles.
-var bloemAccountFieldTables = []string{"login_email_registry"}
-
 // bloemExcludedUserTables are Bloem's per-user tables a restore set and a
 // profile export leave out.
 var bloemExcludedUserTables = map[string]string{
@@ -225,11 +220,10 @@ var bloemServerSpecificSettings = strings.Fields(`livetv.dvr_path livetv.hw_acce
 var bloemRestoredSettings = strings.Fields(`livetv.`)
 
 // bloemStricterSettings are switches a restore keeps at the stricter value:
-// announcing the server on the LAN (as server.lan_discovery), whether
-// accounts may request ebooks (as Silo's request switches), and whether
-// profiles may sign in with their own password (as auth.local_password_login).
+// announcing the server on the LAN (as server.lan_discovery) and whether
+// accounts may request ebooks (as Silo's request switches).
 var bloemStricterSettings = []string{
-	"lan.advertisement_enabled", "bloem.requests.ebooks_enabled", "bloem.auth.profile_sign_in_enabled",
+	"lan.advertisement_enabled", "bloem.requests.ebooks_enabled",
 	"bloem.strm.allow_private_addresses",
 }
 
@@ -241,7 +235,6 @@ var bloemSettingsPages = []SettingsPage{{pageLiveTV, "Live TV"}}
 var bloemSettingRules = map[string]settingRule{
 	"lan.advertisement_enabled":          {page: "general", class: SettingPortable},
 	"bloem.requests.ebooks_enabled":      {page: pageRequests, class: SettingPortable},
-	"bloem.auth.profile_sign_in_enabled": {page: pageSignIn, class: SettingPortable},
 	"bloem.strm.allow_private_addresses": {page: "general", class: SettingPortable},
 	"livetv.":                            {page: pageLiveTV, class: SettingPortable},
 	"livetv.dvr_path":                    {page: pageLiveTV, class: SettingServerSpecific},

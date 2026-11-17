@@ -52,18 +52,12 @@ func EnableSiloSwitching(ctx context.Context, pool *pgxpool.Pool) (SiloSwitching
 		report.AlreadyEnabled = true
 		return report, tx.Commit(ctx)
 	}
-	var organizations, directLogins int
-	if err := tx.QueryRow(ctx, `
-		SELECT (SELECT count(*) FROM organizations),
-		       (SELECT count(*) FROM user_profiles WHERE login_email IS NOT NULL OR password_hash IS NOT NULL)`,
-	).Scan(&organizations, &directLogins); err != nil {
+	var organizations int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM organizations`).Scan(&organizations); err != nil {
 		return report, fmt.Errorf("tenancy: silo switching preflight: %w", err)
 	}
 	if organizations != 1 {
 		return report, fmt.Errorf("tenancy: silo switching needs exactly one organization, found %d", organizations)
-	}
-	if directLogins != 0 {
-		return report, fmt.Errorf("tenancy: silo switching cannot keep %d profiles with a direct profile login", directLogins)
 	}
 	tag, err := tx.Exec(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
