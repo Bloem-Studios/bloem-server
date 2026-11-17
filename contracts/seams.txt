@@ -268,6 +268,7 @@ web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permi
 web/src/playback/WatchPlaybackChrome.tsx
 web/src/player/components/VideoPlayer.tsx
 web/src/player/components/WatchPage.tsx
+web/src/player/hooks/usePlaybackRealtime.ts  # the playback control ticket retry backs off to 30 s instead of retrying every 5 s for as long as a tab stays open; drop this entry once Silo-Server/silo-server#4392 is merged upstream (2026-11-16)
 web/src/test/requestBudget.ts  # Include Bloem public shell endpoints in deterministic boot server without exempting authenticated operations
 web/src/test/signedInBoot.test.tsx  # Exercise Bloem shell requests against real public endpoint fixtures before measuring budget
 web/vite.config.ts
