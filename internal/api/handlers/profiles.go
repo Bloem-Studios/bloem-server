@@ -34,9 +34,9 @@ type ProfileHandler struct {
 	UserRepo       interface {
 		GetByID(ctx context.Context, id int) (*models.User, error)
 	}
-	// AccessGroups supplies the managed entitlement ceiling inherited by new
-	// profiles. Nil preserves the legacy account-only cap in isolated wiring.
-	AccessGroups   AccessGroupValidator
+	// AccessGroups resolves the profile limit an account inherits from its
+	// access group. Nil resolves every account as ungrouped.
+	AccessGroups   access.GroupPolicyProvider
 	ProfileTokens  *access.ProfileTokenService
 	AvatarStore    profileAvatarStore
 	AvatarResolver artworkurl.Resolver
@@ -262,7 +262,7 @@ func (h *ProfileHandler) householdProfileLimit(ctx context.Context, userID int) 
 	if user == nil {
 		return 0, nil
 	}
-	if h.AccessGroups != nil {
+	if _, ok := h.AccessGroups.(AccessGroupValidator); ok {
 		return h.bloemHouseholdProfileLimit(ctx, user)
 	}
 	effective, err := access.EffectivePolicyForUser(ctx, user, h.AccessGroups)
@@ -328,6 +328,7 @@ func (h *ProfileHandler) ListProfiles(ctx context.Context, userID int) (ProfileL
 	if err != nil {
 		return ProfileListView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to list profiles")
 	}
+	profiles = profilesForOrganization(ctx, profiles)
 	// A limit that cannot be read leaves MaxProfiles at 0 rather than failing
 	// the list: the picker needs the profiles more than the limit.
 	maxProfiles, limitErr := h.householdProfileLimit(ctx, userID)
@@ -335,7 +336,7 @@ func (h *ProfileHandler) ListProfiles(ctx context.Context, userID int) (ProfileL
 		maxProfiles = 0
 	}
 	return ProfileListView{
-		Profiles:            h.toProfileResponses(ctx, store, profilesForOrganization(ctx, profiles)),
+		Profiles:            h.toProfileResponses(ctx, store, profiles),
 		AvatarUploadEnabled: h.AvatarStore != nil,
 		MaxProfiles:         maxProfiles,
 	}, nil

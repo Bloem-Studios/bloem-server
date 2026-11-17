@@ -68,7 +68,10 @@ func (h *ProfileHandler) effectiveProfileLimit(ctx context.Context, user *models
 	if user.MaxProfiles != nil {
 		limit = *user.MaxProfiles
 	}
-	if h.AccessGroups == nil {
+	// Tenant groups carry the managed entitlement ceiling; a plain policy
+	// provider (or none) keeps the account-only cap.
+	groups, ok := h.AccessGroups.(AccessGroupValidator)
+	if !ok {
 		return limit, cloneGroupID(user.AccessGroupID), nil
 	}
 	explicitOrganizationID := adminResourceOrganization(ctx)
@@ -77,7 +80,7 @@ func (h *ProfileHandler) effectiveProfileLimit(ctx context.Context, user *models
 		if user.AccessGroupID == nil {
 			return limit, nil, nil
 		}
-		group, err := h.AccessGroups.GetForAccount(ctx, user.ID, *user.AccessGroupID)
+		group, err := groups.GetForAccount(ctx, user.ID, *user.AccessGroupID)
 		if err != nil {
 			return 0, nil, err
 		}
@@ -86,12 +89,12 @@ func (h *ProfileHandler) effectiveProfileLimit(ctx context.Context, user *models
 	var group *access.TenantGroup
 	var err error
 	if explicitOrganizationID == uuid.Nil && user.AccessGroupID != nil {
-		group, err = h.AccessGroups.Get(ctx, organizationID, *user.AccessGroupID)
+		group, err = groups.Get(ctx, organizationID, *user.AccessGroupID)
 		if errors.Is(err, access.ErrGroupNotFound) {
-			group, err = h.AccessGroups.GetDefault(ctx, organizationID)
+			group, err = groups.GetDefault(ctx, organizationID)
 		}
 	} else {
-		group, err = h.AccessGroups.GetDefault(ctx, organizationID)
+		group, err = groups.GetDefault(ctx, organizationID)
 	}
 	if err != nil {
 		return 0, nil, err

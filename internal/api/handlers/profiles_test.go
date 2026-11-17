@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/blobstore/blobstoretest"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -85,21 +83,8 @@ func TestCreateProfileWithSettingsSyncRecountsLimit(t *testing.T) {
 }
 
 // profileLimitGroups serves one access group's policy for every account.
-type profileLimitGroups struct {
-	AccessGroupValidator
-	policy access.GroupPolicy
-}
+type profileLimitGroups struct{ policy access.GroupPolicy }
 
-func (g profileLimitGroups) Get(context.Context, uuid.UUID, int64) (*access.TenantGroup, error) {
-	return &access.TenantGroup{Group: access.Group{ID: g.policy.ID}, MaxProfiles: g.policy.MaxProfiles}, nil
-}
-
-func (g profileLimitGroups) GetForAccount(ctx context.Context, _ int, id int64) (*access.TenantGroup, error) {
-	return g.Get(ctx, uuid.Nil, id)
-}
-func (g profileLimitGroups) GetDefault(ctx context.Context, org uuid.UUID) (*access.TenantGroup, error) {
-	return g.Get(ctx, org, g.policy.ID)
-}
 func (g profileLimitGroups) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {
 	policy := g.policy
 	return &policy, nil
