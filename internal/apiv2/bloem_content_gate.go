@@ -23,3 +23,10 @@ func bloemContentGate(ctx huma.Context, next func(huma.Context)) {
 	}
 	next(ctx)
 }
+
+// bloemThenContentGate runs bloemContentGate in front of next. classGate
+// applies it once its gates admitted the request, which is where the gate
+// stood as a Huma middleware of its own.
+func bloemThenContentGate(next func(huma.Context)) func(huma.Context) {
+	return func(ctx huma.Context) { bloemContentGate(ctx, next) }
+}

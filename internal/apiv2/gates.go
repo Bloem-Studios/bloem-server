@@ -75,6 +75,7 @@ func classGate(deps Dependencies) func(huma.Context, func(huma.Context)) {
 				"The server is not wired to authorize this operation ("+missing+" unavailable)."))
 			return
 		}
+		next = bloemThenContentGate(next) // Bloem: playback-gated content after the class gates (bloem_content_gate.go)
 		runChain(ctx, next, chain)
 	}
 }
@@ -105,7 +106,8 @@ func gateChain(deps Dependencies, class Class, permission string, demoRestricted
 	if deps.Auth == nil {
 		return nil, "auth"
 	}
-	chain := bloemAuthChain(deps, deps.Auth.RequireAuth)
+	chain := []func(http.Handler) http.Handler{deps.Auth.RequireAuth}
+	chain = bloemAuthChain(deps, chain[0]) // Bloem: stream token and tenant identity around Silo's auth gate (bloem_hooks.go)
 	if demoRestricted {
 		chain = append(chain, demoGate(deps.DemoSettings))
 	}

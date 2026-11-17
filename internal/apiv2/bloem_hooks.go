@@ -1,7 +1,6 @@
 package apiv2
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -84,14 +83,13 @@ func bloemWithTenantIdentityGate(deps Dependencies, inner func(http.Handler) htt
 	return func(next http.Handler) http.Handler { return bloemTenantIdentityGate(deps, inner(next)) }
 }
 
-// bloemCheckOperationPath accepts both surfaces registered through this
-// package: Silo's /api/v2 and Bloem's native /api/bloem/v2 (see
-// bloem_native_document.go). Both get the same checks, metadata, body limits
-// and class gates -- the alternative was a second registry that would drift
-// from this one.
-func bloemCheckOperationPath(path string) error {
-	if !strings.HasPrefix(path, Prefix+"/") && !strings.HasPrefix(path, BloemPrefix+"/") {
-		return fmt.Errorf("path %q must start with %s/ or %s/", path, Prefix, BloemPrefix)
+// bloemCheckedOperationPath lets checkOperation judge a native operation
+// (BloemPrefix) by Silo's rules for its own surface: the checks see the path
+// under Prefix, and every other path unchanged. Only checkOperation's copy of
+// the operation changes; the route keeps its real path.
+func bloemCheckedOperationPath(path string) string {
+	if rest, ok := strings.CutPrefix(path, BloemPrefix+"/"); ok {
+		return Prefix + "/" + rest
 	}
-	return nil
+	return path
 }

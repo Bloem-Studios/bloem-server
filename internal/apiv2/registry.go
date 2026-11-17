@@ -375,8 +375,9 @@ func checkOperation(op Operation) error {
 	if len(op.Tags) != 1 || op.Tags[0] != strings.ToLower(op.Tags[0]) {
 		return fmt.Errorf("exactly one lowercase domain tag is required, got %v", op.Tags)
 	}
-	if err := bloemCheckOperationPath(op.Path); err != nil {
-		return err
+	op.Path = bloemCheckedOperationPath(op.Path) // Bloem: /api/bloem/v2 operations follow Silo's rules (bloem_hooks.go)
+	if !strings.HasPrefix(op.Path, Prefix+"/") {
+		return fmt.Errorf("path %q must start with %s/", op.Path, Prefix)
 	}
 	if op.Audited && (!isMutatingMethod(op.Method) || strings.HasPrefix(op.Path, Prefix+"/admin/")) {
 		return fmt.Errorf("audited operations are mutations outside %s/admin, which records domain actions already", Prefix)
