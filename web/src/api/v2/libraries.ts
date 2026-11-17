@@ -71,7 +71,8 @@ export function libraryFromV2(library: LibraryV2): Library {
  */
 export function libraryCreateToV2(body: CreateLibraryRequest): V2Body<"POST /api/v2/libraries"> {
   return {
-    ...(body.storage_source ? { storage_source: body.storage_source } : { paths: body.paths }),
+    paths: body.paths,
+    ...(body.storage_source ? { storage_source: body.storage_source } : {}),
     type: body.type,
     name: body.name,
     ...(body.metadata_language === undefined ? {} : { metadata_language: body.metadata_language }),
