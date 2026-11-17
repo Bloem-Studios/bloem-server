@@ -520,7 +520,8 @@ func (h *SectionHandler) loadResolvedHomeSections(ctx context.Context) ([]sectio
 
 	resolved = filterResolvedSectionsByAccess(resolved, accessFilter)
 
-	return filterBloemPreviewSections(ctx, resolved), libraryIDs, accessFilter, profileID, nil
+	resolved = filterBloemPreviewSections(ctx, resolved)
+	return resolved, libraryIDs, accessFilter, profileID, nil
 }
 
 func (h *SectionHandler) loadResolvedLibrarySections(ctx context.Context, libraryID int) ([]sections.ResolvedSection, catalog.AccessFilter, string, error) {
@@ -561,7 +562,8 @@ func (h *SectionHandler) loadResolvedLibrarySections(ctx context.Context, librar
 		accessFilter.MaxPlaybackQuality = scope.MaxPlaybackQuality
 	}
 
-	return filterBloemPreviewSections(ctx, resolved), accessFilter, profileID, nil
+	resolved = filterBloemPreviewSections(ctx, resolved)
+	return resolved, accessFilter, profileID, nil
 }
 
 // --- Profile override endpoints ---

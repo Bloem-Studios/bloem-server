@@ -28,7 +28,7 @@ func TestOrganizationDomainAPIError(t *testing.T) {
 }
 
 func TestProfileLoginOnAnotherOrganizationsDomain(t *testing.T) {
-	handler := &AuthHandler{profileLogin: &profileLoginStub{err: &auth.OrganizationDomainError{SignInURL: "https://main.domain.com"}}}
+	handler := &AuthHandler{bloemAuthHandlerExt: bloemAuthHandlerExt{profileLogin: &profileLoginStub{err: &auth.OrganizationDomainError{SignInURL: "https://main.domain.com"}}}}
 	req := httptest.NewRequest(http.MethodPost, "/auth/profile-login", strings.NewReader(`{"email":"reader@example.test","password":"profile-password","device_id":"tablet-17"}`))
 	rec := httptest.NewRecorder()
 	handler.HandleProfileLogin(rec, req)

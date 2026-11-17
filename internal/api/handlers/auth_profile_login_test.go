@@ -26,7 +26,7 @@ func TestDirectProfileLoginReturnsOnlyProfileBoundSession(t *testing.T) {
 		CredentialRevision: 3,
 		AuthMethod:         auth.AuthMethodDirectProfile,
 	}}
-	handler := &AuthHandler{profileLogin: login}
+	handler := &AuthHandler{bloemAuthHandlerExt: bloemAuthHandlerExt{profileLogin: login}}
 	req := httptest.NewRequest(http.MethodPost, "/auth/profile-login", strings.NewReader(`{"email":"reader@example.test","password":"profile-password","device_id":"tablet-17"}`))
 	req.Header.Set("User-Agent", "Reader Tablet")
 	rec := httptest.NewRecorder()
@@ -78,7 +78,7 @@ func TestDirectProfileLoginReturnsOnlyProfileBoundSession(t *testing.T) {
 // right nor wrong, so the client retries instead of reporting bad credentials.
 func TestDirectProfileLoginAnswersBusyHashingWithRetry(t *testing.T) {
 	t.Parallel()
-	handler := &AuthHandler{profileLogin: &profileLoginStub{err: fmt.Errorf("compare: %w", passwordhash.ErrBusy)}}
+	handler := &AuthHandler{bloemAuthHandlerExt: bloemAuthHandlerExt{profileLogin: &profileLoginStub{err: fmt.Errorf("compare: %w", passwordhash.ErrBusy)}}}
 	req := httptest.NewRequest(http.MethodPost, "/auth/profile-login", strings.NewReader(`{"email":"reader@example.test","password":"profile-password","device_id":"tablet-17"}`))
 	rec := httptest.NewRecorder()
 
@@ -113,7 +113,7 @@ func TestDirectProfileLoginMapsRefusals(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			handler := &AuthHandler{profileLogin: &profileLoginStub{err: test.err}}
+			handler := &AuthHandler{bloemAuthHandlerExt: bloemAuthHandlerExt{profileLogin: &profileLoginStub{err: test.err}}}
 			req := httptest.NewRequest(http.MethodPost, "/auth/profile-login", strings.NewReader(`{"email":"reader@example.test","password":"profile-password","device_id":"tablet-17"}`))
 			rec := httptest.NewRecorder()
 
@@ -145,4 +145,16 @@ func (s *profileLoginStub) LoginProfile(_ context.Context, email, password strin
 		return nil, auth.SessionSubject{}, s.err
 	}
 	return &auth.TokenPair{AccessToken: "access", RefreshToken: "refresh", ExpiresIn: 300}, s.subject, nil
+}
+
+// NewAuthHandler's auth service answers direct profile login; without one
+// the route reports itself unconfigured.
+func TestProfileLoginUsesTheHandlersAuthService(t *testing.T) {
+	service := &auth.Service{}
+	if got, ok := NewAuthHandler(service, nil, nil).profileLoginService().(*auth.Service); !ok || got != service {
+		t.Fatalf("profileLoginService() = %T, want the handler's *auth.Service", got)
+	}
+	if NewAuthHandler(nil, nil, nil).profileLoginService() != nil {
+		t.Fatal("a handler without an auth service has no profile login")
+	}
 }

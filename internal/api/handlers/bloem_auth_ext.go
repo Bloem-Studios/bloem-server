@@ -40,7 +40,8 @@ type profileLoginResponse struct {
 // HandleProfileLogin exchanges an optional direct profile credential for a
 // profile-bound session without changing the legacy account login flow.
 func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request) {
-	if h.profileLogin == nil {
+	profileLogin := h.profileLoginService()
+	if profileLogin == nil {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Direct profile login is not configured")
 		return
 	}
@@ -61,7 +62,7 @@ func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusBadRequest, "bad_request", "A device_id is required for direct profile login")
 		return
 	}
-	pair, subject, err := h.profileLogin.LoginProfile(r.Context(), req.Email, req.Password, auth.DeviceClaim{
+	pair, subject, err := profileLogin.LoginProfile(r.Context(), req.Email, req.Password, auth.DeviceClaim{
 		ID:        req.DeviceID,
 		Name:      r.UserAgent(),
 		IPAddress: clientip.FromContext(r.Context()),
@@ -111,4 +112,19 @@ func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request)
 // Silo-owned struct carries a single embedded line.
 type bloemAuthHandlerExt struct {
 	loginTenants apimw.TenantResolver
+	// profileLogin overrides the direct profile login service (tests); nil
+	// uses the handler's auth service.
+	profileLogin profileLoginService
+}
+
+// profileLoginService returns the direct profile login service: an explicit
+// override, else the handler's auth service, else nil.
+func (h *AuthHandler) profileLoginService() profileLoginService {
+	if h.profileLogin != nil {
+		return h.profileLogin
+	}
+	if h.service != nil {
+		return h.service
+	}
+	return nil
 }

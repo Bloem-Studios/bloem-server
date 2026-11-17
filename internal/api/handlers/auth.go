@@ -19,7 +19,6 @@ import (
 // AuthHandler handles authentication-related HTTP endpoints.
 type AuthHandler struct {
 	service              *auth.Service
-	profileLogin         profileLoginService
 	passwords            accountPasswordService
 	jwt                  *auth.JWTService
 	device               *auth.DeviceLoginService
@@ -43,7 +42,6 @@ func NewAuthHandler(service *auth.Service, jwt *auth.JWTService, device *auth.De
 		device:  device,
 	}
 	if service != nil {
-		handler.profileLogin = service
 		handler.passwords = service
 	}
 	return handler
