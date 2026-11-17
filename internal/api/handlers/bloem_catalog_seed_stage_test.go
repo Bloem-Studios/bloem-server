@@ -2,8 +2,11 @@ package handlers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,7 +54,8 @@ func TestBloemStageRemoteCatalogSeedLeavesNoURLForTheJob(t *testing.T) {
 	if req.RemoteURL != "" {
 		t.Fatalf("RemoteURL = %q after staging, want empty", req.RemoteURL)
 	}
-	if req.SourceKey == "" || req.SourceSHA256 == "" || !req.CleanupSource {
-		t.Fatalf("staged request = %+v, want a staged source", req)
+	digest := sha256.Sum256(payload)
+	if !strings.HasSuffix(req.SourceKey, "/"+hex.EncodeToString(digest[:])+".json.gz") || !req.CleanupSource {
+		t.Fatalf("staged request = %+v, want a staged source whose key names its digest", req)
 	}
 }

@@ -1136,7 +1136,7 @@ func (r *Runner) executeCatalogImport(job *models.AdminJob) {
 			}()
 		}
 	}
-	if err := bloemVerifyCatalogSeedSource(&data, req.SourceSHA256); err != nil {
+	if err := bloemVerifyCatalogSeedSource(&data, req.SourceKey); err != nil {
 		_ = data.Close()
 		r.failJob(job.ID, 0, 0, "Catalog import failed", err.Error())
 		return

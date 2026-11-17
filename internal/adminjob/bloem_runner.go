@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"regexp"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
@@ -106,12 +107,14 @@ func verifyCatalogSeedDigest(data []byte, expected string) error {
 	return nil
 }
 
-// bloemVerifyCatalogSeedSource checks a staged source against the digest the
-// handler recorded when it staged it. Silo's import now streams its source,
-// so a source with a digest is read once, at most the bounded compressed size,
-// checked, and handed on as the checked bytes; *data still closes the
-// original source.
-func bloemVerifyCatalogSeedSource(data *io.ReadCloser, expected string) error {
+// bloemVerifyCatalogSeedSource checks a staged source against the digest its
+// staged object key names (BloemStagedCatalogSeedKey), which the handler
+// computed when it staged the download. A key without one, such as an
+// uploaded source, is not checked. Silo's import streams its source, so a
+// staged source is read once, at most the bounded compressed size, checked,
+// and handed on as the checked bytes; *data still closes the original source.
+func bloemVerifyCatalogSeedSource(data *io.ReadCloser, sourceKey string) error {
+	expected := bloemStagedCatalogSeedDigest(sourceKey)
 	if expected == "" {
 		return nil
 	}
@@ -128,4 +131,24 @@ func bloemVerifyCatalogSeedSource(data *io.ReadCloser, expected string) error {
 		io.Closer
 	}{bytes.NewReader(checked), source}
 	return nil
+}
+
+// bloemStagedCatalogSeedKeyPattern matches BloemStagedCatalogSeedKey's keys.
+var bloemStagedCatalogSeedKeyPattern = regexp.MustCompile(`^catalog-seeds/imports/[0-9a-f]{32}/([0-9a-f]{64})\.json\.gz$`)
+
+// BloemStagedCatalogSeedKey is the object key a remote catalog seed is staged
+// under: a random nonce, then the SHA-256 of the staged bytes. The import job
+// checks the object it reads against that digest, so the job request needs
+// no field of its own for it.
+func BloemStagedCatalogSeedKey(nonce [16]byte, digestHex string) string {
+	return fmt.Sprintf("catalog-seeds/imports/%x/%s.json.gz", nonce, digestHex)
+}
+
+// bloemStagedCatalogSeedDigest returns the digest a staged key names, or ""
+// for any other key.
+func bloemStagedCatalogSeedDigest(key string) string {
+	if m := bloemStagedCatalogSeedKeyPattern.FindStringSubmatch(key); m != nil {
+		return m[1]
+	}
+	return ""
 }

@@ -71,7 +71,7 @@ func stageRemoteCatalogSeed(ctx context.Context, store catalogSeedStagingStore, 
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return "", "", "", fmt.Errorf("generating staged catalog seed key: %w", err)
 	}
-	key := fmt.Sprintf("catalog-seeds/imports/%x/%s.json.gz", nonce, digestHex)
+	key := adminjob.BloemStagedCatalogSeedKey(nonce, digestHex)
 	temp, err := os.CreateTemp("", "bloem-catalog-seed-*.json.gz")
 	if err != nil {
 		return "", "", "", fmt.Errorf("creating staged catalog seed file: %w", err)
@@ -121,14 +121,15 @@ func (h *CatalogSeedHandler) bloemStageRemoteCatalogSeed(ctx context.Context, re
 	if err != nil {
 		return catalogImportSourceProblem(err)
 	}
-	bucket, key, digest, err := stageRemoteCatalogSeed(ctx, staging, data)
+	bucket, key, _, err := stageRemoteCatalogSeed(ctx, staging, data)
 	if err != nil {
 		return apiError(500, "internal_error", "Failed to stage catalog seed source")
 	}
 	// The job reads the staged copy: with RemoteURL left set it would fetch
 	// the admin-supplied URL itself.
 	req.RemoteURL = ""
-	req.SourceBucket, req.SourceKey, req.SourceSHA256 = bucket, key, digest
+	// The key names the digest; the job checks the staged object against it.
+	req.SourceBucket, req.SourceKey = bucket, key
 	req.SourceLabel, req.CleanupSource = remoteCatalogSeedLabel(remoteURL), true
 	return nil
 }

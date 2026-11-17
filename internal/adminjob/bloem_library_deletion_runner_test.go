@@ -50,7 +50,7 @@ func (e bloemCanceledDeleteExecutor) Execute(ctx context.Context, req DeleteLibr
 }
 
 func TestBloemLibraryDeletionRunnerCompletesWithFencedSharedPool(t *testing.T) {
-	control := lifecycleRepo(t)
+	control := newBloemLifecycleFixture(t)
 	cfg := control.pool.Config()
 	cfg.MaxConns = 1
 	cfg.MinConns = 0
@@ -193,7 +193,7 @@ func TestBloemLibraryDeletionRunnerCompletesWithFencedSharedPool(t *testing.T) {
 func TestBloemLibraryDeletionRunnerMetadataFailurePreservesCatalogAndClosesConnections(t *testing.T) {
 	for _, stage := range []string{"before-connect", "after-connect", "cancel-after-admission"} {
 		t.Run(stage, func(t *testing.T) {
-			control := lifecycleRepo(t)
+			control := newBloemLifecycleFixture(t)
 			cfg := control.pool.Config()
 			cfg.MaxConns, cfg.MinConns, cfg.MinIdleConns = 1, 0, 0
 			application := "bloem-delete-metadata-fail-" + uuid.NewString()
@@ -295,7 +295,7 @@ func bloemWaitForRunnerConnections(t *testing.T, control *pgxpool.Pool, applicat
 }
 
 func TestBloemLibraryDeletionRunnerBoundsProgressPublication(t *testing.T) {
-	control := lifecycleRepo(t)
+	control := newBloemLifecycleFixture(t)
 	job := lifecycleJob(t, control, JobTypeDeleteLibrary)
 	claimed, err := control.ClaimNextQueued(t.Context(), JobTypeDeleteLibrary)
 	if err != nil || claimed == nil {

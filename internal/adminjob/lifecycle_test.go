@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func lifecycleRepo(t *testing.T) *Repository {
@@ -17,7 +19,12 @@ func lifecycleRepo(t *testing.T) *Repository {
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
-	return newBloemLifecycleFixture(t)
+	pool, err := pgxpool.New(t.Context(), dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	return NewRepository(pool)
 }
 
 func lifecycleUser(t *testing.T, r *Repository, label string) int {
