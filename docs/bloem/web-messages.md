@@ -221,9 +221,10 @@ that also formats `bloem.*` ids, for lists Bloem adds rows to.
   does.
 - An admin message formatted before its part has loaded renders `""` and asks for
   the part; `useBloemT` re-renders when it arrives. Under Vitest it throws
-  `bloemT: <id> is not loaded` instead. `web/src/test-setup.ts` loads the English
-  admin part (`loadBloemAdminEnglishForTests`), so tests render real English and
-  keep asserting today's English.
+  `bloemT: <id> is not loaded` instead. `web/src/bloem/test-setup.ts`, which runs
+  after Silo's `web/src/test-setup.ts`, loads the English admin part
+  (`loadBloemAdminEnglishForTests`), so tests render real English and keep
+  asserting today's English.
 
 ### Formatting rules
 
@@ -304,8 +305,8 @@ throws when a pattern no longer matches a file. Bloem files inside Silo's
 converted folders (`src/components/admin/**`, for example) are already checked by
 `pnpm run lint`, through `I18N_CONVERTED` in Silo's `web/eslint.config.js`, which
 Bloem does not edit. The test runs on Vitest's `threads` pool
-(`THREADS_TESTS` in `web/vite.config.ts`): ESLint's module loading fails inside a
-VM context.
+(`BLOEM_THREADS_TESTS` in `web/bloem-test-config.ts`): ESLint's module loading
+fails inside a VM context.
 
 Like Silo's rule, it cannot see text a plain helper returns; the pseudo-locales
 can.

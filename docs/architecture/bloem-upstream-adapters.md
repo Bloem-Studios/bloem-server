@@ -464,11 +464,20 @@ application load.
 
 Bloem restyles a Silo element from a Bloem stylesheet, never by editing Silo's
 `className` line. The phone header is the example: Silo's `Layout.tsx` keeps its
-inset, see-through `mobile-header` classes, and `web/src/bloem/mobile-header.css`,
-loaded by one added import line there, makes it an opaque bar across the full width
-that clears the safe areas. The rule is unlayered, so it wins over Silo's Tailwind
-utilities and its `glass-dark` component class; `web/src/bloem/mobile-header.test.ts`
-checks the import and the rule. `web/src/bloem/preview/preview.css` hides the header's account links in
+inset, see-through `mobile-header` classes, and `web/src/bloem/mobile-header.css`
+makes it an opaque bar across the full width that clears the safe areas, with
+tighter controls and a smaller avatar. Layout loads the stylesheet through its
+sidebar adapter (`web/src/bloem/preview/adapters/AppSidebar.tsx`), so `Layout.tsx`
+stays as Silo wrote it. The sheet overlay works the same way:
+`web/src/bloem/sheet-overlay.css`, loaded by the sheet adapter. The rules are
+unlayered, so they win over Silo's Tailwind utilities and its `glass-dark` component
+class; `web/src/bloem/mobile-header.test.ts` checks the wiring and the rules.
+
+Bloem's Vitest settings (timeout, VM memory limit, `WEBTEST_EXCLUDE`, its
+threads-pool files and `web/src/bloem/test-setup.ts`) come from
+`web/bloem-test-config.ts`, applied by the brand plugin's `config` hook, so
+`web/vite.config.ts` carries only the two plugin lines and Silo's
+`web/src/test-setup.ts` stays as Silo wrote it. `web/src/bloem/preview/preview.css` hides the header's account links in
 preview the same way.
 
 The launch bundle is checked by Silo's own `web/scripts/check-bundle-budget.mjs`,
