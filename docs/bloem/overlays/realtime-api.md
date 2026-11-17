@@ -5,7 +5,7 @@ This overlay covers Silo's [`docs/realtime-api.md`](../../realtime-api.md), whic
 The **realtime API** is the live connection (a socket) an app keeps open so the
 server can push events to it: playback changes, new titles, messages. Before an app
 opens one, it gets a short-lived **ticket** that proves who it is. Bloem uses
-Silo's sockets and tickets unchanged, with one addition.
+Silo's sockets and tickets unchanged, with two additions.
 
 ## What Bloem changes
 
@@ -20,6 +20,11 @@ Silo's sockets and tickets unchanged, with one addition.
 - **A key that acts as a profile stays in its organization.** When an API key's
   ticket names a profile, that profile must belong to the organization the key's
   owner is in, checked again each time the server checks the connection.
+- **The web player asks for a remote-control ticket less often when refused.**
+  After a server restart, a browser tab that keeps a session from before the
+  restart is refused a ticket. Silo's player asks again every 5 seconds for as
+  long as the tab stays open; Bloem's waits longer each time, up to one attempt
+  every 30 seconds, and still reconnects as soon as the server answers.
 
 ## Words used in the code
 
@@ -29,6 +34,7 @@ Silo's sockets and tickets unchanged, with one addition.
 | Bloem's check | `bloemSocketAuthority` in `internal/api/handlers/bloem_socket_authority.go` |
 | A monitoring tool's ticket | a ticket minted by an API key with Silo's `admin:monitor:read` scope |
 | A key that acts as a profile | a key `SocketIdentity` with a `ProfileID` (Silo's "User keys") |
+| The remote-control ticket | the owner-bound playback control ticket, minted by `web/src/player/hooks/usePlaybackRealtime.ts` |
 
 ## For developers
 
@@ -62,6 +68,19 @@ ticket that names a profile (every profile key, and an account key sent with
 organization of the owner's resolved tenant, the check a sign-in ticket's profile
 gets; Silo's key checks then decide. A profile in another organization, or one that
 moved there, is refused on the next check.
+
+---
+
+**Location:** subsection “Owner-bound playback control handshake (v2)”, the
+paragraph beginning “`GET /api/v2/playback/sessions/control/capabilities` reports…”.
+**Bloem replaces** “retries a refused mint with bounded backoff under the same
+authority” **with:**
+
+retries a refused mint under the same authority with a backoff that grows to one
+attempt every 30 seconds.
+
+This is the change proposed upstream as Silo-Server/silo-server#4392; drop this
+entry, and Bloem's edit to the player, once Silo merges it.
 
 ### Related pages
 
