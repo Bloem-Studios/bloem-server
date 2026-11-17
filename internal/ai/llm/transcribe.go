@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -48,7 +49,7 @@ type TranscriptionWord struct {
 	Text  string
 	// JoinsPrevious reports that the word follows the previous one without a
 	// space (one character of a Chinese or Japanese word, as NeMo-Speech.cpp
-	// times them).
+	// times them). Bloem: bloem_transcribe.go.
 	JoinsPrevious bool
 }
 
@@ -69,7 +70,8 @@ type transcriptionWordJSON struct {
 	Word  string  `json:"word"`
 	// Display and JoinsPrevious are NeMo-Speech.cpp extensions: the word in
 	// running text (with its punctuation) when that differs from Word, and
-	// whether it follows the previous word without a space.
+	// whether it follows the previous word without a space. Bloem:
+	// bloem_transcribe.go.
 	Display       string `json:"display"`
 	JoinsPrevious bool   `json:"joins_previous"`
 }
@@ -78,9 +80,8 @@ type transcriptionResponse struct {
 	Language string `json:"language"`
 	Text     string `json:"text"`
 	// Segments distinguishes "verbose_json honored, no speech" (empty array)
-	// from "endpoint ignored verbose_json" (field absent, and no words
-	// either) — the latter cannot produce timed cues and must fail rather
-	// than silently emit nothing.
+	// from "endpoint ignored verbose_json" (field absent) — the latter cannot
+	// produce timed cues and must fail rather than silently emit nothing.
 	Segments *[]struct {
 		Start *float64                `json:"start"`
 		End   *float64                `json:"end"`
@@ -88,9 +89,7 @@ type transcriptionResponse struct {
 		Words []transcriptionWordJSON `json:"words"`
 	} `json:"segments"`
 	// Words is where OpenAI puts word timings; faster-whisper servers
-	// (speaches) nest them inside each segment instead, and NeMo-Speech.cpp
-	// sends only words, without segments. Nil means the field was absent or
-	// null; an empty array decodes to a non-nil slice.
+	// (speaches) nest them inside each segment instead.
 	Words []transcriptionWordJSON `json:"words"`
 	Error *struct {
 		Message string `json:"message"`
@@ -210,78 +209,68 @@ func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc
 			if parsed.Error != nil && parsed.Error.Message != "" {
 				return &HTTPError{StatusCode: http.StatusBadGateway, message: "transcription API error: " + parsed.Error.Message}
 			}
-			out := &Transcription{Language: parsed.Language}
-			words := wordsFromJSON(parsed.Words)
-			switch {
-			case parsed.Segments != nil:
-				for _, s := range *parsed.Segments {
-					// Whisper may emit empty, zero-duration entries at chunk boundaries.
-					// They contain no cue text and need no timestamps.
-					if strings.TrimSpace(s.Text) == "" {
-						continue
-					}
-					if s.Start == nil || s.End == nil || *s.Start < 0 || *s.End <= *s.Start {
-						return &permanentError{err: fmt.Errorf("transcription endpoint returned missing or invalid segment timestamps (model %q): %w", cfg.ASRModel, ErrUnusableResponse)}
-					}
-					out.Segments = append(out.Segments, TranscriptionSegment{
-						Start: *s.Start, End: *s.End, Text: s.Text, Words: wordsFromJSON(s.Words),
-					})
+			if parsed.Segments == nil && parsed.Words != nil { // Bloem: NeMo-Speech.cpp answers with words and no segments (bloem_transcribe.go)
+				return bloemWordsOnlyTranscription(parsed, cfg.ASRModel, &result)
+			}
+			if parsed.Segments == nil {
+				// Text without segments is a model answering plain json; an
+				// empty reply may not be a transcription endpoint at all.
+				err := fmt.Errorf("transcription endpoint did not return verbose_json segments (model %q); a verbose_json-capable Whisper endpoint is required: %w", cfg.ASRModel, ErrUnusableResponse)
+				if strings.TrimSpace(parsed.Text) != "" {
+					err = fmt.Errorf("%w: %w", ErrTimedSegmentsUnsupported, err)
 				}
-				attachTopLevelWords(out.Segments, words)
-			case parsed.Words != nil:
-				out.Segments = segmentsFromWords(words)
-			default:
-				return &permanentError{err: fmt.Errorf(
-					"transcription endpoint did not return verbose_json segments or words (model %q); a verbose_json-capable Whisper endpoint is required: %w", cfg.ASRModel, ErrUnusableResponse)}
+				return &permanentError{err: err}
+			}
+			out := &Transcription{Language: parsed.Language}
+			for _, s := range *parsed.Segments {
+				// Whisper may emit empty, zero-duration entries at chunk boundaries.
+				// They contain no cue text and need no timestamps.
+				if strings.TrimSpace(s.Text) == "" {
+					continue
+				}
+				if s.Start == nil || s.End == nil || *s.Start < 0 || *s.End <= *s.Start {
+					return &permanentError{err: fmt.Errorf("transcription endpoint returned missing or invalid segment timestamps (model %q): %w", cfg.ASRModel, ErrUnusableResponse)}
+				}
+				out.Segments = append(out.Segments, TranscriptionSegment{
+					Start: *s.Start, End: *s.End, Text: s.Text, Words: wordsFromJSON(s.Words),
+				})
 			}
 			if len(out.Segments) == 0 && strings.TrimSpace(parsed.Text) != "" {
-				return &permanentError{err: fmt.Errorf("transcription endpoint returned text without timed segments (model %q): %w", cfg.ASRModel, ErrUnusableResponse)}
+				return &permanentError{err: fmt.Errorf("transcription endpoint returned text without timed segments (model %q): %w: %w", cfg.ASRModel, ErrTimedSegmentsUnsupported, ErrUnusableResponse)}
 			}
+			attachTopLevelWords(out.Segments, wordsFromJSON(parsed.Words))
 			result = out
 			return nil
 		})
 	if doErr != nil {
+		if rejectsTimedOutput(doErr) {
+			return nil, fmt.Errorf("transcription model %q does not support timed output: %w: %w", cfg.ASRModel, ErrTimedSegmentsUnsupported, doErr)
+		}
 		return nil, decorateTranscribeError(doErr)
 	}
 	return result, nil
 }
 
-// segmentsFromWords wraps a segment-less word list in one segment spanning
-// it; cue building splits the words at pauses, so no segment boundaries are
-// lost. Speech-free audio (no non-empty words) yields no segments.
-func segmentsFromWords(words []TranscriptionWord) []TranscriptionSegment {
-	var text strings.Builder
-	for _, w := range words {
-		word := strings.TrimSpace(w.Text)
-		if word == "" {
-			continue
-		}
-		if text.Len() > 0 && !w.JoinsPrevious {
-			text.WriteByte(' ')
-		}
-		text.WriteString(word)
+// rejectsTimedOutput reports a 400 naming the field Silo uses to request
+// timestamps. OpenAI answers this way for gpt-transcribe, which supports only
+// json or text output and no timestamp granularities.
+func rejectsTimedOutput(err error) bool {
+	status, ok := errors.AsType[*HTTPError](err)
+	if !ok || status.StatusCode != http.StatusBadRequest {
+		return false
 	}
-	if text.Len() == 0 {
-		return nil
+	switch status.Param {
+	case "response_format", "timestamp_granularities", "timestamp_granularities[]":
+		return true
 	}
-	return []TranscriptionSegment{{
-		Start: words[0].Start,
-		End:   words[len(words)-1].End,
-		Text:  text.String(),
-		Words: words,
-	}}
+	return false
 }
 
-// wordsFromJSON prefers a word's running text (display) over the bare word,
-// so punctuation NeMo-Speech.cpp keeps out of a character's word survives.
 func wordsFromJSON(words []transcriptionWordJSON) []TranscriptionWord {
 	out := make([]TranscriptionWord, 0, len(words))
 	for _, w := range words {
-		text := w.Word
-		if w.Display != "" {
-			text = w.Display
-		}
-		out = append(out, TranscriptionWord{Start: w.Start, End: w.End, Text: text, JoinsPrevious: w.JoinsPrevious})
+		out = append(out, TranscriptionWord{Start: w.Start, End: w.End, Text: w.Word})
+		bloemWordExtensions(&out[len(out)-1], w) // Bloem: NeMo-Speech.cpp display text and joins (bloem_transcribe.go)
 	}
 	return out
 }

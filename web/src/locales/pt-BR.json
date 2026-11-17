@@ -147942,7 +147942,7 @@
   "web.settings.watchProviders.toggle.exportRatings.description": [
     {
       "type": 0,
-      "value": "Envia suas avaliações em estrelas para o "
+      "value": "Envia suas avaliações para o "
     },
     {
       "type": 1,
@@ -147950,7 +147950,7 @@
     },
     {
       "type": 0,
-      "value": " e limpa as que você remover. 4 estrelas viram 8/10."
+      "value": " e limpa as que você remover. 3,5 estrelas viram 7/10."
     }
   ],
   "web.settings.watchProviders.toggle.exportRatings.label": [
@@ -148034,7 +148034,7 @@
     },
     {
       "type": 0,
-      "value": " como estrelas. Um 7/10 vira 4 estrelas."
+      "value": ". Um 7/10 vira 3,5 estrelas."
     }
   ],
   "web.settings.watchProviders.toggle.importRatings.label": [
@@ -150459,6 +150459,18 @@
       "value": "Chave de acesso"
     }
   ],
+  "web.setup.storage.applyingBody": [
+    {
+      "type": 0,
+      "value": "O Silo está reiniciando para usar o novo armazenamento. A configuração continua quando ele voltar."
+    }
+  ],
+  "web.setup.storage.applyingTitle": [
+    {
+      "type": 0,
+      "value": "Aplicando as configurações de armazenamento"
+    }
+  ],
   "web.setup.storage.authCloudflare": [
     {
       "type": 0,
@@ -150739,6 +150751,18 @@
     {
       "type": 0,
       "value": "URL de conexão"
+    }
+  ],
+  "web.setup.storage.restartSlowBody": [
+    {
+      "type": 0,
+      "value": "O Silo só volta sozinho se o Docker, o Kubernetes ou o systemd estiver configurado para reiniciá-lo. Caso contrário, inicie o Silo novamente. A configuração continua quando ele voltar."
+    }
+  ],
+  "web.setup.storage.restartSlowTitle": [
+    {
+      "type": 0,
+      "value": "O Silo ainda não reiniciou"
     }
   ],
   "web.setup.storage.saveFailed": [

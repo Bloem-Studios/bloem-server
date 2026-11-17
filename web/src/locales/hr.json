@@ -148387,7 +148387,7 @@
   "web.settings.watchProviders.toggle.exportRatings.description": [
     {
       "type": 0,
-      "value": "Šalje vaše ocjene u zvjezdicama pružatelju "
+      "value": "Šalje vaše ocjene pružatelju "
     },
     {
       "type": 1,
@@ -148395,7 +148395,7 @@
     },
     {
       "type": 0,
-      "value": " i briše one koje uklonite. 4 zvjezdice postaju 8/10."
+      "value": " i briše one koje uklonite. 3,5 zvjezdice postaju 7/10."
     }
   ],
   "web.settings.watchProviders.toggle.exportRatings.label": [
@@ -148479,7 +148479,7 @@
     },
     {
       "type": 0,
-      "value": " kao zvjezdice. 7/10 postaje 4 zvjezdice."
+      "value": ". 7/10 postaje 3,5 zvjezdice."
     }
   ],
   "web.settings.watchProviders.toggle.importRatings.label": [
@@ -150904,6 +150904,18 @@
       "value": "Pristupni ključ"
     }
   ],
+  "web.setup.storage.applyingBody": [
+    {
+      "type": 0,
+      "value": "Silo se ponovno pokreće kako bi počeo koristiti novu pohranu. Postavljanje će se nastaviti kad Silo ponovno bude dostupan."
+    }
+  ],
+  "web.setup.storage.applyingTitle": [
+    {
+      "type": 0,
+      "value": "Primjena postavki pohrane"
+    }
+  ],
   "web.setup.storage.authCloudflare": [
     {
       "type": 0,
@@ -151184,6 +151196,18 @@
     {
       "type": 0,
       "value": "URL veze"
+    }
+  ],
+  "web.setup.storage.restartSlowBody": [
+    {
+      "type": 0,
+      "value": "Silo će se sam ponovno pokrenuti samo ako je Docker, Kubernetes ili systemd postavljen da ga ponovno pokreće. U suprotnom sami ponovno pokrenite Silo. Postavljanje će se nastaviti kad Silo ponovno bude dostupan."
+    }
+  ],
+  "web.setup.storage.restartSlowTitle": [
+    {
+      "type": 0,
+      "value": "Silo se još nije ponovno pokrenuo"
     }
   ],
   "web.setup.storage.saveFailed": [

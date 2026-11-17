@@ -147838,7 +147838,7 @@
   "web.settings.watchProviders.toggle.exportRatings.description": [
     {
       "type": 0,
-      "value": "Invia le tue valutazioni a stelle a "
+      "value": "Invia le tue valutazioni a "
     },
     {
       "type": 1,
@@ -147846,7 +147846,7 @@
     },
     {
       "type": 0,
-      "value": " e cancella quelle che rimuovi. 4 stelle diventano 8/10."
+      "value": " e cancella quelle che rimuovi. 3,5 stelle diventano 7/10."
     }
   ],
   "web.settings.watchProviders.toggle.exportRatings.label": [
@@ -147922,7 +147922,7 @@
   "web.settings.watchProviders.toggle.importRatings.description": [
     {
       "type": 0,
-      "value": "Importa come stelle le valutazioni di film e serie da "
+      "value": "Importa le valutazioni di film e serie da "
     },
     {
       "type": 1,
@@ -147930,7 +147930,7 @@
     },
     {
       "type": 0,
-      "value": ". Un 7/10 diventa 4 stelle."
+      "value": ". Un 7/10 diventa 3,5 stelle."
     }
   ],
   "web.settings.watchProviders.toggle.importRatings.label": [
@@ -150343,6 +150343,18 @@
       "value": "Chiave di accesso"
     }
   ],
+  "web.setup.storage.applyingBody": [
+    {
+      "type": 0,
+      "value": "Silo si sta riavviando per usare la nuova archiviazione. La configurazione prosegue quando torna disponibile."
+    }
+  ],
+  "web.setup.storage.applyingTitle": [
+    {
+      "type": 0,
+      "value": "Applicazione delle impostazioni di archiviazione"
+    }
+  ],
   "web.setup.storage.authCloudflare": [
     {
       "type": 0,
@@ -150623,6 +150635,18 @@
     {
       "type": 0,
       "value": "URL di connessione"
+    }
+  ],
+  "web.setup.storage.restartSlowBody": [
+    {
+      "type": 0,
+      "value": "Silo torna disponibile da solo solo se Docker, Kubernetes o systemd sono configurati per riavviarlo. Altrimenti, avvia di nuovo Silo manualmente. La configurazione prosegue quando torna disponibile."
+    }
+  ],
+  "web.setup.storage.restartSlowTitle": [
+    {
+      "type": 0,
+      "value": "Silo non si è ancora riavviato"
     }
   ],
   "web.setup.storage.saveFailed": [

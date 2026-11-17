@@ -125916,7 +125916,7 @@
   "web.settings.watchProviders.toggle.exportRatings.description": [
     {
       "type": 0,
-      "value": "将你的星级评分发送到"
+      "value": "将你的评分发送到"
     },
     {
       "type": 1,
@@ -125924,7 +125924,7 @@
     },
     {
       "type": 0,
-      "value": "，并清除你移除的评分。4星对应8/10。"
+      "value": "，并清除你移除的评分。3.5星对应7/10。"
     }
   ],
   "web.settings.watchProviders.toggle.exportRatings.label": [
@@ -126000,7 +126000,7 @@
   "web.settings.watchProviders.toggle.importRatings.description": [
     {
       "type": 0,
-      "value": "将"
+      "value": "导入"
     },
     {
       "type": 1,
@@ -126008,7 +126008,7 @@
     },
     {
       "type": 0,
-      "value": "中的电影和剧集评分导入为星级。7/10对应4星。"
+      "value": "中的电影和剧集评分。7/10对应3.5星。"
     }
   ],
   "web.settings.watchProviders.toggle.importRatings.label": [
@@ -128329,6 +128329,18 @@
       "value": "访问密钥"
     }
   ],
+  "web.setup.storage.applyingBody": [
+    {
+      "type": 0,
+      "value": "Silo正在重启以使用新的存储。Silo恢复后将继续设置。"
+    }
+  ],
+  "web.setup.storage.applyingTitle": [
+    {
+      "type": 0,
+      "value": "正在应用存储设置"
+    }
+  ],
   "web.setup.storage.authCloudflare": [
     {
       "type": 0,
@@ -128609,6 +128621,18 @@
     {
       "type": 0,
       "value": "连接URL"
+    }
+  ],
+  "web.setup.storage.restartSlowBody": [
+    {
+      "type": 0,
+      "value": "只有在Docker、Kubernetes或systemd设置为自动重启Silo时，Silo才会自行恢复。否则，请手动重新启动Silo。Silo恢复后将继续设置。"
+    }
+  ],
+  "web.setup.storage.restartSlowTitle": [
+    {
+      "type": 0,
+      "value": "Silo尚未重启"
     }
   ],
   "web.setup.storage.saveFailed": [

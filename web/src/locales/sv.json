@@ -136494,7 +136494,7 @@
   "web.settings.watchProviders.toggle.exportRatings.description": [
     {
       "type": 0,
-      "value": "Skicka dina stjärnbetyg till "
+      "value": "Skicka dina betyg till "
     },
     {
       "type": 1,
@@ -136502,7 +136502,7 @@
     },
     {
       "type": 0,
-      "value": " och rensa dem du tar bort. 4 stjärnor blir 8/10."
+      "value": " och rensa dem du tar bort. 3,5 stjärnor blir 7/10."
     }
   ],
   "web.settings.watchProviders.toggle.exportRatings.label": [
@@ -136586,7 +136586,7 @@
     },
     {
       "type": 0,
-      "value": " som stjärnor. 7/10 blir 4 stjärnor."
+      "value": ". 7/10 blir 3,5 stjärnor."
     }
   ],
   "web.settings.watchProviders.toggle.importRatings.label": [
@@ -138959,6 +138959,18 @@
       "value": "Åtkomstnyckel"
     }
   ],
+  "web.setup.storage.applyingBody": [
+    {
+      "type": 0,
+      "value": "Silo startar om för att använda den nya lagringen. Konfigurationen fortsätter när Silo är tillbaka."
+    }
+  ],
+  "web.setup.storage.applyingTitle": [
+    {
+      "type": 0,
+      "value": "Tillämpar lagringsinställningar"
+    }
+  ],
   "web.setup.storage.authCloudflare": [
     {
       "type": 0,
@@ -139239,6 +139251,18 @@
     {
       "type": 0,
       "value": "Anslutnings-URL"
+    }
+  ],
+  "web.setup.storage.restartSlowBody": [
+    {
+      "type": 0,
+      "value": "Silo kommer bara tillbaka av sig själv om Docker, Kubernetes eller systemd är inställt på att starta om Silo. Annars startar du Silo igen själv. Konfigurationen fortsätter när Silo är tillbaka."
+    }
+  ],
+  "web.setup.storage.restartSlowTitle": [
+    {
+      "type": 0,
+      "value": "Silo har inte startat om än"
     }
   ],
   "web.setup.storage.saveFailed": [

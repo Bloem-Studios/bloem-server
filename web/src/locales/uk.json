@@ -159754,7 +159754,7 @@
   "web.settings.watchProviders.toggle.exportRatings.description": [
     {
       "type": 0,
-      "value": "Надсилати ваші оцінки в зірках до "
+      "value": "Надсилати ваші оцінки до "
     },
     {
       "type": 1,
@@ -159762,7 +159762,7 @@
     },
     {
       "type": 0,
-      "value": " і видаляти ті, які ви прибрали. 4 зірки відповідають 8/10."
+      "value": " і вилучати там ті, які ви прибрали. 3,5 зірки відповідають 7/10."
     }
   ],
   "web.settings.watchProviders.toggle.exportRatings.label": [
@@ -159846,7 +159846,7 @@
     },
     {
       "type": 0,
-      "value": " як зірки. 7/10 стає 4 зірками."
+      "value": ". Оцінка 7/10 відповідає 3,5 зірки."
     }
   ],
   "web.settings.watchProviders.toggle.importRatings.label": [
@@ -162327,6 +162327,18 @@
       "value": "Ключ доступу"
     }
   ],
+  "web.setup.storage.applyingBody": [
+    {
+      "type": 0,
+      "value": "Silo перезапускається, щоб використовувати нове сховище. Майстер налаштування продовжить роботу, щойно Silo знову запрацює."
+    }
+  ],
+  "web.setup.storage.applyingTitle": [
+    {
+      "type": 0,
+      "value": "Застосування налаштувань сховища"
+    }
+  ],
   "web.setup.storage.authCloudflare": [
     {
       "type": 0,
@@ -162607,6 +162619,18 @@
     {
       "type": 0,
       "value": "URL підключення"
+    }
+  ],
+  "web.setup.storage.restartSlowBody": [
+    {
+      "type": 0,
+      "value": "Silo запуститься знову автоматично, лише якщо Docker, Kubernetes або systemd налаштовано на його перезапуск. Інакше запустіть Silo ще раз самостійно. Майстер налаштування продовжить роботу, щойно Silo знову запрацює."
+    }
+  ],
+  "web.setup.storage.restartSlowTitle": [
+    {
+      "type": 0,
+      "value": "Silo ще не перезапущено"
     }
   ],
   "web.setup.storage.saveFailed": [

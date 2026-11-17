@@ -160284,7 +160284,7 @@
   "web.settings.watchProviders.toggle.exportRatings.description": [
     {
       "type": 0,
-      "value": "Odesílat hodnocení hvězdičkami do služby "
+      "value": "Odesílat vaše hodnocení do služby "
     },
     {
       "type": 1,
@@ -160292,7 +160292,7 @@
     },
     {
       "type": 0,
-      "value": " a mazat ta, která odeberete. 4 hvězdičky odpovídají 8/10."
+      "value": " a mazat ta, která odeberete. Hodnocení 3,5 hvězdičky se převede na 7/10."
     }
   ],
   "web.settings.watchProviders.toggle.exportRatings.label": [
@@ -160368,7 +160368,7 @@
   "web.settings.watchProviders.toggle.importRatings.description": [
     {
       "type": 0,
-      "value": "Převést hodnocení filmů a seriálů ze služby "
+      "value": "Přenést hodnocení filmů a seriálů ze služby "
     },
     {
       "type": 1,
@@ -160376,7 +160376,7 @@
     },
     {
       "type": 0,
-      "value": " na hvězdičky. 7/10 odpovídá 4 hvězdičkám."
+      "value": ". Hodnocení 7/10 se převede na 3,5 hvězdičky."
     }
   ],
   "web.settings.watchProviders.toggle.importRatings.label": [
@@ -162853,6 +162853,18 @@
       "value": "Přístupový klíč"
     }
   ],
+  "web.setup.storage.applyingBody": [
+    {
+      "type": 0,
+      "value": "Silo se restartuje, aby začalo používat nové úložiště. Nastavení bude pokračovat, jakmile bude Silo znovu dostupné."
+    }
+  ],
+  "web.setup.storage.applyingTitle": [
+    {
+      "type": 0,
+      "value": "Použití nastavení úložiště"
+    }
+  ],
   "web.setup.storage.authCloudflare": [
     {
       "type": 0,
@@ -163133,6 +163145,18 @@
     {
       "type": 0,
       "value": "URL připojení"
+    }
+  ],
+  "web.setup.storage.restartSlowBody": [
+    {
+      "type": 0,
+      "value": "Silo se samo znovu spustí, jen pokud je v Dockeru, Kubernetes nebo systemd nastavený jeho restart. Jinak Silo spusťte znovu ručně. Nastavení bude pokračovat, jakmile bude Silo znovu dostupné."
+    }
+  ],
+  "web.setup.storage.restartSlowTitle": [
+    {
+      "type": 0,
+      "value": "Silo se zatím nerestartovalo"
     }
   ],
   "web.setup.storage.saveFailed": [
