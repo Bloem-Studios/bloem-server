@@ -10,10 +10,9 @@
 #
 # Seeded 2026-09-13 from the pre-restructuring state.
 .github/workflows/ci.yml  # one line: Silo's reusable CI job runs only in Silo's repository; Bloem's CI is .github/workflows/bloem-ci.yml
-.gitignore
 .golangci.yml
 AGENTS.md
-Makefile  # Bloem gates and generation; bounded 20-minute Go package timeout covers the measured ~15-minute executor
+Makefile  # one line: includes Makefile.bloem, which carries every Bloem target, prerequisite and variable
 assets/icon.png
 cmd/playbackfixtures/main.go
 cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources; one line after the download preparer's SetSourceGrants wraps its granter so native files get Bloem source grants for core-access transcode nodes (handlers.NativeNodeSources, 2026-11-16); one line starts the admin push workers (api.ConfigureBloemAdminPush)
@@ -35,7 +34,6 @@ docs/design/schemas/playback-v3/v3/fixtures/valid/hls-subtitle-rendition-decisio
 docs/design/schemas/playback-v3/v3/fixtures/valid/hls-subtitle-renditions-all-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 docs/design/schemas/playback-v3/v3/fixtures/valid/learned-limit-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
-docs/realtime-api.md  # the playback control ticket retry backs off to 30 s instead of retrying every 5 s for as long as a tab stays open; drop this entry once Silo-Server/silo-server#4392 is merged upstream (2026-11-16)
 go.mod
 go.sum
 internal/access/group_store.go  # GetPolicyForUser reads the account's group only within its organization (groups are organization-owned)
@@ -44,19 +42,14 @@ internal/access/groups_test.go  # Bloem adds EffectiveUserPolicy.PlaybackAllowed
 internal/access/resolver.go
 internal/access/types.go
 internal/activitylog/cleanup.go
-internal/adminjob/catalog_import.go
-internal/adminjob/lifecycle_test.go  # isolate durable job fixtures and create their real actor account
 internal/adminjob/runner.go
 internal/ai/llm/transcribe.go  # verbose_json with top-level words and no segments (NeMo-Speech.cpp), and each word's display text and joins_previous; candidate for a Silo upstream PR
-internal/api/handlers/access_groups_test.go
 internal/api/handlers/admin.go
-internal/api/handlers/admin_access_group_delete_test.go  # Run upstream group-delete callback tests through organization-aware interface
 internal/api/handlers/admin_apple_push_test.go  # the rotation test stores the signing secret the relay rotation key is derived from
 internal/api/handlers/admin_sections_service.go
 internal/api/handlers/admin_users_service.go
 internal/api/handlers/auth.go
 internal/api/handlers/branding.go
-internal/api/handlers/catalog_seed.go
 internal/api/handlers/catalog_transfer_service.go
 internal/api/handlers/downloads_test.go
 internal/api/handlers/home_views_service.go
@@ -71,7 +64,6 @@ internal/api/handlers/playback_missing.go  # a native-storage file is checked th
 internal/api/handlers/playback_sessions.go  # one additive, zero-valued filter field (PlaybackSessionsQuery.OrganizationID) so the organization support streams route filters in SQL; Silo reads are unchanged
 internal/api/handlers/playback_test.go
 internal/api/handlers/playback_v3.go  # two hook lines in planPlaybackWithCapabilitiesV3: the planner call goes through playback.PlanPlaybackAirPlayAwareV3 (bloem_airplay_v3.go), so an AirPlay output plans under a bitrate cap; native video lines in prepareRemoteTransportV3 admit a native input only to a core-access node (nativeVideoWorkerAdmissionV3) and name the session its Bloem source grant reads through (nativeNodeGrantRequest, bloem_native_node_source.go, 2026-11-16)
-internal/api/handlers/playback_v3_test.go
 internal/api/handlers/plugins.go  # installation store becomes an interface so native storage installations can be hidden (bloem_plugins_native_storage.go)
 internal/api/handlers/profiles.go
 internal/api/handlers/sections.go
@@ -79,8 +71,6 @@ internal/api/handlers/session_ws.go
 internal/api/handlers/settings_values_seam.go
 internal/api/handlers/stream.go
 internal/api/handlers/watch_together.go
-internal/api/middleware/api_key_scopes.go
-internal/api/middleware/api_key_scopes_test.go
 internal/api/middleware/auth.go
 internal/api/middleware/household_profile_gate.go  # direct-profile sessions are bound to their one profile and pass the gate
 internal/api/middleware/policy_gates.go
@@ -88,17 +78,13 @@ internal/api/middleware/profile.go
 internal/api/middleware/viewer_access.go
 internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher; four lines put native inputs on core-access transcode nodes: the playback handler's granter, the node control grant issuer and catalog check, Bloem's sources/open in the /self node routes and its source bytes middleware (bloem_native_node_sources.go, 2026-11-16); one line wraps the request lifecycle notifier for admin push (bloemAdminPushLifecycle)
 internal/api/testdata/media_routes.txt
-internal/apiv2/admin_subtitle_metadata_test.go  # reviewed test-only exception: canonical API language projection preserves raw legacy row
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
 internal/apiv2/artwork_test.go  # TestArtworkNestedKeyBytesAndRanges checks max-age against the lifetime left at the start and the end of its request instead of at a later instant; the later reading failed in Bloem CI whenever a loaded runner let a clock second tick over in between (2026-11-16)
 internal/apiv2/device_login_test.go  # expected server_name follows branding.DefaultServerName, which Bloem sets to "Bloem"
-internal/apiv2/docsui/swagger-ui-bundle.js.LICENSE.txt
-internal/apiv2/document_test.go
 internal/apiv2/gates.go
 internal/apiv2/home.go
 internal/apiv2/libraries.go  # createLibrary takes a storage_source location as an alternative to paths
 internal/apiv2/notification_inbox.go
-internal/apiv2/notification_inbox_test.go
 internal/apiv2/parity_test.go
 internal/apiv2/registry.go
 internal/apiv2/router.go
@@ -106,7 +92,6 @@ internal/auth/admin_users_test.go  # complete isolated tenant schema for account
 internal/auth/api_key_scopes.go
 internal/auth/client_device.go  # a reported device never replaces the device a direct-profile session is bound to
 internal/auth/jwt.go
-internal/auth/login_sessions_db_test.go  # directly inserted accounts get the default-organization membership Bloem profiles require
 internal/auth/oauth_handler.go  # one field and five call sites: a web sign-in or provider sign-out through an OAuth provider keeps the organization domain it started on (bloem_oauth_domain.go); approved by the owner on 2026-11-01 ("Finish the rest of the open issues")
 internal/auth/password_hash_test.go  # compose upstream bcrypt test initialization with isolated Bloem auth database lifecycle
 internal/auth/repository.go
@@ -125,8 +110,6 @@ internal/backup/users_plan.go  # one call: the planner names the organization an
 internal/blobgc/collector_s3_db_test.go  # added lines: collect the test's own queue rows first (collectFirst); dbpins runs listed packages at once and another may hold an older due row (failed in Bloem CI on 2026-11-02, and again for the single-image test on 2026-11-16)
 internal/blobgc/connection_db_test.go  # collectFirst helper and two calls: the one-connection collector and sweeper tests claim their own queue rows before any other due row, which took one of their limited claims and left the deleted count short under CI load (2026-11-16); setup (object writes, first connection, queueing) runs under its own one-minute bound, apart from the 30-second hang guard on the behavior pinned (2026-11-16)
 internal/branding/branding.go
-internal/branding/render.go
-internal/branding/render_test.go
 internal/catalog/access_filter.go
 internal/catalog/collection_sync_scheduler.go
 internal/catalog/filesplit/filesplit.go  # native selected-target authorization boundary
@@ -142,12 +125,10 @@ internal/config/admin_settings.go
 internal/config/config.go
 internal/config/db_loader.go
 internal/config/yaml_import.go
-internal/downloads/artifact_test.go
 internal/downloads/artifacts.go  # 2 hook lines: NewArtifactManager passes its preparer and file resolver through bloemNativeArtifacts, and encodeOne prepares through bloemPrepareFile (bloem_native_prepare.go), which reads a native input under a waiting download's authority; offline conversion of native-storage and .strm files, approved 2026-11-12
 internal/downloads/offline.go
 internal/downloads/policy.go
 internal/downloads/policy_action_test.go
-internal/downloads/repo_managed_test.go
 internal/downloads/service.go
 internal/downloads/subscription_mutations.go
 internal/downloads/subscription_service.go
@@ -165,11 +146,9 @@ internal/invitations/service_atomic_test.go  # reuse real tenant membership prov
 internal/jellycompat/handlers_playback.go  # three hook lines (S6): the remote transcode start refuses a native-storage or .strm input before it is sent (playback.RefuseContextRemoteStart), so it runs on the API server; Silo's thin transcode nodes read sources only through core grants, which name file paths. Approved 2026-11-12 for worker HLS, repurposed 2026-11-16; chosen over wrapping NodeClient's transport, which Silo's client test pins to *http.Transport
 internal/jellycompat/streamtelemetry.go  # two lines (S1): attachCompatStream notes the compat session, playback session and file for the request's context media host (playback.NoteContextStream); the one place every Jellyfin stream handler names them, so native-storage files play for Jellyfin clients, approved 2026-11-12
 internal/libraryingest/executor.go
-internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
 internal/mail/layout_test.go  # default alt text and logo size derive from branding.DefaultServerName and the embedded default wordmark; Bloem pins its own in bloem_brand_test.go
 internal/mediasample/run.go  # three hook lines: Run refuses a native catalog location (a .strm file, a storage identity) before ffmpeg starts, as -i or inside its stdin concat list, as a permanent invalid-data failure (bloem_native_input.go); never hand ffmpeg a .strm/native catalog path, approved 2026-11-12
 internal/metadata/image_cache_job_repo.go
-internal/metadata/image_cache_processor.go
 internal/metadata/nfo/lookup.go  # listDir caches a listing only once the directory's change time has settled too (lastChange, bloem_listing_settle.go): settling on the modification time alone, which copy tools restore, cached listings that missed a same-tick change
 internal/metadata/nfo/lookup_test.go  # the two caching tests wait out the change-time settle window before listing
 internal/models/invitation.go
@@ -189,11 +168,9 @@ internal/notifications/webhook_payload_discord.go
 internal/notifications/webhook_payload_generic.go
 internal/notifications/webpush_sender.go
 internal/opslog/cleanup.go
-internal/playback/contract/contract_test.go
 internal/playback/copy_seek_anchor.go  # three hook lines (S4): a copy seek anchor for a context-scoped input comes from its host's pinned source (bloem_context_media.go); Jellyfin HLS copy seeks of native-storage files, approved 2026-11-12, generic enough to offer Silo with S2/S3
 internal/playback/directplay.go  # three hook lines (S2): direct play hands a context-scoped input to its host (bloem_context_media.go); Jellyfin direct play of native-storage files, approved 2026-11-12, generic enough to offer Silo with S3/S4
 internal/playback/gpudetect.go
-internal/playback/gpudetect_test.go
 internal/playback/prepare_file.go  # 3 hook lines: PrepareFile hands an input that is not a file here (a context-scoped or worker-bound source) to prepareContextFile (bloem_prepare_file.go), which encodes it through the supervised input bridge and refuses an unbound native path; offline conversion of native-storage and .strm files, approved 2026-11-12
 internal/playback/protocol_v3.go
 internal/playback/remux.go  # three hook lines (S3): progressive remux of a context-scoped input reads its host's pinned source (bloem_context_media.go); Jellyfin remux of native-storage files, approved 2026-11-12, generic enough to offer Silo with S2/S4
@@ -211,41 +188,26 @@ internal/playback/transcode.go  # Bloem lines for native inputs (bloem_native_in
 internal/playback/transcode_manager.go
 internal/playback/transformations_v3.go  # one hook line in the registry probe: it also defines the audio_to_ac3 and audio_to_eac3 transformations (addDolbyAudioV3 in bloem_airplay_v3.go) that an AirPlay output plans in place of 5.1 AAC; a new seam, 327 to 328
 internal/plugins/content.go
-internal/policy/action_parity_test.go
 internal/policy/decisionlog.go
 internal/policy/decisionlog_repo.go
-internal/policy/decisionlog_test.go
-internal/policy/engine_bench_test.go
 internal/policy/input.go
 internal/policy/pdp.go
-internal/policy/permission_parity_test.go
 internal/policy/scope_parity_test.go
 internal/policy/simulate.go
-internal/policy/store_test.go
 internal/policy/vendor/permission.rego
 internal/policy/vendor/scope.rego
 internal/policy/viewer_resolver.go
 internal/procgroup/procgroup.go  # one hook line: CommandContext refuses (cmd.Err, ErrNativeInput) a media tool whose -i or trailing ffprobe input is a native catalog location (bloem_native_input.go); never hand ffmpeg a .strm/native catalog path, approved 2026-11-12
 internal/progresssync/service.go
-internal/proxy/download_test.go
-internal/proxy/mediagrant_test.go
-internal/proxy/router_socket_test.go
-internal/proxy/segment_completion_test.go
 internal/proxy/server.go
 internal/recommendations/embeddings/client.go  # label catalog text and search queries for gemini-embedding-2 (EmbedQueries); temporary, gemini-embedding-2 task labels (search MRR 0.774 -> 0.923 on a 6,432-item sample, 2026-11-09), drop when Silo's version merges
 internal/recommendations/search_query_vector.go  # embed search queries with EmbedQueries when the client has it; temporary, gemini-embedding-2 task labels (search MRR 0.774 -> 0.923 on a 6,432-item sample, 2026-11-09), drop when Silo's version merges
 internal/requests/editor_concurrency.go
 internal/requests/follows.go # Tenant/profile hooks for new upstream request following; implementations stay Bloem-owned.
-internal/requests/lifecycle_guard_test.go  # Adapt isolated upstream request tables to Bloem required organization column
 internal/requests/repository.go
 internal/requests/service.go
 internal/routeinventory/analyze.go
-internal/routeinventory/analyze_test.go  # upstreamable: covers the r.With(...) binding the analyzer now models
 internal/routeinventory/classify.go  # upstreamable: Bloem middleware classification and a body re-read through bytes.NewReader
-internal/routeinventory/config.go
-internal/routeinventory/source.go  # upstreamable: skips web/node_modules, whose vendored Go files stopped the inventory building
-internal/routeinventory/sweep.go  # upstreamable: consults the reached-set rather than the walk's recursion stack
-internal/routeinventory/testdata/fixtures/derived_router_bound/listener/router.go  # fixture for the r.With(...) binding above
 internal/scanner/ebook_scan.go
 internal/scanner/ebook_skip.go  # one Bloem field, coverRetry, which the ebook scan sets after Silo's preload (bloemWithEbookCoverRetries) so a failed local cover is retried
 internal/scanner/file_repo.go  # native selected-target authorization boundary
@@ -253,7 +215,6 @@ internal/scanner/scanner.go  # also two Bloem hooks: the video walk takes .strm 
 internal/sections/fetcher.go
 internal/sections/types.go
 internal/subtitles/ai/transcriber.go  # Chinese and Japanese cues: words joined without spaces, width counted in columns, 16-character lines, splits at clause marks; cues held 0.6 s after speech (holdCueEnds); candidate for a Silo upstream PR
-internal/transcodenode/server_test.go
 internal/userstore/pgstore/profiles.go
 internal/userstore/types.go
 internal/watchsync/plugin_provider_state.go  # decode a watched removal before an ordinary watched state; temporary, Pastime watched removals (bloem_watched_removal.go) until Silo carries WatchSyncRemoteWatchedState.removed, drop when Silo's version merges
@@ -274,66 +235,40 @@ web/public/web-app-icon-192.png
 web/public/web-app-icon-512.png
 web/src/App.routes.test.tsx  # mocks Bloem's admin-context shell, as the retired App.adminRoutes test did, for the Home rows redirect Silo moved here
 web/src/App.tsx
-web/src/api/client.pinGeneration.test.ts
 web/src/api/client.ts
 web/src/api/types.ts  # additive Bloem web DTOs, including the provider-bound Xtream guide kind
 web/src/api/v2/libraries.ts  # library create and update carry storage_source
 web/src/api/v2/schema.ts
-web/src/components/AdminLayout.tsx
-web/src/components/AdminSectionCommandDialog.test.tsx  # upstreamable: preserve initial typing before the next animation frame
 web/src/components/AdminSectionCommandDialog.tsx  # upstreamable: avoid deferred selection overwriting the first search character
-web/src/components/AdminSidebar.test.tsx
 web/src/components/AdminSidebar.tsx
-web/src/components/AppSidebar.test.tsx
 web/src/components/AppSidebar.tsx
-web/src/components/Layout.tsx  # opaque full-width mobile header; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/components/LibraryAccessSelector.tsx
 web/src/components/MediaCarousel.tsx  # row titles stay on one line on phones (All link); temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
-web/src/components/RealtimeEventsProvider.test.tsx
 web/src/components/admin/access-groups/AccessGroupPermissionsSection.tsx  # offers Bloem's Watch Live TV permission in the group editor
 web/src/components/admin/libraries/LibraryCardList.tsx  # shows a storage library's source on the phone library cards
 web/src/components/admin/libraries/LibraryFormSections.tsx  # location toggle and storage source picker for ebook libraries
-web/src/components/admin/libraries/RealtimeMonitoringFields.test.tsx  # mocks the storage sources query the library form now reads
-web/src/components/admin/libraries/useLibraryForm.boxSets.test.tsx  # mocks the storage sources query the library form now reads
-web/src/components/admin/libraries/useLibraryForm.save.test.tsx  # mocks the storage sources query the library form now reads
 web/src/components/admin/libraries/useLibraryForm.ts  # library form state for a storage source location
 web/src/components/admin/users/CreateUserForm.tsx  # Bloem's Watch Live TV switch in the create-account dialog
 web/src/components/notifications/NotificationInbox.tsx  # shows Bloem's announcements (title, message, severity) in the inbox rows; moved here from web/src/pages/Notifications.tsx when Silo split the inbox out (#4383)
-web/src/components/ui/sheet.tsx  # darker sheet overlay and a visible 40px close button; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
-web/src/hooks/queries/admin/plugins.ts
-web/src/hooks/queries/admin/policy.ts
 web/src/hooks/queries/admin/stats.ts
 web/src/hooks/queries/admin/system.ts
 web/src/hooks/useAuth.tsx
-web/src/lib/adminNavigation.test.ts  # covers the organization Storage sources entry
 web/src/lib/adminNavigation.ts
 web/src/lib/adminSettingsSearch.ts
 web/src/lib/documentTitle.ts
-web/src/lib/episodeCardLabels.ts  # no placeholder 'Episode N' title above the episode code; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
-web/src/lib/loginSessionDevice.ts  # recognizes Bloem client user agents as the app
-web/src/pages/AdminAccessGroups.tsx
 web/src/pages/AdminHomeRows.libraryCopies.test.tsx  # the 100-page limit test looks its 101 checkboxes up once by label instead of querying per click, and its hang guard is 120 s: per-click role or label queries plus a full-list re-render per click ran past the 30 s timeout under CI load (owner's decision, 2026-11-16)
 web/src/pages/AdminLibraries.tsx  # shows a storage library's source instead of paths
 web/src/pages/AdminPlugins.tsx  # Storage tab for storage sources inside an administrative context
 web/src/pages/Catalog.tsx  # empty search field at the top on phones; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/pages/Home.tsx
 web/src/pages/ItemDetail/DetailHero.tsx  # phone detail hero puts the actions in the first screen; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
-web/src/pages/ItemDetail/SeasonContent.test.tsx
-web/src/pages/Notifications.test.tsx
 web/src/pages/admin-settings/AdminSettingsLayout.tsx
 web/src/pages/admin-settings/SearchSettings.tsx  # offer frequency as a matching strategy; temporary, frequency matching (descriptive searches in the top 50: 16.5% -> 36.5% on the live index, titles unchanged, 2026-11-10), drop when Silo's version merges
 web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permission-list hook after upstream split the user detail page
-web/src/pages/watchtogether/StartPartySheet.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
-web/src/pages/watchtogether/room/browse/CandidateStage.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
-web/src/pages/watchtogether/room/picker/SeriesDrilldown.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
 web/src/playback/WatchPlaybackChrome.tsx
-web/src/player/components/VideoPlayer.reconnect.test.tsx # Upstream reconnect harness supplies Bloem engagement content identity; preserves native engagement contract.
-web/src/player/components/VideoPlayer.test.tsx
 web/src/player/components/VideoPlayer.tsx
 web/src/player/components/WatchPage.tsx
-web/src/player/hooks/usePlaybackRealtime.test.ts  # the playback control ticket retry backs off to 30 s instead of retrying every 5 s for as long as a tab stays open; drop this entry once Silo-Server/silo-server#4392 is merged upstream (2026-11-16)
 web/src/player/hooks/usePlaybackRealtime.ts  # the playback control ticket retry backs off to 30 s instead of retrying every 5 s for as long as a tab stays open; drop this entry once Silo-Server/silo-server#4392 is merged upstream (2026-11-16)
-web/src/test-setup.ts
 web/src/test/requestBudget.ts  # Include Bloem public shell endpoints in deterministic boot server without exempting authenticated operations
 web/src/test/signedInBoot.test.tsx  # Exercise Bloem shell requests against real public endpoint fixtures before measuring budget
 web/vite.config.ts
@@ -343,8 +278,6 @@ web/vite.config.ts
 internal/userdb/migrate.go # Bloem's SQLite step (v36) runs after Silo's v35; a store Bloem left at its former v34 or v35 resumes after v33
 
 internal/database/migrate.go # apply owned migration adapters where every migration run opens the migration folder
-internal/api/handlers/profiles_test.go # adapt Silo inherited-limit fixture to organization-aware group interface
-web/src/components/admin/libraries/useLibraryForm.localMetadata.test.tsx # supply query context for the owned storage-location hook
 web/src/hooks/admin/useSettingsHealth.ts # include owned announcements
 
 internal/apiv2/admin_scoped_email_db_test.go # exercise upstream scoped-key security assertions against the complete tenant schema
