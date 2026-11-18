@@ -900,28 +900,11 @@
     "\tvectors, err := e.embClient.Embed(ctx, []string{query})"
    ]
   },
-  "internal/requests/follows.go": {
-   "kind": "lines",
-   "lines": [
-    "\tactive, err := s.store.ListActiveByTMDB(ctx, mediaType, []int{tmdbID})"
-   ]
-  },
-  "internal/requests/repository.go": {
-   "kind": "lines",
-   "lines": [
-    "\t\t`, input.Requester.UserID, input.Input.MediaType, input.Input.TMDBID); err != nil {",
-    "\tif err := adoptTitleFollows(ctx, tx, req); err != nil {",
-    "\tif err := adoptTitleFollows(ctx, tx, req); err != nil {"
-   ]
-  },
   "internal/requests/service.go": {
    "kind": "lines",
    "lines": [
-    "\t\trequests, err := s.store.ListActiveByTMDB(ctx, mediaType, ids)",
-    "\tactive, err := s.store.ListActiveByTMDB(ctx, normalized.MediaType, []int{normalized.TMDBID})",
     "\teffective, err := access.EffectivePolicyForUser(ctx, user, s.groupProvider)",
     "\tif _, err := s.store.GetRequest(ctx, id); err != nil {",
-    "\tprimaryRequests, err := s.store.ListActiveByTMDB(ctx, mediaType, []int{raw.ID})",
     "\treqs, err := s.store.ListAdmin(ctx, normalizeListFilter(filter))",
     "\treturn s.store.CountAdminViews(ctx)"
    ]
@@ -1523,9 +1506,6 @@
    "func (s *Service) GetIntegration(ctx context.Context, v Viewer, id string) (*Int": "5c7ac5397f1bf148",
    "func (s *Service) UpdateIntegrationConditional(ctx context.Context, v Viewer, in": "14b6bbbeebb6ebc0",
    "func (s *Service) UpdateSettingsConditional(ctx context.Context, v Viewer, in Se": "c01e80c6fa6266a5"
-  },
-  "internal/requests/follows.go": {
-   "func (r *Repository) FollowTitle(ctx context.Context, mediaType MediaType, tmdbI": "e5f66ed4d768c7c1"
   },
   "internal/requests/repository.go": {
    "func (r *Repository) CreateRequest(ctx context.Context, input CreateRequestRecor": "7d14938e32eb63f3"

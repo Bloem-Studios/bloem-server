@@ -1,15 +1,13 @@
 package requests
 
-// Bloem-owned. Organization-bounded variants of the three repository queries
-// that otherwise reach across tenants:
+// Bloem-owned. Organization-bounded variants of the administrator queries:
+// ListAdmin, which step 1 could only filter after the fact, returning short
+// pages, and the queue counts.
 //
-//   ListAdmin           an administrator's queue, which step 1 could only
-//                       filter after the fact, returning short pages
-//   ListActiveByTMDB    the duplicate check, where another tenant's active
-//                       request suppresses this one and is handed back to the
-//                       caller
-//   DeleteFailedByTMDB  the re-request cleanup, which deleted other tenants'
-//                       failed rows
+// The duplicate check, title follows and the re-request cleanup stay Silo's
+// and span organizations: Silo allows one active request per title
+// (idx_media_requests_active_tmdb), so a profile in one organization follows a
+// title another organization requested.
 //
 // Each request carries the organization it was filed in, in
 // media_requests.organization_id (migration
@@ -90,61 +88,6 @@ func (r *Repository) ListAdminInOrganization(ctx context.Context, organizationID
 	return r.listRequests(ctx, sqlText, args)
 }
 
-// ListActiveByTMDBInOrganization is ListActiveByTMDB bounded to one
-// organization, so a tenant's duplicate check neither sees nor is suppressed by
-// another tenant's active request.
-func (r *Repository) ListActiveByTMDBInOrganization(ctx context.Context, organizationID uuid.UUID, mediaType MediaType, tmdbIDs []int) (map[int]*Request, error) {
-	if len(tmdbIDs) == 0 {
-		return map[int]*Request{}, nil
-	}
-	rows, err := r.pool.Query(ctx, requestSelectSQL()+`
-		WHERE `+organizationRequestPredicate()+`
-		  AND media_type = $2
-		  AND provider = 'tmdb'
-		  AND tmdb_id = ANY($3)
-		  AND outcome = 'active'
-		  AND status <> 'completed'
-	`, organizationID, mediaType, tmdbIDs)
-	if err != nil {
-		return nil, fmt.Errorf("list active requests by tmdb in organization: %w", err)
-	}
-	defer rows.Close()
-
-	out := map[int]*Request{}
-	for rows.Next() {
-		req, err := scanRequest(rows)
-		if err != nil {
-			return nil, err
-		}
-		out[req.TMDBID] = req
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate active requests by tmdb in organization: %w", err)
-	}
-	return out, nil
-}
-
-// DeleteFailedByTMDBInOrganization is DeleteFailedByTMDB bounded to one
-// organization, so re-requesting inside one tenant cannot delete another
-// tenant's failed rows.
-func (r *Repository) DeleteFailedByTMDBInOrganization(ctx context.Context, organizationID uuid.UUID, mediaType MediaType, tmdbID int) (int, error) {
-	if tmdbID <= 0 {
-		return 0, nil
-	}
-	tag, err := r.pool.Exec(ctx, `
-		DELETE FROM media_requests
-		WHERE `+organizationRequestPredicate()+`
-		  AND media_type = $2
-		  AND provider = 'tmdb'
-		  AND tmdb_id = $3
-		  AND outcome = 'failed'
-	`, organizationID, mediaType, tmdbID)
-	if err != nil {
-		return 0, fmt.Errorf("delete failed requests by tmdb in organization: %w", err)
-	}
-	return int(tag.RowsAffected()), nil
-}
-
 // CountAdminViewsInOrganization counts only the selected organization.
 func (r *Repository) CountAdminViewsInOrganization(ctx context.Context, organizationID uuid.UUID) (AdminViewCounts, error) {
 	var c AdminViewCounts
@@ -158,61 +101,4 @@ func (r *Repository) CountAdminViewsInOrganization(ctx context.Context, organiza
 		return AdminViewCounts{}, fmt.Errorf("count admin request views: %w", err)
 	}
 	return c, nil
-}
-
-// bloemFollowTitle keeps the upstream row lock/insert atomicity within a tenant.
-func (r *Repository) bloemFollowTitle(ctx context.Context, mediaType MediaType, tmdbID int, viewer Viewer) (bool, error) {
-	tenant, ok := tenancy.FromContext(ctx)
-	if !ok {
-		return false, nil
-	}
-	if tenant.AccountID != viewer.UserID || tenant.OrganizationID == uuid.Nil {
-		return true, ErrForbidden
-	}
-	var open bool
-	if err := r.pool.QueryRow(ctx, `
-		WITH open_request AS (
-			SELECT id FROM media_requests
-			WHERE media_type = $1 AND provider = 'tmdb' AND tmdb_id = $2
-			  AND outcome = 'active' AND status <> 'completed'
-			  AND organization_id = $5
-			LIMIT 1
-			FOR SHARE
-		), inserted AS (
-			INSERT INTO media_request_follows (media_type, tmdb_id, user_id, profile_id, request_id)
-			SELECT $1, $2, $3, $4, id FROM open_request
-			ON CONFLICT (user_id, profile_id, request_id) DO NOTHING
-		)
-		SELECT EXISTS (SELECT 1 FROM open_request)
-	`, mediaType, tmdbID, viewer.UserID, viewer.ProfileID, tenant.OrganizationID).Scan(&open); err != nil {
-		return true, fmt.Errorf("follow title: %w", err)
-	}
-	if !open {
-		return true, ErrNotRequested
-	}
-	return true, nil
-}
-
-// Adopt follows only from failed requests in the same organization.
-func adoptOrganizationTitleFollows(ctx context.Context, exec requestExecutor, req *Request) error {
-	const failed = `SELECT id FROM media_requests
-		WHERE media_type = $1 AND provider = 'tmdb' AND tmdb_id = $2 AND outcome = 'failed'
-		  AND organization_id = (SELECT organization_id FROM media_requests WHERE id = $3)`
-	// A profile that followed two failed requests keeps its earliest follow.
-	if _, err := exec.Exec(ctx, `
-		DELETE FROM media_request_follows f
-		USING media_request_follows keep
-		WHERE f.request_id IN (`+failed+`) AND keep.request_id IN (`+failed+`)
-		  AND keep.user_id = f.user_id AND keep.profile_id = f.profile_id
-		  AND (keep.created_at, keep.request_id) < (f.created_at, f.request_id)
-	`, req.MediaType, req.TMDBID, req.ID); err != nil {
-		return fmt.Errorf("adopt title follows: %w", err)
-	}
-	if _, err := exec.Exec(ctx, `
-		UPDATE media_request_follows SET request_id = $3
-		WHERE request_id IN (`+failed+`)
-	`, req.MediaType, req.TMDBID, req.ID); err != nil {
-		return fmt.Errorf("adopt title follows: %w", err)
-	}
-	return nil
 }

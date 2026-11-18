@@ -35,6 +35,11 @@ A request without a confirmed profile is refused. The one exception is an older
 app that signs in to the default organization without choosing a profile; it
 gets the account's own group there.
 
+A title has one open request for the whole server, as in Silo. A profile in
+another organization that finds a title already requested follows that request
+and hears when it arrives, rather than filing a second one. The request stays in
+the queue of the organization it was filed in.
+
 ## What an organization administrator sees and changes
 
 - **One account's use.** An administrator can look up how many requests one
@@ -113,6 +118,12 @@ resolution is restricted to the actual default organization in the legacy
 context, including its supported initializing state; it reads the account's own
 group (`users.access_group_id`). An asserted default flag cannot turn a hosted
 organization into that compatibility context.
+
+The duplicate check, title follows and the requester's failed-row cleanup are
+Silo's and span organizations, matching Silo's unique index
+`idx_media_requests_active_tmdb`. Administrator queues, counts and request
+actions are bounded to the acting organization (`bloem_tenant_scope.go`), and
+`CreateRequest` files each request under it (`stampActingOrganization`).
 
 The shared service still owns permission overrides, settings/group/user-limit
 precedence, approval rules, quota consumption and request enrichment. Account

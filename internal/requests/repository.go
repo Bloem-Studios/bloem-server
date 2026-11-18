@@ -338,7 +338,7 @@ func (r *Repository) CreateRequest(ctx context.Context, input CreateRequestRecor
 	if err := stampActingOrganization(ctx, tx, req.ID, input.Requester); err != nil {
 		return nil, err
 	}
-	if err := adoptOrganizationTitleFollows(ctx, tx, req); err != nil {
+	if err := adoptTitleFollows(ctx, tx, req); err != nil {
 		return nil, err
 	}
 	// Failed requests do not count against the quota, so the ones this
@@ -353,8 +353,7 @@ func (r *Repository) CreateRequest(ctx context.Context, input CreateRequestRecor
 			  AND provider = 'tmdb'
 			  AND tmdb_id = $3
 			  AND outcome = 'failed'
-			  AND organization_id = (SELECT organization_id FROM media_requests WHERE id = $4)
-		`, input.Requester.UserID, input.Input.MediaType, input.Input.TMDBID, req.ID); err != nil {
+		`, input.Requester.UserID, input.Input.MediaType, input.Input.TMDBID); err != nil {
 			return nil, fmt.Errorf("replace failed requests: %w", err)
 		}
 	}
@@ -797,7 +796,7 @@ func (r *Repository) ReopenFailed(ctx context.Context, id string, actor Viewer) 
 	}
 	// A request for the title created after this one failed may have taken
 	// its follows and failed too; they come back with the retry.
-	if err := adoptOrganizationTitleFollows(ctx, tx, req); err != nil {
+	if err := adoptTitleFollows(ctx, tx, req); err != nil {
 		return nil, err
 	}
 	if err := r.recordEvent(ctx, tx, id, "retried", actor, ""); err != nil {

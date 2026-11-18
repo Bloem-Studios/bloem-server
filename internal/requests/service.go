@@ -668,7 +668,7 @@ func (s *Service) GetDetail(ctx context.Context, viewer Viewer, mediaType MediaT
 		return nil, err
 	}
 	primaryMatch := primaryPresence[raw.ID]
-	primaryRequests, err := s.activeByTMDBForViewer(ctx, viewer, mediaType, []int{raw.ID})
+	primaryRequests, err := s.store.ListActiveByTMDB(ctx, mediaType, []int{raw.ID})
 	if err != nil {
 		return nil, err
 	}
@@ -808,7 +808,7 @@ func (s *Service) CreateRequest(ctx context.Context, viewer Viewer, input Create
 		}
 	}
 
-	active, err := s.activeByTMDBForViewer(ctx, viewer, normalized.MediaType, []int{normalized.TMDBID})
+	active, err := s.store.ListActiveByTMDB(ctx, normalized.MediaType, []int{normalized.TMDBID})
 	if err != nil {
 		return nil, err
 	}
@@ -1964,7 +1964,7 @@ func (s *Service) enrichPageWithCeiling(ctx context.Context, viewer Viewer, raw 
 			return nil, err
 		}
 		available[mediaType] = presence
-		requests, err := s.activeByTMDBForViewer(ctx, viewer, mediaType, ids)
+		requests, err := s.store.ListActiveByTMDB(ctx, mediaType, ids)
 		if err != nil {
 			return nil, err
 		}

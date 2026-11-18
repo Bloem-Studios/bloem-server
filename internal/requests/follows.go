@@ -64,7 +64,7 @@ func (s *Service) Follow(ctx context.Context, viewer Viewer, mediaType MediaType
 	}
 	// An open request is what makes a title followable: a series partly in
 	// the library can have one for its missing seasons.
-	active, err := s.activeByTMDBForViewer(ctx, viewer, mediaType, []int{tmdbID})
+	active, err := s.store.ListActiveByTMDB(ctx, mediaType, []int{tmdbID})
 	if err != nil {
 		return RequestState{}, err
 	}
@@ -143,9 +143,6 @@ func (s *Service) followedTitles(ctx context.Context, viewer Viewer, mediaType M
 // waited on a close re-checks the updated row, finds it closed, and inserts
 // nothing.
 func (r *Repository) FollowTitle(ctx context.Context, mediaType MediaType, tmdbID int, viewer Viewer) error {
-	if handled, err := r.bloemFollowTitle(ctx, mediaType, tmdbID, viewer); handled {
-		return err
-	}
 	var open bool
 	if err := r.pool.QueryRow(ctx, `
 		WITH open_request AS (

@@ -255,20 +255,23 @@ func TestBloemRequestFiledInTheActingOrganizationDatabase(t *testing.T) {
 		t.Fatalf("T request: in T queue=%v, in E queue=%v; want true,false", has(listT, noTenant.ID), has(listE, noTenant.ID))
 	}
 
-	// Duplicate check and failed-row cleanup follow the column too.
-	activeT, err := repo.ListActiveByTMDBInOrganization(context.Background(), f.orgT, MediaTypeMovie, []int{base})
-	if err != nil {
-		t.Fatal(err)
+	// The duplicate check spans organizations, as Silo's single active request
+	// per title (idx_media_requests_active_tmdb) already does: a profile acting
+	// in T follows the request filed in E instead of being told nothing is
+	// requested.
+	followerProfile := fmt.Sprintf("reqorg-follower-%d", base)
+	var groupT int64
+	if err := f.pool.QueryRow(context.Background(), `INSERT INTO access_groups (organization_id, name, requests_allowed)
+		VALUES ($1, $2, true) RETURNING id`, f.orgT, followerProfile).Scan(&groupT); err != nil {
+		t.Fatalf("insert T group: %v", err)
 	}
-	if activeT[base] != nil {
-		t.Fatal("T's duplicate check saw the request filed in E")
+	if _, err := f.pool.Exec(context.Background(), `INSERT INTO user_profiles (id, user_id, name, organization_id, access_group_id)
+		VALUES ($1, $2, 'Follower', $3, $4)`, followerProfile, f.accountT, f.orgT, groupT); err != nil {
+		t.Fatalf("insert T profile: %v", err)
 	}
-	activeE, err := repo.ListActiveByTMDBInOrganization(context.Background(), f.orgE, MediaTypeMovie, []int{base})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if activeE[base] == nil || activeE[base].ID != inE.ID {
-		t.Fatal("E's duplicate check missed the request filed in E")
+	followerT := tenancy.WithContext(context.Background(), tenancy.Context{AccountID: f.accountT, OrganizationID: f.orgT})
+	if err := repo.FollowTitle(followerT, MediaTypeMovie, base, Viewer{UserID: f.accountT, ProfileID: followerProfile}); err != nil {
+		t.Fatalf("T profile following the title requested in E = %v, want nil", err)
 	}
 
 	// End to end through the service: the E administrator can act on the

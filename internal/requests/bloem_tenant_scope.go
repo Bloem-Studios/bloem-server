@@ -191,8 +191,6 @@ func (s *Service) boundToViewerOrganization(ctx context.Context, viewer Viewer, 
 // post-filter rather than failing.
 type tenantBoundedStore interface {
 	ListAdminInOrganization(ctx context.Context, organizationID uuid.UUID, filter ListFilter) ([]*Request, error)
-	ListActiveByTMDBInOrganization(ctx context.Context, organizationID uuid.UUID, mediaType MediaType, tmdbIDs []int) (map[int]*Request, error)
-	DeleteFailedByTMDBInOrganization(ctx context.Context, organizationID uuid.UUID, mediaType MediaType, tmdbID int) (int, error)
 }
 
 // viewerOrganization reports the organization to bound a query to, and whether
@@ -232,20 +230,6 @@ func (s *Service) listAdminBounded(ctx context.Context, viewer Viewer, filter Li
 		return nil, err
 	}
 	return s.boundToViewerOrganization(ctx, viewer, reqs)
-}
-
-// activeByTMDBForViewer runs the duplicate check within the viewer's
-// organization, so one tenant's active request neither suppresses another
-// tenant's nor is handed back to it.
-func (s *Service) activeByTMDBForViewer(ctx context.Context, viewer Viewer, mediaType MediaType, tmdbIDs []int) (map[int]*Request, error) {
-	organizationID, bounded, applies, err := s.viewerOrganization(ctx, viewer)
-	if err != nil {
-		return nil, err
-	}
-	if applies {
-		return bounded.ListActiveByTMDBInOrganization(ctx, organizationID, mediaType, tmdbIDs)
-	}
-	return s.store.ListActiveByTMDB(ctx, mediaType, tmdbIDs)
 }
 
 // request_settings and request_integrations carry no organization column:

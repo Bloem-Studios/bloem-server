@@ -220,10 +220,7 @@ func TestBloemUserLimitBoundToOrganization(t *testing.T) {
 type boundedStore struct {
 	*fakeStore
 	listAdminOrg  uuid.UUID
-	activeOrg     uuid.UUID
-	deleteOrg     uuid.UUID
 	listAdminRows []*Request
-	activeCalls   int
 	unboundedHits int
 }
 
@@ -232,19 +229,7 @@ func (s *boundedStore) ListAdminInOrganization(_ context.Context, organizationID
 	return s.listAdminRows, nil
 }
 
-func (s *boundedStore) ListActiveByTMDBInOrganization(_ context.Context, organizationID uuid.UUID, _ MediaType, _ []int) (map[int]*Request, error) {
-	s.activeOrg = organizationID
-	s.activeCalls++
-	return map[int]*Request{}, nil
-}
-
-func (s *boundedStore) DeleteFailedByTMDBInOrganization(_ context.Context, organizationID uuid.UUID, _ MediaType, _ int) (int, error) {
-	s.deleteOrg = organizationID
-	return 0, nil
-}
-
-// ListActiveByTMDB is the unbounded query; reaching it with a resolver wired
-// and a bounding store available would be the bug.
+// ListActiveByTMDB is Silo's duplicate check, which spans organizations.
 func (s *boundedStore) ListActiveByTMDB(context.Context, MediaType, []int) (map[int]*Request, error) {
 	s.unboundedHits++
 	return map[int]*Request{}, nil
@@ -281,23 +266,18 @@ func TestBloemListAdminUsesTheSQLBoundWhenAvailable(t *testing.T) {
 	}
 }
 
-// The duplicate check must not consult another tenant's active requests: it
-// both suppresses this tenant's request and hands the other tenant's row back.
-func TestBloemDuplicateCheckIsBoundedToTheViewersOrganization(t *testing.T) {
+// The duplicate check is Silo's: one active request per title across every
+// organization, which Silo's unique index already enforces, so a profile in
+// one organization sees, and can follow, a title requested in another.
+func TestBloemDuplicateCheckSpansOrganizations(t *testing.T) {
 	store := &boundedStore{fakeStore: newFakeStore()}
 	svc := newBoundedService(store, map[int]uuid.UUID{5: orgAlpha})
 
 	if _, err := svc.GetDetail(context.Background(), testViewer(5), MediaTypeMovie, 603); err != nil {
 		t.Fatalf("GetDetail: %v", err)
 	}
-	if store.activeCalls == 0 {
-		t.Fatal("duplicate check never reached the bounded query")
-	}
-	if store.activeOrg != orgAlpha {
-		t.Fatalf("bounded duplicate check organization = %v, want %v", store.activeOrg, orgAlpha)
-	}
-	if store.unboundedHits != 0 {
-		t.Fatalf("unbounded ListActiveByTMDB was reached %d times, want 0", store.unboundedHits)
+	if store.unboundedHits == 0 {
+		t.Fatal("the duplicate check did not use Silo's ListActiveByTMDB")
 	}
 }
 
