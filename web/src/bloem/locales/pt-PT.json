@@ -1,0 +1,2784 @@
+{
+  "bloem.adminNav.announcements.description": [
+    {
+      "type": 0,
+      "value": "Publicar mensagens para os espetadores."
+    }
+  ],
+  "bloem.adminNav.announcements.label": [
+    {
+      "type": 0,
+      "value": "Avisos"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.description": [
+    {
+      "type": 0,
+      "value": "Publicar mensagens para os espetadores e retirar avisos anteriores."
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.label": [
+    {
+      "type": 0,
+      "value": "Avisos"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.newAnnouncement": [
+    {
+      "type": 0,
+      "value": "Novo aviso"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.published": [
+    {
+      "type": 0,
+      "value": "Avisos publicados"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.administrativeContext": [
+    {
+      "type": 0,
+      "value": "Contexto de administração"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.administrativeContextChangedTo": [
+    {
+      "type": 0,
+      "value": "Contexto de administração alterado para "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.chooseContext": [
+    {
+      "type": 0,
+      "value": "Escolher contexto"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.loadingContext": [
+    {
+      "type": 0,
+      "value": "A carregar contexto…"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.organizationAdministrator": [
+    {
+      "type": 0,
+      "value": "Administrador da organização"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.platformAdministrator": [
+    {
+      "type": 0,
+      "value": "Administrador da plataforma"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeName": [
+    {
+      "type": 5,
+      "value": "scope",
+      "options": {
+        "platform": {
+          "value": [
+            {
+              "type": 0,
+              "value": "plataforma"
+            }
+          ]
+        },
+        "organization": {
+          "value": [
+            {
+              "type": 0,
+              "value": "organização"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "scope"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeStatus": [
+    {
+      "type": 1,
+      "value": "scope"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "status"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.selectContext": [
+    {
+      "type": 0,
+      "value": "Selecionar contexto"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.statusName": [
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "active": {
+          "value": [
+            {
+              "type": 0,
+              "value": "ativo"
+            }
+          ]
+        },
+        "suspended": {
+          "value": [
+            {
+              "type": 0,
+              "value": "suspenso"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "status"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.adminNav.liveTv.description": [
+    {
+      "type": 0,
+      "value": "Sintonizadores, canais, guia de TV, gravações e conversão."
+    }
+  ],
+  "bloem.adminNav.liveTv.label": [
+    {
+      "type": 0,
+      "value": "TV em direto"
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.description": [
+    {
+      "type": 0,
+      "value": "Porque é que algo foi permitido ou recusado a alguém."
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.label": [
+    {
+      "type": 0,
+      "value": "Verificações de acesso"
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.description": [
+    {
+      "type": 0,
+      "value": "Grupos que definem o que os respetivos perfis podem fazer."
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.label": [
+    {
+      "type": 0,
+      "value": "Grupos de acesso"
+    }
+  ],
+  "bloem.adminNav.organizationActivity.description": [
+    {
+      "type": 0,
+      "value": "Quem alterou o quê nesta organização, e quando."
+    }
+  ],
+  "bloem.adminNav.organizationActivity.label": [
+    {
+      "type": 0,
+      "value": "Atividade"
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.description": [
+    {
+      "type": 0,
+      "value": "Grupos de contas que partilham as mesmas definições."
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.label": [
+    {
+      "type": 0,
+      "value": "Coortes"
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.description": [
+    {
+      "type": 0,
+      "value": "Convidar administradores e membros para esta organização."
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.label": [
+    {
+      "type": 0,
+      "value": "Convites"
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.description": [
+    {
+      "type": 0,
+      "value": "Bibliotecas que pertencem a esta organização ou que lhe foram atribuídas."
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.label": [
+    {
+      "type": 0,
+      "value": "Bibliotecas"
+    }
+  ],
+  "bloem.adminNav.organizationOverview.description": [
+    {
+      "type": 0,
+      "value": "Membros, bibliotecas e alterações recentes num relance."
+    }
+  ],
+  "bloem.adminNav.organizationOverview.label": [
+    {
+      "type": 0,
+      "value": "Resumo"
+    }
+  ],
+  "bloem.adminNav.organizationPeople.description": [
+    {
+      "type": 0,
+      "value": "Todas as pessoas nesta organização, os seus perfis e o seu plano."
+    }
+  ],
+  "bloem.adminNav.organizationPeople.label": [
+    {
+      "type": 0,
+      "value": "Pessoas"
+    }
+  ],
+  "bloem.adminNav.organizationStorage.description": [
+    {
+      "type": 0,
+      "value": "Buckets S3 de onde esta organização lê os seus e-books."
+    }
+  ],
+  "bloem.adminNav.organizationStorage.label": [
+    {
+      "type": 0,
+      "value": "Origens de armazenamento"
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.description": [
+    {
+      "type": 0,
+      "value": "Mover muitas contas diretas para um plano ou alterar as respetivas definições de uma vez."
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.label": [
+    {
+      "type": 0,
+      "value": "Alterar várias contas"
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.description": [
+    {
+      "type": 0,
+      "value": "Colocar num plano uma conta que não pertence a nenhuma organização."
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.label": [
+    {
+      "type": 0,
+      "value": "Contas diretas"
+    }
+  ],
+  "bloem.adminNav.platformEngagement.description": [
+    {
+      "type": 0,
+      "value": "Promoções, imagens e aspetos sazonais para o ecrã inicial."
+    }
+  ],
+  "bloem.adminNav.platformEngagement.label": [
+    {
+      "type": 0,
+      "value": "Campanhas e pacotes sazonais"
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.description": [
+    {
+      "type": 0,
+      "value": "Todas as organizações neste servidor e os respetivos membros."
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.label": [
+    {
+      "type": 0,
+      "value": "Organizações"
+    }
+  ],
+  "bloem.adminNav.platformPlans.description": [
+    {
+      "type": 0,
+      "value": "O que uma conta recebe: bibliotecas, ecrãs, qualidade e transferências."
+    }
+  ],
+  "bloem.adminNav.platformPlans.label": [
+    {
+      "type": 0,
+      "value": "Planos"
+    }
+  ],
+  "bloem.adminNav.profilePasswords.description": [
+    {
+      "type": 0,
+      "value": "Se os perfis do agregado familiar podem iniciar sessão com o seu próprio e-mail e palavra-passe."
+    }
+  ],
+  "bloem.adminNav.profilePasswords.label": [
+    {
+      "type": 0,
+      "value": "Palavras-passe de perfil"
+    }
+  ],
+  "bloem.adminNav.section.organization": [
+    {
+      "type": 0,
+      "value": "Organização"
+    }
+  ],
+  "bloem.adminNav.section.platform": [
+    {
+      "type": 0,
+      "value": "Plataforma"
+    }
+  ],
+  "bloem.adminNav.strm.description": [
+    {
+      "type": 0,
+      "value": "Se os ficheiros .strm podem apontar para endereços na rede própria do servidor."
+    }
+  ],
+  "bloem.adminNav.strm.label": [
+    {
+      "type": 0,
+      "value": "Ficheiros .strm"
+    }
+  ],
+  "bloem.adminNav.strmSettings.description": [
+    {
+      "type": 0,
+      "value": "Se os ficheiros .strm podem apontar para endereços na rede própria do servidor."
+    }
+  ],
+  "bloem.adminNav.strmSettings.label": [
+    {
+      "type": 0,
+      "value": "Ficheiros .strm"
+    }
+  ],
+  "bloem.adminNav.strmSettings.privateAddresses": [
+    {
+      "type": 0,
+      "value": "Permitir endereços privados"
+    }
+  ],
+  "bloem.adminShell.chooseContext.body": [
+    {
+      "type": 0,
+      "value": "Selecione Plataforma ou uma organização no controlo de contexto da navegação."
+    }
+  ],
+  "bloem.adminShell.chooseContext.title": [
+    {
+      "type": 0,
+      "value": "Escolher o contexto de administração"
+    }
+  ],
+  "bloem.adminShell.loadingContext": [
+    {
+      "type": 0,
+      "value": "A carregar o contexto de administração…"
+    }
+  ],
+  "bloem.adminTitle.organization": [
+    {
+      "type": 0,
+      "value": "Organização"
+    }
+  ],
+  "bloem.adminTitle.organizations": [
+    {
+      "type": 0,
+      "value": "Organizações"
+    }
+  ],
+  "bloem.audiobooks.partTitle": [
+    {
+      "type": 0,
+      "value": "Parte "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.approximateResume": [
+    {
+      "type": 0,
+      "value": "A sua posição foi guardada enquanto ouvia outra cópia, por isso esta retoma aproximadamente no mesmo ponto."
+    }
+  ],
+  "bloem.audiobooks.picker.copyFallback": [
+    {
+      "type": 0,
+      "value": "Cópia"
+    }
+  ],
+  "bloem.audiobooks.picker.heading": [
+    {
+      "type": 0,
+      "value": "Gravação"
+    }
+  ],
+  "bloem.audiobooks.picker.incomplete": [
+    {
+      "type": 0,
+      "value": "Incompleta: faltam algumas partes"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopy": [
+    {
+      "type": 0,
+      "value": "Cópia local"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopyNumbered": [
+    {
+      "type": 0,
+      "value": "Cópia local "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.noPlayableCopy": [
+    {
+      "type": 0,
+      "value": "De momento, nenhuma cópia deste livro pode ser reproduzida aqui."
+    }
+  ],
+  "bloem.audiobooks.picker.partsAndLength": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " parte"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " de partes"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " partes"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "length"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopy": [
+    {
+      "type": 0,
+      "value": "Cópia remota (beta)"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopyNumbered": [
+    {
+      "type": 0,
+      "value": "Cópia remota (beta) "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.unavailable": [
+    {
+      "type": 0,
+      "value": "Indisponível neste servidor"
+    }
+  ],
+  "bloem.capabilities.checkFailed": [
+    {
+      "type": 0,
+      "value": "Não foi possível verificar as funcionalidades do Bloem suportadas por este servidor."
+    }
+  ],
+  "bloem.engagement.card.dismiss": [
+    {
+      "type": 0,
+      "value": "Dispensar"
+    }
+  ],
+  "bloem.engagement.card.dismissFailed": [
+    {
+      "type": 0,
+      "value": "Não foi possível dispensar esta mensagem."
+    }
+  ],
+  "bloem.engagement.card.dismissing": [
+    {
+      "type": 0,
+      "value": "A dispensar…"
+    }
+  ],
+  "bloem.engagement.card.learnMore": [
+    {
+      "type": 0,
+      "value": "Saber mais"
+    }
+  ],
+  "bloem.engagement.fromYourServer": [
+    {
+      "type": 0,
+      "value": "Do seu servidor"
+    }
+  ],
+  "bloem.engagement.home.storageUnavailable": [
+    {
+      "type": 0,
+      "value": "O armazenamento do navegador não está disponível. A sua escolha aplica-se apenas a este separador."
+    }
+  ],
+  "bloem.engagement.home.toggle": [
+    {
+      "type": 0,
+      "value": "Promoções no Início: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Ativadas"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Desativadas"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.engagement.home.toggleHelp": [
+    {
+      "type": 0,
+      "value": "Mensagens opcionais do seu servidor, guardadas para este perfil neste navegador."
+    }
+  ],
+  "bloem.engagement.playback.close": [
+    {
+      "type": 0,
+      "value": "Fechar sobreposição"
+    }
+  ],
+  "bloem.engagement.playback.muted": [
+    {
+      "type": 0,
+      "value": "SEM SOM"
+    }
+  ],
+  "bloem.engagement.playback.saveFailed": [
+    {
+      "type": 0,
+      "value": "Não foi possível guardar. Tente novamente."
+    }
+  ],
+  "bloem.engagement.playback.saved": [
+    {
+      "type": 0,
+      "value": "Guardado na sua caixa de entrada"
+    }
+  ],
+  "bloem.engagement.playback.saving": [
+    {
+      "type": 0,
+      "value": "A guardar…"
+    }
+  ],
+  "bloem.engagement.playback.sendToPhone": [
+    {
+      "type": 0,
+      "value": "Enviar para o meu telemóvel"
+    }
+  ],
+  "bloem.engagement.prePlayback.back": [
+    {
+      "type": 0,
+      "value": "Voltar"
+    }
+  ],
+  "bloem.engagement.prePlayback.continue": [
+    {
+      "type": 0,
+      "value": "Continuar para o conteúdo"
+    }
+  ],
+  "bloem.engagement.prePlayback.help": [
+    {
+      "type": 0,
+      "value": "Pode continuar de imediato, mesmo enquanto as mensagens carregam."
+    }
+  ],
+  "bloem.engagement.prePlayback.label": [
+    {
+      "type": 0,
+      "value": "Antes da reprodução"
+    }
+  ],
+  "bloem.engagement.prePlayback.title": [
+    {
+      "type": 0,
+      "value": "Antes de ver"
+    }
+  ],
+  "bloem.engagement.rail.label": [
+    {
+      "type": 0,
+      "value": "Mensagens do seu servidor"
+    }
+  ],
+  "bloem.engagement.rail.title": [
+    {
+      "type": 0,
+      "value": "Do seu servidor"
+    }
+  ],
+  "bloem.engagement.seasonal.toggle": [
+    {
+      "type": 0,
+      "value": "Efeitos sazonais: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Ativados"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Desativados"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.libraryAccess.allowAll": [
+    {
+      "type": 0,
+      "value": "Permitir todas as bibliotecas disponíveis"
+    }
+  ],
+  "bloem.libraryAccess.allowAllIn": [
+    {
+      "type": 0,
+      "value": "Permitir todas as bibliotecas de "
+    },
+    {
+      "type": 1,
+      "value": "scope"
+    }
+  ],
+  "bloem.libraryAccess.allowLibrary": [
+    {
+      "type": 0,
+      "value": "Permitir "
+    },
+    {
+      "type": 1,
+      "value": "library"
+    }
+  ],
+  "bloem.liveTv.accessGate.askAdministrator": [
+    {
+      "type": 0,
+      "value": "Peça acesso à TV em direto ao administrador do servidor."
+    }
+  ],
+  "bloem.liveTv.accessGate.backToHome": [
+    {
+      "type": 0,
+      "value": "Voltar ao início"
+    }
+  ],
+  "bloem.liveTv.accessGate.checkFailed": [
+    {
+      "type": 0,
+      "value": "Não foi possível verificar o acesso à TV em direto"
+    }
+  ],
+  "bloem.liveTv.accessGate.checking": [
+    {
+      "type": 0,
+      "value": "A verificar o acesso à TV em direto…"
+    }
+  ],
+  "bloem.liveTv.accessGate.notEnabled": [
+    {
+      "type": 0,
+      "value": "A TV em direto não está ativada para este perfil"
+    }
+  ],
+  "bloem.liveTv.accessGate.unsupported": [
+    {
+      "type": 0,
+      "value": "A TV em direto não está disponível neste servidor"
+    }
+  ],
+  "bloem.liveTv.guide.channelColumn": [
+    {
+      "type": 0,
+      "value": "Canal"
+    }
+  ],
+  "bloem.liveTv.guide.programTooltip": [
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.guide.recordProgramLabel": [
+    {
+      "type": 0,
+      "value": "Gravar "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.guide.recordSeriesLabel": [
+    {
+      "type": 0,
+      "value": "Gravar série: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.guide.series": [
+    {
+      "type": 0,
+      "value": "Série"
+    }
+  ],
+  "bloem.liveTv.guide.watchChannel": [
+    {
+      "type": 0,
+      "value": "Ver "
+    },
+    {
+      "type": 1,
+      "value": "channel"
+    }
+  ],
+  "bloem.liveTv.manualRecording.changeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "O Bloem não conseguiu confirmar a sua última alteração de gravação. Recarregue primeiro as suas gravações."
+    }
+  ],
+  "bloem.liveTv.manualRecording.channel": [
+    {
+      "type": 0,
+      "value": "Canal de gravação"
+    }
+  ],
+  "bloem.liveTv.manualRecording.checking": [
+    {
+      "type": 0,
+      "value": "A verificar gravações…"
+    }
+  ],
+  "bloem.liveTv.manualRecording.chooseChannel": [
+    {
+      "type": 0,
+      "value": "Escolha um canal"
+    }
+  ],
+  "bloem.liveTv.manualRecording.couldNotConfirm": [
+    {
+      "type": 0,
+      "value": "Não foi possível confirmar a gravação."
+    }
+  ],
+  "bloem.liveTv.manualRecording.endsAt": [
+    {
+      "type": 0,
+      "value": "Termina às"
+    }
+  ],
+  "bloem.liveTv.manualRecording.failed": [
+    {
+      "type": 1,
+      "value": "reason"
+    },
+    {
+      "type": 0,
+      "value": " Reveja o estado das gravações antes de tentar novamente."
+    }
+  ],
+  "bloem.liveTv.manualRecording.intro": [
+    {
+      "type": 0,
+      "value": "Use esta opção quando um programa não aparece no guia. As horas usam o fuso horário do navegador ("
+    },
+    {
+      "type": 1,
+      "value": "timeZone"
+    },
+    {
+      "type": 0,
+      "value": ")."
+    }
+  ],
+  "bloem.liveTv.manualRecording.invalidTimes": [
+    {
+      "type": 0,
+      "value": "Escolha uma hora de fim posterior à hora de início e no futuro."
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloadFailed": [
+    {
+      "type": 0,
+      "value": "Não foi possível recarregar as gravações. As ações de gravação continuam bloqueadas; tente novamente."
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloaded": [
+    {
+      "type": 0,
+      "value": "Gravações recarregadas. Reveja a lista e introduza um título para agendar uma nova gravação."
+    }
+  ],
+  "bloem.liveTv.manualRecording.scheduled": [
+    {
+      "type": 0,
+      "value": "Gravação agendada."
+    }
+  ],
+  "bloem.liveTv.manualRecording.startsAt": [
+    {
+      "type": 0,
+      "value": "Começa às"
+    }
+  ],
+  "bloem.liveTv.manualRecording.submit": [
+    {
+      "type": 0,
+      "value": "Agendar gravação"
+    }
+  ],
+  "bloem.liveTv.manualRecording.summary": [
+    {
+      "type": 0,
+      "value": "Agendar por canal e hora"
+    }
+  ],
+  "bloem.liveTv.manualRecording.title": [
+    {
+      "type": 0,
+      "value": "Título da gravação"
+    }
+  ],
+  "bloem.liveTv.noGuideData": [
+    {
+      "type": 0,
+      "value": "Sem dados do guia"
+    }
+  ],
+  "bloem.liveTv.page.cancelRecording": [
+    {
+      "type": 0,
+      "value": "Cancelar"
+    }
+  ],
+  "bloem.liveTv.page.channelCount": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " canal"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " de canais"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " canais"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.liveTv.page.filterChannels": [
+    {
+      "type": 0,
+      "value": "Filtrar canais…"
+    }
+  ],
+  "bloem.liveTv.page.filterCount": [
+    {
+      "type": 1,
+      "value": "shown"
+    },
+    {
+      "type": 0,
+      "value": " de "
+    },
+    {
+      "type": 1,
+      "value": "total"
+    }
+  ],
+  "bloem.liveTv.page.hd": [
+    {
+      "type": 0,
+      "value": "HD"
+    }
+  ],
+  "bloem.liveTv.page.historyEmpty": [
+    {
+      "type": 0,
+      "value": "As gravações concluídas e falhadas aparecem aqui."
+    }
+  ],
+  "bloem.liveTv.page.historyTitle": [
+    {
+      "type": 0,
+      "value": "Histórico"
+    }
+  ],
+  "bloem.liveTv.page.intro": [
+    {
+      "type": 0,
+      "value": "Veja o que está a dar agora, explore os próximos programas e gira as suas gravações."
+    }
+  ],
+  "bloem.liveTv.page.loadingChannels": [
+    {
+      "type": 0,
+      "value": "A carregar canais…"
+    }
+  ],
+  "bloem.liveTv.page.loadingGuide": [
+    {
+      "type": 0,
+      "value": "A carregar guia…"
+    }
+  ],
+  "bloem.liveTv.page.loadingRecordings": [
+    {
+      "type": 0,
+      "value": "A carregar gravações…"
+    }
+  ],
+  "bloem.liveTv.page.noChannels": [
+    {
+      "type": 0,
+      "value": "Ainda não há canais. Um administrador pode adicionar um sintonizador ou um fornecedor Xtream em Administração e depois TV em direto."
+    }
+  ],
+  "bloem.liveTv.page.noFilterMatches": [
+    {
+      "type": 0,
+      "value": "Nenhum canal corresponde a esse filtro."
+    }
+  ],
+  "bloem.liveTv.page.notInLibrary": [
+    {
+      "type": 0,
+      "value": "Esta gravação ainda não está numa biblioteca, por isso não pode ser reproduzida aqui. Um administrador tem de adicionar a pasta de gravações a uma biblioteca e analisá-la."
+    }
+  ],
+  "bloem.liveTv.page.nowAndNext": [
+    {
+      "type": 1,
+      "value": "now"
+    },
+    {
+      "type": 0,
+      "value": " → "
+    },
+    {
+      "type": 1,
+      "value": "next"
+    }
+  ],
+  "bloem.liveTv.page.openRecording": [
+    {
+      "type": 0,
+      "value": "Abrir gravação"
+    }
+  ],
+  "bloem.liveTv.page.recordNext": [
+    {
+      "type": 0,
+      "value": "Gravar o seguinte"
+    }
+  ],
+  "bloem.liveTv.page.recordNow": [
+    {
+      "type": 0,
+      "value": "Gravar agora"
+    }
+  ],
+  "bloem.liveTv.page.recordingChangeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "O Bloem não conseguiu confirmar a sua última alteração de gravação. Recarregue as gravações antes de agendar ou cancelar outra."
+    }
+  ],
+  "bloem.liveTv.page.recordingDetails": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.page.recordingStatus": [
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "scheduled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "agendada"
+            }
+          ]
+        },
+        "recording": {
+          "value": [
+            {
+              "type": 0,
+              "value": "a gravar"
+            }
+          ]
+        },
+        "completed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "concluída"
+            }
+          ]
+        },
+        "failed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "falhada"
+            }
+          ]
+        },
+        "cancelled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "cancelada"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "status"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.liveTv.page.reloadChannels": [
+    {
+      "type": 0,
+      "value": "Recarregar canais"
+    }
+  ],
+  "bloem.liveTv.page.scheduledEmpty": [
+    {
+      "type": 0,
+      "value": "Ainda não há nada agendado. Escolha um programa no guia ou na lista de canais."
+    }
+  ],
+  "bloem.liveTv.page.scheduledTitle": [
+    {
+      "type": 0,
+      "value": "Agendadas e em curso"
+    }
+  ],
+  "bloem.liveTv.page.tabChannels": [
+    {
+      "type": 0,
+      "value": "Canais"
+    }
+  ],
+  "bloem.liveTv.page.tabGuide": [
+    {
+      "type": 0,
+      "value": "Guia"
+    }
+  ],
+  "bloem.liveTv.page.tabRecordings": [
+    {
+      "type": 0,
+      "value": "As minhas gravações"
+    }
+  ],
+  "bloem.liveTv.page.tabRules": [
+    {
+      "type": 0,
+      "value": "Regras de gravação"
+    }
+  ],
+  "bloem.liveTv.page.untitled": [
+    {
+      "type": 0,
+      "value": "Sem título"
+    }
+  ],
+  "bloem.liveTv.page.watch": [
+    {
+      "type": 0,
+      "value": "Ver"
+    }
+  ],
+  "bloem.liveTv.player.browserCannotPlay": [
+    {
+      "type": 0,
+      "value": "Este navegador não consegue reproduzir este canal. Experimente outro navegador ou a aplicação Bloem."
+    }
+  ],
+  "bloem.liveTv.player.browserCouldNotPlay": [
+    {
+      "type": 0,
+      "value": "Este navegador não conseguiu reproduzir o canal. Experimente outro canal ou recarregue a página."
+    }
+  ],
+  "bloem.liveTv.player.couldNotStart": [
+    {
+      "type": 0,
+      "value": "Não foi possível iniciar este canal. Tente novamente ou experimente outro canal."
+    }
+  ],
+  "bloem.liveTv.player.didNotStart": [
+    {
+      "type": 0,
+      "value": "O canal não começou. Pode ainda estar a sintonizar, por isso tente novamente."
+    }
+  ],
+  "bloem.liveTv.player.hlsPlaybackError": [
+    {
+      "type": 0,
+      "value": "Erro de reprodução HLS"
+    }
+  ],
+  "bloem.liveTv.player.label": [
+    {
+      "type": 0,
+      "value": "TV em direto"
+    }
+  ],
+  "bloem.liveTv.player.labelWithTitle": [
+    {
+      "type": 0,
+      "value": "Em direto: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.player.playbackError": [
+    {
+      "type": 0,
+      "value": "Erro de reprodução"
+    }
+  ],
+  "bloem.liveTv.player.stopped": [
+    {
+      "type": 0,
+      "value": "O canal parou ou não foi possível carregá-lo. Tente novamente para o voltar a sintonizar."
+    }
+  ],
+  "bloem.liveTv.player.unsupportedAddress": [
+    {
+      "type": 0,
+      "value": "O endereço da stream deste canal não é suportado. Experimente outro canal."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.blocked": [
+    {
+      "type": 0,
+      "value": "As ações de gravação estão bloqueadas. Recarregue as gravações antes de outra ação."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelFailed": [
+    {
+      "type": 0,
+      "value": "Falha ao cancelar a gravação"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelled": [
+    {
+      "type": 0,
+      "value": "Gravação cancelada"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReloadFirst": [
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " Recarregue as gravações antes de outra ação."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReviewRefreshed": [
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " Reveja as gravações atualizadas antes de outra ação."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reload": [
+    {
+      "type": 0,
+      "value": "Recarregar gravações"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloadFailed": [
+    {
+      "type": 0,
+      "value": "Não foi possível recarregar as gravações. As ações de gravação continuam bloqueadas; experimente Recarregar gravações novamente."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloaded": [
+    {
+      "type": 0,
+      "value": "Gravações recarregadas. Reveja a lista antes de outra ação de gravação."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduleFailed": [
+    {
+      "type": 0,
+      "value": "Falha ao agendar a gravação"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduled": [
+    {
+      "type": 0,
+      "value": "Gravação agendada"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.waitForReadback": [
+    {
+      "type": 0,
+      "value": "Aguarde a confirmação das gravações antes de recarregar."
+    }
+  ],
+  "bloem.liveTv.reloadRecordings": [
+    {
+      "type": 0,
+      "value": "Recarregar gravações"
+    }
+  ],
+  "bloem.liveTv.reloadingRecordings": [
+    {
+      "type": 0,
+      "value": "A recarregar gravações…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allChannels": [
+    {
+      "type": 0,
+      "value": "Todos os canais"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allProgramsOnChannel": [
+    {
+      "type": 0,
+      "value": "Todos os programas do canal"
+    }
+  ],
+  "bloem.liveTv.seriesRules.channel": [
+    {
+      "type": 0,
+      "value": "Canal"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmDescription": [
+    {
+      "type": 0,
+      "value": "Isto remove a regra recorrente. As gravações já agendadas e os ficheiros gravados não são eliminados. Faça a gestão desses separadamente em As minhas gravações."
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmRemove": [
+    {
+      "type": 0,
+      "value": "Remover regra"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmTitle": [
+    {
+      "type": 0,
+      "value": "Remover regra de gravação: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFailed": [
+    {
+      "type": 0,
+      "value": "Não foi possível criar a regra de gravação."
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFormLabel": [
+    {
+      "type": 0,
+      "value": "Criar regra de gravação"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createLegend": [
+    {
+      "type": 0,
+      "value": "Criar uma regra de gravação"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createRule": [
+    {
+      "type": 0,
+      "value": "Criar regra"
+    }
+  ],
+  "bloem.liveTv.seriesRules.created": [
+    {
+      "type": 0,
+      "value": "Regra de gravação criada. O servidor vai agendar os programas do guia que correspondam."
+    }
+  ],
+  "bloem.liveTv.seriesRules.creating": [
+    {
+      "type": 0,
+      "value": "A criar…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.disabled": [
+    {
+      "type": 0,
+      "value": "Desativada"
+    }
+  ],
+  "bloem.liveTv.seriesRules.empty": [
+    {
+      "type": 0,
+      "value": "Ainda não há regras de gravação de séries."
+    }
+  ],
+  "bloem.liveTv.seriesRules.enabled": [
+    {
+      "type": 0,
+      "value": "Ativada"
+    }
+  ],
+  "bloem.liveTv.seriesRules.heading": [
+    {
+      "type": 0,
+      "value": "Regras de gravação de séries"
+    }
+  ],
+  "bloem.liveTv.seriesRules.intro": [
+    {
+      "type": 0,
+      "value": "Grave uma série exata do guia ou os títulos que contêm o texto pesquisado (sem distinguir maiúsculas de minúsculas). Limite a regra a um canal ou aplique-a a todos os canais."
+    }
+  ],
+  "bloem.liveTv.seriesRules.listLabel": [
+    {
+      "type": 0,
+      "value": "Regras de gravação"
+    }
+  ],
+  "bloem.liveTv.seriesRules.loading": [
+    {
+      "type": 0,
+      "value": "A carregar regras de gravação…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.matchSeries": [
+    {
+      "type": 0,
+      "value": "Corresponder a série do guia"
+    }
+  ],
+  "bloem.liveTv.seriesRules.newOnly": [
+    {
+      "type": 0,
+      "value": "Só programas marcados como novos no guia"
+    }
+  ],
+  "bloem.liveTv.seriesRules.reload": [
+    {
+      "type": 0,
+      "value": "Recarregar regras de gravação"
+    }
+  ],
+  "bloem.liveTv.seriesRules.remove": [
+    {
+      "type": 0,
+      "value": "Remover"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeFailed": [
+    {
+      "type": 0,
+      "value": "Não foi possível remover a regra de gravação."
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeRuleLabel": [
+    {
+      "type": 0,
+      "value": "Remover regra: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removed": [
+    {
+      "type": 0,
+      "value": "Regra removida. As gravações já agendadas e os ficheiros gravados não mudam."
+    }
+  ],
+  "bloem.liveTv.seriesRules.selectProfile": [
+    {
+      "type": 0,
+      "value": "Selecione um perfil para gerir as regras de gravação."
+    }
+  ],
+  "bloem.liveTv.seriesRules.seriesLabel": [
+    {
+      "type": 0,
+      "value": "Série "
+    },
+    {
+      "type": 1,
+      "value": "seriesId"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryNewOnly": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · Só programas novos"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryRepeats": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · Inclui repetições"
+    }
+  ],
+  "bloem.liveTv.seriesRules.titleContains": [
+    {
+      "type": 0,
+      "value": "O título contém"
+    }
+  ],
+  "bloem.liveTv.seriesRules.unavailableChannel": [
+    {
+      "type": 0,
+      "value": "Canal indisponível"
+    }
+  ],
+  "bloem.liveTv.seriesRules.useTitleMatching": [
+    {
+      "type": 0,
+      "value": "Usar correspondência por título"
+    }
+  ],
+  "bloem.liveTv.timeRange": [
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.title": [
+    {
+      "type": 0,
+      "value": "TV em direto"
+    }
+  ],
+  "bloem.liveTv.tryAgain": [
+    {
+      "type": 0,
+      "value": "Tentar novamente"
+    }
+  ],
+  "bloem.liveTv.watch.backToLiveTv": [
+    {
+      "type": 0,
+      "value": "Voltar à TV em direto"
+    }
+  ],
+  "bloem.liveTv.watch.connecting": [
+    {
+      "type": 0,
+      "value": "A ligar ao seu canal…"
+    }
+  ],
+  "bloem.liveTv.watch.selectProfileAndChannel": [
+    {
+      "type": 0,
+      "value": "Selecione um perfil e um canal para ver TV em direto."
+    }
+  ],
+  "bloem.nav.liveTv": [
+    {
+      "type": 0,
+      "value": "TV em direto"
+    }
+  ],
+  "bloem.notifications.announcement.defaultTitle": [
+    {
+      "type": 0,
+      "value": "Aviso do servidor"
+    }
+  ],
+  "bloem.notifications.announcement.severity.critical": [
+    {
+      "type": 0,
+      "value": "Crítico"
+    }
+  ],
+  "bloem.notifications.announcement.severity.info": [
+    {
+      "type": 0,
+      "value": "Informação"
+    }
+  ],
+  "bloem.notifications.announcement.severity.warning": [
+    {
+      "type": 0,
+      "value": "Aviso"
+    }
+  ],
+  "bloem.preview.banner.endsOn": [
+    {
+      "type": 0,
+      "value": "A sua pré-visualização termina a "
+    },
+    {
+      "type": 1,
+      "value": "date"
+    }
+  ],
+  "bloem.preview.banner.exitPreview": [
+    {
+      "type": 0,
+      "value": "Sair da pré-visualização"
+    }
+  ],
+  "bloem.preview.banner.freePlayLeft": [
+    {
+      "type": 0,
+      "value": "Reprodução gratuita: faltam "
+    },
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " min"
+    }
+  ],
+  "bloem.preview.banner.minutesRemaining": [
+    {
+      "type": 0,
+      "value": "Faltam "
+    },
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " min"
+    }
+  ],
+  "bloem.preview.banner.signOut": [
+    {
+      "type": 0,
+      "value": "Terminar sessão"
+    }
+  ],
+  "bloem.preview.banner.subscribe": [
+    {
+      "type": 0,
+      "value": "Subscrever"
+    }
+  ],
+  "bloem.preview.banner.yourPreview": [
+    {
+      "type": 0,
+      "value": "A pré-visualização da sua biblioteca"
+    }
+  ],
+  "bloem.preview.book.alsoByThisAuthor": [
+    {
+      "type": 0,
+      "value": "Também deste autor"
+    }
+  ],
+  "bloem.preview.book.audiobook": [
+    {
+      "type": 0,
+      "value": "Audiolivro"
+    }
+  ],
+  "bloem.preview.book.byAuthors": [
+    {
+      "type": 0,
+      "value": "De "
+    },
+    {
+      "type": 1,
+      "value": "authors"
+    }
+  ],
+  "bloem.preview.book.chapterNumber": [
+    {
+      "type": 0,
+      "value": "Capítulo "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.book.chapters": [
+    {
+      "type": 0,
+      "value": "Capítulos"
+    }
+  ],
+  "bloem.preview.book.ebook": [
+    {
+      "type": 0,
+      "value": "E-book"
+    }
+  ],
+  "bloem.preview.book.manga": [
+    {
+      "type": 0,
+      "value": "Manga"
+    }
+  ],
+  "bloem.preview.book.youMightAlsoLike": [
+    {
+      "type": 0,
+      "value": "Também poderá gostar"
+    }
+  ],
+  "bloem.preview.browseOnly": [
+    {
+      "type": 0,
+      "value": "Pré-visualização só para explorar"
+    }
+  ],
+  "bloem.preview.collections.loading": [
+    {
+      "type": 0,
+      "value": "A carregar coleções…"
+    }
+  ],
+  "bloem.preview.collections.title": [
+    {
+      "type": 0,
+      "value": "Coleções"
+    }
+  ],
+  "bloem.preview.collections.titleCount": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " título"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " de títulos"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " títulos"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.preview.collections.unavailable": [
+    {
+      "type": 0,
+      "value": "As coleções não estão disponíveis. Tente novamente."
+    }
+  ],
+  "bloem.preview.cta.message": [
+    {
+      "type": 0,
+      "value": "Explore a biblioteca aqui. Subscreva para ver, ler e ouvir."
+    }
+  ],
+  "bloem.preview.cta.subscribeToBrand": [
+    {
+      "type": 0,
+      "value": "Subscrever "
+    },
+    {
+      "type": 1,
+      "value": "brand"
+    }
+  ],
+  "bloem.preview.cta.subscribeToListen": [
+    {
+      "type": 0,
+      "value": "Subscrever para ouvir"
+    }
+  ],
+  "bloem.preview.cta.subscribeToRead": [
+    {
+      "type": 0,
+      "value": "Subscrever para ler"
+    }
+  ],
+  "bloem.preview.cta.subscribeToWatch": [
+    {
+      "type": 0,
+      "value": "Subscrever para ver"
+    }
+  ],
+  "bloem.preview.details": [
+    {
+      "type": 0,
+      "value": "Detalhes"
+    }
+  ],
+  "bloem.preview.dialog.freePlayEnded": [
+    {
+      "type": 0,
+      "value": "A sua reprodução gratuita terminou"
+    }
+  ],
+  "bloem.preview.dialog.keepBrowsing": [
+    {
+      "type": 0,
+      "value": "Continuar a explorar"
+    }
+  ],
+  "bloem.preview.dialog.playFree": [
+    {
+      "type": 0,
+      "value": "Reproduzir grátis"
+    }
+  ],
+  "bloem.preview.dialog.playFreeFor": [
+    {
+      "type": 6,
+      "value": "minutes",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Reproduzir grátis durante "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " minuto"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Reproduzir grátis durante "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " de minutos"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Reproduzir grátis durante "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " minutos"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.preview.dialog.sessionEnded": [
+    {
+      "type": 0,
+      "value": "A sua sessão de pré-visualização terminou"
+    }
+  ],
+  "bloem.preview.dialog.startTrial": [
+    {
+      "type": 0,
+      "value": "Iniciar o período experimental"
+    }
+  ],
+  "bloem.preview.dialog.startTrialToEnjoy": [
+    {
+      "type": 0,
+      "value": "Inicie o período experimental para desfrutar de toda a biblioteca."
+    }
+  ],
+  "bloem.preview.errors.couldNotStart": [
+    {
+      "type": 0,
+      "value": "Não foi possível iniciar a pré-visualização. Use uma nova ligação de acesso."
+    }
+  ],
+  "bloem.preview.errors.exitTimedOut": [
+    {
+      "type": 0,
+      "value": "O tempo para sair da pré-visualização esgotou-se"
+    }
+  ],
+  "bloem.preview.errors.requestTimedOut": [
+    {
+      "type": 0,
+      "value": "O pedido de pré-visualização excedeu o tempo limite"
+    }
+  ],
+  "bloem.preview.errors.useStorefrontLink": [
+    {
+      "type": 0,
+      "value": "Use a ligação de acesso à pré-visualização da loja."
+    }
+  ],
+  "bloem.preview.hero.featuredTitles": [
+    {
+      "type": 0,
+      "value": "Títulos em destaque"
+    }
+  ],
+  "bloem.preview.hero.pauseSlideshow": [
+    {
+      "type": 0,
+      "value": "Pausar apresentação"
+    }
+  ],
+  "bloem.preview.hero.resumeSlideshow": [
+    {
+      "type": 0,
+      "value": "Retomar apresentação"
+    }
+  ],
+  "bloem.preview.hero.showSlide": [
+    {
+      "type": 0,
+      "value": "Mostrar "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.preview.landing.body": [
+    {
+      "type": 0,
+      "value": "Use uma nova ligação de pré-visualização para explorar a biblioteca ou inicie o período experimental."
+    }
+  ],
+  "bloem.preview.landing.browse": [
+    {
+      "type": 0,
+      "value": "Explorar a biblioteca"
+    }
+  ],
+  "bloem.preview.landing.title": [
+    {
+      "type": 0,
+      "value": "Comece a explorar "
+    },
+    {
+      "type": 1,
+      "value": "brand"
+    }
+  ],
+  "bloem.preview.metadata.audio": [
+    {
+      "type": 0,
+      "value": "Áudio"
+    }
+  ],
+  "bloem.preview.metadata.audioNumber": [
+    {
+      "type": 0,
+      "value": "Áudio "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.metadata.subtitleNumber": [
+    {
+      "type": 0,
+      "value": "Legenda "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.metadata.subtitles": [
+    {
+      "type": 0,
+      "value": "Legendas"
+    }
+  ],
+  "bloem.preview.metadata.version": [
+    {
+      "type": 0,
+      "value": "Versão"
+    }
+  ],
+  "bloem.preview.metadata.versionNumber": [
+    {
+      "type": 0,
+      "value": "Versão "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.moreActions": [
+    {
+      "type": 0,
+      "value": "Mais ações"
+    }
+  ],
+  "bloem.preview.route.loading": [
+    {
+      "type": 0,
+      "value": "A carregar…"
+    }
+  ],
+  "bloem.preview.route.loadingApplication": [
+    {
+      "type": 0,
+      "value": "A carregar a aplicação"
+    }
+  ],
+  "bloem.preview.sidebar.calendar": [
+    {
+      "type": 0,
+      "value": "Calendário"
+    }
+  ],
+  "bloem.preview.sidebar.collections": [
+    {
+      "type": 0,
+      "value": "Coleções"
+    }
+  ],
+  "bloem.preview.sidebar.home": [
+    {
+      "type": 0,
+      "value": "Início"
+    }
+  ],
+  "bloem.preview.sidebar.libraries": [
+    {
+      "type": 0,
+      "value": "Bibliotecas"
+    }
+  ],
+  "bloem.preview.sidebar.navigation": [
+    {
+      "type": 0,
+      "value": "Navegação da pré-visualização"
+    }
+  ],
+  "bloem.preview.sidebar.preview": [
+    {
+      "type": 0,
+      "value": "Pré-visualização"
+    }
+  ],
+  "bloem.preview.sidebar.search": [
+    {
+      "type": 0,
+      "value": "Pesquisar"
+    }
+  ],
+  "bloem.preview.start.opening": [
+    {
+      "type": 0,
+      "value": "A abrir a pré-visualização da sua biblioteca…"
+    }
+  ],
+  "bloem.profiles.directCredentials.changeNotConfirmed": [
+    {
+      "type": 0,
+      "value": "Não foi possível confirmar a alteração."
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingProfileCredentialStatus": [
+    {
+      "type": 0,
+      "value": "A verificar o estado das credenciais do perfil…"
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingSupport": [
+    {
+      "type": 0,
+      "value": "A verificar o suporte…"
+    }
+  ],
+  "bloem.profiles.directCredentials.chooseAProfile": [
+    {
+      "type": 0,
+      "value": "Escolha um perfil"
+    }
+  ],
+  "bloem.profiles.directCredentials.confirmRequired": [
+    {
+      "type": 0,
+      "value": "Introduza a palavra-passe da sua conta e assinale a caixa para confirmar."
+    }
+  ],
+  "bloem.profiles.directCredentials.couldNotLoadHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "Não foi possível carregar os perfis do agregado familiar."
+    }
+  ],
+  "bloem.profiles.directCredentials.emailAndPasswordRequired": [
+    {
+      "type": 0,
+      "value": "Introduza um e-mail e uma nova palavra-passe para o perfil."
+    }
+  ],
+  "bloem.profiles.directCredentials.giveAHouseholdProfileIts": [
+    {
+      "type": 0,
+      "value": "Dê a um perfil do agregado familiar o seu próprio e-mail e palavra-passe, para poder iniciar sessão nas aplicações Bloem sem a palavra-passe da conta. O site continua a usar o início de sessão da conta. Para alterar isto, precisa da palavra-passe da sua conta; as contas que só iniciam sessão através de início de sessão único não o podem usar. Uma palavra-passe de perfil deixa de funcionar enquanto o início de sessão com palavra-passe estiver desativado para este servidor ou para a sua conta."
+    }
+  ],
+  "bloem.profiles.directCredentials.iUnderstandThisSignsThe": [
+    {
+      "type": 0,
+      "value": "Compreendo que isto termina a sessão do perfil em todas as aplicações onde iniciou sessão com o seu próprio início de sessão."
+    }
+  ],
+  "bloem.profiles.directCredentials.loadingHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "A carregar perfis do agregado familiar…"
+    }
+  ],
+  "bloem.profiles.directCredentials.manageSignInFor": [
+    {
+      "type": 0,
+      "value": "Gerir o início de sessão de "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "bloem.profiles.directCredentials.newPasswordForTheProfile": [
+    {
+      "type": 0,
+      "value": "Nova palavra-passe para o perfil"
+    }
+  ],
+  "bloem.profiles.directCredentials.profile": [
+    {
+      "type": 0,
+      "value": "Perfil"
+    }
+  ],
+  "bloem.profiles.directCredentials.profileEmail": [
+    {
+      "type": 0,
+      "value": "E-mail do perfil"
+    }
+  ],
+  "bloem.profiles.directCredentials.saveSignIn": [
+    {
+      "type": 0,
+      "value": "Guardar início de sessão"
+    }
+  ],
+  "bloem.profiles.directCredentials.saving": [
+    {
+      "type": 0,
+      "value": "A guardar…"
+    }
+  ],
+  "bloem.profiles.directCredentials.separateSignInForA": [
+    {
+      "type": 0,
+      "value": "Início de sessão separado para um perfil"
+    }
+  ],
+  "bloem.profiles.directCredentials.signInSaved": [
+    {
+      "type": 0,
+      "value": "Início de sessão guardado. A sessão do perfil foi terminada nas suas aplicações e tem de iniciar sessão novamente."
+    }
+  ],
+  "bloem.profiles.directCredentials.signInTurnedOff": [
+    {
+      "type": 0,
+      "value": "O início de sessão próprio do perfil está desativado e a sessão foi terminada nas suas aplicações."
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileHasNoSign": [
+    {
+      "type": 0,
+      "value": "Este perfil não tem início de sessão próprio."
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileSignsInAs": [
+    {
+      "type": 0,
+      "value": "Este perfil inicia sessão como "
+    },
+    {
+      "type": 1,
+      "value": "loginEmail"
+    }
+  ],
+  "bloem.profiles.directCredentials.tryAgain": [
+    {
+      "type": 0,
+      "value": "Tentar novamente"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnOffItsSignIn": [
+    {
+      "type": 0,
+      "value": "Desativar o início de sessão"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnedOff": [
+    {
+      "type": 0,
+      "value": "As palavras-passe de perfil estão desativadas neste servidor. Um administrador do servidor pode ativá-las em Definições, em Início de sessão e segurança."
+    }
+  ],
+  "bloem.profiles.directCredentials.yourAccountPassword": [
+    {
+      "type": 0,
+      "value": "A palavra-passe da sua conta"
+    }
+  ],
+  "bloem.requests.audiobook.identifierHint": [
+    {
+      "type": 0,
+      "value": "O ISBN ou o ASIN ajuda a identificar o audiolivro quando chegar. Sem um identificador, um administrador pode marcar o seu pedido como entregue."
+    }
+  ],
+  "bloem.requests.audiobook.intro": [
+    {
+      "type": 0,
+      "value": "Peça um título para a sua organização. Os pedidos aprovados aguardam até o audiolivro ser adicionado."
+    }
+  ],
+  "bloem.requests.audiobook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "Não tem pedidos de audiolivros."
+    }
+  ],
+  "bloem.requests.audiobook.mineHeading": [
+    {
+      "type": 0,
+      "value": "Os seus pedidos de audiolivros"
+    }
+  ],
+  "bloem.requests.audiobook.open": [
+    {
+      "type": 0,
+      "value": "Abrir audiolivro"
+    }
+  ],
+  "bloem.requests.audiobook.requested": [
+    {
+      "type": 0,
+      "value": "Audiolivro pedido"
+    }
+  ],
+  "bloem.requests.audiobook.submit": [
+    {
+      "type": 0,
+      "value": "Pedir audiolivro"
+    }
+  ],
+  "bloem.requests.audiobook.title": [
+    {
+      "type": 0,
+      "value": "Pedidos de audiolivros"
+    }
+  ],
+  "bloem.requests.audiobook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "Os pedidos de audiolivros não estão disponíveis para este perfil."
+    }
+  ],
+  "bloem.requests.cancel": [
+    {
+      "type": 0,
+      "value": "Cancelar pedido"
+    }
+  ],
+  "bloem.requests.ebook.availabilityCheckFailed": [
+    {
+      "type": 0,
+      "value": "Não foi possível verificar a disponibilidade dos pedidos de e-books."
+    }
+  ],
+  "bloem.requests.ebook.cancellationNote": [
+    {
+      "type": 0,
+      "value": "O cancelamento aplica-se apenas ao Bloem; o fornecedor de entrega pode já estar a processar o e-book."
+    }
+  ],
+  "bloem.requests.ebook.checkingAvailability": [
+    {
+      "type": 0,
+      "value": "A verificar a disponibilidade dos pedidos de e-books…"
+    }
+  ],
+  "bloem.requests.ebook.fulfilmentUnconfigured": [
+    {
+      "type": 0,
+      "value": "A entrega de e-books não está configurada. Os pedidos aprovados aguardarão a configuração."
+    }
+  ],
+  "bloem.requests.ebook.identifierHint": [
+    {
+      "type": 0,
+      "value": "Indique o ISBN da edição que pretende. A entrega fica concluída quando o e-book estiver disponível na sua biblioteca."
+    }
+  ],
+  "bloem.requests.ebook.intro": [
+    {
+      "type": 0,
+      "value": "Peça um título para a sua organização. Os pedidos aprovados aguardam até o e-book ser adicionado."
+    }
+  ],
+  "bloem.requests.ebook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "Não tem pedidos de e-books."
+    }
+  ],
+  "bloem.requests.ebook.mineHeading": [
+    {
+      "type": 0,
+      "value": "Os seus pedidos de e-books"
+    }
+  ],
+  "bloem.requests.ebook.open": [
+    {
+      "type": 0,
+      "value": "Abrir e-book"
+    }
+  ],
+  "bloem.requests.ebook.requested": [
+    {
+      "type": 0,
+      "value": "E-book pedido"
+    }
+  ],
+  "bloem.requests.ebook.submit": [
+    {
+      "type": 0,
+      "value": "Pedir e-book"
+    }
+  ],
+  "bloem.requests.ebook.title": [
+    {
+      "type": 0,
+      "value": "Pedidos de e-books"
+    }
+  ],
+  "bloem.requests.ebook.turnedOff": [
+    {
+      "type": 0,
+      "value": "Os pedidos de e-books estão desativados."
+    }
+  ],
+  "bloem.requests.ebook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "Os pedidos de e-books não estão disponíveis para este perfil."
+    }
+  ],
+  "bloem.requests.ebook.unavailableOnServer": [
+    {
+      "type": 0,
+      "value": "Os pedidos de e-books não estão disponíveis neste servidor."
+    }
+  ],
+  "bloem.requests.field.asinOptional": [
+    {
+      "type": 0,
+      "value": "ASIN (opcional)"
+    }
+  ],
+  "bloem.requests.field.author": [
+    {
+      "type": 0,
+      "value": "Autor"
+    }
+  ],
+  "bloem.requests.field.authorOptional": [
+    {
+      "type": 0,
+      "value": "Autor (opcional)"
+    }
+  ],
+  "bloem.requests.field.isbn": [
+    {
+      "type": 0,
+      "value": "ISBN"
+    }
+  ],
+  "bloem.requests.field.isbnOptional": [
+    {
+      "type": 0,
+      "value": "ISBN (opcional)"
+    }
+  ],
+  "bloem.requests.field.noteOptional": [
+    {
+      "type": 0,
+      "value": "Nota (opcional)"
+    }
+  ],
+  "bloem.requests.field.title": [
+    {
+      "type": 0,
+      "value": "Título"
+    }
+  ],
+  "bloem.requests.isbnValue": [
+    {
+      "type": 0,
+      "value": "ISBN "
+    },
+    {
+      "type": 1,
+      "value": "isbn"
+    }
+  ],
+  "bloem.requests.loading": [
+    {
+      "type": 0,
+      "value": "A carregar pedidos…"
+    }
+  ],
+  "bloem.requests.mediaTabs.audiobooks": [
+    {
+      "type": 0,
+      "value": "Audiolivros"
+    }
+  ],
+  "bloem.requests.mediaTabs.ebooks": [
+    {
+      "type": 0,
+      "value": "E-books"
+    }
+  ],
+  "bloem.requests.mediaTabs.label": [
+    {
+      "type": 0,
+      "value": "Tipo de conteúdo do pedido"
+    }
+  ],
+  "bloem.requests.mediaTabs.video": [
+    {
+      "type": 0,
+      "value": "Filmes e séries"
+    }
+  ],
+  "bloem.requests.nextPage": [
+    {
+      "type": 0,
+      "value": "Seguinte"
+    }
+  ],
+  "bloem.requests.policy.limited": [
+    {
+      "type": 0,
+      "value": "Restam "
+    },
+    {
+      "type": 1,
+      "value": "remaining"
+    },
+    {
+      "type": 0,
+      "value": " de "
+    },
+    {
+      "type": 6,
+      "value": "limit",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " pedido"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " de pedidos"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " pedidos"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " em "
+    },
+    {
+      "type": 6,
+      "value": "days",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dia"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " de dias"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dias"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": ". "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Os pedidos são aprovados automaticamente."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Um administrador irá rever o seu pedido."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.requests.policy.unlimited": [
+    {
+      "type": 0,
+      "value": "Sem limite de pedidos. "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Os pedidos são aprovados automaticamente."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Um administrador irá rever o seu pedido."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.requests.previousPage": [
+    {
+      "type": 0,
+      "value": "Anterior"
+    }
+  ],
+  "bloem.requests.submitting": [
+    {
+      "type": 0,
+      "value": "A enviar pedido…"
+    }
+  ]
+}
