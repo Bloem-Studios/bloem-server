@@ -28736,22 +28736,17 @@ export interface components {
       /** @example Movies */
       name: string;
       /**
-       * @description Root directories the library scans; required unless storage_source is set
+       * @description Root directories the library scans
        * @example [
        *       "/media/movies"
        *     ]
        */
-      paths?: string[];
+      paths: string[];
       /**
        * @description Scan automatically when files in the library's folders change; omitted means true. Takes effect only while the server-wide scanner.realtime_monitoring setting is on.
        * @example true
        */
       realtime_monitoring?: boolean;
-      /**
-       * Format: uuid
-       * @description Storage source an ebooks library reads its books from, instead of paths. Exactly one of paths and storage_source is required.
-       */
-      storage_source?: string;
       /**
        * @description Remote video kinds to fetch; omitted applies the default (every provider kind), empty disables them
        * @example [

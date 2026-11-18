@@ -53,8 +53,7 @@ type Library struct {
 
 // LibraryCreate is the createLibrary body.
 type LibraryCreate struct {
-	Paths                    []string `json:"paths,omitempty" doc:"Root directories the library scans; required unless storage_source is set" example:"[\"/media/movies\"]"`
-	StorageSource            *string  `json:"storage_source,omitempty" format:"uuid" doc:"Storage source an ebooks library reads its books from, instead of paths. Exactly one of paths and storage_source is required."`
+	Paths                    []string `json:"paths" minItems:"1" doc:"Root directories the library scans" example:"[\"/media/movies\"]"`
 	Type                     string   `json:"type" minLength:"1" doc:"Library kind (movies, series, mixed, audiobooks, ebooks, podcasts, manga)" example:"movies"`
 	Name                     string   `json:"name" minLength:"1" example:"Movies"`
 	MetadataLanguage         string   `json:"metadata_language,omitempty" pattern:"^(?:[a-z]{2})?$" doc:"Lowercase ISO 639-1 code from the supported list; empty or omitted means en" example:"en"`
@@ -1090,20 +1089,7 @@ func (reg *Registry) createLibrary(ctx context.Context, in *LibraryCreateInput) 
 	if p != nil {
 		return nil, p
 	}
-	// A library reads either filesystem paths or one storage source.
-	if len(in.Body.Paths) == 0 && in.Body.StorageSource == nil {
-		return nil, validationProblem(locationBody+".paths", codeRequired, "paths is required unless storage_source is set")
-	}
-	var storageSource *uuid.UUID
-	if in.Body.StorageSource != nil {
-		key, err := uuid.Parse(*in.Body.StorageSource)
-		if err != nil {
-			return nil, NewProblem(TypeValidationFailed, "storage_source must be a UUID")
-		}
-		storageSource = &key
-	}
 	view, err := svc.CreateLibrary(ctx, handlers.LibraryCreateRequest{
-		StorageSource:            storageSource,
 		Paths:                    in.Body.Paths,
 		Type:                     in.Body.Type,
 		Name:                     in.Body.Name,

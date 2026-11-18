@@ -1,7 +1,5 @@
 import { useMemo } from "react";
 
-import { bloemT } from "@/bloem/i18n";
-
 import type { LibraryFormErrors } from "@/components/admin/libraries/useLibraryForm";
 import type { LibraryLocationsController } from "./useLibraryLocations";
 
@@ -9,7 +7,6 @@ interface LibraryLocationInput {
   /** The library being edited, or null while creating one. */
   library: object | null;
   paths: string[];
-  storageSource: string;
   usesStorage: boolean;
   locations: LibraryLocationsController;
 }
@@ -22,7 +19,7 @@ interface LibraryLocationInput {
  */
 export function bloemLibraryErrors(
   silo: LibraryFormErrors,
-  { library, paths, storageSource, usesStorage, locations }: LibraryLocationInput,
+  { library, paths, usesStorage, locations }: LibraryLocationInput,
 ): LibraryFormErrors {
   const { paths: missingFolder, ...rest } = silo;
   const next: LibraryFormErrors = { ...rest };
@@ -34,9 +31,7 @@ export function bloemLibraryErrors(
     const locationError = locations.shapeError(paths);
     if (locationError) next.paths = locationError;
   } else if (usesStorage) {
-    if (!library && !storageSource) {
-      next.storageSource = bloemT("bloem.admin.libraries.form.chooseStorageSource");
-    }
+    // An existing storage library keeps its location; it has no folders.
   } else if (missingFolder) {
     next.paths = missingFolder;
   }
@@ -47,10 +42,10 @@ export function useBloemLibraryErrors(
   silo: LibraryFormErrors,
   input: LibraryLocationInput,
 ): LibraryFormErrors {
-  const { library, paths, storageSource, usesStorage, locations } = input;
+  const { library, paths, usesStorage, locations } = input;
   return useMemo(
-    () => bloemLibraryErrors(silo, { library, paths, storageSource, usesStorage, locations }),
-    [silo, library, paths, storageSource, usesStorage, locations],
+    () => bloemLibraryErrors(silo, { library, paths, usesStorage, locations }),
+    [silo, library, paths, usesStorage, locations],
   );
 }
 

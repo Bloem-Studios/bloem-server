@@ -3658,10 +3658,7 @@ export interface StaleMediaID {
 }
 
 export interface CreateLibraryRequest {
-  /** Empty when the library reads from a storage source. */
   paths: string[];
-  /** Storage source an ebook library reads from instead of paths; create only. */
-  storage_source?: string;
   type: string;
   name: string;
   enabled?: boolean;

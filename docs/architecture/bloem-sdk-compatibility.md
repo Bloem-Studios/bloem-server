@@ -247,8 +247,8 @@ Silo-compatible native API. Check the relevant committed OpenAPI document before
 
 Native-storage administration requires a signed platform or organization administrative-context
 token. Ordinary account tokens, profile headers and v2 mutation conventions are not
-substitutes. Ambiguous outcomes require reconciliation, not blind replay. Libraries use a
-storage source through the ordinary v2 `createLibrary` (`storage_source`). Use the
+substitutes. Ambiguous outcomes require reconciliation, not blind replay. A library is
+created on a storage source through the native `library-locations` routes. Use the
 [storage architecture](bloem-native-storage.md) and
 [native API reference](../bloem-api-reference.md#native-storage-administration).
 

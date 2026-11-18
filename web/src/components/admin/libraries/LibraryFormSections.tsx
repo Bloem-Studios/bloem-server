@@ -1,7 +1,4 @@
-import {
-  bloemFolderFields,
-  LibraryLocationKindToggle,
-} from "@/bloem/library-locations/BloemFolderFields";
+import { bloemFolderFields } from "@/bloem/library-locations/BloemFolderFields";
 import { useId, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -179,7 +176,6 @@ export function FolderFields({ form }: { form: LibraryFormController }) {
 
   return (
     <div className="space-y-3">
-      <LibraryLocationKindToggle form={form} />
       <div className="space-y-2">
         {form.paths.map((path, i) => (
           <div key={i} className="flex items-center gap-1.5">

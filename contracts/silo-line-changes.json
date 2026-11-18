@@ -32,17 +32,6 @@
   "contracts/api/v2/fixtures/admin_policy_vendor.json": {
    "kind": "generated"
   },
-  "contracts/api/v2/fixtures/create_library_validation_failed.json": {
-   "kind": "lines",
-   "lines": [
-    "      \"code\": \"required\",",
-    "      \"detail\": \"expected required property paths to be present\"",
-    "      \"location\": \"body.paths\",",
-    "    {",
-    "    },",
-    "  \"detail\": \"The request did not pass validation; see errors.\","
-   ]
-  },
   "contracts/api/v2/fixtures/get_device_login_bound.json": {
    "kind": "lines",
    "lines": [
@@ -54,9 +43,6 @@
    "lines": [
     "  \"server_name\": \"Silo\""
    ]
-  },
-  "contracts/api/v2/openapi.json": {
-   "kind": "generated"
   },
   "contracts/api/v2/route-inventory.json": {
    "kind": "generated"
@@ -381,12 +367,6 @@
    "kind": "lines",
    "lines": [
     "\twant := `{\"status\":\"pending\",\"user_code\":\"4821-7730\",\"match_code\":\"warm pony\",\"device_name\":\"Living room TV\",\"device_platform\":\"tvos\",\"ip_address_hint\":\"192.168.1.x\",\"expires_at\":\"2026-01-02T03:14:05.678Z\",\"requested_at\":\"2026-01-02T03:04:05.678Z\",\"client_purpose\":\"device_login\",\"temporary\":false,\"server_name\":\"Silo\"}` + \"\\n\""
-   ]
-  },
-  "internal/apiv2/libraries.go": {
-   "kind": "lines",
-   "lines": [
-    "\tPaths                    []string `json:\"paths\" minItems:\"1\" doc:\"Root directories the library scans\" example:\"[\\\"/media/movies\\\"]\"`"
    ]
   },
   "internal/apiv2/parity_test.go": {
@@ -1106,9 +1086,6 @@
     "  return storage.get(storage.KEYS.REFRESH_TOKEN);"
    ]
   },
-  "web/src/api/v2/schema.ts": {
-   "kind": "generated"
-  },
   "web/src/components/AdminSectionCommandDialog.tsx": {
    "kind": "lines",
    "lines": [
@@ -1148,9 +1125,7 @@
    "lines": [
     "                { onSuccess: () => onClose?.() },",
     "        { id: library.id, body },",
-    "      paths: paths.filter((p) => p.trim()),",
-    "    createMutation.isPending || updateMutation.isPending || setChainMutation.isPending;",
-    "    if (allErrors.name || allErrors.paths) {"
+    "    createMutation.isPending || updateMutation.isPending || setChainMutation.isPending;"
    ]
   },
   "web/src/hooks/queries/admin/stats.ts": {
@@ -1362,10 +1337,6 @@
   "internal/apiv2/gates.go": {
    "func (d *denialWriter) problem() *Problem {": "e031aa27600af402",
    "func runChain(ctx huma.Context, next func(huma.Context), chain []func(http.Handl": "541f2c58e4fc1eb6"
-  },
-  "internal/apiv2/libraries.go": {
-   "func (reg *Registry) createLibrary(ctx context.Context, in *LibraryCreateInput)": "609f96471b164afb",
-   "func libraryOf(v handlers.LibraryView) Library {": "cf87c09af264f370"
   },
   "internal/apiv2/parity_test.go": {
    "func (fakeResolver) Resolve(_ context.Context, in access.ResolveInput) (access.S": "3ee6ec37bb0cf630"

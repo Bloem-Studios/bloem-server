@@ -38441,7 +38441,7 @@
             "type": "string"
           },
           "paths": {
-            "description": "Root directories the library scans; required unless storage_source is set",
+            "description": "Root directories the library scans",
             "examples": [
               [
                 "/media/movies"
@@ -38450,6 +38450,7 @@
             "items": {
               "type": "string"
             },
+            "minItems": 1,
             "type": "array"
           },
           "realtime_monitoring": {
@@ -38458,11 +38459,6 @@
               true
             ],
             "type": "boolean"
-          },
-          "storage_source": {
-            "description": "Storage source an ebooks library reads its books from, instead of paths. Exactly one of paths and storage_source is required.",
-            "format": "uuid",
-            "type": "string"
           },
           "trailer_kinds": {
             "description": "Remote video kinds to fetch; omitted applies the default (every provider kind), empty disables them",
@@ -38493,6 +38489,7 @@
           }
         },
         "required": [
+          "paths",
           "type",
           "name"
         ],

@@ -8,7 +8,6 @@ import {
   useSetLibraryProviders,
   useUpdateLibrary,
 } from "@/hooks/queries/admin/libraries";
-import { useStorageSources } from "@/hooks/queries/admin/storageSources";
 import { t as translate, useT, type MessageKey } from "@/i18n";
 import { PROVIDER_TRAILER_KINDS } from "@/lib/extraKinds";
 
@@ -43,15 +42,6 @@ function hasChainProviders(chains: Record<string, LevelChainItem[]>): boolean {
 export interface LibraryFormErrors {
   name?: string;
   paths?: string;
-  storageSource?: string;
-}
-
-/** Where a library's files come from: filesystem folders, or a storage source. */
-export type LibraryLocationKind = "paths" | "storage";
-
-/** Storage sources back ebook libraries only. */
-export function supportsStorageSource(libraryType: string): boolean {
-  return libraryType === "ebooks" || libraryType === "ebook";
 }
 
 export interface UseLibraryFormOptions {
@@ -209,16 +199,9 @@ export function useLibraryForm({
   const staleContext =
     intentContext?.key !== locations.context?.key ||
     intentContext?.generation !== locations.context?.generation;
-  // A library's location kind is fixed once created.
-  const [locationKind, setLocationKind] = useState<LibraryLocationKind>(
-    library?.storage_source ? "storage" : "paths",
-  );
-  const [storageSource, setStorageSource] = useState(library?.storage_source ?? "");
-  const storageOffered = !library && supportsStorageSource(type);
-  const { data: storageSources } = useStorageSources(storageOffered);
-  const usesStorage = library
-    ? Boolean(library.storage_source)
-    : storageOffered && locationKind === "storage";
+  // An existing library on a storage source has no paths to edit; new ones
+  // get their storage locations through Bloem's library locations.
+  const usesStorage = Boolean(library?.storage_source);
   const [enabled, setEnabled] = useState(library?.enabled ?? true);
   const [metadataLanguage, setMetadataLanguage] = useState(library?.metadata_language ?? "en");
   const [autoTranslateMetadata, setAutoTranslateMetadata] = useState(
@@ -296,7 +279,6 @@ export function useLibraryForm({
   const bloemErrors = useBloemLibraryErrors(allErrors, {
     library,
     paths,
-    storageSource,
     usesStorage,
     locations,
   });
@@ -398,14 +380,13 @@ export function useLibraryForm({
         errors: { paths: bloemT("bloem.admin.libraries.form.reloadBeforeSaving") },
       };
     }
-    if (allErrors.name || allErrors.paths || allErrors.storageSource) {
+    if (allErrors.name || allErrors.paths) {
       return { ok: false, errors: allErrors };
     }
 
     const body: CreateLibraryRequest = {
       name: name.trim(),
-      paths: !locations.enabled && usesStorage ? [] : paths.filter((p) => p.trim()),
-      ...(!locations.enabled && usesStorage && !library ? { storage_source: storageSource } : {}),
+      paths: paths.filter((p) => p.trim()),
       type,
       enabled,
       metadata_language: metadataLanguage,
@@ -458,7 +439,7 @@ export function useLibraryForm({
         };
         const savedLibrary = library ?? locations.createdLibrary;
         if (savedLibrary) {
-          const { paths: _paths, storage_source: _source, ...options } = body;
+          const { paths: _paths, ...options } = body;
           updateMutation.mutate(
             { id: savedLibrary.id, body: options },
             { onSuccess: afterOptions },
@@ -469,9 +450,8 @@ export function useLibraryForm({
     }
 
     if (library) {
-      // A storage library has no paths to update, and its source is fixed.
-      const { storage_source: _source, ...update } = body;
-      const patch = usesStorage ? { ...update, paths: undefined } : update;
+      // A storage library has no paths to update.
+      const patch = usesStorage ? { ...body, paths: undefined } : body;
       updateMutation.mutate(
         { id: library.id, body: patch },
         {
@@ -529,13 +509,7 @@ export function useLibraryForm({
     addPath,
     removePath,
     mergeBrowsedPaths,
-    locationKind,
-    setLocationKind,
-    storageOffered,
     usesStorage,
-    storageSource,
-    setStorageSource,
-    storageSources: storageSources ?? [],
     type,
     handleTypeChange,
     enabled,

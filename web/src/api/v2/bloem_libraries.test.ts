@@ -1,5 +1,6 @@
 // @vitest-environment node
-// Bloem: a library on a storage source carries it on the v2 wire (libraries.ts).
+// Bloem: a library on a storage source reports it on the v2 wire (libraries.ts);
+// new storage libraries are created through Bloem's library locations.
 import { describe, expect, it } from "vitest";
 
 import { libraryCreateToV2, libraryFromV2 } from "./libraries";
@@ -7,16 +8,6 @@ import { libraryCreateToV2, libraryFromV2 } from "./libraries";
 const source = "413183ec-ece5-4805-aac4-6c31f6ddf0df";
 
 describe("storage source libraries on the v2 wire", () => {
-  it("creates one with its storage source and no paths", () => {
-    const body = libraryCreateToV2({
-      name: "Books",
-      type: "ebooks",
-      paths: [],
-      storage_source: source,
-    });
-    expect(body).toMatchObject({ storage_source: source, paths: [] });
-  });
-
   it("creates a folder library without a storage source", () => {
     const body = libraryCreateToV2({ name: "Movies", type: "movies", paths: ["/media"] });
     expect(body.paths).toEqual(["/media"]);

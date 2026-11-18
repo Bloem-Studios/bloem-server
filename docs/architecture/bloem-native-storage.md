@@ -246,8 +246,9 @@ references remain opaque; display names and logical paths do not become provider
 identities. S3 prefixes and Bookwarehouse virtual directories follow the same
 browser contract.
 
-An administrator creates an ebook or admitted movie library through the ordinary v2
-`createLibrary` with `storage_source` instead of `paths`. The creation
+An administrator creates an ebook or admitted movie library on a storage source
+through the scoped native `library-locations` create route; Silo's v2
+`createLibrary` takes filesystem paths only, as Silo wrote it. The creation
 transaction retains the installation's `FOR SHARE` lock before inserting the
 location, whose immediate foreign key acquires a source lock. This agrees with
 native management's installation-before-source order. The full tenancy check
@@ -265,9 +266,10 @@ scanned like any other.
 Silo's `CreateLibrary` and `normalizeNewLibrary`
 (`internal/api/handlers/libraries_service.go`) stay as Silo wrote them; Bloem's
 part is on added lines that call `bloemLibraryAttachment`
-(`internal/api/handlers/bloem_library_create.go`). It validates `storage_source`, or takes the attachment that
+(`internal/api/handlers/bloem_library_create.go`). It takes the attachment that
 `CreateLibraryWithAttachment` (the native `library-locations` create) passes in the
-request context, and marks a library with no paths. `normalizeNewLibrary` sends
+request context, and marks a library with no paths. Its older `storage_source`
+branch is no longer reachable from any API and goes with the native-storage cleanup. `normalizeNewLibrary` sends
 such a library to `bloemNormalizePathlessLibrary`, which runs Silo's checks on a
 copy carrying a placeholder path, so only the paths requirement is skipped. The
 attachment runs inside Silo's `CreateFolderInTx`; `FolderRepository.Create` reports

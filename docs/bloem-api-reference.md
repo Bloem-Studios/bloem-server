@@ -2539,9 +2539,9 @@ under both:
 - `/api/bloem/v2/admin/platform/native-storage`
 - `/api/bloem/v2/admin/organization/native-storage`
 
-Ordinary v2 `createLibrary` retains its single-source `storage_source` input.
-For selected directory roots or mixed local/remote paths, use the scoped native
-`library-locations` routes below. Source installation and library creation remain
+Silo's v2 `createLibrary` takes filesystem paths only. To create a library on a
+storage source, with selected directory roots or mixed local/remote paths, use the
+scoped native `library-locations` routes below. Source installation and library creation remain
 separate operations.
 
 The routes require the signed administrative context returned by the
