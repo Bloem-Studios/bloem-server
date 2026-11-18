@@ -1,0 +1,2710 @@
+{
+  "bloem.adminNav.announcements.description": [
+    {
+      "type": 0,
+      "value": "दर्शकों को मैसेज पब्लिश करें।"
+    }
+  ],
+  "bloem.adminNav.announcements.label": [
+    {
+      "type": 0,
+      "value": "घोषणाएँ"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.description": [
+    {
+      "type": 0,
+      "value": "दर्शकों को मैसेज पब्लिश करें और पहले की घोषणाएँ वापस लें।"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.label": [
+    {
+      "type": 0,
+      "value": "घोषणाएँ"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.newAnnouncement": [
+    {
+      "type": 0,
+      "value": "नई घोषणा"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.published": [
+    {
+      "type": 0,
+      "value": "पब्लिश की गई घोषणाएँ"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.administrativeContext": [
+    {
+      "type": 0,
+      "value": "एडमिन संदर्भ"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.administrativeContextChangedTo": [
+    {
+      "type": 0,
+      "value": "एडमिन संदर्भ बदलकर "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " किया गया"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.chooseContext": [
+    {
+      "type": 0,
+      "value": "संदर्भ चुनें"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.loadingContext": [
+    {
+      "type": 0,
+      "value": "संदर्भ लोड हो रहा है…"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.organizationAdministrator": [
+    {
+      "type": 0,
+      "value": "संगठन एडमिन"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.platformAdministrator": [
+    {
+      "type": 0,
+      "value": "प्लैटफ़ॉर्म एडमिन"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeName": [
+    {
+      "type": 5,
+      "value": "scope",
+      "options": {
+        "platform": {
+          "value": [
+            {
+              "type": 0,
+              "value": "प्लैटफ़ॉर्म"
+            }
+          ]
+        },
+        "organization": {
+          "value": [
+            {
+              "type": 0,
+              "value": "संगठन"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "scope"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeStatus": [
+    {
+      "type": 1,
+      "value": "scope"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "status"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.selectContext": [
+    {
+      "type": 0,
+      "value": "संदर्भ चुनें"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.statusName": [
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "active": {
+          "value": [
+            {
+              "type": 0,
+              "value": "सक्रिय"
+            }
+          ]
+        },
+        "suspended": {
+          "value": [
+            {
+              "type": 0,
+              "value": "निलंबित"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "status"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.adminNav.liveTv.description": [
+    {
+      "type": 0,
+      "value": "ट्यूनर, चैनल, टीवी गाइड, रिकॉर्डिंग और कन्वर्ज़न।"
+    }
+  ],
+  "bloem.adminNav.liveTv.label": [
+    {
+      "type": 0,
+      "value": "लाइव टीवी"
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.description": [
+    {
+      "type": 0,
+      "value": "किसी को किसी चीज़ की अनुमति क्यों मिली या क्यों मना किया गया।"
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.label": [
+    {
+      "type": 0,
+      "value": "ऐक्सेस जाँच"
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.description": [
+    {
+      "type": 0,
+      "value": "ग्रुप जो तय करते हैं कि उनकी प्रोफ़ाइलें क्या कर सकती हैं।"
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.label": [
+    {
+      "type": 0,
+      "value": "ऐक्सेस ग्रुप"
+    }
+  ],
+  "bloem.adminNav.organizationActivity.description": [
+    {
+      "type": 0,
+      "value": "इस संगठन में किसने क्या और कब बदला।"
+    }
+  ],
+  "bloem.adminNav.organizationActivity.label": [
+    {
+      "type": 0,
+      "value": "गतिविधि"
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.description": [
+    {
+      "type": 0,
+      "value": "एक जैसी सेटिंग वाले खातों के समूह।"
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.label": [
+    {
+      "type": 0,
+      "value": "कोहोर्ट"
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.description": [
+    {
+      "type": 0,
+      "value": "इस संगठन में एडमिन और सदस्यों को आमंत्रित करें।"
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.label": [
+    {
+      "type": 0,
+      "value": "आमंत्रण"
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.description": [
+    {
+      "type": 0,
+      "value": "वे लाइब्रेरी जो इस संगठन की अपनी हैं या इसे दी गई हैं।"
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.label": [
+    {
+      "type": 0,
+      "value": "लाइब्रेरी"
+    }
+  ],
+  "bloem.adminNav.organizationOverview.description": [
+    {
+      "type": 0,
+      "value": "सदस्य, लाइब्रेरी और हाल के बदलाव एक नज़र में।"
+    }
+  ],
+  "bloem.adminNav.organizationOverview.label": [
+    {
+      "type": 0,
+      "value": "खास जानकारी"
+    }
+  ],
+  "bloem.adminNav.organizationPeople.description": [
+    {
+      "type": 0,
+      "value": "इस संगठन के सभी लोग, उनकी प्रोफ़ाइलें और उनका प्लान।"
+    }
+  ],
+  "bloem.adminNav.organizationPeople.label": [
+    {
+      "type": 0,
+      "value": "लोग"
+    }
+  ],
+  "bloem.adminNav.organizationStorage.description": [
+    {
+      "type": 0,
+      "value": "S3 बकेट जिनसे यह संगठन अपनी ई-बुक पढ़ता है।"
+    }
+  ],
+  "bloem.adminNav.organizationStorage.label": [
+    {
+      "type": 0,
+      "value": "स्टोरेज सोर्स"
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.description": [
+    {
+      "type": 0,
+      "value": "कई डायरेक्ट खातों को एक साथ किसी प्लान पर ले जाएँ या उनकी सेटिंग बदलें।"
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.label": [
+    {
+      "type": 0,
+      "value": "कई खाते बदलें"
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.description": [
+    {
+      "type": 0,
+      "value": "जो खाता किसी संगठन में नहीं है, उसे किसी प्लान पर रखें।"
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.label": [
+    {
+      "type": 0,
+      "value": "डायरेक्ट खाते"
+    }
+  ],
+  "bloem.adminNav.platformEngagement.description": [
+    {
+      "type": 0,
+      "value": "होम स्क्रीन के लिए प्रमोशन, आर्टवर्क और सीज़नल लुक।"
+    }
+  ],
+  "bloem.adminNav.platformEngagement.label": [
+    {
+      "type": 0,
+      "value": "कैंपेन और सीज़नल पैक"
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.description": [
+    {
+      "type": 0,
+      "value": "इस सर्वर के सभी संगठन, और उनके सदस्य।"
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.label": [
+    {
+      "type": 0,
+      "value": "संगठन"
+    }
+  ],
+  "bloem.adminNav.platformPlans.description": [
+    {
+      "type": 0,
+      "value": "किसी खाते को क्या मिलता है: लाइब्रेरी, स्क्रीन, क्वालिटी और डाउनलोड।"
+    }
+  ],
+  "bloem.adminNav.platformPlans.label": [
+    {
+      "type": 0,
+      "value": "प्लान"
+    }
+  ],
+  "bloem.adminNav.profilePasswords.description": [
+    {
+      "type": 0,
+      "value": "क्या घर की प्रोफ़ाइलें अपने ईमेल और पासवर्ड से साइन इन कर सकती हैं।"
+    }
+  ],
+  "bloem.adminNav.profilePasswords.label": [
+    {
+      "type": 0,
+      "value": "प्रोफ़ाइल पासवर्ड"
+    }
+  ],
+  "bloem.adminNav.section.organization": [
+    {
+      "type": 0,
+      "value": "संगठन"
+    }
+  ],
+  "bloem.adminNav.section.platform": [
+    {
+      "type": 0,
+      "value": "प्लैटफ़ॉर्म"
+    }
+  ],
+  "bloem.adminNav.strm.description": [
+    {
+      "type": 0,
+      "value": "क्या .strm फ़ाइलें सर्वर के अपने नेटवर्क के पतों की ओर इशारा कर सकती हैं।"
+    }
+  ],
+  "bloem.adminNav.strm.label": [
+    {
+      "type": 0,
+      "value": ".strm फ़ाइलें"
+    }
+  ],
+  "bloem.adminNav.strmSettings.description": [
+    {
+      "type": 0,
+      "value": "क्या .strm फ़ाइलें सर्वर के अपने नेटवर्क के पतों की ओर इशारा कर सकती हैं।"
+    }
+  ],
+  "bloem.adminNav.strmSettings.label": [
+    {
+      "type": 0,
+      "value": ".strm फ़ाइलें"
+    }
+  ],
+  "bloem.adminNav.strmSettings.privateAddresses": [
+    {
+      "type": 0,
+      "value": "निजी पतों की अनुमति दें"
+    }
+  ],
+  "bloem.adminShell.chooseContext.body": [
+    {
+      "type": 0,
+      "value": "नेविगेशन में संदर्भ कंट्रोल से Platform या कोई संगठन चुनें।"
+    }
+  ],
+  "bloem.adminShell.chooseContext.title": [
+    {
+      "type": 0,
+      "value": "एडमिन संदर्भ चुनें"
+    }
+  ],
+  "bloem.adminShell.loadingContext": [
+    {
+      "type": 0,
+      "value": "एडमिन संदर्भ लोड हो रहा है…"
+    }
+  ],
+  "bloem.adminTitle.organization": [
+    {
+      "type": 0,
+      "value": "संगठन"
+    }
+  ],
+  "bloem.adminTitle.organizations": [
+    {
+      "type": 0,
+      "value": "संगठन"
+    }
+  ],
+  "bloem.audiobooks.partTitle": [
+    {
+      "type": 0,
+      "value": "भाग "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.approximateResume": [
+    {
+      "type": 0,
+      "value": "आपकी जगह किसी दूसरी कॉपी को सुनते समय सेव हुई थी, इसलिए यह कॉपी लगभग उसी जगह से शुरू होगी।"
+    }
+  ],
+  "bloem.audiobooks.picker.copyFallback": [
+    {
+      "type": 0,
+      "value": "कॉपी"
+    }
+  ],
+  "bloem.audiobooks.picker.heading": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग"
+    }
+  ],
+  "bloem.audiobooks.picker.incomplete": [
+    {
+      "type": 0,
+      "value": "अधूरी: कुछ भाग मौजूद नहीं हैं"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopy": [
+    {
+      "type": 0,
+      "value": "लोकल कॉपी"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopyNumbered": [
+    {
+      "type": 0,
+      "value": "लोकल कॉपी "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.noPlayableCopy": [
+    {
+      "type": 0,
+      "value": "इस किताब की कोई भी कॉपी अभी यहाँ नहीं चल सकती।"
+    }
+  ],
+  "bloem.audiobooks.picker.partsAndLength": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " भाग"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " भाग"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "length"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopy": [
+    {
+      "type": 0,
+      "value": "रिमोट कॉपी (बीटा)"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopyNumbered": [
+    {
+      "type": 0,
+      "value": "रिमोट कॉपी (बीटा) "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.unavailable": [
+    {
+      "type": 0,
+      "value": "इस सर्वर पर उपलब्ध नहीं"
+    }
+  ],
+  "bloem.capabilities.checkFailed": [
+    {
+      "type": 0,
+      "value": "यह सर्वर Bloem की किन सुविधाओं का समर्थन करता है, यह जाँचा नहीं जा सका।"
+    }
+  ],
+  "bloem.engagement.card.dismiss": [
+    {
+      "type": 0,
+      "value": "हटाएँ"
+    }
+  ],
+  "bloem.engagement.card.dismissFailed": [
+    {
+      "type": 0,
+      "value": "यह मैसेज हटाया नहीं जा सका।"
+    }
+  ],
+  "bloem.engagement.card.dismissing": [
+    {
+      "type": 0,
+      "value": "हटाया जा रहा है…"
+    }
+  ],
+  "bloem.engagement.card.learnMore": [
+    {
+      "type": 0,
+      "value": "और जानें"
+    }
+  ],
+  "bloem.engagement.fromYourServer": [
+    {
+      "type": 0,
+      "value": "आपके सर्वर से"
+    }
+  ],
+  "bloem.engagement.home.storageUnavailable": [
+    {
+      "type": 0,
+      "value": "ब्राउज़र स्टोरेज उपलब्ध नहीं है। आपकी पसंद सिर्फ़ इस टैब में लागू होगी।"
+    }
+  ],
+  "bloem.engagement.home.toggle": [
+    {
+      "type": 0,
+      "value": "होम प्रमोशन: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "चालू"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "बंद"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.engagement.home.toggleHelp": [
+    {
+      "type": 0,
+      "value": "आपके सर्वर से वैकल्पिक मैसेज, इस ब्राउज़र में इस प्रोफ़ाइल के लिए सेव किए गए।"
+    }
+  ],
+  "bloem.engagement.playback.close": [
+    {
+      "type": 0,
+      "value": "ओवरले बंद करें"
+    }
+  ],
+  "bloem.engagement.playback.muted": [
+    {
+      "type": 0,
+      "value": "म्यूट"
+    }
+  ],
+  "bloem.engagement.playback.saveFailed": [
+    {
+      "type": 0,
+      "value": "सेव नहीं हो सका। फिर से कोशिश करें।"
+    }
+  ],
+  "bloem.engagement.playback.saved": [
+    {
+      "type": 0,
+      "value": "आपके इनबॉक्स में सेव किया गया"
+    }
+  ],
+  "bloem.engagement.playback.saving": [
+    {
+      "type": 0,
+      "value": "सेव हो रहा है…"
+    }
+  ],
+  "bloem.engagement.playback.sendToPhone": [
+    {
+      "type": 0,
+      "value": "मेरे फ़ोन पर भेजें"
+    }
+  ],
+  "bloem.engagement.prePlayback.back": [
+    {
+      "type": 0,
+      "value": "वापस जाएँ"
+    }
+  ],
+  "bloem.engagement.prePlayback.continue": [
+    {
+      "type": 0,
+      "value": "कॉन्टेंट पर जाएँ"
+    }
+  ],
+  "bloem.engagement.prePlayback.help": [
+    {
+      "type": 0,
+      "value": "आप तुरंत आगे बढ़ सकते हैं, मैसेज लोड होते समय भी।"
+    }
+  ],
+  "bloem.engagement.prePlayback.label": [
+    {
+      "type": 0,
+      "value": "प्लेबैक से पहले"
+    }
+  ],
+  "bloem.engagement.prePlayback.title": [
+    {
+      "type": 0,
+      "value": "देखने से पहले"
+    }
+  ],
+  "bloem.engagement.rail.label": [
+    {
+      "type": 0,
+      "value": "आपके सर्वर से मैसेज"
+    }
+  ],
+  "bloem.engagement.rail.title": [
+    {
+      "type": 0,
+      "value": "आपके सर्वर से"
+    }
+  ],
+  "bloem.engagement.seasonal.toggle": [
+    {
+      "type": 0,
+      "value": "सीज़नल इफ़ेक्ट: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "चालू"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "बंद"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.libraryAccess.allowAll": [
+    {
+      "type": 0,
+      "value": "सभी उपलब्ध लाइब्रेरी की अनुमति दें"
+    }
+  ],
+  "bloem.libraryAccess.allowAllIn": [
+    {
+      "type": 1,
+      "value": "scope"
+    },
+    {
+      "type": 0,
+      "value": " की सभी लाइब्रेरी की अनुमति दें"
+    }
+  ],
+  "bloem.libraryAccess.allowLibrary": [
+    {
+      "type": 1,
+      "value": "library"
+    },
+    {
+      "type": 0,
+      "value": " की अनुमति दें"
+    }
+  ],
+  "bloem.liveTv.accessGate.askAdministrator": [
+    {
+      "type": 0,
+      "value": "लाइव टीवी ऐक्सेस के लिए अपने सर्वर एडमिन से पूछें।"
+    }
+  ],
+  "bloem.liveTv.accessGate.backToHome": [
+    {
+      "type": 0,
+      "value": "होम पर वापस जाएँ"
+    }
+  ],
+  "bloem.liveTv.accessGate.checkFailed": [
+    {
+      "type": 0,
+      "value": "लाइव टीवी ऐक्सेस जाँचा नहीं जा सका"
+    }
+  ],
+  "bloem.liveTv.accessGate.checking": [
+    {
+      "type": 0,
+      "value": "लाइव टीवी ऐक्सेस जाँचा जा रहा है…"
+    }
+  ],
+  "bloem.liveTv.accessGate.notEnabled": [
+    {
+      "type": 0,
+      "value": "इस प्रोफ़ाइल के लिए लाइव टीवी चालू नहीं है"
+    }
+  ],
+  "bloem.liveTv.accessGate.unsupported": [
+    {
+      "type": 0,
+      "value": "इस सर्वर पर लाइव टीवी उपलब्ध नहीं है"
+    }
+  ],
+  "bloem.liveTv.guide.channelColumn": [
+    {
+      "type": 0,
+      "value": "चैनल"
+    }
+  ],
+  "bloem.liveTv.guide.programTooltip": [
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.guide.recordProgramLabel": [
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": " रिकॉर्ड करें"
+    }
+  ],
+  "bloem.liveTv.guide.recordSeriesLabel": [
+    {
+      "type": 0,
+      "value": "सीरीज़ रिकॉर्ड करें: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.guide.series": [
+    {
+      "type": 0,
+      "value": "सीरीज़"
+    }
+  ],
+  "bloem.liveTv.guide.watchChannel": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " देखें"
+    }
+  ],
+  "bloem.liveTv.manualRecording.changeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "Bloem आपकी रिकॉर्डिंग में किया गया पिछला बदलाव कन्फ़र्म नहीं कर सका। पहले अपनी रिकॉर्डिंग रीलोड करें।"
+    }
+  ],
+  "bloem.liveTv.manualRecording.channel": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग चैनल"
+    }
+  ],
+  "bloem.liveTv.manualRecording.checking": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग जाँची जा रही हैं…"
+    }
+  ],
+  "bloem.liveTv.manualRecording.chooseChannel": [
+    {
+      "type": 0,
+      "value": "कोई चैनल चुनें"
+    }
+  ],
+  "bloem.liveTv.manualRecording.couldNotConfirm": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग कन्फ़र्म नहीं की जा सकी।"
+    }
+  ],
+  "bloem.liveTv.manualRecording.endsAt": [
+    {
+      "type": 0,
+      "value": "खत्म होने का समय"
+    }
+  ],
+  "bloem.liveTv.manualRecording.failed": [
+    {
+      "type": 1,
+      "value": "reason"
+    },
+    {
+      "type": 0,
+      "value": " फिर से कोशिश करने से पहले रिकॉर्डिंग की स्थिति देखें।"
+    }
+  ],
+  "bloem.liveTv.manualRecording.intro": [
+    {
+      "type": 0,
+      "value": "जब गाइड में कोई प्रोग्राम न हो, तब इसका इस्तेमाल करें। समय आपके ब्राउज़र के टाइम ज़ोन ("
+    },
+    {
+      "type": 1,
+      "value": "timeZone"
+    },
+    {
+      "type": 0,
+      "value": ") में हैं।"
+    }
+  ],
+  "bloem.liveTv.manualRecording.invalidTimes": [
+    {
+      "type": 0,
+      "value": "शुरू होने के समय के बाद और भविष्य का कोई खत्म होने का समय चुनें।"
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloadFailed": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग रीलोड नहीं हो सकीं। रिकॉर्डिंग की कार्रवाइयाँ रुकी रहेंगी; फिर से कोशिश करें।"
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloaded": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग रीलोड हो गईं। सूची देखें और नई रिकॉर्डिंग शेड्यूल करने के लिए टाइटल डालें।"
+    }
+  ],
+  "bloem.liveTv.manualRecording.scheduled": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग शेड्यूल हो गई।"
+    }
+  ],
+  "bloem.liveTv.manualRecording.startsAt": [
+    {
+      "type": 0,
+      "value": "शुरू होने का समय"
+    }
+  ],
+  "bloem.liveTv.manualRecording.submit": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग शेड्यूल करें"
+    }
+  ],
+  "bloem.liveTv.manualRecording.summary": [
+    {
+      "type": 0,
+      "value": "चैनल और समय के हिसाब से शेड्यूल करें"
+    }
+  ],
+  "bloem.liveTv.manualRecording.title": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग का टाइटल"
+    }
+  ],
+  "bloem.liveTv.noGuideData": [
+    {
+      "type": 0,
+      "value": "कोई गाइड डेटा नहीं"
+    }
+  ],
+  "bloem.liveTv.page.cancelRecording": [
+    {
+      "type": 0,
+      "value": "रद्द करें"
+    }
+  ],
+  "bloem.liveTv.page.channelCount": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " चैनल"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " चैनल"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.liveTv.page.filterChannels": [
+    {
+      "type": 0,
+      "value": "चैनल फ़िल्टर करें…"
+    }
+  ],
+  "bloem.liveTv.page.filterCount": [
+    {
+      "type": 1,
+      "value": "total"
+    },
+    {
+      "type": 0,
+      "value": " में से "
+    },
+    {
+      "type": 1,
+      "value": "shown"
+    }
+  ],
+  "bloem.liveTv.page.hd": [
+    {
+      "type": 0,
+      "value": "HD"
+    }
+  ],
+  "bloem.liveTv.page.historyEmpty": [
+    {
+      "type": 0,
+      "value": "पूरी हुई और विफल रिकॉर्डिंग यहाँ दिखेंगी।"
+    }
+  ],
+  "bloem.liveTv.page.historyTitle": [
+    {
+      "type": 0,
+      "value": "इतिहास"
+    }
+  ],
+  "bloem.liveTv.page.intro": [
+    {
+      "type": 0,
+      "value": "देखें कि अभी क्या चल रहा है, आने वाले प्रोग्राम ब्राउज़ करें, और अपनी रिकॉर्डिंग मैनेज करें।"
+    }
+  ],
+  "bloem.liveTv.page.loadingChannels": [
+    {
+      "type": 0,
+      "value": "चैनल लोड हो रहे हैं…"
+    }
+  ],
+  "bloem.liveTv.page.loadingGuide": [
+    {
+      "type": 0,
+      "value": "गाइड लोड हो रही है…"
+    }
+  ],
+  "bloem.liveTv.page.loadingRecordings": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग लोड हो रही हैं…"
+    }
+  ],
+  "bloem.liveTv.page.noChannels": [
+    {
+      "type": 0,
+      "value": "अभी कोई चैनल नहीं है। कोई एडमिन, एडमिन में जाकर फिर लाइव टीवी में, ट्यूनर या Xtream प्रोवाइडर जोड़ सकता है।"
+    }
+  ],
+  "bloem.liveTv.page.noFilterMatches": [
+    {
+      "type": 0,
+      "value": "उस फ़िल्टर से कोई चैनल मेल नहीं खाता।"
+    }
+  ],
+  "bloem.liveTv.page.notInLibrary": [
+    {
+      "type": 0,
+      "value": "यह रिकॉर्डिंग अभी किसी लाइब्रेरी में नहीं है, इसलिए इसे यहाँ नहीं चलाया जा सकता। किसी एडमिन को रिकॉर्डिंग फ़ोल्डर किसी लाइब्रेरी में जोड़कर उसे स्कैन करना होगा।"
+    }
+  ],
+  "bloem.liveTv.page.nowAndNext": [
+    {
+      "type": 1,
+      "value": "now"
+    },
+    {
+      "type": 0,
+      "value": " → "
+    },
+    {
+      "type": 1,
+      "value": "next"
+    }
+  ],
+  "bloem.liveTv.page.openRecording": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग खोलें"
+    }
+  ],
+  "bloem.liveTv.page.recordNext": [
+    {
+      "type": 0,
+      "value": "अगला रिकॉर्ड करें"
+    }
+  ],
+  "bloem.liveTv.page.recordNow": [
+    {
+      "type": 0,
+      "value": "अभी रिकॉर्ड करें"
+    }
+  ],
+  "bloem.liveTv.page.recordingChangeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "Bloem आपकी रिकॉर्डिंग में किया गया पिछला बदलाव कन्फ़र्म नहीं कर सका। कोई और रिकॉर्डिंग शेड्यूल या रद्द करने से पहले अपनी रिकॉर्डिंग रीलोड करें।"
+    }
+  ],
+  "bloem.liveTv.page.recordingDetails": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.page.recordingStatus": [
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "scheduled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "शेड्यूल है"
+            }
+          ]
+        },
+        "recording": {
+          "value": [
+            {
+              "type": 0,
+              "value": "रिकॉर्ड हो रही है"
+            }
+          ]
+        },
+        "completed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "पूरी हुई"
+            }
+          ]
+        },
+        "failed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "विफल"
+            }
+          ]
+        },
+        "cancelled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "रद्द"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "status"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.liveTv.page.reloadChannels": [
+    {
+      "type": 0,
+      "value": "चैनल रीलोड करें"
+    }
+  ],
+  "bloem.liveTv.page.scheduledEmpty": [
+    {
+      "type": 0,
+      "value": "अभी कुछ भी शेड्यूल नहीं है। गाइड या चैनल सूची से कोई प्रोग्राम चुनें।"
+    }
+  ],
+  "bloem.liveTv.page.scheduledTitle": [
+    {
+      "type": 0,
+      "value": "शेड्यूल की गई और चल रही"
+    }
+  ],
+  "bloem.liveTv.page.tabChannels": [
+    {
+      "type": 0,
+      "value": "चैनल"
+    }
+  ],
+  "bloem.liveTv.page.tabGuide": [
+    {
+      "type": 0,
+      "value": "गाइड"
+    }
+  ],
+  "bloem.liveTv.page.tabRecordings": [
+    {
+      "type": 0,
+      "value": "मेरी रिकॉर्डिंग"
+    }
+  ],
+  "bloem.liveTv.page.tabRules": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग के नियम"
+    }
+  ],
+  "bloem.liveTv.page.untitled": [
+    {
+      "type": 0,
+      "value": "बिना टाइटल"
+    }
+  ],
+  "bloem.liveTv.page.watch": [
+    {
+      "type": 0,
+      "value": "देखें"
+    }
+  ],
+  "bloem.liveTv.player.browserCannotPlay": [
+    {
+      "type": 0,
+      "value": "यह ब्राउज़र इस चैनल को नहीं चला सकता। कोई दूसरा ब्राउज़र या Bloem ऐप आज़माएँ।"
+    }
+  ],
+  "bloem.liveTv.player.browserCouldNotPlay": [
+    {
+      "type": 0,
+      "value": "यह ब्राउज़र चैनल नहीं चला सका। कोई दूसरा चैनल आज़माएँ या पेज रीलोड करें।"
+    }
+  ],
+  "bloem.liveTv.player.couldNotStart": [
+    {
+      "type": 0,
+      "value": "यह चैनल शुरू नहीं हो सका। फिर से कोशिश करें, या कोई दूसरा चैनल आज़माएँ।"
+    }
+  ],
+  "bloem.liveTv.player.didNotStart": [
+    {
+      "type": 0,
+      "value": "चैनल शुरू नहीं हुआ। हो सकता है यह अभी ट्यून हो रहा हो, इसलिए फिर से कोशिश करें।"
+    }
+  ],
+  "bloem.liveTv.player.hlsPlaybackError": [
+    {
+      "type": 0,
+      "value": "HLS प्लेबैक गड़बड़ी"
+    }
+  ],
+  "bloem.liveTv.player.label": [
+    {
+      "type": 0,
+      "value": "लाइव टीवी"
+    }
+  ],
+  "bloem.liveTv.player.labelWithTitle": [
+    {
+      "type": 0,
+      "value": "लाइव: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.player.playbackError": [
+    {
+      "type": 0,
+      "value": "प्लेबैक गड़बड़ी"
+    }
+  ],
+  "bloem.liveTv.player.stopped": [
+    {
+      "type": 0,
+      "value": "चैनल रुक गया या लोड नहीं हो सका। इसे फिर से ट्यून करने के लिए दोबारा कोशिश करें।"
+    }
+  ],
+  "bloem.liveTv.player.unsupportedAddress": [
+    {
+      "type": 0,
+      "value": "इस चैनल का स्ट्रीम पता समर्थित नहीं है। कोई दूसरा चैनल आज़माएँ।"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.blocked": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग की कार्रवाइयाँ रुकी हुई हैं। कोई और कार्रवाई करने से पहले रिकॉर्डिंग रीलोड करें।"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelFailed": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग रद्द नहीं हो सकी"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelled": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग रद्द की गई"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReloadFirst": [
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " कोई और कार्रवाई करने से पहले रिकॉर्डिंग रीलोड करें।"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReviewRefreshed": [
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " कोई और कार्रवाई करने से पहले रीफ़्रेश की गई रिकॉर्डिंग देखें।"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reload": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग रीलोड करें"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloadFailed": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग रीलोड नहीं हो सकीं। रिकॉर्डिंग की कार्रवाइयाँ रुकी रहेंगी; “रिकॉर्डिंग रीलोड करें” फिर से आज़माएँ।"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloaded": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग रीलोड हो गईं। रिकॉर्डिंग की कोई और कार्रवाई करने से पहले सूची देखें।"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduleFailed": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग शेड्यूल नहीं हो सकी"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduled": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग शेड्यूल हो गई"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.waitForReadback": [
+    {
+      "type": 0,
+      "value": "रीलोड करने से पहले रिकॉर्डिंग के दोबारा पढ़े जाने का इंतज़ार करें।"
+    }
+  ],
+  "bloem.liveTv.reloadRecordings": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग रीलोड करें"
+    }
+  ],
+  "bloem.liveTv.reloadingRecordings": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग रीलोड हो रही हैं…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allChannels": [
+    {
+      "type": 0,
+      "value": "सभी चैनल"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allProgramsOnChannel": [
+    {
+      "type": 0,
+      "value": "चैनल के सभी प्रोग्राम"
+    }
+  ],
+  "bloem.liveTv.seriesRules.channel": [
+    {
+      "type": 0,
+      "value": "चैनल"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmDescription": [
+    {
+      "type": 0,
+      "value": "इससे दोहराने वाला नियम हट जाता है। पहले से शेड्यूल की गई रिकॉर्डिंग और रिकॉर्ड की गई फ़ाइलें नहीं मिटतीं। उन्हें “मेरी रिकॉर्डिंग” में अलग से मैनेज करें।"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmRemove": [
+    {
+      "type": 0,
+      "value": "नियम हटाएँ"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmTitle": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग का नियम हटाएँ: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFailed": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग का नियम नहीं बनाया जा सका।"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFormLabel": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग का नियम बनाएँ"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createLegend": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग का नियम बनाएँ"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createRule": [
+    {
+      "type": 0,
+      "value": "नियम बनाएँ"
+    }
+  ],
+  "bloem.liveTv.seriesRules.created": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग का नियम बन गया। सर्वर गाइड के मेल खाने वाले प्रोग्राम शेड्यूल करेगा।"
+    }
+  ],
+  "bloem.liveTv.seriesRules.creating": [
+    {
+      "type": 0,
+      "value": "बनाया जा रहा है…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.disabled": [
+    {
+      "type": 0,
+      "value": "बंद"
+    }
+  ],
+  "bloem.liveTv.seriesRules.empty": [
+    {
+      "type": 0,
+      "value": "अभी सीरीज़ रिकॉर्डिंग का कोई नियम नहीं है।"
+    }
+  ],
+  "bloem.liveTv.seriesRules.enabled": [
+    {
+      "type": 0,
+      "value": "चालू"
+    }
+  ],
+  "bloem.liveTv.seriesRules.heading": [
+    {
+      "type": 0,
+      "value": "सीरीज़ रिकॉर्डिंग के नियम"
+    }
+  ],
+  "bloem.liveTv.seriesRules.intro": [
+    {
+      "type": 0,
+      "value": "गाइड की कोई खास सीरीज़ रिकॉर्ड करें, या ऐसे टाइटल मिलाएँ जिनमें आपका खोज टेक्स्ट हो (बड़े-छोटे अक्षरों का फ़र्क नहीं)। नियम को एक चैनल तक सीमित करें या सभी चैनलों पर मिलाएँ।"
+    }
+  ],
+  "bloem.liveTv.seriesRules.listLabel": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग के नियम"
+    }
+  ],
+  "bloem.liveTv.seriesRules.loading": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग के नियम लोड हो रहे हैं…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.matchSeries": [
+    {
+      "type": 0,
+      "value": "गाइड की सीरीज़ से मिलाएँ"
+    }
+  ],
+  "bloem.liveTv.seriesRules.newOnly": [
+    {
+      "type": 0,
+      "value": "सिर्फ़ गाइड में नए मार्क किए गए प्रोग्राम"
+    }
+  ],
+  "bloem.liveTv.seriesRules.reload": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग के नियम रीलोड करें"
+    }
+  ],
+  "bloem.liveTv.seriesRules.remove": [
+    {
+      "type": 0,
+      "value": "हटाएँ"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeFailed": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग का नियम हटाया नहीं जा सका।"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeRuleLabel": [
+    {
+      "type": 0,
+      "value": "नियम हटाएँ: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removed": [
+    {
+      "type": 0,
+      "value": "नियम हटा दिया गया। पहले से शेड्यूल की गई रिकॉर्डिंग और रिकॉर्ड की गई फ़ाइलें नहीं बदलीं।"
+    }
+  ],
+  "bloem.liveTv.seriesRules.selectProfile": [
+    {
+      "type": 0,
+      "value": "रिकॉर्डिंग के नियम मैनेज करने के लिए कोई प्रोफ़ाइल चुनें।"
+    }
+  ],
+  "bloem.liveTv.seriesRules.seriesLabel": [
+    {
+      "type": 0,
+      "value": "सीरीज़ "
+    },
+    {
+      "type": 1,
+      "value": "seriesId"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryNewOnly": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · सिर्फ़ नए प्रोग्राम"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryRepeats": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · दोबारा प्रसारण भी शामिल"
+    }
+  ],
+  "bloem.liveTv.seriesRules.titleContains": [
+    {
+      "type": 0,
+      "value": "टाइटल में है"
+    }
+  ],
+  "bloem.liveTv.seriesRules.unavailableChannel": [
+    {
+      "type": 0,
+      "value": "अनुपलब्ध चैनल"
+    }
+  ],
+  "bloem.liveTv.seriesRules.useTitleMatching": [
+    {
+      "type": 0,
+      "value": "इसकी जगह टाइटल से मिलान करें"
+    }
+  ],
+  "bloem.liveTv.timeRange": [
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.title": [
+    {
+      "type": 0,
+      "value": "लाइव टीवी"
+    }
+  ],
+  "bloem.liveTv.tryAgain": [
+    {
+      "type": 0,
+      "value": "फिर से कोशिश करें"
+    }
+  ],
+  "bloem.liveTv.watch.backToLiveTv": [
+    {
+      "type": 0,
+      "value": "लाइव टीवी पर वापस जाएँ"
+    }
+  ],
+  "bloem.liveTv.watch.connecting": [
+    {
+      "type": 0,
+      "value": "आपके चैनल से कनेक्ट हो रहा है…"
+    }
+  ],
+  "bloem.liveTv.watch.selectProfileAndChannel": [
+    {
+      "type": 0,
+      "value": "लाइव टीवी देखने के लिए कोई प्रोफ़ाइल और चैनल चुनें।"
+    }
+  ],
+  "bloem.nav.liveTv": [
+    {
+      "type": 0,
+      "value": "लाइव टीवी"
+    }
+  ],
+  "bloem.notifications.announcement.defaultTitle": [
+    {
+      "type": 0,
+      "value": "सर्वर की घोषणा"
+    }
+  ],
+  "bloem.notifications.announcement.severity.critical": [
+    {
+      "type": 0,
+      "value": "गंभीर"
+    }
+  ],
+  "bloem.notifications.announcement.severity.info": [
+    {
+      "type": 0,
+      "value": "जानकारी"
+    }
+  ],
+  "bloem.notifications.announcement.severity.warning": [
+    {
+      "type": 0,
+      "value": "चेतावनी"
+    }
+  ],
+  "bloem.preview.banner.endsOn": [
+    {
+      "type": 0,
+      "value": "आपका प्रीव्यू "
+    },
+    {
+      "type": 1,
+      "value": "date"
+    },
+    {
+      "type": 0,
+      "value": " को खत्म होगा"
+    }
+  ],
+  "bloem.preview.banner.exitPreview": [
+    {
+      "type": 0,
+      "value": "प्रीव्यू से बाहर निकलें"
+    }
+  ],
+  "bloem.preview.banner.freePlayLeft": [
+    {
+      "type": 0,
+      "value": "मुफ़्त प्ले: "
+    },
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " मिनट बाकी"
+    }
+  ],
+  "bloem.preview.banner.minutesRemaining": [
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " मिनट बाकी"
+    }
+  ],
+  "bloem.preview.banner.signOut": [
+    {
+      "type": 0,
+      "value": "साइन आउट करें"
+    }
+  ],
+  "bloem.preview.banner.subscribe": [
+    {
+      "type": 0,
+      "value": "सब्सक्राइब करें"
+    }
+  ],
+  "bloem.preview.banner.yourPreview": [
+    {
+      "type": 0,
+      "value": "आपकी लाइब्रेरी का प्रीव्यू"
+    }
+  ],
+  "bloem.preview.book.alsoByThisAuthor": [
+    {
+      "type": 0,
+      "value": "इस लेखक की और किताबें"
+    }
+  ],
+  "bloem.preview.book.audiobook": [
+    {
+      "type": 0,
+      "value": "ऑडियोबुक"
+    }
+  ],
+  "bloem.preview.book.byAuthors": [
+    {
+      "type": 0,
+      "value": "लेखक: "
+    },
+    {
+      "type": 1,
+      "value": "authors"
+    }
+  ],
+  "bloem.preview.book.chapterNumber": [
+    {
+      "type": 0,
+      "value": "अध्याय "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.book.chapters": [
+    {
+      "type": 0,
+      "value": "अध्याय"
+    }
+  ],
+  "bloem.preview.book.ebook": [
+    {
+      "type": 0,
+      "value": "ई-बुक"
+    }
+  ],
+  "bloem.preview.book.manga": [
+    {
+      "type": 0,
+      "value": "मंगा"
+    }
+  ],
+  "bloem.preview.book.youMightAlsoLike": [
+    {
+      "type": 0,
+      "value": "आपको ये भी पसंद आ सकते हैं"
+    }
+  ],
+  "bloem.preview.browseOnly": [
+    {
+      "type": 0,
+      "value": "सिर्फ़ ब्राउज़ करने वाला प्रीव्यू"
+    }
+  ],
+  "bloem.preview.collections.loading": [
+    {
+      "type": 0,
+      "value": "कलेक्शन लोड हो रहे हैं…"
+    }
+  ],
+  "bloem.preview.collections.title": [
+    {
+      "type": 0,
+      "value": "कलेक्शन"
+    }
+  ],
+  "bloem.preview.collections.titleCount": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " टाइटल"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " टाइटल"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.preview.collections.unavailable": [
+    {
+      "type": 0,
+      "value": "कलेक्शन उपलब्ध नहीं हैं। कृपया फिर से कोशिश करें।"
+    }
+  ],
+  "bloem.preview.cta.message": [
+    {
+      "type": 0,
+      "value": "यहाँ लाइब्रेरी ब्राउज़ करें। देखने, पढ़ने और सुनने के लिए सब्सक्राइब करें।"
+    }
+  ],
+  "bloem.preview.cta.subscribeToBrand": [
+    {
+      "type": 1,
+      "value": "brand"
+    },
+    {
+      "type": 0,
+      "value": " को सब्सक्राइब करें"
+    }
+  ],
+  "bloem.preview.cta.subscribeToListen": [
+    {
+      "type": 0,
+      "value": "सुनने के लिए सब्सक्राइब करें"
+    }
+  ],
+  "bloem.preview.cta.subscribeToRead": [
+    {
+      "type": 0,
+      "value": "पढ़ने के लिए सब्सक्राइब करें"
+    }
+  ],
+  "bloem.preview.cta.subscribeToWatch": [
+    {
+      "type": 0,
+      "value": "देखने के लिए सब्सक्राइब करें"
+    }
+  ],
+  "bloem.preview.details": [
+    {
+      "type": 0,
+      "value": "विवरण"
+    }
+  ],
+  "bloem.preview.dialog.freePlayEnded": [
+    {
+      "type": 0,
+      "value": "आपका मुफ़्त प्ले खत्म हो गया है"
+    }
+  ],
+  "bloem.preview.dialog.keepBrowsing": [
+    {
+      "type": 0,
+      "value": "ब्राउज़ करते रहें"
+    }
+  ],
+  "bloem.preview.dialog.playFree": [
+    {
+      "type": 0,
+      "value": "मुफ़्त में चलाएँ"
+    }
+  ],
+  "bloem.preview.dialog.playFreeFor": [
+    {
+      "type": 6,
+      "value": "minutes",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " मिनट के लिए मुफ़्त में चलाएँ"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " मिनट के लिए मुफ़्त में चलाएँ"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.preview.dialog.sessionEnded": [
+    {
+      "type": 0,
+      "value": "आपका प्रीव्यू सेशन खत्म हो गया है"
+    }
+  ],
+  "bloem.preview.dialog.startTrial": [
+    {
+      "type": 0,
+      "value": "अपना ट्रायल शुरू करें"
+    }
+  ],
+  "bloem.preview.dialog.startTrialToEnjoy": [
+    {
+      "type": 0,
+      "value": "पूरी लाइब्रेरी का आनंद लेने के लिए अपना ट्रायल शुरू करें।"
+    }
+  ],
+  "bloem.preview.errors.couldNotStart": [
+    {
+      "type": 0,
+      "value": "प्रीव्यू शुरू नहीं हो सका। कृपया नया लॉन्च लिंक इस्तेमाल करें।"
+    }
+  ],
+  "bloem.preview.errors.exitTimedOut": [
+    {
+      "type": 0,
+      "value": "प्रीव्यू से बाहर निकलने का समय खत्म हो गया"
+    }
+  ],
+  "bloem.preview.errors.requestTimedOut": [
+    {
+      "type": 0,
+      "value": "प्रीव्यू अनुरोध का समय खत्म हो गया"
+    }
+  ],
+  "bloem.preview.errors.useStorefrontLink": [
+    {
+      "type": 0,
+      "value": "स्टोरफ़्रंट का प्रीव्यू लॉन्च लिंक इस्तेमाल करें।"
+    }
+  ],
+  "bloem.preview.hero.featuredTitles": [
+    {
+      "type": 0,
+      "value": "चुनिंदा टाइटल"
+    }
+  ],
+  "bloem.preview.hero.pauseSlideshow": [
+    {
+      "type": 0,
+      "value": "स्लाइडशो रोकें"
+    }
+  ],
+  "bloem.preview.hero.resumeSlideshow": [
+    {
+      "type": 0,
+      "value": "स्लाइडशो फिर से चलाएँ"
+    }
+  ],
+  "bloem.preview.hero.showSlide": [
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": " दिखाएँ"
+    }
+  ],
+  "bloem.preview.landing.body": [
+    {
+      "type": 0,
+      "value": "लाइब्रेरी देखने के लिए नया प्रीव्यू लिंक इस्तेमाल करें, या अपना ट्रायल शुरू करें।"
+    }
+  ],
+  "bloem.preview.landing.browse": [
+    {
+      "type": 0,
+      "value": "लाइब्रेरी ब्राउज़ करें"
+    }
+  ],
+  "bloem.preview.landing.title": [
+    {
+      "type": 1,
+      "value": "brand"
+    },
+    {
+      "type": 0,
+      "value": " से ब्राउज़ करना शुरू करें"
+    }
+  ],
+  "bloem.preview.metadata.audio": [
+    {
+      "type": 0,
+      "value": "ऑडियो"
+    }
+  ],
+  "bloem.preview.metadata.audioNumber": [
+    {
+      "type": 0,
+      "value": "ऑडियो "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.metadata.subtitleNumber": [
+    {
+      "type": 0,
+      "value": "सबटाइटल "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.metadata.subtitles": [
+    {
+      "type": 0,
+      "value": "सबटाइटल"
+    }
+  ],
+  "bloem.preview.metadata.version": [
+    {
+      "type": 0,
+      "value": "वर्ज़न"
+    }
+  ],
+  "bloem.preview.metadata.versionNumber": [
+    {
+      "type": 0,
+      "value": "वर्ज़न "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.moreActions": [
+    {
+      "type": 0,
+      "value": "और कार्रवाइयाँ"
+    }
+  ],
+  "bloem.preview.route.loading": [
+    {
+      "type": 0,
+      "value": "लोड हो रहा है..."
+    }
+  ],
+  "bloem.preview.route.loadingApplication": [
+    {
+      "type": 0,
+      "value": "ऐप्लिकेशन लोड हो रहा है"
+    }
+  ],
+  "bloem.preview.sidebar.calendar": [
+    {
+      "type": 0,
+      "value": "कैलेंडर"
+    }
+  ],
+  "bloem.preview.sidebar.collections": [
+    {
+      "type": 0,
+      "value": "कलेक्शन"
+    }
+  ],
+  "bloem.preview.sidebar.home": [
+    {
+      "type": 0,
+      "value": "होम"
+    }
+  ],
+  "bloem.preview.sidebar.libraries": [
+    {
+      "type": 0,
+      "value": "लाइब्रेरी"
+    }
+  ],
+  "bloem.preview.sidebar.navigation": [
+    {
+      "type": 0,
+      "value": "प्रीव्यू नेविगेशन"
+    }
+  ],
+  "bloem.preview.sidebar.preview": [
+    {
+      "type": 0,
+      "value": "प्रीव्यू"
+    }
+  ],
+  "bloem.preview.sidebar.search": [
+    {
+      "type": 0,
+      "value": "खोज"
+    }
+  ],
+  "bloem.preview.start.opening": [
+    {
+      "type": 0,
+      "value": "आपकी लाइब्रेरी का प्रीव्यू खुल रहा है…"
+    }
+  ],
+  "bloem.profiles.directCredentials.changeNotConfirmed": [
+    {
+      "type": 0,
+      "value": "बदलाव की पुष्टि नहीं हो सकी।"
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingProfileCredentialStatus": [
+    {
+      "type": 0,
+      "value": "प्रोफ़ाइल के क्रेडेंशियल की स्थिति जाँची जा रही है…"
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingSupport": [
+    {
+      "type": 0,
+      "value": "सुविधा जाँची जा रही है…"
+    }
+  ],
+  "bloem.profiles.directCredentials.chooseAProfile": [
+    {
+      "type": 0,
+      "value": "कोई प्रोफ़ाइल चुनें"
+    }
+  ],
+  "bloem.profiles.directCredentials.confirmRequired": [
+    {
+      "type": 0,
+      "value": "पुष्टि करने के लिए अपने खाते का पासवर्ड डालें और बॉक्स पर टिक करें।"
+    }
+  ],
+  "bloem.profiles.directCredentials.couldNotLoadHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "घर की प्रोफ़ाइलें लोड नहीं हो सकीं।"
+    }
+  ],
+  "bloem.profiles.directCredentials.emailAndPasswordRequired": [
+    {
+      "type": 0,
+      "value": "प्रोफ़ाइल के लिए ईमेल और नया पासवर्ड डालें।"
+    }
+  ],
+  "bloem.profiles.directCredentials.giveAHouseholdProfileIts": [
+    {
+      "type": 0,
+      "value": "घर की किसी प्रोफ़ाइल को उसका अपना ईमेल और पासवर्ड दें, ताकि वह खाते के पासवर्ड के बिना Bloem ऐप में साइन इन कर सके। वेबसाइट फिर भी खाते का साइन-इन इस्तेमाल करती है। इसे बदलने के लिए आपको अपने खाते का पासवर्ड चाहिए; जो खाते सिर्फ़ सिंगल साइन-ऑन से साइन इन करते हैं, वे इसका इस्तेमाल नहीं कर सकते। इस सर्वर या आपके खाते के लिए पासवर्ड साइन-इन बंद होने पर प्रोफ़ाइल पासवर्ड काम करना बंद कर देता है।"
+    }
+  ],
+  "bloem.profiles.directCredentials.iUnderstandThisSignsThe": [
+    {
+      "type": 0,
+      "value": "मुझे पता है कि इससे प्रोफ़ाइल हर उस ऐप से साइन आउट हो जाएगी जिसमें उसने अपने साइन-इन से साइन इन किया था।"
+    }
+  ],
+  "bloem.profiles.directCredentials.loadingHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "घर की प्रोफ़ाइलें लोड हो रही हैं…"
+    }
+  ],
+  "bloem.profiles.directCredentials.manageSignInFor": [
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " का साइन-इन मैनेज करें"
+    }
+  ],
+  "bloem.profiles.directCredentials.newPasswordForTheProfile": [
+    {
+      "type": 0,
+      "value": "प्रोफ़ाइल का नया पासवर्ड"
+    }
+  ],
+  "bloem.profiles.directCredentials.profile": [
+    {
+      "type": 0,
+      "value": "प्रोफ़ाइल"
+    }
+  ],
+  "bloem.profiles.directCredentials.profileEmail": [
+    {
+      "type": 0,
+      "value": "प्रोफ़ाइल का ईमेल"
+    }
+  ],
+  "bloem.profiles.directCredentials.saveSignIn": [
+    {
+      "type": 0,
+      "value": "साइन-इन सेव करें"
+    }
+  ],
+  "bloem.profiles.directCredentials.saving": [
+    {
+      "type": 0,
+      "value": "सेव हो रहा है…"
+    }
+  ],
+  "bloem.profiles.directCredentials.separateSignInForA": [
+    {
+      "type": 0,
+      "value": "प्रोफ़ाइल के लिए अलग साइन-इन"
+    }
+  ],
+  "bloem.profiles.directCredentials.signInSaved": [
+    {
+      "type": 0,
+      "value": "साइन-इन सेव हुआ। प्रोफ़ाइल को उसके ऐप से साइन आउट कर दिया गया और उसे फिर से साइन इन करना होगा।"
+    }
+  ],
+  "bloem.profiles.directCredentials.signInTurnedOff": [
+    {
+      "type": 0,
+      "value": "प्रोफ़ाइल का अपना साइन-इन बंद है, और उसे उसके ऐप से साइन आउट कर दिया गया है।"
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileHasNoSign": [
+    {
+      "type": 0,
+      "value": "इस प्रोफ़ाइल का अपना कोई साइन-इन नहीं है।"
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileSignsInAs": [
+    {
+      "type": 0,
+      "value": "यह प्रोफ़ाइल "
+    },
+    {
+      "type": 1,
+      "value": "loginEmail"
+    },
+    {
+      "type": 0,
+      "value": " के रूप में साइन इन करती है"
+    }
+  ],
+  "bloem.profiles.directCredentials.tryAgain": [
+    {
+      "type": 0,
+      "value": "फिर से कोशिश करें"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnOffItsSignIn": [
+    {
+      "type": 0,
+      "value": "इसका साइन-इन बंद करें"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnedOff": [
+    {
+      "type": 0,
+      "value": "इस सर्वर पर प्रोफ़ाइल पासवर्ड बंद हैं। सर्वर एडमिन इन्हें सेटिंग में, साइन-इन और सुरक्षा के अंदर चालू कर सकता है।"
+    }
+  ],
+  "bloem.profiles.directCredentials.yourAccountPassword": [
+    {
+      "type": 0,
+      "value": "आपके खाते का पासवर्ड"
+    }
+  ],
+  "bloem.requests.audiobook.identifierHint": [
+    {
+      "type": 0,
+      "value": "ISBN या ASIN से ऑडियोबुक आने पर उसका मिलान करने में मदद मिलती है। पहचानकर्ता के बिना, कोई एडमिन आपके अनुरोध को पूरा हुआ मार्क कर सकता है।"
+    }
+  ],
+  "bloem.requests.audiobook.intro": [
+    {
+      "type": 0,
+      "value": "अपने संगठन के लिए कोई टाइटल का अनुरोध करें। स्वीकार किए गए अनुरोध ऑडियोबुक जोड़े जाने तक इंतज़ार करते हैं।"
+    }
+  ],
+  "bloem.requests.audiobook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "आपके ऑडियोबुक के कोई अनुरोध नहीं हैं।"
+    }
+  ],
+  "bloem.requests.audiobook.mineHeading": [
+    {
+      "type": 0,
+      "value": "आपके ऑडियोबुक अनुरोध"
+    }
+  ],
+  "bloem.requests.audiobook.open": [
+    {
+      "type": 0,
+      "value": "ऑडियोबुक खोलें"
+    }
+  ],
+  "bloem.requests.audiobook.requested": [
+    {
+      "type": 0,
+      "value": "ऑडियोबुक का अनुरोध किया गया"
+    }
+  ],
+  "bloem.requests.audiobook.submit": [
+    {
+      "type": 0,
+      "value": "ऑडियोबुक का अनुरोध करें"
+    }
+  ],
+  "bloem.requests.audiobook.title": [
+    {
+      "type": 0,
+      "value": "ऑडियोबुक अनुरोध"
+    }
+  ],
+  "bloem.requests.audiobook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "इस प्रोफ़ाइल के लिए ऑडियोबुक अनुरोध उपलब्ध नहीं हैं।"
+    }
+  ],
+  "bloem.requests.cancel": [
+    {
+      "type": 0,
+      "value": "अनुरोध रद्द करें"
+    }
+  ],
+  "bloem.requests.ebook.availabilityCheckFailed": [
+    {
+      "type": 0,
+      "value": "ई-बुक अनुरोधों की उपलब्धता जाँची नहीं जा सकी।"
+    }
+  ],
+  "bloem.requests.ebook.cancellationNote": [
+    {
+      "type": 0,
+      "value": "रद्द करना सिर्फ़ Bloem में होता है; हो सकता है कि प्रोवाइडर पहले से ई-बुक प्रोसेस कर रहा हो।"
+    }
+  ],
+  "bloem.requests.ebook.checkingAvailability": [
+    {
+      "type": 0,
+      "value": "ई-बुक अनुरोधों की उपलब्धता जाँची जा रही है…"
+    }
+  ],
+  "bloem.requests.ebook.fulfilmentUnconfigured": [
+    {
+      "type": 0,
+      "value": "ई-बुक पूरी करने की सुविधा कॉन्फ़िगर नहीं है। स्वीकार किए गए अनुरोध सेटअप होने तक इंतज़ार करेंगे।"
+    }
+  ],
+  "bloem.requests.ebook.identifierHint": [
+    {
+      "type": 0,
+      "value": "आपको जिस संस्करण की ज़रूरत है, उसका ISBN दें। ई-बुक आपकी लाइब्रेरी में उपलब्ध होने पर अनुरोध पूरा हो जाता है।"
+    }
+  ],
+  "bloem.requests.ebook.intro": [
+    {
+      "type": 0,
+      "value": "अपने संगठन के लिए कोई टाइटल का अनुरोध करें। स्वीकार किए गए अनुरोध ई-बुक जोड़े जाने तक इंतज़ार करते हैं।"
+    }
+  ],
+  "bloem.requests.ebook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "आपके ई-बुक के कोई अनुरोध नहीं हैं।"
+    }
+  ],
+  "bloem.requests.ebook.mineHeading": [
+    {
+      "type": 0,
+      "value": "आपके ई-बुक अनुरोध"
+    }
+  ],
+  "bloem.requests.ebook.open": [
+    {
+      "type": 0,
+      "value": "ई-बुक खोलें"
+    }
+  ],
+  "bloem.requests.ebook.requested": [
+    {
+      "type": 0,
+      "value": "ई-बुक का अनुरोध किया गया"
+    }
+  ],
+  "bloem.requests.ebook.submit": [
+    {
+      "type": 0,
+      "value": "ई-बुक का अनुरोध करें"
+    }
+  ],
+  "bloem.requests.ebook.title": [
+    {
+      "type": 0,
+      "value": "ई-बुक अनुरोध"
+    }
+  ],
+  "bloem.requests.ebook.turnedOff": [
+    {
+      "type": 0,
+      "value": "ई-बुक अनुरोध अभी बंद हैं।"
+    }
+  ],
+  "bloem.requests.ebook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "इस प्रोफ़ाइल के लिए ई-बुक अनुरोध उपलब्ध नहीं हैं।"
+    }
+  ],
+  "bloem.requests.ebook.unavailableOnServer": [
+    {
+      "type": 0,
+      "value": "इस सर्वर पर ई-बुक अनुरोध उपलब्ध नहीं हैं।"
+    }
+  ],
+  "bloem.requests.field.asinOptional": [
+    {
+      "type": 0,
+      "value": "ASIN (वैकल्पिक)"
+    }
+  ],
+  "bloem.requests.field.author": [
+    {
+      "type": 0,
+      "value": "लेखक"
+    }
+  ],
+  "bloem.requests.field.authorOptional": [
+    {
+      "type": 0,
+      "value": "लेखक (वैकल्पिक)"
+    }
+  ],
+  "bloem.requests.field.isbn": [
+    {
+      "type": 0,
+      "value": "ISBN"
+    }
+  ],
+  "bloem.requests.field.isbnOptional": [
+    {
+      "type": 0,
+      "value": "ISBN (वैकल्पिक)"
+    }
+  ],
+  "bloem.requests.field.noteOptional": [
+    {
+      "type": 0,
+      "value": "नोट (वैकल्पिक)"
+    }
+  ],
+  "bloem.requests.field.title": [
+    {
+      "type": 0,
+      "value": "टाइटल"
+    }
+  ],
+  "bloem.requests.isbnValue": [
+    {
+      "type": 0,
+      "value": "ISBN "
+    },
+    {
+      "type": 1,
+      "value": "isbn"
+    }
+  ],
+  "bloem.requests.loading": [
+    {
+      "type": 0,
+      "value": "अनुरोध लोड हो रहे हैं…"
+    }
+  ],
+  "bloem.requests.mediaTabs.audiobooks": [
+    {
+      "type": 0,
+      "value": "ऑडियोबुक"
+    }
+  ],
+  "bloem.requests.mediaTabs.ebooks": [
+    {
+      "type": 0,
+      "value": "ई-बुक"
+    }
+  ],
+  "bloem.requests.mediaTabs.label": [
+    {
+      "type": 0,
+      "value": "अनुरोध का मीडिया प्रकार"
+    }
+  ],
+  "bloem.requests.mediaTabs.video": [
+    {
+      "type": 0,
+      "value": "फ़िल्में और सीरीज़"
+    }
+  ],
+  "bloem.requests.nextPage": [
+    {
+      "type": 0,
+      "value": "अगला"
+    }
+  ],
+  "bloem.requests.policy.limited": [
+    {
+      "type": 6,
+      "value": "days",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " दिन"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " दिनों"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " में "
+    },
+    {
+      "type": 6,
+      "value": "limit",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " अनुरोध"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " अनुरोधों"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " में से "
+    },
+    {
+      "type": 1,
+      "value": "remaining"
+    },
+    {
+      "type": 0,
+      "value": " बाकी। "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "अनुरोध अपने-आप स्वीकार हो जाते हैं।"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "कोई एडमिन आपके अनुरोध की समीक्षा करेगा।"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.requests.policy.unlimited": [
+    {
+      "type": 0,
+      "value": "अनुरोधों की कोई सीमा नहीं। "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "अनुरोध अपने-आप स्वीकार हो जाते हैं।"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "कोई एडमिन आपके अनुरोध की समीक्षा करेगा।"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.requests.previousPage": [
+    {
+      "type": 0,
+      "value": "पिछला"
+    }
+  ],
+  "bloem.requests.submitting": [
+    {
+      "type": 0,
+      "value": "अनुरोध भेजा जा रहा है…"
+    }
+  ]
+}
