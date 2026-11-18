@@ -91,23 +91,34 @@ func (p *AccountProvisioner) CreateAccountForOrganizationInTransaction(
 	organizationID uuid.UUID,
 	input CreateAccountInput,
 ) (*models.User, error) {
+	ctx, err := OrganizationAccountContextInTransaction(ctx, tx, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	return p.CreateAccountInTransaction(ctx, tx, input)
+}
+
+// OrganizationAccountContextInTransaction prepares Silo's
+// CreateAccountInTransaction to create the account in organizationID: it
+// locks the organization against other writers (without blocking the KEY
+// SHARE locks membership foreign keys take), requires it to be active, and
+// names it in the returned context as the creation organization.
+func OrganizationAccountContextInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID) (context.Context, error) {
 	if organizationID == uuid.Nil {
-		return nil, errors.New("organization is required for account creation")
+		return ctx, errors.New("organization is required for account creation")
 	}
 	var status string
-	// Serialize with other writers of the organization without blocking the
-	// KEY SHARE locks membership foreign keys take.
 	err := tx.QueryRow(ctx, `SELECT status FROM organizations WHERE id = $1 FOR NO KEY UPDATE`, organizationID).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, tenancy.ErrOrganizationNotFound
+		return ctx, tenancy.ErrOrganizationNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("lock organization for account creation: %w", err)
+		return ctx, fmt.Errorf("lock organization for account creation: %w", err)
 	}
 	if status != string(tenancy.OrganizationActive) {
-		return nil, tenancy.ErrTenantNotFoundOrHidden
+		return ctx, tenancy.ErrTenantNotFoundOrHidden
 	}
-	return p.CreateAccountInTransaction(withAccountCreationOrganization(ctx, organizationID), tx, input)
+	return withAccountCreationOrganization(ctx, organizationID), nil
 }
 
 // UpdateUser applies the native repository update and reports uniqueness

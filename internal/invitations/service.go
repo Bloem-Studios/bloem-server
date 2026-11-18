@@ -462,7 +462,11 @@ func (s *Service) Accept(ctx context.Context, token, email, password, deviceName
 		if address == "" {
 			address = entered
 		}
-		return s.createInvitedAccount(ctx, tx, inv, auth.CreateAccountInput{
+		ctx, err := bloemInvitationAccountContext(ctx, tx, inv) // Bloem: the invitation's organization (bloem_service.go)
+		if err != nil {
+			return nil, err
+		}
+		return s.accounts.CreateAccountInTransaction(ctx, tx, auth.CreateAccountInput{
 			User:           models.CreateUserInput{Username: address, Email: address, Password: password, Role: inv.Role, LibraryIDs: inv.LibraryIDs, AccessGroupID: inv.AccessGroupID},
 			DefaultProfile: auth.DefaultProfileOptions{Enabled: inv.CreateProfile, Name: profileNameFromEmail(address)},
 		})

@@ -2,7 +2,6 @@ package invitations
 
 import (
 	"context"
-	"errors"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -10,19 +9,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type organizationAccountCreator interface {
-	CreateAccountForOrganizationInTransaction(context.Context, pgx.Tx, uuid.UUID, auth.CreateAccountInput) (*models.User, error)
-}
-
-// createInvitedAccount creates the invited account in the invitation's
-// organization, or in the default one for an invitation that names none.
-func (s *Service) createInvitedAccount(ctx context.Context, tx pgx.Tx, inv *models.Invitation, input auth.CreateAccountInput) (*models.User, error) {
+// bloemInvitationAccountContext prepares Silo's account creation in Accept
+// for the invitation's organization: the organization must be active, and the
+// account joins it. An invitation that names none creates the account in the
+// default organization, as Silo's call does on its own.
+func bloemInvitationAccountContext(ctx context.Context, tx pgx.Tx, inv *models.Invitation) (context.Context, error) {
 	if inv.OrganizationID == uuid.Nil {
-		return s.accounts.CreateAccountInTransaction(ctx, tx, input)
+		return ctx, nil
 	}
-	accounts, ok := s.accounts.(organizationAccountCreator)
-	if !ok {
-		return nil, errors.New("account provisioner does not support organization invitations")
-	}
-	return accounts.CreateAccountForOrganizationInTransaction(ctx, tx, inv.OrganizationID, input)
+	return auth.OrganizationAccountContextInTransaction(ctx, tx, inv.OrganizationID)
 }

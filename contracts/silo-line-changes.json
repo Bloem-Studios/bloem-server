@@ -669,12 +669,6 @@
     "\t}"
    ]
   },
-  "internal/invitations/service.go": {
-   "kind": "lines",
-   "lines": [
-    "\t\treturn s.accounts.CreateAccountInTransaction(ctx, tx, auth.CreateAccountInput{"
-   ]
-  },
   "internal/invitations/service_atomic_test.go": {
    "kind": "lines",
    "lines": [
