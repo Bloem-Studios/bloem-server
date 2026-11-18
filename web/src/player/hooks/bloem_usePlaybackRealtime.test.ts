@@ -1,8 +1,10 @@
-// Bloem: the playback control ticket retry backs off to 30 s (usePlaybackRealtime.ts).
-// Drop with that seam once Silo-Server/silo-server#4392 is merged upstream.
+// Bloem: the playback control ticket mint stops once the server answers 404 for
+// a purged attempt (usePlaybackRealtime.ts). Drop with that seam once the fix
+// lands upstream.
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { V2ProblemError } from "@/api/v2/request";
 import { PlayerConfigProvider, type PlayerConfig } from "../context/PlayerConfigContext";
 import { usePlaybackRealtime } from "./usePlaybackRealtime";
 
@@ -43,22 +45,26 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("backs off to one mint every 30 seconds while minting keeps failing", async () => {
+// A session the server no longer has (404) is never coming back, so the hook
+// stops minting.
+it("stops minting once the server no longer has the session", async () => {
   vi.useFakeTimers();
-  mocks.mint.mockRejectedValue(new Error("404"));
-  renderHook(() => usePlaybackRealtime({ sessionId: "session", onCommand: vi.fn() }), {
-    wrapper,
-  });
+  mocks.mint.mockRejectedValue(
+    new V2ProblemError("createPlaybackControlSocketTicket", {
+      type: "https://siloserver.org/docs/api/v2/problems/not_found",
+      title: "Not found",
+      status: 404,
+      detail: "Playback session not found",
+      instance: "/api/v2/playback/sessions/session/control-socket-tickets",
+    }),
+  );
+  const { result } = renderHook(
+    () => usePlaybackRealtime({ sessionId: "session", onCommand: vi.fn() }),
+    { wrapper },
+  );
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(48_500);
+    await vi.advanceTimersByTimeAsync(180_000);
   });
-  expect(mocks.mint).toHaveBeenCalledTimes(7);
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(29_000);
-  });
-  expect(mocks.mint).toHaveBeenCalledTimes(7);
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(1_000);
-  });
-  expect(mocks.mint).toHaveBeenCalledTimes(8);
+  expect(mocks.mint).toHaveBeenCalledTimes(1);
+  expect(result.current.connectionState).toBe("disconnected");
 });

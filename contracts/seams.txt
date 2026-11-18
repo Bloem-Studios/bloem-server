@@ -263,6 +263,8 @@ web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permi
 web/src/playback/WatchPlaybackChrome.tsx
 web/src/player/components/VideoPlayer.tsx
 web/src/player/components/WatchPage.tsx
+web/src/player/hooks/usePlaybackRealtime.ts  # Bloem stops minting control tickets once the server answers 404 for a purged attempt, where Silo keeps retrying it (2026-11-18, not yet proposed upstream); drop this entry once the fix is upstream
+web/src/player/hooks/useWatchProgress.ts  # Bloem stops progress reporting once the server answers 404 for a purged attempt instead of posting every 10 s for as long as the tab stays open (2026-11-18, not yet proposed upstream); drop this entry once the fix is upstream
 web/src/test/requestBudget.ts  # Include Bloem public shell endpoints in deterministic boot server without exempting authenticated operations
 web/src/test/signedInBoot.test.tsx  # Exercise Bloem shell requests against real public endpoint fixtures before measuring budget
 web/vite.config.ts

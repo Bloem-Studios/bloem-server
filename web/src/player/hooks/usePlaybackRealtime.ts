@@ -220,6 +220,15 @@ export function usePlaybackRealtime({
             setConnectionState("disconnected");
             return;
           }
+          if (error instanceof V2ProblemError && error.status === 404) {
+            // Bloem: the server no longer has the session (an attempt row is
+            // purged once it expires, and its stream tokens expired with it),
+            // so no later mint can succeed. Bloem stops here instead of
+            // retrying the 404 as below.
+            terminated = true;
+            setConnectionState("disconnected");
+            return;
+          }
           // Any other refusal (403 non-owner, 409 installation mismatch, 404, or
           // a 503 while the server rebuilds the session) is retried only under
           // the original authority with bounded backoff.

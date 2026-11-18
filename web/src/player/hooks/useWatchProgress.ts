@@ -5,7 +5,7 @@ import {
   observeSessionProgress,
   captureSessionProgress,
 } from "../session-mutations";
-import { isPlaybackSessionEndedError } from "../player-fetch";
+import { isPlaybackSessionEndedError, PlayerFetchError } from "../player-fetch";
 import { toMediaTime } from "../utils/mediaTimeline";
 
 /**
@@ -106,6 +106,18 @@ export function useWatchProgress(
         // Best effort — don't disrupt playback on progress report failure,
         // unless the server says the session is over.
         if (active && isPlaybackSessionEndedError(error)) onSessionEndedRef.current?.();
+        // The server no longer has the session (a stopped session is purged
+        // once it expires): stop reporting for it, as stopping does for the
+        // same answer. Playback itself is left alone.
+        if (
+          active &&
+          error instanceof PlayerFetchError &&
+          error.status === 404 &&
+          intervalRef.current
+        ) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
       });
     }, 10_000);
 
