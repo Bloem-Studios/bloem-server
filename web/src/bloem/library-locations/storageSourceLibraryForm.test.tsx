@@ -25,7 +25,6 @@ describe("storage source libraries", () => {
       name: "Bookwarehouse",
       type: "ebooks",
       paths: [],
-      storage_source: "413183ec-ece5-4805-aac4-6c31f6ddf0df",
       enabled: true,
       metadata_language: "en",
       auto_translate_metadata: false,
@@ -46,7 +45,6 @@ describe("storage source libraries", () => {
     const { body } = mutate.mock.calls[0]![0] as { body: Record<string, unknown> };
     expect(body.name).toBe("Books");
     expect(body.paths).toBeUndefined();
-    expect(body).not.toHaveProperty("storage_source");
   });
 
   it("creates an ebook library from folders only", () => {

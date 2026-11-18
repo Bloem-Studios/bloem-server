@@ -262,7 +262,6 @@ it("allows removing the last unavailable plugin folder without provider reads", 
         name: "Books",
         type: "ebooks",
         paths: [],
-        storage_source: "disabled",
       } as unknown as Library,
     }),
   );

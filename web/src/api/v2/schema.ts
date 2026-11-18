@@ -28570,11 +28570,6 @@ export interface components {
        */
       sort_order: number;
       /**
-       * Format: uuid
-       * @description Storage source the library reads its books from instead of paths; absent for libraries that scan paths
-       */
-      storage_source?: string;
-      /**
        * @description Remote video kinds fetched during metadata refresh; empty disables them
        * @example [
        *       "trailer"

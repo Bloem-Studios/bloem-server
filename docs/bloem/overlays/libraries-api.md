@@ -23,7 +23,7 @@ features.
 
 | On this page | In the code and API |
 | --- | --- |
-| Storage source on a new library | `storage_source` on v2 `createLibrary`, instead of `paths` |
+| Storage source on a new library | the native `library-locations` routes |
 | Libraries that mix folders and sources | the native `library-locations` routes |
 | A bundle that includes a library | an `entitlement_bundle_members` row; joining is the `media_folders_join_starting_set` trigger, leaving is `ON DELETE CASCADE` (`20261110123408_bloem_library_starting_set.sql`) |
 
@@ -37,17 +37,12 @@ features.
 
 #### Storage sources
 
-An ebook or admitted movie library can read its files from one storage source
-instead of folders. `createLibrary` takes `storage_source` (a storage source key)
-instead of `paths`; exactly one of the two is required. A missing pair answers
-`422` at `body.paths`. Both together, another library type, or a source that is
-unknown, disabled or unavailable to the library's owner answers `422` at
-`body.storage_source`; a source that already backs a library answers
-`409 storage_source_in_use`. A server without storage-source support answers
-`503 storage_unavailable`. The library resource reports `storage_source` only
-for a library with no `paths` and exactly one storage location; mixed and
-multi-location libraries are created, read and edited through the native
-[library-locations routes](../../bloem-api-reference.md#library-locations-and-reading).
+An ebook or admitted movie library can read its files from storage sources
+instead of folders. Such a library is created, read and edited through the native
+[library-locations routes](../../bloem-api-reference.md#library-locations-and-reading);
+Silo's `createLibrary` takes filesystem paths only, and the library resource carries
+no storage field. Silo requires every library to have a path, so a library resource
+with empty `paths` is one that reads storage sources.
 In `updateLibrary`, a storage library keeps its media type, and one without
 filesystem paths refuses non-empty `paths`. See
 [creating a library](../../architecture/bloem-native-storage.md#creating-a-library).

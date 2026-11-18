@@ -43,7 +43,7 @@ describe("LibraryCardList storage source label", () => {
     render(
       <LibraryCardList
         rows={[
-          row({ id: 1, name: "Bucket books", storage_source: "s3-books" }),
+          row({ id: 1, name: "Bucket books", paths: [] }),
           row({ id: 2, name: "Folder books", paths: ["/media/books"] }),
         ]}
         realtimeMonitoringByLibraryId={new Map()}

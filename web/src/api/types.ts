@@ -3528,8 +3528,6 @@ export interface Library {
   scan_warning_code?: string | null;
   scan_warning_message?: string | null;
   scan_warning_at?: string | null;
-  /** Storage source an ebook library reads its books from, instead of paths. */
-  storage_source?: string;
 }
 
 export interface LibraryMountCheckRoot {

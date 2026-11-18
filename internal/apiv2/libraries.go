@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
@@ -48,7 +47,6 @@ type Library struct {
 	ScanWarningCode            *string  `json:"scan_warning_code,omitempty" doc:"Outstanding scan warning (empty_root, dead_root, …); absent when none" example:"empty_root"`
 	ScanWarningMessage         *string  `json:"scan_warning_message,omitempty" doc:"Human-readable warning; absent when none"`
 	ScanWarningAt              *Instant `json:"scan_warning_at,omitempty" doc:"When the warning was raised; absent when none"`
-	StorageSource              *string  `json:"storage_source,omitempty" format:"uuid" doc:"Storage source the library reads its books from instead of paths; absent for libraries that scan paths"`
 }
 
 // LibraryCreate is the createLibrary body.
@@ -1578,16 +1576,7 @@ func libraryOf(v handlers.LibraryView) Library {
 		ScanWarningCode:            v.ScanWarningCode,
 		ScanWarningMessage:         v.ScanWarningMessage,
 		ScanWarningAt:              instantPtr(v.ScanWarningAt),
-		StorageSource:              storageSourceOf(v.StorageSource),
 	}
-}
-
-func storageSourceOf(key *uuid.UUID) *string {
-	if key == nil {
-		return nil
-	}
-	value := key.String()
-	return &value
 }
 
 func libraryRootOf(v handlers.LibraryRootView) LibraryRoot {

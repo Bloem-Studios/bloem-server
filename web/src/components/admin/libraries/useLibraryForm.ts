@@ -199,9 +199,10 @@ export function useLibraryForm({
   const staleContext =
     intentContext?.key !== locations.context?.key ||
     intentContext?.generation !== locations.context?.generation;
-  // An existing library on a storage source has no paths to edit; new ones
-  // get their storage locations through Bloem's library locations.
-  const usesStorage = Boolean(library?.storage_source);
+  // Silo gives every library at least one path, so an existing library with
+  // none reads a storage source and has no paths to edit. New ones get their
+  // storage locations through Bloem's library locations.
+  const usesStorage = Boolean(library && library.paths.length === 0);
   const [enabled, setEnabled] = useState(library?.enabled ?? true);
   const [metadataLanguage, setMetadataLanguage] = useState(library?.metadata_language ?? "en");
   const [autoTranslateMetadata, setAutoTranslateMetadata] = useState(

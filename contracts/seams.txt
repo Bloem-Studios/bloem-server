@@ -77,7 +77,6 @@ internal/apiv2/artwork_test.go  # TestArtworkNestedKeyBytesAndRanges checks max-
 internal/apiv2/device_login_test.go  # expected server_name follows branding.DefaultServerName, which Bloem sets to "Bloem"
 internal/apiv2/gates.go
 internal/apiv2/home.go
-internal/apiv2/libraries.go  # added lines only: the library response reports a storage library's storage_source; temporary, to move to a Bloem route so Silo's v2 Library type is Silo's again (creation already uses Bloem's library-locations route)
 internal/apiv2/notification_inbox.go
 internal/apiv2/parity_test.go
 internal/apiv2/registry.go
@@ -227,8 +226,6 @@ web/public/web-app-icon-192.png
 web/public/web-app-icon-512.png
 web/src/App.tsx
 web/src/api/client.ts
-web/src/api/types.ts  # additive Bloem web DTOs, including the provider-bound Xtream guide kind
-web/src/api/v2/libraries.ts  # added line only: a library read carries its storage_source; goes with the v2 response field
 web/src/api/v2/schema.ts
 web/src/components/AdminSectionCommandDialog.tsx  # upstreamable: avoid deferred selection overwriting the first search character
 web/src/components/AdminSidebar.tsx

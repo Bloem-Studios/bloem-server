@@ -32,7 +32,7 @@ files in Bloem's native storage.
 | Remote control (dormant) | `internal/remote`, `internal/api/handlers/remote_control.go`; the rules are in [how remote control works](../../architecture/admin-remote-control.md) |
 | An app saying it accepts a command | the control socket's `hello.capabilities.commands` |
 | Native storage | `/native-storage` routes in the platform and organization administrative scopes |
-| Storage source on a library | `storage_source` on v2 `createLibrary`, or the native `library-locations` routes |
+| Storage source on a library | the native `library-locations` routes |
 
 ## For developers
 
@@ -80,8 +80,8 @@ discovery, upgrade, sanitized source inspection and browsing, empty-namespace
 configuration replacement, S3 credential rotation, stateless S3 bucket/folder
 browsing, disable and uninstall. They use the existing signed administrative
 context and retained current resource authority. A library attaches a source
-through the ordinary v2 `createLibrary` (`storage_source`) or the scoped
-`library-locations` routes. The [native API reference](../../bloem-api-reference.md#native-storage-administration)
+through the scoped `library-locations` routes; Silo's v2 `createLibrary` takes
+filesystem paths only. The [native API reference](../../bloem-api-reference.md#native-storage-administration)
 lists methods, request fields, state revisions, error codes and recovery.
 
 The protected capability document checks actual composition; it remains

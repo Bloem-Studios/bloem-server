@@ -336,8 +336,6 @@ type libraryResponse struct {
 	BoxSetsEnabled  bool `json:"-"`
 	BoxSetMinMovies int  `json:"-"`
 	BoxSetsInSearch bool `json:"-"`
-	// StorageSource is read by the v2 library view only.
-	StorageSource *uuid.UUID `json:"-"`
 }
 
 type libraryMountCheckRootResponse struct {
@@ -477,7 +475,6 @@ func toLibraryResponse(f *models.MediaFolder) libraryResponse {
 		BoxSetsEnabled:             f.BoxSetsEnabled,
 		BoxSetMinMovies:            f.BoxSetMinMovies,
 		BoxSetsInSearch:            f.BoxSetsInSearch,
-		StorageSource:              f.StorageSourceKey,
 	}
 }
 

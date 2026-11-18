@@ -38069,11 +38069,6 @@
             "format": "int64",
             "type": "integer"
           },
-          "storage_source": {
-            "description": "Storage source the library reads its books from instead of paths; absent for libraries that scan paths",
-            "format": "uuid",
-            "type": "string"
-          },
           "trailer_kinds": {
             "description": "Remote video kinds fetched during metadata refresh; empty disables them",
             "examples": [

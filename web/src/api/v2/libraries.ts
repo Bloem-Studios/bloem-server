@@ -60,7 +60,6 @@ export function libraryFromV2(library: LibraryV2): Library {
     scan_warning_code: library.scan_warning_code,
     scan_warning_message: library.scan_warning_message,
     scan_warning_at: library.scan_warning_at,
-    ...(library.storage_source ? { storage_source: library.storage_source } : {}),
   };
 }
 

@@ -93,11 +93,11 @@ schema never promotes artifact approval or synthetic provider tests to
 language formats) runs on `contracts/api/v2/openapi.json`, which includes Bloem's
 `/api/v2` registrations; it does not check the native artifact.
 
-Storage-source libraries use ordinary `/api/v2` library operations, except where
-locations combine: the v2 `createLibrary` takes exactly one of `paths` and
-`storage_source`, while the scoped native `library-locations` routes combine local
-paths and several selected source roots when native-storage capabilities advertise
-`library_location_mixing`. Source roots retain opaque identities. The
+Storage-source libraries are created and their locations edited through the scoped
+native `library-locations` routes; Silo's v2 library operations stay as Silo wrote
+them, so `createLibrary` takes filesystem paths only and the library resource has no
+storage field. The native routes combine local paths and several selected source
+roots when native-storage capabilities advertise `library_location_mixing`. Source roots retain opaque identities. The
 [storage architecture](../../../architecture/bloem-native-storage.md) records
 the publication, scanner and delivery readiness limits. Downloads and conversion
 require their own supported delivery path; configuring a source does not grant them.
