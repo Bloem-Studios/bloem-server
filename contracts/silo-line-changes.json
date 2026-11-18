@@ -243,8 +243,6 @@
   "internal/api/handlers/stream.go": {
    "kind": "lines",
    "lines": [
-    "\t\tfileResolver: fileResolver,",
-    "\t\th.streamEmbeddedSubtitle(w, r, file, embeddedIndex, requestedFormat)",
     "\tfile, err := h.fileResolver.GetByID(ctx, fileID)",
     "\tfile, err := h.fileResolver.GetByID(r.Context(), fileID)",
     "\tfonts, err := playback.ExtractAttachedSubtitleFonts(ctx, file.FilePath, h.ffmpegPath())",

@@ -114,9 +114,10 @@ func (h *StreamHandler) ffmpegPath() string {
 // NewStreamHandler creates a new StreamHandler backed by the given session
 // manager and file resolver.
 func NewStreamHandler(sessionMgr SessionManagerInterface, fileResolver FilePathResolver) *StreamHandler {
+	fileResolver = guardNativePlaybackFiles(fileResolver) // Bloem: native storage files never reach Silo's filesystem paths
 	return &StreamHandler{
 		sessionMgr:   sessionMgr,
-		fileResolver: guardNativePlaybackFiles(fileResolver),
+		fileResolver: fileResolver,
 		// A bare manager (no recipe store) behaves as "no reconstruct" — plain
 		// GetSession + ownership — so HandleStream has a single code path. The
 		// router overwrites this with the shared manager to enable reconstruct.
@@ -544,11 +545,11 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 		// demuxed, so the first byte lands within ~1s even on network
 		// storage. Works identically for direct-play, remux, and
 		// transcode because it doesn't depend on any other ffmpeg.
-		if storagesource.IsNativeLocation(file.FilePath) {
+		if storagesource.IsNativeLocation(file.FilePath) { // Bloem: bloem_native_subtitles.go
 			h.serveNativeEmbeddedSubtitle(w, r, session, file, embeddedIndex, requestedFormat)
-		} else {
-			h.streamEmbeddedSubtitle(w, r, file, embeddedIndex, requestedFormat)
+			return
 		}
+		h.streamEmbeddedSubtitle(w, r, file, embeddedIndex, requestedFormat)
 		return
 	}
 
