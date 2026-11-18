@@ -44,10 +44,6 @@ type transactionalOwnershipBootstrapper interface {
 	ActivateInitialOwnershipInTransaction(context.Context, pgx.Tx, int) error
 }
 
-type transactionalSetupUserRepository interface {
-	ClaimInitialSetupInTransaction(context.Context, pgx.Tx) error
-}
-
 type transactionalSessionRepository interface {
 	CreateInTransaction(context.Context, pgx.Tx, models.AuthSession) error
 	GetByIDInTransaction(context.Context, pgx.Tx, string) (*models.AuthSession, error)
@@ -86,81 +82,29 @@ func (s *Service) SetOwnershipBootstrapper(bootstrapper OwnershipBootstrapper) {
 	s.ownership = bootstrapper
 }
 
-// SetupInitialUserInTransaction creates the initial account (the server owner),
-// its optional profile, ownership state and login session in the caller's
-// transaction.
-func (s *Service) SetupInitialUserInTransaction(
-	ctx context.Context,
-	tx pgx.Tx,
-	username, email, password string,
-	createDefaultProfile bool,
-	defaultProfileName string,
-	deviceName, ip string,
-) (*TokenPair, *models.User, error) {
-	users, ok := s.bloemUsers.(transactionalSetupUserRepository)
-	if !ok {
-		return nil, nil, errors.New("account repository does not support transactional setup")
-	}
-	if err := users.ClaimInitialSetupInTransaction(ctx, tx); err != nil {
-		return nil, nil, err
-	}
-	input := CreateAccountInput{
-		User: models.CreateUserInput{
-			Username: username,
-			Email:    email,
-			Password: password,
-			Role:     legacyRoleAdmin,
-		},
-		DefaultProfile: DefaultProfileOptions{Enabled: createDefaultProfile, Name: defaultProfileName},
-	}
-	// A default profile must join this transaction. Refuse a store that cannot
-	// (the SQLite bridge) before inserting the account or opening its files,
-	// rather than taking Silo's separate-store fallback.
+// bloemRequireTransactionalProfile refuses setup's default profile on a store
+// that cannot join the setup transaction (the SQLite bridge), before the
+// account is inserted or the store's files are opened, rather than taking
+// Silo's separate-store fallback. SetupInitialUser calls it.
+func (s *Service) bloemRequireTransactionalProfile(createDefaultProfile bool) error {
 	if createDefaultProfile && !s.accounts.SupportsTransactionalProfiles() {
-		return nil, nil, ErrTransactionalProfileUnavailable
+		return ErrTransactionalProfileUnavailable
 	}
-	user, conflict, err := s.accounts.CreateUserInTransaction(ctx, tx, input.User)
-	if err == nil && conflict {
-		err = ErrDuplicate
-	}
-	if err != nil {
-		return nil, nil, fmt.Errorf("creating initial user: %w", err)
-	}
-	if _, err := tx.Exec(ctx, `UPDATE users SET is_owner = true, break_glass = true WHERE id = $1`, user.ID); err != nil {
-		return nil, nil, fmt.Errorf("claiming initial owner: %w", err)
-	}
-	user.IsOwner, user.BreakGlass = true, true
-	if err := s.accounts.createProfileInTransactionOrBridge(ctx, tx, user.ID, input); err != nil {
-		return nil, nil, err
-	}
+	return nil
+}
+
+// bloemActivateInitialOwnership makes the first account the owner of the
+// default organization inside the setup transaction. SetupInitialUser calls it
+// after Silo creates the account.
+func (s *Service) bloemActivateInitialOwnership(ctx context.Context, tx pgx.Tx, userID int) error {
 	ownership, ok := s.ownership.(transactionalOwnershipBootstrapper)
 	if !ok {
-		return nil, nil, errors.New("ownership bootstrapper does not support transactional setup")
+		return errors.New("ownership bootstrapper does not support transactional setup")
 	}
-	if err := ownership.ActivateInitialOwnershipInTransaction(ctx, tx, user.ID); err != nil {
-		return nil, nil, fmt.Errorf("activating initial ownership: %w", err)
+	if err := ownership.ActivateInitialOwnershipInTransaction(ctx, tx, userID); err != nil {
+		return fmt.Errorf("activating initial ownership: %w", err)
 	}
-	sessions, ok := s.bloemSessions.(transactionalSessionRepository)
-	if !ok {
-		return nil, nil, errors.New("session repository does not support transactional setup")
-	}
-	sessionID := uuid.NewString()
-	if err := sessions.CreateInTransaction(ctx, tx, models.AuthSession{
-		ID: sessionID, UserID: user.ID, DeviceName: deviceName, IPAddress: ip,
-		ExpiresAt: time.Now().Add(s.jwt.RefreshExpiry()),
-	}); err != nil {
-		return nil, nil, fmt.Errorf("creating session: %w", err)
-	}
-	pair, err := s.generateTokenPair(Claims{
-		UserID:               user.ID,
-		AccountIncarnationID: user.AccountIncarnationID.String(),
-		Role:                 user.Role,
-		SessionID:            sessionID,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	return pair, user, nil
+	return nil
 }
 
 // StartImpersonationInTransaction creates the impersonated login session on a

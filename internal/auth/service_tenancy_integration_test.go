@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"os"
 	"strconv"
 	"testing"
@@ -122,7 +123,9 @@ func TestAccountProvisionerCreateAccountInTransactionLinksMembershipAndRollsBack
 	}
 }
 
-func TestSetupInitialUserInTransactionCommitsAtomically(t *testing.T) {
+// Silo's SetupInitialUser runs Bloem's setup steps in its own transaction: the
+// owner's organization membership and ownership, and its profile.
+func TestSetupInitialUserCreatesOwnerMembershipAndProfile(t *testing.T) {
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
@@ -146,41 +149,95 @@ func TestSetupInitialUserInTransactionCommitsAtomically(t *testing.T) {
 	adapter := tenancyProvisioningAdapter{store: tenancy.NewStore(pool)}
 	service.SetOwnershipBootstrapper(adapter)
 
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		t.Fatalf("begin: %v", err)
-	}
-	pair, created, err := service.SetupInitialUserInTransaction(
-		ctx, tx, "setup-tx", "setup-tx@example.test", "password", true, "Owner", "browser", "127.0.0.1",
+	pair, created, err := service.SetupInitialUser(
+		ctx, "setup-owner", "setup-owner@example.test", "a-long-setup-passphrase-9", true, "Owner", "browser", "127.0.0.1",
 	)
 	if err != nil {
-		_ = tx.Rollback(ctx)
-		t.Fatalf("SetupInitialUserInTransaction: %v", err)
+		t.Fatalf("SetupInitialUser: %v", err)
 	}
 	if pair == nil || pair.AccessToken == "" || pair.RefreshToken == "" || created == nil || !created.IsOwner {
-		_ = tx.Rollback(ctx)
 		t.Fatalf("incomplete setup result: pair=%+v created=%+v", pair, created)
 	}
 	var memberships, profiles int
-	if err := tx.QueryRow(ctx, `
+	if err := pool.QueryRow(ctx, `
 		SELECT (SELECT count(*) FROM organization_memberships WHERE account_id = $1 AND legacy_role = 'admin'),
 		       (SELECT count(*) FROM user_profiles WHERE user_id = $1)`, created.ID).Scan(&memberships, &profiles); err != nil {
-		_ = tx.Rollback(ctx)
 		t.Fatal(err)
 	}
 	if memberships != 1 || profiles != 1 {
-		_ = tx.Rollback(ctx)
 		t.Fatalf("setup memberships=%d profiles=%d, want 1 and 1", memberships, profiles)
 	}
-	if err := tx.Rollback(ctx); err != nil {
-		t.Fatalf("rollback: %v", err)
+	var owner *int
+	if err := pool.QueryRow(ctx, `SELECT owner_account_id FROM platform_security WHERE singleton`).Scan(&owner); err != nil {
+		t.Fatalf("read platform owner: %v", err)
 	}
-	var usersAfter int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM users`).Scan(&usersAfter); err != nil {
-		t.Fatalf("count users: %v", err)
+	if owner == nil || *owner != created.ID {
+		t.Fatalf("platform owner = %v, want the setup account %d", owner, created.ID)
 	}
-	if usersAfter != 0 {
-		t.Fatalf("setup escaped caller transaction: %d users", usersAfter)
+	claims, err := service.jwt.ValidateToken(pair.AccessToken)
+	if err != nil {
+		t.Fatalf("validate setup access token: %v", err)
+	}
+	if claims.AccountIncarnationID == "" || claims.AccountIncarnationID != created.AccountIncarnationID.String() {
+		t.Fatalf("setup token incarnation = %q, want %s", claims.AccountIncarnationID, created.AccountIncarnationID)
+	}
+}
+
+type failingOwnershipActivation struct{ tenancyProvisioningAdapter }
+
+var errOwnershipActivation = errors.New("ownership activation failed")
+
+func (failingOwnershipActivation) ActivateInitialOwnershipInTransaction(context.Context, pgx.Tx, int) error {
+	return errOwnershipActivation
+}
+
+// A failed ownership activation rolls Silo's whole setup transaction back:
+// no account, profile or session survives, and no tokens are issued.
+func TestSetupInitialUserRollsBackWhenOwnershipActivationFails(t *testing.T) {
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SILO_TEST_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	pool := newAuthTenancyDisposableDatabase(t, ctx, dsn)
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("migrate database: %v", err)
+	}
+	users := NewUserRepository(pool)
+	sessions := NewSessionRepository(pool)
+	service := NewService(
+		NewLocalProvider(users, sessions),
+		NewJWTService("test-secret", time.Hour, 24*time.Hour),
+		sessions,
+		users,
+		NewInviteCodeRepository(pool),
+		nil,
+		pgstore.NewPostgresProvider(pool),
+	)
+	service.SetOwnershipBootstrapper(failingOwnershipActivation{tenancyProvisioningAdapter{store: tenancy.NewStore(pool)}})
+
+	pair, created, err := service.SetupInitialUser(
+		ctx, "setup-fails", "setup-fails@example.test", "a-long-setup-passphrase-9", true, "Owner", "browser", "127.0.0.1",
+	)
+	if !errors.Is(err, errOwnershipActivation) {
+		t.Fatalf("SetupInitialUser error = %v, want the ownership activation error", err)
+	}
+	if pair != nil || created != nil {
+		t.Fatalf("setup result = (%+v, %+v), want no tokens or account", pair, created)
+	}
+	for name, query := range map[string]string{
+		"account":  `SELECT count(*) FROM users`,
+		"profile":  `SELECT count(*) FROM user_profiles`,
+		"session":  `SELECT count(*) FROM auth_sessions`,
+		"identity": `SELECT count(*) FROM organization_memberships`,
+	} {
+		var count int
+		if err := pool.QueryRow(ctx, query).Scan(&count); err != nil {
+			t.Fatalf("count %s: %v", name, err)
+		}
+		if count != 0 {
+			t.Fatalf("%s survived a failed setup: %d", name, count)
+		}
 	}
 }
 

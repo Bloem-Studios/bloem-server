@@ -89,7 +89,7 @@ internal/auth/jwt.go
 internal/auth/oauth_handler.go  # one field and five call sites: a web sign-in or provider sign-out through an OAuth provider keeps the organization domain it started on (bloem_oauth_domain.go); approved by the owner on 2026-11-01 ("Finish the rest of the open issues")
 internal/auth/password_hash_test.go  # compose upstream bcrypt test initialization with isolated Bloem auth database lifecycle
 internal/auth/repository.go
-internal/auth/service.go
+internal/auth/service.go  # added lines only: preview guest and repository fields, the account incarnation in issued claims, a preview-guest refresh hook and refresh binding check, and two setup steps in SetupInitialUser (a profile store that can join the transaction, the first account's organization ownership; bloem_service.go)
 internal/auth/session.go
 internal/backup/backuptest/backuptest.go  # one call: the template gets Bloem's fixture-compatibility triggers (bloem_fixture_compat.go), because Silo's backup tests seed profiles and libraries with bare SQL
 internal/backup/credentials_authority_test.go  # two guards: Bloem's access-policy and profile fields are decided in bloem_coverage_test.go

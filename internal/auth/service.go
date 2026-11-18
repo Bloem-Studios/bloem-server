@@ -974,10 +974,12 @@ func (s *Service) loginWithProvider(
 }
 
 // NeedsSetup reports whether the system still needs its initial user account.
-// The rule lives in needsSetup so the standalone SetupState reporter answers
-// identically.
 func (s *Service) NeedsSetup(ctx context.Context) (bool, error) {
-	return needsSetup(ctx, s.bloemUsers)
+	count, err := s.users.Count(ctx)
+	if err != nil {
+		return false, fmt.Errorf("counting users: %w", err)
+	}
+	return count == 0, nil
 }
 
 // SetupInitialUser creates the first admin account and signs it in.
@@ -1002,18 +1004,51 @@ func (s *Service) SetupInitialUser(
 		user *models.User
 		pair *TokenPair
 	)
-	claimant, ok := s.bloemUsers.(interface {
-		ClaimInitialSetup(context.Context, func(pgx.Tx) error) error
-	})
-	if !ok {
-		return nil, nil, fmt.Errorf("account repository does not support transactional setup")
-	}
-	err := claimant.ClaimInitialSetup(ctx, func(tx pgx.Tx) error {
-		tokens, created, err := s.SetupInitialUserInTransaction(ctx, tx, username, email, password, createDefaultProfile, defaultProfileName, deviceName, ip)
+	err := s.users.ClaimInitialSetup(ctx, func(tx pgx.Tx) error {
+		if err := s.bloemRequireTransactionalProfile(createDefaultProfile); err != nil { // Bloem: bloem_service.go
+			return err
+		}
+		created, err := s.accounts.CreateInitialAccountInTransaction(ctx, tx, CreateAccountInput{
+			User: models.CreateUserInput{
+				Username: username,
+				Email:    email,
+				Password: password,
+				Role:     models.RoleAdmin,
+			},
+			DefaultProfile: DefaultProfileOptions{
+				Enabled: createDefaultProfile,
+				Name:    defaultProfileName,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("creating initial user: %w", err)
+		}
+		if err := s.bloemActivateInitialOwnership(ctx, tx, created.ID); err != nil { // Bloem: bloem_service.go
+			return err
+		}
+
+		sessionID := uuid.New().String()
+		session := models.AuthSession{
+			ID:         sessionID,
+			UserID:     created.ID,
+			DeviceName: deviceName,
+			IPAddress:  ip,
+			ExpiresAt:  time.Now().Add(s.jwt.RefreshExpiry()),
+		}
+		if err := s.sessions.createWithQuerier(ctx, tx, session); err != nil {
+			return err
+		}
+		tokens, err := s.generateTokenPair(Claims{
+			UserID:    created.ID,
+			Role:      created.Role,
+			SessionID: sessionID,
+
+			AccountIncarnationID: created.AccountIncarnationID.String(), // Bloem
+		})
 		if err != nil {
 			return err
 		}
-		pair, user = tokens, created
+		user, pair = created, tokens
 		return nil
 	})
 	if err != nil {
@@ -1217,11 +1252,12 @@ func (s *Service) StartImpersonation(ctx context.Context, adminUserID, targetUse
 	auditmutation.CommitMutation(ctx, audit)
 
 	pair, err := s.generateTokenPair(Claims{
-		UserID:               target.ID,
-		AccountIncarnationID: target.AccountIncarnationID.String(),
-		Role:                 target.Role,
-		SessionID:            sessionID,
-		ImpersonatorUserID:   &impersonatorUserID,
+		UserID:             target.ID,
+		Role:               target.Role,
+		SessionID:          sessionID,
+		ImpersonatorUserID: &impersonatorUserID,
+
+		AccountIncarnationID: target.AccountIncarnationID.String(), // Bloem
 	})
 	if err != nil {
 		return nil, nil, nil, err

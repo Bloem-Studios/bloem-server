@@ -272,12 +272,12 @@ unassigned platform security row. Initial setup performs one protected sequence:
 
 Setup runs inside Silo's `UserRepository.ClaimInitialSetup` transaction, which takes the
 deployment-wide `InitialSetupAdvisoryLock` and re-counts accounts after acquiring it, so a
-waiting contender finds the winner's account and gets `ErrSetupAlreadyComplete`. Bloem's
-`SetupInitialUserInTransaction` (`internal/auth/bloem_service.go`) applies the same fence again
-inside the caller's transaction (`ClaimInitialSetupInTransaction`,
-`internal/auth/bloem_setup_claim.go`), then creates the account (marked `is_owner` and
-`break_glass`), the optional profile, the ownership activation and the login session in that
-one transaction; failure before commit rolls all of it back. The Bloem ownership
+waiting contender finds the winner's account and gets `ErrSetupAlreadyComplete`. Silo's
+`SetupInitialUser` then creates the account (marked `is_owner` and `break_glass`, with its
+default-organization membership from Bloem's hook in `createUser`), the optional profile and the
+login session in that one transaction. Two Bloem lines in it (`internal/auth/bloem_service.go`)
+refuse a default profile on a store that cannot join the transaction and activate the first
+account's ownership. A failure before commit rolls all of it back. The Bloem ownership
 adapter and notification-decorated user store must preserve the transactional extensions;
 unsupported backing stores fail closed, never emulate a separate commit. When a default
 profile is requested, both account transaction entrypoints check the provider's
