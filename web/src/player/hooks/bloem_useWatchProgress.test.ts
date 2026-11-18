@@ -18,7 +18,7 @@ vi.mock("../session-mutations", () => ({
 import { useWatchProgress } from "./useWatchProgress";
 
 const playerConfig: PlayerConfig = {
-  apiBaseUrl: "/api/v1",
+  apiBaseUrl: "/api/v2",
   getAccessToken: () => "token",
   getProfileId: () => "profile-1",
   getDeviceId: () => "test-device",
