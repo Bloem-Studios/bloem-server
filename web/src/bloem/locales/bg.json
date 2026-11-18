@@ -1,0 +1,2714 @@
+{
+  "bloem.adminNav.announcements.description": [
+    {
+      "type": 0,
+      "value": "Публикуване на съобщения до зрителите."
+    }
+  ],
+  "bloem.adminNav.announcements.label": [
+    {
+      "type": 0,
+      "value": "Съобщения"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.description": [
+    {
+      "type": 0,
+      "value": "Публикуване на съобщения до зрителите и оттегляне на по-ранни съобщения."
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.label": [
+    {
+      "type": 0,
+      "value": "Съобщения"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.newAnnouncement": [
+    {
+      "type": 0,
+      "value": "Ново съобщение"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.published": [
+    {
+      "type": 0,
+      "value": "Публикувани съобщения"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.administrativeContext": [
+    {
+      "type": 0,
+      "value": "Административен контекст"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.administrativeContextChangedTo": [
+    {
+      "type": 0,
+      "value": "Административният контекст е сменен на "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.chooseContext": [
+    {
+      "type": 0,
+      "value": "Изберете контекст"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.loadingContext": [
+    {
+      "type": 0,
+      "value": "Зареждане на контекста…"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.organizationAdministrator": [
+    {
+      "type": 0,
+      "value": "Администратор на организация"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.platformAdministrator": [
+    {
+      "type": 0,
+      "value": "Администратор на платформата"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeName": [
+    {
+      "type": 5,
+      "value": "scope",
+      "options": {
+        "platform": {
+          "value": [
+            {
+              "type": 0,
+              "value": "платформа"
+            }
+          ]
+        },
+        "organization": {
+          "value": [
+            {
+              "type": 0,
+              "value": "организация"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "scope"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeStatus": [
+    {
+      "type": 1,
+      "value": "scope"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "status"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.selectContext": [
+    {
+      "type": 0,
+      "value": "Избор на контекст"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.statusName": [
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "active": {
+          "value": [
+            {
+              "type": 0,
+              "value": "активна"
+            }
+          ]
+        },
+        "suspended": {
+          "value": [
+            {
+              "type": 0,
+              "value": "спряна"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "status"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.adminNav.liveTv.description": [
+    {
+      "type": 0,
+      "value": "Тунери, канали, телевизионна програма, записи и преобразуване."
+    }
+  ],
+  "bloem.adminNav.liveTv.label": [
+    {
+      "type": 0,
+      "value": "ТВ на живо"
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.description": [
+    {
+      "type": 0,
+      "value": "Защо на някого е разрешено или отказано нещо."
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.label": [
+    {
+      "type": 0,
+      "value": "Проверки на достъпа"
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.description": [
+    {
+      "type": 0,
+      "value": "Групи, които определят какво могат да правят профилите им."
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.label": [
+    {
+      "type": 0,
+      "value": "Групи за достъп"
+    }
+  ],
+  "bloem.adminNav.organizationActivity.description": [
+    {
+      "type": 0,
+      "value": "Кой какво е променил в тази организация и кога."
+    }
+  ],
+  "bloem.adminNav.organizationActivity.label": [
+    {
+      "type": 0,
+      "value": "Активност"
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.description": [
+    {
+      "type": 0,
+      "value": "Групи акаунти с еднакви настройки."
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.label": [
+    {
+      "type": 0,
+      "value": "Кохорти"
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.description": [
+    {
+      "type": 0,
+      "value": "Поканете администратори и членове в тази организация."
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.label": [
+    {
+      "type": 0,
+      "value": "Покани"
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.description": [
+    {
+      "type": 0,
+      "value": "Библиотеки, които тази организация притежава или е получила."
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.label": [
+    {
+      "type": 0,
+      "value": "Библиотеки"
+    }
+  ],
+  "bloem.adminNav.organizationOverview.description": [
+    {
+      "type": 0,
+      "value": "Членове, библиотеки и скорошни промени с един поглед."
+    }
+  ],
+  "bloem.adminNav.organizationOverview.label": [
+    {
+      "type": 0,
+      "value": "Общ преглед"
+    }
+  ],
+  "bloem.adminNav.organizationPeople.description": [
+    {
+      "type": 0,
+      "value": "Всички в тази организация, техните профили и план."
+    }
+  ],
+  "bloem.adminNav.organizationPeople.label": [
+    {
+      "type": 0,
+      "value": "Хора"
+    }
+  ],
+  "bloem.adminNav.organizationStorage.description": [
+    {
+      "type": 0,
+      "value": "S3 кофи, от които тази организация чете електронните си книги."
+    }
+  ],
+  "bloem.adminNav.organizationStorage.label": [
+    {
+      "type": 0,
+      "value": "Източници на хранилище"
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.description": [
+    {
+      "type": 0,
+      "value": "Преместете много директни акаунти на план или променете настройките им наведнъж."
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.label": [
+    {
+      "type": 0,
+      "value": "Промяна на много акаунти"
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.description": [
+    {
+      "type": 0,
+      "value": "Преместете на план акаунт, който не е в организация."
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.label": [
+    {
+      "type": 0,
+      "value": "Директни акаунти"
+    }
+  ],
+  "bloem.adminNav.platformEngagement.description": [
+    {
+      "type": 0,
+      "value": "Промоции, изображения и сезонен облик за началния екран."
+    }
+  ],
+  "bloem.adminNav.platformEngagement.label": [
+    {
+      "type": 0,
+      "value": "Кампании и сезонни пакети"
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.description": [
+    {
+      "type": 0,
+      "value": "Всички организации на този сървър и техните членове."
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.label": [
+    {
+      "type": 0,
+      "value": "Организации"
+    }
+  ],
+  "bloem.adminNav.platformPlans.description": [
+    {
+      "type": 0,
+      "value": "Какво получава акаунтът: библиотеки, екрани, качество и изтегляния."
+    }
+  ],
+  "bloem.adminNav.platformPlans.label": [
+    {
+      "type": 0,
+      "value": "Планове"
+    }
+  ],
+  "bloem.adminNav.profilePasswords.description": [
+    {
+      "type": 0,
+      "value": "Дали профилите в домакинството могат да влизат със собствен имейл и парола."
+    }
+  ],
+  "bloem.adminNav.profilePasswords.label": [
+    {
+      "type": 0,
+      "value": "Пароли на профили"
+    }
+  ],
+  "bloem.adminNav.section.organization": [
+    {
+      "type": 0,
+      "value": "Организация"
+    }
+  ],
+  "bloem.adminNav.section.platform": [
+    {
+      "type": 0,
+      "value": "Платформа"
+    }
+  ],
+  "bloem.adminNav.strm.description": [
+    {
+      "type": 0,
+      "value": "Дали файловете .strm могат да сочат към адреси в собствената мрежа на сървъра."
+    }
+  ],
+  "bloem.adminNav.strm.label": [
+    {
+      "type": 0,
+      "value": "Файлове .strm"
+    }
+  ],
+  "bloem.adminNav.strmSettings.description": [
+    {
+      "type": 0,
+      "value": "Дали файловете .strm могат да сочат към адреси в собствената мрежа на сървъра."
+    }
+  ],
+  "bloem.adminNav.strmSettings.label": [
+    {
+      "type": 0,
+      "value": "Файлове .strm"
+    }
+  ],
+  "bloem.adminNav.strmSettings.privateAddresses": [
+    {
+      "type": 0,
+      "value": "Разрешаване на частни адреси"
+    }
+  ],
+  "bloem.adminShell.chooseContext.body": [
+    {
+      "type": 0,
+      "value": "Изберете „Платформа“ или организация от контрола за контекст в навигацията."
+    }
+  ],
+  "bloem.adminShell.chooseContext.title": [
+    {
+      "type": 0,
+      "value": "Изберете административен контекст"
+    }
+  ],
+  "bloem.adminShell.loadingContext": [
+    {
+      "type": 0,
+      "value": "Зареждане на административния контекст…"
+    }
+  ],
+  "bloem.adminTitle.organization": [
+    {
+      "type": 0,
+      "value": "Организация"
+    }
+  ],
+  "bloem.adminTitle.organizations": [
+    {
+      "type": 0,
+      "value": "Организации"
+    }
+  ],
+  "bloem.audiobooks.partTitle": [
+    {
+      "type": 0,
+      "value": "Част "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.approximateResume": [
+    {
+      "type": 0,
+      "value": "Мястото ви е запазено, докато слушахте друго копие, затова това продължава от приблизително същата точка."
+    }
+  ],
+  "bloem.audiobooks.picker.copyFallback": [
+    {
+      "type": 0,
+      "value": "Копие"
+    }
+  ],
+  "bloem.audiobooks.picker.heading": [
+    {
+      "type": 0,
+      "value": "Запис"
+    }
+  ],
+  "bloem.audiobooks.picker.incomplete": [
+    {
+      "type": 0,
+      "value": "Непълен: липсват някои части"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopy": [
+    {
+      "type": 0,
+      "value": "Локално копие"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopyNumbered": [
+    {
+      "type": 0,
+      "value": "Локално копие "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.noPlayableCopy": [
+    {
+      "type": 0,
+      "value": "В момента нито едно копие на тази книга не може да се възпроизведе тук."
+    }
+  ],
+  "bloem.audiobooks.picker.partsAndLength": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " част"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " части"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "length"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopy": [
+    {
+      "type": 0,
+      "value": "Отдалечено копие (бета)"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopyNumbered": [
+    {
+      "type": 0,
+      "value": "Отдалечено копие (бета) "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.unavailable": [
+    {
+      "type": 0,
+      "value": "Не е налично на този сървър"
+    }
+  ],
+  "bloem.capabilities.checkFailed": [
+    {
+      "type": 0,
+      "value": "Не можаха да се проверят поддържаните от този сървър функции на Bloem."
+    }
+  ],
+  "bloem.engagement.card.dismiss": [
+    {
+      "type": 0,
+      "value": "Скриване"
+    }
+  ],
+  "bloem.engagement.card.dismissFailed": [
+    {
+      "type": 0,
+      "value": "Това съобщение не можа да бъде скрито."
+    }
+  ],
+  "bloem.engagement.card.dismissing": [
+    {
+      "type": 0,
+      "value": "Скриване…"
+    }
+  ],
+  "bloem.engagement.card.learnMore": [
+    {
+      "type": 0,
+      "value": "Научете повече"
+    }
+  ],
+  "bloem.engagement.fromYourServer": [
+    {
+      "type": 0,
+      "value": "От вашия сървър"
+    }
+  ],
+  "bloem.engagement.home.storageUnavailable": [
+    {
+      "type": 0,
+      "value": "Хранилището на браузъра не е налично. Изборът ви важи само в този раздел."
+    }
+  ],
+  "bloem.engagement.home.toggle": [
+    {
+      "type": 0,
+      "value": "Промоции на началния екран: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Вкл."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Изкл."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.engagement.home.toggleHelp": [
+    {
+      "type": 0,
+      "value": "Незадължителни съобщения от вашия сървър, запазени за този профил в този браузър."
+    }
+  ],
+  "bloem.engagement.playback.close": [
+    {
+      "type": 0,
+      "value": "Затваряне на наслагването"
+    }
+  ],
+  "bloem.engagement.playback.muted": [
+    {
+      "type": 0,
+      "value": "БЕЗ ЗВУК"
+    }
+  ],
+  "bloem.engagement.playback.saveFailed": [
+    {
+      "type": 0,
+      "value": "Не можа да се запази. Опитайте отново."
+    }
+  ],
+  "bloem.engagement.playback.saved": [
+    {
+      "type": 0,
+      "value": "Запазено във входящата ви кутия"
+    }
+  ],
+  "bloem.engagement.playback.saving": [
+    {
+      "type": 0,
+      "value": "Запазване…"
+    }
+  ],
+  "bloem.engagement.playback.sendToPhone": [
+    {
+      "type": 0,
+      "value": "Изпращане до телефона ми"
+    }
+  ],
+  "bloem.engagement.prePlayback.back": [
+    {
+      "type": 0,
+      "value": "Назад"
+    }
+  ],
+  "bloem.engagement.prePlayback.continue": [
+    {
+      "type": 0,
+      "value": "Към съдържанието"
+    }
+  ],
+  "bloem.engagement.prePlayback.help": [
+    {
+      "type": 0,
+      "value": "Можете да продължите веднага, дори докато съобщенията се зареждат."
+    }
+  ],
+  "bloem.engagement.prePlayback.label": [
+    {
+      "type": 0,
+      "value": "Преди възпроизвеждане"
+    }
+  ],
+  "bloem.engagement.prePlayback.title": [
+    {
+      "type": 0,
+      "value": "Преди да гледате"
+    }
+  ],
+  "bloem.engagement.rail.label": [
+    {
+      "type": 0,
+      "value": "Съобщения от вашия сървър"
+    }
+  ],
+  "bloem.engagement.rail.title": [
+    {
+      "type": 0,
+      "value": "От вашия сървър"
+    }
+  ],
+  "bloem.engagement.seasonal.toggle": [
+    {
+      "type": 0,
+      "value": "Сезонни ефекти: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Вкл."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Изкл."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.libraryAccess.allowAll": [
+    {
+      "type": 0,
+      "value": "Разрешаване на всички налични библиотеки"
+    }
+  ],
+  "bloem.libraryAccess.allowAllIn": [
+    {
+      "type": 0,
+      "value": "Разрешаване на всички библиотеки на "
+    },
+    {
+      "type": 1,
+      "value": "scope"
+    }
+  ],
+  "bloem.libraryAccess.allowLibrary": [
+    {
+      "type": 0,
+      "value": "Разрешаване на "
+    },
+    {
+      "type": 1,
+      "value": "library"
+    }
+  ],
+  "bloem.liveTv.accessGate.askAdministrator": [
+    {
+      "type": 0,
+      "value": "Помолете администратора на сървъра за достъп до ТВ на живо."
+    }
+  ],
+  "bloem.liveTv.accessGate.backToHome": [
+    {
+      "type": 0,
+      "value": "Към началото"
+    }
+  ],
+  "bloem.liveTv.accessGate.checkFailed": [
+    {
+      "type": 0,
+      "value": "Достъпът до ТВ на живо не можа да бъде проверен"
+    }
+  ],
+  "bloem.liveTv.accessGate.checking": [
+    {
+      "type": 0,
+      "value": "Проверка на достъпа до ТВ на живо…"
+    }
+  ],
+  "bloem.liveTv.accessGate.notEnabled": [
+    {
+      "type": 0,
+      "value": "ТВ на живо не е включена за този профил"
+    }
+  ],
+  "bloem.liveTv.accessGate.unsupported": [
+    {
+      "type": 0,
+      "value": "ТВ на живо не е налична на този сървър"
+    }
+  ],
+  "bloem.liveTv.guide.channelColumn": [
+    {
+      "type": 0,
+      "value": "Канал"
+    }
+  ],
+  "bloem.liveTv.guide.programTooltip": [
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.guide.recordProgramLabel": [
+    {
+      "type": 0,
+      "value": "Запис на "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.guide.recordSeriesLabel": [
+    {
+      "type": 0,
+      "value": "Запис на сериала: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.guide.series": [
+    {
+      "type": 0,
+      "value": "Сериал"
+    }
+  ],
+  "bloem.liveTv.guide.watchChannel": [
+    {
+      "type": 0,
+      "value": "Гледане на "
+    },
+    {
+      "type": 1,
+      "value": "channel"
+    }
+  ],
+  "bloem.liveTv.manualRecording.changeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "Bloem не можа да потвърди последната промяна на записите ви. Първо презаредете записите си."
+    }
+  ],
+  "bloem.liveTv.manualRecording.channel": [
+    {
+      "type": 0,
+      "value": "Канал за записа"
+    }
+  ],
+  "bloem.liveTv.manualRecording.checking": [
+    {
+      "type": 0,
+      "value": "Проверка на записите…"
+    }
+  ],
+  "bloem.liveTv.manualRecording.chooseChannel": [
+    {
+      "type": 0,
+      "value": "Изберете канал"
+    }
+  ],
+  "bloem.liveTv.manualRecording.couldNotConfirm": [
+    {
+      "type": 0,
+      "value": "Записът не можа да бъде потвърден."
+    }
+  ],
+  "bloem.liveTv.manualRecording.endsAt": [
+    {
+      "type": 0,
+      "value": "Край"
+    }
+  ],
+  "bloem.liveTv.manualRecording.failed": [
+    {
+      "type": 1,
+      "value": "reason"
+    },
+    {
+      "type": 0,
+      "value": " Проверете състоянието на записите, преди да опитате отново."
+    }
+  ],
+  "bloem.liveTv.manualRecording.intro": [
+    {
+      "type": 0,
+      "value": "Използвайте това, когато предаване липсва в програмата. Часовете са в часовата зона на браузъра ви ("
+    },
+    {
+      "type": 1,
+      "value": "timeZone"
+    },
+    {
+      "type": 0,
+      "value": ")."
+    }
+  ],
+  "bloem.liveTv.manualRecording.invalidTimes": [
+    {
+      "type": 0,
+      "value": "Изберете час на края след началния час и в бъдещето."
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloadFailed": [
+    {
+      "type": 0,
+      "value": "Записите не можаха да бъдат презаредени. Действията със записи остават блокирани; опитайте отново."
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloaded": [
+    {
+      "type": 0,
+      "value": "Записите са презаредени. Прегледайте списъка и въведете заглавие, за да планирате нов запис."
+    }
+  ],
+  "bloem.liveTv.manualRecording.scheduled": [
+    {
+      "type": 0,
+      "value": "Записът е планиран."
+    }
+  ],
+  "bloem.liveTv.manualRecording.startsAt": [
+    {
+      "type": 0,
+      "value": "Начало"
+    }
+  ],
+  "bloem.liveTv.manualRecording.submit": [
+    {
+      "type": 0,
+      "value": "Планиране на запис"
+    }
+  ],
+  "bloem.liveTv.manualRecording.summary": [
+    {
+      "type": 0,
+      "value": "Планиране по канал и час"
+    }
+  ],
+  "bloem.liveTv.manualRecording.title": [
+    {
+      "type": 0,
+      "value": "Заглавие на записа"
+    }
+  ],
+  "bloem.liveTv.noGuideData": [
+    {
+      "type": 0,
+      "value": "Няма данни от програмата"
+    }
+  ],
+  "bloem.liveTv.page.cancelRecording": [
+    {
+      "type": 0,
+      "value": "Отказ"
+    }
+  ],
+  "bloem.liveTv.page.channelCount": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " канал"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " канала"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.liveTv.page.filterChannels": [
+    {
+      "type": 0,
+      "value": "Филтриране на каналите…"
+    }
+  ],
+  "bloem.liveTv.page.filterCount": [
+    {
+      "type": 1,
+      "value": "shown"
+    },
+    {
+      "type": 0,
+      "value": " от "
+    },
+    {
+      "type": 1,
+      "value": "total"
+    }
+  ],
+  "bloem.liveTv.page.hd": [
+    {
+      "type": 0,
+      "value": "HD"
+    }
+  ],
+  "bloem.liveTv.page.historyEmpty": [
+    {
+      "type": 0,
+      "value": "Завършените и неуспешните записи ще се показват тук."
+    }
+  ],
+  "bloem.liveTv.page.historyTitle": [
+    {
+      "type": 0,
+      "value": "История"
+    }
+  ],
+  "bloem.liveTv.page.intro": [
+    {
+      "type": 0,
+      "value": "Вижте какво върви сега, разгледайте предстоящите предавания и управлявайте записите си."
+    }
+  ],
+  "bloem.liveTv.page.loadingChannels": [
+    {
+      "type": 0,
+      "value": "Зареждане на каналите…"
+    }
+  ],
+  "bloem.liveTv.page.loadingGuide": [
+    {
+      "type": 0,
+      "value": "Зареждане на програмата…"
+    }
+  ],
+  "bloem.liveTv.page.loadingRecordings": [
+    {
+      "type": 0,
+      "value": "Зареждане на записите…"
+    }
+  ],
+  "bloem.liveTv.page.noChannels": [
+    {
+      "type": 0,
+      "value": "Все още няма канали. Администратор може да добави тунер или доставчик Xtream в „Администриране“, след това „ТВ на живо“."
+    }
+  ],
+  "bloem.liveTv.page.noFilterMatches": [
+    {
+      "type": 0,
+      "value": "Няма канали, отговарящи на този филтър."
+    }
+  ],
+  "bloem.liveTv.page.notInLibrary": [
+    {
+      "type": 0,
+      "value": "Този запис все още не е в библиотека, затова не може да се възпроизведе тук. Администратор трябва да добави папката със записи към библиотека и да я сканира."
+    }
+  ],
+  "bloem.liveTv.page.nowAndNext": [
+    {
+      "type": 1,
+      "value": "now"
+    },
+    {
+      "type": 0,
+      "value": " → "
+    },
+    {
+      "type": 1,
+      "value": "next"
+    }
+  ],
+  "bloem.liveTv.page.openRecording": [
+    {
+      "type": 0,
+      "value": "Отваряне на записа"
+    }
+  ],
+  "bloem.liveTv.page.recordNext": [
+    {
+      "type": 0,
+      "value": "Запис на следващото"
+    }
+  ],
+  "bloem.liveTv.page.recordNow": [
+    {
+      "type": 0,
+      "value": "Запис сега"
+    }
+  ],
+  "bloem.liveTv.page.recordingChangeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "Bloem не можа да потвърди последната промяна на записите ви. Презаредете записите си, преди да планирате или откажете друг."
+    }
+  ],
+  "bloem.liveTv.page.recordingDetails": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.page.recordingStatus": [
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "scheduled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "планиран"
+            }
+          ]
+        },
+        "recording": {
+          "value": [
+            {
+              "type": 0,
+              "value": "записва се"
+            }
+          ]
+        },
+        "completed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "завършен"
+            }
+          ]
+        },
+        "failed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "неуспешен"
+            }
+          ]
+        },
+        "cancelled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "отказан"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "status"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.liveTv.page.reloadChannels": [
+    {
+      "type": 0,
+      "value": "Презареждане на каналите"
+    }
+  ],
+  "bloem.liveTv.page.scheduledEmpty": [
+    {
+      "type": 0,
+      "value": "Все още няма планирани записи. Изберете предаване от програмата или списъка с канали."
+    }
+  ],
+  "bloem.liveTv.page.scheduledTitle": [
+    {
+      "type": 0,
+      "value": "Планирани и текущи"
+    }
+  ],
+  "bloem.liveTv.page.tabChannels": [
+    {
+      "type": 0,
+      "value": "Канали"
+    }
+  ],
+  "bloem.liveTv.page.tabGuide": [
+    {
+      "type": 0,
+      "value": "Програма"
+    }
+  ],
+  "bloem.liveTv.page.tabRecordings": [
+    {
+      "type": 0,
+      "value": "Моите записи"
+    }
+  ],
+  "bloem.liveTv.page.tabRules": [
+    {
+      "type": 0,
+      "value": "Правила за запис"
+    }
+  ],
+  "bloem.liveTv.page.untitled": [
+    {
+      "type": 0,
+      "value": "Без заглавие"
+    }
+  ],
+  "bloem.liveTv.page.watch": [
+    {
+      "type": 0,
+      "value": "Гледане"
+    }
+  ],
+  "bloem.liveTv.player.browserCannotPlay": [
+    {
+      "type": 0,
+      "value": "Този браузър не може да възпроизведе този канал. Опитайте друг браузър или приложението Bloem."
+    }
+  ],
+  "bloem.liveTv.player.browserCouldNotPlay": [
+    {
+      "type": 0,
+      "value": "Този браузър не успя да възпроизведе канала. Опитайте друг канал или презаредете страницата."
+    }
+  ],
+  "bloem.liveTv.player.couldNotStart": [
+    {
+      "type": 0,
+      "value": "Каналът не можа да бъде пуснат. Опитайте отново или изберете друг канал."
+    }
+  ],
+  "bloem.liveTv.player.didNotStart": [
+    {
+      "type": 0,
+      "value": "Каналът не се пусна. Възможно е още да се настройва, затова опитайте отново."
+    }
+  ],
+  "bloem.liveTv.player.hlsPlaybackError": [
+    {
+      "type": 0,
+      "value": "Грешка при HLS възпроизвеждане"
+    }
+  ],
+  "bloem.liveTv.player.label": [
+    {
+      "type": 0,
+      "value": "ТВ на живо"
+    }
+  ],
+  "bloem.liveTv.player.labelWithTitle": [
+    {
+      "type": 0,
+      "value": "На живо: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.player.playbackError": [
+    {
+      "type": 0,
+      "value": "Грешка при възпроизвеждане"
+    }
+  ],
+  "bloem.liveTv.player.stopped": [
+    {
+      "type": 0,
+      "value": "Каналът спря или не можа да се зареди. Опитайте отново, за да го настроите пак."
+    }
+  ],
+  "bloem.liveTv.player.unsupportedAddress": [
+    {
+      "type": 0,
+      "value": "Адресът на потока на този канал не се поддържа. Опитайте друг канал."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.blocked": [
+    {
+      "type": 0,
+      "value": "Действията със записи са блокирани. Презаредете записите преди следващо действие."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelFailed": [
+    {
+      "type": 0,
+      "value": "Записът не можа да бъде отказан"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelled": [
+    {
+      "type": 0,
+      "value": "Записът е отказан"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReloadFirst": [
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " Презаредете записите преди следващо действие."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReviewRefreshed": [
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " Прегледайте обновените записи преди следващо действие."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reload": [
+    {
+      "type": 0,
+      "value": "Презареждане на записите"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloadFailed": [
+    {
+      "type": 0,
+      "value": "Записите не можаха да бъдат презаредени. Действията със записи остават блокирани; опитайте отново „Презареждане на записите“."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloaded": [
+    {
+      "type": 0,
+      "value": "Записите са презаредени. Прегледайте списъка преди следващо действие със запис."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduleFailed": [
+    {
+      "type": 0,
+      "value": "Записът не можа да бъде планиран"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduled": [
+    {
+      "type": 0,
+      "value": "Записът е планиран"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.waitForReadback": [
+    {
+      "type": 0,
+      "value": "Изчакайте прочитането на записите, преди да презаредите."
+    }
+  ],
+  "bloem.liveTv.reloadRecordings": [
+    {
+      "type": 0,
+      "value": "Презареждане на записите"
+    }
+  ],
+  "bloem.liveTv.reloadingRecordings": [
+    {
+      "type": 0,
+      "value": "Презареждане на записите…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allChannels": [
+    {
+      "type": 0,
+      "value": "Всички канали"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allProgramsOnChannel": [
+    {
+      "type": 0,
+      "value": "Всички предавания по канала"
+    }
+  ],
+  "bloem.liveTv.seriesRules.channel": [
+    {
+      "type": 0,
+      "value": "Канал"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmDescription": [
+    {
+      "type": 0,
+      "value": "Това премахва повтарящото се правило. Вече планираните записи и записаните файлове не се изтриват. Управлявайте ги отделно в „Моите записи“."
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmRemove": [
+    {
+      "type": 0,
+      "value": "Премахване на правилото"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmTitle": [
+    {
+      "type": 0,
+      "value": "Премахване на правило за запис: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFailed": [
+    {
+      "type": 0,
+      "value": "Правилото за запис не можа да бъде създадено."
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFormLabel": [
+    {
+      "type": 0,
+      "value": "Създаване на правило за запис"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createLegend": [
+    {
+      "type": 0,
+      "value": "Създаване на правило за запис"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createRule": [
+    {
+      "type": 0,
+      "value": "Създаване на правило"
+    }
+  ],
+  "bloem.liveTv.seriesRules.created": [
+    {
+      "type": 0,
+      "value": "Правилото за запис е създадено. Сървърът ще планира съответстващите предавания от програмата."
+    }
+  ],
+  "bloem.liveTv.seriesRules.creating": [
+    {
+      "type": 0,
+      "value": "Създаване…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.disabled": [
+    {
+      "type": 0,
+      "value": "Изключено"
+    }
+  ],
+  "bloem.liveTv.seriesRules.empty": [
+    {
+      "type": 0,
+      "value": "Все още няма правила за запис на сериали."
+    }
+  ],
+  "bloem.liveTv.seriesRules.enabled": [
+    {
+      "type": 0,
+      "value": "Включено"
+    }
+  ],
+  "bloem.liveTv.seriesRules.heading": [
+    {
+      "type": 0,
+      "value": "Правила за запис на сериали"
+    }
+  ],
+  "bloem.liveTv.seriesRules.intro": [
+    {
+      "type": 0,
+      "value": "Записвайте точен сериал от програмата или съпоставяйте заглавия, съдържащи текста от търсенето ви (без значение главни или малки букви). Ограничете правилото до един канал или го прилагайте за всички канали."
+    }
+  ],
+  "bloem.liveTv.seriesRules.listLabel": [
+    {
+      "type": 0,
+      "value": "Правила за запис"
+    }
+  ],
+  "bloem.liveTv.seriesRules.loading": [
+    {
+      "type": 0,
+      "value": "Зареждане на правилата за запис…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.matchSeries": [
+    {
+      "type": 0,
+      "value": "Съпоставяне със сериал от програмата"
+    }
+  ],
+  "bloem.liveTv.seriesRules.newOnly": [
+    {
+      "type": 0,
+      "value": "Само предавания, отбелязани като нови в програмата"
+    }
+  ],
+  "bloem.liveTv.seriesRules.reload": [
+    {
+      "type": 0,
+      "value": "Презареждане на правилата за запис"
+    }
+  ],
+  "bloem.liveTv.seriesRules.remove": [
+    {
+      "type": 0,
+      "value": "Премахване"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeFailed": [
+    {
+      "type": 0,
+      "value": "Правилото за запис не можа да бъде премахнато."
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeRuleLabel": [
+    {
+      "type": 0,
+      "value": "Премахване на правило: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removed": [
+    {
+      "type": 0,
+      "value": "Правилото е премахнато. Вече планираните записи и записаните файлове остават непроменени."
+    }
+  ],
+  "bloem.liveTv.seriesRules.selectProfile": [
+    {
+      "type": 0,
+      "value": "Изберете профил, за да управлявате правилата за запис."
+    }
+  ],
+  "bloem.liveTv.seriesRules.seriesLabel": [
+    {
+      "type": 0,
+      "value": "Сериал "
+    },
+    {
+      "type": 1,
+      "value": "seriesId"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryNewOnly": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · Само нови предавания"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryRepeats": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · Включително повторения"
+    }
+  ],
+  "bloem.liveTv.seriesRules.titleContains": [
+    {
+      "type": 0,
+      "value": "Заглавието съдържа"
+    }
+  ],
+  "bloem.liveTv.seriesRules.unavailableChannel": [
+    {
+      "type": 0,
+      "value": "Недостъпен канал"
+    }
+  ],
+  "bloem.liveTv.seriesRules.useTitleMatching": [
+    {
+      "type": 0,
+      "value": "Използване на съпоставяне по заглавие"
+    }
+  ],
+  "bloem.liveTv.timeRange": [
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.title": [
+    {
+      "type": 0,
+      "value": "ТВ на живо"
+    }
+  ],
+  "bloem.liveTv.tryAgain": [
+    {
+      "type": 0,
+      "value": "Опитайте отново"
+    }
+  ],
+  "bloem.liveTv.watch.backToLiveTv": [
+    {
+      "type": 0,
+      "value": "Обратно към ТВ на живо"
+    }
+  ],
+  "bloem.liveTv.watch.connecting": [
+    {
+      "type": 0,
+      "value": "Свързване с канала ви…"
+    }
+  ],
+  "bloem.liveTv.watch.selectProfileAndChannel": [
+    {
+      "type": 0,
+      "value": "Изберете профил и канал, за да гледате ТВ на живо."
+    }
+  ],
+  "bloem.nav.liveTv": [
+    {
+      "type": 0,
+      "value": "ТВ на живо"
+    }
+  ],
+  "bloem.notifications.announcement.defaultTitle": [
+    {
+      "type": 0,
+      "value": "Съобщение от сървъра"
+    }
+  ],
+  "bloem.notifications.announcement.severity.critical": [
+    {
+      "type": 0,
+      "value": "Критично"
+    }
+  ],
+  "bloem.notifications.announcement.severity.info": [
+    {
+      "type": 0,
+      "value": "Информация"
+    }
+  ],
+  "bloem.notifications.announcement.severity.warning": [
+    {
+      "type": 0,
+      "value": "Предупреждение"
+    }
+  ],
+  "bloem.preview.banner.endsOn": [
+    {
+      "type": 0,
+      "value": "Прегледът ви изтича на "
+    },
+    {
+      "type": 1,
+      "value": "date"
+    }
+  ],
+  "bloem.preview.banner.exitPreview": [
+    {
+      "type": 0,
+      "value": "Изход от прегледа"
+    }
+  ],
+  "bloem.preview.banner.freePlayLeft": [
+    {
+      "type": 0,
+      "value": "Безплатно гледане: остават "
+    },
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " мин"
+    }
+  ],
+  "bloem.preview.banner.minutesRemaining": [
+    {
+      "type": 0,
+      "value": "Остават "
+    },
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " мин"
+    }
+  ],
+  "bloem.preview.banner.signOut": [
+    {
+      "type": 0,
+      "value": "Изход"
+    }
+  ],
+  "bloem.preview.banner.subscribe": [
+    {
+      "type": 0,
+      "value": "Абониране"
+    }
+  ],
+  "bloem.preview.banner.yourPreview": [
+    {
+      "type": 0,
+      "value": "Преглед на вашата библиотека"
+    }
+  ],
+  "bloem.preview.book.alsoByThisAuthor": [
+    {
+      "type": 0,
+      "value": "Още от този автор"
+    }
+  ],
+  "bloem.preview.book.audiobook": [
+    {
+      "type": 0,
+      "value": "Аудиокнига"
+    }
+  ],
+  "bloem.preview.book.byAuthors": [
+    {
+      "type": 0,
+      "value": "От "
+    },
+    {
+      "type": 1,
+      "value": "authors"
+    }
+  ],
+  "bloem.preview.book.chapterNumber": [
+    {
+      "type": 0,
+      "value": "Глава "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.book.chapters": [
+    {
+      "type": 0,
+      "value": "Глави"
+    }
+  ],
+  "bloem.preview.book.ebook": [
+    {
+      "type": 0,
+      "value": "Електронна книга"
+    }
+  ],
+  "bloem.preview.book.manga": [
+    {
+      "type": 0,
+      "value": "Манга"
+    }
+  ],
+  "bloem.preview.book.youMightAlsoLike": [
+    {
+      "type": 0,
+      "value": "Може да харесате също"
+    }
+  ],
+  "bloem.preview.browseOnly": [
+    {
+      "type": 0,
+      "value": "Преглед само за разглеждане"
+    }
+  ],
+  "bloem.preview.collections.loading": [
+    {
+      "type": 0,
+      "value": "Зареждане на колекциите…"
+    }
+  ],
+  "bloem.preview.collections.title": [
+    {
+      "type": 0,
+      "value": "Колекции"
+    }
+  ],
+  "bloem.preview.collections.titleCount": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " заглавие"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " заглавия"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.preview.collections.unavailable": [
+    {
+      "type": 0,
+      "value": "Колекциите не са налични. Опитайте отново."
+    }
+  ],
+  "bloem.preview.cta.message": [
+    {
+      "type": 0,
+      "value": "Разгледайте библиотеката тук. Абонирайте се, за да гледате, четете и слушате."
+    }
+  ],
+  "bloem.preview.cta.subscribeToBrand": [
+    {
+      "type": 0,
+      "value": "Абониране за "
+    },
+    {
+      "type": 1,
+      "value": "brand"
+    }
+  ],
+  "bloem.preview.cta.subscribeToListen": [
+    {
+      "type": 0,
+      "value": "Абонирайте се, за да слушате"
+    }
+  ],
+  "bloem.preview.cta.subscribeToRead": [
+    {
+      "type": 0,
+      "value": "Абонирайте се, за да четете"
+    }
+  ],
+  "bloem.preview.cta.subscribeToWatch": [
+    {
+      "type": 0,
+      "value": "Абонирайте се, за да гледате"
+    }
+  ],
+  "bloem.preview.details": [
+    {
+      "type": 0,
+      "value": "Подробности"
+    }
+  ],
+  "bloem.preview.dialog.freePlayEnded": [
+    {
+      "type": 0,
+      "value": "Безплатното ви гледане приключи"
+    }
+  ],
+  "bloem.preview.dialog.keepBrowsing": [
+    {
+      "type": 0,
+      "value": "Продължаване на разглеждането"
+    }
+  ],
+  "bloem.preview.dialog.playFree": [
+    {
+      "type": 0,
+      "value": "Безплатно гледане"
+    }
+  ],
+  "bloem.preview.dialog.playFreeFor": [
+    {
+      "type": 6,
+      "value": "minutes",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Безплатно гледане за "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " минута"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Безплатно гледане за "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " минути"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.preview.dialog.sessionEnded": [
+    {
+      "type": 0,
+      "value": "Сесията ви за преглед приключи"
+    }
+  ],
+  "bloem.preview.dialog.startTrial": [
+    {
+      "type": 0,
+      "value": "Започнете пробния си период"
+    }
+  ],
+  "bloem.preview.dialog.startTrialToEnjoy": [
+    {
+      "type": 0,
+      "value": "Започнете пробния си период, за да се насладите на цялата библиотека."
+    }
+  ],
+  "bloem.preview.errors.couldNotStart": [
+    {
+      "type": 0,
+      "value": "Прегледът не можа да започне. Използвайте нова връзка за стартиране."
+    }
+  ],
+  "bloem.preview.errors.exitTimedOut": [
+    {
+      "type": 0,
+      "value": "Времето за изход от прегледа изтече"
+    }
+  ],
+  "bloem.preview.errors.requestTimedOut": [
+    {
+      "type": 0,
+      "value": "Времето за заявката за преглед изтече"
+    }
+  ],
+  "bloem.preview.errors.useStorefrontLink": [
+    {
+      "type": 0,
+      "value": "Използвайте връзката за стартиране на преглед от магазина."
+    }
+  ],
+  "bloem.preview.hero.featuredTitles": [
+    {
+      "type": 0,
+      "value": "Препоръчани заглавия"
+    }
+  ],
+  "bloem.preview.hero.pauseSlideshow": [
+    {
+      "type": 0,
+      "value": "Пауза на слайдшоуто"
+    }
+  ],
+  "bloem.preview.hero.resumeSlideshow": [
+    {
+      "type": 0,
+      "value": "Продължаване на слайдшоуто"
+    }
+  ],
+  "bloem.preview.hero.showSlide": [
+    {
+      "type": 0,
+      "value": "Показване на "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.preview.landing.body": [
+    {
+      "type": 0,
+      "value": "Използвайте нова връзка за преглед, за да разгледате библиотеката, или започнете пробния си период."
+    }
+  ],
+  "bloem.preview.landing.browse": [
+    {
+      "type": 0,
+      "value": "Разглеждане на библиотеката"
+    }
+  ],
+  "bloem.preview.landing.title": [
+    {
+      "type": 0,
+      "value": "Започнете разглеждането от "
+    },
+    {
+      "type": 1,
+      "value": "brand"
+    }
+  ],
+  "bloem.preview.metadata.audio": [
+    {
+      "type": 0,
+      "value": "Аудио"
+    }
+  ],
+  "bloem.preview.metadata.audioNumber": [
+    {
+      "type": 0,
+      "value": "Аудио "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.metadata.subtitleNumber": [
+    {
+      "type": 0,
+      "value": "Субтитри "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.metadata.subtitles": [
+    {
+      "type": 0,
+      "value": "Субтитри"
+    }
+  ],
+  "bloem.preview.metadata.version": [
+    {
+      "type": 0,
+      "value": "Версия"
+    }
+  ],
+  "bloem.preview.metadata.versionNumber": [
+    {
+      "type": 0,
+      "value": "Версия "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.moreActions": [
+    {
+      "type": 0,
+      "value": "Още действия"
+    }
+  ],
+  "bloem.preview.route.loading": [
+    {
+      "type": 0,
+      "value": "Зареждане..."
+    }
+  ],
+  "bloem.preview.route.loadingApplication": [
+    {
+      "type": 0,
+      "value": "Зареждане на приложението"
+    }
+  ],
+  "bloem.preview.sidebar.calendar": [
+    {
+      "type": 0,
+      "value": "Календар"
+    }
+  ],
+  "bloem.preview.sidebar.collections": [
+    {
+      "type": 0,
+      "value": "Колекции"
+    }
+  ],
+  "bloem.preview.sidebar.home": [
+    {
+      "type": 0,
+      "value": "Начало"
+    }
+  ],
+  "bloem.preview.sidebar.libraries": [
+    {
+      "type": 0,
+      "value": "Библиотеки"
+    }
+  ],
+  "bloem.preview.sidebar.navigation": [
+    {
+      "type": 0,
+      "value": "Навигация в прегледа"
+    }
+  ],
+  "bloem.preview.sidebar.preview": [
+    {
+      "type": 0,
+      "value": "Преглед"
+    }
+  ],
+  "bloem.preview.sidebar.search": [
+    {
+      "type": 0,
+      "value": "Търсене"
+    }
+  ],
+  "bloem.preview.start.opening": [
+    {
+      "type": 0,
+      "value": "Отваряне на прегледа на библиотеката ви…"
+    }
+  ],
+  "bloem.profiles.directCredentials.changeNotConfirmed": [
+    {
+      "type": 0,
+      "value": "Промяната не можа да бъде потвърдена."
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingProfileCredentialStatus": [
+    {
+      "type": 0,
+      "value": "Проверка на данните за вход на профила…"
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingSupport": [
+    {
+      "type": 0,
+      "value": "Проверка на поддръжката…"
+    }
+  ],
+  "bloem.profiles.directCredentials.chooseAProfile": [
+    {
+      "type": 0,
+      "value": "Изберете профил"
+    }
+  ],
+  "bloem.profiles.directCredentials.confirmRequired": [
+    {
+      "type": 0,
+      "value": "Въведете паролата на акаунта си и отметнете полето за потвърждение."
+    }
+  ],
+  "bloem.profiles.directCredentials.couldNotLoadHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "Профилите в домакинството не можаха да бъдат заредени."
+    }
+  ],
+  "bloem.profiles.directCredentials.emailAndPasswordRequired": [
+    {
+      "type": 0,
+      "value": "Въведете имейл и нова парола за профила."
+    }
+  ],
+  "bloem.profiles.directCredentials.giveAHouseholdProfileIts": [
+    {
+      "type": 0,
+      "value": "Дайте на профил в домакинството собствен имейл и парола, за да може да влиза в приложенията на Bloem без паролата на акаунта. Уебсайтът продължава да използва входа на акаунта. За да промените това, ви е нужна паролата на акаунта; акаунтите, които влизат само чрез единен вход (SSO), не могат да го използват. Паролата на профила спира да работи, докато входът с парола е изключен за този сървър или за вашия акаунт."
+    }
+  ],
+  "bloem.profiles.directCredentials.iUnderstandThisSignsThe": [
+    {
+      "type": 0,
+      "value": "Разбирам, че това извежда профила от всяко приложение, в което е влязъл със собствените си данни за вход."
+    }
+  ],
+  "bloem.profiles.directCredentials.loadingHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "Зареждане на профилите в домакинството…"
+    }
+  ],
+  "bloem.profiles.directCredentials.manageSignInFor": [
+    {
+      "type": 0,
+      "value": "Управление на входа за "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "bloem.profiles.directCredentials.newPasswordForTheProfile": [
+    {
+      "type": 0,
+      "value": "Нова парола за профила"
+    }
+  ],
+  "bloem.profiles.directCredentials.profile": [
+    {
+      "type": 0,
+      "value": "Профил"
+    }
+  ],
+  "bloem.profiles.directCredentials.profileEmail": [
+    {
+      "type": 0,
+      "value": "Имейл на профила"
+    }
+  ],
+  "bloem.profiles.directCredentials.saveSignIn": [
+    {
+      "type": 0,
+      "value": "Запазване на входа"
+    }
+  ],
+  "bloem.profiles.directCredentials.saving": [
+    {
+      "type": 0,
+      "value": "Запазване…"
+    }
+  ],
+  "bloem.profiles.directCredentials.separateSignInForA": [
+    {
+      "type": 0,
+      "value": "Отделен вход за профил"
+    }
+  ],
+  "bloem.profiles.directCredentials.signInSaved": [
+    {
+      "type": 0,
+      "value": "Данните за вход са запазени. Профилът беше изведен от приложенията си и трябва да влезе отново."
+    }
+  ],
+  "bloem.profiles.directCredentials.signInTurnedOff": [
+    {
+      "type": 0,
+      "value": "Собственият вход на профила е изключен и профилът е изведен от приложенията си."
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileHasNoSign": [
+    {
+      "type": 0,
+      "value": "Този профил няма собствен вход."
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileSignsInAs": [
+    {
+      "type": 0,
+      "value": "Този профил влиза като "
+    },
+    {
+      "type": 1,
+      "value": "loginEmail"
+    }
+  ],
+  "bloem.profiles.directCredentials.tryAgain": [
+    {
+      "type": 0,
+      "value": "Опитайте отново"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnOffItsSignIn": [
+    {
+      "type": 0,
+      "value": "Изключване на входа му"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnedOff": [
+    {
+      "type": 0,
+      "value": "Паролите на профили са изключени на този сървър. Администратор на сървъра може да ги включи в „Настройки“, в раздела „Вход и сигурност“."
+    }
+  ],
+  "bloem.profiles.directCredentials.yourAccountPassword": [
+    {
+      "type": 0,
+      "value": "Паролата на вашия акаунт"
+    }
+  ],
+  "bloem.requests.audiobook.identifierHint": [
+    {
+      "type": 0,
+      "value": "ISBN или ASIN помага аудиокнигата да бъде разпозната, когато пристигне. Без идентификатор администратор може да отбележи заявката ви като изпълнена."
+    }
+  ],
+  "bloem.requests.audiobook.intro": [
+    {
+      "type": 0,
+      "value": "Заявете заглавие за вашата организация. Одобрените заявки чакат, докато аудиокнигата бъде добавена."
+    }
+  ],
+  "bloem.requests.audiobook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "Нямате заявки за аудиокниги."
+    }
+  ],
+  "bloem.requests.audiobook.mineHeading": [
+    {
+      "type": 0,
+      "value": "Вашите заявки за аудиокниги"
+    }
+  ],
+  "bloem.requests.audiobook.open": [
+    {
+      "type": 0,
+      "value": "Отваряне на аудиокнигата"
+    }
+  ],
+  "bloem.requests.audiobook.requested": [
+    {
+      "type": 0,
+      "value": "Аудиокнигата е заявена"
+    }
+  ],
+  "bloem.requests.audiobook.submit": [
+    {
+      "type": 0,
+      "value": "Заявяване на аудиокнига"
+    }
+  ],
+  "bloem.requests.audiobook.title": [
+    {
+      "type": 0,
+      "value": "Заявки за аудиокниги"
+    }
+  ],
+  "bloem.requests.audiobook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "Заявките за аудиокниги не са налични за този профил."
+    }
+  ],
+  "bloem.requests.cancel": [
+    {
+      "type": 0,
+      "value": "Отказ от заявката"
+    }
+  ],
+  "bloem.requests.ebook.availabilityCheckFailed": [
+    {
+      "type": 0,
+      "value": "Наличността на заявките за електронни книги не може да бъде проверена."
+    }
+  ],
+  "bloem.requests.ebook.cancellationNote": [
+    {
+      "type": 0,
+      "value": "Отказът важи само в Bloem; доставчикът може вече да обработва електронната книга."
+    }
+  ],
+  "bloem.requests.ebook.checkingAvailability": [
+    {
+      "type": 0,
+      "value": "Проверка на наличността на заявките за електронни книги…"
+    }
+  ],
+  "bloem.requests.ebook.fulfilmentUnconfigured": [
+    {
+      "type": 0,
+      "value": "Доставката на електронни книги не е настроена. Одобрените заявки ще чакат настройката."
+    }
+  ],
+  "bloem.requests.ebook.identifierHint": [
+    {
+      "type": 0,
+      "value": "Посочете ISBN на изданието, което искате. Заявката е изпълнена, когато електронната книга е налична във вашата библиотека."
+    }
+  ],
+  "bloem.requests.ebook.intro": [
+    {
+      "type": 0,
+      "value": "Заявете заглавие за вашата организация. Одобрените заявки чакат, докато електронната книга бъде добавена."
+    }
+  ],
+  "bloem.requests.ebook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "Нямате заявки за електронни книги."
+    }
+  ],
+  "bloem.requests.ebook.mineHeading": [
+    {
+      "type": 0,
+      "value": "Вашите заявки за електронни книги"
+    }
+  ],
+  "bloem.requests.ebook.open": [
+    {
+      "type": 0,
+      "value": "Отваряне на електронната книга"
+    }
+  ],
+  "bloem.requests.ebook.requested": [
+    {
+      "type": 0,
+      "value": "Електронната книга е заявена"
+    }
+  ],
+  "bloem.requests.ebook.submit": [
+    {
+      "type": 0,
+      "value": "Заявяване на електронна книга"
+    }
+  ],
+  "bloem.requests.ebook.title": [
+    {
+      "type": 0,
+      "value": "Заявки за електронни книги"
+    }
+  ],
+  "bloem.requests.ebook.turnedOff": [
+    {
+      "type": 0,
+      "value": "Заявките за електронни книги в момента са изключени."
+    }
+  ],
+  "bloem.requests.ebook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "Заявките за електронни книги не са налични за този профил."
+    }
+  ],
+  "bloem.requests.ebook.unavailableOnServer": [
+    {
+      "type": 0,
+      "value": "Заявките за електронни книги не са налични на този сървър."
+    }
+  ],
+  "bloem.requests.field.asinOptional": [
+    {
+      "type": 0,
+      "value": "ASIN (по избор)"
+    }
+  ],
+  "bloem.requests.field.author": [
+    {
+      "type": 0,
+      "value": "Автор"
+    }
+  ],
+  "bloem.requests.field.authorOptional": [
+    {
+      "type": 0,
+      "value": "Автор (по избор)"
+    }
+  ],
+  "bloem.requests.field.isbn": [
+    {
+      "type": 0,
+      "value": "ISBN"
+    }
+  ],
+  "bloem.requests.field.isbnOptional": [
+    {
+      "type": 0,
+      "value": "ISBN (по избор)"
+    }
+  ],
+  "bloem.requests.field.noteOptional": [
+    {
+      "type": 0,
+      "value": "Бележка (по избор)"
+    }
+  ],
+  "bloem.requests.field.title": [
+    {
+      "type": 0,
+      "value": "Заглавие"
+    }
+  ],
+  "bloem.requests.isbnValue": [
+    {
+      "type": 0,
+      "value": "ISBN "
+    },
+    {
+      "type": 1,
+      "value": "isbn"
+    }
+  ],
+  "bloem.requests.loading": [
+    {
+      "type": 0,
+      "value": "Зареждане на заявките…"
+    }
+  ],
+  "bloem.requests.mediaTabs.audiobooks": [
+    {
+      "type": 0,
+      "value": "Аудиокниги"
+    }
+  ],
+  "bloem.requests.mediaTabs.ebooks": [
+    {
+      "type": 0,
+      "value": "Електронни книги"
+    }
+  ],
+  "bloem.requests.mediaTabs.label": [
+    {
+      "type": 0,
+      "value": "Вид медия на заявката"
+    }
+  ],
+  "bloem.requests.mediaTabs.video": [
+    {
+      "type": 0,
+      "value": "Филми и сериали"
+    }
+  ],
+  "bloem.requests.nextPage": [
+    {
+      "type": 0,
+      "value": "Напред"
+    }
+  ],
+  "bloem.requests.policy.limited": [
+    {
+      "type": 0,
+      "value": "Остават "
+    },
+    {
+      "type": 1,
+      "value": "remaining"
+    },
+    {
+      "type": 0,
+      "value": " от "
+    },
+    {
+      "type": 6,
+      "value": "limit",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " заявка"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " заявки"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " за "
+    },
+    {
+      "type": 6,
+      "value": "days",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ден"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " дни"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": ". "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Заявките се одобряват автоматично."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Администратор ще прегледа заявката ви."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.requests.policy.unlimited": [
+    {
+      "type": 0,
+      "value": "Без ограничение на заявките. "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Заявките се одобряват автоматично."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Администратор ще прегледа заявката ви."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.requests.previousPage": [
+    {
+      "type": 0,
+      "value": "Назад"
+    }
+  ],
+  "bloem.requests.submitting": [
+    {
+      "type": 0,
+      "value": "Заявяване…"
+    }
+  ]
+}
