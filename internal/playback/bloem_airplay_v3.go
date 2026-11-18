@@ -35,8 +35,8 @@ import (
 //     the request is unchanged and the normal plan returns;
 //   - ProbeTransformationRegistryWithToneMapV3Result (transformations_v3.go)
 //     defines the Dolby audio transformations;
-//   - the "ac3" and "eac3" cases of appendAudioArgs (transcode.go) call
-//     appendDolbyAudioArgsV3.
+//   - the "ac3" and "eac3" cases of appendAudioArgs (transcode.go) follow
+//     Silo's encode line with bloemDolbyAudioTargetsV3.
 
 const (
 	// OutputSinkTypeAirPlayV3 is the output.sink_type Apple clients report while
@@ -223,16 +223,15 @@ func clientDecodesHLSAudioV3(request StartRequestV3, codec string, channels int)
 		!deliveryExceedsMaxChannelsV3(request, DeliveryClassHLSV3, codec, channels)
 }
 
-// appendDolbyAudioArgsV3 adds FFmpeg's AC-3 or E-AC-3 encode: the codec, a
-// rate (the plan's, else defaultKbps), and the channel count the plan froze.
-// A zero channel count leaves FFmpeg to keep the source's layout, as the
-// encodes did before surround plans named one.
-func appendDolbyAudioArgsV3(args []string, codec string, defaultKbps int, opts TranscodeOpts) []string {
-	kbps := defaultKbps
-	if opts.TargetAudioBitrateKbps > 0 {
-		kbps = opts.TargetAudioBitrateKbps
+// bloemDolbyAudioTargetsV3 follows Silo's AC-3 or E-AC-3 encode in
+// appendAudioArgs (its codec and fixed rate, the last two arguments) with the
+// plan's rate when it froze one, and the channel count it froze. A zero
+// channel count leaves FFmpeg to keep the source's layout, as Silo's encode
+// does.
+func bloemDolbyAudioTargetsV3(args []string, opts TranscodeOpts) []string {
+	if n := len(args); opts.TargetAudioBitrateKbps > 0 && n >= 2 && args[n-2] == "-b:a" {
+		args[n-1] = strconv.Itoa(opts.TargetAudioBitrateKbps) + "k"
 	}
-	args = append(args, "-c:a", codec, "-b:a", strconv.Itoa(kbps)+"k")
 	if opts.TargetAudioChannels > 0 {
 		args = append(args, "-ac", strconv.Itoa(opts.TargetAudioChannels))
 	}

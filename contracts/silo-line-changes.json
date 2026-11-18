@@ -202,7 +202,6 @@
     "\t\treturn h.fileResolver.GetByID(ctx, fallbackID)",
     "\tCheckTranscodingAllowed(ctx context.Context, userID int, requiresVideoTranscode bool) error",
     "\tfile, err := h.fileResolver.GetByID(r.Context(), fileID)",
-    "\tif h == nil || h.ProbeEnsurer == nil || file == nil {",
     "\tif h.fileResolver == nil || h.ItemAccess == nil {"
    ]
   },
@@ -847,8 +846,6 @@
   "internal/playback/transcode.go": {
    "kind": "lines",
    "lines": [
-    "\t\targs = append(args, \"-c:a\", \"ac3\", \"-b:a\", \"448k\")",
-    "\t\targs = append(args, \"-c:a\", \"eac3\", \"-b:a\", \"384k\")",
     "\t\tchannels, bitrateKbps := ResolveAACOutputV3(opts.TargetAudioChannels, opts.TargetAudioBitrateKbps)",
     "\t\tctx,",
     "\t\topts.FFmpegPath,",
@@ -1277,6 +1274,7 @@
   "internal/api/handlers/playback.go": {
    "func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h": "9a05a3334944df6e",
    "func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht": "2ee6c3b5afc219f6",
+   "func (h *PlaybackHandler) ensurePlaybackProbe(ctx context.Context, file *models.": "6461a8cf19cddbcc",
    "func (h *PlaybackHandler) loadAuthorizedFile(r *http.Request, fileID int) (*mode": "674f14d1aae430cd",
    "func (h *PlaybackHandler) loadFileByPreferredID(": "babf5d6eda5255e8"
   },

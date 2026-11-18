@@ -2038,10 +2038,12 @@ func appendAudioArgs(args []string, opts TranscodeOpts) []string {
 	case "eac3":
 		// Typical Dolby Digital Plus 5.1 bitrate; let the source dictate channel
 		// count so we preserve surround when possible.
-		args = appendDolbyAudioArgsV3(args, "eac3", 384, opts) // Bloem seam: bloem_airplay_v3.go
+		args = append(args, "-c:a", "eac3", "-b:a", "384k")
+		args = bloemDolbyAudioTargetsV3(args, opts) // Bloem: the plan's rate and channels (bloem_airplay_v3.go)
 	case "ac3":
 		// Legacy Dolby Digital; universal AVR support.
-		args = appendDolbyAudioArgsV3(args, "ac3", 448, opts) // Bloem seam: bloem_airplay_v3.go
+		args = append(args, "-c:a", "ac3", "-b:a", "448k")
+		args = bloemDolbyAudioTargetsV3(args, opts) // Bloem: the plan's rate and channels (bloem_airplay_v3.go)
 	default:
 		channels := EffectiveAudioChannels(opts.SourceAudioChannels, opts.TargetAudioChannels, opts.SourceAudioCodec)
 		_, bitrateKbps := ResolveAACOutputV3(channels, opts.TargetAudioBitrateKbps)

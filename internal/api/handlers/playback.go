@@ -513,7 +513,10 @@ func semanticPlayMethod(s *playback.Session) playback.PlayMethod {
 // "copy is allowed") and is resolved asynchronously once the plan is issued, so
 // starting playback never waits on a multi-second read of the source.
 func (h *PlaybackHandler) ensurePlaybackProbe(ctx context.Context, file *models.MediaFile) *models.MediaFile {
-	if h == nil || h.ProbeEnsurer == nil || file == nil || NativeVideoSupported(file) {
+	if h == nil || h.ProbeEnsurer == nil || file == nil {
+		return file
+	}
+	if NativeVideoSupported(file) { // Bloem: a native-storage file is probed through its provider
 		return file
 	}
 	repaired, err := h.ProbeEnsurer.EnsureCopySafetyCached(ctx, file)
