@@ -1305,5 +1305,452 @@
    ]
   }
  },
+ "hooks": {
+  "cmd/silo/main.go": {
+   "func main() {": "e456ffae8e43929e"
+  },
+  "internal/access/group_store.go": {
+   "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
+   "func QueueGroupPolicy(batch *pgx.Batch, userID int) func(pgx.BatchResults) (*Gro": "763d6d459cd131db",
+   "func groupPolicyForUser(ctx context.Context, db interface {": "25da83ece28238f9"
+  },
+  "internal/access/groups.go": {
+   "func ApplyGroupPolicy(user *models.User, group *GroupPolicy) EffectiveUserPolicy": "9a11761fcfe6abe7",
+   "func EffectivePolicyForUser(ctx context.Context, user *models.User, provider Gro": "38d49d9010a7e80d"
+  },
+  "internal/access/resolver.go": {
+   "func (r *Resolver) Resolve(ctx context.Context, input ResolveInput) (Scope, erro": "24fccf939dd38cba"
+  },
+  "internal/activitylog/cleanup.go": {
+   "func CleanupOnce(ctx context.Context, pool *pgxpool.Pool, store SettingsStore, p": "3ffe388fe5d67ad2"
+  },
+  "internal/adminjob/runner.go": {
+   "func (r *Runner) executeCatalogImport(job *models.AdminJob) {": "d0577a209cf07304",
+   "func (r *Runner) executeDeleteLibrary(job *models.AdminJob) {": "8c16269b0b651518"
+  },
+  "internal/ai/llm/transcribe.go": {
+   "func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc": "7a3d14a3e2710507"
+  },
+  "internal/api/handlers/admin.go": {
+   "func (h *AdminHandler) groupPolicies(ctx context.Context) (map[int64]access.Grou": "d65f465cf90e6bc1"
+  },
+  "internal/api/handlers/admin_sections_service.go": {
+   "func (h *SectionHandler) CreateAdminSection(ctx context.Context, req AdminSectio": "17c00f23430b99b7",
+   "func (h *SectionHandler) UpdateAdminSection(ctx context.Context, id string, req": "b503156f53f51e1d"
+  },
+  "internal/api/handlers/admin_users_service.go": {
+   "func (h *AdminHandler) validateAdminGroup(ctx context.Context, tx pgx.Tx, id *in": "297ad7c99b2416f1"
+  },
+  "internal/api/handlers/auth.go": {
+   "func (h *AuthHandler) Login(ctx context.Context, in LoginInput) (TokenPairView,": "132f5b1b75a6923b",
+   "func (h *AuthHandler) Logout(ctx context.Context, claims *auth.Claims) error {": "3098ee3d04f5afba"
+  },
+  "internal/api/handlers/catalog_transfer_service.go": {
+   "func (h *CatalogSeedHandler) CreateCatalogImportJob(ctx context.Context, userID": "102d7ee8933ec0dc",
+   "func (h *CatalogSeedHandler) PublishCatalogExportJob(ctx context.Context, id str": "5fec4088112ad00c"
+  },
+  "internal/api/handlers/downloads_test.go": {
+   "func TestDirectDownloadRefusesOriginalAboveOverrideCeiling(t *testing.T) {": "8f6b63ceb6520dd4"
+  },
+  "internal/api/handlers/libraries_service.go": {
+   "func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateReq": "07a6e8fcc49cd4de",
+   "func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req": "5b14de4b6269ecc8",
+   "func (h *LibraryHandler) normalizeNewLibrary(req *LibraryCreateRequest) error {": "8a68da3298a0940d"
+  },
+  "internal/api/handlers/notifications.go": {
+   "func (h *NotificationsHandler) NotificationCapabilities(ctx context.Context) Not": "9d2fd251451610e4"
+  },
+  "internal/api/handlers/playback.go": {
+   "func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h": "9a05a3334944df6e",
+   "func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht": "2ee6c3b5afc219f6",
+   "func (h *PlaybackHandler) loadAuthorizedFile(r *http.Request, fileID int) (*mode": "674f14d1aae430cd",
+   "func (h *PlaybackHandler) loadFileByPreferredID(": "babf5d6eda5255e8"
+  },
+  "internal/api/handlers/playback_missing.go": {
+   "func preflightPlaybackFile(": "ca723ad4fe69ec87"
+  },
+  "internal/api/handlers/playback_test.go": {
+   "func newAuthorizedPlaybackContext() context.Context {": "53102f4e939877a6"
+  },
+  "internal/api/handlers/playback_v3.go": {
+   "func (h *PlaybackHandler) deleteRequiredProgressiveRemuxAuthorityV3(ctx context.": "a907ccb3b12d875a",
+   "func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte": "4f21220942121d01",
+   "func (h *PlaybackHandler) lazyDVRPUStrippableV3(ctx context.Context, file *model": "b086b31ad1c90d94",
+   "func (h *PlaybackHandler) prepareIdentityTransportV3(r *http.Request, session *p": "7ee91996dc162749",
+   "func (h *PlaybackHandler) prepareLocalTransportV3(r *http.Request, session *play": "3d80a841260276b7",
+   "func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla": "54aca9ca22d5c46f",
+   "func (h *PlaybackHandler) prepareTransportWithPolicyAndExclusionsV3(": "9863774da1c21028",
+   "func (h *PlaybackHandler) raceCopySafetyV3(fileID int, plan *playback.PlanV3) {": "e66f2ec5673ea8fd",
+   "func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr": "aee1e1f8d26e5ccb",
+   "func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt": "b52b33ba95b43dac",
+   "func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.De": "439556aa51960eac"
+  },
+  "internal/api/handlers/plugins.go": {
+   "func NewPluginHandler(": "3d12ee0bf0adef61"
+  },
+  "internal/api/handlers/profiles.go": {
+   "func (h *ProfileHandler) CreateProfile(ctx context.Context, cmd ProfileCreateCom": "a444ccc7f9906095",
+   "func (h *ProfileHandler) UpdateProfile(ctx context.Context, cmd ProfileUpdateCom": "70608179e41060a0",
+   "func (h *ProfileHandler) householdProfileLimit(ctx context.Context, userID int)": "5bb2983194d204cf"
+  },
+  "internal/api/handlers/stream.go": {
+   "func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {": "a6eb3a5129b7a1da",
+   "func (h *StreamHandler) SubtitleFonts(ctx context.Context, in SubtitleFontReques": "253f57a38201fe3c",
+   "func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {": "cf537e0e29cbb62d",
+   "func (h *StreamHandler) loadSidecarSession(ctx context.Context, reference, sessi": "744142c40e8530a5"
+  },
+  "internal/api/handlers/watch_together.go": {
+   "func (h *WatchTogetherHandler) handleRoomClientMessage(": "c86ac819a7cb3620"
+  },
+  "internal/api/middleware/auth.go": {
+   "func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {": "23e7ff8bd2c6fa1b"
+  },
+  "internal/api/middleware/policy_gates.go": {
+   "func (m *PolicyPermissionMiddleware) checkPermission(r *http.Request, input poli": "77c27c4b82f562b3",
+   "func NewPolicyActingAdminDecider(pdp PermissionDecider, primaryChecker PrimaryPr": "66c5ed7f65e00232"
+  },
+  "internal/api/middleware/viewer_access.go": {
+   "func (m *ViewerAccessMiddleware) RequireViewerAccess(next http.Handler) http.Han": "370b2db1d07d600e"
+  },
+  "internal/apiv2/admin_scoped_email_db_test.go": {
+   "func scopedRecoveryDB(t *testing.T) *pgxpool.Pool {": "0d8774140f674c18"
+  },
+  "internal/apiv2/artwork.go": {
+   "func (reg *Registry) serveArtwork(w http.ResponseWriter, r *http.Request) {": "368c65b8608ee772"
+  },
+  "internal/apiv2/gates.go": {
+   "func (d *denialWriter) problem() *Problem {": "e031aa27600af402",
+   "func runChain(ctx huma.Context, next func(huma.Context), chain []func(http.Handl": "541f2c58e4fc1eb6"
+  },
+  "internal/apiv2/libraries.go": {
+   "func (reg *Registry) createLibrary(ctx context.Context, in *LibraryCreateInput)": "609f96471b164afb",
+   "func libraryOf(v handlers.LibraryView) Library {": "cf87c09af264f370"
+  },
+  "internal/apiv2/parity_test.go": {
+   "func (fakeResolver) Resolve(_ context.Context, in access.ResolveInput) (access.S": "3ee6ec37bb0cf630"
+  },
+  "internal/apiv2/registry.go": {
+   "func Register[I, O any](reg *Registry, op Operation, handler func(context.Contex": "00bac42ab2396937"
+  },
+  "internal/auth/admin_users_test.go": {
+   "func adminAccountsDB(t *testing.T) *UserRepository {": "2a5c19ecc33fbedf"
+  },
+  "internal/auth/oauth_handler.go": {
+   "func (h *OAuthHandler) Callback(ctx context.Context, in OAuthCallbackInput) stri": "906546ec958aefd3"
+  },
+  "internal/auth/repository.go": {
+   "func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInpu": "c1f6c882ba429626",
+   "func CreateRestoredAccountInTx(ctx context.Context, tx pgx.Tx, in RestoredAccoun": "ac22300246eed256",
+   "func createUser(ctx context.Context, db interface {": "44e59784ecaee743",
+   "func updateUser(ctx context.Context, db interface {": "a79b2bf472c9e10e"
+  },
+  "internal/auth/service.go": {
+   "func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,": "880a61878a15dc9f",
+   "func (s *Service) SetupInitialUser(": "b78286d2b022d01c"
+  },
+  "internal/auth/session.go": {
+   "func (r *SessionRepository) createWithQuerier(": "17b35c77e465d5b8"
+  },
+  "internal/backup/backuptest/backuptest.go": {
+   "func createTemplate(dsn string) (name string, err error) {": "173d84f8dc8e6bfb"
+  },
+  "internal/backup/credentials_authority_test.go": {
+   "func TestAuthorityComparisonCoversEveryField(t *testing.T) {": "b7c7f11e0eda3bc1",
+   "func TestProfileComparisonCoversEveryField(t *testing.T) {": "aa656b2bb99ea12e"
+  },
+  "internal/backup/restoreset_users.go": {
+   "func (b *restoreSetBuild) addUsers(ctx context.Context, tx pgx.Tx, spec sectionS": "9f3c448cbd4c8949",
+   "func exportUser(ctx context.Context, tx pgx.Tx, account AccountEntry) (UserDocum": "c4cb74a12e2b34e7"
+  },
+  "internal/backup/restoreset_write.go": {
+   "func buildRestoreSet(ctx context.Context, tx pgx.Tx, meta restoreSetMeta) (*rest": "fdec06eb5863afd1"
+  },
+  "internal/backup/service.go": {
+   "func (s *Service) backup(ctx context.Context, prep backupPrep, kind Kind, starte": "039124a40e6ee7d6",
+   "func (s *Service) backupWith(ctx context.Context, held Held, kind Kind, id strin": "f6e6ae75ed869797"
+  },
+  "internal/backup/swap.go": {
+   "func validateForSwap(ctx context.Context, src *Source, loader DatabaseLoader, op": "f4bb3392e36b8444"
+  },
+  "internal/backup/users_apply.go": {
+   "func (a *applier) createAccount(ctx context.Context, tx pgx.Tx, doc *UserDocumen": "c7d91b97352c71f8"
+  },
+  "internal/backup/users_plan.go": {
+   "func (u *userPlanner) plan(ctx context.Context, doc *UserDocument) (accountPlan,": "100ef2e31408a247",
+   "func (u *userPlanner) planProfiles(ctx context.Context, plan *accountPlan) error": "d74f827d08b05b70"
+  },
+  "internal/catalog/collection_sync_scheduler.go": {
+   "func (s *CollectionSyncScheduler) RunOnce(ctx context.Context) (json.RawMessage,": "135bf688d76b4d3f"
+  },
+  "internal/catalog/filesplit/filesplit.go": {
+   "func Move(ctx context.Context, tx pgx.Tx, opts Options) (*Result, error) {": "2332fa2d9ca85600"
+  },
+  "internal/catalog/folder_repo.go": {
+   "func (r *FolderRepository) Create(ctx context.Context, input CreateFolderInput)": "26a8e5e1166241f6",
+   "func (r *FolderRepository) DeleteWithStats(": "d13c4a6a7a8e7411",
+   "func (r *FolderRepository) Update(ctx context.Context, id int, input UpdateFolde": "b65d4d2885e0d36f",
+   "func (r *FolderRepository) loadPaths(ctx context.Context, folders []*models.Medi": "04f0dbb4239fc23d",
+   "func CreateFolderInTx(ctx context.Context, tx pgx.Tx, input CreateFolderInput) (": "c78c510b88b16304"
+  },
+  "internal/catalog/library_repo.go": {
+   "func (r *LibraryItemRepository) reconcileMembershipsOnce(ctx context.Context, fo": "1ca28aaf96304b04"
+  },
+  "internal/catalog/query_cursor.go": {
+   "func (e *QueryExecutor) PreviewCursorPage(ctx context.Context, def QueryDefiniti": "c89037bbc435ef44"
+  },
+  "internal/catalog/search_meilisearch_client.go": {
+   "func (c *meilisearchClient) FederatedSearch(ctx context.Context, req meilisearch": "51e72dbd486e8077",
+   "func (c *meilisearchClient) Search(ctx context.Context, uid string, req meilisea": "981a3fee4d813e59"
+  },
+  "internal/catalog/search_provider.go": {
+   "func CatalogSearchSettingsFromMap(values map[string]string) (CatalogSearchSettin": "0363cf1c4a0a841f"
+  },
+  "internal/catalogseed/service.go": {
+   "func (s *Service) ImportReader(ctx context.Context, r io.Reader, opts ImportOpti": "a408994a2849dea1"
+  },
+  "internal/config/admin_settings.go": {
+   "func NormalizeAdminSetting(key, raw string) (string, error) {": "f789c387a0d87569"
+  },
+  "internal/config/db_loader.go": {
+   "func LoadFromDB(m map[string]string) (*Config, error) {": "e2e441f49392ed30"
+  },
+  "internal/config/yaml_import.go": {
+   "func YAMLToSettingsMap(path string) (map[string]string, error) {": "889b86a3407a5c88"
+  },
+  "internal/downloads/offline.go": {
+   "func (s *Service) ServeSubtitle(ctx context.Context, w http.ResponseWriter, r *h": "a45a63b129b4bc81"
+  },
+  "internal/downloads/policy.go": {
+   "func (r DownloadQualityResolver) ensureServedQualityAllowed(": "911d329b06fab6ce",
+   "func (s *Service) downloadConfigForUser(": "4c983eac94e7eedb"
+  },
+  "internal/downloads/service.go": {
+   "func (s *Service) ServeDirect(ctx context.Context, w http.ResponseWriter, r *htt": "1ef810207d284a66",
+   "func (s *Service) serveFileTarget(ctx context.Context, w http.ResponseWriter, r": "f94d1c183b48ce7a"
+  },
+  "internal/invitations/repository.go": {
+   "func (r *Repository) Create(ctx context.Context, input models.CreateInvitationIn": "25882fe76d11ab6b"
+  },
+  "internal/invitations/repository_atomic_test.go": {
+   "func atomicInvitationDB(t *testing.T) atomicInvitationFixture {": "0ee4234450ed5ab9"
+  },
+  "internal/invitations/service.go": {
+   "func (s *Service) Accept(ctx context.Context, token, email, password, deviceName": "924cf72c9f3c9027"
+  },
+  "internal/jellycompat/handlers_playback.go": {
+   "func (h *PlaybackHandler) startRemoteTranscodeWithToneMapMode(": "0ba7a4689333d163"
+  },
+  "internal/libraryingest/executor.go": {
+   "func (e *Executor) ingest(ctx context.Context, folder *models.MediaFolder, mode": "b9bf5d15a85c3661",
+   "func (e *Executor) scan(ctx context.Context, folder *models.MediaFolder, mode sc": "43e0c6c0b55a09cf"
+  },
+  "internal/mediasample/run.go": {
+   "func (r Runner) Run(ctx context.Context, req Request) (Result, error) {": "1e3d86b348d1d9f7"
+  },
+  "internal/metadata/nfo/lookup.go": {
+   "func (p *Provider) listDir(dir string) (*dirListing, error) {": "1af7e16b58fc52f6"
+  },
+  "internal/notifications/dispatcher.go": {
+   "func PayloadForRow(row DeliveryRow) DeliveryRowPayload {": "15fc503174892a54"
+  },
+  "internal/notifications/interest_repo.go": {
+   "func (r *InterestRepository) ListActiveBySeries(ctx context.Context, tx pgx.Tx,": "454b8a1a712d4466"
+  },
+  "internal/notifications/relay_credentials.go": {
+   "func RotateRelayCredential(ctx context.Context, settings *Settings, client Relay": "3cfac36ab6b8a595"
+  },
+  "internal/notifications/webhook_payload_discord.go": {
+   "func discordEmbedAuthorLine(row DeliveryRow) string {": "a3d6c52a2ff09659",
+   "func discordEmbedTitle(row DeliveryRow) string {": "fb64be5aaa86e745"
+  },
+  "internal/opslog/cleanup.go": {
+   "func CleanupOnce(ctx context.Context, pool *pgxpool.Pool, store SettingsStore, p": "6a145f9ca577ac32"
+  },
+  "internal/playback/copy_seek_anchor.go": {
+   "func ResolveCopySeekAnchor(": "51c722a062cf2049"
+  },
+  "internal/playback/directplay.go": {
+   "func ServeDirectPlay(w http.ResponseWriter, r *http.Request, filePath string) er": "ad2f249ecb891fc8"
+  },
+  "internal/playback/gpudetect.go": {
+   "func ResolveHWAccelWithFFmpegContext(ctx context.Context, hwAccel, ffmpegPath, h": "2db8fa5b9952f3ee"
+  },
+  "internal/playback/prepare_file.go": {
+   "func PrepareFile(ctx context.Context, opts TranscodeOpts, outputPath string) err": "73acf08963a6f639"
+  },
+  "internal/playback/remux.go": {
+   "func ServeRemuxWithOptions(w http.ResponseWriter, r *http.Request, filePath, out": "c7376f08ba8174d0"
+  },
+  "internal/playback/session.go": {
+   "func (m *SessionManager) CheckReplacementAllowed(ctx context.Context, sessionID": "9ccd0018438ba088",
+   "func (m *SessionManager) LimitsForUser(ctx context.Context, userID int) (Session": "2ed634a8ef16aa7a",
+   "func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s": "40a15330c35aacb5",
+   "func (m *SessionManager) SetLimitProvider(provider SessionLimitProvider) {": "41f7201e6e2eee26",
+   "func (m *SessionManager) StartSessionWithFilesContext(": "5a46372f73076a4b",
+   "func (m *SessionManager) inlineAdmissionErrorLocked(userID int, method PlayMetho": "4269e30551d15518",
+   "func admissionDenyError(reasonCode string) error {": "7880776939b3d83b"
+  },
+  "internal/playback/subtitle_fonts.go": {
+   "func ListAttachedSubtitleFonts(ctx context.Context, inputPath, ffmpegPath string": "a759b37da02bd137",
+   "func extractAttachedSubtitleFonts(ctx context.Context, inputPath, ffmpegPath str": "3fc71b5cc2391031"
+  },
+  "internal/playback/subtitles.go": {
+   "func ExtractSubtitleWithFormat(ctx context.Context, filePath string, trackIndex": "5193435770fd5563"
+  },
+  "internal/playback/transcode.go": {
+   "func (s *TranscodeSession) GetSegment(name string) (string, error) {": "5de236d40a570dd6",
+   "func (s *TranscodeSession) WaitForSegment(name string, timeout time.Duration) (s": "06b6977a41e3773d",
+   "func (s *TranscodeSession) buildPlaybackManifest(segPrefix, rawQuery string) ([]": "3d0de7ffd5fa107e",
+   "func (s *TranscodeSession) getManifest(currentGeneration bool) ([]byte, error) {": "931023eb9858923c",
+   "func (s *TranscodeSession) openSegment(name string) (lease *SegmentLease, dv81 b": "1a1c3a7959924baf",
+   "func (s *TranscodeSession) restart(": "9c94790da9451a55",
+   "func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession,": "2870d8d97a424428",
+   "func prepareSubtitleFilterInput(ctx context.Context, opts *TranscodeOpts) error": "32ed6faf1b230146",
+   "func validateToneMapSource(ctx context.Context, opts TranscodeOpts) error {": "104f1c742baf9718",
+   "func videoPreset(opts TranscodeOpts, hwAccel string) string {": "679b450e81040880"
+  },
+  "internal/playback/transcode_manager.go": {
+   "func (m *TranscodeManager) doReconstructTranscode(ctx context.Context, sessionID": "5c905df95168077f",
+   "func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str": "512a57d8f7b782f5",
+   "func (m *TranscodeManager) registerReconstructedSession(ctx context.Context, s *": "26c74c8af3d31a6e"
+  },
+  "internal/plugins/content.go": {
+   "func (h *ContentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {": "7b7bea2f675ac393"
+  },
+  "internal/policy/viewer_resolver.go": {
+   "func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput)": "cb1e646a7d93810e",
+   "func (r *ViewerResolver) ResolveFacts(ctx context.Context, input access.ResolveI": "53bb10f9e4bf9ee5"
+  },
+  "internal/proxy/server.go": {
+   "func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request) {": "e5b856ffdd467561",
+   "func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request) {": "9cf6c0c86c893a9f",
+   "func (s *Server) handleSubtitleFonts(w http.ResponseWriter, r *http.Request) {": "22bf45b10dd47d33",
+   "func (s *Server) proxyToTranscodeNode(w http.ResponseWriter, r *http.Request, cl": "3b93f4bb70e2d11f",
+   "func (s *Server) serveDirectPlayClaims(w http.ResponseWriter, r *http.Request, c": "cc74322ab934fd42",
+   "func (s *Server) serveRemuxClaims(w http.ResponseWriter, r *http.Request, claims": "8780451c688d92da"
+  },
+  "internal/recommendations/embeddings/client.go": {
+   "func (c *Client) Embed(ctx context.Context, texts []string) ([][]float32, error)": "4f0a34f880036739"
+  },
+  "internal/requests/editor_concurrency.go": {
+   "func (s *Service) DeleteIntegrationConditional(ctx context.Context, v Viewer, id": "45e00c240b3a66e4",
+   "func (s *Service) GetIntegration(ctx context.Context, v Viewer, id string) (*Int": "5c7ac5397f1bf148",
+   "func (s *Service) UpdateIntegrationConditional(ctx context.Context, v Viewer, in": "14b6bbbeebb6ebc0",
+   "func (s *Service) UpdateSettingsConditional(ctx context.Context, v Viewer, in Se": "c01e80c6fa6266a5"
+  },
+  "internal/requests/follows.go": {
+   "func (r *Repository) FollowTitle(ctx context.Context, mediaType MediaType, tmdbI": "e5f66ed4d768c7c1"
+  },
+  "internal/requests/repository.go": {
+   "func (r *Repository) CreateRequest(ctx context.Context, input CreateRequestRecor": "7d14938e32eb63f3"
+  },
+  "internal/requests/service.go": {
+   "func (s *Service) Approve(ctx context.Context, viewer Viewer, id string) (*Reque": "bceabf9b7900647a",
+   "func (s *Service) CountAdminViews(ctx context.Context, viewer Viewer) (AdminView": "26e31bc5d964b371",
+   "func (s *Service) CreateIntegration(ctx context.Context, viewer Viewer, in Integ": "05750a446c9f0fab",
+   "func (s *Service) Decline(ctx context.Context, viewer Viewer, id, reason string)": "edb8b9b99574ec55",
+   "func (s *Service) DeleteIntegration(ctx context.Context, viewer Viewer, id strin": "b33deb10e25450e9",
+   "func (s *Service) GetRequest(ctx context.Context, viewer Viewer, id string) (*Re": "565f032ab285791e",
+   "func (s *Service) GetUserLimit(ctx context.Context, viewer Viewer, userID int) (": "1628b1cc0d8f1183",
+   "func (s *Service) ListIntegrations(ctx context.Context, viewer Viewer) ([]Integr": "862f67b5d0eab88c",
+   "func (s *Service) ListRequestEvents(ctx context.Context, viewer Viewer, id strin": "c53517b65fdf4db0",
+   "func (s *Service) LoadIntegrationOptions(ctx context.Context, viewer Viewer, int": "31eacae3d3a0fccb",
+   "func (s *Service) Retry(ctx context.Context, viewer Viewer, id string) (*Request": "f1ef596ecf0fed77",
+   "func (s *Service) UpdateIntegration(ctx context.Context, viewer Viewer, in Integ": "0dc76eb4d3c01b4a",
+   "func (s *Service) UpdateSettings(ctx context.Context, viewer Viewer, settings Se": "f53fc703c2c48175",
+   "func (s *Service) UpsertUserLimit(ctx context.Context, viewer Viewer, limit User": "1dde332854352a9e",
+   "func (s *Service) ownedRequest(ctx context.Context, viewer Viewer, id string) (*": "169dc5de7ef40585",
+   "func (s *Service) resolvePolicy(ctx context.Context, userID int) (EffectivePolic": "5f281ba7b6ce1ff2"
+  },
+  "internal/routeinventory/analyze.go": {
+   "func (a *Analyzer) followHelper(call *ast.CallExpr, env *walkEnv) error {": "747cf92cf78e6166",
+   "func (a *Analyzer) leakCheck(node ast.Node, env *walkEnv) error {": "2fa1f40713e1de42"
+  },
+  "internal/scanner/ebook_scan.go": {
+   "func (s *Scanner) reconcileEbookFileWithSkipState(ctx context.Context, folder *m": "c145b5cb027fa5a9"
+  },
+  "internal/scanner/scanner.go": {
+   "func (m walkMode) acceptsPath(path string) bool {": "8bd4c47dab91f64a",
+   "func (s *Scanner) probeFile(ctx context.Context, filePath string) (probe *ProbeD": "0d5f1da48392314e",
+   "func (s *Scanner) reconcileLibraryMemberships(ctx context.Context, folderID int,": "5d83a70ed126a22b",
+   "func (s *Scanner) reconcileScopedLibraryMemberships(ctx context.Context, folderI": "0bde8f10d4f52e8b",
+   "func (s *Scanner) syncFolderScopedAudioLibraryState(ctx context.Context, folderI": "9d1bcb2ac7adb0c5"
+  },
+  "internal/sections/fetcher.go": {
+   "func (f *Fetcher) fetchOne(ctx context.Context, resolved ResolvedSection, librar": "4b2640b6795985f0"
+  },
+  "internal/subtitles/ai/transcriber.go": {
+   "func cuesFromWords(words []llm.TranscriptionWord, offsetSeconds float64) []Subti": "3411e19c50f343f8",
+   "func wrapCueText(text string, maxLen, maxLines int) []string {": "7f65bde4c86ac21e"
+  },
+  "internal/userdb/migrate.go": {
+   "WHERE key = 'ui.card_presentation'": "f7a1b5323f801f52"
+  },
+  "internal/userstore/pgstore/profiles.go": {
+   "func (s *PostgresUserStore) ListProfiles(ctx context.Context) ([]userstore.Profi": "49f6362e73f22662",
+   "func CreateRestoredProfileInTx(ctx context.Context, tx pgx.Tx, userID int, p Res": "f3eb359103b1bdc3",
+   "func QueueProfile(batch *pgx.Batch, userID int, id string) func(pgx.BatchResults": "129c9d9be41cd542",
+   "func createProfile(": "e292433772154f0b",
+   "func getProfile(ctx context.Context, db preferenceSettingsExecutor, userID int,": "9e9c4a3fc304717f"
+  },
+  "internal/watchsync/service.go": {
+   "func (s *Service) ImportWatched(": "4591ee4fdf007eb9"
+  },
+  "internal/worker/cleanup.go": {
+   "func (c *SessionCleaner) CleanStale(ctx context.Context) (int, error) {": "a491cb726907bc2c"
+  },
+  "internal/worker/heartbeat.go": {
+   "func (hw *HeartbeatWriter) Start() {": "7e83fbef36bea9c4",
+   "func (hw *HeartbeatWriter) Stop() {": "4e724e9258f9eff5"
+  },
+  "internal/worker/reconciler.go": {
+   "func (r *Reconciler) Start() {": "e59ca085e3d0e069",
+   "func (r *Reconciler) Stop() {": "970a911d5f220e3d",
+   "func (r *Reconciler) SyncNow(ctx context.Context) error {": "bf691ad1175d3628"
+  },
+  "web/src/App.tsx": {
+   "export function RequireAdmin({ children }: { children: ReactNode }) {": "43afb96f35233bae"
+  },
+  "web/src/api/client.ts": {
+   "async function unauthorizedProblemId(res: Response): Promise<string | null> {": "bc4129b444c6e1de",
+   "export async function fetchWithSession(": "95f6ad8d10dcf4a1",
+   "export function getProfileToken(): string | null {": "05dae702bf96d1b8",
+   "export function setProfileId(id: string | null) {": "3c4ce24157171c9b",
+   "export function setProfileToken(token: string | null) {": "e1500f2ccff44bdc",
+   "export function setRefreshToken(token: string | null) {": "aed0dc6399293aec",
+   "function getProfileId(): string | null {": "cbda51bdd490c27b",
+   "function getRefreshToken(): string | null {": "8b8c44d8b998f80f"
+  },
+  "web/src/components/admin/libraries/LibraryFormSections.tsx": {
+   "export function FolderFields({ form }: { form: LibraryFormController }) {": "e9f5b4a5d16711a4"
+  },
+  "web/src/components/admin/libraries/useLibraryForm.ts": {
+   "export function useLibraryForm({": "f348c3580ae20fb8"
+  },
+  "web/src/components/notifications/NotificationInbox.tsx": {
+   "function EntryPoster({": "30ce1037dac462bf",
+   "function notificationDescription(t: Translate, notification: AppNotification): s": "f10b6a9e30e11c90",
+   "function notificationTitle(t: Translate, notification: AppNotification): string": "32ca8188b41ea7ef"
+  },
+  "web/src/hooks/useAuth.tsx": {
+   "export function AuthProvider({ children }: { children: ReactNode }) {": "70a81126fb160ff9"
+  },
+  "web/src/lib/adminNavigation.ts": {
+   "export function buildAdminNavSections(visibility: AdminNavVisibility = {}): Admi": "176468c4cbf8c92a"
+  },
+  "web/src/lib/documentTitle.ts": {
+   "function adminTitle(pathname: string): AdminTitle {": "9df7ffd3d929a8b8"
+  },
+  "web/src/pages/Home.tsx": {
+   "export default function Home() {": "560b44685d130e11"
+  },
+  "web/src/playback/WatchPlaybackChrome.tsx": {
+   "export function WatchPlaybackProvider({ children }: { children: ReactNode }) {": "5f279fdabf6a9942",
+   "function PlaybackUnavailableScreen({ error, onBack }: { error: Error; onBack: ()": "4daca31a92f69423"
+  },
+  "web/src/player/hooks/usePlaybackRealtime.ts": {
+   "export function usePlaybackRealtime({": "ff645098cdf104e7"
+  }
+ },
  "silo": "17842e976148e66bb497c9fb70539a1c3062b99c"
 }

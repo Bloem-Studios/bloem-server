@@ -32,12 +32,24 @@ committed.
 Generated files (the record marks them "generated") are listed but their lines
 are not compared: they follow from the code, and checking the code checks them.
 
+A Bloem line can also leave Silo's lines intact and still keep Silo's code from
+running: an added return, continue, break or throw inside a Silo function. When
+Silo later changes that function, the merge is clean and Bloem's line still
+skips the change. So the record also holds, for every Silo function with such a
+line, a fingerprint of the function as Silo wrote it ("hooks"), and the check
+fails when Silo's function changes, so someone checks that Bloem's line still
+fits before the record is rewritten. A Silo function is found by the context
+git prints in each hunk header; lines inside a function Bloem adds whole are
+Bloem's own and do not count.
+
 Commands assume the repository root is the cwd and upstream/main is fetched.
 """
 import argparse
 import collections
+import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -85,12 +97,83 @@ def parse_removed(diff_text):
     return removed
 
 
+HOOK_SUFFIXES = (".go", ".ts", ".tsx", ".js", ".mjs", ".rego")
+# A line that can skip the rest of the Silo function it sits in.
+CONTROL = re.compile(r"\b(?:return|continue|break|throw)\b")
+# An added line that starts a declaration of Bloem's own at column 0: the
+# hunk's later lines are that declaration's, not a hook in Silo's function.
+OWN_DECLARATION = re.compile(
+    r"^(?:func |function |async function |export (?:default )?(?:async )?function |export (?:const|let|class) |const |let |class )"
+)
+COMMENT = re.compile(r"^\s*(?://|#|\*|/\*)")
+
+
+def parse_hooks(diff_text):
+    """Map each file to the Silo functions in which Bloem added a line that can
+    skip Silo's code, keyed by the hunk header's function context."""
+    hooks = collections.defaultdict(set)
+    path = header = None
+    own = False
+    for line in diff_text.splitlines():
+        if line.startswith("diff --git "):
+            path = None
+            continue
+        if line.startswith("+++ "):
+            path = line[6:] if line.startswith("+++ b/") else None
+            continue
+        if line.startswith("--- "):
+            continue
+        if line.startswith("@@"):
+            parts = line.split("@@", 2)
+            header = parts[2].strip() if len(parts) > 2 else ""
+            own = False
+            continue
+        if path is None or not path.endswith(HOOK_SUFFIXES) or not line.startswith("+"):
+            continue
+        text = line[1:]
+        if OWN_DECLARATION.match(text):
+            own = True
+            continue
+        if own or not header or COMMENT.match(text):
+            continue
+        if CONTROL.search(text.split("//", 1)[0]):
+            hooks[path].add(header)
+    return hooks
+
+
+def silo_function(lines, header):
+    """The text of the Silo declaration a hunk header names: from its line to
+    the next line that closes a top-level block. None when it is not found."""
+    for i, line in enumerate(lines):
+        if line.startswith(header):
+            end = i + 1
+            while end < len(lines) and not lines[end].startswith(("}", ")")):
+                end += 1
+            return "\n".join(lines[i : end + 1])
+    return None
+
+
+def fingerprint(text):
+    return "missing" if text is None else hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def current_hooks(silo, diff_text):
+    hooks = {}
+    for path, headers in parse_hooks(diff_text).items():
+        try:
+            lines = git("show", f"{silo}:{path}").split("\n")
+        except subprocess.CalledProcessError:
+            continue
+        hooks[path] = {header: fingerprint(silo_function(lines, header)) for header in sorted(headers)}
+    return hooks
+
+
 def current_state(silo):
     """Every Silo file the working tree changes, deletes or replaces, with the
     Silo lines it overrides."""
     changed = [p for p in git("diff", "--name-only", "--no-renames", "--diff-filter=MDT", silo).split("\n") if p]
     if not changed:
-        return {}
+        return {}, {}
     numstat = git("diff", "--numstat", "--no-renames", silo, "--", *changed)
     binary = {line.split("\t", 2)[2] for line in numstat.splitlines() if line.startswith("-\t-\t")}
     present = set(git("ls-files", "-z", "--", *changed).split("\0"))
@@ -104,14 +187,31 @@ def current_state(silo):
             state[path] = {"kind": "binary", "silo_blob": git("rev-parse", f"{silo}:{path}").strip()}
         elif removed.get(path):
             state[path] = {"kind": "lines", "lines": sorted(removed[path])}
-    return state
+    return state, current_hooks(silo, diff)
 
 
 def load_ledger():
     if not os.path.exists(LEDGER):
-        return {}
+        return {}, {}
     with open(LEDGER, encoding="utf-8") as f:
-        return json.load(f)["files"]
+        record = json.load(f)
+    return record["files"], record.get("hooks", {})
+
+
+def compare_hooks(ledger, state):
+    """Problems with the recorded hooks, in compare's shape."""
+    problems = []
+    for path in sorted(set(ledger) | set(state)):
+        old, new = ledger.get(path, {}), state.get(path, {})
+        for header in sorted(set(old) | set(new)):
+            if header not in old:
+                problems.append((path, f"a new Bloem line can skip Silo's code in: {header}", []))
+            elif header not in new:
+                problems.append((path, f"no Bloem line skips Silo's code in {header} any more: shrink the record", []))
+            elif old[header] != new[header]:
+                problems.append((path, f"Silo changed {header}, where a Bloem line skips Silo's code: check that "
+                                       "Bloem's line still fits Silo's new code", []))
+    return problems
 
 
 def compare(ledger, state):
@@ -146,7 +246,7 @@ def compare(ledger, state):
     return problems
 
 
-def write_ledger(ledger, state, silo):
+def write_ledger(ledger, state, hooks, silo):
     files = {}
     for path, entry in state.items():
         if ledger.get(path, {}).get("kind") == "generated":
@@ -154,7 +254,8 @@ def write_ledger(ledger, state, silo):
         else:
             files[path] = entry
     with open(LEDGER, "w", encoding="utf-8") as f:
-        json.dump({"silo": silo, "files": dict(sorted(files.items()))}, f, indent=1, ensure_ascii=False, sort_keys=True)
+        json.dump({"silo": silo, "files": dict(sorted(files.items())), "hooks": hooks}, f, indent=1,
+                  ensure_ascii=False, sort_keys=True)
         f.write("\n")
 
 
@@ -167,14 +268,15 @@ def main(argv=None):
     except subprocess.CalledProcessError:
         print(f"::error::{BASE_REF} is not available; run: git fetch upstream main", file=sys.stderr)
         return 2
-    ledger = load_ledger()
-    state = current_state(silo)
+    ledger, ledger_hooks = load_ledger()
+    state, hooks = current_state(silo)
     if args.write:
-        write_ledger(ledger, state, silo)
-        total = sum(len(e.get("lines", [])) for e in state.values())
-        print(f"wrote {LEDGER}: {len(state)} Silo files, {total} overridden Silo lines (silo {silo[:9]})")
+        write_ledger(ledger, state, hooks, silo)
+        total = sum(len(e.get("lines", [])) for p, e in state.items() if ledger.get(p, {}).get("kind") != "generated")
+        print(f"wrote {LEDGER}: {len(state)} Silo files, {total} overridden Silo lines, "
+              f"{sum(len(h) for h in hooks.values())} hooked Silo functions (silo {silo[:9]})")
         return 0
-    problems = compare(ledger, state)
+    problems = compare(ledger, state) + compare_hooks(ledger_hooks, hooks)
     if problems:
         for path, message, detail in problems:
             print(f"{path}: {message}")
@@ -183,14 +285,16 @@ def main(argv=None):
             if len(detail) > 20:
                 print(f"    ... and {len(detail) - 20} more")
         print(
-            f"::error::{len(problems)} file(s) differ from {LEDGER}. Silo always wins: restore Silo's lines word for "
-            "word and put Bloem's behavior on its own lines beside them. When lines were restored, run "
-            "make silo-lines-ledger to shrink the record. Adding to the record needs a reviewed reason.",
+            f"::error::{len(problems)} problem(s) against {LEDGER}. Silo always wins: restore Silo's lines word for "
+            "word and put Bloem's behavior on its own lines beside them. Where Silo changed a function a Bloem line "
+            "skips, check Bloem's line against Silo's new code. Then run make silo-lines-ledger; adding to the "
+            "record needs a reviewed reason.",
             file=sys.stderr,
         )
         return 1
     total = sum(len(e.get("lines", [])) for e in ledger.values())
-    print(f"Bloem overrides only the recorded Silo lines: {len(ledger)} files, {total} lines (silo {silo[:9]})")
+    print(f"Bloem overrides only the recorded Silo lines: {len(ledger)} files, {total} lines, "
+          f"{sum(len(h) for h in ledger_hooks.values())} hooked Silo functions (silo {silo[:9]})")
     return 0
 
 

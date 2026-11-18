@@ -69,5 +69,63 @@ class CompareTest(unittest.TestCase):
         self.assertIn("Silo changed", guard.compare({"f.png": old}, {"f.png": new})[0][1])
 
 
+HOOK_DIFF = """diff --git a/internal/a.go b/internal/a.go
+--- a/internal/a.go
++++ b/internal/a.go
+@@ -10,0 +11,3 @@ func (s *Service) Setup(ctx context.Context) error {
++\tif handled, err := s.bloemSetup(ctx); handled {
++\t\treturn err
++\t}
+@@ -30,0 +34,2 @@ func (s *Service) Other() {
++\tbloemNote() // return is only named in this comment
++\t// return early
+@@ -50,0 +56,5 @@ func (s *Service) Last() int {
++func bloemHelper() int {
++\tif true {
++\t\treturn 1
++\t}
++}
+diff --git a/web/src/A.json b/web/src/A.json
+--- a/web/src/A.json
++++ b/web/src/A.json
+@@ -1,0 +2 @@ x
++  "return": true
+"""
+
+SILO_FILE = [
+    "package a",
+    "",
+    "func (s *Service) Setup(ctx context.Context) error {",
+    "\treturn nil",
+    "}",
+    "",
+    "func (s *Service) Other() {",
+    "}",
+]
+
+
+class HookTest(unittest.TestCase):
+    def test_finds_early_returns_inside_silo_functions_only(self):
+        hooks = guard.parse_hooks(HOOK_DIFF)
+        self.assertEqual(dict(hooks), {"internal/a.go": {"func (s *Service) Setup(ctx context.Context) error {"}})
+
+    def test_fingerprints_the_silo_function_text(self):
+        text = guard.silo_function(SILO_FILE, "func (s *Service) Setup(ctx context.Context) error {")
+        self.assertEqual(text, "func (s *Service) Setup(ctx context.Context) error {\n\treturn nil\n}")
+        self.assertIsNone(guard.silo_function(SILO_FILE, "func Gone() {"))
+
+    def test_silo_changing_a_hooked_function_fails(self):
+        problems = guard.compare_hooks({"a.go": {"func F() {": "aaa"}}, {"a.go": {"func F() {": "bbb"}})
+        self.assertIn("Silo changed", problems[0][1])
+
+    def test_new_and_removed_hooks_fail(self):
+        self.assertIn("new Bloem line", guard.compare_hooks({}, {"a.go": {"func F() {": "x"}})[0][1])
+        self.assertIn("shrink the record", guard.compare_hooks({"a.go": {"func F() {": "x"}}, {})[0][1])
+
+    def test_current_hooks_pass(self):
+        hooks = {"a.go": {"func F() {": "x"}}
+        self.assertEqual(guard.compare_hooks(hooks, dict(hooks)), [])
+
+
 if __name__ == "__main__":
     unittest.main()

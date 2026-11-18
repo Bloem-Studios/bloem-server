@@ -160,7 +160,9 @@ Terms used below:
   [`contracts/silo-line-changes.json`](../../contracts/silo-line-changes.json),
   and `make verify-silo-lines` fails when Bloem overrides a line the record does
   not hold, including a Silo line a merge changed under an existing override.
-  The record may only shrink.
+  It also fingerprints every Silo function in which a Bloem line returns early,
+  and fails when Silo changes one, so Bloem's line is checked against Silo's new
+  code. The record may only shrink.
 - A **disposable runner** is a self-hosted runner that runs one job and is not
   reused. See [Where jobs run](#where-jobs-run).
 

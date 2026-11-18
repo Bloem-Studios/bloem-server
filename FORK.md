@@ -185,6 +185,11 @@ and `make verify-silo-lines` (`scripts/bloem/verify-silo-lines.py`) fails when t
 merge that changes a Silo line Bloem already overrides, so a resolution cannot keep Bloem's version by accident. The record
 may only shrink: after restoring Silo's lines, `make silo-lines-ledger` rewrites it, and the check fails until it does.
 
+A Bloem line that returns early inside a Silo function leaves Silo's lines intact but can still keep Silo's later changes
+to that function from running. The record therefore also fingerprints every Silo function that holds such a line
+(`hooks`), and the check fails when Silo changes one of them. Whoever merges then checks Bloem's line against Silo's new
+code before rewriting the record.
+
 An **overlay** is the documentation equivalent: a Bloem-owned file under [`docs/bloem/overlays/`](docs/bloem/overlays/)
 that records, section by section, what Bloem adds to or replaces in the Silo document of the same path, so the Silo
 document itself stays Silo's. The [documentation index](docs/bloem/README.md) lists every overlay.

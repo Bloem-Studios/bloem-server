@@ -105,7 +105,9 @@ Bloem keeps its own work in three places:
 - **The record of overridden lines,** `contracts/silo-line-changes.json`: every line
   of Silo's that Bloem still changes or removes. Bloem CI fails when a change or a
   merge overrides a Silo line the record does not hold, so a merge cannot keep
-  Bloem's version over Silo's new line by accident. The record may only shrink.
+  Bloem's version over Silo's new line by accident. It also notes every Silo
+  function where a Bloem line returns early; when Silo changes one, CI stops so
+  someone checks that Bloem's line still fits. The record may only shrink.
 
 ## Example: a day's batches
 
