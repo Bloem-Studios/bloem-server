@@ -69,7 +69,7 @@ internal/api/handlers/session_ws.go
 internal/api/handlers/stream.go
 internal/api/handlers/watch_together.go
 internal/api/middleware/auth.go
-internal/api/middleware/policy_gates.go
+internal/api/middleware/policy_gates.go  # added lines only: policy decisions carry the request tenant's facts, and the two EffectivePolicyForUser calls see a context naming the declared profile and requiring the tenant (bloem_policy_gates.go), with the original request restored after
 internal/api/middleware/viewer_access.go
 internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher; four lines put native inputs on core-access transcode nodes: the playback handler's granter, the node control grant issuer and catalog check, Bloem's sources/open in the /self node routes and its source bytes middleware (bloem_native_node_sources.go, 2026-11-16); one line wraps the request lifecycle notifier for admin push (bloemAdminPushLifecycle)
 internal/api/testdata/media_routes.txt

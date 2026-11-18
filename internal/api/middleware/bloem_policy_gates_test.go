@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -181,4 +182,63 @@ type capturingPermissionDecider struct {
 func (d *capturingPermissionDecider) CheckPermission(_ context.Context, input policy.PermissionInput) (policy.PermissionDecision, policy.Meta, error) {
 	d.inputs = append(d.inputs, input)
 	return d.decision, policy.Meta{}, nil
+}
+
+// subjectRecordingGroups is a tenant-scoped group provider that records the
+// subject it was asked for.
+type subjectRecordingGroups struct{ subjects []access.GroupSubject }
+
+func (p *subjectRecordingGroups) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {
+	return nil, errors.New("tenant-scoped provider asked for an account-level policy")
+}
+
+func (p *subjectRecordingGroups) ResolvePolicy(_ context.Context, subject access.GroupSubject) (*access.GroupPolicy, error) {
+	p.subjects = append(p.subjects, subject)
+	policy := access.NoGroupPolicy()
+	return &policy, nil
+}
+
+// Silo's EffectivePolicyForUser call in the marker gate resolves the declared
+// profile's organization group, and refuses without a validated tenant.
+func TestPolicyPermissionGateResolvesTheDeclaredProfilesGroup(t *testing.T) {
+	newGate := func(groups *subjectRecordingGroups) http.Handler {
+		gate := NewPolicyPermissionMiddleware(
+			fakePermissionUserLoader{user: &models.User{ID: 7, Role: "user", Enabled: true, Permissions: []string{policy.PermissionMarkerEdit}}},
+			nil, nil, nil,
+			&capturingPermissionDecider{decision: policy.PermissionDecision{Allowed: true}},
+			groups,
+		)
+		return gate.RequireMarkerEdit(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}))
+	}
+
+	t.Run("declared profile", func(t *testing.T) {
+		groups := &subjectRecordingGroups{}
+		req := httptest.NewRequest(http.MethodPut, "/markers/files/5", nil)
+		ctx := SetProfileID(SetClaims(req.Context(), userClaims()), "profile-7")
+		ctx = tenancy.WithContext(ctx, middlewareResolvedTenant(7))
+		rec := httptest.NewRecorder()
+		newGate(groups).ServeHTTP(rec, req.WithContext(ctx))
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("status = %d body = %s, want no content", rec.Code, rec.Body.String())
+		}
+		if len(groups.subjects) != 1 || groups.subjects[0].ProfileID != "profile-7" || groups.subjects[0].AccountID != 7 {
+			t.Fatalf("group subjects = %+v, want account 7's profile-7", groups.subjects)
+		}
+	})
+
+	t.Run("no tenant", func(t *testing.T) {
+		groups := &subjectRecordingGroups{}
+		req := httptest.NewRequest(http.MethodPut, "/markers/files/5", nil)
+		ctx := SetProfileID(SetClaims(req.Context(), userClaims()), "profile-7")
+		rec := httptest.NewRecorder()
+		newGate(groups).ServeHTTP(rec, req.WithContext(ctx))
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d body = %s, want forbidden without a tenant", rec.Code, rec.Body.String())
+		}
+		if len(groups.subjects) != 0 {
+			t.Fatalf("group subjects = %+v, want none", groups.subjects)
+		}
+	})
 }

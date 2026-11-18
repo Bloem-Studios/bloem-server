@@ -297,13 +297,6 @@
     "\t\t\tauthority, active, err := am.sessionValidator.ActiveSession(r.Context(), claims.SessionID, claims.UserID)"
    ]
   },
-  "internal/api/middleware/policy_gates.go": {
-   "kind": "lines",
-   "lines": [
-    "\t\teffective, err := access.EffectivePolicyForUser(r.Context(), user, m.groups)",
-    "\t\teffective, err := access.EffectivePolicyForUser(r.Context(), user, m.groups)"
-   ]
-  },
   "internal/api/router.go": {
    "kind": "lines",
    "lines": [

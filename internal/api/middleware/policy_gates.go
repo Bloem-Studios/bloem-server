@@ -152,7 +152,10 @@ func (m *PolicyPermissionMiddleware) RequireMetadataCurationForItem(next http.Ha
 			writeForbidden(w, metadataCurationRequiredMsg)
 			return
 		}
-		effective, err := access.EffectivePolicyForRequest(r.Context(), user, facts.declaredProfileID, m.groups)
+		silosRequest := r // Bloem: Silo's policy call resolves the declared profile's organization group (bloem_policy_gates.go)
+		r = bloemPolicyRequest(r, facts.declaredProfileID)
+		effective, err := access.EffectivePolicyForUser(r.Context(), user, m.groups)
+		r = silosRequest
 		if err != nil {
 			writeForbidden(w, metadataCurationRequiredMsg)
 			return
@@ -266,7 +269,10 @@ func (m *PolicyPermissionMiddleware) RequireMarkerEdit(next http.Handler) http.H
 			writeForbidden(w, markerEditRequiredMsg)
 			return
 		}
-		effective, err := access.EffectivePolicyForRequest(r.Context(), user, facts.declaredProfileID, m.groups)
+		silosRequest := r // Bloem: Silo's policy call resolves the declared profile's organization group (bloem_policy_gates.go)
+		r = bloemPolicyRequest(r, facts.declaredProfileID)
+		effective, err := access.EffectivePolicyForUser(r.Context(), user, m.groups)
+		r = silosRequest
 		if err != nil {
 			writeForbidden(w, markerEditRequiredMsg)
 			return
