@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -374,5 +375,14 @@ func (r *Repository) complete(ctx context.Context, lease Lease, authorize Comple
 	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_scan_runs SET state='complete',completed_at=clock_timestamp() WHERE id=$1`, lease.RunID); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
+	// The run is complete either way; a purge that fails is retried by the
+	// next completion in the same scope.
+	if err = r.purgeFinishedRunRows(ctx, lease); err != nil {
+		slog.WarnContext(ctx, "storage scan: purge finished runs' rows", "component", "storagesource",
+			"run_id", lease.RunID, "error", err)
+	}
+	return nil
 }

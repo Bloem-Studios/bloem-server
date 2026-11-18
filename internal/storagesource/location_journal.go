@@ -353,12 +353,21 @@ const countedEdgeSQL = `d.listing_mode<>'pending' AND e.absence_suspected_run IS
 // one recursive statement, the planner could not see how little a page
 // reaches and hashed every edge of the location for each page, even for a
 // page of files that reaches nothing.
+//
+// The seeded edges are materialized first. The run's roots and directories
+// grow during the run, and until those tables are analyzed the planner can
+// take the run as nearly empty and drive the join from them, probing the
+// page's edges once per root: on a location with hundreds of thousands of
+// directories that made one page take over a minute and lose its lease.
+// Starting from the page's own edges keeps the plan bounded by the page.
 func extendLocationReachTx(ctx context.Context, tx pgx.Tx, lease Lease, seed edgeSource, arg any) ([]reachedPair, error) {
-	frontier, err := reachedPairsTx(ctx, tx, `SELECT DISTINCT e.entry_id,r.root_id FROM `+seed.from+`
+	frontier, err := reachedPairsTx(ctx, tx, `WITH seed AS MATERIALIZED (SELECT e.location_id,e.parent_directory_id,e.entry_id,e.absence_suspected_run FROM `+seed.from+`
+ WHERE e.location_id=$2 AND `+seed.where+`)
+ SELECT DISTINCT e.entry_id,r.root_id FROM seed e
  JOIN bloem_storage_scan_directory_roots r ON r.run_id=$1 AND r.directory_id=e.parent_directory_id
  JOIN bloem_storage_scan_directories d ON d.run_id=$1 AND d.directory_id=e.parent_directory_id
  JOIN bloem_storage_location_entries x ON x.location_id=e.location_id AND x.entry_id=e.entry_id
- WHERE e.location_id=$2 AND `+seed.where+` AND `+countedEdgeSQL+`
+ WHERE `+countedEdgeSQL+`
  AND NOT EXISTS(SELECT 1 FROM bloem_storage_scan_directory_roots k WHERE k.run_id=$1 AND k.directory_id=e.entry_id AND k.root_id=r.root_id)`,
 		lease.RunID, lease.LocationID, lease.ConfigurationRevision, arg)
 	var reached []reachedPair
