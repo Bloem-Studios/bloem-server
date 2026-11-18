@@ -341,7 +341,7 @@ one Vitest test per line as Vitest names it in a failure
 report, and only when every failed test is listed does it run each one alone
 (`vitest run <file> -t` with its exact name) up to two more times; the report must
 show the test ran and passed. Any other failure, a file that fails outside its tests,
-or a missing report fails the shard as before.
+or a missing report fails the shard as before. An empty list retries nothing.
 
 The split jobs each run against their own PostgreSQL.
 `scripts/ci/deal.sh N I` deals lines round-robin to N shards so each lands in

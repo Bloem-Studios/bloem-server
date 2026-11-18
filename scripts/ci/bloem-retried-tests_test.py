@@ -298,8 +298,12 @@ class RetriedWebTestsTest(unittest.TestCase):
         with self.assertRaisesRegex(self.mod.ListError, "expected"):
             self.mod.web_entries(self.root)
 
+    def test_an_empty_web_list_retries_nothing(self):
+        write(self.root, "scripts/ci/bloem-retried-web-tests.txt", "# comments only\n")
+        self.assertEqual(self.mod.web_entries(self.root), [])
+
     def test_the_real_web_list_is_valid(self):
-        self.assertTrue(self.mod.web_entries(ROOT))
+        self.assertIsInstance(self.mod.web_entries(ROOT), list)
 
 
 if __name__ == "__main__":

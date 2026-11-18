@@ -231,8 +231,7 @@ def web_entries(root):
             if not any(f"{q}{title}{q}" in source for q in "\"'`"):
                 raise ListError(f"{WEB_LIST}: {parts[0]} no longer names {title!r}")
         entries.append((parts[0], tuple(parts[1:])))
-    if not entries:
-        raise ListError(f"{WEB_LIST} names no tests")
+    # An empty list is valid: every web test then runs once in its shard.
     return entries
 
 

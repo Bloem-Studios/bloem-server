@@ -45,7 +45,6 @@ internal/activitylog/cleanup.go
 internal/adminjob/runner.go
 internal/ai/llm/transcribe.go  # verbose_json with top-level words and no segments (NeMo-Speech.cpp), and each word's display text and joins_previous; candidate for a Silo upstream PR
 internal/api/handlers/admin.go
-internal/api/handlers/admin_apple_push_test.go  # the rotation test stores the signing secret the relay rotation key is derived from
 internal/api/handlers/admin_sections_service.go
 internal/api/handlers/admin_users_service.go
 internal/api/handlers/auth.go
@@ -145,7 +144,6 @@ internal/mail/layout_test.go  # default alt text and logo size derive from brand
 internal/mediasample/run.go  # three hook lines: Run refuses a native catalog location (a .strm file, a storage identity) before ffmpeg starts, as -i or inside its stdin concat list, as a permanent invalid-data failure (bloem_native_input.go); never hand ffmpeg a .strm/native catalog path, approved 2026-11-12
 internal/metadata/image_cache_job_repo.go
 internal/metadata/nfo/lookup.go  # listDir caches a listing only once the directory's change time has settled too (lastChange, bloem_listing_settle.go): settling on the modification time alone, which copy tools restore, cached listings that missed a same-tick change
-internal/metadata/nfo/lookup_test.go  # the two caching tests wait out the change-time settle window before listing
 internal/models/invitation.go
 internal/models/media.go
 internal/models/session.go
@@ -228,7 +226,6 @@ web/public/silo-icon-1024.png  # deleted
 web/public/silo-wordmark-sidebar.png  # deleted
 web/public/web-app-icon-192.png
 web/public/web-app-icon-512.png
-web/src/App.routes.test.tsx  # mocks Bloem's admin-context shell, as the retired App.adminRoutes test did, for the Home rows redirect Silo moved here
 web/src/App.tsx
 web/src/api/client.ts
 web/src/api/types.ts  # additive Bloem web DTOs, including the provider-bound Xtream guide kind
@@ -251,7 +248,6 @@ web/src/hooks/useAuth.tsx
 web/src/lib/adminNavigation.ts
 web/src/lib/adminSettingsSearch.ts
 web/src/lib/documentTitle.ts
-web/src/pages/AdminHomeRows.libraryCopies.test.tsx  # the 100-page limit test looks its 101 checkboxes up once by label instead of querying per click, and its hang guard is 120 s: per-click role or label queries plus a full-list re-render per click ran past the 30 s timeout under CI load (owner's decision, 2026-11-16)
 web/src/pages/AdminLibraries.tsx  # shows a storage library's source instead of paths
 web/src/pages/AdminPlugins.tsx  # Storage tab for storage sources inside an administrative context
 web/src/pages/Catalog.tsx  # empty search field at the top on phones; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
