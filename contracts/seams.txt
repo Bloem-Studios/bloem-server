@@ -250,7 +250,6 @@ web/src/lib/adminSettingsSearch.ts
 web/src/lib/documentTitle.ts
 web/src/pages/AdminLibraries.tsx  # shows a storage library's source instead of paths
 web/src/pages/AdminPlugins.tsx  # Storage tab for storage sources inside an administrative context
-web/src/pages/Catalog.tsx  # empty search field at the top on phones; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/pages/Home.tsx
 web/src/pages/ItemDetail/DetailHero.tsx  # phone detail hero puts the actions in the first screen; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/pages/admin-settings/AdminSettingsLayout.tsx
