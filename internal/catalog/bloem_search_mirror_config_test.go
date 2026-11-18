@@ -261,8 +261,8 @@ func TestSearchMirrorConfigNeverFallsBackToMainKey(t *testing.T) {
 	// The main server's key is in the environment and the mirror has none: the
 	// mirror must not borrow it, or a mistyped address would receive it.
 	c := LoadSearchMirrorConfig(envOf(map[string]string{
-		EnvSearchMirrorURL:   "http://m:7700",
-		EnvMeilisearchAPIKey: "main-key-must-stay-home",
+		EnvSearchMirrorURL:         "http://m:7700",
+		"SILO_MEILISEARCH_API_KEY": "main-key-must-stay-home", // the main server's key (config env settings)
 	}), noFiles, searchMirrorTestMainURL)
 	if !c.Active() || c.APIKey != "" || c.KeySource != "none" {
 		t.Fatal(describeMirrorConfig(c))
