@@ -394,8 +394,9 @@ export function WatchPlaybackProvider({ children }: { children: ReactNode }) {
 
   const startPlayback = useCallback(
     (input: WatchPlaybackStartInput | WatchRouteRequest, trigger: PlaybackStartTrigger) => {
-      if (previewOnly) {
-        requestSubscription(input.contentId);
+      // Bloem: the preview gate, read from the ref so Silo's dependency list stays Silo's.
+      if (previewGateRef.current.previewOnly) {
+        previewGateRef.current.requestSubscription(input.contentId);
         return;
       }
       const request = normalizeWatchPlaybackRequest(input);
@@ -479,7 +480,7 @@ export function WatchPlaybackProvider({ children }: { children: ReactNode }) {
 
       continueStartPlayback();
     },
-    [navigate, previewOnly, requestSubscription],
+    [navigate],
   );
 
   const stopPlayback = useCallback(() => {

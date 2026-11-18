@@ -1167,12 +1167,6 @@
     "  const showPoster = !hidePoster && (!isViewportBounded || wideViewport);"
    ]
   },
-  "web/src/playback/WatchPlaybackChrome.tsx": {
-   "kind": "lines",
-   "lines": [
-    "    [navigate],"
-   ]
-  },
   "web/src/player/hooks/useWatchProgress.ts": {
    "kind": "lines",
    "lines": [
