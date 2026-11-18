@@ -99,10 +99,8 @@ function EmptySearch() {
   useDocumentTitle(t("web.catalog.page.searchTitle"));
 
   return (
-    // On a phone the field sits at the top, clear of the keyboard that opens
-    // under it; larger screens center it.
-    <section className="page-shell flex flex-col items-center pt-2 pb-8 text-center sm:min-h-[calc(100dvh-10rem)] sm:justify-center sm:py-16">
-      <div className="text-muted-foreground mb-6 hidden sm:block">
+    <section className="page-shell flex min-h-[calc(100dvh-10rem)] flex-col items-center justify-center py-16 text-center">
+      <div className="text-muted-foreground mb-6">
         <Search className="h-10 w-10" strokeWidth={1.5} />
       </div>
       <h1 className="page-title mb-4">{t("web.catalog.page.searchTitle")}</h1>

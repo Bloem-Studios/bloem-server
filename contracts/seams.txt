@@ -254,7 +254,6 @@ web/src/lib/documentTitle.ts
 web/src/pages/AdminHomeRows.libraryCopies.test.tsx  # the 100-page limit test looks its 101 checkboxes up once by label instead of querying per click, and its hang guard is 120 s: per-click role or label queries plus a full-list re-render per click ran past the 30 s timeout under CI load (owner's decision, 2026-11-16)
 web/src/pages/AdminLibraries.tsx  # shows a storage library's source instead of paths
 web/src/pages/AdminPlugins.tsx  # Storage tab for storage sources inside an administrative context
-web/src/pages/Catalog.tsx  # empty search field at the top on phones; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/pages/Home.tsx
 web/src/pages/ItemDetail/DetailHero.tsx  # phone detail hero puts the actions in the first screen; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/pages/admin-settings/AdminSettingsLayout.tsx
