@@ -351,12 +351,13 @@ func goldenDecisionForSourceWith(file *models.MediaFile, request playback.StartR
 	plan.Subtitle.Inventory = playback.ScopeSubtitleInventoryV3(goldenSessionID, file, plan.Subtitle.Inventory, request.ClientFeatures)
 
 	return playback.DecisionResponseV3{
-		ProtocolVersion:          playback.ProtocolV3,
-		ServerFeatures:           playback.ServerFeaturesV3(),
-		NegotiatedClientFeatures: append([]string(nil), request.ClientFeatures...),
-		Outcome:                  playback.OutcomePlayableV3,
-		SessionID:                goldenSessionID,
-		PlaybackPlan:             &plan,
+		ProtocolVersion: playback.ProtocolV3,
+		ServerFeatures:  playback.ServerFeaturesV3(),
+		Outcome:         playback.OutcomePlayableV3,
+		SessionID:       goldenSessionID,
+		PlaybackPlan:    &plan,
+
+		NegotiatedClientFeatures: append([]string(nil), request.ClientFeatures...), // Bloem
 	}
 }
 

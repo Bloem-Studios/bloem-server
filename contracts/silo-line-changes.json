@@ -4,16 +4,6 @@
    "kind": "binary",
    "silo_blob": "1d30a82024590538bce58c2a776a36c203f88d8b"
   },
-  "cmd/playbackfixtures/main.go": {
-   "kind": "lines",
-   "lines": [
-    "\t\tOutcome:         playback.OutcomePlayableV3,",
-    "\t\tPlaybackPlan:    &plan,",
-    "\t\tProtocolVersion: playback.ProtocolV3,",
-    "\t\tServerFeatures:  playback.ServerFeaturesV3(),",
-    "\t\tSessionID:       goldenSessionID,"
-   ]
-  },
   "cmd/silo/main.go": {
    "kind": "lines",
    "lines": [
@@ -106,6 +96,21 @@
    "lines": [
     "  }"
    ]
+  },
+  "docs/design/schemas/playback-v3/v3/fixtures/valid/decision_response.json": {
+   "kind": "generated"
+  },
+  "docs/design/schemas/playback-v3/v3/fixtures/valid/hls-subtitle-rendition-decision_response.json": {
+   "kind": "generated"
+  },
+  "docs/design/schemas/playback-v3/v3/fixtures/valid/hls-subtitle-renditions-all-decision_response.json": {
+   "kind": "generated"
+  },
+  "docs/design/schemas/playback-v3/v3/fixtures/valid/learned-limit-decision_response.json": {
+   "kind": "generated"
+  },
+  "docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json": {
+   "kind": "generated"
   },
   "go.mod": {
    "kind": "lines",
@@ -801,17 +806,6 @@
     "\tDefaultPushRelayURL = \"https://push.siloserver.org\""
    ]
   },
-  "internal/playback/protocol_v3.go": {
-   "kind": "lines",
-   "lines": [
-    "\tOutcome         DecisionOutcomeV3 `json:\"outcome\"`",
-    "\tPlaybackPlan    *PlanV3           `json:\"playback_plan,omitempty\"`",
-    "\tProtocolVersion int               `json:\"protocol_version\"`",
-    "\tServerFeatures  []string          `json:\"server_features\"`",
-    "\tSessionID       string            `json:\"session_id,omitempty\"`",
-    "\tTerminal        *TerminalV3       `json:\"terminal,omitempty\"`"
-   ]
-  },
   "internal/playback/session.go": {
    "kind": "lines",
    "lines": [
@@ -856,6 +850,21 @@
     "\t\t\t\t\t\t\twithPolicy.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(pdp))",
     "\tctx := context.Background()"
    ]
+  },
+  "internal/playback/testdata/protocol_v3/decision_response.json": {
+   "kind": "generated"
+  },
+  "internal/playback/testdata/protocol_v3/hls-subtitle-rendition-decision_response.json": {
+   "kind": "generated"
+  },
+  "internal/playback/testdata/protocol_v3/hls-subtitle-renditions-all-decision_response.json": {
+   "kind": "generated"
+  },
+  "internal/playback/testdata/protocol_v3/learned-limit-decision_response.json": {
+   "kind": "generated"
+  },
+  "internal/playback/testdata/protocol_v3/native-decision_response.json": {
+   "kind": "generated"
   },
   "internal/playback/transcode.go": {
    "kind": "lines",
