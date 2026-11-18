@@ -20,17 +20,6 @@ func upstreamHelloCommands(commands []playback.CommandName) []playback.CommandNa
 	return kept
 }
 
-// bloemValidateHello validates a realtime hello. Remote control (S-5a): a v3
-// client may list names the upstream socket vocabulary does not know (replan,
-// the device-rail names). The upstream validator runs over the upstream-known
-// names only; the full list goes to the remote observer, which validates it
-// itself. Anything unknown to both still fails here, exactly as upstream.
-func bloemValidateHello(hello playback.HelloEnvelope) error {
-	upstream := hello
-	upstream.Capabilities.Commands = upstreamHelloCommands(hello.Capabilities.Commands)
-	return upstream.Validate()
-}
-
 // bloemObserveHello mirrors a session hello into the remote control audit.
 func (h *PlaybackHandler) bloemObserveHello(sessionID string, commands []playback.CommandName) {
 	if h.RemoteObserver == nil {

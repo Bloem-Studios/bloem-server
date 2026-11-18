@@ -215,12 +215,6 @@
     "\tif h.fileResolver == nil || h.ItemAccess == nil {"
    ]
   },
-  "internal/api/handlers/playback_connection.go": {
-   "kind": "lines",
-   "lines": [
-    "\t\tif err := preflightPlaybackFile(r.Context(), candidate, h.MissingMarker, h.EventsHub); err != nil {"
-   ]
-  },
   "internal/api/handlers/playback_test.go": {
    "kind": "lines",
    "lines": [
@@ -230,7 +224,6 @@
   "internal/api/handlers/playback_v3.go": {
    "kind": "lines",
    "lines": [
-    "\t\t\t\tif err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {",
     "\t\t\treturn playback.NewTerminalResponseV3(terminalSessionExpiredV3, \"The playback session for this attempt has ended.\", true), nil",
     "\t\tif err := checker.CheckTranscodingAllowed(ctx, session.UserID, result.PlayMethod == playback.PlayTranscode); err != nil {",
     "\t\tresponse := playback.NewTerminalResponseV3(replanErr.reason, replanErr.message, replanErr.retryable)",
@@ -239,8 +232,6 @@
     "\t\treturn normalizeDecisionResponseV3(record.StartResponse)",
     "\t\treturn playback.NewTerminalResponseV3(result.Terminal.Reason, result.Terminal.Message, result.Terminal.Retryable), *record, nil, nil",
     "\th.maybeQueueLazyPlaybackMarkers(ctx, &task.session, &task.file)",
-    "\tif err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {",
-    "\tif err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {",
     "\tif h.ChapterThumbnailQueuer != nil {",
     "\tparts, err := h.FileVersionFetcher.GetByContentID(ctx, file.ContentID)",
     "\tresult := playback.PlanPlaybackV3(input)",
@@ -256,12 +247,6 @@
     "\t\tinstallations: installations,",
     "\tinstallations *plugins.InstallationStore",
     "\treturn &PluginHandler{"
-   ]
-  },
-  "internal/api/handlers/session_ws.go": {
-   "kind": "lines",
-   "lines": [
-    "\t\tif err := hello.Validate(); err != nil {"
    ]
   },
   "internal/api/handlers/stream.go": {
@@ -814,12 +799,6 @@
    "kind": "lines",
    "lines": [
     "\tDefaultPushRelayURL = \"https://push.siloserver.org\""
-   ]
-  },
-  "internal/notifications/system.go": {
-   "kind": "lines",
-   "lines": [
-    "\tinterests := NewInterestRepository(pool)"
    ]
   },
   "internal/playback/protocol_v3.go": {

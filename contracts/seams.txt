@@ -56,7 +56,7 @@ internal/api/handlers/libraries.go  # native selected-target authorization bound
 internal/api/handlers/libraries_service.go  # native selected-target authorization boundary
 internal/api/handlers/notifications.go
 internal/api/handlers/playback.go
-internal/api/handlers/playback_connection.go  # the buffering version switch preflights through Bloem's native-storage-aware check
+internal/api/handlers/playback_connection.go  # added line only: the buffered version switch gives Silo's preflight the playback handler, so it checks a native-storage file through it (bloem_native_video.go)
 internal/api/handlers/playback_hung_node_test.go  # the router fixture sets the viewer scope Bloem's per-segment library recheck requires
 internal/api/handlers/playback_missing.go  # a native-storage file is checked through its provider, never stat'ed or marked missing (bloemNativePreflight)
 internal/api/handlers/playback_sessions.go  # one additive, zero-valued filter field (PlaybackSessionsQuery.OrganizationID) so the organization support streams route filters in SQL; Silo reads are unchanged
@@ -65,7 +65,7 @@ internal/api/handlers/playback_v3.go  # two hook lines in planPlaybackWithCapabi
 internal/api/handlers/plugins.go  # installation store becomes an interface so native storage installations can be hidden (bloem_plugins_native_storage.go)
 internal/api/handlers/profiles.go
 internal/api/handlers/sections.go
-internal/api/handlers/session_ws.go
+internal/api/handlers/session_ws.go  # added lines only: Silo's hello validation sees only Silo's command names while the hello keeps Bloem's remote-control commands, and three remote-control observer hooks (bloem_session_ws_ext.go)
 internal/api/handlers/stream.go
 internal/api/handlers/watch_together.go
 internal/api/middleware/auth.go
@@ -156,7 +156,7 @@ internal/notifications/relay_credentials.go  # one hook line: the relay rotation
 internal/notifications/relay_credentials_test.go  # the rotation test stores the signing secret the key is derived from
 internal/notifications/release_types.go
 internal/notifications/settings.go
-internal/notifications/system.go
+internal/notifications/system.go  # added lines only: the Bloem system fields, organization-scoped interests and the announcement service
 internal/notifications/webhook_payload_discord.go
 internal/notifications/webhook_payload_generic.go
 internal/notifications/webpush_sender.go

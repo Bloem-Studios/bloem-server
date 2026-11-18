@@ -574,11 +574,23 @@ func (h *PlaybackHandler) withNativePreflight(r *http.Request) *http.Request {
 // playback handler checks it through its provider (withNativePreflight); with
 // no handler in the context the file is unavailable. It is never marked
 // missing. Other files report handled=false and get Silo's check.
+//
+// With a handler in the context, every file first passes the request's native
+// audio pin (pinNativeAudioRequest), as nativeVideoPreflight does.
 func bloemNativePreflight(ctx context.Context, file *models.MediaFile) (handled bool, err error) {
-	if file == nil || !storagesource.IsNativeLocation(file.FilePath) {
+	if file == nil {
 		return false, nil
 	}
-	if h, ok := ctx.Value(nativePreflightKey{}).(*PlaybackHandler); ok && h != nil {
+	h, ok := ctx.Value(nativePreflightKey{}).(*PlaybackHandler)
+	if ok && h != nil {
+		if err := pinNativeAudioRequest(ctx, file); err != nil {
+			return true, err
+		}
+	}
+	if !storagesource.IsNativeLocation(file.FilePath) {
+		return false, nil
+	}
+	if ok && h != nil {
 		return true, h.nativeVideoPreflightContext(ctx, file)
 	}
 	return true, &playbackFilePreflightError{notFound: true}

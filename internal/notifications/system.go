@@ -127,7 +127,8 @@ func NewSystem(
 ) *System {
 	settings := NewSettings(settingsReader)
 	releases := NewReleaseRepository(pool)
-	interests := NewInterestRepository(pool).WithBloemTenancy()
+	interests := NewInterestRepository(pool)
+	interests.WithBloemTenancy() // Bloem: interests are scoped to organizations
 	deliveries := NewDeliveryRepository(pool)
 	preferences := NewPreferencesRepository(pool)
 

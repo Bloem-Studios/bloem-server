@@ -183,6 +183,7 @@ func (h *PlaybackHandler) lowerBufferedVersion(r *http.Request, req playback.Sta
 // attempt's desired tracks: a candidate gets the viewer's chosen audio and
 // subtitle, not a remap of what base happens to be playing.
 func (h *PlaybackHandler) lowerBufferedVersionForIntent(r *http.Request, req playback.StartRequestV3, base *models.MediaFile, audio int, settings playback.PlannerSettingsV3, desired *playback.DesiredTracksV3) (*models.MediaFile, playback.StartRequestV3, int) {
+	r = h.withNativePreflight(r) // Bloem: Silo's preflight below checks a native-storage file through this handler
 	if req.QualityPreference != playback.QualityAutoV3 || req.BandwidthEstimateKbps == nil || !req.AllowsAlternateVersions() {
 		return base, req, audio
 	}
@@ -235,7 +236,7 @@ func (h *PlaybackHandler) lowerBufferedVersionForIntent(r *http.Request, req pla
 		if !ok {
 			continue
 		}
-		if err := h.nativeVideoPreflight(r, candidate); err != nil {
+		if err := preflightPlaybackFile(r.Context(), candidate, h.MissingMarker, h.EventsHub); err != nil {
 			continue
 		}
 		result, _ := h.planPlaybackWithCapabilitiesV3(r.Context(), h.plannerInputV3(r.Context(), planningV3{plannerRequestedFile: base, settings: settings}, next, candidate, nextAudio))

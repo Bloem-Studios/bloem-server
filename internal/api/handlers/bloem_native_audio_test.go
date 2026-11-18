@@ -77,6 +77,28 @@ func TestNativeAudioStartIsPinnedToRequestedFile(t *testing.T) {
 	}
 }
 
+// Silo's preflightPlaybackFile, called with the playback request's context,
+// keeps a native audiobook start pinned to its file: another file, even a
+// local one, is refused once the native file is pinned.
+func TestSilosPreflightKeepsTheNativeAudioPin(t *testing.T) {
+	s, f, _, _, _ := nativeVideoFixture(t)
+	f.BaseType = "audiobook"
+	f.CodecAudio = "mp3"
+	f.Container = "mp3"
+	f.VideoTracks = nil
+	s.AudioReady = true
+	s.Presentation = func(context.Context, *models.MediaFile) error { return nil }
+	h := &PlaybackHandler{NativeVideo: s}
+	r := h.withNativePreflight(httptest.NewRequest("POST", "/", nil).WithContext(withNativeVideoSnapshots(context.Background())))
+	if err := preflightPlaybackFile(r.Context(), f, h.MissingMarker, h.EventsHub); err != nil {
+		t.Fatal(err)
+	}
+	local := &models.MediaFile{ID: 100, FilePath: "/local/book.m4b", BaseType: "audiobook", Container: "mp4", CodecAudio: "aac"}
+	if err := preflightPlaybackFile(r.Context(), local, h.MissingMarker, h.EventsHub); !errors.Is(err, catalog.ErrItemNotFound) {
+		t.Fatalf("alternate admitted=%v", err)
+	}
+}
+
 func TestNativeAudioServeRangesWithAudioContentType(t *testing.T) {
 	for _, method := range []string{http.MethodGet, http.MethodHead} {
 		s, f, session, _, _ := nativeVideoFixture(t)

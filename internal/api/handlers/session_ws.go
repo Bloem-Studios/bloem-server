@@ -53,9 +53,12 @@ func (h *PlaybackHandler) handleRealtimeClientMessage(sessionID string, data []b
 		if err := json.Unmarshal(data, &hello); err != nil {
 			return err
 		}
-		if err := bloemValidateHello(hello); err != nil {
+		bloemHello := hello // Bloem: Silo's validation sees only Silo's commands; the hello keeps Bloem's (bloem_session_ws_ext.go)
+		hello.Capabilities.Commands = upstreamHelloCommands(hello.Capabilities.Commands)
+		if err := hello.Validate(); err != nil {
 			return err
 		}
+		hello = bloemHello
 		if hello.SessionID != sessionID {
 			return playback.ErrInvalidRealtimePayload
 		}

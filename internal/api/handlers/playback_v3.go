@@ -2069,7 +2069,7 @@ func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt
 	effectiveFile := requestedFile
 	settings, settingsErr := h.plannerSettingsV3Result(r.Context())
 	timings.mark("planner_settings")
-	if err := h.nativeVideoPreflight(r, effectiveFile); err != nil {
+	if err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {
 		return playback.DecisionResponseV3{}, playbackPreflightOperationError(err)
 	}
 	timings.mark("file_preflight")
@@ -2111,7 +2111,7 @@ func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt
 			} else if target != nil {
 				effectiveFile = h.ensurePlaybackProbe(r.Context(), target)
 				audioIndex = remapAudioIndexV3(requestedFile, effectiveFile, audioIndex)
-				if err := h.nativeVideoPreflight(r, effectiveFile); err != nil {
+				if err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {
 					return playback.DecisionResponseV3{}, playbackPreflightOperationError(err)
 				}
 				req.StartPosition = &local
@@ -5973,7 +5973,7 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		}
 	}
 	start.FileID = effectiveFile.ID
-	if err := h.nativeVideoPreflight(r, effectiveFile); err != nil {
+	if err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {
 		return playback.DecisionResponseV3{}, *record, nil, &transportErrorV3{
 			reason:  "source_unavailable",
 			message: "The effective media source is unavailable.",
