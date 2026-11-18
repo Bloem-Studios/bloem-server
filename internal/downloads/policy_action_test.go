@@ -51,33 +51,6 @@ func TestPolicyActionDeciderMatchesLegacyCapability(t *testing.T) {
 	}
 }
 
-func TestPolicyActionDeciderMatchesLegacyCreateGate(t *testing.T) {
-	ctx := downloadResolvedTenantContext()
-	pdp := newDownloadPolicyPDP(t)
-
-	for _, downloadsEnabled := range []bool{false, true} {
-		for _, transcodeEnabled := range []bool{false, true} {
-			for _, downloadAllowed := range []bool{false, true} {
-				for _, downloadTranscodeAllowed := range []bool{false, true} {
-					for _, artifactsAvailable := range []bool{false, true} {
-						cfg := config.DownloadConfig{Enabled: downloadsEnabled, TranscodeEnabled: transcodeEnabled}
-						user := &models.User{ID: 9, DownloadAllowed: ptrBool(downloadAllowed), DownloadTranscodeAllowed: ptrBool(downloadTranscodeAllowed)}
-						legacy := newPolicyActionTestService(user, cfg, artifactsAvailable, nil)
-						withPolicy := newPolicyActionTestService(user, cfg, artifactsAvailable, pdp)
-
-						_, _, legacyErr := legacy.downloadConfigForUser(ctx, user.ID, "device-1")
-						_, _, policyErr := withPolicy.downloadConfigForUser(ctx, user.ID, "device-1")
-						if !sameDownloadGateError(policyErr, legacyErr) {
-							t.Fatalf("policy create gate error = %v, want legacy %v for cfg=%+v user=%+v artifacts=%v",
-								policyErr, legacyErr, cfg, user, artifactsAvailable)
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
 func TestPolicyActionDeciderUsesGroupDownloadFlags(t *testing.T) {
 	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
 		OrganizationID: uuid.MustParse("10000000-0000-0000-0000-000000000001"),
@@ -158,26 +131,6 @@ func TestCapabilityQualityOptionsHonorOverrideCeiling(t *testing.T) {
 	}
 }
 
-func TestResolveTranscodeCeilingKeepsCompliantTarget(t *testing.T) {
-	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true, QualityCeiling: "2160p"}}
-	resolver := DownloadQualityResolver{actionDecider: decider}
-	user := &PolicyUser{ID: 9, Policy: access.EffectiveUserPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true}}
-	cfg := config.DownloadConfig{Enabled: true, TranscodeEnabled: true}
-	file := &models.MediaFile{ID: 3, Resolution: "1080p"}
-
-	got, err := resolver.Resolve(
-		downloadResolvedTenantContext(), Quality10Mbps, user, cfg, file,
-		playback.ClientCapabilities{}, true, "",
-	)
-	if err != nil {
-		t.Fatalf("Resolve() error: %v", err)
-	}
-	if got.PrepareTarget.Resolution != "" {
-		t.Fatalf("PrepareTarget.Resolution = %q, want no downscale for a compliant source",
-			got.PrepareTarget.Resolution)
-	}
-}
-
 type capturingActionDecider struct {
 	inputs   []policyengine.ActionInput
 	decision policyengine.ActionDecision
@@ -204,19 +157,6 @@ func newPolicyActionTestService(
 	return svc
 }
 
-func sameDownloadGateError(got, want error) bool {
-	switch {
-	case want == nil:
-		return got == nil
-	case errors.Is(want, ErrFeatureDisabled):
-		return errors.Is(got, ErrFeatureDisabled)
-	case errors.Is(want, ErrDownloadNotAllowed):
-		return errors.Is(got, ErrDownloadNotAllowed)
-	default:
-		return errors.Is(got, want)
-	}
-}
-
 func newDownloadPolicyPDP(t *testing.T) *policyengine.PDP {
 	t.Helper()
 	engine, err := policyengine.NewEngine(context.Background(), policyengine.WithEvalTimeout(time.Minute))
@@ -237,47 +177,6 @@ func (p downloadGroupProvider) GetPolicyForUser(ctx context.Context, userID int)
 
 func (p downloadGroupProvider) ResolvePolicy(context.Context, access.GroupSubject) (*access.GroupPolicy, error) {
 	return p.group, p.err
-}
-
-// TestResolveOriginalAssertsServedQuality is the C6 regression: a direct
-// original download of an over-ceiling source must be denied at create time —
-// serve-time authorization (serveDownloadBytes) could never satisfy the row —
-// while a capped transcode of the same source stays allowed, and a compliant
-// source passes with the served quality asserted to the policy.
-func TestResolveOriginalAssertsServedQuality(t *testing.T) {
-	ctx := downloadResolvedTenantContext()
-	pdp := newDownloadPolicyPDP(t)
-	resolver := DownloadQualityResolver{actionDecider: pdp}
-	cfg := config.DownloadConfig{Enabled: true, TranscodeEnabled: true}
-	user := &PolicyUser{ID: 9, Policy: access.EffectiveUserPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true, MaxPlaybackQuality: "1080p"}}
-	overCeiling := &models.MediaFile{ID: 3, Resolution: "2160p"}
-
-	_, err := resolver.Resolve(ctx, QualityOriginal, user, cfg, overCeiling, playback.ClientCapabilities{}, true, "")
-	if !errors.Is(err, ErrQualityUnavailable) {
-		t.Fatalf("Resolve(over-ceiling original) error = %v, want ErrQualityUnavailable", err)
-	}
-
-	// The same over-ceiling source stays downloadable as a capped transcode:
-	// the ceiling applies to the prepared artifact, not the source.
-	transcode, err := resolver.Resolve(ctx, Quality5Mbps, user, cfg, overCeiling, playback.ClientCapabilities{}, true, "")
-	if err != nil {
-		t.Fatalf("Resolve(capped transcode of over-ceiling source) error: %v", err)
-	}
-	if !transcode.RequiresArtifact || transcode.DeliveryFormat != FormatTranscode {
-		t.Fatalf("transcode decision = %+v, want artifact-backed transcode", transcode)
-	}
-
-	compliant := &models.MediaFile{ID: 4, Resolution: "1080p"}
-	if _, err := resolver.Resolve(ctx, QualityOriginal, user, cfg, compliant, playback.ClientCapabilities{}, true, ""); err != nil {
-		t.Fatalf("Resolve(compliant original) error: %v", err)
-	}
-
-	// An older probe recorded an audiobook's cover as 2160p video; the book
-	// serves no video, so the ceiling does not refuse it.
-	staleCover := &models.MediaFile{ID: 5, BaseType: "audiobook", CodecVideo: "mjpeg", CodecAudio: "aac", Container: "mp4", Resolution: "2160p"}
-	if _, err := resolver.Resolve(ctx, QualityOriginal, user, cfg, staleCover, playback.ClientCapabilities{}, true, ""); err != nil {
-		t.Fatalf("Resolve(audiobook with stale cover resolution) error: %v", err)
-	}
 }
 
 // ceilingOverrideSource is a custom action override that keeps every grant

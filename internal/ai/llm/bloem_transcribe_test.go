@@ -12,7 +12,7 @@ import (
 
 func TestTranscribeBuildsSegmentFromWordsWhenSegmentsAreAbsent(t *testing.T) {
 	// NeMo-Speech.cpp shape: verbose_json carries word timings only.
-	tr, err := transcribeStub(t, http.StatusOK, `{"task":"transcribe","language":"en","duration":3.0,
+	tr, err := bloemTranscribeStub(t, http.StatusOK, `{"task":"transcribe","language":"en","duration":3.0,
 			"text":"hi there friend","words":[{"start":0.2,"end":0.5,"word":"hi"},
 			{"start":0.6,"end":1.0,"word":"there"},{"start":1.8,"end":2.2,"word":"friend"}]}`)
 	if err != nil {
@@ -30,7 +30,7 @@ func TestTranscribeBuildsSegmentFromWordsWhenSegmentsAreAbsent(t *testing.T) {
 func TestTranscribeReadsDisplayAndJoinsPrevious(t *testing.T) {
 	// NeMo-Speech.cpp times Japanese per character: the running text (with
 	// its punctuation) is in display, and joins_previous drops the space.
-	tr, err := transcribeStub(t, http.StatusOK, `{"language":"ja","text":"小林さん。","words":[
+	tr, err := bloemTranscribeStub(t, http.StatusOK, `{"language":"ja","text":"小林さん。","words":[
 			{"start":0.0,"end":0.2,"word":"小"},
 			{"start":0.2,"end":0.4,"word":"林","joins_previous":true},
 			{"start":0.4,"end":0.6,"word":"さ","joins_previous":true},
@@ -51,7 +51,7 @@ func TestTranscribeReadsDisplayAndJoinsPrevious(t *testing.T) {
 }
 
 func TestTranscribeEmptyWordsWithoutSegmentsIsNotAnError(t *testing.T) {
-	tr, err := transcribeStub(t, http.StatusOK, `{"language":"en","text":"","words":[]}`)
+	tr, err := bloemTranscribeStub(t, http.StatusOK, `{"language":"en","text":"","words":[]}`)
 	if err != nil {
 		t.Fatalf("Transcribe: %v", err)
 	}
