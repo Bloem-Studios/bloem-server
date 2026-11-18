@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -1042,9 +1042,9 @@ func policyFromEffective(policy entitlements.EffectivePolicySnapshot) entitlemen
 }
 
 func effectivePolicyTargetForAccount(target entitlements.Policy, accountPermissions []string, accountMaxProfiles *int) entitlements.Policy {
-	effective := accesspolicy.ApplyGroupPolicy(
+	effective := access.ApplyGroupPolicy(
 		&models.User{Permissions: entitlements.AccountPermissionOverride(accountPermissions), MaxProfiles: accountMaxProfiles},
-		&accesspolicy.GroupPolicy{ManagedProfileLimit: true, MaxProfiles: target.MaxProfiles, AllowedPermissions: target.AllowedPermissions},
+		&access.GroupPolicy{ManagedProfileLimit: true, MaxProfiles: target.MaxProfiles, AllowedPermissions: target.AllowedPermissions},
 	)
 	target.AllowedPermissions = effective.Permissions
 	target.MaxProfiles = effective.MaxProfiles

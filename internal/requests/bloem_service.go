@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/access"
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
@@ -43,7 +42,7 @@ func (s *Service) effectivePolicyForViewer(ctx context.Context, user *models.Use
 		resolved, err := resolver.resolveRequestAccess(ctx, viewer.UserID, &viewer.ProfileID)
 		return access.EffectiveUserPolicy{RequestsAllowed: resolved.allowed}, err
 	}
-	if _, scoped := s.groupProvider.(accesspolicy.SubjectPolicyProvider); !scoped {
+	if _, scoped := s.groupProvider.(access.SubjectPolicyProvider); !scoped {
 		return access.EffectivePolicyForSubject(ctx, user, access.GroupSubject{AccountID: viewer.UserID, ProfileID: viewer.ProfileID}, s.groupProvider)
 	}
 	subject, err := access.GroupSubjectFromContext(ctx, viewer.UserID, viewer.ProfileID)

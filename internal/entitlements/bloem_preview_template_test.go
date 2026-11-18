@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/Silo-Server/silo-server/internal/access"
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 )
 
@@ -23,7 +22,7 @@ func requireCheckViolation(t *testing.T, err error, constraint string) {
 func TestPreviewTemplateIsSeededWithItsInvariants(t *testing.T) {
 	ctx, _, store := entitlementTestStore(t)
 	// Revision 1 is the seeded one; later revisions may curate libraries.
-	template, err := store.Get(ctx, accesspolicy.PreviewTemplateKey, 1)
+	template, err := store.Get(ctx, access.PreviewTemplateKey, 1)
 	require.NoError(t, err)
 	require.True(t, template.Enabled)
 	require.False(t, template.Archived)
@@ -55,7 +54,7 @@ func TestPreviewInvariantChecksRejectLooseningInTheDatabase(t *testing.T) {
 
 func TestPreviewTemplateRefusesEveryLoosening(t *testing.T) {
 	ctx, _, store := entitlementTestStore(t)
-	key := accesspolicy.PreviewTemplateKey
+	key := access.PreviewTemplateKey
 	current, err := store.Latest(ctx, key)
 	require.NoError(t, err)
 	for name, loosen := range map[string]func(*entitlements.Policy){
@@ -87,7 +86,7 @@ func TestPreviewTemplateRefusesEveryLoosening(t *testing.T) {
 
 func TestPreviewTemplateAcceptsLibraryCuration(t *testing.T) {
 	ctx, pool, store := entitlementTestStore(t)
-	key := accesspolicy.PreviewTemplateKey
+	key := access.PreviewTemplateKey
 	current, err := store.Latest(ctx, key)
 	require.NoError(t, err)
 	libraryID := insertEntitlementLibrary(t, ctx, pool, "Preview curation "+uuid.NewString(), true)
@@ -104,7 +103,7 @@ func TestPreviewCohortCannotBeDerived(t *testing.T) {
 	tx, err := fixture.pool.Begin(fixture.ctx)
 	require.NoError(t, err)
 	defer func() { _ = tx.Rollback(fixture.ctx) }()
-	parent, _, err := fixture.store.EnsureExactCohortInTx(fixture.ctx, tx, fixture.organizationID, accesspolicy.PreviewTemplateKey, 1, fixture.actorID)
+	parent, _, err := fixture.store.EnsureExactCohortInTx(fixture.ctx, tx, fixture.organizationID, access.PreviewTemplateKey, 1, fixture.actorID)
 	require.NoError(t, err)
 	_, _, err = fixture.store.DeriveCohortInTx(fixture.ctx, tx, fixture.organizationID, parent.ID, "Loosened preview "+uuid.NewString(), entitlements.PolicyPatch{}, fixture.actorID)
 	require.ErrorIs(t, err, entitlements.ErrProtectedTemplate)
@@ -122,7 +121,7 @@ func TestPreviewMembershipResolvesToAPreviewGroupPolicy(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, before != nil && before.PreviewOnly, "a standard member resolved to preview")
 
-	_, err = store.ApplyDefaultAccountTemplate(ctx, actorID, accountID, accesspolicy.PreviewTemplateKey, 1, false)
+	_, err = store.ApplyDefaultAccountTemplate(ctx, actorID, accountID, access.PreviewTemplateKey, 1, false)
 	require.NoError(t, err)
 	after, err := access.NewGroupStore(pool).GetPolicyForUser(ctx, accountID)
 	require.NoError(t, err)

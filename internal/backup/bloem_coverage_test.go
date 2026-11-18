@@ -21,7 +21,7 @@ func init() {
 // instead (bloem_restore_tenancy.go). docs/architecture/bloem-backup.md lists
 // the follow-up.
 var bloemFieldDecisions = map[string]string{
-	// accesspolicy.EffectiveUserPolicy
+	// access.EffectiveUserPolicy
 	"PlaybackAllowed": "compared by access.WiderThan's Bloem part (internal/access/bloem_widening.go)",
 	"PreviewOnly":     "compared by access.WiderThan's Bloem part (internal/access/bloem_widening.go)",
 	// userstore.Profile

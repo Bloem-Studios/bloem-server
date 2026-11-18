@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
@@ -40,7 +40,7 @@ func TestPreviewPersonalPresentationThroughRouter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = entitlements.NewTemplateStore(pool).ApplyDefaultAccountTemplate(ctx, admin, personal, accesspolicy.PreviewTemplateKey, 1, false); err != nil {
+	if _, err = entitlements.NewTemplateStore(pool).ApplyDefaultAccountTemplate(ctx, admin, personal, access.PreviewTemplateKey, 1, false); err != nil {
 		t.Fatal(err)
 	}
 	const secret = "presentation-router-test"

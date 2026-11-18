@@ -37,7 +37,7 @@ docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
 go.mod
 go.sum
 internal/access/group_store.go  # GetPolicyForUser reads the account's group only within its organization (groups are organization-owned)
-internal/access/groups.go
+internal/access/groups.go  # Silo's code as Silo wrote it, plus added lines: Bloem's group fields (playback switch, managed profile limit, preview marker) and hooks into bloem_groups.go for organization groups, preview groups, the managed profile limit and WiderThan's Bloem fields
 internal/access/groups_test.go  # Bloem adds EffectiveUserPolicy.PlaybackAllowed; whole-struct expectations add PlaybackAllowed: true, nothing else changed
 internal/access/resolver.go
 internal/access/types.go

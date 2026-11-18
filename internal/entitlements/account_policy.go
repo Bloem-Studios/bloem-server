@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
-	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Silo-Server/silo-server/internal/access"
+	"github.com/Silo-Server/silo-server/internal/models"
 )
 
 const (
@@ -193,12 +194,12 @@ type accountPolicyBatchAccount struct {
 	organizationID uuid.UUID
 	user           models.User
 	group          accountPolicyGroup
-	groupPolicy    *accesspolicy.GroupPolicy
+	groupPolicy    *access.GroupPolicy
 }
 
 type accountPolicyBatchProfile struct {
 	accountPolicyProfile
-	groupPolicy *accesspolicy.GroupPolicy
+	groupPolicy *access.GroupPolicy
 }
 
 func loadAccountPolicyBatchAccounts(ctx context.Context, tx pgx.Tx, requestedOrganizationID uuid.UUID, accountIDs []int) (map[int]accountPolicyBatchAccount, error) {
@@ -348,11 +349,11 @@ func accountPolicySnapshotFromBatch(account accountPolicyBatchAccount, profiles 
 	return snapshot
 }
 
-func accountPolicyEffective(user *models.User, group *accesspolicy.GroupPolicy) accesspolicy.EffectiveUserPolicy {
+func accountPolicyEffective(user *models.User, group *access.GroupPolicy) access.EffectiveUserPolicy {
 	if user != nil && user.Role == models.RoleAdmin {
 		group = nil
 	}
-	return accesspolicy.ApplyGroupPolicy(user, group)
+	return access.ApplyGroupPolicy(user, group)
 }
 
 func accountPolicyObservedAt(ctx context.Context, tx pgx.Tx) (time.Time, error) {
@@ -377,7 +378,7 @@ func getAccountPolicyInTx(ctx context.Context, tx pgx.Tx, requestedOrganizationI
 		return AccountPolicySnapshot{}, err
 	}
 	provider := accountPolicyGroupProvider{tx: tx}
-	effective, err := accesspolicy.EffectivePolicyForSubject(ctx, user, accesspolicy.GroupSubject{
+	effective, err := access.EffectivePolicyForSubject(ctx, user, access.GroupSubject{
 		OrganizationID: organizationID,
 		AccountID:      accountID,
 	}, provider)
@@ -399,7 +400,7 @@ func getAccountPolicyInTx(ctx context.Context, tx pgx.Tx, requestedOrganizationI
 		return AccountPolicySnapshot{}, err
 	}
 	for _, profile := range profiles {
-		effective, err := accesspolicy.EffectivePolicyForSubject(ctx, user, accesspolicy.GroupSubject{
+		effective, err := access.EffectivePolicyForSubject(ctx, user, access.GroupSubject{
 			OrganizationID: organizationID,
 			AccountID:      accountID,
 			ProfileID:      profile.id,
@@ -610,7 +611,7 @@ func (s *accountPolicyGroupScan) destinations() []any {
 	}
 }
 
-func (s *accountPolicyGroupScan) values() (accountPolicyGroup, *accesspolicy.GroupPolicy, error) {
+func (s *accountPolicyGroupScan) values() (accountPolicyGroup, *access.GroupPolicy, error) {
 	if s.assignedGroupID == nil {
 		return accountPolicyGroup{}, nil, nil
 	}
@@ -625,7 +626,7 @@ func (s *accountPolicyGroupScan) values() (accountPolicyGroup, *accesspolicy.Gro
 		s.groupID, s.managedTemplateKey, s.cohortID, s.cohortRevision,
 		s.sourceTemplateKey, s.sourceTemplateRevision,
 	)
-	policy := &accesspolicy.GroupPolicy{
+	policy := &access.GroupPolicy{
 		ID: *s.groupID, LibraryIDs: s.libraryIDs, MaxPlaybackQuality: *s.maxQuality,
 		PlaybackAllowed: *s.playbackAllowed, DownloadAllowed: *s.downloadAllowed,
 		DownloadTranscodeAllowed: *s.downloadTranscodeAllowed,
@@ -644,11 +645,11 @@ type accountPolicyGroupProvider struct{ tx pgx.Tx }
 
 // GetPolicyForUser exists for the provider interface; this provider is only
 // read through ResolvePolicy with an explicit tenant subject.
-func (p accountPolicyGroupProvider) GetPolicyForUser(context.Context, int) (*accesspolicy.GroupPolicy, error) {
+func (p accountPolicyGroupProvider) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {
 	return nil, ErrAccountNotFound
 }
 
-func (p accountPolicyGroupProvider) ResolvePolicy(ctx context.Context, subject accesspolicy.GroupSubject) (*accesspolicy.GroupPolicy, error) {
+func (p accountPolicyGroupProvider) ResolvePolicy(ctx context.Context, subject access.GroupSubject) (*access.GroupPolicy, error) {
 	if subject.OrganizationID == uuid.Nil || subject.AccountID <= 0 {
 		return nil, ErrAccountNotFound
 	}
@@ -682,7 +683,7 @@ func (p accountPolicyGroupProvider) ResolvePolicy(ctx context.Context, subject a
 		WHERE users.id=$2`, subject.OrganizationID, subject.AccountID))
 }
 
-func scanAccountPolicyGroupPolicy(row pgx.Row) (*accesspolicy.GroupPolicy, error) {
+func scanAccountPolicyGroupPolicy(row pgx.Row) (*access.GroupPolicy, error) {
 	var (
 		assignedGroupID, groupID                                   *int64
 		libraryIDs                                                 []int
@@ -710,7 +711,7 @@ func scanAccountPolicyGroupPolicy(row pgx.Row) (*accesspolicy.GroupPolicy, error
 		maxStreams == nil || maxProfiles == nil || maxTranscodes == nil || requestsAllowed == nil {
 		return nil, ErrAccountNotFound
 	}
-	return &accesspolicy.GroupPolicy{
+	return &access.GroupPolicy{
 		ID: *groupID, LibraryIDs: libraryIDs, MaxPlaybackQuality: *maxQuality,
 		PlaybackAllowed: *playbackAllowed, DownloadAllowed: *downloadAllowed,
 		DownloadTranscodeAllowed: *downloadTranscodeAllowed,
@@ -740,7 +741,7 @@ func currentEnabledLibraryIDs(ctx context.Context, tx pgx.Tx) ([]int, error) {
 	return result, nil
 }
 
-func effectivePolicySnapshot(effective accesspolicy.EffectiveUserPolicy, currentLibraryIDs []int) EffectivePolicySnapshot {
+func effectivePolicySnapshot(effective access.EffectiveUserPolicy, currentLibraryIDs []int) EffectivePolicySnapshot {
 	libraryIDs := effective.LibraryIDs
 	if libraryIDs == nil {
 		libraryIDs = currentLibraryIDs

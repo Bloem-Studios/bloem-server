@@ -1,4 +1,4 @@
-package accesspolicy
+package access
 
 import (
 	"reflect"

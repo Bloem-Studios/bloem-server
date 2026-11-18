@@ -13,7 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
+	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
@@ -42,7 +42,7 @@ func TestFreePlayGuestJourneyThroughTheRouter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := entitlements.NewTemplateStore(pool).ApplyDefaultAccountTemplate(ctx, admin.ID, shared.ID, accesspolicy.PreviewTemplateKey, 1, false); err != nil {
+	if _, err := entitlements.NewTemplateStore(pool).ApplyDefaultAccountTemplate(ctx, admin.ID, shared.ID, access.PreviewTemplateKey, 1, false); err != nil {
 		t.Fatal(err)
 	}
 	profileID := uuid.NewString()

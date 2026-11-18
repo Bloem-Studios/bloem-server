@@ -32,8 +32,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-
-	"github.com/Silo-Server/silo-server/internal/entitlements"
 )
 
 var (
@@ -181,7 +179,7 @@ func (s *Store) CreateTenantOrganizationInTransaction(ctx context.Context, tx pg
 		return TenantOrganization{}, fmt.Errorf("tenancy: create tenant organization: %w", err)
 	}
 	if templateKey != "" {
-		if _, err := entitlements.ApplyTemplateInTx(ctx, tx, organization.ID, templateKey, input.EntitlementTemplateRevision, false); err != nil {
+		if err := applyEntitlementTemplate(ctx, tx, organization.ID, templateKey, input.EntitlementTemplateRevision); err != nil {
 			return TenantOrganization{}, fmt.Errorf("tenancy: apply tenant entitlement template: %w", err)
 		}
 		organization.AppliedEntitlementRevision = input.EntitlementTemplateRevision

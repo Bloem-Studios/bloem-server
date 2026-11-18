@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -125,11 +125,11 @@ func (a *Admin) EnsureAccount(ctx context.Context, actor int, issuer string) (in
 	if err = tx.QueryRow(ctx, `SELECT current_revision FROM entitlement_templates WHERE key='bloem-preview'`).Scan(&templateRevision); err != nil {
 		return 0, err
 	}
-	template, err := templates.GetInTx(ctx, tx, accesspolicy.PreviewTemplateKey, templateRevision)
+	template, err := templates.GetInTx(ctx, tx, access.PreviewTemplateKey, templateRevision)
 	if err != nil {
 		return 0, err
 	}
-	if _, err = templates.ApplyDefaultAccountTemplateInTransaction(ctx, tx, actor, account.ID, accesspolicy.PreviewTemplateKey, template.Revision, false); err != nil {
+	if _, err = templates.ApplyDefaultAccountTemplateInTransaction(ctx, tx, actor, account.ID, access.PreviewTemplateKey, template.Revision, false); err != nil {
 		return 0, err
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO user_profile_onboarding(user_id,profile_id,tour_id,completed_at,updated_at) VALUES($1,$2,'welcome',$3,$3)`, account.ID, profileID, time.Now().UTC().Format(time.RFC3339)); err != nil {
@@ -285,7 +285,7 @@ func (a *Admin) SetLibraries(ctx context.Context, actor int, issuer string, libr
 	if err != nil {
 		return 0, err
 	}
-	if _, err = templates.ApplyDefaultAccountTemplateInTransaction(ctx, tx, actor, s.AccountID, accesspolicy.PreviewTemplateKey, revision, false); err != nil {
+	if _, err = templates.ApplyDefaultAccountTemplateInTransaction(ctx, tx, actor, s.AccountID, access.PreviewTemplateKey, revision, false); err != nil {
 		return 0, err
 	}
 	return revision, tx.Commit(ctx)

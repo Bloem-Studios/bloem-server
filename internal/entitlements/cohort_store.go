@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
+	"github.com/Silo-Server/silo-server/internal/access"
 )
 
 var (
@@ -188,7 +188,7 @@ func (s *Store) DeriveCohortInTx(ctx context.Context, tx pgx.Tx, organizationID 
 	if err != nil {
 		return CohortRevision{}, false, err
 	}
-	if parent.SourceTemplateKey == accesspolicy.PreviewTemplateKey {
+	if parent.SourceTemplateKey == access.PreviewTemplateKey {
 		// A preview cohort is the template's fixed policy; a patched
 		// derivative would be a preview principal with a loosened policy.
 		return CohortRevision{}, false, ErrProtectedTemplate

@@ -20,7 +20,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/idgen"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -1680,9 +1680,9 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	if err := tx.QueryRow(ctx, `SELECT permissions,max_profiles FROM users WHERE id=$2 AND EXISTS (SELECT 1 FROM organization_memberships m WHERE m.account_id=users.id AND m.organization_id=$1)`, organizationID, snapshot.AccountID).Scan(&accountPermissions, &accountMaxProfiles); err != nil {
 		return "", "", err
 	}
-	targetEffectivePolicy := accesspolicy.ApplyGroupPolicy(
+	targetEffectivePolicy := access.ApplyGroupPolicy(
 		&models.User{Permissions: entitlements.AccountPermissionOverride(accountPermissions), MaxProfiles: accountMaxProfiles},
-		&accesspolicy.GroupPolicy{
+		&access.GroupPolicy{
 			ManagedProfileLimit: true,
 			LibraryIDs:          targetPolicy.LibraryIDs, PlaybackAllowed: targetPolicy.PlaybackAllowed,
 			MaxStreams: targetPolicy.MaxStreams, MaxProfiles: targetPolicy.MaxProfiles,
@@ -1716,7 +1716,7 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	return "succeeded", "", nil
 }
 
-func managedEffectivePolicyMatchesTarget(effective entitlements.EffectivePolicySnapshot, target accesspolicy.EffectiveUserPolicy) bool {
+func managedEffectivePolicyMatchesTarget(effective entitlements.EffectivePolicySnapshot, target access.EffectiveUserPolicy) bool {
 	return reflect.DeepEqual(effective.LibraryIDs, target.LibraryIDs) &&
 		effective.PlaybackAllowed == target.PlaybackAllowed &&
 		effective.MaxStreams == target.MaxStreams &&

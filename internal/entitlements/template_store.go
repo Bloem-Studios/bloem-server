@@ -20,7 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
@@ -725,7 +725,7 @@ func normalizePolicy(policy Policy) (Policy, error) {
 func (s *Store) Create(ctx context.Context, input CreateTemplateInput) (template Template, err error) {
 	input.Key = strings.TrimSpace(input.Key)
 	input.Name = strings.TrimSpace(input.Name)
-	if input.Key == accesspolicy.PreviewTemplateKey {
+	if input.Key == access.PreviewTemplateKey {
 		return Template{}, ErrProtectedTemplate
 	}
 	if !templateKeyPattern.MatchString(input.Key) || input.Name == "" {
@@ -859,7 +859,7 @@ func (s *Store) Revise(ctx context.Context, key string, expectedRevision int64, 
 	if input.Name == "" || expectedRevision <= 0 {
 		return Template{}, fmt.Errorf("%w: name and expected revision are required", ErrInvalidPolicy)
 	}
-	preview := key == accesspolicy.PreviewTemplateKey
+	preview := key == access.PreviewTemplateKey
 	if preview && (!input.Enabled || previewPolicyLoosened(input.Policy)) {
 		return Template{}, ErrProtectedTemplate
 	}
@@ -934,7 +934,7 @@ func (s *Store) Clone(ctx context.Context, sourceKey string, sourceRevision int6
 // Archive makes a template unavailable without deleting its history.
 func (s *Store) Archive(ctx context.Context, key string, expectedRevision int64) (Template, error) {
 	key = strings.TrimSpace(key)
-	if key == "browse-only" || key == accesspolicy.PreviewTemplateKey {
+	if key == "browse-only" || key == access.PreviewTemplateKey {
 		return Template{}, ErrProtectedTemplate
 	}
 	tx, err := s.pool.Begin(ctx)

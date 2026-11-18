@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
@@ -137,8 +137,8 @@ func TestAdminIsNeverAPreviewPrincipal(t *testing.T) {
 }
 
 func TestPreviewAccountSQLNamesTheTemplateKey(t *testing.T) {
-	if !strings.Contains(previewAccountSQL, "'"+accesspolicy.PreviewTemplateKey+"'") {
-		t.Fatal("previewAccountSQL does not name accesspolicy.PreviewTemplateKey")
+	if !strings.Contains(previewAccountSQL, "'"+access.PreviewTemplateKey+"'") {
+		t.Fatal("previewAccountSQL does not name access.PreviewTemplateKey")
 	}
 }
 

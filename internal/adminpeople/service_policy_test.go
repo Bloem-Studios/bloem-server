@@ -3,7 +3,7 @@ package adminpeople
 import (
 	"testing"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 )
 
@@ -14,7 +14,7 @@ func TestManagedEffectivePolicyMatchesEveryTargetField(t *testing.T) {
 		DownloadTranscodeAllowed: true, MaxPlaybackQuality: "1080p",
 		AllowedPermissions: []string{"requests.create"}, RequestsAllowed: true,
 	}
-	target := accesspolicy.EffectiveUserPolicy{
+	target := access.EffectiveUserPolicy{
 		LibraryIDs: targetPolicy.LibraryIDs, PlaybackAllowed: targetPolicy.PlaybackAllowed,
 		MaxStreams: targetPolicy.MaxStreams, MaxProfiles: targetPolicy.MaxProfiles,
 		TranscodeAllowed: targetPolicy.TranscodeAllowed, AudioTranscodeAllowed: true,

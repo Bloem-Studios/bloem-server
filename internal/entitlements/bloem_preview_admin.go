@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
+	"github.com/Silo-Server/silo-server/internal/access"
 )
 
 // RevisePreviewLibrariesInTransaction only changes the library selection of
@@ -17,7 +17,7 @@ func (s *Store) RevisePreviewLibrariesInTransaction(ctx context.Context, tx pgx.
 	if err := tx.QueryRow(ctx, `SELECT current_revision FROM entitlement_templates WHERE key='bloem-preview' AND enabled AND NOT archived FOR UPDATE`).Scan(&current); err != nil {
 		return 0, err
 	}
-	t, err := getTemplate(ctx, tx, accesspolicy.PreviewTemplateKey, current, false)
+	t, err := getTemplate(ctx, tx, access.PreviewTemplateKey, current, false)
 	if err != nil {
 		return 0, err
 	}
@@ -37,14 +37,14 @@ func (s *Store) RevisePreviewLibrariesInTransaction(ctx context.Context, tx pgx.
 	if count != len(p.LibraryIDs) {
 		return 0, fmt.Errorf("%w: preview libraries must exist and be enabled", ErrInvalidPolicy)
 	}
-	before, err := getTemplate(ctx, tx, accesspolicy.PreviewTemplateKey, current, false)
+	before, err := getTemplate(ctx, tx, access.PreviewTemplateKey, current, false)
 	if err != nil {
 		return 0, err
 	}
 	if reflect.DeepEqual(before.Policy.LibraryIDs, p.LibraryIDs) {
 		return current, nil
 	}
-	if err = insertRevision(ctx, tx, accesspolicy.PreviewTemplateKey, current+1, p); err != nil {
+	if err = insertRevision(ctx, tx, access.PreviewTemplateKey, current+1, p); err != nil {
 		return 0, err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE entitlement_templates SET current_revision=$1,updated_at=now() WHERE key='bloem-preview'`, current+1); err != nil {

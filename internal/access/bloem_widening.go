@@ -10,7 +10,7 @@ import (
 
 // bloemWiderThan adds Bloem's two policy fields to WiderThan: a policy that
 // may play where the limit may not, and a full policy where the limit is
-// preview-only (accesspolicy.PreviewTemplateKey), each grant more.
+// preview-only (PreviewTemplateKey), each grant more.
 func bloemWiderThan(policy, limit EffectiveUserPolicy) []PolicyWidening {
 	var out []PolicyWidening
 	if policy.PlaybackAllowed && !limit.PlaybackAllowed {
