@@ -70,7 +70,7 @@ func TestDownloadProfilePolicyScopeFailsClosed(t *testing.T) {
 	}
 	// An unknown opted-in profile must not fall back to an allowed account.
 	svc := deniedProfileDownloadService(true)
-	_, _, err := svc.bloemDownloadConfigForProfile(downloadResolvedTenantContext(), 9, "missing-profile", "device-1")
+	_, _, err := svc.downloadConfigForUser(bloemWithDownloadProfile(downloadResolvedTenantContext(), 9, "missing-profile"), 9, "device-1")
 	if !errors.Is(err, ErrDownloadNotAllowed) {
 		t.Fatalf("unknown profile error = %v, want ErrDownloadNotAllowed", err)
 	}

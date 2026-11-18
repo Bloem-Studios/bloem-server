@@ -304,6 +304,7 @@ func (DownloadQualityResolver) PresetsFor(user *PolicyUser, cfg config.DownloadC
 // SetActionDecider wires the optional policy action decider. When unset, the
 // service and resolver keep using the legacy inline checks.
 func (s *Service) SetActionDecider(decider ActionDecider) {
+	decider = bloemTenantActionDecider(decider) // Bloem: binds the request tenant to every check (bloem_policy.go)
 	s.actionDecider = decider
 	s.policy.actionDecider = decider
 }
@@ -338,7 +339,8 @@ func (s *Service) downloadConfigForUser(
 		return cfg, nil, err
 	}
 	user, err := s.downloadUserForConfig(ctx, userID, cfg, deviceID)
-	return s.bloemRetryDownloadConfig(ctx, userID, deviceID, cfg, user), user, err
+	cfg = s.bloemRetryDownloadConfig(ctx, userID, deviceID, cfg, user) // Bloem: bloem_reprepare.go
+	return cfg, user, err
 }
 
 func (s *Service) downloadConfigForFeature(ctx context.Context, userID int, deviceID string) (config.DownloadConfig, error) {
@@ -390,7 +392,7 @@ func (s *Service) checkDownloadAction(
 		}
 		return nil
 	}
-	decision, _, err := bloemCheckDownloadAction(ctx, s.actionDecider, downloadActionInput(
+	decision, _, err := s.actionDecider.CheckAction(ctx, downloadActionInput(
 		action,
 		userID,
 		user,
@@ -472,7 +474,7 @@ func (r DownloadQualityResolver) ensureTranscodeAvailable(
 		deviceID,
 	)
 	input.RequestedQuality = requestedQuality
-	decision, _, err := bloemCheckDownloadAction(ctx, r.actionDecider, input)
+	decision, _, err := r.actionDecider.CheckAction(ctx, input)
 	if err != nil {
 		return "", ErrDownloadNotAllowed
 	}

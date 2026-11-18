@@ -68,6 +68,20 @@ func tenantPolicyRequired(ctx context.Context) bool {
 	return required
 }
 
+type policyProfileKey struct{}
+
+// WithPolicyProfile names the household profile whose group EffectivePolicyForUser
+// resolves for a tenant-scoped provider. Without it the subject is the account
+// alone. Downloads set it: a profile's downloads follow that profile's group.
+func WithPolicyProfile(ctx context.Context, profileID string) context.Context {
+	return context.WithValue(ctx, policyProfileKey{}, profileID)
+}
+
+func policyProfile(ctx context.Context) string {
+	profileID, _ := ctx.Value(policyProfileKey{}).(string)
+	return profileID
+}
+
 // bloemTenantPolicyForUser answers EffectivePolicyForUser for a tenant-scoped
 // provider, whose groups come from the account's organization membership.
 // Any other provider is Silo's, and Silo's code in groups.go answers it.
@@ -78,7 +92,7 @@ func bloemTenantPolicyForUser(ctx context.Context, user *models.User, provider G
 	if _, scoped := provider.(SubjectPolicyProvider); !scoped {
 		return EffectiveUserPolicy{}, false, nil
 	}
-	subject, err := GroupSubjectFromContext(ctx, user.ID, "")
+	subject, err := GroupSubjectFromContext(ctx, user.ID, policyProfile(ctx))
 	if err != nil {
 		if tenantPolicyRequired(ctx) {
 			return EffectiveUserPolicy{}, true, err

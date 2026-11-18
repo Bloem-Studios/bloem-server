@@ -280,3 +280,43 @@ func downloadResolvedTenantContextForAccount(accountID int) context.Context {
 		OrganizationDefault: true,
 	})
 }
+
+// SetActionDecider's wrapper binds the request tenant to the transcode check
+// Silo's resolver makes, so the decider sees the organization's facts.
+func TestDownloadPolicyBindsTenantToSilosTranscodeCheck(t *testing.T) {
+	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true, QualityCeiling: "1080p"}}
+	resolver := DownloadQualityResolver{actionDecider: bloemTenantActionDecider(decider)}
+	user := &PolicyUser{ID: 9, Policy: access.EffectiveUserPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true}}
+	cfg := config.DownloadConfig{Enabled: true, TranscodeEnabled: true}
+	file := &models.MediaFile{ID: 3, Resolution: "2160p"}
+
+	if _, err := resolver.Resolve(downloadResolvedTenantContext(), Quality10Mbps, user, cfg, file,
+		playback.ClientCapabilities{}, true, "device-9"); err != nil {
+		t.Fatalf("Resolve() error: %v", err)
+	}
+	if len(decider.inputs) != 1 {
+		t.Fatalf("decider calls = %d, want 1", len(decider.inputs))
+	}
+	if in := decider.inputs[0]; in.Tenant.OrganizationID != "10000000-0000-0000-0000-000000000001" ||
+		in.Tenant.MembershipSecurityRevision != 11 {
+		t.Fatalf("tenant facts = %+v, want resolved request tenant", in.Tenant)
+	}
+}
+
+// Without a request tenant the wrapped transcode check refuses before the
+// decider evaluates anything.
+func TestDownloadPolicyRefusesSilosTranscodeCheckWithoutTenant(t *testing.T) {
+	decider := &capturingActionDecider{decision: policyengine.ActionDecision{Allowed: true}}
+	resolver := DownloadQualityResolver{actionDecider: bloemTenantActionDecider(decider)}
+	user := &PolicyUser{ID: 9, Policy: access.EffectiveUserPolicy{DownloadAllowed: true, DownloadTranscodeAllowed: true}}
+	cfg := config.DownloadConfig{Enabled: true, TranscodeEnabled: true}
+	file := &models.MediaFile{ID: 3, Resolution: "2160p"}
+
+	if _, err := resolver.Resolve(context.Background(), Quality10Mbps, user, cfg, file,
+		playback.ClientCapabilities{}, true, "device-9"); err == nil {
+		t.Fatal("Resolve() succeeded without a request tenant")
+	}
+	if len(decider.inputs) != 0 {
+		t.Fatalf("decider calls = %d, want 0", len(decider.inputs))
+	}
+}

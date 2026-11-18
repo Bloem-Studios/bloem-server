@@ -86,7 +86,7 @@ func TestResolveTranscodePassesDeviceQualityFactsAndAppliesCeiling(t *testing.T)
 	file := &models.MediaFile{ID: 3, Resolution: "2160p"}
 
 	got, err := resolver.Resolve(
-		downloadResolvedTenantContext(), Quality10Mbps, user, cfg, file,
+		context.Background(), Quality10Mbps, user, cfg, file,
 		playback.ClientCapabilities{}, true, "device-9",
 	)
 	if err != nil {
@@ -100,10 +100,6 @@ func TestResolveTranscodePassesDeviceQualityFactsAndAppliesCeiling(t *testing.T)
 		in.DeviceID != "device-9" ||
 		in.RequestedQuality != Quality10Mbps {
 		t.Fatalf("action input = %+v, want download_transcode facts with device and requested quality", in)
-	}
-	if in.Tenant.OrganizationID != "10000000-0000-0000-0000-000000000001" ||
-		in.Tenant.MembershipSecurityRevision != 11 {
-		t.Fatalf("tenant facts = %+v, want resolved request tenant", in.Tenant)
 	}
 	if got.PrepareTarget.Resolution != "1080p" {
 		t.Fatalf("PrepareTarget.Resolution = %q, want %q (policy ceiling applied)",

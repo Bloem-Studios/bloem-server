@@ -602,54 +602,14 @@
     "\t\tprepared, err = m.preparer.PrepareFile(withPrepareObserver(hbCtx, observer), remoteAttemptID, opts, a.OutputPath)"
    ]
   },
-  "internal/downloads/policy.go": {
-   "kind": "lines",
-   "lines": [
-    "\tdecision, _, err := r.actionDecider.CheckAction(ctx, input)",
-    "\tdecision, _, err := s.actionDecider.CheckAction(ctx, downloadActionInput(",
-    "\treturn cfg, user, err"
-   ]
-  },
   "internal/downloads/policy_action_test.go": {
    "kind": "lines",
    "lines": [
-    "\t\tcontext.Background(), Quality10Mbps, user, cfg, file,",
     "\tcapability, err := svc.Capability(context.Background(), user.ID)",
     "\tctx := context.Background()",
     "\tctx := context.Background()",
     "\tctx := context.Background()",
     "func (p downloadGroupProvider) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {"
-   ]
-  },
-  "internal/downloads/service.go": {
-   "kind": "lines",
-   "lines": [
-    "\tcfg, _, err := s.downloadConfigForUser(ctx, userID, deviceID)",
-    "\tcfg, user, err := s.downloadConfigForUser(ctx, userID, req.DeviceID)",
-    "\tcfg, user, err := s.downloadConfigForUser(ctx, userID, req.DeviceID)",
-    "\teffective, err := access.EffectivePolicyForUser(ctx, user, s.groupProvider)",
-    "\tif _, _, err := s.downloadConfigForUser(ctx, userID, deviceID); err != nil {"
-   ]
-  },
-  "internal/downloads/subscription_mutations.go": {
-   "kind": "lines",
-   "lines": [
-    "\tcfg, user, err := s.downloadConfigForUser(ctx, userID, deviceID)"
-   ]
-  },
-  "internal/downloads/subscription_service.go": {
-   "kind": "lines",
-   "lines": [
-    "\tcfg, user, err := s.downloadConfigForUser(ctx, sub.UserID, sub.DeviceID)",
-    "\tcfg, user, err := s.downloadConfigForUser(ctx, userID, req.DeviceID)",
-    "\tif _, _, err := s.downloadConfigForUser(ctx, userID, deviceID); err != nil {",
-    "\tif _, err := s.downloadUserForConfig(ctx, userID, cfg, deviceID); err != nil {"
-   ]
-  },
-  "internal/downloads/subscription_sync_page.go": {
-   "kind": "lines",
-   "lines": [
-    "\tif _, _, err := s.downloadConfigForUser(ctx, userID, deviceID); err != nil {"
    ]
   },
   "internal/ebooks/enrichment.go": {
@@ -1521,11 +1481,11 @@
    "func (s *Service) ServeSubtitle(ctx context.Context, w http.ResponseWriter, r *h": "a45a63b129b4bc81"
   },
   "internal/downloads/policy.go": {
-   "func (r DownloadQualityResolver) ensureServedQualityAllowed(": "911d329b06fab6ce",
-   "func (s *Service) downloadConfigForUser(": "4c983eac94e7eedb"
+   "func (r DownloadQualityResolver) ensureServedQualityAllowed(": "911d329b06fab6ce"
   },
   "internal/downloads/service.go": {
    "func (s *Service) ServeDirect(ctx context.Context, w http.ResponseWriter, r *htt": "1ef810207d284a66",
+   "func (s *Service) effectiveDownloadUser(ctx context.Context, user *models.User)": "e84dd40aebfd0ae8",
    "func (s *Service) serveFileTarget(ctx context.Context, w http.ResponseWriter, r": "f94d1c183b48ce7a"
   },
   "internal/invitations/repository.go": {

@@ -380,7 +380,11 @@ func (s *Service) effectiveDownloadUser(ctx context.Context, user *models.User) 
 	if user == nil {
 		return nil, nil
 	}
-	effective, err := s.bloemEffectiveDownloadPolicy(ctx, user)
+	ctx, err := s.bloemDownloadPolicyContext(ctx, user) // Bloem: the account's profile and tenant (bloem_policy.go)
+	if err != nil {
+		return nil, err
+	}
+	effective, err := access.EffectivePolicyForUser(ctx, user, s.groupProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -433,7 +437,8 @@ type CreateRequest struct {
 // otherwise it prepares a remux or transcode artifact before the row becomes
 // ready.
 func (s *Service) Create(ctx context.Context, userID int, req CreateRequest, filter catalog.AccessFilter) (*Download, error) {
-	cfg, user, err := s.bloemDownloadConfigForProfile(ctx, userID, req.ProfileID, req.DeviceID)
+	ctx = bloemWithDownloadProfile(ctx, userID, req.ProfileID) // Bloem: the profile's download policy (bloem_policy.go)
+	cfg, user, err := s.downloadConfigForUser(ctx, userID, req.DeviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -750,7 +755,8 @@ func (s *Service) CreateSeason(ctx context.Context, userID int, req CreateReques
 // queues ephemeral rows under one shared batch ID. Series/season downloads are
 // original-only.
 func (s *Service) createSeriesScoped(ctx context.Context, userID int, req CreateRequest, filter catalog.AccessFilter, listEpisodes func(context.Context) ([]*models.Episode, error)) ([]*Download, string, []SkippedDownload, error) {
-	cfg, user, err := s.bloemDownloadConfigForProfile(ctx, userID, req.ProfileID, req.DeviceID)
+	ctx = bloemWithDownloadProfile(ctx, userID, req.ProfileID) // Bloem: the profile's download policy (bloem_policy.go)
+	cfg, user, err := s.downloadConfigForUser(ctx, userID, req.DeviceID)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -1363,7 +1369,8 @@ func (s *Service) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 
 	// Re-check policy — admin may have disabled downloads or revoked permission.
-	if _, _, err := s.bloemDownloadConfigForProfile(ctx, userID, profileID, deviceID); err != nil {
+	ctx = bloemWithDownloadProfile(ctx, userID, profileID) // Bloem: the profile's download policy (bloem_policy.go)
+	if _, _, err := s.downloadConfigForUser(ctx, userID, deviceID); err != nil {
 		return err
 	}
 
@@ -1494,7 +1501,8 @@ func (s *Service) renewTransferLease(ctx context.Context, dl *Download) (stop fu
 // re-checks current policy and content access, and returns the source/artifact
 // path for trusted proxy delegation.
 func (s *Service) ResolveManagedFile(ctx context.Context, userID int, profileID, deviceID, downloadID string, filter catalog.AccessFilter) (*FileTarget, error) {
-	cfg, _, err := s.bloemDownloadConfigForProfile(ctx, userID, profileID, deviceID)
+	ctx = bloemWithDownloadProfile(ctx, userID, profileID) // Bloem: the profile's download policy (bloem_policy.go)
+	cfg, _, err := s.downloadConfigForUser(ctx, userID, deviceID)
 	if err != nil {
 		return nil, err
 	}

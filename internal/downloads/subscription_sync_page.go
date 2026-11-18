@@ -35,7 +35,8 @@ func (s *Service) SyncSubscriptionPage(ctx context.Context, userID int, profileI
 	if limit < 1 || limit > 100 {
 		return SubscriptionSyncPage{}, fmt.Errorf("sync page limit must be 1 to 100")
 	}
-	if _, _, err := s.bloemDownloadConfigForProfile(ctx, userID, profileID, deviceID); err != nil {
+	ctx = bloemWithDownloadProfile(ctx, userID, profileID) // Bloem: the profile's download policy (bloem_policy.go)
+	if _, _, err := s.downloadConfigForUser(ctx, userID, deviceID); err != nil {
 		return SubscriptionSyncPage{}, err
 	}
 
