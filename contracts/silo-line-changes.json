@@ -1,0 +1,1547 @@
+{
+ "files": {
+  "assets/icon.png": {
+   "kind": "binary",
+   "silo_blob": "1d30a82024590538bce58c2a776a36c203f88d8b"
+  },
+  "cmd/playbackfixtures/main.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tOutcome:         playback.OutcomePlayableV3,",
+    "\t\tPlaybackPlan:    &plan,",
+    "\t\tProtocolVersion: playback.ProtocolV3,",
+    "\t\tServerFeatures:  playback.ServerFeaturesV3(),",
+    "\t\tSessionID:       goldenSessionID,"
+   ]
+  },
+  "cmd/silo/main.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\t\trecEngine.WithScopeResolver(policy.NewViewerResolver(recUserRepo, userStoreProvider, nil, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults))",
+    "\t\t\tapiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair), ipResolver, networkAccess.Registry)",
+    "\t\t\tdefer heartbeatWriter.Stop()",
+    "\t\t\tslog.Error(\"heartbeat cleanup error\", \"error\", err)",
+    "\t\tdefer reconciler.Stop()",
+    "\t\tif err := heartbeatWriter.CleanupSelf(shutdownCtx); err != nil {",
+    "\t\tmigErr := database.MigrateDownTo(migCtx, pool, migrations.FS, \"sql\", *migrateDownTo)",
+    "\t\tresolver.ReplaceSources(nil)",
+    "\t\tstatusErr := database.PrintMigrationStatus(migCtx, pool, migrations.FS, \"sql\", os.Stdout)",
+    "\t\t}",
+    "\t// 2b. Remove this node's heartbeat and sessions from shared state.",
+    "\t_ = heartbeatWriter",
+    "\t_ = reconciler",
+    "\taccessGroupStore := access.NewGroupStore(pool)",
+    "\tif heartbeatWriter != nil {",
+    "\tresolver.ReplaceSources(registrations)",
+    "\t}"
+   ]
+  },
+  "contracts/api/v2/fixtures/admin_api_key_capabilities.json": {
+   "kind": "generated"
+  },
+  "contracts/api/v2/fixtures/admin_policy_vendor.json": {
+   "kind": "generated"
+  },
+  "contracts/api/v2/fixtures/create_library_validation_failed.json": {
+   "kind": "lines",
+   "lines": [
+    "      \"code\": \"required\",",
+    "      \"detail\": \"expected required property paths to be present\"",
+    "      \"location\": \"body.paths\",",
+    "    {",
+    "    },",
+    "  \"detail\": \"The request did not pass validation; see errors.\","
+   ]
+  },
+  "contracts/api/v2/fixtures/get_device_login_bound.json": {
+   "kind": "lines",
+   "lines": [
+    "  \"server_name\": \"Silo\","
+   ]
+  },
+  "contracts/api/v2/fixtures/get_device_login_ok.json": {
+   "kind": "lines",
+   "lines": [
+    "  \"server_name\": \"Silo\""
+   ]
+  },
+  "contracts/api/v2/openapi.json": {
+   "kind": "generated"
+  },
+  "contracts/api/v2/route-inventory.json": {
+   "kind": "generated"
+  },
+  "docs/design/schemas/playback-v3/v3/capability-response.schema.json": {
+   "kind": "lines",
+   "lines": [
+    "        \"type\": \"string\""
+   ]
+  },
+  "docs/design/schemas/playback-v3/v3/decision-response.schema.json": {
+   "kind": "lines",
+   "lines": [
+    "        \"type\": \"string\""
+   ]
+  },
+  "docs/design/schemas/playback-v3/v3/fixtures/invalid/native-and-artifact-decision_response.json": {
+   "kind": "lines",
+   "lines": [
+    "  }"
+   ]
+  },
+  "docs/design/schemas/playback-v3/v3/fixtures/invalid/native-convert-decision_response.json": {
+   "kind": "lines",
+   "lines": [
+    "  }"
+   ]
+  },
+  "docs/design/schemas/playback-v3/v3/fixtures/invalid/native-negative-index-decision_response.json": {
+   "kind": "lines",
+   "lines": [
+    "  }"
+   ]
+  },
+  "docs/design/schemas/playback-v3/v3/fixtures/invalid/native-remux-decision_response.json": {
+   "kind": "lines",
+   "lines": [
+    "  }"
+   ]
+  },
+  "go.mod": {
+   "kind": "lines",
+   "lines": [
+    "\tgo.opentelemetry.io/proto/otlp v1.11.0 // indirect"
+   ]
+  },
+  "internal/access/groups.go": {
+   "kind": "lines",
+   "lines": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "\t\t\tcontinue",
+    "\t\t\tcontinue",
+    "\t\t\tcontinue",
+    "\t\t\tcontinue",
+    "\t\t\treturn 0",
+    "\t\tAllowedPermissions:         nil,",
+    "\t\tAudioTranscodeAllowed:      inheritBool(user.AudioTranscodeAllowed, base.AudioTranscodeAllowed),",
+    "\t\tAudioTranscodeAllowed:      true,",
+    "\t\tDownloadAllowed:            inheritBool(user.DownloadAllowed, base.DownloadAllowed),",
+    "\t\tDownloadAllowed:            true,",
+    "\t\tDownloadTranscodeAllowed:   false,",
+    "\t\tDownloadTranscodeAllowed:   inheritBool(user.DownloadTranscodeAllowed, base.DownloadTranscodeAllowed),",
+    "\t\tLibraryIDs:                 inheritLibraryIDs(user.LibraryIDs, base.LibraryIDs),",
+    "\t\tLibraryIDs:                 nil,",
+    "\t\tMaxLocalStreamBitrateKbps:  0,",
+    "\t\tMaxLocalStreamBitrateKbps:  inheritInt(user.MaxLocalStreamBitrateKbps, base.MaxLocalStreamBitrateKbps),",
+    "\t\tMaxPlaybackQuality:         \"\",",
+    "\t\tMaxPlaybackQuality:         NormalizePlaybackQuality(inheritString(user.MaxPlaybackQuality, base.MaxPlaybackQuality)),",
+    "\t\tMaxProfiles:                DefaultMaxProfiles,",
+    "\t\tMaxProfiles:                inheritInt(user.MaxProfiles, base.MaxProfiles),",
+    "\t\tMaxRemoteStreamBitrateKbps: 0,",
+    "\t\tMaxRemoteStreamBitrateKbps: inheritInt(user.MaxRemoteStreamBitrateKbps, base.MaxRemoteStreamBitrateKbps),",
+    "\t\tMaxStreams:                 0,",
+    "\t\tMaxStreams:                 inheritInt(user.MaxStreams, base.MaxStreams),",
+    "\t\tMaxTranscodes:              0,",
+    "\t\tMaxTranscodes:              inheritInt(user.MaxTranscodes, base.MaxTranscodes),",
+    "\t\tPermissions:                cloneStrings(user.Permissions),",
+    "\t\tRequestsAllowed:            inheritBool(user.RequestsAllowed, base.RequestsAllowed),",
+    "\t\tRequestsAllowed:            true,",
+    "\t\tTranscodeAllowed:           inheritBool(user.TranscodeAllowed, base.TranscodeAllowed),",
+    "\t\tTranscodeAllowed:           true,",
+    "\t\tallowed[value] = struct{}{}",
+    "\t\tbase = *group",
+    "\t\tbase, group = AdminPolicy(), nil",
+    "\t\teffective.Permissions = intersectStrings(user.Permissions, group.AllowedPermissions)",
+    "\t\tif *override < 0 {",
+    "\t\tif _, ok := allowed[value]; !ok {",
+    "\t\tif _, ok := seen[value]; ok {",
+    "\t\tif value == \"\" {",
+    "\t\tif value == \"\" {",
+    "\t\tout = append(out, value)",
+    "\t\treturn *override",
+    "\t\treturn *override",
+    "\t\treturn *override",
+    "\t\treturn EffectiveUserPolicy{RequestsAllowed: true}",
+    "\t\treturn EffectiveUserPolicy{}, err",
+    "\t\treturn []string{}",
+    "\t\treturn sortedUniqueInts(groupLibraryIDs)",
+    "\t\treturn sortedUniqueInts(userLibraryIDs)",
+    "\t\tseen[value] = struct{}{}",
+    "\t\tvalue := strings.TrimSpace(raw)",
+    "\t\tvalue := strings.TrimSpace(raw)",
+    "\t\t}",
+    "\t\t}",
+    "\t\t}",
+    "\t\t}",
+    "\t\t}",
+    "\tAllowedPermissions         []string // nil = all assignable",
+    "\tAudioTranscodeAllowed      bool",
+    "\tAudioTranscodeAllowed      bool",
+    "\tDownloadAllowed            bool",
+    "\tDownloadAllowed            bool",
+    "\tDownloadTranscodeAllowed   bool",
+    "\tDownloadTranscodeAllowed   bool",
+    "\tGetPolicyForUser(ctx context.Context, userID int) (*GroupPolicy, error)",
+    "\tID                         int64",
+    "\tLibraryIDs                 []int // nil = unrestricted",
+    "\tLibraryIDs                 []int // nil = unrestricted",
+    "\tMaxLocalStreamBitrateKbps  int",
+    "\tMaxLocalStreamBitrateKbps  int      // 0 = unlimited",
+    "\tMaxPlaybackQuality         string",
+    "\tMaxPlaybackQuality         string",
+    "\tMaxProfiles                int",
+    "\tMaxProfiles                int      // household profiles per account; at least 1",
+    "\tMaxRemoteStreamBitrateKbps int",
+    "\tMaxRemoteStreamBitrateKbps int      // 0 = unlimited",
+    "\tMaxStreams                 int",
+    "\tMaxStreams                 int // 0 = no cap",
+    "\tMaxTranscodes              int",
+    "\tMaxTranscodes              int",
+    "\tPermissions                []string",
+    "\tRequestsAllowed            bool",
+    "\tRequestsAllowed            bool",
+    "\tTranscodeAllowed           bool",
+    "\tTranscodeAllowed           bool",
+    "\tallowed := make(map[string]struct{}, len(right))",
+    "\tbase := NoGroupPolicy()",
+    "\teffective := EffectiveUserPolicy{",
+    "\tfor _, raw := range left {",
+    "\tfor _, raw := range right {",
+    "\tgroup, err := provider.GetPolicyForUser(ctx, user.ID)",
+    "\tif group != nil && group.AllowedPermissions != nil {",
+    "\tif group != nil {",
+    "\tif groupLibraryIDs != nil {",
+    "\tif len(left) == 0 || len(right) == 0 {",
+    "\tif override != nil {",
+    "\tif override != nil {",
+    "\tif override != nil {",
+    "\tif provider == nil || !GroupApplies(user) {",
+    "\tif user == nil {",
+    "\tif user.Role == models.RoleAdmin {",
+    "\tif userLibraryIDs != nil {",
+    "\tout := make([]string, 0, len(left))",
+    "\tpolicy := NoGroupPolicy()",
+    "\tpolicy.DownloadTranscodeAllowed = true",
+    "\treturn ApplyGroupPolicy(user, group), nil",
+    "\treturn GroupPolicy{",
+    "\treturn effective",
+    "\treturn inherited",
+    "\treturn inherited",
+    "\treturn inherited",
+    "\treturn nil",
+    "\treturn out",
+    "\treturn policy",
+    "\tseen := make(map[string]struct{}, len(left))",
+    "\tsort.Strings(out)",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "// AdminPolicy instead.",
+    "// AdminPolicy is the policy under an admin account's own overrides: full",
+    "// DefaultMaxProfiles is the household profile limit of an account outside",
+    "// EffectivePolicyForUser loads a user's group policy and returns the resolved",
+    "// EffectiveUserPolicy is the fully resolved policy for an account: every field",
+    "// GroupPolicy is the access group's policy layer. Every user-level policy",
+    "// GroupPolicyProvider loads the access-group restriction layer for a user.",
+    "// NoGroupPolicy is the policy applied to a regular account with no access",
+    "// access, the same as the server Owner has. Admins never belong to an access",
+    "// admin account still restricts it.",
+    "// carries a concrete value (user override when set, otherwise the group value,",
+    "// defaults to false because that was the old column default on users (and is",
+    "// every access group, and of a new group that does not set one. It was the",
+    "// field has a group counterpart here; the group value applies to each member",
+    "// group, so this is the only layer beneath their overrides; an override on an",
+    "// group. It is permissive so that an unset field on such an account keeps",
+    "// limit such an account always had: profiles were never unlimited. Admins use",
+    "// not apply (see GroupApplies) resolves without querying the provider.",
+    "// otherwise the permissive no-group default).",
+    "// policy. Nil providers are treated as \"no group\". An account whose group does",
+    "// stored default on every account before groups set the limit.",
+    "// the seeded Default Group's value), so an account that never had the gate",
+    "// today's unrestricted behavior. DownloadTranscodeAllowed is the exception: it",
+    "// turned on does not silently gain it. MaxProfiles is DefaultMaxProfiles, the",
+    "// whose own field is unset (inherits).",
+    "const DefaultMaxProfiles = 5",
+    "func AdminPolicy() GroupPolicy {",
+    "func NoGroupPolicy() GroupPolicy {",
+    "func inheritBool(override *bool, inherited bool) bool {",
+    "func inheritInt(override *int, inherited int) int {",
+    "func inheritLibraryIDs(userLibraryIDs, groupLibraryIDs []int) []int {",
+    "func inheritString(override *string, inherited string) string {",
+    "func intersectStrings(left, right []string) []string {",
+    "type EffectiveUserPolicy struct {",
+    "type GroupPolicy struct {",
+    "type GroupPolicyProvider interface {",
+    "}",
+    "}",
+    "}",
+    "}",
+    "}",
+    "}",
+    "}",
+    "}",
+    "}",
+    "}"
+   ]
+  },
+  "internal/access/resolver.go": {
+   "kind": "lines",
+   "lines": [
+    "",
+    "\t\treturn Scope{}, fmt.Errorf(\"opening user store for %d: %w\", input.UserID, err)",
+    "\teffective, err := EffectivePolicyForUser(ctx, user, r.groups)",
+    "\tif err != nil {",
+    "\tstore, err := r.storeFactory.ForUser(ctx, input.UserID)",
+    "\t}"
+   ]
+  },
+  "internal/adminjob/runner.go": {
+   "kind": "lines",
+   "lines": [
+    "",
+    "\t\t\treturn",
+    "\t\t\tslog.Warn(\"admin jobs: failed to update delete progress\", \"job_id\", job.ID, \"error\", err)",
+    "\t\tif err := r.repo.UpdateProgress(ctx, job.ID, current, total, message); err != nil {",
+    "\t\tr.publishJobByID(ctx, notifications.TypeJobProgress, job.ID)",
+    "\t\t}",
+    "\tdefer close(heartbeatStop)",
+    "\tgo r.heartbeatLoop(ctx, job.ID, heartbeatStop)",
+    "\theartbeatStop := make(chan struct{})",
+    "\tprogress := func(current, total int, message string) {"
+   ]
+  },
+  "internal/api/handlers/admin.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tMaxLocalStreamBitrateKbps:  effective.MaxLocalStreamBitrateKbps,",
+    "\t\t\tMaxRemoteStreamBitrateKbps: effective.MaxRemoteStreamBitrateKbps,",
+    "\t\t\tMaxTranscodes:              effective.MaxTranscodes,",
+    "\tGet(ctx context.Context, id int64) (*access.Group, error)",
+    "\tGetPolicyForUser(ctx context.Context, userID int) (*access.GroupPolicy, error)",
+    "\tList(ctx context.Context) ([]access.Group, error)",
+    "\tMaxLocalStreamBitrateKbps  int      `json:\"-\"`",
+    "\tMaxProfiles                int      `json:\"-\"`",
+    "\tMaxRemoteStreamBitrateKbps int      `json:\"-\"`",
+    "\tgroups, err := h.AccessGroups.List(ctx)"
+   ]
+  },
+  "internal/api/handlers/admin_users_service.go": {
+   "kind": "lines",
+   "lines": [
+    "\t_, err := access.ReadGroupInTransaction(ctx, tx, *id)",
+    "\tgroup, err := access.ReadGroupInTransaction(ctx, tx, *user.AccessGroupID)",
+    "\tgroup, err := h.AccessGroups.Get(ctx, *user.AccessGroupID)"
+   ]
+  },
+  "internal/api/handlers/catalog_transfer_service.go": {
+   "kind": "lines",
+   "lines": [
+    "\tjob.PublicURL, job.PublishedAt = url, &published",
+    "\treturn job, nil"
+   ]
+  },
+  "internal/api/handlers/downloads_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tNewDownloadHandler(svc).HandleDirectDownload(rec, downloadTestRequest(method, \"/direct-download?file_id=42\", nil, 7, \"\", \"\"))",
+    "\t\t\th.HandleDirectDownloadViaProxy(rec, downloadTestRequest(method, \"/direct-download-proxy?file_id=42\", nil, 7, \"\", \"\"))",
+    "\t\tctx := apimw.SetProfileID(apimw.SetClaims(context.Background(), &auth.Claims{",
+    "\tNewDownloadHandler(overrideCeilingDownloadService(t, \"1080p\")).HandleDirectDownload(rec, downloadTestRequest(http.MethodGet, \"/direct-download?file_id=42\", nil, 7, \"\", \"\"))"
+   ]
+  },
+  "internal/api/handlers/libraries_service.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\t\tFolder:  folder,",
+    "\t\t\t\tMode:    scantrigger.ModeLibrary,",
+    "\t\t\t\tTrigger: \"library_paths_changed\",",
+    "\t\t\t\tslog.WarnContext(ctx, \"queue library path-change scan failed\", \"component\", \"api\", \"library_id\", folder.ID, \"error\", err)",
+    "\t\t\th.recordAcceptedScan(updateScanID, &scantrigger.Target{",
+    "\t\t\th.runFolderScanAsync(updateScanID, folder, \"library_paths_changed\")",
+    "\t\t\tif _, err := h.ScanQueue.EnqueueLibraryScan(ctx, folder.ID, \"library_paths_changed\"); err != nil {",
+    "\t\t\tupdateScanID := ulid.Make().String()",
+    "\t\t\t}",
+    "\t\t\t})",
+    "\t\tif h.ScanQueue != nil {",
+    "\t\t}",
+    "\t\t} else {"
+   ]
+  },
+  "internal/api/handlers/notifications.go": {
+   "kind": "lines",
+   "lines": [
+    "\treturn capabilityResponse{"
+   ]
+  },
+  "internal/api/handlers/playback.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tfile, err := h.fileResolver.GetByID(ctx, preferredID)",
+    "\t\tfiles, err = h.FileVersionFetcher.GetByContentID(ctx, source.ContentID)",
+    "\t\tfiles, err = h.FileVersionFetcher.GetByEpisodeID(ctx, source.EpisodeID)",
+    "\t\treturn h.fileResolver.GetByID(ctx, fallbackID)",
+    "\tCheckTranscodingAllowed(ctx context.Context, userID int, requiresVideoTranscode bool) error",
+    "\tfile, err := h.fileResolver.GetByID(r.Context(), fileID)",
+    "\tif h == nil || h.ProbeEnsurer == nil || file == nil {",
+    "\tif h.fileResolver == nil || h.ItemAccess == nil {"
+   ]
+  },
+  "internal/api/handlers/playback_connection.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tif err := preflightPlaybackFile(r.Context(), candidate, h.MissingMarker, h.EventsHub); err != nil {"
+   ]
+  },
+  "internal/api/handlers/playback_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\treturn apimw.SetProfileID(ctx, \"profile-1\")"
+   ]
+  },
+  "internal/api/handlers/playback_v3.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\t\tif err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {",
+    "\t\t\treturn playback.NewTerminalResponseV3(terminalSessionExpiredV3, \"The playback session for this attempt has ended.\", true), nil",
+    "\t\tif err := checker.CheckTranscodingAllowed(ctx, session.UserID, result.PlayMethod == playback.PlayTranscode); err != nil {",
+    "\t\tresponse := playback.NewTerminalResponseV3(replanErr.reason, replanErr.message, replanErr.retryable)",
+    "\t\tresult = playback.PlanPlaybackV3(input)",
+    "\t\treturn nil",
+    "\t\treturn normalizeDecisionResponseV3(record.StartResponse)",
+    "\t\treturn playback.NewTerminalResponseV3(result.Terminal.Reason, result.Terminal.Message, result.Terminal.Retryable), *record, nil, nil",
+    "\th.maybeQueueLazyPlaybackMarkers(ctx, &task.session, &task.file)",
+    "\tif err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {",
+    "\tif err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {",
+    "\tif h.ChapterThumbnailQueuer != nil {",
+    "\tparts, err := h.FileVersionFetcher.GetByContentID(ctx, file.ContentID)",
+    "\tresult := playback.PlanPlaybackV3(input)",
+    "\treturn normalizeDecisionResponseV3(playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: playback.ServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: record.SessionID, PlaybackPlan: &plan})",
+    "\tstart := record.NormalizedRequest",
+    "\ttimeline, timelineErr := h.prepareTransportTimelineV3(r.Context(), session, file, result)",
+    "\tunlock := h.tm.LockSessionLifecycle(session.ID)"
+   ]
+  },
+  "internal/api/handlers/plugins.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tinstallations: installations,",
+    "\tinstallations *plugins.InstallationStore",
+    "\treturn &PluginHandler{"
+   ]
+  },
+  "internal/api/handlers/session_ws.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tif err := hello.Validate(); err != nil {"
+   ]
+  },
+  "internal/api/handlers/stream.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tfileResolver: fileResolver,",
+    "\t\th.streamEmbeddedSubtitle(w, r, file, embeddedIndex, requestedFormat)",
+    "\tfile, err := h.fileResolver.GetByID(ctx, fileID)",
+    "\tfile, err := h.fileResolver.GetByID(r.Context(), fileID)",
+    "\tfonts, err := playback.ExtractAttachedSubtitleFonts(ctx, file.FilePath, h.ffmpegPath())",
+    "\tif err := preflightPlaybackFile(ctx, file, h.MissingMarker, h.EventsHub); err != nil {",
+    "\tif userID == 0 {"
+   ]
+  },
+  "internal/api/handlers/watch_together.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\t\"client_sent_at\":     msg.ClientSentAt,",
+    "\t\t\t\"server_received_at\": now.Format(time.RFC3339Nano),",
+    "\t\t\t\"server_sent_at\":     time.Now().UTC().Format(time.RFC3339Nano),",
+    "\t\t\t\"type\":               \"pong\",",
+    "\t\t\"code\":    code,",
+    "\t\t\"message\": message,",
+    "\t\t\"type\":    \"error\",",
+    "\t\treturn rc.WriteJSON(map[string]string{",
+    "\tType string `json:\"type\"`",
+    "\t_ = c.WriteJSON(map[string]string{"
+   ]
+  },
+  "internal/api/middleware/auth.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tauthority, active, err := am.sessionValidator.ActiveSession(r.Context(), claims.SessionID, claims.UserID)"
+   ]
+  },
+  "internal/api/middleware/policy_gates.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\teffective, err := access.EffectivePolicyForUser(r.Context(), user, m.groups)",
+    "\t\teffective, err := access.EffectivePolicyForUser(r.Context(), user, m.groups)"
+   ]
+  },
+  "internal/api/router.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\t\tsettingsRepo,",
+    "\t\t\t\tsettingsRepo,",
+    "\t\t\tService: themesongs.NewService(themesongs.NewRepository(deps.DB), deps.Config.Auth.JWTSecret), Sessions: sessionRepo, Users: userRepo, Resolver: viewerResolver,",
+    "\t\t\tdeps.FileRepo,",
+    "\t\t\trequestSvc.SetLifecycleNotifier(lifecycle)",
+    "\t\t\tsocket := handlers.NewEventsSocketV2(events, evt.NewSocketTicketStore(deps.RedisClient, evt.SocketAudienceEvents), sessionRepo, userRepo, viewerResolver, actingAdmin, socketKeys, deps.PublicURL)",
+    "\t\t\tsocket := handlers.NewPlaybackControlSocketV2(playbackHandler, deps.RedisClient, sessionRepo, userRepo, viewerResolver, actingAdmin, deps.PublicURL)",
+    "\t\t\tviewerAccessMiddleware = apimw.NewViewerAccessMiddleware(viewerResolver)",
+    "\t\taccessGroupHandler = handlers.NewAccessGroupHandler(accessGroupStore)",
+    "\t\taccessGroupStore = access.NewGroupStore(deps.DB)",
+    "\t\tr.Use(activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub))",
+    "\t\tv2deps.EbookFiles = ebookReaderHandler",
+    "\t\tv2deps.ThemeSongs = &handlers.ThemeSongsHandler{",
+    "\t\t}",
+    "\tConfig *config.Config",
+    "\tr.Use(apimw.RequestLogger(deps.NodeID))",
+    "\tv2deps.PluginContent = plugins.NewContentHandler(deps.PluginHTTPProxy, func(r *http.Request) plugins.ContentAccess {",
+    "\tvar accessGroupStore *access.GroupStore",
+    "\t})",
+    "\t}, func(r *http.Request) plugins.ContentAccess {"
+   ]
+  },
+  "internal/apiv2/admin_scoped_email_db_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tt.Fatal(err)",
+    "\t\tALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('recovery_user_ids');",
+    "\t\tCREATE SEQUENCE recovery_user_ids;",
+    "\t\tCREATE TRIGGER api_key_configuration_revision BEFORE INSERT OR UPDATE ON api_keys FOR EACH ROW EXECUTE FUNCTION public.advance_api_key_configuration_revision()`); err != nil {",
+    "\t\tCREATE TRIGGER users_admin_revision BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION public.bump_user_admin_revision();",
+    "\t\t_, _ = admin.Exec(context.WithoutCancel(t.Context()), \"DROP SCHEMA \"+quoted+\" CASCADE\")",
+    "\t\tif _, err := pool.Exec(t.Context(), \"CREATE TABLE \"+table+\" (LIKE public.\"+table+\" INCLUDING ALL)\"); err != nil {",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Skip(\"SILO_TEST_DATABASE_URL is not set\")",
+    "\t\t}",
+    "\t\"github.com/jackc/pgx/v5\"",
+    "\t\"os\"",
+    "\t\"strings\"",
+    "\t// Preserve production revisions and recovery invalidation; LIKE omits triggers.",
+    "\tadmin, err := pgxpool.New(t.Context(), dsn)",
+    "\tconfig, err := pgxpool.ParseConfig(dsn)",
+    "\tconfig.ConnConfig.RuntimeParams[\"search_path\"] = schema + \",public\"",
+    "\tdsn := os.Getenv(\"SILO_TEST_DATABASE_URL\")",
+    "\tfor _, table := range []string{\"users\", \"access_groups\", \"auth_sessions\", \"api_keys\", \"password_reset_tokens\", \"abs_sessions\", \"jellycompat_sessions\", \"device_login_requests\", \"user_profiles\", \"activity_log\"} {",
+    "\tif _, err := admin.Exec(t.Context(), \"CREATE SCHEMA \"+quoted); err != nil {",
+    "\tif _, err := pool.Exec(t.Context(), `ALTER TABLE users ALTER COLUMN id DROP IDENTITY IF EXISTS;",
+    "\tif _, err := pool.Exec(t.Context(), up); err != nil {",
+    "\tif dsn == \"\" {",
+    "\tif err != nil {",
+    "\tif err != nil {",
+    "\tif err != nil {",
+    "\tif err != nil {",
+    "\tmigration, err := os.ReadFile(\"../../migrations/sql/20261012124303_retire_password_resets_on_email_change.sql\")",
+    "\tpool, err := pgxpool.NewWithConfig(t.Context(), config)",
+    "\tquoted := pgx.Identifier{schema}.Sanitize()",
+    "\treturn pool",
+    "\tschema := \"scoped_recovery_\" + strings.ReplaceAll(uuid.NewString(), \"-\", \"\")",
+    "\tt.Cleanup(admin.Close)",
+    "\tt.Cleanup(func() {",
+    "\tt.Cleanup(pool.Close)",
+    "\tt.Helper()",
+    "\tup := strings.ReplaceAll(strings.Split(string(migration), \"-- +goose Down\")[0], \"public.\", quoted+\".\")",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t})"
+   ]
+  },
+  "internal/apiv2/artwork_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tt.Fatalf(\"max-age = %d, URL remaining lifetime = %ds\", maxAge, remaining)",
+    "\tif remaining := int64(time.Until(expires).Seconds()); maxAge < 3600-5 || maxAge > remaining+1 {"
+   ]
+  },
+  "internal/apiv2/device_login_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\twant := `{\"status\":\"pending\",\"user_code\":\"4821-7730\",\"match_code\":\"warm pony\",\"device_name\":\"Living room TV\",\"device_platform\":\"tvos\",\"ip_address_hint\":\"192.168.1.x\",\"expires_at\":\"2026-01-02T03:14:05.678Z\",\"requested_at\":\"2026-01-02T03:04:05.678Z\",\"client_purpose\":\"device_login\",\"temporary\":false,\"server_name\":\"Silo\"}` + \"\\n\""
+   ]
+  },
+  "internal/apiv2/libraries.go": {
+   "kind": "lines",
+   "lines": [
+    "\tPaths                    []string `json:\"paths\" minItems:\"1\" doc:\"Root directories the library scans\" example:\"[\\\"/media/movies\\\"]\"`"
+   ]
+  },
+  "internal/apiv2/parity_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\treturn access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true, PINVerificationSkipped: true}, nil",
+    "\t\tViewerAccess:     apimw.NewViewerAccessMiddleware(fakeResolver{}),",
+    "\t\treturn access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true}, nil",
+    "\t\treturn access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true}, nil",
+    "\t\treturn access.Scope{UserID: in.UserID, ProfileVerified: true}, nil"
+   ]
+  },
+  "internal/auth/admin_users_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t_, _ = admin.Exec(context.WithoutCancel(t.Context()), \"DROP SCHEMA \"+quoted+\" CASCADE\")",
+    "\t\tadmin.Close()",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Skip(\"SILO_TEST_DATABASE_URL is not set\")",
+    "\t\"context\"",
+    "\t\"os\"",
+    "\t_, err = pool.Exec(t.Context(), `CREATE TABLE access_groups (LIKE public.access_groups INCLUDING ALL); CREATE TABLE users (LIKE public.users INCLUDING ALL EXCLUDING IDENTITY); ALTER TABLE users DROP COLUMN IF EXISTS admin_revision; CREATE SEQUENCE test_user_ids; ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('test_user_ids'); CREATE TABLE auth_sessions (LIKE public.auth_sessions INCLUDING ALL); CREATE TABLE abs_sessions (LIKE public.abs_sessions INCLUDING ALL); CREATE TABLE jellycompat_sessions (LIKE public.jellycompat_sessions INCLUDING ALL); CREATE TABLE device_login_requests (LIKE public.device_login_requests INCLUDING ALL); CREATE TABLE api_keys (LIKE public.api_keys INCLUDING ALL); CREATE TRIGGER api_key_configuration_revision BEFORE INSERT OR UPDATE ON api_keys FOR EACH ROW EXECUTE FUNCTION public.advance_api_key_configuration_revision(); CREATE TABLE password_reset_tokens (LIKE public.password_reset_tokens INCLUDING ALL); CREATE TABLE invitations (LIKE public.invitations INCLUDING ALL)`)",
+    "\tadmin, err := pgxpool.New(t.Context(), dsn)",
+    "\tconfig, err := pgxpool.ParseConfig(dsn)",
+    "\tconfig.ConnConfig.RuntimeParams[\"search_path\"] = schema + \",public\"",
+    "\tconfig.ConnConfig.RuntimeParams[\"statement_timeout\"] = \"5000\"",
+    "\tconfig.MaxConns = 8",
+    "\tdsn := os.Getenv(\"SILO_TEST_DATABASE_URL\")",
+    "\tif _, err = admin.Exec(t.Context(), \"CREATE SCHEMA \"+quoted); err != nil {",
+    "\tif _, err = pool.Exec(t.Context(), strings.Split(string(migration), \"-- +goose Down\")[0]); err != nil {",
+    "\tif dsn == \"\" {",
+    "\tif err != nil {",
+    "\tif err != nil {",
+    "\tif err != nil {",
+    "\tif err != nil {",
+    "\tif err != nil {",
+    "\tmigration, err := os.ReadFile(\"../../migrations/sql/20260906001036_add_admin_user_revision.sql\")",
+    "\tpool, err := pgxpool.NewWithConfig(t.Context(), config)",
+    "\tquoted := pgx.Identifier{schema}.Sanitize()",
+    "\treturn NewUserRepository(pool)",
+    "\tschema := \"admin_accounts_\" + strings.ReplaceAll(uuid.NewString(), \"-\", \"\")",
+    "\tt.Cleanup(func() {",
+    "\tt.Cleanup(pool.Close)",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t}",
+    "\t})"
+   ]
+  },
+  "internal/auth/oauth_handler.go": {
+   "kind": "lines",
+   "lines": [
+    "\tbase, err := url.Parse(h.currentHostBaseURL())",
+    "\tredirect := h.PostLogoutRedirectURL()",
+    "\tredirectURI := h.CallbackURL(req.Prefix, req.InstallID)",
+    "\treturn h.webCompletionURL() + \"?\" + values.Encode()"
+   ]
+  },
+  "internal/auth/password_hash_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\tos.Exit(m.Run())"
+   ]
+  },
+  "internal/auth/repository.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tdefaultGroupCTE = \"default_group AS (SELECT id FROM access_groups WHERE is_default)\"",
+    "\t\texpr := \"(CASE WHEN \" + isAdmin + \" THEN (SELECT id FROM default_group) ELSE access_group_id END)\"",
+    "\t\tplaceholders = append(placeholders, \"(SELECT id FROM access_groups WHERE is_default)\")",
+    "\tdownload_transcode_allowed, requests_allowed, access_group_id, is_owner, break_glass, created_at, updated_at`",
+    "\treturn createUser(ctx, r.pool, input)"
+   ]
+  },
+  "internal/auth/service.go": {
+   "kind": "lines",
+   "lines": [
+    "",
+    "\t\t\t\tEmail:    email,",
+    "\t\t\t\tEnabled: createDefaultProfile,",
+    "\t\t\t\tName:    defaultProfileName,",
+    "\t\t\t\tPassword: password,",
+    "\t\t\t\tRole:     models.RoleAdmin,",
+    "\t\t\t\tUsername: username,",
+    "\t\t\tDefaultProfile: DefaultProfileOptions{",
+    "\t\t\tDeviceName: deviceName,",
+    "\t\t\tExpiresAt:  time.Now().Add(s.jwt.RefreshExpiry()),",
+    "\t\t\tID:         sessionID,",
+    "\t\t\tIPAddress:  ip,",
+    "\t\t\tRole:      created.Role,",
+    "\t\t\tSessionID: sessionID,",
+    "\t\t\tUser: models.CreateUserInput{",
+    "\t\t\tUserID:     created.ID,",
+    "\t\t\tUserID:    created.ID,",
+    "\t\t\treturn err",
+    "\t\t\treturn fmt.Errorf(\"creating initial user: %w\", err)",
+    "\t\t\t},",
+    "\t\t\t},",
+    "\t\tImpersonatorUserID: &impersonatorUserID,",
+    "\t\tRole:               target.Role,",
+    "\t\tSessionID:          sessionID,",
+    "\t\tUserID:             target.ID,",
+    "\t\tcreated, err := s.accounts.CreateInitialAccountInTransaction(ctx, tx, CreateAccountInput{",
+    "\t\tif err != nil {",
+    "\t\tif err := s.sessions.createWithQuerier(ctx, tx, session); err != nil {",
+    "\t\treturn false, fmt.Errorf(\"counting users: %w\", err)",
+    "\t\tsession := models.AuthSession{",
+    "\t\tsessionID := uuid.New().String()",
+    "\t\ttokens, err := s.generateTokenPair(Claims{",
+    "\t\tuser, pair = created, tokens",
+    "\t\t}",
+    "\t\t}",
+    "\t\t}",
+    "\t\t})",
+    "\t\t})",
+    "\tcount, err := s.users.Count(ctx)",
+    "\terr := s.users.ClaimInitialSetup(ctx, func(tx pgx.Tx) error {",
+    "\tif err != nil {",
+    "\treturn count == 0, nil",
+    "\t}"
+   ]
+  },
+  "internal/auth/session.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t(id, user_id, device_name, ip_address, expires_at, impersonator_user_id, impersonation_started_at, identity_id, provider_since, device_id, device_platform, purpose, bound_profile_id, absolute_expires_at)",
+    "\t\tVALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULLIF($10, ''), NULLIF($11, ''), $12, NULLIF($13, ''), $14)`",
+    "const sessionColumns = `id, user_id, device_name, COALESCE(device_id, '') AS device_id, COALESCE(device_platform, '') AS device_platform, COALESCE(host(ip_address), '') AS ip_address, created_at, expires_at, revoked_at, impersonator_user_id, impersonation_started_at, identity_id, provider_since, last_seen_at, purpose, COALESCE(bound_profile_id, '') AS bound_profile_id, absolute_expires_at`"
+   ]
+  },
+  "internal/blobgc/connection_db_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), 5*time.Second)",
+    "\t\tif err := store.Put(ctx, key, []byte(\"image\")); err != nil {",
+    "\t\tif err := store.Put(ctx, key, []byte(\"image\")); err != nil {",
+    "\tctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)",
+    "\tctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)",
+    "\tdefer cancel()",
+    "\tdefer cancel()",
+    "\tif err := blobgc.NewQueue(pool).Schedule(ctx, prefixes, 0); err != nil {"
+   ]
+  },
+  "internal/branding/branding.go": {
+   "kind": "lines",
+   "lines": [
+    "\tDefaultServerName    = \"Silo\""
+   ]
+  },
+  "internal/catalog/filesplit/filesplit.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\t  AND remaining.media_folder_id = membership.media_folder_id",
+    "\t\t\t  AND remaining.missing_since IS NULL",
+    "\t\t\tFROM media_files remaining",
+    "\t\t\tSELECT 1",
+    "\t\t\tWHERE remaining.content_id = membership.content_id",
+    "\t\t  )",
+    "\t\t  AND NOT EXISTS (",
+    "\t\t  AND membership.media_folder_id = ANY($2::int[])",
+    "\t\tDELETE FROM media_item_libraries membership",
+    "\t\tWHERE membership.content_id = $1",
+    "\t\treturn nil, fmt.Errorf(\"filesplit: removing stale source library membership: %w\", err)",
+    "\t// A folder whose files all moved no longer holds the source. Remove that",
+    "\t// link to, and none of them link to the source any more.",
+    "\t// membership here: a later subtree scan only reconciles content its files",
+    "\t`, opts.FromContentID, distinctFolderIDs(opts.Files)); err != nil {",
+    "\tif _, err := tx.Exec(ctx, `",
+    "\t}"
+   ]
+  },
+  "internal/catalog/folder_repo.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tFROM episode_libraries el",
+    "\t\t\tJOIN episodes e ON e.content_id = el.episode_id",
+    "\t\t\tSELECT COALESCE(array_agg(DISTINCT e.series_id), ARRAY[]::text[])",
+    "\t\t\tWHERE el.media_folder_id = $1`, id).Scan(&seriesIDs); e != nil {",
+    "\t\t\treturn e",
+    "\t\t\treturn e",
+    "\t\t\treturn e",
+    "\t\t\treturn e",
+    "\t\t\treturn e",
+    "\t\t// The folder's episode memberships cascade with it; series that",
+    "\t\t// survive in other libraries recompute the denorms read from them.",
+    "\t\tdefer func() { _ = tx.Rollback(ctx) }()",
+    "\t\terr = retryOnDeadlock(ctx, deleteFolder)",
+    "\t\tif _, e := tx.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, id); e != nil {",
+    "\t\tif e != nil {",
+    "\t\tif e := RecomputeSeriesEpisodeMembershipDenorms(ctx, tx, seriesIDs); e != nil {",
+    "\t\tif e := moveCollectionsOffFolder(ctx, tx, id); e != nil {",
+    "\t\tif e := tx.QueryRow(ctx, `",
+    "\t\treturn fmt.Errorf(\"committing update transaction: %w\", err)",
+    "\t\treturn nil, fmt.Errorf(\"deleting folder: %w\", err)",
+    "\t\treturn tx.Commit(ctx)",
+    "\t\ttx, e := r.pool.Begin(ctx)",
+    "\t\tvar seriesIDs []string",
+    "\t\t}",
+    "\t\t}",
+    "\t\t}",
+    "\t\t}",
+    "\t\t}",
+    "\t// Phase 0: preflight reads (no long-lived transaction).",
+    "\t// Phase 4: delete the now-lightweight folder row. Tolerate 0 rows so a",
+    "\t// resumed run that already removed it still succeeds.",
+    "\tdeleteFolder := func() error {",
+    "\terr = retryOnDeadlock(ctx, deleteFolder)",
+    "\tfor attempt := 1; errors.Is(err, errFolderCollectionsChanged) && attempt < 5; attempt++ {",
+    "\tif err != nil {",
+    "\tif err := tx.Commit(ctx); err != nil {",
+    "\treturn rows.Err()",
+    "\t}",
+    "\t}",
+    "\t}"
+   ]
+  },
+  "internal/catalog/search_meilisearch_provider.go": {
+   "kind": "lines",
+   "lines": [
+    "\tif strategy != \"last\" {"
+   ]
+  },
+  "internal/catalog/search_provider.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\treturn settings, fmt.Errorf(\"%s must be last or all\", SearchSettingMeilisearchMatchingStrategy)",
+    "\t\tif strategy != \"last\" && strategy != \"all\" {"
+   ]
+  },
+  "internal/downloads/artifacts.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tprepared, err = m.preparer.PrepareFile(withPrepareObserver(hbCtx, observer), remoteAttemptID, opts, a.OutputPath)"
+   ]
+  },
+  "internal/downloads/policy.go": {
+   "kind": "lines",
+   "lines": [
+    "\tdecision, _, err := r.actionDecider.CheckAction(ctx, input)",
+    "\tdecision, _, err := s.actionDecider.CheckAction(ctx, downloadActionInput(",
+    "\treturn cfg, user, err"
+   ]
+  },
+  "internal/downloads/policy_action_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tcontext.Background(), Quality10Mbps, user, cfg, file,",
+    "\tcapability, err := svc.Capability(context.Background(), user.ID)",
+    "\tctx := context.Background()",
+    "\tctx := context.Background()",
+    "\tctx := context.Background()",
+    "func (p downloadGroupProvider) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {"
+   ]
+  },
+  "internal/downloads/service.go": {
+   "kind": "lines",
+   "lines": [
+    "\tcfg, _, err := s.downloadConfigForUser(ctx, userID, deviceID)",
+    "\tcfg, user, err := s.downloadConfigForUser(ctx, userID, req.DeviceID)",
+    "\tcfg, user, err := s.downloadConfigForUser(ctx, userID, req.DeviceID)",
+    "\teffective, err := access.EffectivePolicyForUser(ctx, user, s.groupProvider)",
+    "\tif _, _, err := s.downloadConfigForUser(ctx, userID, deviceID); err != nil {"
+   ]
+  },
+  "internal/downloads/subscription_mutations.go": {
+   "kind": "lines",
+   "lines": [
+    "\tcfg, user, err := s.downloadConfigForUser(ctx, userID, deviceID)"
+   ]
+  },
+  "internal/downloads/subscription_service.go": {
+   "kind": "lines",
+   "lines": [
+    "\tcfg, user, err := s.downloadConfigForUser(ctx, sub.UserID, sub.DeviceID)",
+    "\tcfg, user, err := s.downloadConfigForUser(ctx, userID, req.DeviceID)",
+    "\tif _, _, err := s.downloadConfigForUser(ctx, userID, deviceID); err != nil {",
+    "\tif _, err := s.downloadUserForConfig(ctx, userID, cfg, deviceID); err != nil {"
+   ]
+  },
+  "internal/downloads/subscription_sync_page.go": {
+   "kind": "lines",
+   "lines": [
+    "\tif _, _, err := s.downloadConfigForUser(ctx, userID, deviceID); err != nil {"
+   ]
+  },
+  "internal/ebooks/enrichment.go": {
+   "kind": "lines",
+   "lines": [
+    "\tif imagesLocked || isProtected(\"backdrop_path\") ||",
+    "\tif imagesLocked || isProtected(\"logo_path\") ||",
+    "\tif imagesLocked || isProtected(\"poster_path\") ||"
+   ]
+  },
+  "internal/ebooks/enrichment_queue.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tebook_enrichment_state.protected_fields ||"
+   ]
+  },
+  "internal/ebooks/enrichment_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tStatus: \"matched\","
+   ]
+  },
+  "internal/historyimport/service.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tctx, userID, profileID, itemID, record.DurationSeconds, record.Played, record.LastPlayedAt)",
+    "\toutcome.HistoryCreated, err = s.watchState.RecordImportedHistory("
+   ]
+  },
+  "internal/invitations/repository.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\t\temail, token_hash, role, access_group_id, library_ids,",
+    "\t\t\t) VALUES (NULLIF($1, ''), $2, $3, $4, $5, $6, $7, $8, $9, $10, NULLIF($11, ''))",
+    "\t\t&inv.ID, &inv.Email, &inv.Delivery, &inv.TokenHash, &inv.Role, &inv.AccessGroupID,",
+    "\t\tWHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL`, id)",
+    "\t\tif err := supersedeForAddress(ctx, tx, input.Email); err != nil {",
+    "\t\tinput.Email, tokenHash, input.Role, input.AccessGroupID, input.LibraryIDs,",
+    "\t\tquery += `WHERE (i.created_at,i.id) < ($2,$3) `",
+    "\ti.id, COALESCE(i.email, ''), COALESCE(i.delivery, ''), i.token_hash, i.role, i.access_group_id, i.library_ids,",
+    "\tinv, err := createInvitation(ctx, tx, input, tokenHash)",
+    "\tinv, err := createInvitation(ctx, tx, input, tokenHash)",
+    "\tprior, err := scanInvitation(tx.QueryRow(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.id=$1 FOR UPDATE OF i`, id))",
+    "\tquery := `SELECT ` + invitationColumns + invitationFrom",
+    "\trow := r.pool.QueryRow(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.id = $1`, id)",
+    "\trows, err := r.pool.Query(ctx, `SELECT `+invitationColumns+invitationFrom+`ORDER BY i.created_at DESC`)",
+    "\ttag, err := r.pool.Exec(ctx, `DELETE FROM invitations WHERE id = $1`, id)",
+    " WHERE email=$1 AND accepted_at IS NULL AND revoked_at IS NULL`, email)",
+    " WHERE email=$1 AND id<>$2 AND accepted_at IS NULL AND revoked_at IS NULL`, address, inv.ID); err != nil {",
+    "func createInvitation(ctx context.Context, tx pgx.Tx, input models.CreateInvitationInput, tokenHash string) (*models.Invitation, error) {",
+    "func supersedeForAddress(ctx context.Context, tx pgx.Tx, email string) error {"
+   ]
+  },
+  "internal/invitations/repository_atomic_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\t\t\tt.Fatal(err)",
+    "\t\t\t\tif scenario == \"expiry during provisioning\" && !errors.Is(err, ErrNotClaimable) {",
+    "\t\t\tt.Fatal(err)",
+    "\t\tadmin.Close()",
+    "\t\tif _, err = admin.Exec(ctx, \"CREATE TABLE \"+q+\".\"+table+\" (LIKE public.\"+table+\" INCLUDING ALL)\"); err != nil {",
+    "\t\tif err := f.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name=$1 AND wait_event_type='Lock')`, f.schema).Scan(&blocked); err != nil {",
+    "\t\tt.Fatal(err)",
+    "\t\tt.Fatalf(\"users/profiles/claims=%d/%d/%d want %d/%d/%d\", users, profiles, claims, wantUsers, wantProfiles, wantClaims)",
+    "\t\tt.Skip(\"SILO_TEST_DATABASE_URL is not set\")",
+    "\t\t}",
+    "\t\"fmt\"",
+    "\t\"os\"",
+    "\taccounts := auth.NewAccountProvisioner(auth.NewUserRepository(f.pool), provider)",
+    "\tadmin, err := pgxpool.New(ctx, dsn)",
+    "\tcfg, err := pgxpool.ParseConfig(dsn)",
+    "\tcfg.ConnConfig.RuntimeParams[\"application_name\"] = schema",
+    "\tcfg.ConnConfig.RuntimeParams[\"statement_timeout\"] = \"5000\"",
+    "\tcfg.MaxConns = 12",
+    "\tctx    context.Context",
+    "\tdsn := os.Getenv(\"SILO_TEST_DATABASE_URL\")",
+    "\tfor _, table := range []string{\"users\", \"user_profiles\", \"user_profile_allowed_libraries\", \"invitations\"} {",
+    "\tif _, err = admin.Exec(ctx, \"ALTER TABLE \"+q+\".users ALTER COLUMN id DROP IDENTITY IF EXISTS; CREATE SEQUENCE \"+q+\".user_fixture_seq; ALTER TABLE \"+q+\".users ALTER COLUMN id SET DEFAULT nextval('\"+q+\".user_fixture_seq'); ALTER TABLE \"+q+\".user_profiles ADD FOREIGN KEY(user_id) REFERENCES \"+q+\".users(id); ALTER TABLE \"+q+\".invitations ADD FOREIGN KEY(invited_by) REFERENCES \"+q+\".users(id), ADD FOREIGN KEY(accepted_user_id) REFERENCES \"+q+\".users(id)\"); err != nil {",
+    "\tif _, err = admin.Exec(ctx, \"CREATE SCHEMA \"+q); err != nil {",
+    "\tif _, err = pool.Exec(ctx, `INSERT INTO users(username,email,password_hash,role,enabled) VALUES('inviter','inviter@example.invalid','x','admin',true)`); err != nil {",
+    "\tif dsn == \"\" {",
+    "\tif err != nil {",
+    "\tif err != nil {",
+    "\tif err := f.pool.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM users WHERE username=$1),(SELECT count(*) FROM user_profiles p JOIN users u ON u.id=p.user_id WHERE u.username=$1),(SELECT count(*) FROM invitations WHERE id=$2 AND accepted_at IS NOT NULL)`, inv.Email, inv.ID).Scan(&users, &profiles, &claims); err != nil {",
+    "\tif users != wantUsers || profiles != wantProfiles || claims != wantClaims {",
+    "\tpool   *pgxpool.Pool",
+    "\tpool, err := pgxpool.NewWithConfig(ctx, cfg)",
+    "\tq := pgx.Identifier{schema}.Sanitize()",
+    "\trepo   *Repository",
+    "\treturn atomicInvitationFixture{NewRepository(pool), pool, schema, ctx}",
+    "\tschema := fmt.Sprintf(\"invitation_atomic_%d\", time.Now().UnixNano())",
+    "\tschema string",
+    "\tt.Cleanup(func() { _, _ = admin.Exec(context.WithoutCancel(ctx), \"DROP SCHEMA \"+q+\" CASCADE\"); admin.Close() })",
+    "\tt.Cleanup(pool.Close)",
+    "\tvar users, profiles, claims int",
+    "\t}",
+    "\t}"
+   ]
+  },
+  "internal/invitations/service.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\treturn s.accounts.CreateAccountInTransaction(ctx, tx, auth.CreateAccountInput{"
+   ]
+  },
+  "internal/invitations/service_atomic_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\tsvc := NewService(f.repo, users, auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(f.pool)), &fakeSessions{}, sender, nil, nil, \"https://server.example.invalid\")",
+    "\tsvc := NewService(f.repo, users, auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(f.pool)), &fakeSessions{}, sender, nil, nil, \"https://server.example.invalid\")",
+    "\tsvc := NewService(f.repo, users, auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(f.pool)), sessions, sender, nil, nil, \"https://server.example.invalid\")"
+   ]
+  },
+  "internal/libraryingest/executor.go": {
+   "kind": "lines",
+   "lines": [
+    "",
+    "\t\t\treturn nil, nil, fmt.Errorf(\"scan folder: %w\", err)",
+    "\t\tCurrentScope: claim.path,",
+    "\t\tErrors:       scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.Errors }),",
+    "\t\tMatchedFiles: result.MatchedFiles,",
+    "\t\tMessage:      \"Scan completed\",",
+    "\t\tNew:          scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.New }),",
+    "\t\tPhase:        \"completed\",",
+    "\t\tRetriedItems: result.RetriedItems,",
+    "\t\tUnchanged:    scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.Unchanged }),",
+    "\t\tUpdated:      scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.Updated }),",
+    "\tif mode == scopeModeLibrary && e.folders != nil {",
+    "\tif shouldPublish(result) && e.events != nil {",
+    "\tif shouldPublish(result) && e.realtime != nil {",
+    "\tmatchScopes := scopeMatchPaths(folder, mode, claim.path)",
+    "\treportProgress(scanCtx, ProgressUpdate{",
+    "\tresult := &Result{",
+    "\t})"
+   ]
+  },
+  "internal/mail/layout_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\tif !strings.Contains(out, `src=\"cid:silo-logo\"`) || !strings.Contains(out, `alt=\"Silo\"`) {"
+   ]
+  },
+  "internal/metadata/image_cache_job_repo.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tORDER BY next_attempt_at ASC, id ASC"
+   ]
+  },
+  "internal/notifications/delivery_repo.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\t\t type, reason_flags, status, delivered_at)",
+    "\t\t\t\tbase+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9, base+10, base+11))",
+    "\t\t\t\tdelivery.Type, delivery.ReasonFlags, status, time.Now().UTC(),",
+    "\t\t\tSELECT 1 FROM notification_deliveries",
+    "\t\t\tSELECT 1 FROM notification_deliveries",
+    "\t\t\tSELECT 1 FROM notification_deliveries",
+    "\t\t\tSELECT 1 FROM notification_deliveries",
+    "\t\t\tWHERE d.user_id = $1 AND d.profile_id = $2",
+    "\t\t\tWHERE d.user_id = $1 AND d.profile_id = $2 AND (d.created_at, d.id) > ($3, $4)",
+    "\t\t\tWHERE user_id = $1 AND (created_at, id) > ($2, $3)",
+    "\t\t\tWHERE user_id = $1 AND (created_at, id) > ($2, $3) AND type = ANY($4)",
+    "\t\t\tWHERE user_id = $1 AND profile_id = $2 AND (created_at, id) > ($3, $4)",
+    "\t\t\tWHERE user_id = $1 AND profile_id = $2 AND (created_at, id) > ($3, $4) AND type = ANY($5)",
+    "\t\t\tsb.WriteString(fmt.Sprintf(\"($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d)\",",
+    "\t\tWHERE d.user_id = $1 AND (d.created_at, d.id) > ($2, $3)`",
+    "\t\tWHERE d.user_id = $1 AND d.profile_id = $2 AND (d.created_at, d.id) > ($3, $4)`",
+    "\t\tWHERE d.user_id = $1 AND d.profile_id = $2 AND d.read_at IS NULL",
+    "\t\t`SELECT count(*) FROM notification_deliveries WHERE user_id = $1 AND profile_id = $2 AND read_at IS NULL`,",
+    "\t\targs := make([]any, 0, len(chunk)*11)",
+    "\t\tdeliveryRowSelect+` WHERE d.user_id = $1 AND d.profile_id = $2 AND d.id = $3`, userID, profileID, id)",
+    "\t\tuserID, profileID, since.CreatedAt, since.ID,",
+    "\t\tuserID, profileID, since.CreatedAt, since.ID, transactionalDeliveryTypes,",
+    "\t\tuserID, since.CreatedAt, since.ID,",
+    "\t\tuserID, since.CreatedAt, since.ID, transactionalDeliveryTypes,",
+    "\targs := []any{userID, profileID, since.CreatedAt, since.ID}",
+    "\targs := []any{userID, since.CreatedAt, since.ID}",
+    "\trows, err := r.pool.Query(ctx, deliveryRowSelect+` WHERE d.id = $1`, id)",
+    "// GetByID returns one delivery scoped to the profile; (nil, nil) when absent.",
+    "func (r *DeliveryRepository) ListSync(ctx context.Context, userID int, profileID string, since *Cursor, limit int) ([]DeliveryRow, error) {"
+   ]
+  },
+  "internal/notifications/dispatcher.go": {
+   "kind": "lines",
+   "lines": [
+    "\treturn DeliveryRowPayload{",
+    "\t}"
+   ]
+  },
+  "internal/notifications/push_test_send_db_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\tconst profile = \"default\""
+   ]
+  },
+  "internal/notifications/relay_credentials.go": {
+   "kind": "lines",
+   "lines": [
+    "\tkey := RelayRotationIdempotencyKey(current.DeploymentID, current.APIKey)"
+   ]
+  },
+  "internal/notifications/relay_credentials_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\tstore := &lockedRelaySettings{values: map[string]string{}}"
+   ]
+  },
+  "internal/notifications/settings.go": {
+   "kind": "lines",
+   "lines": [
+    "\tDefaultPushRelayURL = \"https://push.siloserver.org\""
+   ]
+  },
+  "internal/notifications/system.go": {
+   "kind": "lines",
+   "lines": [
+    "\tinterests := NewInterestRepository(pool)"
+   ]
+  },
+  "internal/playback/protocol_v3.go": {
+   "kind": "lines",
+   "lines": [
+    "\tOutcome         DecisionOutcomeV3 `json:\"outcome\"`",
+    "\tPlaybackPlan    *PlanV3           `json:\"playback_plan,omitempty\"`",
+    "\tProtocolVersion int               `json:\"protocol_version\"`",
+    "\tServerFeatures  []string          `json:\"server_features\"`",
+    "\tSessionID       string            `json:\"session_id,omitempty\"`",
+    "\tTerminal        *TerminalV3       `json:\"terminal,omitempty\"`"
+   ]
+  },
+  "internal/playback/session.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tm.mu.Unlock()",
+    "\t\t\tm.mu.Unlock()",
+    "\t\t\tm.sessions[s.ID] = s",
+    "\t\t\treturn nil",
+    "\t\t\treturn nil",
+    "\t\t\treturn s, nil",
+    "\t\t\ts := newSession(ctx, userID, profileID, effectiveFileID, requestedFileID, method, transcodeAudio)",
+    "\t\t\tstillCurrent.replacementPlayMethod = method",
+    "\t\t\tstillCurrent.replacementPlayMethod = method",
+    "\t\tlimits, err := m.limitsForUser(ctx, userID)",
+    "\t\tm.mu.Unlock()",
+    "\t\tm.sessions[s.ID] = s",
+    "\t\treturn ErrPlaybackNotAllowed",
+    "\t\treturn s, nil",
+    "\t\ts := newSession(ctx, userID, profileID, effectiveFileID, requestedFileID, method, transcodeAudio)",
+    "\tlimitProvider        SessionLimitProvider",
+    "\tlimits, err := m.limitsForUser(ctx, s.UserID)",
+    "\tlimits, err := m.limitsForUser(ctx, userID)",
+    "\tlimits, err := m.limitsForUser(ctx, userID)",
+    "\tlimits, err := provider(ctx, userID)",
+    "\tm.limitProvider = provider",
+    "\treturn m.limitsForUser(ctx, userID)",
+    "\treturn nil",
+    ") (*Session, error) {",
+    "// CheckTranscodingAllowed verifies account-level restrictions before an",
+    "// existing session switches to video or audio transcoding.",
+    "func (m *SessionManager) BeginTransport(sessionID string) error {",
+    "func (m *SessionManager) CheckTranscodingAllowed(ctx context.Context, userID int, requiresVideoTranscode bool) error {",
+    "func (m *SessionManager) RegisterReconstructedWithLimits(ctx context.Context, s *Session) (*Session, error) {",
+    "func (m *SessionManager) RollbackReplacement(sessionID string, rollback SessionReplacementRollback) error {",
+    "func (m *SessionManager) TouchActivity(sessionID string) error {",
+    "func (m *SessionManager) limitsForUser(ctx context.Context, userID int) (SessionLimits, error) {",
+    "func (m *SessionManager) updateProgress(sessionID string, position float64, isPaused bool, sequence int64) error {"
+   ]
+  },
+  "internal/playback/session_test.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\t\t\t\t\twithPolicy.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(pdp))",
+    "\tctx := context.Background()"
+   ]
+  },
+  "internal/playback/transcode.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\targs = append(args, \"-c:a\", \"ac3\", \"-b:a\", \"448k\")",
+    "\t\targs = append(args, \"-c:a\", \"eac3\", \"-b:a\", \"384k\")",
+    "\t\tchannels, bitrateKbps := ResolveAACOutputV3(opts.TargetAudioChannels, opts.TargetAudioBitrateKbps)",
+    "\t\tctx,",
+    "\t\topts.FFmpegPath,",
+    "\t\topts.InputPath,",
+    "\t\topts.SegmentDuration,",
+    "\t\treturn fmt.Errorf(\"create stdin pipe: %w\", err)",
+    "\t\treturn fmt.Errorf(\"restart ffmpeg: %w\", err)",
+    "\t\treturn nil, fmt.Errorf(\"create stdin pipe: %w\", err)",
+    "\t\treturn nil, fmt.Errorf(\"start ffmpeg: %w\", err)",
+    "\t\tseekSeconds,",
+    "\t)",
+    "\targs := buildFFmpegArgs(opts)",
+    "\tcmd := fspath.CommandContext(ctx, bin, args...)",
+    "\tcmd := fspath.CommandContext(ctx, bin, args...)",
+    "\tcmd.Stderr = s.newStderrWriter(ctx)",
+    "\tcmd.Stderr = s.newStderrWriter(ctx)",
+    "\tctx, cancel := context.WithCancel(context.WithoutCancel(ctx))",
+    "\tstreamOriginSeconds, _, err := ResolveCopySeekAnchor("
+   ]
+  },
+  "internal/policy/decisionlog.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tbase+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9, base+10, base+11, base+12, base+13, base+14)",
+    "\t\tbase := i * 14",
+    "\t\tfmt.Fprintf(&b, \"($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d::jsonb, $%d::jsonb, $%d)\",",
+    "\targs := make([]any, 0, len(entries)*14)",
+    "\tb.WriteString(`INSERT INTO policy_decisions (\"timestamp\", decision_name, policy_generation, user_id, profile_id, session_id, request_id, node_id, allowed, eval_time_ns, input_digest, input_sample, result_sample, error) VALUES `)"
+   ]
+  },
+  "internal/policy/decisionlog_repo.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tSELECT id, \"timestamp\", decision_name, policy_generation, user_id,",
+    "\t\tSELECT id, \"timestamp\", decision_name, policy_generation, user_id,",
+    "\t\tSELECT id, \"timestamp\", decision_name, policy_generation, user_id,"
+   ]
+  },
+  "internal/policy/vendor/scope.rego": {
+   "kind": "lines",
+   "lines": [
+    "\tallowed := subtract(intersect(base.allowed_library_ids, object.get(override, \"allowed_library_ids\", [])), disabled)",
+    "library_decision(i) := result if {"
+   ]
+  },
+  "internal/progresssync/service.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\tgroup, err = access.GroupPolicyInTransaction(ctx, tx, input.UserID)",
+    "\t\"github.com/Silo-Server/silo-server/internal/auth\"",
+    "\tif access.GroupApplies(user) {",
+    "\tuser, err := auth.UserInTransaction(ctx, tx, input.UserID)"
+   ]
+  },
+  "internal/recommendations/search_query_vector.go": {
+   "kind": "lines",
+   "lines": [
+    "\tvectors, err := e.embClient.Embed(ctx, []string{query})"
+   ]
+  },
+  "internal/requests/follows.go": {
+   "kind": "lines",
+   "lines": [
+    "\tactive, err := s.store.ListActiveByTMDB(ctx, mediaType, []int{tmdbID})"
+   ]
+  },
+  "internal/requests/repository.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t`, input.Requester.UserID, input.Input.MediaType, input.Input.TMDBID); err != nil {",
+    "\tif err := adoptTitleFollows(ctx, tx, req); err != nil {",
+    "\tif err := adoptTitleFollows(ctx, tx, req); err != nil {"
+   ]
+  },
+  "internal/requests/service.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\trequests, err := s.store.ListActiveByTMDB(ctx, mediaType, ids)",
+    "\tactive, err := s.store.ListActiveByTMDB(ctx, normalized.MediaType, []int{normalized.TMDBID})",
+    "\teffective, err := access.EffectivePolicyForUser(ctx, user, s.groupProvider)",
+    "\tif _, err := s.store.GetRequest(ctx, id); err != nil {",
+    "\tprimaryRequests, err := s.store.ListActiveByTMDB(ctx, mediaType, []int{raw.ID})",
+    "\treqs, err := s.store.ListAdmin(ctx, normalizeListFilter(filter))",
+    "\treturn s.store.CountAdminViews(ctx)"
+   ]
+  },
+  "internal/scanner/ebook_scan.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\t\"error\", err,",
+    "\t\t_, isUnchanged = unchangedEbookFile(skipState[filePath], filePath, size, modifiedAt)",
+    "\t\t_, isUnchanged, skipErr = s.ebookFileShouldSkip(ctx, folder, filePath, size, modifiedAt)",
+    "\t\treturn fmt.Errorf(\"enqueue ebook enrichment: %w\", err)",
+    "\tif err := applyEbookLocalCover(ctx, s.itemRepo, s.imageCacher, contentID, filePath, &parsed); err != nil {",
+    "\tif err := s.enqueueEbookEnrichment(ctx, contentID); err != nil {",
+    "\tif err := s.upsertEbookMediaFile(ctx, folder, contentID, filePath, size, modifiedAt, &parsed, groupKey); err != nil {",
+    "\tvar isUnchanged bool"
+   ]
+  },
+  "internal/scanner/file_repo.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t  )`",
+    "\t\t  AND NOT EXISTS (",
+    "\t\t\"UPDATE media_files SET missing_since = $1, updated_at = NOW() WHERE id = $2 AND file_path = $3\",",
+    "\t\tDELETE FROM media_files WHERE id = ANY($1) RETURNING id, extra_id",
+    "\t\trows, err := r.pool.Query(ctx, `SELECT id FROM media_files WHERE media_folder_id = $1`, folderID)",
+    "\tpool *pgxpool.Pool",
+    "\tquery := `SELECT id FROM media_files WHERE media_folder_id = $1 AND NOT (` + strings.Join(coveredClauses, \" OR \") + `)`"
+   ]
+  },
+  "internal/scanner/scanner.go": {
+   "kind": "lines",
+   "lines": [
+    "\tcontentIDs, episodeIDs, err := s.fileRepo.ListMembershipTargets(ctx, folderID, pathPrefix, trashFollows)",
+    "\texistingFiles, err := s.fileRepo.GetScanStateByFolderAndPathPrefix(ctx, folder.ID, reconcileRoots[0])",
+    "\tif _, err := s.fileRepo.Pool().Exec(ctx, `",
+    "\ttx, err := s.fileRepo.Pool().Begin(ctx)"
+   ]
+  },
+  "internal/worker/heartbeat.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tnode_type  = EXCLUDED.node_type,",
+    "\t\t\tnode_url   = EXCLUDED.node_url,",
+    "\t\t\tupdated_at = NOW()",
+    "\t\tINSERT INTO node_heartbeats (node_id, node_type, node_url, updated_at)",
+    "\t\tON CONFLICT (node_id) DO UPDATE SET",
+    "\t\tVALUES ($1, $2, $3, NOW())",
+    "\t_, err := hw.pool.Exec(ctx, `",
+    "\t`, hw.nodeID, hw.nodeType, hw.nodeURL)",
+    "\tpool     *pgxpool.Pool"
+   ]
+  },
+  "internal/worker/reconciler.go": {
+   "kind": "lines",
+   "lines": [
+    "\t\t\tr.syncRunning = false",
+    "\tctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)"
+   ]
+  },
+  "web/package.json": {
+   "kind": "lines",
+   "lines": [
+    "    \"vitest\": \"^4.1.11\""
+   ]
+  },
+  "web/pnpm-lock.yaml": {
+   "kind": "generated"
+  },
+  "web/public/NOTICE": {
+   "kind": "lines",
+   "lines": [
+    "",
+    "",
+    "",
+    "    Copyright (c) 2026 Silo Media L.L.C. All rights reserved.",
+    "==========================",
+    "If you redistribute or fork this software, you MUST remove or replace these",
+    "SILO BRAND ASSETS — NOTICE",
+    "See TRADEMARK.md for the full Silo Trademark & Brand Policy, including the",
+    "Silo source code, nor under any other open-source license.",
+    "The files in this directory (and its subdirectories) that constitute Silo brand",
+    "These brand assets are TRADEMARKS of Silo Media L.L.C. They are NOT licensed",
+    "any app store without written permission from Silo Media L.L.C.",
+    "assets — including the Silo logo, wordmark, app icons, and other visual-identity",
+    "brand assets. You may not use the Silo name or logo as the identity of a",
+    "files — are:",
+    "modified or redistributed version, and you may not publish a Silo-branded app to",
+    "permitted referential uses (e.g. \"compatible with Silo\").",
+    "under the GNU Affero General Public License (AGPL-3.0-or-later) that covers the"
+   ]
+  },
+  "web/public/apple-touch-icon.png": {
+   "kind": "binary",
+   "silo_blob": "cec87ab9ed184a2e7ef8c4573f4cbf4c4c4a1f95"
+  },
+  "web/public/favicon.ico": {
+   "kind": "binary",
+   "silo_blob": "fc2776eded16ecd4bb9ed0fa89a373f734091172"
+  },
+  "web/public/maskable-icon-512.png": {
+   "kind": "binary",
+   "silo_blob": "93e55e56aaafd8012236771b6082012b04df8e1f"
+  },
+  "web/public/silo-icon-1024.png": {
+   "kind": "deleted",
+   "silo_blob": "5fff57e5287ea2af50b0ff4adc870c9972179781"
+  },
+  "web/public/silo-wordmark-sidebar.png": {
+   "kind": "deleted",
+   "silo_blob": "2eabc199914edce8d08f299e2dea07a340cf600f"
+  },
+  "web/public/web-app-icon-192.png": {
+   "kind": "binary",
+   "silo_blob": "ae13e8222778bebe52f6dc163368c7a9b5fe85ed"
+  },
+  "web/public/web-app-icon-512.png": {
+   "kind": "binary",
+   "silo_blob": "82169e8ecaf1251e9c4892e1d471f7ef4332e4fd"
+  },
+  "web/src/App.requireAdmin.test.tsx": {
+   "kind": "deleted",
+   "silo_blob": "69288ef64d75e6d445be3a15998ca161977c0da7"
+  },
+  "web/src/App.tsx": {
+   "kind": "lines",
+   "lines": [
+    "",
+    "                          <Route path=\"/item/:id\" element={<ItemDetail />} />",
+    "                          <Route path=\"/library/:libraryId\" element={<LibraryPage />} />",
+    "                          <Route path=\"/search\" element={<LegacySearchRedirect />} />",
+    "  // The server keeps admin powers for a session with no profile only while no",
+    "  // profile first rather than open the admin area onto refusals.",
+    "  // profile on the account has a PIN or an access limit, so choose the",
+    "  const actingAdmin = useIsActingAdmin();",
+    "  const location = useLocation();",
+    "  const { profile } = useAuth();",
+    "  const { profile } = useAuth();",
+    "  if (!actingAdmin) return <Navigate to=\"/\" replace />;",
+    "  if (!profile) return <Navigate to={guardRedirectTarget(\"/profiles\", location)} replace />;",
+    "  return <>{children}</>;",
+    "export function RequireAdmin({ children }: { children: ReactNode }) {",
+    "}"
+   ]
+  },
+  "web/src/api/client.ts": {
+   "kind": "lines",
+   "lines": [
+    "    const body = (await res.clone().json()) as { type?: unknown };",
+    "    return typeof body.type === \"string\" ? problemId({ type: body.type }) : null;",
+    "  return storage.get(storage.KEYS.PROFILE_ID);",
+    "  return storage.get(storage.KEYS.REFRESH_TOKEN);"
+   ]
+  },
+  "web/src/api/v2/schema.ts": {
+   "kind": "generated"
+  },
+  "web/src/components/AdminSectionCommandDialog.tsx": {
+   "kind": "lines",
+   "lines": [
+    "      inputRef.current?.focus();",
+    "      inputRef.current?.select();",
+    "      return;",
+    "      window.requestAnimationFrame(focus);",
+    "    const focus = () => {",
+    "    if (typeof window.requestAnimationFrame === \"function\") {",
+    "    window.setTimeout(focus, 0);",
+    "    }",
+    "    };"
+   ]
+  },
+  "web/src/components/AdminSidebar.tsx": {
+   "kind": "lines",
+   "lines": [
+    "  const adminPluginItems = buildAdminPluginNavItems(adminInstallations);"
+   ]
+  },
+  "web/src/components/LibraryAccessSelector.tsx": {
+   "kind": "lines",
+   "lines": [
+    "  libraries: Library[];",
+    "function sortByLibraryOrder(libraries: Library[], ids: number[]) {"
+   ]
+  },
+  "web/src/components/MediaCarousel.tsx": {
+   "kind": "lines",
+   "lines": [
+    "    \"text-muted-foreground hover:text-primary text-[0.75rem] font-semibold tracking-[0.16em] uppercase transition-all active:scale-[0.98]\";",
+    "    : \"text-foreground text-xl font-semibold tracking-tight\";"
+   ]
+  },
+  "web/src/components/admin/libraries/useLibraryForm.ts": {
+   "kind": "lines",
+   "lines": [
+    "                { onSuccess: () => onClose?.() },",
+    "        { id: library.id, body },",
+    "      paths: paths.filter((p) => p.trim()),",
+    "    createMutation.isPending || updateMutation.isPending || setChainMutation.isPending;",
+    "    if (allErrors.name || allErrors.paths) {"
+   ]
+  },
+  "web/src/hooks/queries/admin/stats.ts": {
+   "kind": "lines",
+   "lines": [
+    "    enabled: context !== null,",
+    "export function useAdminSessions() {"
+   ]
+  },
+  "web/src/hooks/queries/admin/system.ts": {
+   "kind": "lines",
+   "lines": [
+    "export function useBuildInfo() {"
+   ]
+  },
+  "web/src/hooks/useAuth.tsx": {
+   "kind": "lines",
+   "lines": [
+    "          hasStoredImpersonationAdminSession: Boolean(loadStoredImpersonationAdminSession()),",
+    "          refreshToken: storage.get(storage.KEYS.REFRESH_TOKEN),",
+    "        clearStoredImpersonationAdminSession();",
+    "        clearStoredImpersonationAdminSession();",
+    "      endProfileEpoch();",
+    "      void refreshSignInProviders();",
+    "    clearStoredImpersonationAdminSession();",
+    "    endProfileEpoch();",
+    "    if (!user) {",
+    "    storage.remove(storage.KEYS.CURRENT_PROFILE);",
+    "    void refreshSignInProviders();"
+   ]
+  },
+  "web/src/pages/AdminPlugins.tsx": {
+   "kind": "lines",
+   "lines": [
+    "          updatePluginView({ tab: value === \"catalog\" ? \"catalog\" : undefined }, { replace: false })",
+    "  const activeTab = searchParams.get(\"tab\") === \"catalog\" ? \"catalog\" : \"installed\";"
+   ]
+  },
+  "web/src/pages/Home.tsx": {
+   "kind": "lines",
+   "lines": [
+    "              />",
+    "              />",
+    "            return (",
+    "            return (",
+    "            return null;",
+    "        {viewModel.rows.map((slot) => {",
+    "export default function Home() {"
+   ]
+  },
+  "web/src/pages/ItemDetail/DetailHero.tsx": {
+   "kind": "lines",
+   "lines": [
+    "                    clamp={isViewportBounded}",
+    "                  {actions}",
+    "                </div>",
+    "                <div className=\"detail-action-bar mt-6\" style={{ textShadow: \"none\" }}>",
+    "              )}",
+    "              {actions && (",
+    "  const showPoster = !hidePoster && (!isViewportBounded || wideViewport);"
+   ]
+  },
+  "web/src/playback/WatchPlaybackChrome.tsx": {
+   "kind": "lines",
+   "lines": [
+    "    [navigate],"
+   ]
+  },
+  "web/src/player/hooks/useWatchProgress.ts": {
+   "kind": "lines",
+   "lines": [
+    "import { isPlaybackSessionEndedError } from \"../player-fetch\";"
+   ]
+  },
+  "web/src/test/requestBudget.ts": {
+   "kind": "lines",
+   "lines": [
+    "  const [method, route] = key.split(\" \", 2) as [string, string];",
+    "  const pattern = new RegExp(`^${route.replace(/\\{[^}]+\\}/g, \"[^/]+\")}$`);",
+    "  return { key, method, pattern };",
+    "const operationMatchers = Object.keys(v2Operations).map((key) => {",
+    "});"
+   ]
+  },
+  "web/src/test/signedInBoot.test.tsx": {
+   "kind": "lines",
+   "lines": [
+    "      // capability reads.",
+    "      requestsBeforeHomeLayout: 4,",
+    "      total: 15,",
+    "      total: 5,",
+    "      total: 6,"
+   ]
+  }
+ },
+ "silo": "17842e976148e66bb497c9fb70539a1c3062b99c"
+}

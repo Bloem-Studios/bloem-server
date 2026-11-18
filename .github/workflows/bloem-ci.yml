@@ -590,6 +590,12 @@ jobs:
       - name: Verify the seam ledger covers Silo-file changes
         run: make verify-seams
 
+      # Bloem: Silo always wins. Fails when Bloem overrides a Silo line that
+      # contracts/silo-line-changes.json does not record, including a Silo
+      # line a merge changed under an existing Bloem override.
+      - name: Verify Bloem overrides no new Silo line
+        run: make verify-silo-lines
+
       # Bloem: no Bloem line may name Silo's retired v1 API or Bloem's
       # retired v1 API (scripts/bloem/verify-no-v1.py).
       - name: Verify no Bloem line names a retired API

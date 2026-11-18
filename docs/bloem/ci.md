@@ -155,6 +155,12 @@ Terms used below:
 - A **seam** is a Silo-owned file that Bloem has changed. Each one is listed in
   the seam ledger, [`contracts/seams.txt`](../../contracts/seams.txt), and
   `make verify-seams` fails on a change the ledger does not list.
+- An **overridden Silo line** is a line of Silo's that Bloem changes or removes
+  inside a seam. Each one is recorded in
+  [`contracts/silo-line-changes.json`](../../contracts/silo-line-changes.json),
+  and `make verify-silo-lines` fails when Bloem overrides a line the record does
+  not hold, including a Silo line a merge changed under an existing override.
+  The record may only shrink.
 - A **disposable runner** is a self-hosted runner that runs one job and is not
   reused. See [Where jobs run](#where-jobs-run).
 
@@ -278,7 +284,7 @@ Bloem Image, Upstream sync, Upstream sync merge and Bloem Release run on GitHub'
 | Tenant stores race (1-4/4, disposable PostgreSQL) | `internal/tenancy` under the race detector, its tests split four ways. |
 | Native authentication (1-3/3, disposable PostgreSQL) | `internal/auth` with and without the race detector, its tests split three ways, and its vet (shard 1). |
 | Go lint | gofmt, `go vet ./...`, govulncheck, changed-line lint (`scripts/bloem-lint-changed-ci.sh`) and the full-tree router recovery lint (`make lint-router-recovery`). |
-| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, the seam ledger, the local gate's coverage of this workflow (`make verify-local-gate`), the Go test shards' database-list skip (`make verify-db-list-skip`), and their retried tests (`make verify-retried-tests`). |
+| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, the seam ledger, the record of overridden Silo lines, the local gate's coverage of this workflow (`make verify-local-gate`), the Go test shards' database-list skip (`make verify-db-list-skip`), and their retried tests (`make verify-retried-tests`). |
 | Go test (1-4/4) | `make test-go-shard` (`make test-go` for one shard's packages) on a database `cmd/bloem-testdb` prepared, its packages split four ways, four at a time per database. Silo's database-list tests are left to Go database pins (below). |
 | Go database pins | The database pins (`make test-db-pins`, with the listed flaky pins retried) and the upstream database regression gates. |
 | Go database regressions | Watch Party and history-import race tests, the Redis-backed native video grant and cover cache tests, and the library location and native storage pins (`scripts/ci/bloem-library-locations.txt`, built with `-tags=integration`). |

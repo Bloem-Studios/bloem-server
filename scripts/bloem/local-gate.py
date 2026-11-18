@@ -108,6 +108,7 @@ STEPS = [
     Step("verify", "apiv2-contract", "make verify-apiv2-contract BASE_REF=@BASE@"),
     Step("verify", "apiv2-fixtures", "make verify-apiv2-fixtures"),
     Step("verify", "seams", "git fetch --quiet upstream main && make verify-seams"),
+    Step("verify", "silo-lines", "git fetch --quiet upstream main && make verify-silo-lines"),
     Step("verify", "no-v1", "git fetch --quiet upstream main && make verify-no-v1"),
     Step("verify", "client-coverage", "go test ./cmd/... ./contracts/..."),
     Step("verify", "local-paths", "make verify-local-paths"),

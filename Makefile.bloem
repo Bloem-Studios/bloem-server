@@ -2,7 +2,7 @@
 # includes this file: where Bloem changes a Silo target, it adds prerequisites
 # or target-specific variables here instead of editing the Silo recipe.
 
-.PHONY: bloem-openapi verify-bloem-openapi migrate-continuum-check verify-upstream-sync-merge settings-bindings-native client-dtos verify-client-dtos client-digest verify-client-digest verify-client-coverage verify-seams test-db-prepare test-bloem-library-locations client-copies client-copies-settings client-copies-dtos silo-switch-check silo-switch-check-all-in-one
+.PHONY: bloem-openapi verify-bloem-openapi migrate-continuum-check verify-upstream-sync-merge settings-bindings-native client-dtos verify-client-dtos client-digest verify-client-digest verify-client-coverage verify-seams verify-silo-lines silo-lines-ledger test-db-prepare test-bloem-library-locations client-copies client-copies-settings client-copies-dtos silo-switch-check silo-switch-check-all-in-one
 
 # Local lint runs on the Go version go.mod names (CI builds with that version
 # too). golangci-lint's staticcheck builds IR for the standard library it finds,
@@ -301,6 +301,17 @@ verify-seams:
 verify-no-v1:
 	python3 scripts/bloem/verify-no-v1_test.py
 	python3 scripts/bloem/verify-no-v1.py
+
+# Silo always wins: fails when Bloem overrides a Silo line that
+# contracts/silo-line-changes.json does not record (scripts/bloem/verify-silo-lines.py).
+verify-silo-lines:
+	python3 scripts/bloem/verify-silo-lines_test.py
+	python3 scripts/bloem/verify-silo-lines.py
+
+# Rewrites the record from the working tree. Use it to shrink the record after
+# restoring Silo's lines; adding lines to it needs a reviewed reason.
+silo-lines-ledger:
+	python3 scripts/bloem/verify-silo-lines.py --write
 
 # Vet the tagged tests that go vet ./... skips: the database suites build with
 # -tags=integration.

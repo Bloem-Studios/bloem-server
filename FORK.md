@@ -42,7 +42,8 @@ different from Silo's.
 - **Its own files.** Bloem's code is in files named `bloem_*` and in whole packages Silo doesn't have, such as Live TV.
 - **Seams.** A **seam** is a Silo file that Bloem still changes, usually by one hook line that calls Bloem's code. Every
   seam is listed, with its reason, in `contracts/seams.txt`. The number may only go down, and adding one is a reviewed
-  decision.
+  decision. Silo's own lines in a seam stay as Silo wrote them; the few Bloem still overrides are recorded in
+  `contracts/silo-line-changes.json`, and that record may only shrink.
 - **Overlays.** Where a Silo document needs a Bloem note, a separate Bloem page, an **overlay**, carries it, and Silo's
   document stays as Silo wrote it.
 - **The name and the look.** The web app is given Bloem's name and artwork when it is built, so Silo's web source can
@@ -85,6 +86,7 @@ server's documented interfaces.
 | The merge bot | outside this repository. It runs `scripts/bloem/silo-merge-review.py` and `scripts/bloem/local-gate.py` |
 | The daily sync (switched off) | `.github/workflows/upstream-sync.yml`, landed by `upstream-sync-merge.yml`; both run only when `BLOEM_UPSTREAM_SYNC` is `true` |
 | Seam, seam list | a Silo-owned file Bloem differs in; `contracts/seams.txt`, checked by `make verify-seams` |
+| Overridden Silo lines | the Silo lines Bloem still changes or removes; `contracts/silo-line-changes.json`, checked by `make verify-silo-lines` |
 | Overlay | a Bloem page under `docs/bloem/overlays/` |
 | The name and the look | `web/bloem-brand-plugin.ts`, and Bloem's artwork in `assets/` |
 | Live TV's origin | Prairie Server, listed in `docs/livetv/prairie-source-manifest.tsv` |
@@ -176,6 +178,12 @@ Each one is declared, usually with a one-line reason, in [`contracts/seams.txt`]
 `make verify-seams` (`scripts/verify-seams.sh`) fails when Bloem differs from Silo in a file the ledger does not list.
 It compares with the upstream tip, the last merged upstream commit and an in-progress merge's incoming commit, so it is
 safe to run mid-merge. The count may only go down, and adding an entry is a reviewed decision.
+
+Inside a seam, Silo's lines stay as Silo wrote them: Bloem adds its own lines beside them. The Silo lines Bloem still
+changes or removes are recorded, line by line, in [`contracts/silo-line-changes.json`](contracts/silo-line-changes.json),
+and `make verify-silo-lines` (`scripts/bloem/verify-silo-lines.py`) fails when that set grows or changes. That includes a
+merge that changes a Silo line Bloem already overrides, so a resolution cannot keep Bloem's version by accident. The record
+may only shrink: after restoring Silo's lines, `make silo-lines-ledger` rewrites it, and the check fails until it does.
 
 An **overlay** is the documentation equivalent: a Bloem-owned file under [`docs/bloem/overlays/`](docs/bloem/overlays/)
 that records, section by section, what Bloem adds to or replaces in the Silo document of the same path, so the Silo

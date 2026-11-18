@@ -102,6 +102,10 @@ Bloem keeps its own work in three places:
 - **The seam list,** `contracts/seams.txt`: the Silo files Bloem still edits,
   each with its reason. The count may only go down, and adding a seam is a reviewed
   decision (`make verify-seams` checks the list).
+- **The record of overridden lines,** `contracts/silo-line-changes.json`: every line
+  of Silo's that Bloem still changes or removes. Bloem CI fails when a change or a
+  merge overrides a Silo line the record does not hold, so a merge cannot keep
+  Bloem's version over Silo's new line by accident. The record may only shrink.
 
 ## Example: a day's batches
 
@@ -143,6 +147,7 @@ This example is made up.
 | Bloem CI | `.github/workflows/bloem-ci.yml` |
 | The image | built from exactly the commit Bloem CI passed |
 | Seam | a Silo-owned file that Bloem edits, listed in `contracts/seams.txt` |
+| Overridden Silo line | a Silo line Bloem changes or removes, recorded in `contracts/silo-line-changes.json` and checked by `make verify-silo-lines` |
 | Overlay | a Bloem page under `docs/bloem/overlays/` beside a Silo document |
 
 ## For developers
