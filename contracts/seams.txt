@@ -225,7 +225,7 @@ web/public/silo-wordmark-sidebar.png  # deleted
 web/public/web-app-icon-192.png
 web/public/web-app-icon-512.png
 web/src/App.tsx
-web/src/api/client.ts
+web/src/api/client.ts  # preview guests: Bloem lines route a guest's token and profile writes to its guest session and read a guest's problem code, and fetchWithSession takes Bloem's retry policy; its refresh-token and profile reads go through adapters/clientStorage.ts (bloem-preview-plugin.ts)
 web/src/api/v2/schema.ts
 web/src/components/AdminSectionCommandDialog.tsx  # upstreamable: avoid deferred selection overwriting the first search character
 web/src/components/AdminSidebar.tsx

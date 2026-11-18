@@ -1070,9 +1070,7 @@
    "kind": "lines",
    "lines": [
     "    const body = (await res.clone().json()) as { type?: unknown };",
-    "    return typeof body.type === \"string\" ? problemId({ type: body.type }) : null;",
-    "  return storage.get(storage.KEYS.PROFILE_ID);",
-    "  return storage.get(storage.KEYS.REFRESH_TOKEN);"
+    "    return typeof body.type === \"string\" ? problemId({ type: body.type }) : null;"
    ]
   },
   "web/src/components/AdminSectionCommandDialog.tsx": {
@@ -1611,9 +1609,7 @@
    "export function getProfileToken(): string | null {": "05dae702bf96d1b8",
    "export function setProfileId(id: string | null) {": "3c4ce24157171c9b",
    "export function setProfileToken(token: string | null) {": "e1500f2ccff44bdc",
-   "export function setRefreshToken(token: string | null) {": "aed0dc6399293aec",
-   "function getProfileId(): string | null {": "cbda51bdd490c27b",
-   "function getRefreshToken(): string | null {": "8b8c44d8b998f80f"
+   "export function setRefreshToken(token: string | null) {": "aed0dc6399293aec"
   },
   "web/src/components/admin/libraries/LibraryFormSections.tsx": {
    "export function FolderFields({ form }: { form: LibraryFormController }) {": "e9f5b4a5d16711a4"

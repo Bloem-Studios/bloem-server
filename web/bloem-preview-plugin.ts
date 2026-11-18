@@ -62,6 +62,7 @@ const importerModules: Record<string, Record<string, string>> = {
   },
   // A preview guest's session lives in Bloem's guest store, not the account's
   // browser storage, and a guest never impersonates.
+  "api/client.ts": { "utils/storage.ts": "adapters/clientStorage.ts" },
   "hooks/useAuth.tsx": {
     "utils/storage.ts": "adapters/authStorage.ts",
     "lib/impersonationSession.ts": "adapters/authImpersonation.ts",

@@ -1,9 +1,4 @@
-import {
-  guestHost,
-  guestProfileId,
-  guestRefreshToken,
-  setGuestRefreshToken,
-} from "@/bloem/preview/session";
+import { guestHost, setGuestRefreshToken } from "@/bloem/preview/session";
 import { t } from "@/i18n";
 import type { ApiError } from "./types";
 import type { components } from "./v2/schema";
@@ -130,7 +125,7 @@ export function getAccessToken(): string | null {
 }
 
 function getRefreshToken(): string | null {
-  return guestHost() ? guestRefreshToken() : storage.get(storage.KEYS.REFRESH_TOKEN);
+  return storage.get(storage.KEYS.REFRESH_TOKEN);
 }
 
 export function setRefreshToken(token: string | null) {
@@ -145,10 +140,8 @@ export function setRefreshToken(token: string | null) {
   }
 }
 
-// A preview guest never picks a profile; its session carries the shared
-// account's profile, which scopes the v2 reads that require X-Profile-Id.
 function getProfileId(): string | null {
-  return guestHost() ? guestProfileId() : storage.get(storage.KEYS.PROFILE_ID);
+  return storage.get(storage.KEYS.PROFILE_ID);
 }
 
 export function setProfileId(id: string | null) {
