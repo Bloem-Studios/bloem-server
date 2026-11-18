@@ -3,7 +3,10 @@ import { useEffect, useSyncExternalStore } from "react";
 import { v2 } from "@/api/v2/request";
 import { platformAdminScope } from "@/bloem/adminScope";
 import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
-import { useBuildInfo as useSiloBuildInfo, type BuildInfo } from "@/hooks/queries/admin/system";
+import { useBuildInfo as useSiloBuildInfo } from "@/hooks/queries/admin/system";
+
+// Silo keeps its build info type to itself; take it from the hook it returns.
+type BuildInfo = NonNullable<ReturnType<typeof useSiloBuildInfo>["data"]>;
 
 // The public server version, read once per page load. A small store rather
 // than a query: Silo's sidebar renders, in its tests too, without a query
