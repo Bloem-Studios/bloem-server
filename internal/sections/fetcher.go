@@ -2830,9 +2830,6 @@ func buildRecentlyAddedSingleLibraryQuery(s ResolvedSection, cfgFilters SectionC
 	return sectionQuery{sql: query, args: args}, true
 }
 
-// mediaScopeMovie is the section filter_type for movie-only rows.
-const mediaScopeMovie = "movie"
-
 func buildRecentlyReleasedQuery(s ResolvedSection, libraryID *int, libraryIDs []int, filter catalog.AccessFilter) (string, []any) {
 	cfgFilters := ParseConfigFilters(s.Config)
 
