@@ -1,6 +1,5 @@
 {
   "@@locale": "hi",
-
   "bloem.admin.accessGroups.toasts.createFailed": "ऐक्सेस ग्रुप नहीं बनाया जा सका",
   "bloem.admin.accessGroups.toasts.created": "ऐक्सेस ग्रुप बनाया गया",
   "bloem.admin.accessGroups.toasts.deleteFailed": "ऐक्सेस ग्रुप मिटाया नहीं जा सका",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "रिकॉर्डिंग रीलोड हो गईं। रिकॉर्डिंग की कोई और कार्रवाई करने से पहले सूची देखें।",
   "bloem.liveTv.recordingWrites.scheduleFailed": "रिकॉर्डिंग शेड्यूल नहीं हो सकी",
   "bloem.liveTv.recordingWrites.scheduled": "रिकॉर्डिंग शेड्यूल हो गई",
-  "bloem.liveTv.recordingWrites.waitForReadback": "रीलोड करने से पहले रिकॉर्डिंग के दोबारा पढ़े जाने का इंतज़ार करें।",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "बदलाव की पुष्टि नहीं हो सकी।",
-  "bloem.profiles.directCredentials.confirmRequired": "पुष्टि करने के लिए अपने खाते का पासवर्ड डालें और बॉक्स पर टिक करें।",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "प्रोफ़ाइल के लिए ईमेल और नया पासवर्ड डालें।",
-  "bloem.profiles.directCredentials.signInSaved": "साइन-इन सेव हुआ। प्रोफ़ाइल को उसके ऐप से साइन आउट कर दिया गया और उसे फिर से साइन इन करना होगा।",
-  "bloem.profiles.directCredentials.signInTurnedOff": "प्रोफ़ाइल का अपना साइन-इन बंद है, और उसे उसके ऐप से साइन आउट कर दिया गया है।"
+  "bloem.liveTv.recordingWrites.waitForReadback": "रीलोड करने से पहले रिकॉर्डिंग के दोबारा पढ़े जाने का इंतज़ार करें।"
 }

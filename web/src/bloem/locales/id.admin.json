@@ -13052,36 +13052,6 @@
       "value": "Ya"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Pengaturan kata sandi profil tidak dapat dimuat."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Memuat pengaturan"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Coba lagi"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Izinkan rumah tangga memberi setiap profil email dan kata sandinya sendiri untuk masuk. Mati secara default. Mematikannya menghentikan kata sandi profil untuk masuk; kata sandi yang tersimpan tetap disimpan, dan profil yang sudah masuk tetap masuk."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Kata sandi profil"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

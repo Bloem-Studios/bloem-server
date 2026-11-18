@@ -13536,36 +13536,6 @@
       "value": "हाँ"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "प्रोफ़ाइल पासवर्ड की सेटिंग लोड नहीं हो सकीं।"
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "सेटिंग लोड हो रही हैं"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "फिर से कोशिश करें"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "किसी घर को हर प्रोफ़ाइल के लिए साइन इन करने का अपना ईमेल और पासवर्ड देने दें। डिफ़ॉल्ट रूप से बंद। इसे बंद करने पर प्रोफ़ाइल पासवर्ड से साइन इन नहीं होता; सेव किए गए पासवर्ड बने रहते हैं, और पहले से साइन इन प्रोफ़ाइलें साइन इन रहती हैं।"
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "प्रोफ़ाइल पासवर्ड"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

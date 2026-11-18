@@ -1,6 +1,5 @@
 {
   "@@locale": "ca",
-
   "bloem.admin.accessGroups.toasts.createFailed": "No s’ha pogut crear el grup d’accés",
   "bloem.admin.accessGroups.toasts.created": "S’ha creat el grup d’accés",
   "bloem.admin.accessGroups.toasts.deleteFailed": "No s’ha pogut eliminar el grup d’accés",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "S’han tornat a carregar els enregistraments. Revisa la llista abans de fer cap altra acció d’enregistrament.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "No s’ha pogut programar l’enregistrament",
   "bloem.liveTv.recordingWrites.scheduled": "S’ha programat l’enregistrament",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Espera que es confirmin els enregistraments abans de tornar a carregar.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "No s’ha pogut confirmar el canvi.",
-  "bloem.profiles.directCredentials.confirmRequired": "Introdueix la contrasenya del teu compte i marca la casella per confirmar.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Introdueix un correu electrònic i una contrasenya nova per al perfil.",
-  "bloem.profiles.directCredentials.signInSaved": "S’ha desat l’inici de sessió. S’ha tancat la sessió del perfil a les seves aplicacions i ha de tornar a iniciar-la.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "L’inici de sessió propi del perfil està desactivat, i se n’ha tancat la sessió a les seves aplicacions."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Espera que es confirmin els enregistraments abans de tornar a carregar."
 }

@@ -13056,36 +13056,6 @@
       "value": "Ya"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Tetapan kata laluan profil tidak dapat dimuatkan."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Memuatkan tetapan"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Cuba lagi"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Benarkan isi rumah memberikan setiap profil e-mel dan kata laluannya sendiri untuk log masuk. Dimatikan secara lalai. Mematikannya menghentikan log masuk dengan kata laluan profil; kata laluan yang disimpan dikekalkan, dan profil yang sudah log masuk kekal log masuk."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Kata laluan profil"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

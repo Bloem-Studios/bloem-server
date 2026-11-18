@@ -14505,36 +14505,6 @@
       "value": "Taip"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Nepavyko įkelti profilių slaptažodžių nustatymų."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Įkeliami nustatymai"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Bandyti dar kartą"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Leiskite namų ūkiui kiekvienam profiliui suteikti savą el. pašto adresą ir slaptažodį prisijungti. Pagal numatytuosius nustatymus išjungta. Išjungus profilių slaptažodžiais prisijungti nebegalima; išsaugoti slaptažodžiai paliekami, o jau prisijungę profiliai lieka prisijungę."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Profilių slaptažodžiai"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

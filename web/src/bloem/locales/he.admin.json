@@ -13424,36 +13424,6 @@
       "value": "כן"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "לא ניתן היה לטעון את הגדרות הסיסמאות לפרופילים."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "ההגדרות בטעינה"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "ניסיון חוזר"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "מאפשר למשק בית לתת לכל פרופיל אימייל וסיסמה משלו להתחברות. כבוי כברירת מחדל. כיבוי ההגדרה מונע התחברות עם סיסמאות של פרופילים; סיסמאות שמורות נשמרות, ופרופילים שכבר מחוברים נשארים מחוברים."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "סיסמאות לפרופילים"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

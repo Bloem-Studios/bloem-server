@@ -1,6 +1,5 @@
 {
   "@@locale": "lt",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Nepavyko sukurti prieigos grupės",
   "bloem.admin.accessGroups.toasts.created": "Prieigos grupė sukurta",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Nepavyko ištrinti prieigos grupės",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Įrašai įkelti iš naujo. Prieš kitą įrašo veiksmą peržiūrėkite sąrašą.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Nepavyko suplanuoti įrašo",
   "bloem.liveTv.recordingWrites.scheduled": "Įrašas suplanuotas",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Prieš įkeldami iš naujo palaukite, kol bus nuskaityti įrašai.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Nepavyko patvirtinti pakeitimo.",
-  "bloem.profiles.directCredentials.confirmRequired": "Įveskite savo paskyros slaptažodį ir pažymėkite langelį, kad patvirtintumėte.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Įveskite profilio el. pašto adresą ir naują slaptažodį.",
-  "bloem.profiles.directCredentials.signInSaved": "Prisijungimas išsaugotas. Profilis atjungtas nuo savo programėlių ir turi prisijungti iš naujo.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Profilio atskiras prisijungimas išjungtas, o profilis atjungtas nuo savo programėlių."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Prieš įkeldami iš naujo palaukite, kol bus nuskaityti įrašai."
 }

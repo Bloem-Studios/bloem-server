@@ -13536,36 +13536,6 @@
       "value": "Ja"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Instellingen voor profielwachtwoorden konden niet worden geladen."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Instellingen laden"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Opnieuw proberen"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Laat een huishouden elk profiel een eigen e-mailadres en wachtwoord geven om mee in te loggen. Standaard uit. Uitzetten zorgt dat profielwachtwoorden niet meer werken om in te loggen; opgeslagen wachtwoorden blijven bewaard en profielen die al zijn ingelogd, blijven ingelogd."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Profielwachtwoorden"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

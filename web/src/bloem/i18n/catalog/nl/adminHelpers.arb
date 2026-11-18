@@ -1,6 +1,5 @@
 {
   "@@locale": "nl",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Aanmaken van toegangsgroep mislukt",
   "bloem.admin.accessGroups.toasts.created": "Toegangsgroep aangemaakt",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Verwijderen van toegangsgroep mislukt",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Opnames opnieuw geladen. Bekijk de lijst voor een volgende opnameactie.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Plannen van opname mislukt",
   "bloem.liveTv.recordingWrites.scheduled": "Opname gepland",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Wacht tot de opnames zijn teruggelezen voordat je opnieuw laadt.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Kan de wijziging niet bevestigen.",
-  "bloem.profiles.directCredentials.confirmRequired": "Voer je accountwachtwoord in en vink het vakje aan om te bevestigen.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Voer een e-mailadres en een nieuw wachtwoord voor het profiel in.",
-  "bloem.profiles.directCredentials.signInSaved": "Inloggegevens opgeslagen. Het profiel is uitgelogd in zijn apps en moet opnieuw inloggen.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Het eigen inloggen van het profiel staat uit, en het is uitgelogd in zijn apps."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Wacht tot de opnames zijn teruggelezen voordat je opnieuw laadt."
 }

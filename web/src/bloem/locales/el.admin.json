@@ -13547,36 +13547,6 @@
       "value": "Ναι"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Δεν ήταν δυνατή η φόρτωση των ρυθμίσεων κωδικών προφίλ."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Φόρτωση ρυθμίσεων"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Νέα προσπάθεια"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Επιτρέψτε σε ένα νοικοκυριό να δώσει σε κάθε προφίλ δικό του email και κωδικό πρόσβασης για σύνδεση. Ανενεργό από προεπιλογή. Η απενεργοποίηση σταματά τη σύνδεση με κωδικούς προφίλ· οι αποθηκευμένοι κωδικοί διατηρούνται και τα προφίλ που είναι ήδη συνδεδεμένα παραμένουν συνδεδεμένα."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Κωδικοί πρόσβασης προφίλ"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

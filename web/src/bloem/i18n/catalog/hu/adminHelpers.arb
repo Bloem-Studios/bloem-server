@@ -1,6 +1,5 @@
 {
   "@@locale": "hu",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Nem sikerült létrehozni a hozzáférési csoportot",
   "bloem.admin.accessGroups.toasts.created": "Hozzáférési csoport létrehozva",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Nem sikerült törölni a hozzáférési csoportot",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Felvételek újratöltve. Újabb felvételi művelet előtt tekintse át a listát.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Nem sikerült ütemezni a felvételt",
   "bloem.liveTv.recordingWrites.scheduled": "Felvétel ütemezve",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Újratöltés előtt várja meg a felvételek visszaolvasását.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "A módosítást nem sikerült megerősíteni.",
-  "bloem.profiles.directCredentials.confirmRequired": "Adja meg a fiókja jelszavát, és a megerősítéshez jelölje be a négyzetet.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Adjon meg e-mail-címet és új jelszót a profilhoz.",
-  "bloem.profiles.directCredentials.signInSaved": "Bejelentkezés mentve. A profil ki lett jelentkeztetve az alkalmazásaiból, és újra be kell jelentkeznie.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "A profil saját bejelentkezése ki van kapcsolva, és ki lett jelentkeztetve az alkalmazásaiból."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Újratöltés előtt várja meg a felvételek visszaolvasását."
 }

@@ -1,6 +1,5 @@
 {
   "@@locale": "lv",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Neizdevās izveidot piekļuves grupu",
   "bloem.admin.accessGroups.toasts.created": "Piekļuves grupa izveidota",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Neizdevās dzēst piekļuves grupu",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Ieraksti pārlādēti. Pirms nākamās ierakstīšanas darbības pārskatiet sarakstu.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Neizdevās ieplānot ierakstu",
   "bloem.liveTv.recordingWrites.scheduled": "Ieraksts ieplānots",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Pirms pārlādēšanas pagaidiet, līdz ieraksti tiek nolasīti.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Izmaiņas neizdevās apstiprināt.",
-  "bloem.profiles.directCredentials.confirmRequired": "Ievadiet sava konta paroli un atzīmējiet izvēles rūtiņu, lai apstiprinātu.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Ievadiet profila e-pasta adresi un jaunu paroli.",
-  "bloem.profiles.directCredentials.signInSaved": "Pierakstīšanās saglabāta. Profils tika izrakstīts no savām lietotnēm, un tam jāpierakstās vēlreiz.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Profila atsevišķā pierakstīšanās ir izslēgta, un tas ir izrakstīts no savām lietotnēm."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Pirms pārlādēšanas pagaidiet, līdz ieraksti tiek nolasīti."
 }

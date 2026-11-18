@@ -1,6 +1,5 @@
 {
   "@@locale": "et",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Juurdepääsurühma loomine ebaõnnestus",
   "bloem.admin.accessGroups.toasts.created": "Juurdepääsurühm on loodud",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Juurdepääsurühma kustutamine ebaõnnestus",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Salvestused on uuesti laaditud. Enne järgmist salvestustoimingut vaadake loend üle.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Salvestuse ajastamine ebaõnnestus",
   "bloem.liveTv.recordingWrites.scheduled": "Salvestus on ajastatud",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Enne uuesti laadimist oodake, kuni salvestused on tagasi loetud.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Muudatust ei õnnestunud kinnitada.",
-  "bloem.profiles.directCredentials.confirmRequired": "Kinnitamiseks sisestage oma konto parool ja märkige ruut.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Sisestage profiili e-posti aadress ja uus parool.",
-  "bloem.profiles.directCredentials.signInSaved": "Sisselogimine on salvestatud. Profiil logiti oma rakendustest välja ja peab uuesti sisse logima.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Profiili enda sisselogimine on välja lülitatud ja profiil on oma rakendustest välja logitud."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Enne uuesti laadimist oodake, kuni salvestused on tagasi loetud."
 }

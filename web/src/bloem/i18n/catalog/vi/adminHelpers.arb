@@ -1,6 +1,5 @@
 {
   "@@locale": "vi",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Không thể tạo nhóm truy cập",
   "bloem.admin.accessGroups.toasts.created": "Đã tạo nhóm truy cập",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Không thể xóa nhóm truy cập",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Đã tải lại bản ghi. Hãy xem lại danh sách trước khi thực hiện thao tác ghi hình khác.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Không thể lên lịch ghi hình",
   "bloem.liveTv.recordingWrites.scheduled": "Đã lên lịch ghi hình",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Hãy chờ đọc lại danh sách bản ghi trước khi tải lại.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Không thể xác nhận thay đổi.",
-  "bloem.profiles.directCredentials.confirmRequired": "Hãy nhập mật khẩu tài khoản và đánh dấu ô để xác nhận.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Hãy nhập email và mật khẩu mới cho hồ sơ.",
-  "bloem.profiles.directCredentials.signInSaved": "Đã lưu thông tin đăng nhập. Hồ sơ đã bị đăng xuất khỏi các ứng dụng và phải đăng nhập lại.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Đăng nhập riêng của hồ sơ đã tắt, và hồ sơ đã bị đăng xuất khỏi các ứng dụng."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Hãy chờ đọc lại danh sách bản ghi trước khi tải lại."
 }

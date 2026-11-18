@@ -1,6 +1,5 @@
 {
   "@@locale": "ro",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Grupul de acces nu a putut fi creat",
   "bloem.admin.accessGroups.toasts.created": "Grup de acces creat",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Grupul de acces nu a putut fi șters",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Înregistrări reîncărcate. Verificați lista înainte de altă acțiune de înregistrare.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Înregistrarea nu a putut fi programată",
   "bloem.liveTv.recordingWrites.scheduled": "Înregistrare programată",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Așteptați citirea înregistrărilor înainte de reîncărcare.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Modificarea nu a putut fi confirmată.",
-  "bloem.profiles.directCredentials.confirmRequired": "Introduceți parola contului și bifați caseta pentru a confirma.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Introduceți un e-mail și o parolă nouă pentru profil.",
-  "bloem.profiles.directCredentials.signInSaved": "Datele de conectare au fost salvate. Profilul a fost deconectat din aplicații și trebuie să se conecteze din nou.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Conectarea proprie a profilului este dezactivată, iar profilul a fost deconectat din aplicații."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Așteptați citirea înregistrărilor înainte de reîncărcare."
 }

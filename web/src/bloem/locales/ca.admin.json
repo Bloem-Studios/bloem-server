@@ -13908,36 +13908,6 @@
       "value": "Sí"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "No s’ha pogut carregar la configuració de contrasenyes de perfil."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "S’està carregant la configuració"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Torna-ho a provar"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Permet que una llar doni a cada perfil el seu propi correu electrònic i contrasenya per iniciar la sessió. Desactivat per defecte. Si es desactiva, les contrasenyes de perfil deixen de permetre iniciar la sessió; les contrasenyes desades es conserven i els perfils que ja han iniciat la sessió la mantenen."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Contrasenyes de perfil"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

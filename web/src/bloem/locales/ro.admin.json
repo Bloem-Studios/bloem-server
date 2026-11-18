@@ -13978,36 +13978,6 @@
       "value": "Da"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Setările parolelor de profil nu au putut fi încărcate."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Se încarcă setările"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Reîncercați"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Permiteți unei gospodării să dea fiecărui profil propriul e-mail și propria parolă de conectare. Dezactivat implicit. Dezactivarea oprește conectarea cu parolele de profil; parolele salvate sunt păstrate, iar profilurile deja conectate rămân conectate."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Parole de profil"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

@@ -1,6 +1,5 @@
 {
   "@@locale": "th",
-
   "bloem.admin.accessGroups.toasts.createFailed": "สร้างกลุ่มการเข้าถึงไม่สำเร็จ",
   "bloem.admin.accessGroups.toasts.created": "สร้างกลุ่มการเข้าถึงแล้ว",
   "bloem.admin.accessGroups.toasts.deleteFailed": "ลบกลุ่มการเข้าถึงไม่สำเร็จ",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "โหลดรายการบันทึกใหม่แล้ว ตรวจสอบรายการก่อนดำเนินการบันทึกอื่น",
   "bloem.liveTv.recordingWrites.scheduleFailed": "ตั้งเวลาบันทึกไม่สำเร็จ",
   "bloem.liveTv.recordingWrites.scheduled": "ตั้งเวลาบันทึกแล้ว",
-  "bloem.liveTv.recordingWrites.waitForReadback": "รอให้อ่านรายการบันทึกกลับมาก่อนโหลดใหม่",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "ยืนยันการเปลี่ยนแปลงไม่ได้",
-  "bloem.profiles.directCredentials.confirmRequired": "ป้อนรหัสผ่านบัญชีของคุณและทำเครื่องหมายในช่องเพื่อยืนยัน",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "ป้อนอีเมลและรหัสผ่านใหม่สำหรับโปรไฟล์",
-  "bloem.profiles.directCredentials.signInSaved": "บันทึกการลงชื่อเข้าใช้แล้ว โปรไฟล์ถูกนำออกจากระบบในแอปและต้องลงชื่อเข้าใช้อีกครั้ง",
-  "bloem.profiles.directCredentials.signInTurnedOff": "การลงชื่อเข้าใช้ของโปรไฟล์เองปิดอยู่ และโปรไฟล์ถูกนำออกจากระบบในแอปแล้ว"
+  "bloem.liveTv.recordingWrites.waitForReadback": "รอให้อ่านรายการบันทึกกลับมาก่อนโหลดใหม่"
 }

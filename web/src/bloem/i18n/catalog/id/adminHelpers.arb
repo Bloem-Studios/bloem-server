@@ -1,6 +1,5 @@
 {
   "@@locale": "id",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Gagal membuat grup akses",
   "bloem.admin.accessGroups.toasts.created": "Grup akses dibuat",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Gagal menghapus grup akses",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Rekaman dimuat ulang. Tinjau daftarnya sebelum tindakan rekaman lain.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Gagal menjadwalkan rekaman",
   "bloem.liveTv.recordingWrites.scheduled": "Rekaman dijadwalkan",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Tunggu pembacaan ulang rekaman sebelum memuat ulang.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Tidak dapat memastikan perubahan.",
-  "bloem.profiles.directCredentials.confirmRequired": "Masukkan kata sandi akun Anda dan centang kotak untuk mengonfirmasi.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Masukkan email dan kata sandi baru untuk profil ini.",
-  "bloem.profiles.directCredentials.signInSaved": "Info masuk disimpan. Profil ini telah dikeluarkan dari aplikasinya dan harus masuk lagi.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Info masuk milik profil ini dimatikan, dan profil ini telah dikeluarkan dari aplikasinya."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Tunggu pembacaan ulang rekaman sebelum memuat ulang."
 }

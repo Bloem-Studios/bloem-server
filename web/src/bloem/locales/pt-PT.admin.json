@@ -13904,36 +13904,6 @@
       "value": "Sim"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Não foi possível carregar as definições de palavras-passe de perfil."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "A carregar definições"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Tentar novamente"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Permitir que um agregado familiar dê a cada perfil o seu próprio e-mail e palavra-passe para iniciar sessão. Desativado por predefinição. Desativar impede o início de sessão com palavras-passe de perfil; as palavras-passe guardadas são mantidas e os perfis com sessão iniciada continuam com sessão iniciada."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Palavras-passe de perfil"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

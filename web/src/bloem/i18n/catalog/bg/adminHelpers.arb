@@ -1,6 +1,5 @@
 {
   "@@locale": "bg",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Групата за достъп не можа да бъде създадена",
   "bloem.admin.accessGroups.toasts.created": "Групата за достъп е създадена",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Групата за достъп не можа да бъде изтрита",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Записите са презаредени. Прегледайте списъка преди следващо действие със запис.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Записът не можа да бъде планиран",
   "bloem.liveTv.recordingWrites.scheduled": "Записът е планиран",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Изчакайте прочитането на записите, преди да презаредите.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Промяната не можа да бъде потвърдена.",
-  "bloem.profiles.directCredentials.confirmRequired": "Въведете паролата на акаунта си и отметнете полето за потвърждение.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Въведете имейл и нова парола за профила.",
-  "bloem.profiles.directCredentials.signInSaved": "Данните за вход са запазени. Профилът беше изведен от приложенията си и трябва да влезе отново.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Собственият вход на профила е изключен и профилът е изведен от приложенията си."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Изчакайте прочитането на записите, преди да презаредите."
 }

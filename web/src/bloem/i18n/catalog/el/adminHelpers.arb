@@ -1,6 +1,5 @@
 {
   "@@locale": "el",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Αποτυχία δημιουργίας ομάδας πρόσβασης",
   "bloem.admin.accessGroups.toasts.created": "Η ομάδα πρόσβασης δημιουργήθηκε",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Αποτυχία διαγραφής ομάδας πρόσβασης",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Οι εγγραφές επαναφορτώθηκαν. Ελέγξτε τη λίστα πριν από άλλη ενέργεια εγγραφής.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Αποτυχία προγραμματισμού εγγραφής",
   "bloem.liveTv.recordingWrites.scheduled": "Η εγγραφή προγραμματίστηκε",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Περιμένετε την ανάγνωση των εγγραφών πριν από την επαναφόρτωση.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Δεν ήταν δυνατή η επιβεβαίωση της αλλαγής.",
-  "bloem.profiles.directCredentials.confirmRequired": "Εισαγάγετε τον κωδικό πρόσβασης του λογαριασμού σας και επιλέξτε το πλαίσιο για επιβεβαίωση.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Εισαγάγετε email και νέο κωδικό πρόσβασης για το προφίλ.",
-  "bloem.profiles.directCredentials.signInSaved": "Τα στοιχεία σύνδεσης αποθηκεύτηκαν. Το προφίλ αποσυνδέθηκε από τις εφαρμογές του και πρέπει να συνδεθεί ξανά.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Η δική του σύνδεση του προφίλ είναι απενεργοποιημένη, και το προφίλ αποσυνδέθηκε από τις εφαρμογές του."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Περιμένετε την ανάγνωση των εγγραφών πριν από την επαναφόρτωση."
 }

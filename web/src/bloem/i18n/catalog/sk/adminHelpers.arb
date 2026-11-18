@@ -1,6 +1,5 @@
 {
   "@@locale": "sk",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Prístupovú skupinu sa nepodarilo vytvoriť",
   "bloem.admin.accessGroups.toasts.created": "Prístupová skupina bola vytvorená",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Prístupovú skupinu sa nepodarilo odstrániť",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Nahrávky boli znova načítané. Pred ďalšou akciou nahrávania skontrolujte zoznam.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Nahrávanie sa nepodarilo naplánovať",
   "bloem.liveTv.recordingWrites.scheduled": "Nahrávanie bolo naplánované",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Pred opätovným načítaním počkajte na potvrdenie nahrávok.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Zmenu sa nepodarilo potvrdiť.",
-  "bloem.profiles.directCredentials.confirmRequired": "Zadajte heslo účtu a začiarknite políčko na potvrdenie.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Zadajte e-mail a nové heslo pre profil.",
-  "bloem.profiles.directCredentials.signInSaved": "Prihlásenie bolo uložené. Profil bol odhlásený zo svojich aplikácií a musí sa prihlásiť znova.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Vlastné prihlásenie profilu je vypnuté a profil bol odhlásený zo svojich aplikácií."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Pred opätovným načítaním počkajte na potvrdenie nahrávok."
 }

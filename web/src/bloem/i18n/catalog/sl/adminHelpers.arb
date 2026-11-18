@@ -1,6 +1,5 @@
 {
   "@@locale": "sl",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Skupine dostopa ni bilo mogoče ustvariti",
   "bloem.admin.accessGroups.toasts.created": "Skupina dostopa je ustvarjena",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Skupine dostopa ni bilo mogoče izbrisati",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Posnetki so znova naloženi. Pred naslednjim dejanjem snemanja preglejte seznam.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Snemanja ni bilo mogoče načrtovati",
   "bloem.liveTv.recordingWrites.scheduled": "Snemanje je načrtovano",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Pred ponovnim nalaganjem počakajte na potrditev posnetkov.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Spremembe ni bilo mogoče potrditi.",
-  "bloem.profiles.directCredentials.confirmRequired": "Vnesite geslo računa in za potrditev označite polje.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Vnesite e-poštni naslov in novo geslo za profil.",
-  "bloem.profiles.directCredentials.signInSaved": "Prijava je shranjena. Profil je bil odjavljen iz svojih aplikacij in se mora znova prijaviti.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "Lastna prijava profila je izklopljena, profil pa je bil odjavljen iz svojih aplikacij."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Pred ponovnim nalaganjem počakajte na potrditev posnetkov."
 }

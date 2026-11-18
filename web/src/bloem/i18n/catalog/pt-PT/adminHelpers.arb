@@ -1,6 +1,5 @@
 {
   "@@locale": "pt-PT",
-
   "bloem.admin.accessGroups.toasts.createFailed": "Falha ao criar o grupo de acesso",
   "bloem.admin.accessGroups.toasts.created": "Grupo de acesso criado",
   "bloem.admin.accessGroups.toasts.deleteFailed": "Falha ao eliminar o grupo de acesso",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "Gravações recarregadas. Reveja a lista antes de outra ação de gravação.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Falha ao agendar a gravação",
   "bloem.liveTv.recordingWrites.scheduled": "Gravação agendada",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Aguarde a confirmação das gravações antes de recarregar.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "Não foi possível confirmar a alteração.",
-  "bloem.profiles.directCredentials.confirmRequired": "Introduza a palavra-passe da sua conta e assinale a caixa para confirmar.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "Introduza um e-mail e uma nova palavra-passe para o perfil.",
-  "bloem.profiles.directCredentials.signInSaved": "Início de sessão guardado. A sessão do perfil foi terminada nas suas aplicações e tem de iniciar sessão novamente.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "O início de sessão próprio do perfil está desativado e a sessão foi terminada nas suas aplicações."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Aguarde a confirmação das gravações antes de recarregar."
 }

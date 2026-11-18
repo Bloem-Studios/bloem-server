@@ -1,6 +1,5 @@
 {
   "@@locale": "he",
-
   "bloem.admin.accessGroups.toasts.createFailed": "יצירת קבוצת הגישה נכשלה",
   "bloem.admin.accessGroups.toasts.created": "קבוצת הגישה נוצרה",
   "bloem.admin.accessGroups.toasts.deleteFailed": "מחיקת קבוצת הגישה נכשלה",
@@ -398,10 +397,5 @@
   "bloem.liveTv.recordingWrites.reloaded": "ההקלטות נטענו מחדש. יש לעבור על הרשימה לפני פעולת הקלטה נוספת.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "תזמון ההקלטה נכשל",
   "bloem.liveTv.recordingWrites.scheduled": "ההקלטה תוזמנה",
-  "bloem.liveTv.recordingWrites.waitForReadback": "יש לחכות לקריאה החוזרת של ההקלטות לפני טעינה מחדש.",
-  "bloem.profiles.directCredentials.changeNotConfirmed": "לא ניתן היה לאשר את השינוי.",
-  "bloem.profiles.directCredentials.confirmRequired": "יש להזין את סיסמת החשבון שלך ולסמן את התיבה כדי לאשר.",
-  "bloem.profiles.directCredentials.emailAndPasswordRequired": "יש להזין אימייל וסיסמה חדשה לפרופיל.",
-  "bloem.profiles.directCredentials.signInSaved": "ההתחברות נשמרה. הפרופיל נותק מהאפליקציות שלו וצריך להתחבר שוב.",
-  "bloem.profiles.directCredentials.signInTurnedOff": "ההתחברות העצמאית של הפרופיל כבויה, והוא נותק מהאפליקציות שלו."
+  "bloem.liveTv.recordingWrites.waitForReadback": "יש לחכות לקריאה החוזרת של ההקלטות לפני טעינה מחדש."
 }

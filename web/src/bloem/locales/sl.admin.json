@@ -14468,36 +14468,6 @@
       "value": "Da"
     }
   ],
-  "bloem.admin.profilePasswords.loadFailed": [
-    {
-      "type": 0,
-      "value": "Nastavitev gesel profilov ni bilo mogoče naložiti."
-    }
-  ],
-  "bloem.admin.profilePasswords.loading": [
-    {
-      "type": 0,
-      "value": "Nalaganje nastavitev"
-    }
-  ],
-  "bloem.admin.profilePasswords.retry": [
-    {
-      "type": 0,
-      "value": "Poskusi znova"
-    }
-  ],
-  "bloem.admin.profilePasswords.switchDescription": [
-    {
-      "type": 0,
-      "value": "Gospodinjstvu omogočite, da vsakemu profilu dodeli lastno e-pošto in geslo za prijavo. Privzeto izklopljeno. Izklop prepreči prijavo z gesli profilov; shranjena gesla se ohranijo, že prijavljeni profili pa ostanejo prijavljeni."
-    }
-  ],
-  "bloem.admin.profilePasswords.title": [
-    {
-      "type": 0,
-      "value": "Gesla profilov"
-    }
-  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,
