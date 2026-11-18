@@ -343,7 +343,16 @@ func (m *SearchMirror) runLocked(ctx context.Context) (searchMirrorRunResult, er
 		}
 	}
 
-	// 8. A full copy, started or continued, or else the changes since the bookmark.
+	// 8. Index settings Silo applied to the main index in place, without a rebuild.
+	if applied, err := m.followSettings(ctx, &row, main); err != nil {
+		return searchMirrorRunResultOf(row), err
+	} else if applied {
+		if err := saveSearchMirrorRow(ctx, m.pool, &row); err != nil {
+			return searchMirrorRunResultOf(row), err
+		}
+	}
+
+	// 9. A full copy, started or continued, or else the changes since the bookmark.
 	err = m.copyOrFollow(ctx, &row, main, maxLag)
 	return searchMirrorRunResultOf(row), err
 }
@@ -603,4 +612,25 @@ func searchMirrorRuntime() (SearchMirrorConfig, *SearchMirror) {
 	searchMirrorProcessRuntime.mu.RLock()
 	defer searchMirrorProcessRuntime.mu.RUnlock()
 	return searchMirrorProcessRuntime.cfg, searchMirrorProcessRuntime.mirror
+}
+
+// followSettings brings the published mirror index to the index settings Silo applies to the
+// main index in place (catalogSearchIndexApplySettings), which change no schema version and so
+// start no copy. It waits until the main index has this build's settings, so both servers
+// serve the same ones, and applies them once. A copy in progress gets them from the copy.
+func (m *SearchMirror) followSettings(ctx context.Context, row *searchMirrorRow, main SearchIndexState) (bool, error) {
+	if m.mirror == nil || row.ActiveIndexUID == "" || row.State.Copy != nil ||
+		main.SettingsFingerprint != catalogSearchMeilisearchSettingsFingerprint ||
+		row.State.SettingsFingerprint == catalogSearchMeilisearchSettingsFingerprint {
+		return false, nil
+	}
+	task, err := m.mirror.UpdateSettings(ctx, row.ActiveIndexUID, catalogSearchMeilisearchIndexSettings())
+	if err == nil {
+		err = m.mirror.WaitTask(ctx, task)
+	}
+	if err != nil {
+		return false, searchMirrorMeilisearchError(fmt.Errorf("apply search settings to the mirror index %s: %w", row.ActiveIndexUID, err))
+	}
+	row.State.SettingsFingerprint = catalogSearchMeilisearchSettingsFingerprint
+	return true, nil
 }

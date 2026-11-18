@@ -412,6 +412,7 @@ func (m *SearchMirror) publishCopy(ctx context.Context, row *searchMirrorRow) (b
 	next.State.Window = nil
 	next.State.Retry = nil
 	next.State.ForceCopy = false
+	next.State.SettingsFingerprint = catalogSearchMeilisearchSettingsFingerprint
 	next.State.State = SearchMirrorFollowing
 	next.State.Reason = ""
 	next.State.LastSuccessAt = &now

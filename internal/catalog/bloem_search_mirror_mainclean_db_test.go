@@ -111,3 +111,58 @@ func TestSearchMirrorRunsCleanMainCopyLeftovers(t *testing.T) {
 	// The new mirror (the old main) is not the swap's to clean.
 	assertSearchMirrorIndexes(t, e.Main, "new mirror after the swap", active, marker, onOldMain)
 }
+
+// Silo applies changed index settings to the main index in place and records them in
+// settings_fingerprint, without a rebuild. The mirror's published index follows once the main
+// index has them, then leaves the settings alone until the fingerprint moves again.
+func TestSearchMirrorFollowsInPlaceSettings(t *testing.T) {
+	e := newSearchMirrorTestEnv(t)
+	active := e.Prefix + "_rebuild_9"
+	e.SetMainState(t, active)
+	e.Docs.Put("m1", "One")
+	m := e.NewMirror(t)
+	if err := m.RunOnce(t.Context(), nil); err != nil {
+		t.Fatalf("first run: %v", err)
+	}
+	e.AssertMatchesDatabase(t, e.Mirror, active)
+
+	// The copy and the main index were made by an older build, with older settings; this
+	// build's main sync has not brought the main index to its settings yet.
+	if err := e.Events.UpdateSettingsFingerprint(t.Context(), SearchProviderMeilisearch, active, "older-settings"); err != nil {
+		t.Fatal(err)
+	}
+	row, ok, err := loadSearchMirrorRow(t.Context(), e.Pool)
+	if err != nil || !ok {
+		t.Fatalf("load the mirror row: ok=%v err=%v", ok, err)
+	}
+	row.State.SettingsFingerprint = "older-settings"
+	if err := saveSearchMirrorRow(t.Context(), e.Pool, &row); err != nil {
+		t.Fatal(err)
+	}
+	e.Mirror.ClearSettings(active)
+	tasks := e.Mirror.TaskCount()
+	if err := m.RunOnce(t.Context(), nil); err != nil {
+		t.Fatalf("run before main applied the settings: %v", err)
+	}
+	if got := e.Mirror.TaskCount(); got != tasks {
+		t.Fatalf("mirror tasks while main still had older settings = %d, want %d", got, tasks)
+	}
+
+	// Main applies them in place: the mirror's published index gets them once.
+	if err := e.Events.UpdateSettingsFingerprint(t.Context(), SearchProviderMeilisearch, active, catalogSearchMeilisearchSettingsFingerprint); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.RunOnce(t.Context(), nil); err != nil {
+		t.Fatalf("run after main applied the settings: %v", err)
+	}
+	if got := e.Mirror.Settings(active); len(got) == 0 {
+		t.Fatal("the mirror's published index did not get the settings the main index has")
+	}
+	tasks = e.Mirror.TaskCount()
+	if err := m.RunOnce(t.Context(), nil); err != nil {
+		t.Fatalf("later run: %v", err)
+	}
+	if got := e.Mirror.TaskCount(); got != tasks {
+		t.Fatalf("mirror tasks on a run with nothing to change = %d, want %d", got, tasks)
+	}
+}

@@ -852,3 +852,12 @@ func fakeMeiliWriteJSON(w http.ResponseWriter, status int, body any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(body)
 }
+
+// ClearSettings forgets the settings uid was given, as if it had been made with none.
+func (f *fakeMeili) ClearSettings(uid string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if index, ok := f.indexes[uid]; ok {
+		index.settings = map[string]any{}
+	}
+}

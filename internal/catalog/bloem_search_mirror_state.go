@@ -191,6 +191,10 @@ type searchMirrorState struct {
 	RoleSwaps         int64            `json:"role_swaps,omitempty"`
 	ForceCopy         bool             `json:"force_copy,omitempty"`
 
+	// SettingsFingerprint is the catalogSearchMeilisearchSettingsFingerprint the published
+	// index was last brought to: by the copy that made it, or in place (followSettings).
+	SettingsFingerprint string `json:"settings_fingerprint,omitempty"`
+
 	// RebuildMain is the main index a failover found stale on the new main server: the main
 	// rebuild is owed until the main state names another index. Each run starts it again.
 	RebuildMain string `json:"rebuild_main,omitempty"`

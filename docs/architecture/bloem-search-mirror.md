@@ -195,6 +195,14 @@ under the name the main state row names. It does this **after** the main index
 publishes, never alongside the main rebuild. Until its copy is finished, the mirror
 still holds the old index (see [known limits](#known-limits)).
 
+### Following settings changes
+
+Silo also changes index settings without a rebuild: it applies them to the main index
+in place and records their fingerprint in the main state row. Once the main index has
+this server's settings, the mirror applies the same settings to its own index, once,
+and records the fingerprint it reached (`followSettings`). A full copy records the
+settings it was made with. A copy in progress gets the new settings from the copy.
+
 ## When the two servers swap roles
 
 After a failover, the new live copy's main search is the old mirror. Changes the old
