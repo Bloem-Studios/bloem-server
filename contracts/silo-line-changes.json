@@ -1133,16 +1133,8 @@
   "web/src/hooks/useAuth.tsx": {
    "kind": "lines",
    "lines": [
-    "          hasStoredImpersonationAdminSession: Boolean(loadStoredImpersonationAdminSession()),",
-    "          refreshToken: storage.get(storage.KEYS.REFRESH_TOKEN),",
-    "        clearStoredImpersonationAdminSession();",
-    "        clearStoredImpersonationAdminSession();",
-    "      endProfileEpoch();",
     "      void refreshSignInProviders();",
-    "    clearStoredImpersonationAdminSession();",
-    "    endProfileEpoch();",
     "    if (!user) {",
-    "    storage.remove(storage.KEYS.CURRENT_PROFILE);",
     "    void refreshSignInProviders();"
    ]
   },

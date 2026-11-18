@@ -60,6 +60,12 @@ const importerModules: Record<string, Record<string, string>> = {
   "playback/WatchPlaybackChrome.tsx": {
     "player/components/WatchPage.tsx": "adapters/WatchPage.tsx",
   },
+  // A preview guest's session lives in Bloem's guest store, not the account's
+  // browser storage, and a guest never impersonates.
+  "hooks/useAuth.tsx": {
+    "utils/storage.ts": "adapters/authStorage.ts",
+    "lib/impersonationSession.ts": "adapters/authImpersonation.ts",
+  },
   // A guest previewing gets the preview's sidebar.
   "components/Layout.tsx": { "components/AppSidebar.tsx": "adapters/AppSidebar.tsx" },
   // Server activity and the build route are the platform administrator's.

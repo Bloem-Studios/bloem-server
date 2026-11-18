@@ -240,7 +240,7 @@ web/src/components/admin/users/CreateUserForm.tsx  # Bloem's Watch Live TV switc
 web/src/components/notifications/NotificationInbox.tsx  # shows Bloem's announcements (title, message, severity) in the inbox rows; moved here from web/src/pages/Notifications.tsx when Silo split the inbox out (#4383)
 web/src/hooks/queries/admin/stats.ts
 web/src/hooks/queries/admin/system.ts
-web/src/hooks/useAuth.tsx
+web/src/hooks/useAuth.tsx  # preview guests: Bloem lines discover the preview host and end a guest session, two guards skip Silo's sign-in provider refresh, and a guest counts as signed out of the account; its storage and impersonation reads go through adapters (bloem-preview-plugin.ts, adapters/authStorage.ts, adapters/authImpersonation.ts)
 web/src/lib/adminNavigation.ts
 web/src/lib/adminSettingsSearch.ts
 web/src/lib/documentTitle.ts
