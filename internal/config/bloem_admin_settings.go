@@ -45,9 +45,6 @@ func normalizeBloemAdminSetting(key, value string) (string, bool, error) {
 		err        error
 	)
 	switch key {
-	case "catalog.search.meilisearch.matching_strategy":
-		// Bloem adds Meilisearch's "frequency" strategy to Silo's last/all.
-		normalized, err = normalizeAdminEnum(key, value, "last", "all", "frequency")
 	case EbookRequestsEnabledSettingKey, StrmAllowPrivateAddressesSettingKey, "lan.advertisement_enabled":
 		normalized, err = normalizeAdminBool(key, value)
 	case "livetv.max_transcodes":

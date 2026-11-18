@@ -59095,6 +59095,18 @@
       "value": "Autoscan"
     }
   ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrant": [
+    {
+      "type": 0,
+      "value": "Αναπαραγωγή χωρίς σύνδεση από την ίδια διεύθυνση"
+    }
+  ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrantDescription": [
+    {
+      "type": 0,
+      "value": "Ορισμένες εφαρμογές Jellyfin, όπως το Findroid, ανοίγουν συνδέσμους άμεσης αναπαραγωγής και λήψης χωρίς να συνδεθούν. Όταν αυτή η επιλογή είναι ενεργή, το Silo εξυπηρετεί ένα τέτοιο αίτημα αν μια συνδεδεμένη εφαρμογή στην ίδια διεύθυνση δικτύου ζήτησε την αναπαραγωγή αυτού του αρχείου τις τελευταίες δύο ώρες. Τότε, κάθε άτομο που μοιράζεται αυτή τη διεύθυνση, όπως άτομα στο ίδιο οικιακό δίκτυο, στον ίδιο πάροχο κινητής τηλεφωνίας ή στο ίδιο VPN, μπορεί επίσης να αναπαράγει αυτό το αρχείο. Ενεργοποιήστε την μόνο αν χρησιμοποιείτε μία από αυτές τις εφαρμογές."
+    }
+  ],
   "web.admin.settings.compatibilityProxies.advanced.playbackTtl": [
     {
       "type": 0,
@@ -106864,6 +106876,12 @@
       "value": "Συλλογή"
     }
   ],
+  "web.home.addRow.collection.library": [
+    {
+      "type": 0,
+      "value": "Βιβλιοθήκη"
+    }
+  ],
   "web.home.addRow.collection.loading": [
     {
       "type": 0,
@@ -106908,6 +106926,12 @@
     {
       "type": 0,
       "value": "Δεν υπάρχουν ακόμη συλλογές. Δημιουργήστε πρώτα μία στις Συλλογές."
+    }
+  ],
+  "web.home.addRow.collection.noneInLibrary": [
+    {
+      "type": 0,
+      "value": "Δεν υπάρχουν συλλογές αυτού του τύπου σε αυτή τη βιβλιοθήκη."
     }
   ],
   "web.home.addRow.collection.noneOfType": [

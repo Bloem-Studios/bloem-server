@@ -58647,6 +58647,18 @@
       "value": "Autoscan"
     }
   ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrant": [
+    {
+      "type": 0,
+      "value": "Lejátszás bejelentkezés nélkül ugyanarról a címről"
+    }
+  ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrantDescription": [
+    {
+      "type": 0,
+      "value": "Egyes Jellyfin-alkalmazások, például a Findroid, bejelentkezés nélkül nyitják meg a közvetlen lejátszási és letöltési hivatkozásokat. Bekapcsolt állapotban a Silo kiszolgálja az ilyen kérést, ha ugyanarról a hálózati címről egy bejelentkezett alkalmazás az elmúlt két órában kérte a fájl lejátszását. Ilyenkor bárki, aki ugyanezt a címet használja, például az azonos otthoni hálózaton, mobilszolgáltatónál vagy VPN-en lévő személyek, szintén lejátszhatja ezt a fájlt. Csak akkor kapcsolja be, ha ezek közül az alkalmazások közül valamelyiket használja."
+    }
+  ],
   "web.admin.settings.compatibilityProxies.advanced.playbackTtl": [
     {
       "type": 0,
@@ -105966,6 +105978,12 @@
       "value": "Gyűjtemény"
     }
   ],
+  "web.home.addRow.collection.library": [
+    {
+      "type": 0,
+      "value": "Könyvtár"
+    }
+  ],
   "web.home.addRow.collection.loading": [
     {
       "type": 0,
@@ -106010,6 +106028,12 @@
     {
       "type": 0,
       "value": "Még nincsenek gyűjtemények. Először hozzon létre egyet a Gyűjtemények oldalon."
+    }
+  ],
+  "web.home.addRow.collection.noneInLibrary": [
+    {
+      "type": 0,
+      "value": "Ebben a könyvtárban nincs ilyen típusú gyűjtemény."
     }
   ],
   "web.home.addRow.collection.noneOfType": [

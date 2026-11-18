@@ -1873,19 +1873,6 @@ func subtitleCanServeSRT(format string) bool {
 	}
 }
 
-func writeSubtitleResponse(w http.ResponseWriter, format string, data []byte) {
-	switch strings.ToLower(strings.TrimSpace(format)) {
-	case "ass", "ssa":
-		w.Header().Set("Content-Type", "text/x-ssa; charset=utf-8")
-	case "srt", "subrip":
-		w.Header().Set("Content-Type", "application/x-subrip; charset=utf-8")
-	default:
-		w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
-	}
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
-}
-
 // extractEmbeddedTextSubtitle serves one embedded text track: from the cache,
 // a kept copy, or the file's index. When only a demux can produce it, the
 // demux extracts every text track of the file at once, so switching to
@@ -2012,6 +1999,7 @@ func writeJellyfinJSONSubtitleResponse(w http.ResponseWriter, data []byte) error
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(payload)
 	return err
@@ -4183,6 +4171,20 @@ func (h *PlaybackHandler) resolvePlaybackRoute(r *http.Request, compatSession *S
 	// lookup below may still find the session cached, and only when it doesn't
 	// is the request answered as unreadable rather than absent.
 	var readErr error
+	// A request authorized by a play's PlaySessionId or per-play tag is
+	// served as that play, whatever PlaySessionId it also carries: a tag
+	// request carries none, and the ID-less fallback below would pick
+	// whichever started play matches. A play that can't be read answers as
+	// retryable; one that is gone falls through.
+	if grant := playbackGrantFromContext(r.Context()); grant != nil {
+		playSession, ok, err := h.playbackStore.Lookup(grant.ID)
+		if err != nil {
+			return nil, nil, &playSessionReadError{playSessionID: grant.ID, err: err}
+		}
+		if ok && playSession.CompatToken == compatSession.Token && mediaSourceIDsEqual(playSession.RouteItemID, routeID) {
+			return playSession, playbackRouteSource(playSession, mediaSourceID, allowItemAlias, staticRequest), nil
+		}
+	}
 	if clientPlaySessionID != "" {
 		playSession, ok, err := h.playbackStore.Lookup(clientPlaySessionID)
 		if err != nil {

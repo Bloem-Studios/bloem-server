@@ -1,4 +1,3 @@
-import { bloemSearchMatchingOptions } from "@/bloem/admin/searchMatching";
 import { SearchMirrorStatus } from "@/bloem/admin/SearchMirrorStatus";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -230,7 +229,6 @@ export default function SearchSettings() {
                 options={[
                   { value: "last", label: t("web.admin.settings.search.meili.matching.last") },
                   { value: "all", label: t("web.admin.settings.search.meili.matching.all") },
-                  ...bloemSearchMatchingOptions(),
                 ]}
                 disabled={!meiliEnabled}
                 restartRequired={restartKeys.has("catalog.search.meilisearch.matching_strategy")}

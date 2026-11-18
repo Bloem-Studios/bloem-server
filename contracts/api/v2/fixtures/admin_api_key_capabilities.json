@@ -1,5 +1,5 @@
 {
-  "revision": "1c5416ca65f10b4acbd4fd6a2047d19f6f55e023411fd78d77d15d230f969bbe",
+  "revision": "af4b54fbd0845cbd51c163814719ad7749ffa3cf8451ec8f7c20082b5f8c9929",
   "state": "available",
   "allowed": true,
   "available": true,
@@ -53,6 +53,11 @@
     {
       "name": "admin:monitor:read",
       "description": "Monitor the server read-only: live sessions, playback history, activity stats, accounts, devices, downloads, node and host health, and the catalog listing. Never exposes filesystem paths, node addresses, storage keys, setting values or credentials.",
+      "audience": "admin"
+    },
+    {
+      "name": "admin:catalog:paths",
+      "description": "Read the catalog listing with each file's path on the server, to mirror the library and match its files. Nothing else.",
       "audience": "admin"
     },
     {

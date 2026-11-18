@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -210,7 +211,7 @@ func makeSearchMirrorContractIndex(t *testing.T, client *meilisearchClient, uid 
 		ref, err = client.UpdateSettings(ctx, uid, settings)
 		mustWaitSearchMirrorTask(t, client, "settings of "+uid, ref, err)
 	}
-	ref, err = client.AddDocuments(ctx, uid, docs)
+	ref, err = client.AddDocuments(ctx, uid, searchMirrorTestPayload(t, docs))
 	mustWaitSearchMirrorTask(t, client, "add documents to "+uid, ref, err)
 }
 
@@ -416,7 +417,7 @@ func TestSearchMirrorContractErrorKinds(t *testing.T) {
 		}
 		for _, id := range refused {
 			docs := append(searchMirrorContractDocs("good", "good-1"), searchMirrorContractDocs("refused", id)...)
-			ref, err := c.client.AddDocuments(ctx, index, docs)
+			ref, err := c.client.AddDocuments(ctx, index, searchMirrorTestPayload(t, docs))
 			if err != nil {
 				t.Fatalf("enqueue documents holding %q: %v", id, err)
 			}
@@ -480,7 +481,7 @@ func TestSearchMirrorContractKeyActionsAreEnough(t *testing.T) {
 		mustWaitSearchMirrorTask(t, c.client, "create an index with the limited key", ref, err)
 		ref, err = c.client.UpdateSettings(ctx, side, searchMirrorContractMaxTotalHits(4321))
 		mustWaitSearchMirrorTask(t, c.client, "update settings with the limited key", ref, err)
-		ref, err = c.client.AddDocuments(ctx, side, docs)
+		ref, err = c.client.AddDocuments(ctx, side, searchMirrorTestPayload(t, docs))
 		mustWaitSearchMirrorTask(t, c.client, "add documents with the limited key", ref, err)
 		_, err = c.client.Stats(ctx, side)
 		step("stats", err)
@@ -552,7 +553,7 @@ func TestSearchMirrorFakeMeiliTestHelpers(t *testing.T) {
 		t.Fatalf("Settings(p_direct)[filterableAttributes] = %v, want [type]", got)
 	}
 	docs := searchMirrorContractDocs("fake", "item-1", "item-2")
-	ref, err = client.AddDocuments(ctx, "p_direct", docs)
+	ref, err = client.AddDocuments(ctx, "p_direct", searchMirrorTestPayload(t, docs))
 	mustWaitSearchMirrorTask(t, client, "add documents", ref, err)
 	if got := fake.Documents("p_direct"); len(got) != 2 || got["item-2"].Title != "fake item-2" {
 		t.Fatalf("Documents(p_direct) = %+v, want item-1 and item-2", got)
@@ -566,7 +567,7 @@ func TestSearchMirrorFakeMeiliTestHelpers(t *testing.T) {
 
 	// RefuseAll fails every task holding documents; nothing changes.
 	fake.RefuseAll(true)
-	ref, err = client.AddDocuments(ctx, "p_direct", searchMirrorContractDocs("fake", "item-3"))
+	ref, err = client.AddDocuments(ctx, "p_direct", searchMirrorTestPayload(t, searchMirrorContractDocs("fake", "item-3")))
 	if err != nil {
 		t.Fatalf("enqueue while refusing: %v", err)
 	}
@@ -686,4 +687,15 @@ func TestSearchMirrorPublishIndexKeepsSideWhenTheSwapFails(t *testing.T) {
 			}
 		})
 	}
+}
+
+// searchMirrorTestPayload encodes docs as one documents request body, the way
+// forEachCatalogSearchDocumentPayload does for a payload under its cap.
+func searchMirrorTestPayload(t testing.TB, docs []catalogSearchDocument) json.RawMessage {
+	t.Helper()
+	body, err := json.Marshal(docs)
+	if err != nil {
+		t.Fatalf("encode search mirror test documents: %v", err)
+	}
+	return body
 }

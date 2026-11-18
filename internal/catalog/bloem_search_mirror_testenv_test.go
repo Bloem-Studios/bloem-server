@@ -127,7 +127,7 @@ func searchMirrorTestSchemaVersion() int {
 // creates uid, empty, on e.Main.
 func (e *searchMirrorTestEnv) SetMainState(t *testing.T, uid string) {
 	t.Helper()
-	if err := e.Events.UpdateStateAfterRebuild(t.Context(), SearchProviderMeilisearch, uid, searchMirrorTestSchemaVersion(), 0, 0); err != nil {
+	if err := e.Events.UpdateStateAfterRebuild(t.Context(), SearchProviderMeilisearch, uid, searchMirrorTestSchemaVersion(), catalogSearchMeilisearchSettingsFingerprint, 0, 0); err != nil {
 		t.Fatalf("set main state: %v", err)
 	}
 	e.Main.CreateIndexDirect(uid)
@@ -248,15 +248,15 @@ func (s *testMainSync) Run(ctx context.Context) (n int) {
 			return 0
 		}
 	}
-	for _, batch := range catalogSearchDocumentPayloadBatches(docs, meilisearchMaxDocumentPayloadBytes) {
-		ref, err := s.client.AddDocuments(ctx, s.uid, batch)
+	if err := forEachCatalogSearchDocumentPayload(docs, meilisearchMaxDocumentPayloadBytes, func(payload catalogSearchDocumentPayload) error {
+		ref, err := s.client.AddDocuments(ctx, s.uid, payload.body)
 		if err == nil {
 			err = s.client.WaitTask(ctx, ref)
 		}
-		if err != nil {
-			s.markFailed(ctx, ids, err)
-			return 0
-		}
+		return err
+	}); err != nil {
+		s.markFailed(ctx, ids, err)
+		return 0
 	}
 	if err := e.Events.MarkProcessed(ctx, ids); err != nil {
 		e.t.Errorf("main sync: mark processed: %v", err)

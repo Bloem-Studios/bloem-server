@@ -5,8 +5,8 @@ from kit import INK, MUTED, TIERS, Svg, box, footer, para
 def two_halves():
     s = Svg(1200, 500, "How one search is answered",
             "A made-up search, 'man finds a message in a bottle', goes two ways. The words half matches its "
-            "words in titles, people, genres, keywords and plots, dropping the most common words first when no "
-            "title has every word. The meaning half turns the search into a vector labelled as a search and "
+            "words in titles, studios, genres and keywords, and people by whole names, dropping the most common "
+            "words first when no title has every word. The meaning half turns the search into a vector labelled as a search and "
             "compares it with each title's vector, labelled as catalog text. Bloem mixes the two lists, half "
             "from each by default. The meaning half waits until 85% of each kind of title has a vector from the "
             "current model, and a search Meilisearch has not answered in time goes to the built-in engine.")
@@ -17,8 +17,8 @@ def two_halves():
     box(s, 40, 186, 230, 110, g, "The search",
         "“man finds a message in a bottle”", size=15)
     box(s, 330, 124, 500, 124, o, "1. Words",
-        "Finds titles whose title, people, genres, keywords or plot contain the search's words. "
-        "When no title has every word, it drops the most common words first.")
+        "Finds titles whose name, studios, genres or keywords contain the search's words, and people "
+        "by whole names. When no title has every word, it drops the most common words first.")
     box(s, 330, 272, 500, 124, pr, "2. Meaning",
         "The search becomes a list of numbers, a vector, labelled as a search. Bloem looks for titles "
         "whose own vector, labelled as catalog text, lies close to it.")

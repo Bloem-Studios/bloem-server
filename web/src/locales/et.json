@@ -59411,6 +59411,18 @@
       "value": "Autoscan"
     }
   ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrant": [
+    {
+      "type": 0,
+      "value": "Esitus ilma sisselogimiseta samalt aadressilt"
+    }
+  ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrantDescription": [
+    {
+      "type": 0,
+      "value": "Mõned Jellyfini rakendused, näiteks Findroid, avavad otseesituse- ja allalaadimislingid ilma sisse logimata. Kui see valik on sees, täidab Silo sellise päringu, kui samalt võrguaadressilt sisse logitud rakendus on viimase kahe tunni jooksul palunud selle faili esitada. Seejärel saab seda faili esitada ka igaüks, kes seda aadressi jagab, näiteks samas koduvõrgus olevad inimesed või sama mobiilsideoperaatori või VPN-i kasutajad. Lülitage see sisse ainult siis, kui kasutate mõnda neist rakendustest."
+    }
+  ],
   "web.admin.settings.compatibilityProxies.advanced.playbackTtl": [
     {
       "type": 0,
@@ -107090,6 +107102,12 @@
       "value": "Kollektsioon"
     }
   ],
+  "web.home.addRow.collection.library": [
+    {
+      "type": 0,
+      "value": "Meediakogu"
+    }
+  ],
   "web.home.addRow.collection.loading": [
     {
       "type": 0,
@@ -107134,6 +107152,12 @@
     {
       "type": 0,
       "value": "Kollektsioone veel pole. Looge esmalt üks lehel „Kollektsioonid“."
+    }
+  ],
+  "web.home.addRow.collection.noneInLibrary": [
+    {
+      "type": 0,
+      "value": "Selles meediakogus pole seda tüüpi kollektsioone."
     }
   ],
   "web.home.addRow.collection.noneOfType": [

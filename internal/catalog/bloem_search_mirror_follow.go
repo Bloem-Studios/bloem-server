@@ -190,14 +190,17 @@ func (m *SearchMirror) applyItems(ctx context.Context, client *meilisearchClient
 		}
 	}
 
-	for _, batch := range catalogSearchDocumentPayloadBatches(docs, m.opts.MaxPayloadBytes) {
-		ref, err := client.AddDocuments(ctx, indexUID, batch)
+	if err := forEachCatalogSearchDocumentPayload(docs, m.opts.MaxPayloadBytes, func(payload catalogSearchDocumentPayload) error {
+		ref, err := client.AddDocuments(ctx, indexUID, payload.body)
 		if err == nil {
 			err = client.WaitTask(ctx, ref)
 		}
 		if err != nil {
-			return searchMirrorMeilisearchError(fmt.Errorf("add %d search mirror documents to %s: %w", len(batch), indexUID, err))
+			return searchMirrorMeilisearchError(fmt.Errorf("add %d search mirror documents to %s: %w", len(payload.docs), indexUID, err))
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	if _, err := m.pool.Exec(ctx, `DELETE FROM bloem_search_mirror_dead_letters WHERE content_id = ANY($1)`, ids); err != nil {

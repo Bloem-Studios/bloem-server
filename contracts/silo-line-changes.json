@@ -543,19 +543,6 @@
     "\t}"
    ]
   },
-  "internal/catalog/search_meilisearch_provider.go": {
-   "kind": "lines",
-   "lines": [
-    "\tif strategy != \"last\" {"
-   ]
-  },
-  "internal/catalog/search_provider.go": {
-   "kind": "lines",
-   "lines": [
-    "\t\t\treturn settings, fmt.Errorf(\"%s must be last or all\", SearchSettingMeilisearchMatchingStrategy)",
-    "\t\tif strategy != \"last\" && strategy != \"all\" {"
-   ]
-  },
   "internal/downloads/artifacts.go": {
    "kind": "lines",
    "lines": [
@@ -964,12 +951,6 @@
     "\tctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)"
    ]
   },
-  "web/package.json": {
-   "kind": "lines",
-   "lines": [
-    "    \"vitest\": \"^4.1.11\""
-   ]
-  },
   "web/pnpm-lock.yaml": {
    "kind": "generated"
   },
@@ -1179,7 +1160,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "e456ffae8e43929e"
+   "func main() {": "16379382159369d5"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1367,24 +1348,17 @@
   "internal/catalog/query_cursor.go": {
    "func (e *QueryExecutor) PreviewCursorPage(ctx context.Context, def QueryDefiniti": "c89037bbc435ef44"
   },
-  "internal/catalog/search_meilisearch_client.go": {
-   "func (c *meilisearchClient) FederatedSearch(ctx context.Context, req meilisearch": "51e72dbd486e8077",
-   "func (c *meilisearchClient) Search(ctx context.Context, uid string, req meilisea": "981a3fee4d813e59"
-  },
-  "internal/catalog/search_provider.go": {
-   "func CatalogSearchSettingsFromMap(values map[string]string) (CatalogSearchSettin": "0363cf1c4a0a841f"
-  },
   "internal/catalogseed/service.go": {
    "func (s *Service) ImportReader(ctx context.Context, r io.Reader, opts ImportOpti": "a408994a2849dea1"
   },
   "internal/config/admin_settings.go": {
-   "func NormalizeAdminSetting(key, raw string) (string, error) {": "f789c387a0d87569"
+   "func NormalizeAdminSetting(key, raw string) (string, error) {": "af7ac5d9aa071bf1"
   },
   "internal/config/db_loader.go": {
    "func LoadFromDB(m map[string]string) (*Config, error) {": "e2e441f49392ed30"
   },
   "internal/config/yaml_import.go": {
-   "func YAMLToSettingsMap(path string) (map[string]string, error) {": "889b86a3407a5c88"
+   "func YAMLToSettingsMap(path string) (map[string]string, error) {": "dc671b29be803fab"
   },
   "internal/downloads/offline.go": {
    "func (s *Service) ServeSubtitle(ctx context.Context, w http.ResponseWriter, r *h": "a45a63b129b4bc81"
@@ -1616,5 +1590,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "17842e976148e66bb497c9fb70539a1c3062b99c"
+ "silo": "d15a890d7fce22f5c4767d58a4bc9c8c851d9f07"
 }

@@ -267,10 +267,10 @@ func (r *searchMirrorCopyRun) sendAll(ctx context.Context, deadline time.Time) (
 		if len(docs) == 0 {
 			return true, r.drain(ctx)
 		}
-		for _, batch := range catalogSearchDocumentPayloadBatches(docs, m.opts.MaxPayloadBytes) {
-			if err := r.send(ctx, batch); err != nil {
-				return false, err
-			}
+		if err := forEachCatalogSearchDocumentPayload(docs, m.opts.MaxPayloadBytes, func(payload catalogSearchDocumentPayload) error {
+			return r.send(ctx, payload)
+		}); err != nil {
+			return false, err
 		}
 		cursor = docs[len(docs)-1].ContentID
 	}
@@ -278,17 +278,17 @@ func (r *searchMirrorCopyRun) sendAll(ctx context.Context, deadline time.Time) (
 
 // send adds one batch to the side index, then acknowledges batches until fewer than depth are
 // in flight.
-func (r *searchMirrorCopyRun) send(ctx context.Context, batch []catalogSearchDocument) error {
+func (r *searchMirrorCopyRun) send(ctx context.Context, payload catalogSearchDocumentPayload) error {
 	side := r.row.State.Copy.SideUID
 	if err := r.m.checkOwner(ctx); err != nil {
 		return err
 	}
-	ref, err := r.m.mirror.AddDocuments(ctx, side, batch)
+	ref, err := r.m.mirror.AddDocuments(ctx, side, payload.body)
 	if err != nil {
 		return fmt.Errorf("continue the search mirror copy: add documents to %s: %w", side, err)
 	}
-	ids := make([]string, len(batch))
-	for i, doc := range batch {
+	ids := make([]string, len(payload.docs))
+	for i, doc := range payload.docs {
 		ids[i] = doc.ContentID
 	}
 	r.queue = append(r.queue, searchMirrorCopyBatch{task: ref, ids: ids, lastID: ids[len(ids)-1]})

@@ -254,9 +254,6 @@ func withBloemViewerTenancy(resolver scopeResolver, pool *pgxpool.Pool) *policy.
 // context tokens and the platform admin authorizer
 // and the tenancy ownership/membership bootstrapper.
 func bloemWireCoreDependencies(ctx context.Context, deps *api.Dependencies, pool *pgxpool.Pool, cfg *config.Config) {
-	// Hybrid searches also query the title fields, so a typed title stays
-	// first (internal/catalog/bloem_search_title_boost.go).
-	catalog.SetBloemTitleBoost(true)
 	// One NativeNodeSources serves the router and the download preparer, so
 	// both grant native files to core-access transcode nodes.
 	deps.NativeNodeSources = &handlers.NativeNodeSources{}

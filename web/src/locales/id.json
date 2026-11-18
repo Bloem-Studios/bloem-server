@@ -52392,6 +52392,18 @@
       "value": "Autoscan"
     }
   ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrant": [
+    {
+      "type": 0,
+      "value": "Putar tanpa masuk dari alamat yang sama"
+    }
+  ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrantDescription": [
+    {
+      "type": 0,
+      "value": "Beberapa aplikasi Jellyfin, seperti Findroid, membuka tautan putar langsung dan unduhan tanpa masuk. Saat opsi ini aktif, Silo melayani permintaan seperti itu jika aplikasi yang sudah masuk di alamat jaringan yang sama meminta untuk memutar file itu dalam dua jam terakhir. Siapa pun yang berbagi alamat itu, seperti orang di jaringan rumah, operator seluler, atau VPN yang sama, kemudian juga dapat memutar file itu. Aktifkan hanya jika Anda menggunakan salah satu aplikasi tersebut."
+    }
+  ],
   "web.admin.settings.compatibilityProxies.advanced.playbackTtl": [
     {
       "type": 0,
@@ -96673,6 +96685,12 @@
       "value": "Koleksi"
     }
   ],
+  "web.home.addRow.collection.library": [
+    {
+      "type": 0,
+      "value": "Perpustakaan"
+    }
+  ],
   "web.home.addRow.collection.loading": [
     {
       "type": 0,
@@ -96717,6 +96735,12 @@
     {
       "type": 0,
       "value": "Belum ada koleksi. Buat dulu di Koleksi."
+    }
+  ],
+  "web.home.addRow.collection.noneInLibrary": [
+    {
+      "type": 0,
+      "value": "Tidak ada koleksi jenis ini di perpustakaan ini."
     }
   ],
   "web.home.addRow.collection.noneOfType": [

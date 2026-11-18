@@ -1,8 +1,7 @@
 # How search finds titles by words and by meaning
 
-Search and embeddings are Silo's. Bloem adds three things, carried until Silo has them: task
-labels for the `gemini-embedding-2` model, a choice to drop the most common words of a search
-first, and a names-first query in every hybrid search. The technical rules are in the
+Search and embeddings are Silo's. Bloem adds one thing, carried until Silo has it: task
+labels for the `gemini-embedding-2` model. The technical rules are in the
 [For developers](#for-developers) section.
 
 When someone types into the search box, Bloem looks for titles in two ways at once: by
@@ -12,15 +11,17 @@ meaning half compares, and what changing the AI model behind those numbers invol
 
 ## Two halves of one search
 
-![A made-up search, "man finds a message in a bottle", goes two ways: the words half matches its words in titles, people, genres, keywords and plots, dropping the most common words first when no title has every word; the meaning half turns the search into a vector labelled as a search and compares it with each title's vector. Bloem mixes the two lists, half from each by default. Along the bottom: the meaning half waits until 85% of each kind of title has a vector from the current model, and a search Meilisearch has not answered in time goes to the built-in engine](images/search-and-embeddings/two-halves.svg)
+![A made-up search, "man finds a message in a bottle", goes two ways: the words half matches its words in titles, studios, genres and keywords, and people by whole names, dropping the most common words first when no title has every word; the meaning half turns the search into a vector labelled as a search and compares it with each title's vector. Bloem mixes the two lists, half from each by default. Along the bottom: the meaning half waits until 85% of each kind of title has a vector from the current model, and a search Meilisearch has not answered in time goes to the built-in engine](images/search-and-embeddings/two-halves.svg)
 
 With **Meilisearch** as the search engine, a search runs like this:
 
 1. **Words.** Meilisearch looks for the search's words in each title's name, its other
-   names, its people, studios, networks, genres, keywords, plot and tagline. A match in
-   the name counts most, a match in the tagline least. It forgives small typing mistakes:
-   one wrong letter in a word of three letters or more (Bloem's setting; Meilisearch's
-   default starts at five), two in a word of nine or more.
+   names, studios, networks, genres, keywords and year. A match in the name counts most.
+   It forgives small typing mistakes in these: one wrong letter in a word of five letters
+   or more, two in a word of nine or more. People's names are matched in a second query
+   as whole words, with no mistakes forgiven, so "hanks" finds Tom Hanks and "han" does
+   not. Only the matches as good as the best one are kept: none that miss more of the
+   words, have more typing mistakes or have the words further apart.
 2. **Meaning.** An **embedding** is a list of numbers, a **vector**, that an AI model
    makes from a piece of text. Texts that mean similar things get vectors that lie close
    together. Every title has one, made from its genres, plot, name, year, rating,
@@ -28,19 +29,10 @@ With **Meilisearch** as the search engine, a search runs like this:
    Bloem asks the same model for the search's vector and looks for titles whose vectors
    lie close to it.
 3. **Mixing.** Bloem merges the two lists. The **meaning-based share** sets how much
-   each counts: 0 ranks by words only, 1 by meaning only, and the default is 0.5.
-   The measurements below favour 0.6 over 0.5 for descriptions. The meaning list keeps only titles whose vectors lie
-   close enough to the search's, so a search of a few words no longer brings back the
+   each counts: 0 ranks by words only, 1 by meaning only, and the default is 0.5. The
+   meaning list is capped and keeps only titles whose vectors lie close enough to the
+   search's and to its best match, so a search of a few words no longer brings back the
    whole library.
-4. **Names first.** Bloem also looks for the search's words in the titles' names alone,
-   every word required, and ranks a title whose name has all of them above the mixed
-   list. Someone typing a title, even with a typing mistake, still gets it first while
-   meaning decides everything else. Episodes, which have no vectors, are found the same
-   way by name, and by their plots only as much as the words half counts. Meilisearch
-   treats the last word as still being typed and then forgives no swapped letter in a
-   short word, so the names are searched twice: as typed, which keeps "breaking ba"
-   finding Breaking Bad, and with the last word finished, which lets "breaking bda" find
-   it too.
 
 The words half answers alone when the meaning half cannot help: a one-word search, a
 search for episodes, and any kind of title that is still getting its vectors (see
@@ -55,16 +47,14 @@ A search that describes a story, rather than naming a title, rarely matches ever
 of any one title. The setting **When a search has several words** decides what the words
 half drops until something matches:
 
-- **Drop trailing words until something matches** is Silo's default. It drops words from
-  the end, so a description ends up matched on its first, usually ordinary, words.
-- **Drop the most common words until something matches** is Bloem's addition. It drops
-  words like "the", "a" and "finds" first and keeps the rarer words that pick out a story.
-  It did best in the measurements below.
+- **Drop trailing words until something matches** is the default. Despite its name, it
+  now chooses per search: a search of two words needs both, and a search of three or more
+  drops the most common words first, such as "the", "a" and "finds", and keeps the rarer
+  words that pick out a story.
 - **Require every word** returns only titles with all of the search's words.
 
-Whatever the setting, a search of exactly two words needs both words and looks only at
-names and plots. A typing mistake such as "spnge bob" then cannot shrink to one loose
-word.
+A search of exactly two words looks only at names, studios, networks and the year, so a
+typing mistake such as "spnge bob" cannot shrink to one loose word.
 
 ## How titles get their vectors
 
@@ -101,8 +91,8 @@ bottle on a beach, but not its name. She types "man finds a message in a bottle 
 beach".
 
 1. No title has all ten words. The words half drops "the", "on", "in", "a", "man" and
-   "finds" first and keeps "message", "bottle" and "beach". It finds titles whose plot
-   mentions all three.
+   "finds" first and keeps "message", "bottle" and "beach". It finds titles whose keywords
+   include all three.
 2. The meaning half finds the film whose plot reads "A widower discovers a love letter
    washed ashore and sets out to find its author", although it shares almost no words
    with her search.
@@ -124,7 +114,7 @@ beach".
 | Meaning half | Meilisearch hybrid search with a vector Bloem supplies; embedder `catalog.search.meilisearch.embedder` (`silo_recommendations`) |
 | Match by meaning as well as words | `catalog.search.meilisearch.semantic_enabled` |
 | Meaning-based share | `catalog.search.meilisearch.semantic_ratio` |
-| When a search has several words | `catalog.search.meilisearch.matching_strategy`: `last`, `frequency` or `all` |
+| When a search has several words | `catalog.search.meilisearch.matching_strategy`: `last` or `all` |
 | Query timeout | `catalog.search.meilisearch.timeout_ms` |
 | Vector | `media_item_embeddings.embedding`, stored as 3,072 numbers |
 | Embedding model | `recommendations.embedding_model`, with `recommendations.embedding_provider_id` |
@@ -144,55 +134,32 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
 
 ### Search
 
-- The keyword request carries `matchingStrategyForRequest`: the configured strategy,
-  except that a two-term query uses `all` unless the strategy is `all` already. Terms are
-  counted after `normalizeTitleForComparison`, which drops `and` and maps number words
-  to digits. `attributesToSearchOnForRequest` limits a two-term query to
-  `meilisearchTitleSearchAttributes`: `title`, `original_title`, `sort_title`,
-  `title_variants` and `overview`.
+- The keyword request carries `matchingStrategyForRequest`: with `last`, a two-term query
+  uses `all` and a query of three or more terms uses `frequency`; `all` stays `all`. Terms
+  are counted after `normalizeTitleForComparison`, which drops `and` and maps number words
+  to digits. A two-term query searches only the title attributes, `studios`, `networks`
+  and `year`. People go through a separate whole-word phrase query
+  (`peopleSearchRequest`), and both lists are cut at the best hit
+  (`meilisearchKeywordMatchCount`); Silo's [Meilisearch catalog index](meilisearch-index.md)
+  page has the rules.
 - A search goes hybrid only when `semantic_enabled` is on, the query has at least two
   terms, it is not an episode-only search, `CoverageReady` reports every requested type
   at or above 0.85 of its eligible items carrying a vector from the locked model, and the
   query vector arrives. Query vectors are cached for 15 minutes (1,024 entries). A failed
   query embed puts the node in a cooldown during which searches run keyword-only.
-- Since Silo's change #4058 every hybrid search is a federated multi-search
-  (`buildFederatedSearchRequest`): a keyword query weighted `1 - r` for a semantic ratio
-  `r`, a meaning-only query (empty `q`, ratio 1) weighted `r` with a
-  `rankingScoreThreshold` for a cosine of 0.3 (`meilisearchSemanticScoreFloor`), and,
-  when the search mixes episodes and other types, a keyword episode query weighted
-  `1 - r`. Episodes carry no vectors.
-- Bloem adds title queries to that request (`bloem_search_title_boost.go`, hooked into
-  `meilisearchClient.Search` and `FederatedSearch`): after each keyword query of two or
-  more terms, a keyword-only query with `matchingStrategy` `all` on `title`,
-  `original_title`, `sort_title` and `title_variants`, the same filter, and 1.2 times the
-  heaviest query's weight (0.72 at 0.6). Silo's queries keep their weights. Meilisearch
-  returns each document once. The boost is off unless `catalog.SetBloemTitleBoost(true)`
-  ran, which Bloem's server does at startup in `bloemWireCoreDependencies`; Silo's own
-  tests check Silo's request with it off.
-  The title query goes out twice, as typed and with a trailing space that marks the
-  last word finished (Meilisearch matches the last word as a prefix and does not
-  forgive a transposition in a short prefix). The index settings set
-  `typoTolerance.minWordSizeForTypos.oneTypo` to 3 (`bloem_search_typo_tolerance.go`,
-  hooked into `catalogSearchMeilisearchSettings`). It is a search-time setting outside
-  the schema version: changing it needs no reindex and forces no rebuild, and an index
-  built earlier gets it from a one-time settings update.
-- Silo's keyword episode query gets the same title twins. Its weight already is the
-  keyword share; a keyword-only query beside a hybrid query that mixes keyword and
-  meaning itself (ratio below 1, the form before #4058) is still multiplied by
-  `(1 - r) / r` for `r` above 0.5. If Meilisearch refuses the federated request with a
-  4xx, the original request runs unchanged; a timeout or 5xx is returned as it is.
+- Since Silo's change #4472 a hybrid search runs as plain `/multi-search` queries merged
+  in Go: the meaning half is capped, held to the score floor and kept within a margin of
+  its best hit. Episodes carry no vectors and are found by words.
 - `timeout_ms` (default 800) bounds the search call. A search that fails or runs out of
   time is answered by the PostgreSQL provider. Indexing has its own two-minute limit
   (`meilisearchIndexingTimeout`), so the setting does not affect it.
 - The matching strategy is a search parameter, not an index setting: changing it never
-  rebuilds the index. The index settings are Silo's (`catalogSearchMeilisearchSettings`):
-  the searchable attributes in the order listed above, Meilisearch's default ranking
-  rules and typo tolerance, no synonyms or stop words.
-- `frequency` is accepted by `NormalizeAdminSetting` (admin writes) and
-  `CatalogSearchSettingsFromMap` (startup and the indexer) since commit `7acd2c7e0`
-  (2026-11-10). A server built before that rejects the stored value: its search falls back
-  to PostgreSQL at startup and its indexer skips every sync. Before rolling back past that
-  commit, set the strategy to `last` or `all`.
+  rebuilds the index. The index settings are Silo's
+  (`catalogSearchMeilisearchIndexSettings`), applied to the live index in place when their
+  fingerprint changes; Bloem's [search mirror](bloem-search-mirror.md) follows them.
+- Migration `20261118161912_bloem_search_matching_strategy_last` stores `last` where a
+  server still had `frequency`: Silo's settings accept only `last` and `all`, and a value
+  they reject sends search to PostgreSQL at startup.
 
 ### Embeddings and task labels
 
@@ -228,58 +195,6 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
   first place 68.5% to 87.0%; top 10 92.5% to 99.0%. Labelling the titles alone gave most
   of the gain (0.890). The franchise test was too easy to separate the formats (99.4% and
   99.7%), and the two formats share half of each title's ten nearest titles.
-- **Matching strategy, November 10.** The same 200 searches, keyword only, against an
-  index of 2.79 million documents, episodes excluded. Target in the top 50: `last`
-  16.5%, `frequency` 36.5%, `all` 1.0%. Exact titles found first 73.5% under every
-  strategy; titles with one typo 62.5% under `last` and 63.0% under `frequency`.
-- **Meaning-based share and names first, November 11.** These measurements predate
-  Silo's split into keyword and meaning-only queries (November 13), which gives the
-  keyword queries the same `1 - r` to `r` share. After the re-embed, the same
-  searches against the index, limited to the 163 targets still in the catalog (37
-  books were in libraries deleted since). Meilisearch's mix behaves like a
-  switch: up to a share of 0.57 a strong keyword hit wins, and from 0.6 the list is the
-  meaning-only list. Target in the top 10:
-
-  | | Words only | 0.5 | 0.6 | 0.6 and names first |
-  |---|---|---|---|---|
-  | Descriptions | 28.8% | 62.0% | 63.8% | 63.8% |
-  | Exact titles | 98.2% | 98.2% | 95.1% | 98.2% |
-  | Titles with one typo | 93.3% | 93.3% | 78.0% | 93.3% |
-
-  Of 22 everyday searches such as "funny movie about a dog" and "show about a chef
-  running a restaurant", 20 returned word matches in unrelated ebooks up to 0.57 and the
-  intended movies and shows at 0.6. A minimum ranking score on the title query (0.75 to
-  0.9) cost typed titles and left two-word genre searches such as "zombie comedy" on books
-  with those words in their names. The title query adds about 15 ms; embedding a new
-  search takes about 200 ms, cached for 15 minutes.
-
-  The web app's default search mixes in episodes, and that changed the picture. Silo's
-  episode query is keyword-only at weight 1, which balances the hybrid query at 0.5; at
-  0.6 episodes that share a plot word filled everyday searches ("funny movie about a dog"
-  returned ten episodes). Across the 22 everyday searches, episodes in the top 10, and 60
-  sampled episode titles found in the top 10:
-
-  | Mixed search | Episodes in everyday top 10s | Episode titles in the top 10 |
-  |---|---|---|
-  | 0.5, episodes at 1 | 18 | 73.3% |
-  | 0.6 and names first, episodes at 1 | 40 | 71.7% |
-  | episodes at 0.67, no name query | 0 | 63.3% |
-  | episodes at 0.5, no name query | 0 | 0% |
-  | episodes at 0.67 and names first | 16 | 73.3% |
-
-  Meaning scores sit high enough that a keyword query weighted 0.5 never reaches the top
-  50, so the episode name query is what keeps episodes findable. The 16 left are all
-  episodes named with the typed words, such as "Time Travel" and "Murder Mystery".
-- **Short-word typos, November 11.** A scratch Meilisearch with 1.27 million
-  non-episode documents and the same settings, merged with the hybrid results the way
-  federation merges them (head to head by weighted score; 603 of 608 top results matched
-  the real index). Target in the top 10, one-typo minimum word length
-  5 / 4 / 3 / 3 with the finished-word title query: typo in a 3-4 letter word (129
-  searches) 60.5% / 70.5% / 79.1% / 86.8%; typo in a long word 91.3% / 92.0% / 92.0% /
-  92.0%; exact titles 98.2% throughout; well-known titles typed right 94.9% throughout;
-  descriptions 65.6% throughout. One of 22 everyday searches changed its top 10. The
-  meaning half cannot fix these: "breaking bda" ranked Breaking Bad 230th by meaning,
-  148th with full vectors.
 - **Compressed vectors, November 11.** The index stores binary-quantized vectors. For
   the 163 descriptions, re-ranking Meilisearch's 500 nearest titles by the full 3,072
   numbers put the target first in 46.6% of searches instead of 40.5%, and in the top 10
@@ -295,20 +210,12 @@ Contracts: [catalog API](../catalog-api.md) (search reads and their fallback),
 
 Listed in `contracts/seams.txt`, to drop when Silo has the change:
 `internal/recommendations/embeddings/client.go` and
-`internal/recommendations/search_query_vector.go` (labels);
-`internal/catalog/search_meilisearch_provider.go`, `internal/catalog/search_provider.go`
-and `web/src/pages/admin-settings/SearchSettings.tsx` (`frequency`);
-`internal/catalog/search_meilisearch_client.go` (names first);
-`internal/catalog/search_indexer.go` (typo tolerance from three letters).
-`internal/config/admin_settings.go` was already a seam.
+`internal/recommendations/search_query_vector.go` (labels).
 
 Tests: `internal/recommendations/embeddings/bloem_task_labels_test.go`,
 `internal/recommendations/bloem_search_query_labels_test.go`,
-`internal/catalog/bloem_matching_strategy_test.go`,
-`internal/catalog/bloem_search_title_boost_test.go`,
 `internal/catalog/bloem_preview_search_test.go`,
-`internal/config/bloem_search_matching_test.go`,
-`web/src/pages/admin-settings/bloemSearchMatchingStrategy.test.tsx`.
+`migrations/bloem_search_matching_strategy_last_test.go`.
 
 Related: [Silo's recommendations](recommendations.md),
 [PostgreSQL search](postgres-search.md),

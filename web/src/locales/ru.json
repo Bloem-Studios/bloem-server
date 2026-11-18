@@ -72952,6 +72952,18 @@
       "value": "Autoscan"
     }
   ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrant": [
+    {
+      "type": 0,
+      "value": "Воспроизводить без входа с того же адреса"
+    }
+  ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrantDescription": [
+    {
+      "type": 0,
+      "value": "Некоторые приложения Jellyfin, например Findroid, открывают ссылки для прямого воспроизведения и скачивания без входа в аккаунт. Когда этот параметр включён, Silo выполняет такой запрос при условии, что приложение с выполненным входом с того же сетевого адреса запросило воспроизведение этого файла за последние два часа. Тогда этот файл сможет воспроизвести и любой, кто использует тот же адрес, например люди в той же домашней сети, у того же мобильного оператора или в том же VPN. Включайте его, только если используете одно из этих приложений."
+    }
+  ],
   "web.admin.settings.compatibilityProxies.advanced.playbackTtl": [
     {
       "type": 0,
@@ -127310,6 +127322,12 @@
       "value": "Коллекция"
     }
   ],
+  "web.home.addRow.collection.library": [
+    {
+      "type": 0,
+      "value": "Медиатека"
+    }
+  ],
   "web.home.addRow.collection.loading": [
     {
       "type": 0,
@@ -127358,6 +127376,12 @@
     {
       "type": 0,
       "value": "Коллекций пока нет. Сначала создайте коллекцию в разделе «Коллекции»."
+    }
+  ],
+  "web.home.addRow.collection.noneInLibrary": [
+    {
+      "type": 0,
+      "value": "В этой медиатеке нет коллекций этого типа."
     }
   ],
   "web.home.addRow.collection.noneOfType": [

@@ -52504,6 +52504,18 @@
       "value": "Autoscan"
     }
   ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrant": [
+    {
+      "type": 0,
+      "value": "同じアドレスからサインインなしで再生"
+    }
+  ],
+  "web.admin.settings.compatibilityProxies.advanced.addressStreamGrantDescription": [
+    {
+      "type": 0,
+      "value": "Findroidなど一部のJellyfinアプリは、サインインせずにダイレクト再生やダウンロードのリンクを開きます。オンにすると、同じネットワークアドレスでサインインしているアプリが過去2時間以内にそのファイルの再生をリクエストしていた場合、Siloはそのようなリクエストに応答します。その場合、同じ自宅のネットワーク、モバイル通信事業者、VPNを使う人など、そのアドレスを共有する人もそのファイルを再生できるようになります。これらのアプリを使用する場合にのみオンにしてください。"
+    }
+  ],
   "web.admin.settings.compatibilityProxies.advanced.playbackTtl": [
     {
       "type": 0,
@@ -96485,6 +96497,12 @@
       "value": "コレクション"
     }
   ],
+  "web.home.addRow.collection.library": [
+    {
+      "type": 0,
+      "value": "ライブラリ"
+    }
+  ],
   "web.home.addRow.collection.loading": [
     {
       "type": 0,
@@ -96533,6 +96551,12 @@
     {
       "type": 0,
       "value": "コレクションはまだありません。先にコレクションで作成してください。"
+    }
+  ],
+  "web.home.addRow.collection.noneInLibrary": [
+    {
+      "type": 0,
+      "value": "このライブラリにはこの種類のコレクションはありません。"
     }
   ],
   "web.home.addRow.collection.noneOfType": [
