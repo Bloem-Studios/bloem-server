@@ -1,0 +1,2862 @@
+{
+  "bloem.adminNav.announcements.description": [
+    {
+      "type": 0,
+      "value": "Skelbti pranešimus žiūrovams."
+    }
+  ],
+  "bloem.adminNav.announcements.label": [
+    {
+      "type": 0,
+      "value": "Pranešimai"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.description": [
+    {
+      "type": 0,
+      "value": "Skelbti pranešimus žiūrovams ir atšaukti ankstesnius pranešimus."
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.label": [
+    {
+      "type": 0,
+      "value": "Pranešimai"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.newAnnouncement": [
+    {
+      "type": 0,
+      "value": "Naujas pranešimas"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.published": [
+    {
+      "type": 0,
+      "value": "Paskelbti pranešimai"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.administrativeContext": [
+    {
+      "type": 0,
+      "value": "Administravimo kontekstas"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.administrativeContextChangedTo": [
+    {
+      "type": 0,
+      "value": "Administravimo kontekstas pakeistas į "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.chooseContext": [
+    {
+      "type": 0,
+      "value": "Pasirinkite kontekstą"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.loadingContext": [
+    {
+      "type": 0,
+      "value": "Įkeliamas kontekstas…"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.organizationAdministrator": [
+    {
+      "type": 0,
+      "value": "Organizacijos administratorius"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.platformAdministrator": [
+    {
+      "type": 0,
+      "value": "Platformos administratorius"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeName": [
+    {
+      "type": 5,
+      "value": "scope",
+      "options": {
+        "platform": {
+          "value": [
+            {
+              "type": 0,
+              "value": "platforma"
+            }
+          ]
+        },
+        "organization": {
+          "value": [
+            {
+              "type": 0,
+              "value": "organizacija"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "scope"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeStatus": [
+    {
+      "type": 1,
+      "value": "scope"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "status"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.selectContext": [
+    {
+      "type": 0,
+      "value": "Pasirinkite kontekstą"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.statusName": [
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "active": {
+          "value": [
+            {
+              "type": 0,
+              "value": "aktyvi"
+            }
+          ]
+        },
+        "suspended": {
+          "value": [
+            {
+              "type": 0,
+              "value": "sustabdyta"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "status"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.adminNav.liveTv.description": [
+    {
+      "type": 0,
+      "value": "Imtuvai, kanalai, TV programa, įrašai ir konvertavimas."
+    }
+  ],
+  "bloem.adminNav.liveTv.label": [
+    {
+      "type": 0,
+      "value": "Live TV"
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.description": [
+    {
+      "type": 0,
+      "value": "Kodėl kam nors buvo leista arba atsisakyta."
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.label": [
+    {
+      "type": 0,
+      "value": "Prieigos patikros"
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.description": [
+    {
+      "type": 0,
+      "value": "Grupės, nustatančios, ką gali jų profiliai."
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.label": [
+    {
+      "type": 0,
+      "value": "Prieigos grupės"
+    }
+  ],
+  "bloem.adminNav.organizationActivity.description": [
+    {
+      "type": 0,
+      "value": "Kas, ką ir kada pakeitė šioje organizacijoje."
+    }
+  ],
+  "bloem.adminNav.organizationActivity.label": [
+    {
+      "type": 0,
+      "value": "Veikla"
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.description": [
+    {
+      "type": 0,
+      "value": "Paskyrų grupės su vienodais nustatymais."
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.label": [
+    {
+      "type": 0,
+      "value": "Kohortos"
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.description": [
+    {
+      "type": 0,
+      "value": "Kvieskite administratorius ir narius į šią organizaciją."
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.label": [
+    {
+      "type": 0,
+      "value": "Kvietimai"
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.description": [
+    {
+      "type": 0,
+      "value": "Bibliotekos, kurios priklauso šiai organizacijai arba jai suteiktos."
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.label": [
+    {
+      "type": 0,
+      "value": "Bibliotekos"
+    }
+  ],
+  "bloem.adminNav.organizationOverview.description": [
+    {
+      "type": 0,
+      "value": "Nariai, bibliotekos ir naujausi pakeitimai vienoje vietoje."
+    }
+  ],
+  "bloem.adminNav.organizationOverview.label": [
+    {
+      "type": 0,
+      "value": "Apžvalga"
+    }
+  ],
+  "bloem.adminNav.organizationPeople.description": [
+    {
+      "type": 0,
+      "value": "Visi šios organizacijos žmonės, jų profiliai ir planas."
+    }
+  ],
+  "bloem.adminNav.organizationPeople.label": [
+    {
+      "type": 0,
+      "value": "Žmonės"
+    }
+  ],
+  "bloem.adminNav.organizationStorage.description": [
+    {
+      "type": 0,
+      "value": "S3 talpyklos, iš kurių ši organizacija skaito elektronines knygas."
+    }
+  ],
+  "bloem.adminNav.organizationStorage.label": [
+    {
+      "type": 0,
+      "value": "Saugyklos šaltiniai"
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.description": [
+    {
+      "type": 0,
+      "value": "Perkelkite daug tiesioginių paskyrų į planą arba vienu metu pakeiskite jų nustatymus."
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.label": [
+    {
+      "type": 0,
+      "value": "Keisti daug paskyrų"
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.description": [
+    {
+      "type": 0,
+      "value": "Priskirkite planą paskyrai, kuri nepriklauso jokiai organizacijai."
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.label": [
+    {
+      "type": 0,
+      "value": "Tiesioginės paskyros"
+    }
+  ],
+  "bloem.adminNav.platformEngagement.description": [
+    {
+      "type": 0,
+      "value": "Reklamos, iliustracijos ir sezoninės išvaizdos pagrindiniam ekranui."
+    }
+  ],
+  "bloem.adminNav.platformEngagement.label": [
+    {
+      "type": 0,
+      "value": "Kampanijos ir sezoniniai paketai"
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.description": [
+    {
+      "type": 0,
+      "value": "Visos šio serverio organizacijos ir jų nariai."
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.label": [
+    {
+      "type": 0,
+      "value": "Organizacijos"
+    }
+  ],
+  "bloem.adminNav.platformPlans.description": [
+    {
+      "type": 0,
+      "value": "Ką gauna paskyra: bibliotekas, ekranus, kokybę ir atsisiuntimus."
+    }
+  ],
+  "bloem.adminNav.platformPlans.label": [
+    {
+      "type": 0,
+      "value": "Planai"
+    }
+  ],
+  "bloem.adminNav.profilePasswords.description": [
+    {
+      "type": 0,
+      "value": "Ar namų ūkio profiliai gali prisijungti savo el. pašto adresu ir slaptažodžiu."
+    }
+  ],
+  "bloem.adminNav.profilePasswords.label": [
+    {
+      "type": 0,
+      "value": "Profilių slaptažodžiai"
+    }
+  ],
+  "bloem.adminNav.section.organization": [
+    {
+      "type": 0,
+      "value": "Organizacija"
+    }
+  ],
+  "bloem.adminNav.section.platform": [
+    {
+      "type": 0,
+      "value": "Platforma"
+    }
+  ],
+  "bloem.adminNav.strm.description": [
+    {
+      "type": 0,
+      "value": "Ar .strm failai gali nurodyti adresus paties serverio tinkle."
+    }
+  ],
+  "bloem.adminNav.strm.label": [
+    {
+      "type": 0,
+      "value": ".strm failai"
+    }
+  ],
+  "bloem.adminNav.strmSettings.description": [
+    {
+      "type": 0,
+      "value": "Ar .strm failai gali nurodyti adresus paties serverio tinkle."
+    }
+  ],
+  "bloem.adminNav.strmSettings.label": [
+    {
+      "type": 0,
+      "value": ".strm failai"
+    }
+  ],
+  "bloem.adminNav.strmSettings.privateAddresses": [
+    {
+      "type": 0,
+      "value": "Leisti privačius adresus"
+    }
+  ],
+  "bloem.adminShell.chooseContext.body": [
+    {
+      "type": 0,
+      "value": "Naršymo juostos konteksto valdiklyje pasirinkite Platformą arba organizaciją."
+    }
+  ],
+  "bloem.adminShell.chooseContext.title": [
+    {
+      "type": 0,
+      "value": "Pasirinkite administravimo kontekstą"
+    }
+  ],
+  "bloem.adminShell.loadingContext": [
+    {
+      "type": 0,
+      "value": "Įkeliamas administravimo kontekstas…"
+    }
+  ],
+  "bloem.adminTitle.organization": [
+    {
+      "type": 0,
+      "value": "Organizacija"
+    }
+  ],
+  "bloem.adminTitle.organizations": [
+    {
+      "type": 0,
+      "value": "Organizacijos"
+    }
+  ],
+  "bloem.audiobooks.partTitle": [
+    {
+      "type": 1,
+      "value": "number"
+    },
+    {
+      "type": 0,
+      "value": " dalis"
+    }
+  ],
+  "bloem.audiobooks.picker.approximateResume": [
+    {
+      "type": 0,
+      "value": "Jūsų vieta išsaugota klausantis kitos kopijos, todėl ši tęsiama maždaug nuo tos pačios vietos."
+    }
+  ],
+  "bloem.audiobooks.picker.copyFallback": [
+    {
+      "type": 0,
+      "value": "Kopija"
+    }
+  ],
+  "bloem.audiobooks.picker.heading": [
+    {
+      "type": 0,
+      "value": "Įrašas"
+    }
+  ],
+  "bloem.audiobooks.picker.incomplete": [
+    {
+      "type": 0,
+      "value": "Neišsamu: trūksta kai kurių dalių"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopy": [
+    {
+      "type": 0,
+      "value": "Vietinė kopija"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopyNumbered": [
+    {
+      "type": 0,
+      "value": "Vietinė kopija "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.noPlayableCopy": [
+    {
+      "type": 0,
+      "value": "Šiuo metu čia negalima paleisti nė vienos šios knygos kopijos."
+    }
+  ],
+  "bloem.audiobooks.picker.partsAndLength": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dalis"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dalys"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dalies"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dalių"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "length"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopy": [
+    {
+      "type": 0,
+      "value": "Nuotolinė kopija (beta)"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopyNumbered": [
+    {
+      "type": 0,
+      "value": "Nuotolinė kopija (beta) "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.audiobooks.picker.unavailable": [
+    {
+      "type": 0,
+      "value": "Šiame serveryje nepasiekiama"
+    }
+  ],
+  "bloem.capabilities.checkFailed": [
+    {
+      "type": 0,
+      "value": "Nepavyko patikrinti, kurias Bloem funkcijas palaiko šis serveris."
+    }
+  ],
+  "bloem.engagement.card.dismiss": [
+    {
+      "type": 0,
+      "value": "Uždaryti"
+    }
+  ],
+  "bloem.engagement.card.dismissFailed": [
+    {
+      "type": 0,
+      "value": "Nepavyko uždaryti šio pranešimo."
+    }
+  ],
+  "bloem.engagement.card.dismissing": [
+    {
+      "type": 0,
+      "value": "Uždaroma…"
+    }
+  ],
+  "bloem.engagement.card.learnMore": [
+    {
+      "type": 0,
+      "value": "Sužinoti daugiau"
+    }
+  ],
+  "bloem.engagement.fromYourServer": [
+    {
+      "type": 0,
+      "value": "Iš jūsų serverio"
+    }
+  ],
+  "bloem.engagement.home.storageUnavailable": [
+    {
+      "type": 0,
+      "value": "Naršyklės saugykla nepasiekiama. Jūsų pasirinkimas galioja tik šiame skirtuke."
+    }
+  ],
+  "bloem.engagement.home.toggle": [
+    {
+      "type": 0,
+      "value": "Pagrindinio ekrano reklamos: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Įjungta"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Išjungta"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.engagement.home.toggleHelp": [
+    {
+      "type": 0,
+      "value": "Neprivalomi jūsų serverio pranešimai, išsaugomi šiam profiliui šioje naršyklėje."
+    }
+  ],
+  "bloem.engagement.playback.close": [
+    {
+      "type": 0,
+      "value": "Uždaryti perdangą"
+    }
+  ],
+  "bloem.engagement.playback.muted": [
+    {
+      "type": 0,
+      "value": "BE GARSO"
+    }
+  ],
+  "bloem.engagement.playback.saveFailed": [
+    {
+      "type": 0,
+      "value": "Nepavyko išsaugoti. Bandykite dar kartą."
+    }
+  ],
+  "bloem.engagement.playback.saved": [
+    {
+      "type": 0,
+      "value": "Išsaugota jūsų pašto dėžutėje"
+    }
+  ],
+  "bloem.engagement.playback.saving": [
+    {
+      "type": 0,
+      "value": "Išsaugoma…"
+    }
+  ],
+  "bloem.engagement.playback.sendToPhone": [
+    {
+      "type": 0,
+      "value": "Siųsti į mano telefoną"
+    }
+  ],
+  "bloem.engagement.prePlayback.back": [
+    {
+      "type": 0,
+      "value": "Atgal"
+    }
+  ],
+  "bloem.engagement.prePlayback.continue": [
+    {
+      "type": 0,
+      "value": "Tęsti į turinį"
+    }
+  ],
+  "bloem.engagement.prePlayback.help": [
+    {
+      "type": 0,
+      "value": "Galite tęsti iš karto, net kol įkeliami pranešimai."
+    }
+  ],
+  "bloem.engagement.prePlayback.label": [
+    {
+      "type": 0,
+      "value": "Prieš atkūrimą"
+    }
+  ],
+  "bloem.engagement.prePlayback.title": [
+    {
+      "type": 0,
+      "value": "Prieš žiūrint"
+    }
+  ],
+  "bloem.engagement.rail.label": [
+    {
+      "type": 0,
+      "value": "Jūsų serverio pranešimai"
+    }
+  ],
+  "bloem.engagement.rail.title": [
+    {
+      "type": 0,
+      "value": "Iš jūsų serverio"
+    }
+  ],
+  "bloem.engagement.seasonal.toggle": [
+    {
+      "type": 0,
+      "value": "Sezoniniai efektai: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Įjungta"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Išjungta"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.libraryAccess.allowAll": [
+    {
+      "type": 0,
+      "value": "Leisti visas pasiekiamas bibliotekas"
+    }
+  ],
+  "bloem.libraryAccess.allowAllIn": [
+    {
+      "type": 0,
+      "value": "Leisti visas "
+    },
+    {
+      "type": 1,
+      "value": "scope"
+    },
+    {
+      "type": 0,
+      "value": " bibliotekas"
+    }
+  ],
+  "bloem.libraryAccess.allowLibrary": [
+    {
+      "type": 0,
+      "value": "Leisti "
+    },
+    {
+      "type": 1,
+      "value": "library"
+    }
+  ],
+  "bloem.liveTv.accessGate.askAdministrator": [
+    {
+      "type": 0,
+      "value": "Paprašykite serverio administratoriaus prieigos prie Live TV."
+    }
+  ],
+  "bloem.liveTv.accessGate.backToHome": [
+    {
+      "type": 0,
+      "value": "Grįžti į pagrindinį"
+    }
+  ],
+  "bloem.liveTv.accessGate.checkFailed": [
+    {
+      "type": 0,
+      "value": "Nepavyko patikrinti prieigos prie Live TV"
+    }
+  ],
+  "bloem.liveTv.accessGate.checking": [
+    {
+      "type": 0,
+      "value": "Tikrinama prieiga prie Live TV…"
+    }
+  ],
+  "bloem.liveTv.accessGate.notEnabled": [
+    {
+      "type": 0,
+      "value": "Live TV šiam profiliui neįjungta"
+    }
+  ],
+  "bloem.liveTv.accessGate.unsupported": [
+    {
+      "type": 0,
+      "value": "Live TV šiame serveryje nepasiekiama"
+    }
+  ],
+  "bloem.liveTv.guide.channelColumn": [
+    {
+      "type": 0,
+      "value": "Kanalas"
+    }
+  ],
+  "bloem.liveTv.guide.programTooltip": [
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": "–"
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.guide.recordProgramLabel": [
+    {
+      "type": 0,
+      "value": "Įrašyti "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.guide.recordSeriesLabel": [
+    {
+      "type": 0,
+      "value": "Įrašyti seriją: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.guide.series": [
+    {
+      "type": 0,
+      "value": "Serija"
+    }
+  ],
+  "bloem.liveTv.guide.watchChannel": [
+    {
+      "type": 0,
+      "value": "Žiūrėti "
+    },
+    {
+      "type": 1,
+      "value": "channel"
+    }
+  ],
+  "bloem.liveTv.manualRecording.changeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "Bloem negalėjo patvirtinti paskutinio jūsų įrašų pakeitimo. Pirmiausia iš naujo įkelkite savo įrašus."
+    }
+  ],
+  "bloem.liveTv.manualRecording.channel": [
+    {
+      "type": 0,
+      "value": "Įrašomas kanalas"
+    }
+  ],
+  "bloem.liveTv.manualRecording.checking": [
+    {
+      "type": 0,
+      "value": "Tikrinami įrašai…"
+    }
+  ],
+  "bloem.liveTv.manualRecording.chooseChannel": [
+    {
+      "type": 0,
+      "value": "Pasirinkite kanalą"
+    }
+  ],
+  "bloem.liveTv.manualRecording.couldNotConfirm": [
+    {
+      "type": 0,
+      "value": "Nepavyko patvirtinti įrašo."
+    }
+  ],
+  "bloem.liveTv.manualRecording.endsAt": [
+    {
+      "type": 0,
+      "value": "Baigiasi"
+    }
+  ],
+  "bloem.liveTv.manualRecording.failed": [
+    {
+      "type": 1,
+      "value": "reason"
+    },
+    {
+      "type": 0,
+      "value": " Prieš bandydami dar kartą patikrinkite įrašo būseną."
+    }
+  ],
+  "bloem.liveTv.manualRecording.intro": [
+    {
+      "type": 0,
+      "value": "Naudokite tai, kai laidos nėra TV programoje. Laikas nurodomas jūsų naršyklės laiko juostoje ("
+    },
+    {
+      "type": 1,
+      "value": "timeZone"
+    },
+    {
+      "type": 0,
+      "value": ")."
+    }
+  ],
+  "bloem.liveTv.manualRecording.invalidTimes": [
+    {
+      "type": 0,
+      "value": "Pasirinkite pabaigos laiką, kuris yra po pradžios ir ateityje."
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloadFailed": [
+    {
+      "type": 0,
+      "value": "Nepavyko iš naujo įkelti įrašų. Įrašų veiksmai lieka užblokuoti; bandykite dar kartą."
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloaded": [
+    {
+      "type": 0,
+      "value": "Įrašai įkelti iš naujo. Peržiūrėkite sąrašą ir įveskite pavadinimą, kad suplanuotumėte naują įrašą."
+    }
+  ],
+  "bloem.liveTv.manualRecording.scheduled": [
+    {
+      "type": 0,
+      "value": "Įrašas suplanuotas."
+    }
+  ],
+  "bloem.liveTv.manualRecording.startsAt": [
+    {
+      "type": 0,
+      "value": "Prasideda"
+    }
+  ],
+  "bloem.liveTv.manualRecording.submit": [
+    {
+      "type": 0,
+      "value": "Suplanuoti įrašą"
+    }
+  ],
+  "bloem.liveTv.manualRecording.summary": [
+    {
+      "type": 0,
+      "value": "Planuoti pagal kanalą ir laiką"
+    }
+  ],
+  "bloem.liveTv.manualRecording.title": [
+    {
+      "type": 0,
+      "value": "Įrašo pavadinimas"
+    }
+  ],
+  "bloem.liveTv.noGuideData": [
+    {
+      "type": 0,
+      "value": "Nėra TV programos duomenų"
+    }
+  ],
+  "bloem.liveTv.page.cancelRecording": [
+    {
+      "type": 0,
+      "value": "Atšaukti"
+    }
+  ],
+  "bloem.liveTv.page.channelCount": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " kanalas"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " kanalai"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " kanalo"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " kanalų"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.liveTv.page.filterChannels": [
+    {
+      "type": 0,
+      "value": "Filtruoti kanalus…"
+    }
+  ],
+  "bloem.liveTv.page.filterCount": [
+    {
+      "type": 1,
+      "value": "shown"
+    },
+    {
+      "type": 0,
+      "value": " iš "
+    },
+    {
+      "type": 1,
+      "value": "total"
+    }
+  ],
+  "bloem.liveTv.page.hd": [
+    {
+      "type": 0,
+      "value": "HD"
+    }
+  ],
+  "bloem.liveTv.page.historyEmpty": [
+    {
+      "type": 0,
+      "value": "Čia bus rodomi baigti ir nepavykę įrašai."
+    }
+  ],
+  "bloem.liveTv.page.historyTitle": [
+    {
+      "type": 0,
+      "value": "Istorija"
+    }
+  ],
+  "bloem.liveTv.page.intro": [
+    {
+      "type": 0,
+      "value": "Pažiūrėkite, kas rodoma dabar, naršykite būsimas laidas ir tvarkykite savo įrašus."
+    }
+  ],
+  "bloem.liveTv.page.loadingChannels": [
+    {
+      "type": 0,
+      "value": "Įkeliami kanalai…"
+    }
+  ],
+  "bloem.liveTv.page.loadingGuide": [
+    {
+      "type": 0,
+      "value": "Įkeliama TV programa…"
+    }
+  ],
+  "bloem.liveTv.page.loadingRecordings": [
+    {
+      "type": 0,
+      "value": "Įkeliami įrašai…"
+    }
+  ],
+  "bloem.liveTv.page.noChannels": [
+    {
+      "type": 0,
+      "value": "Kanalų dar nėra. Administratorius gali pridėti imtuvą arba Xtream tiekėją skiltyje „Administravimas“, tada „Live TV“."
+    }
+  ],
+  "bloem.liveTv.page.noFilterMatches": [
+    {
+      "type": 0,
+      "value": "Šį filtrą atitinkančių kanalų nėra."
+    }
+  ],
+  "bloem.liveTv.page.notInLibrary": [
+    {
+      "type": 0,
+      "value": "Šio įrašo dar nėra bibliotekoje, todėl jo čia paleisti negalima. Administratorius turi pridėti įrašų aplanką prie bibliotekos ir jį nuskaityti."
+    }
+  ],
+  "bloem.liveTv.page.nowAndNext": [
+    {
+      "type": 1,
+      "value": "now"
+    },
+    {
+      "type": 0,
+      "value": " → "
+    },
+    {
+      "type": 1,
+      "value": "next"
+    }
+  ],
+  "bloem.liveTv.page.openRecording": [
+    {
+      "type": 0,
+      "value": "Atidaryti įrašą"
+    }
+  ],
+  "bloem.liveTv.page.recordNext": [
+    {
+      "type": 0,
+      "value": "Įrašyti kitą"
+    }
+  ],
+  "bloem.liveTv.page.recordNow": [
+    {
+      "type": 0,
+      "value": "Įrašyti dabar"
+    }
+  ],
+  "bloem.liveTv.page.recordingChangeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "Bloem negalėjo patvirtinti paskutinio jūsų įrašų pakeitimo. Prieš planuodami ar atšaukdami kitą įrašą, iš naujo įkelkite savo įrašus."
+    }
+  ],
+  "bloem.liveTv.page.recordingDetails": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": "–"
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.page.recordingStatus": [
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "scheduled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "suplanuotas"
+            }
+          ]
+        },
+        "recording": {
+          "value": [
+            {
+              "type": 0,
+              "value": "įrašomas"
+            }
+          ]
+        },
+        "completed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "baigtas"
+            }
+          ]
+        },
+        "failed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "nepavyko"
+            }
+          ]
+        },
+        "cancelled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "atšauktas"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 1,
+              "value": "status"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.liveTv.page.reloadChannels": [
+    {
+      "type": 0,
+      "value": "Įkelti kanalus iš naujo"
+    }
+  ],
+  "bloem.liveTv.page.scheduledEmpty": [
+    {
+      "type": 0,
+      "value": "Kol kas nieko nesuplanuota. Pasirinkite laidą iš TV programos arba kanalų sąrašo."
+    }
+  ],
+  "bloem.liveTv.page.scheduledTitle": [
+    {
+      "type": 0,
+      "value": "Suplanuoti ir vykdomi"
+    }
+  ],
+  "bloem.liveTv.page.tabChannels": [
+    {
+      "type": 0,
+      "value": "Kanalai"
+    }
+  ],
+  "bloem.liveTv.page.tabGuide": [
+    {
+      "type": 0,
+      "value": "TV programa"
+    }
+  ],
+  "bloem.liveTv.page.tabRecordings": [
+    {
+      "type": 0,
+      "value": "Mano įrašai"
+    }
+  ],
+  "bloem.liveTv.page.tabRules": [
+    {
+      "type": 0,
+      "value": "Įrašymo taisyklės"
+    }
+  ],
+  "bloem.liveTv.page.untitled": [
+    {
+      "type": 0,
+      "value": "Be pavadinimo"
+    }
+  ],
+  "bloem.liveTv.page.watch": [
+    {
+      "type": 0,
+      "value": "Žiūrėti"
+    }
+  ],
+  "bloem.liveTv.player.browserCannotPlay": [
+    {
+      "type": 0,
+      "value": "Ši naršyklė negali paleisti šio kanalo. Išbandykite kitą naršyklę arba Bloem programėlę."
+    }
+  ],
+  "bloem.liveTv.player.browserCouldNotPlay": [
+    {
+      "type": 0,
+      "value": "Šiai naršyklei nepavyko paleisti kanalo. Išbandykite kitą kanalą arba įkelkite puslapį iš naujo."
+    }
+  ],
+  "bloem.liveTv.player.couldNotStart": [
+    {
+      "type": 0,
+      "value": "Nepavyko paleisti šio kanalo. Bandykite dar kartą arba išbandykite kitą kanalą."
+    }
+  ],
+  "bloem.liveTv.player.didNotStart": [
+    {
+      "type": 0,
+      "value": "Kanalas nepasileido. Jis gali būti dar derinamas, todėl bandykite dar kartą."
+    }
+  ],
+  "bloem.liveTv.player.hlsPlaybackError": [
+    {
+      "type": 0,
+      "value": "HLS atkūrimo klaida"
+    }
+  ],
+  "bloem.liveTv.player.label": [
+    {
+      "type": 0,
+      "value": "Live TV"
+    }
+  ],
+  "bloem.liveTv.player.labelWithTitle": [
+    {
+      "type": 0,
+      "value": "Tiesiogiai: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.liveTv.player.playbackError": [
+    {
+      "type": 0,
+      "value": "Atkūrimo klaida"
+    }
+  ],
+  "bloem.liveTv.player.stopped": [
+    {
+      "type": 0,
+      "value": "Kanalas sustojo arba nepavyko jo įkelti. Bandykite dar kartą, kad jį vėl įjungtumėte."
+    }
+  ],
+  "bloem.liveTv.player.unsupportedAddress": [
+    {
+      "type": 0,
+      "value": "Šio kanalo srauto adresas nepalaikomas. Išbandykite kitą kanalą."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.blocked": [
+    {
+      "type": 0,
+      "value": "Įrašų veiksmai užblokuoti. Prieš kitą veiksmą įkelkite įrašus iš naujo."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelFailed": [
+    {
+      "type": 0,
+      "value": "Nepavyko atšaukti įrašo"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelled": [
+    {
+      "type": 0,
+      "value": "Įrašas atšauktas"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReloadFirst": [
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " Prieš kitą veiksmą įkelkite įrašus iš naujo."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReviewRefreshed": [
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " Prieš kitą veiksmą peržiūrėkite atnaujintus įrašus."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reload": [
+    {
+      "type": 0,
+      "value": "Įkelti įrašus iš naujo"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloadFailed": [
+    {
+      "type": 0,
+      "value": "Nepavyko iš naujo įkelti įrašų. Įrašų veiksmai lieka užblokuoti; dar kartą pasirinkite „Įkelti įrašus iš naujo“."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloaded": [
+    {
+      "type": 0,
+      "value": "Įrašai įkelti iš naujo. Prieš kitą įrašo veiksmą peržiūrėkite sąrašą."
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduleFailed": [
+    {
+      "type": 0,
+      "value": "Nepavyko suplanuoti įrašo"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduled": [
+    {
+      "type": 0,
+      "value": "Įrašas suplanuotas"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.waitForReadback": [
+    {
+      "type": 0,
+      "value": "Prieš įkeldami iš naujo palaukite, kol bus nuskaityti įrašai."
+    }
+  ],
+  "bloem.liveTv.reloadRecordings": [
+    {
+      "type": 0,
+      "value": "Įkelti įrašus iš naujo"
+    }
+  ],
+  "bloem.liveTv.reloadingRecordings": [
+    {
+      "type": 0,
+      "value": "Įrašai įkeliami iš naujo…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allChannels": [
+    {
+      "type": 0,
+      "value": "Visi kanalai"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allProgramsOnChannel": [
+    {
+      "type": 0,
+      "value": "Visos kanalo laidos"
+    }
+  ],
+  "bloem.liveTv.seriesRules.channel": [
+    {
+      "type": 0,
+      "value": "Kanalas"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmDescription": [
+    {
+      "type": 0,
+      "value": "Taip pašalinama pasikartojanti taisyklė. Jau suplanuoti įrašai ir įrašyti failai neištrinami. Juos tvarkykite atskirai skiltyje „Mano įrašai“."
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmRemove": [
+    {
+      "type": 0,
+      "value": "Pašalinti taisyklę"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmTitle": [
+    {
+      "type": 0,
+      "value": "Pašalinti įrašymo taisyklę: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFailed": [
+    {
+      "type": 0,
+      "value": "Nepavyko sukurti įrašymo taisyklės."
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFormLabel": [
+    {
+      "type": 0,
+      "value": "Sukurti įrašymo taisyklę"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createLegend": [
+    {
+      "type": 0,
+      "value": "Sukurkite įrašymo taisyklę"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createRule": [
+    {
+      "type": 0,
+      "value": "Sukurti taisyklę"
+    }
+  ],
+  "bloem.liveTv.seriesRules.created": [
+    {
+      "type": 0,
+      "value": "Įrašymo taisyklė sukurta. Atitinkančias TV programos laidas suplanuos serveris."
+    }
+  ],
+  "bloem.liveTv.seriesRules.creating": [
+    {
+      "type": 0,
+      "value": "Kuriama…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.disabled": [
+    {
+      "type": 0,
+      "value": "Išjungta"
+    }
+  ],
+  "bloem.liveTv.seriesRules.empty": [
+    {
+      "type": 0,
+      "value": "Serijų įrašymo taisyklių dar nėra."
+    }
+  ],
+  "bloem.liveTv.seriesRules.enabled": [
+    {
+      "type": 0,
+      "value": "Įjungta"
+    }
+  ],
+  "bloem.liveTv.seriesRules.heading": [
+    {
+      "type": 0,
+      "value": "Serijų įrašymo taisyklės"
+    }
+  ],
+  "bloem.liveTv.seriesRules.intro": [
+    {
+      "type": 0,
+      "value": "Įrašykite konkrečią TV programos seriją arba atrinkite pavadinimus, kuriuose yra jūsų paieškos tekstas (neatsižvelgiant į raidžių dydį). Apribokite taisyklę vienu kanalu arba taikykite ją visiems kanalams."
+    }
+  ],
+  "bloem.liveTv.seriesRules.listLabel": [
+    {
+      "type": 0,
+      "value": "Įrašymo taisyklės"
+    }
+  ],
+  "bloem.liveTv.seriesRules.loading": [
+    {
+      "type": 0,
+      "value": "Įkeliamos įrašymo taisyklės…"
+    }
+  ],
+  "bloem.liveTv.seriesRules.matchSeries": [
+    {
+      "type": 0,
+      "value": "Atitikti TV programos seriją"
+    }
+  ],
+  "bloem.liveTv.seriesRules.newOnly": [
+    {
+      "type": 0,
+      "value": "Tik TV programoje kaip naujos pažymėtos laidos"
+    }
+  ],
+  "bloem.liveTv.seriesRules.reload": [
+    {
+      "type": 0,
+      "value": "Įkelti įrašymo taisykles iš naujo"
+    }
+  ],
+  "bloem.liveTv.seriesRules.remove": [
+    {
+      "type": 0,
+      "value": "Pašalinti"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeFailed": [
+    {
+      "type": 0,
+      "value": "Nepavyko pašalinti įrašymo taisyklės."
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeRuleLabel": [
+    {
+      "type": 0,
+      "value": "Pašalinti taisyklę: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removed": [
+    {
+      "type": 0,
+      "value": "Taisyklė pašalinta. Jau suplanuoti įrašai ir įrašyti failai nepakeisti."
+    }
+  ],
+  "bloem.liveTv.seriesRules.selectProfile": [
+    {
+      "type": 0,
+      "value": "Pasirinkite profilį, kad galėtumėte tvarkyti įrašymo taisykles."
+    }
+  ],
+  "bloem.liveTv.seriesRules.seriesLabel": [
+    {
+      "type": 0,
+      "value": "Serija "
+    },
+    {
+      "type": 1,
+      "value": "seriesId"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryNewOnly": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · Tik naujos laidos"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryRepeats": [
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · Įskaitant pakartojimus"
+    }
+  ],
+  "bloem.liveTv.seriesRules.titleContains": [
+    {
+      "type": 0,
+      "value": "Pavadinime yra"
+    }
+  ],
+  "bloem.liveTv.seriesRules.unavailableChannel": [
+    {
+      "type": 0,
+      "value": "Nepasiekiamas kanalas"
+    }
+  ],
+  "bloem.liveTv.seriesRules.useTitleMatching": [
+    {
+      "type": 0,
+      "value": "Verčiau atitikti pagal pavadinimą"
+    }
+  ],
+  "bloem.liveTv.timeRange": [
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": "–"
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    }
+  ],
+  "bloem.liveTv.title": [
+    {
+      "type": 0,
+      "value": "Live TV"
+    }
+  ],
+  "bloem.liveTv.tryAgain": [
+    {
+      "type": 0,
+      "value": "Bandyti dar kartą"
+    }
+  ],
+  "bloem.liveTv.watch.backToLiveTv": [
+    {
+      "type": 0,
+      "value": "Atgal į Live TV"
+    }
+  ],
+  "bloem.liveTv.watch.connecting": [
+    {
+      "type": 0,
+      "value": "Jungiamasi prie kanalo…"
+    }
+  ],
+  "bloem.liveTv.watch.selectProfileAndChannel": [
+    {
+      "type": 0,
+      "value": "Pasirinkite profilį ir kanalą, kad žiūrėtumėte Live TV."
+    }
+  ],
+  "bloem.nav.liveTv": [
+    {
+      "type": 0,
+      "value": "Live TV"
+    }
+  ],
+  "bloem.notifications.announcement.defaultTitle": [
+    {
+      "type": 0,
+      "value": "Serverio pranešimas"
+    }
+  ],
+  "bloem.notifications.announcement.severity.critical": [
+    {
+      "type": 0,
+      "value": "Kritinis"
+    }
+  ],
+  "bloem.notifications.announcement.severity.info": [
+    {
+      "type": 0,
+      "value": "Informacija"
+    }
+  ],
+  "bloem.notifications.announcement.severity.warning": [
+    {
+      "type": 0,
+      "value": "Įspėjimas"
+    }
+  ],
+  "bloem.preview.banner.endsOn": [
+    {
+      "type": 0,
+      "value": "Jūsų peržiūra baigiasi "
+    },
+    {
+      "type": 1,
+      "value": "date"
+    }
+  ],
+  "bloem.preview.banner.exitPreview": [
+    {
+      "type": 0,
+      "value": "Išeiti iš peržiūros"
+    }
+  ],
+  "bloem.preview.banner.freePlayLeft": [
+    {
+      "type": 0,
+      "value": "Nemokamas žiūrėjimas: liko "
+    },
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " min."
+    }
+  ],
+  "bloem.preview.banner.minutesRemaining": [
+    {
+      "type": 0,
+      "value": "Liko "
+    },
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " min."
+    }
+  ],
+  "bloem.preview.banner.signOut": [
+    {
+      "type": 0,
+      "value": "Atsijungti"
+    }
+  ],
+  "bloem.preview.banner.subscribe": [
+    {
+      "type": 0,
+      "value": "Prenumeruoti"
+    }
+  ],
+  "bloem.preview.banner.yourPreview": [
+    {
+      "type": 0,
+      "value": "Jūsų bibliotekos peržiūra"
+    }
+  ],
+  "bloem.preview.book.alsoByThisAuthor": [
+    {
+      "type": 0,
+      "value": "Kitos šio autoriaus knygos"
+    }
+  ],
+  "bloem.preview.book.audiobook": [
+    {
+      "type": 0,
+      "value": "Audioknyga"
+    }
+  ],
+  "bloem.preview.book.byAuthors": [
+    {
+      "type": 0,
+      "value": "Autoriai: "
+    },
+    {
+      "type": 1,
+      "value": "authors"
+    }
+  ],
+  "bloem.preview.book.chapterNumber": [
+    {
+      "type": 1,
+      "value": "number"
+    },
+    {
+      "type": 0,
+      "value": " skyrius"
+    }
+  ],
+  "bloem.preview.book.chapters": [
+    {
+      "type": 0,
+      "value": "Skyriai"
+    }
+  ],
+  "bloem.preview.book.ebook": [
+    {
+      "type": 0,
+      "value": "Elektroninė knyga"
+    }
+  ],
+  "bloem.preview.book.manga": [
+    {
+      "type": 0,
+      "value": "Manga"
+    }
+  ],
+  "bloem.preview.book.youMightAlsoLike": [
+    {
+      "type": 0,
+      "value": "Jums taip pat gali patikti"
+    }
+  ],
+  "bloem.preview.browseOnly": [
+    {
+      "type": 0,
+      "value": "Tik naršymo peržiūra"
+    }
+  ],
+  "bloem.preview.collections.loading": [
+    {
+      "type": 0,
+      "value": "Įkeliamos kolekcijos…"
+    }
+  ],
+  "bloem.preview.collections.title": [
+    {
+      "type": 0,
+      "value": "Kolekcijos"
+    }
+  ],
+  "bloem.preview.collections.titleCount": [
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " pavadinimas"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " pavadinimai"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " pavadinimo"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " pavadinimų"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.preview.collections.unavailable": [
+    {
+      "type": 0,
+      "value": "Kolekcijos nepasiekiamos. Bandykite dar kartą."
+    }
+  ],
+  "bloem.preview.cta.message": [
+    {
+      "type": 0,
+      "value": "Naršykite biblioteką čia. Užsiprenumeruokite, kad galėtumėte žiūrėti, skaityti ir klausytis."
+    }
+  ],
+  "bloem.preview.cta.subscribeToBrand": [
+    {
+      "type": 0,
+      "value": "Prenumeruoti "
+    },
+    {
+      "type": 1,
+      "value": "brand"
+    }
+  ],
+  "bloem.preview.cta.subscribeToListen": [
+    {
+      "type": 0,
+      "value": "Prenumeruokite, kad klausytumėte"
+    }
+  ],
+  "bloem.preview.cta.subscribeToRead": [
+    {
+      "type": 0,
+      "value": "Prenumeruokite, kad skaitytumėte"
+    }
+  ],
+  "bloem.preview.cta.subscribeToWatch": [
+    {
+      "type": 0,
+      "value": "Prenumeruokite, kad žiūrėtumėte"
+    }
+  ],
+  "bloem.preview.details": [
+    {
+      "type": 0,
+      "value": "Išsamiau"
+    }
+  ],
+  "bloem.preview.dialog.freePlayEnded": [
+    {
+      "type": 0,
+      "value": "Jūsų nemokamas žiūrėjimas baigėsi"
+    }
+  ],
+  "bloem.preview.dialog.keepBrowsing": [
+    {
+      "type": 0,
+      "value": "Toliau naršyti"
+    }
+  ],
+  "bloem.preview.dialog.playFree": [
+    {
+      "type": 0,
+      "value": "Žiūrėti nemokamai"
+    }
+  ],
+  "bloem.preview.dialog.playFreeFor": [
+    {
+      "type": 6,
+      "value": "minutes",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Žiūrėti nemokamai "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " minutę"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Žiūrėti nemokamai "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " minutes"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Žiūrėti nemokamai "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " minutės"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Žiūrėti nemokamai "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " minučių"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    }
+  ],
+  "bloem.preview.dialog.sessionEnded": [
+    {
+      "type": 0,
+      "value": "Jūsų peržiūros sesija baigėsi"
+    }
+  ],
+  "bloem.preview.dialog.startTrial": [
+    {
+      "type": 0,
+      "value": "Pradėti bandomąjį laikotarpį"
+    }
+  ],
+  "bloem.preview.dialog.startTrialToEnjoy": [
+    {
+      "type": 0,
+      "value": "Pradėkite bandomąjį laikotarpį ir mėgaukitės visa biblioteka."
+    }
+  ],
+  "bloem.preview.errors.couldNotStart": [
+    {
+      "type": 0,
+      "value": "Nepavyko pradėti peržiūros. Naudokite naują paleidimo nuorodą."
+    }
+  ],
+  "bloem.preview.errors.exitTimedOut": [
+    {
+      "type": 0,
+      "value": "Baigėsi išėjimo iš peržiūros laikas"
+    }
+  ],
+  "bloem.preview.errors.requestTimedOut": [
+    {
+      "type": 0,
+      "value": "Baigėsi peržiūros užklausos laikas"
+    }
+  ],
+  "bloem.preview.errors.useStorefrontLink": [
+    {
+      "type": 0,
+      "value": "Naudokite parduotuvės peržiūros paleidimo nuorodą."
+    }
+  ],
+  "bloem.preview.hero.featuredTitles": [
+    {
+      "type": 0,
+      "value": "Rekomenduojami pavadinimai"
+    }
+  ],
+  "bloem.preview.hero.pauseSlideshow": [
+    {
+      "type": 0,
+      "value": "Pristabdyti skaidrių demonstraciją"
+    }
+  ],
+  "bloem.preview.hero.resumeSlideshow": [
+    {
+      "type": 0,
+      "value": "Tęsti skaidrių demonstraciją"
+    }
+  ],
+  "bloem.preview.hero.showSlide": [
+    {
+      "type": 0,
+      "value": "Rodyti "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    }
+  ],
+  "bloem.preview.landing.body": [
+    {
+      "type": 0,
+      "value": "Naudokite naują peržiūros nuorodą bibliotekai tyrinėti arba pradėkite bandomąjį laikotarpį."
+    }
+  ],
+  "bloem.preview.landing.browse": [
+    {
+      "type": 0,
+      "value": "Naršyti biblioteką"
+    }
+  ],
+  "bloem.preview.landing.title": [
+    {
+      "type": 0,
+      "value": "Pradėkite naršyti "
+    },
+    {
+      "type": 1,
+      "value": "brand"
+    }
+  ],
+  "bloem.preview.metadata.audio": [
+    {
+      "type": 0,
+      "value": "Garsas"
+    }
+  ],
+  "bloem.preview.metadata.audioNumber": [
+    {
+      "type": 0,
+      "value": "Garsas "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.metadata.subtitleNumber": [
+    {
+      "type": 0,
+      "value": "Subtitrai "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.metadata.subtitles": [
+    {
+      "type": 0,
+      "value": "Subtitrai"
+    }
+  ],
+  "bloem.preview.metadata.version": [
+    {
+      "type": 0,
+      "value": "Versija"
+    }
+  ],
+  "bloem.preview.metadata.versionNumber": [
+    {
+      "type": 0,
+      "value": "Versija "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    }
+  ],
+  "bloem.preview.moreActions": [
+    {
+      "type": 0,
+      "value": "Daugiau veiksmų"
+    }
+  ],
+  "bloem.preview.route.loading": [
+    {
+      "type": 0,
+      "value": "Įkeliama..."
+    }
+  ],
+  "bloem.preview.route.loadingApplication": [
+    {
+      "type": 0,
+      "value": "Įkeliama programa"
+    }
+  ],
+  "bloem.preview.sidebar.calendar": [
+    {
+      "type": 0,
+      "value": "Kalendorius"
+    }
+  ],
+  "bloem.preview.sidebar.collections": [
+    {
+      "type": 0,
+      "value": "Kolekcijos"
+    }
+  ],
+  "bloem.preview.sidebar.home": [
+    {
+      "type": 0,
+      "value": "Pagrindinis"
+    }
+  ],
+  "bloem.preview.sidebar.libraries": [
+    {
+      "type": 0,
+      "value": "Bibliotekos"
+    }
+  ],
+  "bloem.preview.sidebar.navigation": [
+    {
+      "type": 0,
+      "value": "Peržiūros naršymas"
+    }
+  ],
+  "bloem.preview.sidebar.preview": [
+    {
+      "type": 0,
+      "value": "Peržiūra"
+    }
+  ],
+  "bloem.preview.sidebar.search": [
+    {
+      "type": 0,
+      "value": "Paieška"
+    }
+  ],
+  "bloem.preview.start.opening": [
+    {
+      "type": 0,
+      "value": "Atidaroma jūsų bibliotekos peržiūra…"
+    }
+  ],
+  "bloem.profiles.directCredentials.changeNotConfirmed": [
+    {
+      "type": 0,
+      "value": "Nepavyko patvirtinti pakeitimo."
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingProfileCredentialStatus": [
+    {
+      "type": 0,
+      "value": "Tikrinama profilio prisijungimo duomenų būsena…"
+    }
+  ],
+  "bloem.profiles.directCredentials.checkingSupport": [
+    {
+      "type": 0,
+      "value": "Tikrinamas palaikymas…"
+    }
+  ],
+  "bloem.profiles.directCredentials.chooseAProfile": [
+    {
+      "type": 0,
+      "value": "Pasirinkite profilį"
+    }
+  ],
+  "bloem.profiles.directCredentials.confirmRequired": [
+    {
+      "type": 0,
+      "value": "Įveskite savo paskyros slaptažodį ir pažymėkite langelį, kad patvirtintumėte."
+    }
+  ],
+  "bloem.profiles.directCredentials.couldNotLoadHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "Nepavyko įkelti namų ūkio profilių."
+    }
+  ],
+  "bloem.profiles.directCredentials.emailAndPasswordRequired": [
+    {
+      "type": 0,
+      "value": "Įveskite profilio el. pašto adresą ir naują slaptažodį."
+    }
+  ],
+  "bloem.profiles.directCredentials.giveAHouseholdProfileIts": [
+    {
+      "type": 0,
+      "value": "Suteikite namų ūkio profiliui savą el. pašto adresą ir slaptažodį, kad jis galėtų prisijungti prie Bloem programėlių be paskyros slaptažodžio. Svetainėje vis tiek naudojamas paskyros prisijungimas. Norint tai pakeisti, reikia jūsų paskyros slaptažodžio; paskyros, kurios prisijungia tik per bendrąjį prisijungimą, šios funkcijos naudoti negali. Profilio slaptažodis neveikia, kol prisijungimas slaptažodžiu išjungtas šiame serveryje arba jūsų paskyrai."
+    }
+  ],
+  "bloem.profiles.directCredentials.iUnderstandThisSignsThe": [
+    {
+      "type": 0,
+      "value": "Suprantu, kad taip profilis bus atjungtas nuo visų programėlių, prie kurių jis prisijungė savo prisijungimu."
+    }
+  ],
+  "bloem.profiles.directCredentials.loadingHouseholdProfiles": [
+    {
+      "type": 0,
+      "value": "Įkeliami namų ūkio profiliai…"
+    }
+  ],
+  "bloem.profiles.directCredentials.manageSignInFor": [
+    {
+      "type": 0,
+      "value": "Tvarkyti "
+    },
+    {
+      "type": 1,
+      "value": "name"
+    },
+    {
+      "type": 0,
+      "value": " prisijungimą"
+    }
+  ],
+  "bloem.profiles.directCredentials.newPasswordForTheProfile": [
+    {
+      "type": 0,
+      "value": "Naujas profilio slaptažodis"
+    }
+  ],
+  "bloem.profiles.directCredentials.profile": [
+    {
+      "type": 0,
+      "value": "Profilis"
+    }
+  ],
+  "bloem.profiles.directCredentials.profileEmail": [
+    {
+      "type": 0,
+      "value": "Profilio el. paštas"
+    }
+  ],
+  "bloem.profiles.directCredentials.saveSignIn": [
+    {
+      "type": 0,
+      "value": "Išsaugoti prisijungimą"
+    }
+  ],
+  "bloem.profiles.directCredentials.saving": [
+    {
+      "type": 0,
+      "value": "Išsaugoma…"
+    }
+  ],
+  "bloem.profiles.directCredentials.separateSignInForA": [
+    {
+      "type": 0,
+      "value": "Atskiras profilio prisijungimas"
+    }
+  ],
+  "bloem.profiles.directCredentials.signInSaved": [
+    {
+      "type": 0,
+      "value": "Prisijungimas išsaugotas. Profilis atjungtas nuo savo programėlių ir turi prisijungti iš naujo."
+    }
+  ],
+  "bloem.profiles.directCredentials.signInTurnedOff": [
+    {
+      "type": 0,
+      "value": "Profilio atskiras prisijungimas išjungtas, o profilis atjungtas nuo savo programėlių."
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileHasNoSign": [
+    {
+      "type": 0,
+      "value": "Šis profilis neturi savo prisijungimo."
+    }
+  ],
+  "bloem.profiles.directCredentials.thisProfileSignsInAs": [
+    {
+      "type": 0,
+      "value": "Šis profilis prisijungia kaip "
+    },
+    {
+      "type": 1,
+      "value": "loginEmail"
+    }
+  ],
+  "bloem.profiles.directCredentials.tryAgain": [
+    {
+      "type": 0,
+      "value": "Bandyti dar kartą"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnOffItsSignIn": [
+    {
+      "type": 0,
+      "value": "Išjungti jo prisijungimą"
+    }
+  ],
+  "bloem.profiles.directCredentials.turnedOff": [
+    {
+      "type": 0,
+      "value": "Profilių slaptažodžiai šiame serveryje išjungti. Serverio administratorius gali juos įjungti skiltyje „Nustatymai“, „Prisijungimas ir sauga“."
+    }
+  ],
+  "bloem.profiles.directCredentials.yourAccountPassword": [
+    {
+      "type": 0,
+      "value": "Jūsų paskyros slaptažodis"
+    }
+  ],
+  "bloem.requests.audiobook.identifierHint": [
+    {
+      "type": 0,
+      "value": "ISBN arba ASIN padeda atpažinti audioknygą, kai ji atsiranda. Be identifikatoriaus administratorius gali pažymėti jūsų užklausą kaip įvykdytą."
+    }
+  ],
+  "bloem.requests.audiobook.intro": [
+    {
+      "type": 0,
+      "value": "Pateikite pavadinimo užklausą savo organizacijai. Patvirtintos užklausos laukia, kol audioknyga bus pridėta."
+    }
+  ],
+  "bloem.requests.audiobook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "Neturite audioknygų užklausų."
+    }
+  ],
+  "bloem.requests.audiobook.mineHeading": [
+    {
+      "type": 0,
+      "value": "Jūsų audioknygų užklausos"
+    }
+  ],
+  "bloem.requests.audiobook.open": [
+    {
+      "type": 0,
+      "value": "Atidaryti audioknygą"
+    }
+  ],
+  "bloem.requests.audiobook.requested": [
+    {
+      "type": 0,
+      "value": "Audioknygos užklausa pateikta"
+    }
+  ],
+  "bloem.requests.audiobook.submit": [
+    {
+      "type": 0,
+      "value": "Užsakyti audioknygą"
+    }
+  ],
+  "bloem.requests.audiobook.title": [
+    {
+      "type": 0,
+      "value": "Audioknygų užklausos"
+    }
+  ],
+  "bloem.requests.audiobook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "Šiam profiliui audioknygų užklausos nepasiekiamos."
+    }
+  ],
+  "bloem.requests.cancel": [
+    {
+      "type": 0,
+      "value": "Atšaukti užklausą"
+    }
+  ],
+  "bloem.requests.ebook.availabilityCheckFailed": [
+    {
+      "type": 0,
+      "value": "Nepavyko patikrinti, ar galima teikti elektroninių knygų užklausas."
+    }
+  ],
+  "bloem.requests.ebook.cancellationNote": [
+    {
+      "type": 0,
+      "value": "Atšaukimas galioja tik Bloem; įvykdymo tiekėjas jau gali apdoroti elektroninę knygą."
+    }
+  ],
+  "bloem.requests.ebook.checkingAvailability": [
+    {
+      "type": 0,
+      "value": "Tikrinama, ar galima teikti elektroninių knygų užklausas…"
+    }
+  ],
+  "bloem.requests.ebook.fulfilmentUnconfigured": [
+    {
+      "type": 0,
+      "value": "Elektroninių knygų įvykdymas nesukonfigūruotas. Patvirtintos užklausos lauks sąrankos."
+    }
+  ],
+  "bloem.requests.ebook.identifierHint": [
+    {
+      "type": 0,
+      "value": "Nurodykite norimo leidimo ISBN. Užklausa įvykdoma, kai elektroninė knyga pasiekiama jūsų bibliotekoje."
+    }
+  ],
+  "bloem.requests.ebook.intro": [
+    {
+      "type": 0,
+      "value": "Pateikite pavadinimo užklausą savo organizacijai. Patvirtintos užklausos laukia, kol elektroninė knyga bus pridėta."
+    }
+  ],
+  "bloem.requests.ebook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "Neturite elektroninių knygų užklausų."
+    }
+  ],
+  "bloem.requests.ebook.mineHeading": [
+    {
+      "type": 0,
+      "value": "Jūsų elektroninių knygų užklausos"
+    }
+  ],
+  "bloem.requests.ebook.open": [
+    {
+      "type": 0,
+      "value": "Atidaryti elektroninę knygą"
+    }
+  ],
+  "bloem.requests.ebook.requested": [
+    {
+      "type": 0,
+      "value": "Elektroninės knygos užklausa pateikta"
+    }
+  ],
+  "bloem.requests.ebook.submit": [
+    {
+      "type": 0,
+      "value": "Užsakyti elektroninę knygą"
+    }
+  ],
+  "bloem.requests.ebook.title": [
+    {
+      "type": 0,
+      "value": "Elektroninių knygų užklausos"
+    }
+  ],
+  "bloem.requests.ebook.turnedOff": [
+    {
+      "type": 0,
+      "value": "Elektroninių knygų užklausos šiuo metu išjungtos."
+    }
+  ],
+  "bloem.requests.ebook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "Šiam profiliui elektroninių knygų užklausos nepasiekiamos."
+    }
+  ],
+  "bloem.requests.ebook.unavailableOnServer": [
+    {
+      "type": 0,
+      "value": "Šiame serveryje elektroninių knygų užklausos nepasiekiamos."
+    }
+  ],
+  "bloem.requests.field.asinOptional": [
+    {
+      "type": 0,
+      "value": "ASIN (neprivaloma)"
+    }
+  ],
+  "bloem.requests.field.author": [
+    {
+      "type": 0,
+      "value": "Autorius"
+    }
+  ],
+  "bloem.requests.field.authorOptional": [
+    {
+      "type": 0,
+      "value": "Autorius (neprivaloma)"
+    }
+  ],
+  "bloem.requests.field.isbn": [
+    {
+      "type": 0,
+      "value": "ISBN"
+    }
+  ],
+  "bloem.requests.field.isbnOptional": [
+    {
+      "type": 0,
+      "value": "ISBN (neprivaloma)"
+    }
+  ],
+  "bloem.requests.field.noteOptional": [
+    {
+      "type": 0,
+      "value": "Pastaba (neprivaloma)"
+    }
+  ],
+  "bloem.requests.field.title": [
+    {
+      "type": 0,
+      "value": "Pavadinimas"
+    }
+  ],
+  "bloem.requests.isbnValue": [
+    {
+      "type": 0,
+      "value": "ISBN "
+    },
+    {
+      "type": 1,
+      "value": "isbn"
+    }
+  ],
+  "bloem.requests.loading": [
+    {
+      "type": 0,
+      "value": "Įkeliamos užklausos…"
+    }
+  ],
+  "bloem.requests.mediaTabs.audiobooks": [
+    {
+      "type": 0,
+      "value": "Audioknygos"
+    }
+  ],
+  "bloem.requests.mediaTabs.ebooks": [
+    {
+      "type": 0,
+      "value": "Elektroninės knygos"
+    }
+  ],
+  "bloem.requests.mediaTabs.label": [
+    {
+      "type": 0,
+      "value": "Užklausos medijos tipas"
+    }
+  ],
+  "bloem.requests.mediaTabs.video": [
+    {
+      "type": 0,
+      "value": "Filmai ir serialai"
+    }
+  ],
+  "bloem.requests.nextPage": [
+    {
+      "type": 0,
+      "value": "Kitas"
+    }
+  ],
+  "bloem.requests.policy.limited": [
+    {
+      "type": 0,
+      "value": "Per "
+    },
+    {
+      "type": 6,
+      "value": "days",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dieną"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dienas"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dienos"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " dienų"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " galite pateikti dar "
+    },
+    {
+      "type": 1,
+      "value": "remaining"
+    },
+    {
+      "type": 0,
+      "value": " iš "
+    },
+    {
+      "type": 6,
+      "value": "limit",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " užklausos"
+            }
+          ]
+        },
+        "few": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " užklausų"
+            }
+          ]
+        },
+        "many": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " užklausos"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " užklausų"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": ". "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Užklausos patvirtinamos automatiškai."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Jūsų užklausą peržiūrės administratorius."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.requests.policy.unlimited": [
+    {
+      "type": 0,
+      "value": "Užklausų skaičius neribojamas. "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Užklausos patvirtinamos automatiškai."
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "Jūsų užklausą peržiūrės administratorius."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bloem.requests.previousPage": [
+    {
+      "type": 0,
+      "value": "Ankstesnis"
+    }
+  ],
+  "bloem.requests.submitting": [
+    {
+      "type": 0,
+      "value": "Siunčiama užklausa…"
+    }
+  ]
+}
