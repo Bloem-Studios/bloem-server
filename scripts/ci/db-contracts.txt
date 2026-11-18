@@ -23,6 +23,7 @@
 ./internal/catalog TestJellyfinPersonReadsMatchNativeVisibilityPostgres
 ./internal/recommendations TestRecentCompletedItemIDsGroupsSeriesBeforeLimit
 ./internal/sections TestCompatibilityRecentlyAddedReturnsFlatDistinctSeries
+./internal/sections TestRecentlyReleasedOrdersByReleaseDate
 ./internal/sections TestSectionsSkipItemsInNoLibraryPostgres
 ./internal/sections TestPersonalSmartCollectionRowKeepsTheCollectionLimitPostgres
 ./internal/sections TestNextUpDismissalKeepsTheRowFullPostgres
@@ -91,6 +92,7 @@
 ./internal/catalog TestBoxSetCollectionsOfDisabledLibraryDB
 ./internal/catalog TestMovieBoxSetDB
 ./internal/catalog TestBoxSetCollectionArtworkDB
+./internal/catalog TestBoxSetCollectionLanguageDB
 
 # Audiobook Series, Authors, and Narrators browse: group counts and durations,
 # cover order, the viewer's own progress, count-sorted cursor pages, the search
@@ -217,8 +219,14 @@
 ./internal/scanner TestScanFileAudiobookDiscPartsAgainstConcurrentRowDB
 
 # An ebook or manga library scan does not mark missing a book that a scan of
-# that file indexed after the library scan's walk or while it marked the book.
+# that file indexed after the library scan's walk or while it marked the book,
+# or saw unchanged after it was restored with its old modification time. The
+# same holds for an audiobook library scan, and for a single-file scan of a
+# book that vanished and came back before that scan marked it; a book still
+# gone is marked even when its row was written meanwhile.
 ./internal/scanner TestScanBookFolderKeepsBookIndexedByConcurrentScanDB
+./internal/scanner TestScanAudiobookFolderKeepsBookRestoredUnchangedDB
+./internal/scanner TestScanFileReconcilesVanishedBookDB
 
 # A rescan of a retagged, unmatched ebook keeps the fields and author credits an
 # admin locked, including locked fields left empty.
@@ -816,6 +824,10 @@
 # after the new package passed its download and checksum checks.
 ./internal/plugins TestServiceInstallCatalogStopsPluginOnlyForAnAcceptedPackageDB
 
+# A plugin replacement that finishes after another install of the same plugin is
+# refused, and the newer release, its stored archive and its files stay.
+./internal/plugins TestInstallerReplacementRefusedAfterInstallationChangedDB
+
 # Autoscan poll markers restart from now, and poll at once, only when the upstream changes.
 ./internal/autoscan TestUpdateSourceMarkerReset
 ./internal/autoscan TestUpdateConnectionMarkerReset
@@ -1354,6 +1366,14 @@
 # moves the admin revision and pool generation; a proxy can only hold local,
 # refused by the store and by the check constraint.
 ./internal/nodepool TestSourceAccessIsTranscodeConfigurationDB
+
+# Node declarations: a declaration writes its fields and sets env_managed to
+# exactly their names without moving the admin revision or pool generation on
+# its own; administrator updates that change a declared field are refused and
+# ones that restate it pass; a taken URL is refused. A proxy registers itself
+# only when asked to, and a node cannot declare a proxy's address.
+./internal/nodepool TestNodeDeclarationsLockFieldsDB
+./internal/nodepool TestProxyDeclarationsDB
 
 # Admin node writes reach every credential registry: the writing API server's
 # before it answers (a deleted node's key is refused at once, a moved node is

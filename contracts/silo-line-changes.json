@@ -1160,7 +1160,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "92f85e701ea14ffd"
+   "func main() {": "e2ae2c0e6648cef2"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1507,7 +1507,7 @@
    "func (a *Analyzer) leakCheck(node ast.Node, env *walkEnv) error {": "2fa1f40713e1de42"
   },
   "internal/scanner/ebook_scan.go": {
-   "func (s *Scanner) reconcileEbookFileWithSkipState(ctx context.Context, folder *m": "c145b5cb027fa5a9"
+   "func (s *Scanner) reconcileEbookFileWithSkipState(ctx context.Context, folder *m": "b479785df5785f3a"
   },
   "internal/scanner/scanner.go": {
    "func (m walkMode) acceptsPath(path string) bool {": "8bd4c47dab91f64a",
@@ -1590,5 +1590,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "a7f182b949e974ba826b98db8b347865aff6e1db"
+ "silo": "4102bcae54a6ad907a277f537759fa72cd6d1efc"
 }

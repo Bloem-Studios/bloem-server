@@ -3571,6 +3571,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 		nodeControlOptions.Recipes, nodeControlOptions.Revocations = nodeRecipes, nodeRecipes
 		deps.wireNodeSources(&nodeControlOptions)
 		deps.bloemNativeNodeControl(&nodeControlOptions) // Bloem: native resolve grants; no Silo grant opens a native file
+		if nodeHandler != nil {
+			// A node's declaration goes through the admin node service, so
+			// every API server and proxy follows it as it follows an
+			// administrator's edit.
+			nodeControlOptions.Registrar = nodeHandler
+		}
 		nodeControl := nodecontrol.NewServer(nodeControlOptions)
 		r.Route("/api/internal/nodes/self", func(r chi.Router) {
 			r.Use(nodecontrol.RequireNode(deps.NodeKeyRegistry))
@@ -3586,6 +3592,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 				r.Post("/resolve", nodeControl.HandleResolve)
 				r.Post("/sources/open", nodeControl.HandleSourceOpen)
 			})
+			// A changed registration makes every API server reload its node
+			// pools, so it has a much smaller budget of its own.
+			r.With(nodeControl.LimitNodeRegistration).Put("/registration", nodeControl.HandleRegistration)
 			r.Group(func(r chi.Router) {
 				r.Use(nodeControl.LimitNode)
 				r.Get("/config", nodeControl.HandleConfig)
@@ -3820,7 +3829,7 @@ type tmdbFranchiseAdapter struct {
 }
 
 func (a *tmdbFranchiseAdapter) GetCollection(ctx context.Context, id int) ([]catalog.TMDBCollectionEntry, error) {
-	collection, err := a.client.GetCollection(ctx, id)
+	collection, err := a.client.GetCollection(ctx, id, "")
 	if err != nil {
 		return nil, err
 	}
