@@ -237,7 +237,7 @@ func TestNativeStorageRegistryDisabledPackageUpgrade(t *testing.T) {
 func TestNativeS3RegistryRejectsHistoricalPathsAndMalformedShape(t *testing.T) {
 	r, installed, req := nativeRegistryS3Fixture(t, true)
 	for _, value := range []map[string]any{{"state_path": "caller-path"}, {"state_path": ""}, {"state_path": nil}} {
-		if err := r.configs.PutGlobalConfig(t.Context(), installed.Installation.ID, "connection", value); err != nil {
+		if err := putNativeConfig(t.Context(), r, installed.Installation.ID, "connection", value); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); err == nil {
@@ -257,7 +257,7 @@ func TestNativeS3RegistryRejectsHistoricalPathsAndMalformedShape(t *testing.T) {
 	if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); err == nil {
 		t.Fatal("missing native connection reached runtime")
 	}
-	if err := r.configs.PutGlobalConfig(t.Context(), installed.Installation.ID, "source_json", map[string]any{"json": "{}"}); err != nil {
+	if err := putNativeConfig(t.Context(), r, installed.Installation.ID, "source_json", map[string]any{"json": "{}"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); err == nil {
@@ -798,4 +798,16 @@ func TestNativeStorageRegistryRemoveAuthorizedRefusesSourceInUse(t *testing.T) {
 			}
 		})
 	}
+}
+
+// putNativeConfig writes one native instance setting, encoded as the
+// registry writes it.
+func putNativeConfig(ctx context.Context, r *NativeStorageRegistry, installationID int, key string, value map[string]any) error {
+	data, err := encodeRuntimeConfigValue(r.configs.cipher, installationID, key, value)
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx, `INSERT INTO bloem_storage_installation_configs(installation_id,config_key,config_value) VALUES($1,$2,$3)
+ ON CONFLICT (installation_id,config_key) DO UPDATE SET config_value=EXCLUDED.config_value, updated_at=now()`, installationID, key, data)
+	return err
 }
