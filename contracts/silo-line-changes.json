@@ -1201,14 +1201,14 @@
   },
   "internal/api/handlers/playback_v3.go": {
    "func (h *PlaybackHandler) deleteRequiredProgressiveRemuxAuthorityV3(ctx context.": "a907ccb3b12d875a",
-   "func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte": "1854bafa62c7e9d5",
+   "func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte": "6de2b16620bfb64f",
    "func (h *PlaybackHandler) lazyDVRPUStrippableV3(ctx context.Context, file *model": "b086b31ad1c90d94",
    "func (h *PlaybackHandler) prepareIdentityTransportV3(r *http.Request, session *p": "e0014916c1705061",
    "func (h *PlaybackHandler) prepareLocalTransportV3(r *http.Request, session *play": "04d1c5d482b71d53",
    "func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla": "408f5fa291797d19",
    "func (h *PlaybackHandler) prepareTransportWithPolicyAndExclusionsV3(": "9863774da1c21028",
    "func (h *PlaybackHandler) raceCopySafetyV3(fileID int, plan *playback.PlanV3) {": "e66f2ec5673ea8fd",
-   "func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr": "8c46c605f486ac9f",
+   "func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr": "5dc1eaff47e14bcc",
    "func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt": "8e55280fe3780cf2",
    "func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.De": "439556aa51960eac"
   },
@@ -1324,7 +1324,7 @@
    "func (s *Service) ImportReader(ctx context.Context, r io.Reader, opts ImportOpti": "a408994a2849dea1"
   },
   "internal/config/admin_settings.go": {
-   "func NormalizeAdminSetting(key, raw string) (string, error) {": "27e4638a30493369"
+   "func NormalizeAdminSetting(key, raw string) (string, error) {": "4c459fe861d43348"
   },
   "internal/config/db_loader.go": {
    "func LoadFromDB(m map[string]string) (*Config, error) {": "e2e441f49392ed30"
@@ -1441,7 +1441,7 @@
    "func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request) {": "9cf6c0c86c893a9f",
    "func (s *Server) handleSubtitleFonts(w http.ResponseWriter, r *http.Request) {": "22bf45b10dd47d33",
    "func (s *Server) proxyToTranscodeNode(w http.ResponseWriter, r *http.Request, cl": "3b93f4bb70e2d11f",
-   "func (s *Server) serveDirectPlayClaims(w http.ResponseWriter, r *http.Request, c": "cc74322ab934fd42",
+   "func (s *Server) serveDirectPlayClaims(w http.ResponseWriter, r *http.Request, c": "df6e236539add45c",
    "func (s *Server) serveRemuxClaims(w http.ResponseWriter, r *http.Request, claims": "8780451c688d92da"
   },
   "internal/recommendations/embeddings/client.go": {
@@ -1562,5 +1562,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "35b0ed7f0fc3a7afe881a2e9da946be9dd0d56d2"
+ "silo": "4eb4d4a8636ba20fcdc232e5f262ba8971e45482"
 }
