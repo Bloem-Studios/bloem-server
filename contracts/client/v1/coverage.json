@@ -2118,6 +2118,34 @@
       "reason": "Upstream Silo notified-series listing (API v2, synced 2026-10-18); Bloem native clients do not decode it yet."
     },
     {
+      "type": "internal/apiv2.NotificationPluginChannel",
+      "reason": "Upstream Silo plugin-provided notification destinations (API v2, synced 2026-11-19); the bundled web settings manage them, and Bloem native clients do not decode them yet."
+    },
+    {
+      "type": "internal/apiv2.NotificationPluginDestination",
+      "reason": "Upstream Silo plugin-provided notification destinations (API v2, synced 2026-11-19); the bundled web settings manage them, and Bloem native clients do not decode them yet."
+    },
+    {
+      "type": "internal/apiv2.NotificationPluginDestinationCreateInputBody",
+      "reason": "Upstream Silo plugin-provided notification destinations (API v2, synced 2026-11-19); the bundled web settings manage them, and Bloem native clients do not decode them yet."
+    },
+    {
+      "type": "internal/apiv2.NotificationPluginDestinationWrite",
+      "reason": "Upstream Silo plugin-provided notification destinations (API v2, synced 2026-11-19); the bundled web settings manage them, and Bloem native clients do not decode them yet."
+    },
+    {
+      "type": "internal/apiv2.NotificationPluginSettingsField",
+      "reason": "Upstream Silo plugin-provided notification destinations (API v2, synced 2026-11-19); the bundled web settings manage them, and Bloem native clients do not decode them yet."
+    },
+    {
+      "type": "internal/apiv2.NotificationPluginSettingsForm",
+      "reason": "Upstream Silo plugin-provided notification destinations (API v2, synced 2026-11-19); the bundled web settings manage them, and Bloem native clients do not decode them yet."
+    },
+    {
+      "type": "internal/apiv2.NotificationPluginSettingsOption",
+      "reason": "Upstream Silo plugin-provided notification destinations (API v2, synced 2026-11-19); the bundled web settings manage them, and Bloem native clients do not decode them yet."
+    },
+    {
       "type": "internal/apiv2.NotificationSeries",
       "reason": "Upstream Silo notified-series listing (API v2, synced 2026-10-18); Bloem native clients do not decode it yet."
     },
