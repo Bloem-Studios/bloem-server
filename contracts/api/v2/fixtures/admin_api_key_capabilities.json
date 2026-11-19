@@ -1,5 +1,5 @@
 {
-  "revision": "71b99943b8a9564ed553b0b37cb53d10d621f48692b396b8bacb2e09b17bf871",
+  "revision": "393ac7ba96e23d30de20944755205553375ccd61acb277a7afd9dccdfbc9fa8c",
   "state": "available",
   "allowed": true,
   "available": true,
@@ -63,6 +63,21 @@
     {
       "name": "admin:sessions:control",
       "description": "Pause, resume, stop, message and terminate live playback sessions.",
+      "audience": "admin"
+    },
+    {
+      "name": "admin:entitlements:bulk",
+      "description": "Read authoritative account policies, discover organization policy cohorts, and run confirmed durable bulk entitlement jobs.",
+      "audience": "admin"
+    },
+    {
+      "name": "admin:entitlements:accounts",
+      "description": "Read entitlement templates and preview and apply a template to one account. Cannot create or change templates.",
+      "audience": "admin"
+    },
+    {
+      "name": "admin:preview",
+      "description": "Configure the read-only preview, its launch keys and curated catalog. Requires a Platform administrator.",
       "audience": "admin"
     }
   ],
