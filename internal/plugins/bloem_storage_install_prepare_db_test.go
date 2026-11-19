@@ -122,7 +122,7 @@ func TestInitialS3PreparePublishReservedIdentity(t *testing.T) {
 	if nativeS3SnapshotPath(t, restarted) != state {
 		t.Fatal("publication rotated state")
 	}
-	configs, err := r.configs.ListGlobalConfigs(t.Context(), published.Installation.ID)
+	configs, err := r.nativeConfigs(t.Context(), published.Installation.ID)
 	if err != nil || len(configs) != 1 {
 		t.Fatal("original config missing", err)
 	}

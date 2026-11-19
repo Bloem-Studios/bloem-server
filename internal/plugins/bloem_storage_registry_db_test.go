@@ -140,7 +140,7 @@ func TestNativeS3RegistryStateLifetime(t *testing.T) {
 		if err != nil || string(data) != "retained-fixture-state" {
 			t.Fatal("durable S3 state lost")
 		}
-		configs, err := r.configs.ListGlobalConfigs(t.Context(), installed.Installation.ID)
+		configs, err := r.nativeConfigs(t.Context(), installed.Installation.ID)
 		if err != nil || len(configs) != 1 {
 			t.Fatal("persisted configuration unavailable")
 		}
