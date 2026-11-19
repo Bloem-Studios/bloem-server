@@ -39,12 +39,22 @@ func (s *bloemSocketViewer) Resolve(ctx context.Context, in access.ResolveInput)
 	return access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true, PolicyRevision: s.policyRevision}, s.err
 }
 
+// bloemSocketSessionFixture is one login session; err, when set, is the
+// read's failure, and missing reads as no row.
 type bloemSocketSessionFixture struct {
 	socketSessionFixture
 	session models.AuthSession
+	err     error
+	missing bool
 }
 
 func (s *bloemSocketSessionFixture) GetByID(context.Context, string) (*models.AuthSession, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	if s.missing {
+		return nil, nil
+	}
 	return &s.session, nil
 }
 
@@ -52,6 +62,7 @@ type bloemSocketTenantFixture struct {
 	tenant              tenancy.Context
 	profileOrganization uuid.UUID
 	err                 error
+	profileErr          error
 }
 
 func (s *bloemSocketTenantFixture) Resolve(_ context.Context, accountID int, organization *uuid.UUID, legacy bool) (tenancy.Context, error) {
@@ -62,6 +73,9 @@ func (s *bloemSocketTenantFixture) Resolve(_ context.Context, accountID int, org
 }
 
 func (s *bloemSocketTenantFixture) ProfileOrganization(context.Context, int, string) (uuid.UUID, error) {
+	if s.profileErr != nil {
+		return uuid.Nil, s.profileErr
+	}
 	return s.profileOrganization, s.err
 }
 
@@ -263,7 +277,6 @@ func TestBloemEventsSocketRejectsAuthorityChanges(t *testing.T) {
 		"membership replaced":   func(f *bloemSocketFixture, _ *evt.SocketIdentity) { f.tenants.tenant.MembershipID = uuid.New() },
 		"membership revision":   func(f *bloemSocketFixture, _ *evt.SocketIdentity) { f.tenants.tenant.SecurityRevision++ },
 		"organization revision": func(f *bloemSocketFixture, _ *evt.SocketIdentity) { f.tenants.tenant.PolicyRevision++ },
-		"tenant unavailable":    func(f *bloemSocketFixture, _ *evt.SocketIdentity) { f.tenants.err = tenancy.ErrTenantUnavailable },
 		"membership suspended":  func(f *bloemSocketFixture, _ *evt.SocketIdentity) { f.tenants.err = tenancy.ErrTenantSuspended },
 		"session owner":         func(f *bloemSocketFixture, _ *evt.SocketIdentity) { f.sessions.session.UserID++ },
 		"session identity":      func(f *bloemSocketFixture, _ *evt.SocketIdentity) { f.sessions.session.ID = "other-session" },
@@ -355,9 +368,10 @@ func TestBloemEventsSocketAccountSessionDeviceCapture(t *testing.T) {
 // bloemKeyTenants resolves an account's own requests to its legacy tenant, as
 // the tenant middleware does for an API key.
 type bloemKeyTenants struct {
-	tenant   tenancy.Context
-	err      error
-	profiles map[string]uuid.UUID
+	tenant     tenancy.Context
+	err        error
+	profileErr error
+	profiles   map[string]uuid.UUID
 }
 
 func (s *bloemKeyTenants) Resolve(_ context.Context, accountID int, organization *uuid.UUID, legacy bool) (tenancy.Context, error) {
@@ -368,10 +382,13 @@ func (s *bloemKeyTenants) Resolve(_ context.Context, accountID int, organization
 }
 
 func (s *bloemKeyTenants) ProfileOrganization(_ context.Context, accountID int, profileID string) (uuid.UUID, error) {
+	if s.profileErr != nil {
+		return uuid.Nil, s.profileErr
+	}
 	if organization, ok := s.profiles[profileID]; ok && accountID == s.tenant.AccountID {
 		return organization, nil
 	}
-	return uuid.Nil, errors.New("no such profile")
+	return uuid.Nil, tenancy.ErrTenantNotFoundOrHidden
 }
 
 // A monitoring key passes Bloem's socket wrapper to Silo's key checks, in its

@@ -20,6 +20,12 @@ Silo's sockets and tickets unchanged, with two additions.
 - **A key that acts as a profile stays in its organization.** When an API key's
   ticket names a profile, that profile must belong to the organization the key's
   owner is in, checked again each time the server checks the connection.
+- **Bloem's own checks end a socket the way Silo's do.** When the session,
+  account, organization, membership or profile is gone, suspended, changed or
+  moved, the socket closes with `4002` `credential_invalid`. When the server
+  cannot run the check because a lookup failed or timed out, it closes with
+  `4004` `authority_unavailable`. A ticket request or a connection attempt then
+  gets `503`, and the app tries again later.
 - **The web player asks for a remote-control ticket less often when refused.**
   After a server restart, a browser tab that keeps a session from before the
   restart is refused a ticket. Silo's player asks again every 5 seconds for as
@@ -61,6 +67,15 @@ session to bind, so it carries no Bloem binding. Bloem admits it as an HTTP
 request with that key is admitted: Silo's key checks decide, in the tenant its
 owner's requests resolve to (`validateKey`). A key ticket that carries a binding or a
 session was not minted for a key and is refused.
+
+Bloem's checks follow the rule in the subsection “Close codes”: a read that
+answers gives `evt.ErrSocketTicket` (`4002`) when the credential, tenant or
+profile is missing, suspended, revoked, expired, mismatched or moved, and a read
+that fails gives `socketAuthorityUnavailable` (`4004`, and `503` at mint and
+upgrade). Tenant and profile-organization errors are sorted as the tenant
+middleware sorts them for an HTTP request: `ErrTenantNotFoundOrHidden`,
+`ErrTenantSuspended` and `ErrOwnershipResolutionRequired` end the credential,
+and any other error means the check could not run.
 
 Silo's user keys (the subsection “User keys”) open sockets on Bloem too. A key
 ticket that names a profile (every profile key, and an account key sent with

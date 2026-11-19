@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -57,18 +58,21 @@ func (h *bloemSocketAuthority) bind(ctx context.Context, identity evt.SocketIden
 	// revalidation still requires an exact match.
 	if tenant.Legacy {
 		checkCtx, stop := context.WithTimeout(ctx, 2*time.Second)
-		session, err := h.sessions.GetByID(checkCtx, identity.SessionID)
+		session, err := bloemSocketSession(checkCtx, h.sessions, identity.SessionID)
 		stop()
-		if err != nil || session == nil {
-			return evt.SocketIdentity{}, evt.ErrSocketTicket
+		if err != nil {
+			return evt.SocketIdentity{}, err
 		}
 		binding.DeviceID = session.DeviceID
 	}
 	if claims.ImpersonatorUserID != nil {
 		checkCtx, stop := context.WithTimeout(ctx, 2*time.Second)
 		defer stop()
-		impersonator, err := h.users.GetByID(checkCtx, *claims.ImpersonatorUserID)
-		if err != nil || impersonator == nil || impersonator.ID != *claims.ImpersonatorUserID || !impersonator.Enabled || impersonator.Role != eventsAdminRole || impersonator.AccountIncarnationID == uuid.Nil {
+		impersonator, err := bloemSocketAccount(checkCtx, h.users, *claims.ImpersonatorUserID)
+		if err != nil {
+			return evt.SocketIdentity{}, err
+		}
+		if impersonator.ID != *claims.ImpersonatorUserID || !impersonator.Enabled || impersonator.Role != eventsAdminRole || impersonator.AccountIncarnationID == uuid.Nil {
 			return evt.SocketIdentity{}, evt.ErrSocketTicket
 		}
 		binding.ImpersonatorIncarnation = impersonator.AccountIncarnationID
@@ -95,18 +99,27 @@ func (h *bloemSocketAuthority) validate(ctx context.Context, identity evt.Socket
 	checkCtx, stop := context.WithTimeout(ctx, 2*time.Second)
 	defer stop()
 	principal := binding.Principal
-	session, err := h.sessions.GetByID(checkCtx, identity.SessionID)
-	if err != nil || session == nil || session.ID != identity.SessionID || session.UserID != identity.UserID || session.RevokedAt != nil || !session.ExpiresAt.After(time.Now()) ||
+	session, err := bloemSocketSession(checkCtx, h.sessions, identity.SessionID)
+	if err != nil {
+		return ctx, nil, err
+	}
+	if session.ID != identity.SessionID || session.UserID != identity.UserID || session.RevokedAt != nil || !session.ExpiresAt.After(time.Now()) ||
 		session.AuthMethod != "account" || session.DeviceID != binding.DeviceID || !bloemSocketSameImpersonator(session.ImpersonatorUserID, principal.ImpersonatorUserID) {
 		return ctx, nil, evt.ErrSocketTicket
 	}
-	user, err := h.users.GetByID(checkCtx, identity.UserID)
-	if err != nil || user == nil || user.ID != identity.UserID || user.AccountIncarnationID == uuid.Nil || user.AccountIncarnationID.String() != principal.AccountIncarnationID {
+	user, err := bloemSocketAccount(checkCtx, h.users, identity.UserID)
+	if err != nil {
+		return ctx, nil, err
+	}
+	if user.ID != identity.UserID || user.AccountIncarnationID == uuid.Nil || user.AccountIncarnationID.String() != principal.AccountIncarnationID {
 		return ctx, nil, evt.ErrSocketTicket
 	}
 	if principal.ImpersonatorUserID != nil {
-		impersonator, err := h.users.GetByID(checkCtx, *principal.ImpersonatorUserID)
-		if err != nil || impersonator == nil || impersonator.ID != *principal.ImpersonatorUserID || !impersonator.Enabled || impersonator.Role != eventsAdminRole || binding.ImpersonatorIncarnation == uuid.Nil || impersonator.AccountIncarnationID != binding.ImpersonatorIncarnation {
+		impersonator, err := bloemSocketAccount(checkCtx, h.users, *principal.ImpersonatorUserID)
+		if err != nil {
+			return ctx, nil, err
+		}
+		if impersonator.ID != *principal.ImpersonatorUserID || !impersonator.Enabled || impersonator.Role != eventsAdminRole || binding.ImpersonatorIncarnation == uuid.Nil || impersonator.AccountIncarnationID != binding.ImpersonatorIncarnation {
 			return ctx, nil, evt.ErrSocketTicket
 		}
 	}
@@ -118,14 +131,14 @@ func (h *bloemSocketAuthority) validate(ctx context.Context, identity evt.Socket
 		return ctx, nil, evt.ErrSocketTicket
 	}
 	fresh, err := h.tenants.Resolve(checkCtx, identity.UserID, &tenant.OrganizationID, tenant.Legacy)
-	if err != nil || fresh != tenant {
+	if err != nil {
+		return ctx, nil, bloemSocketTenantError(err)
+	}
+	if fresh != tenant {
 		return ctx, nil, evt.ErrSocketTicket
 	}
-	if identity.ProfileID != "" {
-		organization, err := h.profiles.ProfileOrganization(checkCtx, identity.UserID, identity.ProfileID)
-		if err != nil || organization != tenant.OrganizationID {
-			return ctx, nil, evt.ErrSocketTicket
-		}
+	if err := h.profileInOrganization(checkCtx, identity, tenant.OrganizationID); err != nil {
+		return ctx, nil, err
 	}
 	validated, effective, err := h.base(tenancy.WithContext(ctx, fresh), identity)
 	if err != nil {
@@ -157,15 +170,70 @@ func (h *bloemSocketAuthority) validateKey(ctx context.Context, identity evt.Soc
 	defer stop()
 	tenant, err := h.tenants.Resolve(checkCtx, identity.UserID, nil, true)
 	if err != nil {
-		return ctx, nil, evt.ErrSocketTicket
+		return ctx, nil, bloemSocketTenantError(err)
 	}
-	if identity.ProfileID != "" {
-		organization, err := h.profiles.ProfileOrganization(checkCtx, identity.UserID, identity.ProfileID)
-		if err != nil || organization == uuid.Nil || organization != tenant.OrganizationID {
-			return ctx, nil, evt.ErrSocketTicket
-		}
+	if err := h.profileInOrganization(checkCtx, identity, tenant.OrganizationID); err != nil {
+		return ctx, nil, err
 	}
 	return h.base(tenancy.WithContext(ctx, tenant), identity)
+}
+
+// profileInOrganization checks that the identity's profile, when it names
+// one, belongs to organization.
+func (h *bloemSocketAuthority) profileInOrganization(ctx context.Context, identity evt.SocketIdentity, organization uuid.UUID) error {
+	if identity.ProfileID == "" {
+		return nil
+	}
+	current, err := h.profiles.ProfileOrganization(ctx, identity.UserID, identity.ProfileID)
+	if err != nil {
+		return bloemSocketTenantError(err)
+	}
+	if current == uuid.Nil || current != organization {
+		return evt.ErrSocketTicket
+	}
+	return nil
+}
+
+// The reads below follow Silo's rule for a socket check: a read that answers
+// the credential is gone gives evt.ErrSocketTicket (credential_invalid, 4002),
+// and a read that fails or times out gives an unavailable error
+// (authority_unavailable, 4004; 503 at mint and upgrade), so the client
+// retries rather than drop a credential that may still hold.
+
+// bloemSocketSession reads the login session.
+func bloemSocketSession(ctx context.Context, sessions bloemSocketSessions, id string) (*models.AuthSession, error) {
+	session, err := sessions.GetByID(ctx, id)
+	if auth.IsSessionNotFound(err) || (err == nil && session == nil) {
+		return nil, evt.ErrSocketTicket
+	}
+	if err != nil {
+		return nil, socketAuthorityUnavailable(err)
+	}
+	return session, nil
+}
+
+// bloemSocketAccount reads an account; the caller judges whether it may act.
+func bloemSocketAccount(ctx context.Context, users access.UserRepository, id int) (*models.User, error) {
+	user, err := users.GetByID(ctx, id)
+	if errors.Is(err, auth.ErrNotFound) || (err == nil && user == nil) {
+		return nil, evt.ErrSocketTicket
+	}
+	if err != nil {
+		return nil, socketAuthorityUnavailable(err)
+	}
+	return user, nil
+}
+
+// bloemSocketTenantError classifies a failed tenant or profile-organization
+// read as the tenant middleware does for an HTTP request: a hidden, suspended
+// or unresolved tenant ends the credential, anything else could not be
+// checked.
+func bloemSocketTenantError(err error) error {
+	switch {
+	case errors.Is(err, tenancy.ErrTenantNotFoundOrHidden), errors.Is(err, tenancy.ErrTenantSuspended), errors.Is(err, tenancy.ErrOwnershipResolutionRequired):
+		return evt.ErrSocketTicket
+	}
+	return socketAuthorityUnavailable(err)
 }
 
 func bloemSocketPrincipalMatches(claims auth.Claims, identity evt.SocketIdentity) bool {
