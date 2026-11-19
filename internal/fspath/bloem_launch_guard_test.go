@@ -9,7 +9,6 @@ package fspath
 var bloemLaunchesOutsideFspath = map[string]string{
 	"internal/bloemtestsdk/sdk.go:BuildStorageFixture":                    "go mod download and go build of the storage plugin test fixture",
 	"internal/bloemtestsdk/sdk.go:StorageDir":                             "go mod download of the storage plugin test fixture",
-	"internal/playback/bloem_airplay_v3.go:addDolbyAudioV3":               "FFmpeg on a lavfi anullsrc input",
 	"internal/playback/bloem_native_tonemap.go:sourceVideoTool":           "FFmpeg on a native tool input argument, restricted to the source's demuxer",
 	"internal/playback/bloem_native_tools.go:ResolveSourceCopySeekAnchor": "FFmpeg on a native tool input argument, restricted to the source's demuxer",
 	"internal/playback/bloem_native_tools.go:ServeSourceRemux":            "FFmpeg on a native tool input argument, restricted to the source's demuxer",
