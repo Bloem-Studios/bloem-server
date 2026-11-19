@@ -138,7 +138,7 @@ source is still switched on.
 | On this page | In the code and database |
 | --- | --- |
 | Native storage | `internal/nativestorage`, `internal/storagesource`, `internal/storageplugin` |
-| Storage plugin | an installation in `plugin_installations`, marked native in `bloem_storage_installations`, serving `bloem.plugin.v1.StorageProvider` |
+| Storage plugin | an instance in `bloem_storage_installations`, with its settings in `bloem_storage_installation_configs` and its package in `bloem_storage_installation_archives`, serving `bloem.plugin.v1.StorageProvider` |
 | Source | `bloem_storage_sources` |
 | A library's folders on a source | `library_storage_locations` and `bloem_storage_selected_roots` |
 | A stored file | `bloem_storage_file_refs`; its catalog `file_path` starts with `bloem-storage:` |
@@ -192,8 +192,12 @@ and audiobooks when native audio is ready, and
 
 - **Storage plugin.** A host-approved executable that serves the private
   `bloem.plugin.v1.StorageProvider` service (`Describe`, `List`, `Stat`,
-  revision-checked `Read`). Installations are recorded in `plugin_installations`
-  and marked native in `bloem_storage_installations`.
+  revision-checked `Read`). Each source runs its own instance of its plugin,
+  with its own settings, package and process. Instances live in Bloem's tables
+  (`bloem_storage_installations` and its configs and archives), not in Silo's
+  plugin tables, which keep one installation per plugin; new instance ids start
+  at 1,000,000,000, so an id never names both. Settings are encrypted as Silo's
+  plugin settings are, bound to the instance id and key.
 - **Storage source.** `bloem_storage_sources`: one configured source of an
   installation, with a retained UUID key, owner, encrypted configuration and a
   configuration revision. A source outlives its installation's removal.
@@ -259,7 +263,7 @@ the new location and reloads retained source fields after any lock wait:
 - an organization library may use its own organization's source, or a platform
   source its active organization is entitled to.
 
-The source must be enabled, with an enabled, native-marked installation. A
+The source must be enabled, with an enabled instance. A
 refused attach rolls the whole library creation back. The library is then
 scanned like any other.
 
@@ -295,8 +299,8 @@ source installation. The UI then stores URL and API key through the encrypted
 configuration boundary. Upgrade swaps an installation's executable for a newer
 approved artifact of the same plugin in one transaction and bumps its runtime
 generation, so the running process is replaced; the source, its encrypted
-configuration and its library stay as they are. Ordinary plugin handlers hide
-native installations.
+configuration and its library stay as they are. Instances are not Silo plugin
+installations, so Silo's plugin handlers never see them.
 
 Disable and uninstall both detach every source of the installation, and a
 detached source cannot be attached again: the admin UI offers only Remove.
@@ -342,7 +346,7 @@ a new installation and does not migrate the previous installation's identity
 database.
 
 The path exists only in configuration prepared for the host runtime. It is
-never persisted in `plugin_runtime_configs` or added to configuration API
+never persisted in the instance's settings or added to configuration API
 views. S3 install and configuration replacement require one native `connection`
 object and reject any supplied `state_path`, including empty or null values.
 Runtime snapshots also refuse historical supplied paths and legacy envelopes.

@@ -74,18 +74,13 @@ files are in [native video playback](../../../architecture/bloem-native-video-pl
 **Location:** section “11. Transformations”, after the table of transformations.
 **Bloem adds:**
 
-**Dolby surround for AirPlay receivers.** Two more server transformations,
-`audio_to_ac3` and `audio_to_eac3`, both at recipe version `1`, claim
-`audio_decode`. A plan lists one in place of `audio_to_aac` when the client's
-`output.sink_type` is `AirPlay`, the planner would convert the selected audio
-to AAC 5.1 for HLS, and the source is a surround codec HLS cannot carry as it
-is (such as TrueHD or DTS). The recipe maps the source's channels to 5.1 with
-FFmpeg's own downmix and encodes at 384 kbps. AC-3 is planned first;
-E-AC-3 takes its place when the client lists only that codec or only that
-encoder exists. An executor offers a transformation only after a smoke encode
-of a 7.1 input to 5.1 has run, and a pooled node offers it by advertising the
-same name at the same recipe version, so an executor that predates it is never
-sent such a plan. A client that does not list the codec in its HLS delivery's
+**Dolby surround for AirPlay receivers.** Silo's `audio_to_ac3` and
+`audio_to_eac3` transformations (48 kHz 5.1 at 640 kbps, recipe version `1`)
+also serve AirPlay. A plan lists one in place of `audio_to_aac` when the
+client's `output.sink_type` is `AirPlay`, the planner would convert the selected
+audio to AAC 5.1 for HLS, and the source is a surround codec HLS cannot carry as
+it is (such as TrueHD or DTS). AC-3 is planned first; E-AC-3 takes its place
+when the client lists only that codec or only that encoder is offered. A client that does not list the codec in its HLS delivery's
 `audio_decode_codecs`, or limits the delivery to fewer than six channels,
 keeps the AAC plan. When a client reports an AC-3 plan as failed, the replan
 moves on to E-AC-3 and then to the AAC plan, because each plan's key is
