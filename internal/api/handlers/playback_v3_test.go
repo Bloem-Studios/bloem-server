@@ -5038,6 +5038,7 @@ func (f streamRangeFixtureV3) get(t *testing.T, streamURL string, withToken bool
 	t.Helper()
 	request := httptest.NewRequest(http.MethodGet, "/api/v2"+streamURL, nil)
 	request.Header.Set("Range", "bytes=0-99")
+	request = request.WithContext(access.SetScope(request.Context(), access.Scope{UserID: 1})) // Bloem: the stream handler rechecks the viewer scope RequireViewerAccess sets
 	if withToken {
 		token, err := f.jwt.GenerateAccessToken(1, models.RoleUser, "login-session-1")
 		if err != nil {
