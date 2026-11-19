@@ -1133,7 +1133,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "0ae17bd806313f3e"
+   "func main() {": "571e51305a50f7cf"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1201,14 +1201,14 @@
   },
   "internal/api/handlers/playback_v3.go": {
    "func (h *PlaybackHandler) deleteRequiredProgressiveRemuxAuthorityV3(ctx context.": "a907ccb3b12d875a",
-   "func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte": "0f94a1aee5e58704",
+   "func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte": "1854bafa62c7e9d5",
    "func (h *PlaybackHandler) lazyDVRPUStrippableV3(ctx context.Context, file *model": "b086b31ad1c90d94",
-   "func (h *PlaybackHandler) prepareIdentityTransportV3(r *http.Request, session *p": "7ee91996dc162749",
-   "func (h *PlaybackHandler) prepareLocalTransportV3(r *http.Request, session *play": "3d80a841260276b7",
-   "func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla": "54aca9ca22d5c46f",
+   "func (h *PlaybackHandler) prepareIdentityTransportV3(r *http.Request, session *p": "e0014916c1705061",
+   "func (h *PlaybackHandler) prepareLocalTransportV3(r *http.Request, session *play": "04d1c5d482b71d53",
+   "func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla": "408f5fa291797d19",
    "func (h *PlaybackHandler) prepareTransportWithPolicyAndExclusionsV3(": "9863774da1c21028",
    "func (h *PlaybackHandler) raceCopySafetyV3(fileID int, plan *playback.PlanV3) {": "e66f2ec5673ea8fd",
-   "func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr": "c0e3a980803ab271",
+   "func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr": "8c46c605f486ac9f",
    "func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt": "8e55280fe3780cf2",
    "func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.De": "439556aa51960eac"
   },
@@ -1426,7 +1426,7 @@
   },
   "internal/playback/transcode_manager.go": {
    "func (m *TranscodeManager) doReconstructTranscode(ctx context.Context, sessionID": "5c905df95168077f",
-   "func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str": "570be3518218bb4b",
+   "func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str": "62047af263c68891",
    "func (m *TranscodeManager) registerReconstructedSession(ctx context.Context, s *": "26c74c8af3d31a6e"
   },
   "internal/plugins/content.go": {
@@ -1562,5 +1562,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "b6aa666bb0c3cd73d1e2eee350e37953786da9be"
+ "silo": "0e9cf1fcf6b4f57b9e11e544013ea8eabf1e32af"
 }

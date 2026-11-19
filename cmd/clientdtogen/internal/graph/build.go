@@ -98,6 +98,12 @@ var nullableWrappers = map[string]string{
 	"github.com/Silo-Server/silo-server/internal/apiv2.NullableLoginSession":             "LoginSession",
 }
 
+// genericNullableWrappers are generic wrappers, by the qualified name of their
+// origin, whose MarshalJSON writes their one type argument's value or null.
+var genericNullableWrappers = map[string]bool{
+	"github.com/Silo-Server/silo-server/internal/apiv2.NullableObject": true,
+}
+
 // knownGenericOrigins maps a generic type, by the qualified name of its origin,
 // to the wire shape every instantiation of it has. It is consulted before the
 // instantiation is emitted as a type of its own.
@@ -428,6 +434,12 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token
 		return TypeRef{}
 	}
 	if t.TypeArgs().Len() > 0 {
+		// A generic nullable wrapper writes its type argument's value or null.
+		if genericNullableWrappers[originQualified(t)] && t.TypeArgs().Len() == 1 {
+			ref := b.resolveRef(t.TypeArgs().At(0), ownerKey, field, pos)
+			ref.Nullable = true
+			return ref
+		}
 		if ref, ok := knownGenericOrigins[originQualified(t)]; ok {
 			return ref
 		}

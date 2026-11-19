@@ -2034,6 +2034,10 @@
       "reason": "Internal DVR encoder options, not a client wire model. Protected provider input is a server-owned callback excluded from JSON, never a client URL."
     },
     {
+      "type": "internal/playback.SessionSubtitle",
+      "reason": "Upstream Silo type taken as shipped in the 2026-11-19 sync (the planned subtitle a session records, Silo #4562). Clients read it projected onto the admin session and history rows, not as a standalone object."
+    },
+    {
       "type": "internal/apiv2.AdminJobArtifactCapabilities",
       "reason": "Upstream Silo admin job artifact capability block (API v2, synced 2026-09-23); admin-only, not decoded by native clients."
     },
