@@ -101,7 +101,7 @@ func TestDetachedSourceConfigurationIsNotFoundDB(t *testing.T) {
 		t.Fatalf("deleted source still readable: %v", err)
 	}
 	var left int
-	if err = f.management.pool.QueryRow(ctx, "SELECT count(*) FROM plugin_installations WHERE id=$1", f.installed.Installation.ID).Scan(&left); err != nil || left != 0 {
+	if err = f.management.pool.QueryRow(ctx, "SELECT count(*) FROM bloem_storage_installations WHERE installation_id=$1", f.installed.Installation.ID).Scan(&left); err != nil || left != 0 {
 		t.Fatalf("disabled installation left behind: %d %v", left, err)
 	}
 }

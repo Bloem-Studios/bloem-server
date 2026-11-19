@@ -39,7 +39,7 @@ func (i *task4QueueIngester) IngestFolder(ctx context.Context, folder *models.Me
 				i.t.Fatal("job context not observed")
 			}
 			if i.mode == "renewal" {
-				if _, err := i.fixture.Pool.Exec(ctx, `UPDATE plugin_installations SET enabled=false WHERE id=$1`, *i.fixture.Source.InstallationID); err != nil {
+				if _, err := i.fixture.Pool.Exec(ctx, `UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=$1`, *i.fixture.Source.InstallationID); err != nil {
 					i.t.Fatal(err)
 				}
 			} else {

@@ -53,7 +53,7 @@ func (r *NativeStorageRegistry) ConnectionConfig(ctx context.Context, installati
 	if r == nil || r.configs == nil {
 		return nil, nil
 	}
-	configs, err := r.configs.ListGlobalConfigs(ctx, installationID)
+	configs, err := r.nativeConfigs(ctx, installationID)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (r *NativeStorageRegistry) withStoredS3Settings(ctx context.Context, key, o
 	if r.configs == nil {
 		return nil, nativeManagementUnavailable()
 	}
-	configs, err := r.configs.ListGlobalConfigs(ctx, installationID)
+	configs, err := r.nativeConfigs(ctx, installationID)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (r *NativeStorageRegistry) rotateCredentials(ctx context.Context, key, owne
 	if r.configs == nil {
 		return 0, nativeManagementUnavailable()
 	}
-	configs, err := r.configs.ListGlobalConfigs(ctx, installationID)
+	configs, err := r.nativeConfigs(ctx, installationID)
 	if err != nil {
 		return 0, err
 	}
