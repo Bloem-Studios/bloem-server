@@ -28,7 +28,7 @@ const config: PlayerConfig = {
   apiBaseUrl: "https://bloem.example.test/api/v1",
   getAccessToken: () => "private-token",
   getProfileId: () => "profile",
-  getDeviceId: () => "device",
+  getDeviceHeaders: () => ({ "X-Silo-Device-Id": "device" }),
 };
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   createElement(PlayerConfigProvider, { config, children });
