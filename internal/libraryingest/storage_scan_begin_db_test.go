@@ -164,7 +164,7 @@ func TestStorageScanRevocationBeforeBeginPreservesJournal(t *testing.T) {
 				t.Fatal("scan did not reach post-preflight gate")
 			}
 			enabled := false
-			if err := folders.Update(ctx, folder.ID, catalog.UpdateFolderInput{Enabled: &enabled}); err != nil {
+			if _, err := folders.Update(ctx, folder.ID, catalog.UpdateFolderInput{Enabled: &enabled}); err != nil {
 				t.Fatal(err)
 			}
 			close(gate.release)

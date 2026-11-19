@@ -172,14 +172,14 @@ func TestLibraryLocationsLegacyPathCASDB(t *testing.T) {
 			if mode == "same-rows-update" {
 				_, err = l.pool.Exec(t.Context(), `UPDATE media_folder_paths SET path=path WHERE media_folder_id=$1`, id)
 			} else {
-				err = repo.Update(t.Context(), id, catalog.UpdateFolderInput{Paths: &paths})
+				_, err = repo.Update(t.Context(), id, catalog.UpdateFolderInput{Paths: &paths})
 			}
 			if err != nil {
 				t.Fatal(err)
 			}
 			if mode == "ABA" {
 				paths = []string{"/media/A"}
-				if err := repo.Update(t.Context(), id, catalog.UpdateFolderInput{Paths: &paths}); err != nil {
+				if _, err := repo.Update(t.Context(), id, catalog.UpdateFolderInput{Paths: &paths}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -212,7 +212,7 @@ func TestLibraryLocationsEmptyPathEvidenceScopeDB(t *testing.T) {
 			legacy := func(paths ...string) {
 				t.Helper()
 				replacement := append([]string{}, paths...)
-				if err := catalog.NewFolderRepository(l.pool).Update(t.Context(), id, catalog.UpdateFolderInput{Paths: &replacement}); err != nil {
+				if _, err := catalog.NewFolderRepository(l.pool).Update(t.Context(), id, catalog.UpdateFolderInput{Paths: &replacement}); err != nil {
 					t.Fatal(err)
 				}
 			}

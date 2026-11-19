@@ -166,7 +166,7 @@ func (r *NativeStorageRegistry) PrepareInitialS3InstallAuthorized(ctx context.Co
 		return nil, errors.Join(err, rollbackErr)
 	}
 	var reserved int64
-	if err := r.pool.QueryRow(ctx, `SELECT nextval('bloem_storage_installation_id_seq')`).Scan(&reserved); err != nil {
+	if err := r.pool.QueryRow(ctx, `SELECT nextval(pg_get_serial_sequence('public.bloem_storage_installations','installation_id'))`).Scan(&reserved); err != nil {
 		return nil, err
 	}
 	id := int(reserved)

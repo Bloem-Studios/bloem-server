@@ -167,7 +167,7 @@ func testStorageScanCompletionAuthority(t *testing.T, binary []byte, manifest *p
 		switch mode {
 		case "library":
 			enabled := false
-			if err := folders.Update(ctx, folder.ID, catalog.UpdateFolderInput{Enabled: &enabled}); err != nil {
+			if _, err := folders.Update(ctx, folder.ID, catalog.UpdateFolderInput{Enabled: &enabled}); err != nil {
 				t.Fatal(err)
 			}
 		case "installation":

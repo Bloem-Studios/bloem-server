@@ -10,20 +10,14 @@
     "\t\t\t\trecEngine.WithScopeResolver(policy.NewViewerResolver(recUserRepo, userStoreProvider, nil, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults))",
     "\t\t\tapiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair), ipResolver, networkAccess.Registry)",
     "\t\t\tdefer heartbeatWriter.Stop()",
-    "\t\t\tslog.Error(\"heartbeat cleanup error\", \"error\", err)",
     "\t\tdefer reconciler.Stop()",
-    "\t\tif err := heartbeatWriter.CleanupSelf(shutdownCtx); err != nil {",
     "\t\tmigErr := database.MigrateDownTo(migCtx, pool, migrations.FS, \"sql\", *migrateDownTo)",
     "\t\tresolver.ReplaceSources(nil)",
     "\t\tstatusErr := database.PrintMigrationStatus(migCtx, pool, migrations.FS, \"sql\", os.Stdout)",
-    "\t\t}",
-    "\t// 2b. Remove this node's heartbeat and sessions from shared state.",
     "\t_ = heartbeatWriter",
     "\t_ = reconciler",
     "\taccessGroupStore := access.NewGroupStore(pool)",
-    "\tif heartbeatWriter != nil {",
-    "\tresolver.ReplaceSources(registrations)",
-    "\t}"
+    "\tresolver.ReplaceSources(registrations)"
    ]
   },
   "contracts/api/v2/fixtures/admin_api_key_capabilities.json": {
@@ -167,24 +161,6 @@
     "\t\t\th.HandleDirectDownloadViaProxy(rec, downloadTestRequest(method, \"/direct-download-proxy?file_id=42\", nil, 7, \"\", \"\"))",
     "\t\tctx := apimw.SetProfileID(apimw.SetClaims(context.Background(), &auth.Claims{",
     "\tNewDownloadHandler(overrideCeilingDownloadService(t, \"1080p\")).HandleDirectDownload(rec, downloadTestRequest(http.MethodGet, \"/direct-download?file_id=42\", nil, 7, \"\", \"\"))"
-   ]
-  },
-  "internal/api/handlers/libraries_service.go": {
-   "kind": "lines",
-   "lines": [
-    "\t\t\t\tFolder:  folder,",
-    "\t\t\t\tMode:    scantrigger.ModeLibrary,",
-    "\t\t\t\tTrigger: \"library_paths_changed\",",
-    "\t\t\t\tslog.WarnContext(ctx, \"queue library path-change scan failed\", \"component\", \"api\", \"library_id\", folder.ID, \"error\", err)",
-    "\t\t\th.recordAcceptedScan(updateScanID, &scantrigger.Target{",
-    "\t\t\th.runFolderScanAsync(updateScanID, folder, \"library_paths_changed\")",
-    "\t\t\tif _, err := h.ScanQueue.EnqueueLibraryScan(ctx, folder.ID, \"library_paths_changed\"); err != nil {",
-    "\t\t\tupdateScanID := ulid.Make().String()",
-    "\t\t\t}",
-    "\t\t\t})",
-    "\t\tif h.ScanQueue != nil {",
-    "\t\t}",
-    "\t\t} else {"
    ]
   },
   "internal/api/handlers/notifications.go": {
@@ -519,7 +495,6 @@
     "\t\tif e := RecomputeSeriesEpisodeMembershipDenorms(ctx, tx, seriesIDs); e != nil {",
     "\t\tif e := moveCollectionsOffFolder(ctx, tx, id); e != nil {",
     "\t\tif e := tx.QueryRow(ctx, `",
-    "\t\treturn fmt.Errorf(\"committing update transaction: %w\", err)",
     "\t\treturn nil, fmt.Errorf(\"deleting folder: %w\", err)",
     "\t\treturn tx.Commit(ctx)",
     "\t\ttx, e := r.pool.Begin(ctx)",
@@ -536,9 +511,7 @@
     "\terr = retryOnDeadlock(ctx, deleteFolder)",
     "\tfor attempt := 1; errors.Is(err, errFolderCollectionsChanged) && attempt < 5; attempt++ {",
     "\tif err != nil {",
-    "\tif err := tx.Commit(ctx); err != nil {",
     "\treturn rows.Err()",
-    "\t}",
     "\t}",
     "\t}"
    ]
@@ -1160,7 +1133,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "bf0855126f3869bb"
+   "func main() {": "0ae17bd806313f3e"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1207,7 +1180,7 @@
   },
   "internal/api/handlers/libraries_service.go": {
    "func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateReq": "07a6e8fcc49cd4de",
-   "func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req": "5b14de4b6269ecc8",
+   "func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req": "19f2a5bcf86c3ecd",
    "func (h *LibraryHandler) normalizeNewLibrary(req *LibraryCreateRequest) error {": "8a68da3298a0940d"
   },
   "internal/api/handlers/notifications.go": {
@@ -1228,15 +1201,15 @@
   },
   "internal/api/handlers/playback_v3.go": {
    "func (h *PlaybackHandler) deleteRequiredProgressiveRemuxAuthorityV3(ctx context.": "a907ccb3b12d875a",
-   "func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte": "4f21220942121d01",
+   "func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte": "0f94a1aee5e58704",
    "func (h *PlaybackHandler) lazyDVRPUStrippableV3(ctx context.Context, file *model": "b086b31ad1c90d94",
    "func (h *PlaybackHandler) prepareIdentityTransportV3(r *http.Request, session *p": "7ee91996dc162749",
    "func (h *PlaybackHandler) prepareLocalTransportV3(r *http.Request, session *play": "3d80a841260276b7",
    "func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla": "54aca9ca22d5c46f",
    "func (h *PlaybackHandler) prepareTransportWithPolicyAndExclusionsV3(": "9863774da1c21028",
    "func (h *PlaybackHandler) raceCopySafetyV3(fileID int, plan *playback.PlanV3) {": "e66f2ec5673ea8fd",
-   "func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr": "aee1e1f8d26e5ccb",
-   "func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt": "b52b33ba95b43dac",
+   "func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr": "c0e3a980803ab271",
+   "func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt": "8e55280fe3780cf2",
    "func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.De": "439556aa51960eac"
   },
   "internal/api/handlers/plugins.go": {
@@ -1338,7 +1311,6 @@
   "internal/catalog/folder_repo.go": {
    "func (r *FolderRepository) Create(ctx context.Context, input CreateFolderInput)": "26a8e5e1166241f6",
    "func (r *FolderRepository) DeleteWithStats(": "d13c4a6a7a8e7411",
-   "func (r *FolderRepository) Update(ctx context.Context, id int, input UpdateFolde": "b65d4d2885e0d36f",
    "func (r *FolderRepository) loadPaths(ctx context.Context, folders []*models.Medi": "04f0dbb4239fc23d",
    "func CreateFolderInTx(ctx context.Context, tx pgx.Tx, input CreateFolderInput) (": "c78c510b88b16304"
   },
@@ -1346,7 +1318,7 @@
    "func (r *LibraryItemRepository) reconcileMembershipsOnce(ctx context.Context, fo": "1ca28aaf96304b04"
   },
   "internal/catalog/query_cursor.go": {
-   "func (e *QueryExecutor) PreviewCursorPage(ctx context.Context, def QueryDefiniti": "c89037bbc435ef44"
+   "func (e *QueryExecutor) PreviewCursorPage(ctx context.Context, def QueryDefiniti": "29dd2952a3c99eed"
   },
   "internal/catalogseed/service.go": {
    "func (s *Service) ImportReader(ctx context.Context, r io.Reader, opts ImportOpti": "a408994a2849dea1"
@@ -1454,7 +1426,7 @@
   },
   "internal/playback/transcode_manager.go": {
    "func (m *TranscodeManager) doReconstructTranscode(ctx context.Context, sessionID": "5c905df95168077f",
-   "func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str": "512a57d8f7b782f5",
+   "func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str": "570be3518218bb4b",
    "func (m *TranscodeManager) registerReconstructedSession(ctx context.Context, s *": "26c74c8af3d31a6e"
   },
   "internal/plugins/content.go": {
@@ -1590,5 +1562,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "bd40bd9ebfa46694818c8cabee581a479c51a8a1"
+ "silo": "b6aa666bb0c3cd73d1e2eee350e37953786da9be"
 }
