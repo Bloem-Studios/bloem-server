@@ -1,15 +1,9 @@
 package playback
 
 import (
-	"bytes"
-	"context"
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
-	"time"
-
-	"github.com/Silo-Server/silo-server/internal/procgroup"
 )
 
 // AirPlay-aware planning (Bloem).
@@ -33,10 +27,11 @@ import (
 //     PlanPlaybackAirPlayAwareV3. They run on every planning pass, so a replan
 //     after a route change sees the new route: back on the device's own output
 //     the request is unchanged and the normal plan returns;
-//   - ProbeTransformationRegistryWithToneMapV3Result (transformations_v3.go)
-//     defines the Dolby audio transformations;
-//   - the "ac3" and "eac3" cases of appendAudioArgs (transcode.go) follow
-//     Silo's encode line with bloemDolbyAudioTargetsV3.
+//
+// The Dolby surround conversion itself is Silo's: its audio_to_ac3 and
+// audio_to_eac3 transformations, their registry probe and their encode
+// (surround_conversion_v3.go). An AirPlay plan names the same transformation
+// and runs the same 48 kHz 5.1 encode as Silo's own surround conversion.
 
 const (
 	// OutputSinkTypeAirPlayV3 is the output.sink_type Apple clients report while
@@ -118,22 +113,12 @@ func PlanPlaybackAirPlayAwareV3(input PlannerInputV3) PlannerResultV3 {
 }
 
 const (
-	// TransformationAudioToAC3V3 and TransformationAudioToEAC3V3 name the
-	// server's Dolby surround encodes. A plan lists one in place of
-	// audio_to_aac when it converts surround audio for an AirPlay receiver.
-	TransformationAudioToAC3V3  = "audio_to_ac3"
-	TransformationAudioToEAC3V3 = "audio_to_eac3"
-
-	// TransformationAudioToDolbyRecipeVersionV3 versions both Dolby recipes:
-	// the source's channels mapped to 5.1 by FFmpeg's own downmix, encoded at
-	// airPlaySurroundAudioKbpsV3.
-	TransformationAudioToDolbyRecipeVersionV3 = "1"
-
-	// airPlaySurroundAudioKbpsV3 is the 5.1 rate Apple's HLS authoring
-	// specification recommends for Dolby Digital, and the rate the planner
-	// already reserves for 5.1 AAC, so the stream's total does not change.
-	airPlaySurroundAudioKbpsV3 = 384
-	airPlaySurroundChannelsV3  = 6
+	// airPlaySurroundBudgetKbpsV3 is the rate the planner reserves for 5.1
+	// AAC. A plan whose budget reserved less keeps its AAC; one that reserved
+	// it moves to Silo's Dolby encode, which runs at
+	// surroundBitstreamBitrateKbpsV3.
+	airPlaySurroundBudgetKbpsV3 = 384
+	airPlaySurroundChannelsV3   = surroundBitstreamChannelsV3
 )
 
 // airPlaySurroundCodecsV3 is the order a surround conversion tries. AC-3
@@ -168,7 +153,7 @@ func adaptAirPlayAudioV3(input PlannerInputV3, result PlannerResultV3) PlannerRe
 		return result
 	}
 	// A tight budget reserved less than the Dolby rate; keep what it sized.
-	if result.TargetAudioBitrateKbps > 0 && result.TargetAudioBitrateKbps < airPlaySurroundAudioKbpsV3 {
+	if result.TargetAudioBitrateKbps > 0 && result.TargetAudioBitrateKbps < airPlaySurroundBudgetKbpsV3 {
 		return result
 	}
 	var registry *TransformationRegistryV3
@@ -192,7 +177,8 @@ func adaptAirPlayAudioV3(input PlannerInputV3, result PlannerResultV3) PlannerRe
 		adapted.Transformations = slices.Clone(plan.Transformations)
 		for i, transformation := range adapted.Transformations {
 			if transformation.Name == TransformationAudioToAACV3 {
-				adapted.Transformations[i] = TransformationV3{Name: choice.transformation, Executor: ExecutorServerV3, RecipeVersion: TransformationAudioToDolbyRecipeVersionV3, ValidatedClaims: []string{ClaimAudioDecodeV3}}
+				_, version := surroundBitstreamTransformationV3(choice.codec)
+				adapted.Transformations[i] = TransformationV3{Name: choice.transformation, Executor: ExecutorServerV3, RecipeVersion: version, ValidatedClaims: []string{ClaimAudioDecodeV3}}
 			}
 		}
 		adapted.DegradationWarnings = slices.Clone(plan.DegradationWarnings)
@@ -207,7 +193,7 @@ func adaptAirPlayAudioV3(input PlannerInputV3, result PlannerResultV3) PlannerRe
 		}
 		result.Plan = &adapted
 		result.TargetAudioCodec = choice.codec
-		result.TargetAudioBitrateKbps = airPlaySurroundAudioKbpsV3
+		result.TargetAudioBitrateKbps = surroundBitstreamBitrateKbpsV3
 		return result
 	}
 	return result
@@ -221,50 +207,4 @@ func clientDecodesHLSAudioV3(request StartRequestV3, codec string, channels int)
 	})
 	return listed && deliverySupportsAudioClaimV3(request, DeliveryClassHLSV3, codec, AudioClaimsV3{Codec: codec}, true) &&
 		!deliveryExceedsMaxChannelsV3(request, DeliveryClassHLSV3, codec, channels)
-}
-
-// bloemDolbyAudioTargetsV3 follows Silo's AC-3 or E-AC-3 encode in
-// appendAudioArgs (its codec and fixed rate, the last two arguments) with the
-// plan's rate when it froze one, and the channel count it froze. A zero
-// channel count leaves FFmpeg to keep the source's layout, as Silo's encode
-// does.
-func bloemDolbyAudioTargetsV3(args []string, opts TranscodeOpts) []string {
-	if n := len(args); opts.TargetAudioBitrateKbps > 0 && n >= 2 && args[n-2] == "-b:a" {
-		args[n-1] = strconv.Itoa(opts.TargetAudioBitrateKbps) + "k"
-	}
-	if opts.TargetAudioChannels > 0 {
-		args = append(args, "-ac", strconv.Itoa(opts.TargetAudioChannels))
-	}
-	return args
-}
-
-// addDolbyAudioV3 defines the AC-3 and E-AC-3 transformations on a probed
-// registry. Each needs its encoder and a one-frame encode of a 7.1 input to 5.1,
-// the conversion the plan names. A probe that could not run, as opposed to one
-// FFmpeg rejected, leaves the registry to be probed again soon, as the HEVC
-// probe does, rather than caching "unavailable".
-func (r *TransformationRegistryV3) addDolbyAudioV3(ctx context.Context, ffmpegPath string, encoders []byte, ffmpegFound bool) {
-	for _, choice := range airPlaySurroundCodecsV3 {
-		available := false
-		if ffmpegFound && bytes.Contains(encoders, []byte(" "+choice.codec+" ")) {
-			probeCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
-			err := procgroup.CommandContext(probeCtx, ffmpegPath,
-				"-hide_banner", "-loglevel", "error",
-				"-f", "lavfi", "-i", "anullsrc=r=48000:cl=7.1",
-				"-frames:a", "1", "-c:a", choice.codec, "-ac", strconv.Itoa(airPlaySurroundChannelsV3), "-b:a", strconv.Itoa(airPlaySurroundAudioKbpsV3)+"k",
-				"-f", "null", "-",
-			).Run()
-			timedOut := probeCtx.Err() != nil
-			cancel()
-			available = err == nil
-			if timedOut || audioRecipeProbeInfrastructureError(err) != nil {
-				r.refreshAfter = time.Now().Add(transformationProbeRetryDelayV3)
-			}
-		}
-		r.entries[choice.transformation] = TransformationSpecV3{
-			Name: choice.transformation, RecipeVersion: TransformationAudioToDolbyRecipeVersionV3, Available: available,
-			RequiredCapability: "ffmpeg_encoder:" + choice.codec + "+ffmpeg_encode_smoke:surround_5_1_v1",
-			ValidatedClaims:    []string{ClaimAudioDecodeV3}, TerminalReason: TerminalAudioConversionUnsupportedV3,
-		}
-	}
 }

@@ -97,22 +97,23 @@ func (s *heartbeatShutdownStub) CleanupSelf(context.Context) error {
 	return s.cleanupErr
 }
 
-func TestShutdownSharedWorkerOwnershipSignalsAndJoinsBeforeCleanup(t *testing.T) {
+func TestJoinSharedWorkersSignalsBothBeforeJoiningEither(t *testing.T) {
 	recorder := &workerShutdownRecorder{}
 	reconciler := &reconcilerShutdownStub{recorder: recorder}
 	heartbeat := &heartbeatShutdownStub{recorder: recorder}
 
-	result := shutdownSharedWorkerOwnership(context.Background(), reconciler, heartbeat)
-	if result.reconcilerJoinErr != nil || result.heartbeatJoinErr != nil || result.cleanupErr != nil {
-		t.Fatalf("shutdown result = %+v, want no errors", result)
+	result := joinSharedWorkers(context.Background(), reconciler, heartbeat)
+	if result.reconcilerJoinErr != nil || result.heartbeatJoinErr != nil || !result.cleanupAllowed() {
+		t.Fatalf("join result = %+v, want both joined and cleanup allowed", result)
 	}
-	want := []string{"reconciler-stop", "heartbeat-stop", "reconciler-wait", "heartbeat-wait", "cleanup"}
+	// Cleanup is Silo's own shutdown step, after the watch time is saved.
+	want := []string{"reconciler-stop", "heartbeat-stop", "reconciler-wait", "heartbeat-wait"}
 	if got := recorder.snapshot(); !slices.Equal(got, want) {
 		t.Fatalf("shutdown events = %v, want %v", got, want)
 	}
 }
 
-func TestShutdownSharedWorkerOwnershipSkipsCleanupAfterEitherJoinError(t *testing.T) {
+func TestJoinSharedWorkersRefusesCleanupAfterEitherJoinError(t *testing.T) {
 	reconcilerErr := errors.New("reconciler blocked")
 	heartbeatErr := errors.New("heartbeat blocked")
 	tests := []struct {
@@ -131,28 +132,26 @@ func TestShutdownSharedWorkerOwnershipSkipsCleanupAfterEitherJoinError(t *testin
 			reconciler := &reconcilerShutdownStub{recorder: recorder, waitErr: tc.reconcilerWaitErr}
 			heartbeat := &heartbeatShutdownStub{recorder: recorder, waitErr: tc.heartbeatWaitErr}
 
-			result := shutdownSharedWorkerOwnership(context.Background(), reconciler, heartbeat)
+			result := joinSharedWorkers(context.Background(), reconciler, heartbeat)
 			if !errors.Is(result.reconcilerJoinErr, tc.reconcilerWaitErr) {
 				t.Fatalf("reconciler join error = %v, want %v", result.reconcilerJoinErr, tc.reconcilerWaitErr)
 			}
 			if !errors.Is(result.heartbeatJoinErr, tc.heartbeatWaitErr) {
 				t.Fatalf("heartbeat join error = %v, want %v", result.heartbeatJoinErr, tc.heartbeatWaitErr)
 			}
-			if result.cleanupErr != nil {
-				t.Fatalf("cleanup error = %v, want nil when cleanup is skipped", result.cleanupErr)
-			}
-			want := []string{"reconciler-stop", "heartbeat-stop", "reconciler-wait", "heartbeat-wait"}
-			if got := recorder.snapshot(); !slices.Equal(got, want) {
-				t.Fatalf("shutdown events = %v, want %v", got, want)
+			if result.cleanupAllowed() {
+				t.Fatal("cleanup allowed after a failed join; a late writer could recreate the rows")
 			}
 		})
 	}
 }
 
-func TestBloemShutdownSharedWorkerOwnershipAcceptsNilConcreteWriters(t *testing.T) {
+func TestBloemJoinSharedWorkersAcceptsNilConcreteWriters(t *testing.T) {
 	var reconciler *worker.Reconciler
 	var heartbeat *worker.HeartbeatWriter
-	bloemShutdownSharedWorkerOwnership(t.Context(), reconciler, heartbeat)
+	if !bloemJoinSharedWorkers(t.Context(), reconciler, heartbeat) {
+		t.Fatal("no writers to join, so cleanup must be allowed")
+	}
 }
 
 // TestBloemNodeURLPrefersNODEURL keeps a replica's heartbeat on the URL the

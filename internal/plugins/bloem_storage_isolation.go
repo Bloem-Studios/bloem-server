@@ -130,18 +130,6 @@ func (s *nativeStorageInstallerStore) Update(ctx context.Context, id int, input 
 	}
 	return s.installationStore.Update(ctx, id, input)
 }
-func (s *nativeStorageInstallerStore) Delete(ctx context.Context, id int) error {
-	if err := nativeStorageGuard(ctx, s.registry, id); err != nil {
-		return err
-	}
-	return s.installationStore.Delete(ctx, id)
-}
-func (s *nativeStorageInstallerStore) SaveArchive(ctx context.Context, id int, manifest []byte, checksum string, data []byte) error {
-	if err := nativeStorageGuard(ctx, s.registry, id); err != nil {
-		return err
-	}
-	return s.installationStore.SaveArchive(ctx, id, manifest, checksum, data)
-}
 
 // IsolateNativeStorage closes the automatic updater's separate installation
 // store path. Call it before Run or registering scheduled update tasks.

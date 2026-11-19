@@ -37,14 +37,14 @@ func (r *LiveTVHistoryRecorder) RecordLiveSession(ctx context.Context, entry liv
 		playMethod = playbackModeDirect
 	}
 	return r.store.RecordHistory(ctx, AdminPlaybackHistoryEntry{
-		SessionID:      entry.SessionID,
-		UserID:         entry.UserID,
-		ProfileID:      entry.ProfileID,
-		MediaItemID:    livetv.HistoryMediaItemID(entry.ChannelID),
-		MediaFileID:    0,
-		PlayMethod:     playMethod,
-		StartedAt:      entry.StartedAt.UTC().Format(time.RFC3339Nano),
-		EndedAt:        entry.EndedAt.UTC().Format(time.RFC3339Nano),
-		WatchedSeconds: entry.WatchedSeconds,
+		SessionID:          entry.SessionID,
+		UserID:             entry.UserID,
+		ProfileID:          entry.ProfileID,
+		MediaItemID:        livetv.HistoryMediaItemID(entry.ChannelID),
+		MediaFileID:        0,
+		PlayMethod:         playMethod,
+		StartedAt:          entry.StartedAt.UTC().Format(time.RFC3339Nano),
+		EndedAt:            entry.EndedAt.UTC().Format(time.RFC3339Nano),
+		EndPositionSeconds: entry.WatchedSeconds,
 	})
 }

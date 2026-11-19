@@ -11,10 +11,12 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
+	"github.com/Silo-Server/silo-server/internal/scantrigger"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/oklog/ulid/v2"
 )
 
 // The ordinary Silo create body remains the authority for library options.
@@ -212,4 +214,22 @@ func (h *LibraryHandler) libraryHasStorageLocations(ctx context.Context, folder 
 	}
 	locations, err := storagesource.NewRepository(h.pool).LocationSelections(ctx, folder.ID)
 	return len(locations) > 0, err
+}
+
+// queuePathChangeScan starts the follow-up scan for a committed path change,
+// as UpdateLibrary does for a path edit.
+func (h *LibraryHandler) queuePathChangeScan(ctx context.Context, folder *models.MediaFolder) {
+	if h.ScanQueue != nil {
+		if _, err := h.ScanQueue.EnqueueLibraryScan(ctx, folder.ID, "library_paths_changed"); err != nil {
+			slog.WarnContext(ctx, "queue library path-change scan failed", "component", "api", "library_id", folder.ID, "error", err)
+		}
+	} else {
+		updateScanID := ulid.Make().String()
+		h.recordAcceptedScan(updateScanID, &scantrigger.Target{
+			Folder:  folder,
+			Mode:    scantrigger.ModeLibrary,
+			Trigger: "library_paths_changed",
+		})
+		h.runFolderScanAsync(updateScanID, folder, "library_paths_changed")
+	}
 }

@@ -102,11 +102,7 @@ func TestNativeStorageIsolationInstallerAndUpdaterPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, mutation := range []func() error{
-		func() error { return installer.installations.Delete(t.Context(), 7) },
 		func() error { return installer.installations.Update(t.Context(), 7, UpdateInstallationInput{}) },
-		func() error {
-			return installer.installations.SaveArchive(t.Context(), 7, []byte("{}"), "checksum", []byte("archive"))
-		},
 	} {
 		if err := mutation(); !errors.Is(err, ErrNativeStorageInstallation) {
 			t.Fatalf("installer bypass: %v", err)

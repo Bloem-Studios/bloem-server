@@ -89,7 +89,7 @@ func newBloemSocketFixture(t *testing.T) *bloemSocketFixture {
 		sessions: &bloemSocketSessionFixture{socketSessionFixture: socketSessionFixture{valid: true, account: user}, session: models.AuthSession{ID: "session", UserID: 7, AuthMethod: "account", ExpiresAt: until}},
 		identity: evt.SocketIdentity{UserID: 7, Role: "user", SessionID: "session", AccessExpiresAt: claims.ExpiresAt.Time},
 	}
-	f.h = NewBloemEventsSocketV2(NewEventsHandler(evt.NewHub("bloem-socket-test", nil), nil, nil, nil, nil, nil, nil), evt.NewSocketTicketStore(nil, evt.SocketAudienceEvents), f.sessions, user, f.viewer, apimw.NewActingAdminDecider(func(context.Context, int, string) (bool, bool, error) { return f.primary, true, nil }, nil), nil, f.tenants, f.tenants, "")
+	f.h = NewBloemEventsSocketV2(NewEventsHandler(evt.NewHub("bloem-socket-test", nil), nil, nil, nil, nil, nil), evt.NewSocketTicketStore(nil, evt.SocketAudienceEvents), f.sessions, user, f.viewer, apimw.NewActingAdminDecider(func(context.Context, int, string) (bool, bool, error) { return f.primary, true, nil }, nil), nil, f.tenants, f.tenants, "")
 	return f
 }
 
@@ -383,7 +383,7 @@ func TestBloemEventsSocketAdmitsMonitorKey(t *testing.T) {
 	tenants := &bloemKeyTenants{tenant: tenancy.Context{AccountID: 7, OrganizationID: uuid.New(), MembershipID: uuid.New(), PolicyRevision: 1, SecurityRevision: 1, Legacy: true, OrganizationDefault: true}}
 	sessions := &bloemSocketSessionFixture{socketSessionFixture: socketSessionFixture{valid: true, account: users}}
 	decide := func(context.Context, apimw.ActingAdminRequest) (bool, error) { return true, nil }
-	h := NewBloemEventsSocketV2(NewEventsHandler(evt.NewHub("bloem-key-socket-test", nil), nil, nil, nil, nil, nil, nil), evt.NewSocketTicketStore(nil, evt.SocketAudienceEvents), sessions, users, &bloemSocketViewer{}, decide, keys, tenants, tenants, "")
+	h := NewBloemEventsSocketV2(NewEventsHandler(evt.NewHub("bloem-key-socket-test", nil), nil, nil, nil, nil, nil), evt.NewSocketTicketStore(nil, evt.SocketAudienceEvents), sessions, users, &bloemSocketViewer{}, decide, keys, tenants, tenants, "")
 	identity := evt.SocketIdentity{UserID: 7, Role: "admin", APIKeyID: 3, AccessExpiresAt: time.Now().Add(evt.APIKeySocketMaxLifetime)}
 
 	ticket, err := h.Mint(t.Context(), identity)
@@ -442,7 +442,7 @@ func TestBloemEventsSocketAdmitsProfileKeyInItsOrganization(t *testing.T) {
 	sessions := &bloemSocketSessionFixture{socketSessionFixture: socketSessionFixture{valid: true, account: users}}
 	decide := func(context.Context, apimw.ActingAdminRequest) (bool, error) { return true, nil }
 	viewer := &socketViewerFixture{scope: access.Scope{UserID: 7, ProfileID: "kid", ProfileVerified: true, PolicyRevision: 1}}
-	h := NewBloemEventsSocketV2(NewEventsHandler(evt.NewHub("bloem-profile-key-socket-test", nil), nil, nil, nil, nil, nil, nil), evt.NewSocketTicketStore(nil, evt.SocketAudienceEvents), sessions, users, viewer, decide, keys, tenants, tenants, "")
+	h := NewBloemEventsSocketV2(NewEventsHandler(evt.NewHub("bloem-profile-key-socket-test", nil), nil, nil, nil, nil, nil), evt.NewSocketTicketStore(nil, evt.SocketAudienceEvents), sessions, users, viewer, decide, keys, tenants, tenants, "")
 	identity := evt.SocketIdentity{UserID: 7, Role: "user", APIKeyID: 3, ProfileID: "kid", AccessExpiresAt: time.Now().Add(evt.APIKeySocketMaxLifetime)}
 
 	ticket, err := h.Mint(t.Context(), identity)

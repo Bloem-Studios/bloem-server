@@ -20,8 +20,8 @@ func dolbyRegistryV3(ac3, eac3 bool) *TransformationRegistryV3 {
 	return NewTransformationRegistryV3([]TransformationSpecV3{
 		{Name: TransformationAudioToAACV3, Available: true},
 		{Name: TransformationVideoToH264V3, Available: true},
-		{Name: TransformationAudioToAC3V3, RecipeVersion: TransformationAudioToDolbyRecipeVersionV3, Available: ac3},
-		{Name: TransformationAudioToEAC3V3, RecipeVersion: TransformationAudioToDolbyRecipeVersionV3, Available: eac3},
+		{Name: TransformationAudioToAC3V3, RecipeVersion: TransformationAudioToAC3RecipeVersionV3, Available: ac3},
+		{Name: TransformationAudioToEAC3V3, RecipeVersion: TransformationAudioToEAC3RecipeVersionV3, Available: eac3},
 	})
 }
 
@@ -78,11 +78,11 @@ func TestPlanPlaybackV3AirPlayConvertsSurroundToAC3(t *testing.T) {
 			}
 			for _, transformation := range plan.Transformations {
 				if transformation.Name == TransformationAudioToAC3V3 && (transformation.Executor != ExecutorServerV3 ||
-					transformation.RecipeVersion != TransformationAudioToDolbyRecipeVersionV3 || !slices.Contains(transformation.ValidatedClaims, ClaimAudioDecodeV3)) {
+					transformation.RecipeVersion != TransformationAudioToAC3RecipeVersionV3 || !slices.Contains(transformation.ValidatedClaims, ClaimAudioDecodeV3)) {
 					t.Fatalf("transformation = %#v", transformation)
 				}
 			}
-			if !cast.TranscodeAudio || cast.TargetAudioCodec != "ac3" || cast.TargetAudioChannels != 6 || cast.TargetAudioBitrateKbps != 384 {
+			if !cast.TranscodeAudio || cast.TargetAudioCodec != "ac3" || cast.TargetAudioChannels != 6 || cast.TargetAudioBitrateKbps != surroundBitstreamBitrateKbpsV3 {
 				t.Fatalf("executor recipe = %s x%d at %d kbps, transcode=%v", cast.TargetAudioCodec, cast.TargetAudioChannels, cast.TargetAudioBitrateKbps, cast.TranscodeAudio)
 			}
 			// A remux says which codec it converted to; an encode re-encodes every
@@ -286,24 +286,14 @@ func TestPlanPlaybackV3RouteChangeSwitchesAudioWithTheOutput(t *testing.T) {
 	}
 }
 
-func TestAppendAudioArgsDolbyUsesThePlannedChannelsAndRate(t *testing.T) {
-	for _, test := range []struct {
-		name string
-		opts TranscodeOpts
-		want []string
-	}{
-		{"AC-3 surround plan", TranscodeOpts{TargetCodecAudio: "ac3", TargetAudioChannels: 6, TargetAudioBitrateKbps: 384}, []string{"-c:a", "ac3", "-b:a", "384k", "-ac", "6"}},
-		{"E-AC-3 surround plan", TranscodeOpts{TargetCodecAudio: "eac3", TargetAudioChannels: 6, TargetAudioBitrateKbps: 384}, []string{"-c:a", "eac3", "-b:a", "384k", "-ac", "6"}},
-		{"mixed-case codec", TranscodeOpts{TargetCodecAudio: " AC3 ", TargetAudioChannels: 6, TargetAudioBitrateKbps: 384}, []string{"-c:a", "ac3", "-b:a", "384k", "-ac", "6"}},
-		// Encodes that name no channels or rate keep the arguments they had.
-		{"AC-3 without a plan", TranscodeOpts{TargetCodecAudio: "ac3"}, []string{"-c:a", "ac3", "-b:a", "448k"}},
-		{"E-AC-3 without a plan", TranscodeOpts{TargetCodecAudio: "eac3"}, []string{"-c:a", "eac3", "-b:a", "384k"}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if got := appendAudioArgs(nil, test.opts); !reflect.DeepEqual(got, test.want) {
-				t.Fatalf("args = %v, want %v", got, test.want)
-			}
-		})
+// An AirPlay Dolby plan freezes six channels, so the encode is Silo's surround
+// recipe, the one the transformation it names promises.
+func TestAppendAudioArgsAirPlayDolbyPlanRunsSilosSurroundRecipe(t *testing.T) {
+	for _, codec := range []string{"ac3", "eac3"} {
+		opts := TranscodeOpts{TargetCodecAudio: codec, TargetAudioChannels: airPlaySurroundChannelsV3, TargetAudioBitrateKbps: surroundBitstreamBitrateKbpsV3}
+		if got, want := appendAudioArgs(nil, opts), surroundBitstreamAudioArgsV3(codec); !reflect.DeepEqual(got, want) {
+			t.Fatalf("%s args = %v, want %v", codec, got, want)
+		}
 	}
 }
 
@@ -339,7 +329,7 @@ func TestAppendAudioArgsDolbyEncodesSurroundWithFFmpeg(t *testing.T) {
 	for _, codec := range []string{"ac3", "eac3"} {
 		output := filepath.Join(dir, codec+".ts")
 		args := []string{"-hide_banner", "-loglevel", "error", "-i", source, "-vn"}
-		args = appendAudioArgs(args, TranscodeOpts{TargetCodecAudio: codec, TargetAudioChannels: 6, TargetAudioBitrateKbps: 384})
+		args = appendAudioArgs(args, TranscodeOpts{TargetCodecAudio: codec, TargetAudioChannels: 6, TargetAudioBitrateKbps: surroundBitstreamBitrateKbpsV3})
 		run(ffmpegPath, append(args, "-f", "mpegts", "-y", output)...)
 		// ffprobe lists an MPEG-TS stream again under its program; the first line
 		// is the stream itself.
@@ -373,7 +363,8 @@ func TestProbeTransformationRegistryV3AdvertisesDolbyEncodes(t *testing.T) {
 	}
 	for _, name := range []string{TransformationAudioToAC3V3, TransformationAudioToEAC3V3} {
 		got, ok := names[name]
-		if !ok || got.RecipeVersion != TransformationAudioToDolbyRecipeVersionV3 || got.Executor != ExecutorServerV3 {
+		_, version := surroundBitstreamTransformationV3(strings.TrimPrefix(name, "audio_to_"))
+		if !ok || got.RecipeVersion != version || got.Executor != ExecutorServerV3 {
 			t.Fatalf("%s advertised as %#v (found %v)", name, got, ok)
 		}
 	}
@@ -384,7 +375,7 @@ func TestProbeTransformationRegistryV3AdvertisesDolbyEncodes(t *testing.T) {
 	if !onlyAC3.Available(TransformationAudioToAC3V3) || onlyAC3.Available(TransformationAudioToEAC3V3) {
 		t.Fatalf("ac3=%v eac3=%v, want only ac3", onlyAC3.Available(TransformationAudioToAC3V3), onlyAC3.Available(TransformationAudioToEAC3V3))
 	}
-	widened := onlyAC3.WithAdvertised([]TransformationV3{{Name: TransformationAudioToEAC3V3, Executor: ExecutorServerV3, RecipeVersion: TransformationAudioToDolbyRecipeVersionV3}})
+	widened := onlyAC3.WithAdvertised([]TransformationV3{{Name: TransformationAudioToEAC3V3, Executor: ExecutorServerV3, RecipeVersion: TransformationAudioToEAC3RecipeVersionV3}})
 	if !widened.Available(TransformationAudioToEAC3V3) {
 		t.Fatal("a pooled node's E-AC-3 advertisement did not widen the registry")
 	}

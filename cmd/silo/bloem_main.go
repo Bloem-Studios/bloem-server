@@ -53,15 +53,16 @@ import (
 // Bloem-owned declarations of package main, moved out of main.go so the Silo
 // file carries only the call sites. See contracts/seams.txt.
 
-// bloemShutdownSharedWorkerOwnership fences and joins every writer before
-// removing this node's shared ownership. If either join fails, leave both rows
-// for TTL cleanup: deleting
-// first would allow a late reconciliation or heartbeat to recreate them.
-func bloemShutdownSharedWorkerOwnership(
+// bloemJoinSharedWorkers fences and joins the reconciler and the heartbeat
+// writer before Silo's shutdown saves watch time and removes this node's
+// shared rows. It reports whether that removal may run: after a failed join a
+// writer may still be running and recreate the rows, so main skips Silo's
+// cleanup and leaves them for TTL cleanup.
+func bloemJoinSharedWorkers(
 	ctx context.Context,
 	reconciler *worker.Reconciler,
 	heartbeat *worker.HeartbeatWriter,
-) {
+) bool {
 	var reconcilerLifecycle reconcilerShutdown
 	if reconciler != nil {
 		reconcilerLifecycle = reconciler
@@ -70,16 +71,14 @@ func bloemShutdownSharedWorkerOwnership(
 	if heartbeat != nil {
 		heartbeatLifecycle = heartbeat
 	}
-	workerShutdown := shutdownSharedWorkerOwnership(ctx, reconcilerLifecycle, heartbeatLifecycle)
-	if workerShutdown.reconcilerJoinErr != nil {
-		slog.ErrorContext(ctx, "reconciler shutdown error; skipping shared ownership cleanup", "error", workerShutdown.reconcilerJoinErr)
+	joined := joinSharedWorkers(ctx, reconcilerLifecycle, heartbeatLifecycle)
+	if joined.reconcilerJoinErr != nil {
+		slog.ErrorContext(ctx, "reconciler shutdown error; skipping shared ownership cleanup", "error", joined.reconcilerJoinErr)
 	}
-	if workerShutdown.heartbeatJoinErr != nil {
-		slog.ErrorContext(ctx, "heartbeat shutdown error; skipping shared ownership cleanup", "error", workerShutdown.heartbeatJoinErr)
+	if joined.heartbeatJoinErr != nil {
+		slog.ErrorContext(ctx, "heartbeat shutdown error; skipping shared ownership cleanup", "error", joined.heartbeatJoinErr)
 	}
-	if workerShutdown.cleanupErr != nil {
-		slog.ErrorContext(ctx, "shared ownership cleanup error", "error", workerShutdown.cleanupErr)
-	}
+	return joined.cleanupAllowed()
 }
 
 type reconcilerShutdown interface {
@@ -90,23 +89,25 @@ type reconcilerShutdown interface {
 type heartbeatShutdown interface {
 	Stop()
 	StopAndWait(context.Context) error
-	CleanupSelf(context.Context) error
 }
 
-type sharedWorkerShutdownResult struct {
+type sharedWorkerJoinResult struct {
 	reconcilerJoinErr error
 	heartbeatJoinErr  error
-	cleanupErr        error
 }
 
-// shutdownSharedWorkerOwnership fences both writers before joining either one.
-// Reconciliation is joined first because it can recreate a session row; the
-// shared session and heartbeat rows are deleted only after both joins succeed.
-func shutdownSharedWorkerOwnership(
+// cleanupAllowed reports whether both writers were joined.
+func (r sharedWorkerJoinResult) cleanupAllowed() bool {
+	return r.reconcilerJoinErr == nil && r.heartbeatJoinErr == nil
+}
+
+// joinSharedWorkers fences both writers before joining either one.
+// Reconciliation is joined first because it can recreate a session row.
+func joinSharedWorkers(
 	ctx context.Context,
 	reconciler reconcilerShutdown,
 	heartbeat heartbeatShutdown,
-) sharedWorkerShutdownResult {
+) sharedWorkerJoinResult {
 	if reconciler != nil {
 		reconciler.Stop()
 	}
@@ -114,15 +115,12 @@ func shutdownSharedWorkerOwnership(
 		heartbeat.Stop()
 	}
 
-	var result sharedWorkerShutdownResult
+	var result sharedWorkerJoinResult
 	if reconciler != nil {
 		result.reconcilerJoinErr = reconciler.StopAndWait(ctx)
 	}
 	if heartbeat != nil {
 		result.heartbeatJoinErr = heartbeat.StopAndWait(ctx)
-	}
-	if heartbeat != nil && result.reconcilerJoinErr == nil && result.heartbeatJoinErr == nil {
-		result.cleanupErr = heartbeat.CleanupSelf(ctx)
 	}
 	return result
 }

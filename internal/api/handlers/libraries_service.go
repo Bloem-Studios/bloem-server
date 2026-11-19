@@ -21,6 +21,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/metadata"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
+	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/scantrigger"
 	"github.com/Silo-Server/silo-server/internal/sections"
 )
@@ -355,7 +356,7 @@ func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req 
 		return LibraryView{}, err
 	}
 
-	err = h.folderRepo.Update(ctx, id, catalog.UpdateFolderInput{
+	enabledChanged, err := h.folderRepo.Update(ctx, id, catalog.UpdateFolderInput{
 		Paths:                    req.Paths,
 		Type:                     req.Type,
 		Name:                     req.Name,
@@ -380,6 +381,11 @@ func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req 
 		}
 		slog.ErrorContext(ctx, "updating library", "component", "api", "error", err)
 		return LibraryView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to update library")
+	}
+	// Publish before the read below: a failed read still answers 500, and a
+	// retry would find nothing left to change.
+	if enabledChanged {
+		h.publishLibraryEnabledChanged(ctx, id, *req.Enabled)
 	}
 	h.pokeRealtimeMonitor()
 	if req.affectsTrickplay() {
@@ -428,26 +434,41 @@ func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req 
 
 	// Rescan when paths have changed (folders added or removed).
 	if req.Paths != nil && !slices.Equal(oldFolder.Paths, *req.Paths) {
-		h.queuePathChangeScan(ctx, folder)
+		if h.ScanQueue != nil {
+			if _, err := h.ScanQueue.EnqueueLibraryScan(ctx, folder.ID, "library_paths_changed"); err != nil {
+				slog.WarnContext(ctx, "queue library path-change scan failed", "component", "api", "library_id", folder.ID, "error", err)
+			}
+		} else {
+			updateScanID := ulid.Make().String()
+			h.recordAcceptedScan(updateScanID, &scantrigger.Target{
+				Folder:  folder,
+				Mode:    scantrigger.ModeLibrary,
+				Trigger: "library_paths_changed",
+			})
+			h.runFolderScanAsync(updateScanID, folder, "library_paths_changed")
+		}
 	}
 
 	return h.toLibraryResponseWithPoster(ctx, folder), nil
 }
 
-// queuePathChangeScan starts the follow-up scan for a committed path change.
-func (h *LibraryHandler) queuePathChangeScan(ctx context.Context, folder *models.MediaFolder) {
-	if h.ScanQueue != nil {
-		if _, err := h.ScanQueue.EnqueueLibraryScan(ctx, folder.ID, "library_paths_changed"); err != nil {
-			slog.WarnContext(ctx, "queue library path-change scan failed", "component", "api", "library_id", folder.ID, "error", err)
-		}
-	} else {
-		updateScanID := ulid.Make().String()
-		h.recordAcceptedScan(updateScanID, &scantrigger.Target{
-			Folder:  folder,
-			Mode:    scantrigger.ModeLibrary,
-			Trigger: "library_paths_changed",
-		})
-		h.runFolderScanAsync(updateScanID, folder, "library_paths_changed")
+// publishLibraryEnabledChanged tells administrator catalog subscribers that turning the
+// library on or off changed which items the admin listing returns.
+func (h *LibraryHandler) publishLibraryEnabledChanged(ctx context.Context, libraryID int, enabled bool) {
+	if h.RealtimeHub == nil {
+		return
+	}
+	reason := "library_disabled"
+	if enabled {
+		reason = "library_enabled"
+	}
+	if err := h.RealtimeHub.PublishCatalogLibraryChanged(ctx, notifications.LibraryChangeEvent{
+		LibraryID: libraryID,
+		Reason:    reason,
+		// The listing this tells mirrors to re-read is administrator-only.
+		AdminOnly: true,
+	}); err != nil {
+		slog.WarnContext(ctx, "publish library enabled change", "component", "api", "library_id", libraryID, "error", err)
 	}
 }
 
