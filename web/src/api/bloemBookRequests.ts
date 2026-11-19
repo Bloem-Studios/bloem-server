@@ -50,11 +50,7 @@ export interface EbookRequestIntegrations {
   enabled: boolean;
   integrations: { id: string; name: string; library_id?: number }[];
   libraries: { id: number; name: string }[];
-  /**
-   * native marks the Bookwarehouse storage installation: its connection uses
-   * the installation's own Bookwarehouse connection, so it takes no URL or key.
-   */
-  installations: { id: number; name: string; capability_id: string; native?: boolean }[];
+  installations: { id: number; name: string; capability_id: string }[];
 }
 /** A request plugin's connection test verdict; a failed test is not an HTTP error. */
 export interface RequestIntegrationTestResult {

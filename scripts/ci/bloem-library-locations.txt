@@ -101,18 +101,6 @@
 # A detached source answers configuration and credential changes as not found.
 ./internal/nativestorage TestDetachedSourceConfigurationIsNotFoundDB
 
-# The Bookwarehouse storage plugin also serves ebook and audiobook requests.
-./internal/plugins TestNativeStorageRequestRouterCapabilitiesDB
-./internal/bookrequests TestEbookStorageRequestPluginBindingDatabase
-./internal/bookrequests TestAudiobookNativeCompletionByAudiobookIDDatabase
-# Native audiobook requests also complete by title and author.
-./internal/bookrequests TestAudiobookNativeCompletionByTitleDatabase
-./internal/bookrequests TestAudiobookNativeTitleMatchWhileDownloadingDatabase
-./internal/bookrequests TestAudiobookNativeTitleMatchesGoToReviewDatabase
-./internal/bookrequests TestAudiobookNativeIdentifierBeforeTitleDatabase
-./internal/bookrequests TestAudiobookNativeTitleMatchRespectsPluginReviewDatabase
-./internal/api TestNativeStorageRequestConnectionSetupDatabase
-
 # Integration-tagged storage, ingestion, plugin-registry and authority tests
 # that were on no list, so no CI job ran them.
 ./internal/api TestStorageCoverFreshSessionResourceRevocationDB

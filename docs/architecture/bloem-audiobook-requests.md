@@ -242,7 +242,8 @@ exists in the organization's catalog.
 
 Completion requires all supplied stable identifiers to match one
 `media_items.type=audiobook` item. ISBN-10 and ISBN-13 are equivalent. A title or
-author resemblance is not sufficient here, and an ebook with the same ISBN does not qualify. The match also requires a media-file row in an enabled audiobook
+author resemblance is never sufficient, and an ebook with the same ISBN does
+not qualify. The match also requires a media-file row in an enabled audiobook
 folder owned by the organization, or in a platform folder with an active
 entitlement for that organization. The request, provider-ID, catalog, file,
 folder, owner, organization and entitlement rows are locked while completion

@@ -135,10 +135,11 @@ Existing audiobook digests remain valid.
 ### Fulfillment boundary
 
 Acquisition uses a separate ordinary plugin, `bloem.requests.bookwarehouse`,
-through the existing SDK `request_router.v1` interface. Native storage plugins
-cannot declare this capability. Connections reuse the encrypted
-`request_integrations` store and must explicitly advertise `book`; an empty
-media-type list does not qualify. Integration IDs are opaque strings.
+through the existing SDK `request_router.v1` interface. A native storage plugin
+is never a connection, even when its manifest declares `request_router.v1`.
+Connections reuse the encrypted `request_integrations` store and must explicitly
+advertise `book`; an empty media-type list does not qualify. Integration IDs are
+opaque strings.
 
 Platform administrators configure the lane from an administrative context for
 the default organization or a verified platform context. Platform setup resolves

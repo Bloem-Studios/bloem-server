@@ -13,33 +13,28 @@ import (
 )
 
 // EbookRequestPluginID is the request plugin of the ebook lane.
-// StorageRequestPluginID is the native Bookwarehouse storage plugin, which
-// also serves ebook requests (capability EbookStorageCapabilityID) with the
-// connection of its own installation, so its integrations carry no URL or key.
+// StorageRequestPluginID is the native Bookwarehouse storage plugin whose
+// sources hold the ebook libraries a connection may be linked to.
 const (
-	EbookRequestPluginID     = "bloem.requests.bookwarehouse"
-	StorageRequestPluginID   = "bloem.storage.bookwarehouse"
-	EbookStorageCapabilityID = "ebooks"
+	EbookRequestPluginID   = "bloem.requests.bookwarehouse"
+	StorageRequestPluginID = "bloem.storage.bookwarehouse"
 )
 
 const ebookIntegrationSQL = `
  SELECT ri.id,ri.name,pi.id,ri.capability_id,
  md5(jsonb_build_array(ri.base_url,ri.api_key_ref,ri.plugin_config,ri.updated_at,pi.version,pi.updated_at,pc.metadata,pc.updated_at,
-   (SELECT jsonb_agg(jsonb_build_array(rc.config_key,rc.config_value) ORDER BY rc.config_key) FROM plugin_runtime_configs rc WHERE rc.plugin_installation_id=pi.id))::text),
- pi.plugin_id='` + StorageRequestPluginID + `'
+   (SELECT jsonb_agg(jsonb_build_array(rc.config_key,rc.config_value) ORDER BY rc.config_key) FROM plugin_runtime_configs rc WHERE rc.plugin_installation_id=pi.id))::text)
  FROM request_integrations ri
- JOIN plugin_installations pi ON pi.id=ri.installation_id AND pi.enabled AND pi.kind='plugin' AND pi.plugin_id IN ('` + EbookRequestPluginID + `','` + StorageRequestPluginID + `')
+ JOIN plugin_installations pi ON pi.id=ri.installation_id AND pi.enabled AND pi.kind='plugin' AND pi.plugin_id='` + EbookRequestPluginID + `'
  JOIN plugin_capabilities pc ON pc.plugin_installation_id=pi.id AND pc.capability_type='request_router.v1' AND pc.capability_id=ri.capability_id
  JOIN resource_owners ro ON ro.id=pi.owner_id
  JOIN organizations o ON o.id=$1 AND o.is_default AND (o.status='active' OR o.status='initializing')
- WHERE ri.enabled AND 'book'=ANY(ri.supported_media_types)
- AND ((pi.plugin_id='` + EbookRequestPluginID + `' AND ri.base_url<>'' AND ri.api_key_ref<>'')
-  OR (pi.plugin_id='` + StorageRequestPluginID + `' AND ri.capability_id='` + EbookStorageCapabilityID + `'))
+ WHERE ri.enabled AND 'book'=ANY(ri.supported_media_types) AND ri.base_url<>'' AND ri.api_key_ref<>''
  AND ((ro.kind='organization' AND ro.organization_id=o.id) OR ro.kind='platform')`
 
 func (s *Service) loadEbookIntegration(ctx context.Context, tx pgx.Tx, org uuid.UUID, id string) (EbookIntegration, error) {
 	in := EbookIntegration{OrganizationID: org}
-	err := tx.QueryRow(ctx, ebookIntegrationSQL+` AND ri.id=$2 FOR SHARE OF ri,pi,pc,ro,o`, org, id).Scan(&in.ID, &in.Name, &in.InstallationID, &in.CapabilityID, &in.ConfigurationRevision, &in.Native)
+	err := tx.QueryRow(ctx, ebookIntegrationSQL+` AND ri.id=$2 FOR SHARE OF ri,pi,pc,ro,o`, org, id).Scan(&in.ID, &in.Name, &in.InstallationID, &in.CapabilityID, &in.ConfigurationRevision)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return in, ErrConflict
 	}
@@ -56,9 +51,6 @@ func (s *Service) loadEbookIntegration(ctx context.Context, tx pgx.Tx, org uuid.
 	_, source, err := s.loadEbookLibrary(ctx, tx, org, in.LibraryID)
 	if err != nil {
 		return in, err
-	}
-	if !ebookLibraryServes(in, source) {
-		return in, ErrInvalid
 	}
 	in.StorageSourceKey, in.StorageConfigurationRevision = source.Key, source.ConfigurationRevision
 	return in, nil
@@ -91,13 +83,6 @@ func (s *Service) loadEbookLibrary(ctx context.Context, tx pgx.Tx, org uuid.UUID
 	return library, source, nil
 }
 
-// ebookLibraryServes reports whether a library may be bound to in. The storage
-// plugin acquires through its own installation, so it only fills the library
-// that installation stores.
-func ebookLibraryServes(in EbookIntegration, source storagesource.SourceConfig) bool {
-	return !in.Native || source.InstallationID != nil && *source.InstallationID == int64(in.InstallationID)
-}
-
 func (s *Service) GetEbookIntegrationLibraries(ctx context.Context, v Viewer) ([]EbookIntegration, error) {
 	if !v.Admin {
 		return nil, ErrForbidden
@@ -118,8 +103,7 @@ func (s *Service) GetEbookIntegrationLibraries(ctx context.Context, v Viewer) ([
 	for rows.Next() {
 		var id, name, capability, revision string
 		var installation int
-		var native bool
-		if err = rows.Scan(&id, &name, &installation, &capability, &revision, &native); err != nil {
+		if err = rows.Scan(&id, &name, &installation, &capability, &revision); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -161,8 +145,8 @@ func (s *Service) SetEbookIntegrationLibrary(ctx context.Context, v Viewer, id s
 		return EbookIntegration{}, err
 	}
 	// Validate the live connection without trusting a previous invalid binding.
-	var integration EbookIntegration
-	if err = tx.QueryRow(ctx, ebookIntegrationSQL+` AND ri.id=$2 FOR SHARE OF ri,pi,pc,ro,o`, v.OrganizationID, id).Scan(new(string), new(string), &integration.InstallationID, new(string), new(string), &integration.Native); errors.Is(err, pgx.ErrNoRows) {
+	var installation int
+	if err = tx.QueryRow(ctx, ebookIntegrationSQL+` AND ri.id=$2 FOR SHARE OF ri,pi,pc,ro,o`, v.OrganizationID, id).Scan(new(string), new(string), &installation, new(string), new(string)); errors.Is(err, pgx.ErrNoRows) {
 		return EbookIntegration{}, ErrInvalid
 	} else if err != nil {
 		return EbookIntegration{}, err
@@ -170,12 +154,8 @@ func (s *Service) SetEbookIntegrationLibrary(ctx context.Context, v Viewer, id s
 	if libraryID == 0 {
 		_, err = tx.Exec(ctx, `DELETE FROM bloem_ebook_request_integrations WHERE integration_id=$1 AND organization_id=$2`, id, v.OrganizationID)
 	} else {
-		var source storagesource.SourceConfig
-		if _, source, err = s.loadEbookLibrary(ctx, tx, v.OrganizationID, libraryID); err != nil {
+		if _, _, err = s.loadEbookLibrary(ctx, tx, v.OrganizationID, libraryID); err != nil {
 			return EbookIntegration{}, err
-		}
-		if !ebookLibraryServes(integration, source) {
-			return EbookIntegration{}, ErrInvalid
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO bloem_ebook_request_integrations(integration_id,organization_id,media_folder_id) VALUES($1,$2,$3) ON CONFLICT(integration_id) DO UPDATE SET media_folder_id=EXCLUDED.media_folder_id,revision=bloem_ebook_request_integrations.revision+1,updated_at=now() WHERE bloem_ebook_request_integrations.organization_id=EXCLUDED.organization_id AND bloem_ebook_request_integrations.media_folder_id IS DISTINCT FROM EXCLUDED.media_folder_id`, id, v.OrganizationID, libraryID)
 	}
@@ -265,7 +245,7 @@ func (s *Service) selectEbookIntegration(ctx context.Context, tx pgx.Tx, org uui
 	ids := []string{}
 	for rows.Next() {
 		var id string
-		if err = rows.Scan(&id, new(string), new(int), new(string), new(string), new(bool)); err != nil {
+		if err = rows.Scan(&id, new(string), new(int), new(string), new(string)); err != nil {
 			rows.Close()
 			return EbookIntegration{}, err
 		}

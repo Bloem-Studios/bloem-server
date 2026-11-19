@@ -197,7 +197,11 @@ and audiobooks when native audio is ready, and
   (`bloem_storage_installations` and its configs and archives), not in Silo's
   plugin tables, which keep one installation per plugin; new instance ids start
   at 1,000,000,000, so an id never names both. Settings are encrypted as Silo's
-  plugin settings are, bound to the instance id and key.
+  plugin settings are, bound to the instance id and key. Its manifest declares
+  no public capability and no HTTP route. The one exception is a
+  `request_router.v1` declaration, which the Bookwarehouse release carries: the
+  host accepts it and never calls it, so a storage plugin is never a request
+  connection (`internal/storageplugin/surfaces.go`).
 - **Storage source.** `bloem_storage_sources`: one configured source of an
   installation, with a retained UUID key, owner, encrypted configuration and a
   configuration revision. A source outlives its installation's removal.

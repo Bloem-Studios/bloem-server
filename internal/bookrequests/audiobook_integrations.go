@@ -14,15 +14,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// AudiobookRequestPluginID is the audiobook lane's request plugin. The native
-// Bookwarehouse storage plugin (StorageRequestPluginID) also serves the lane,
-// with capability AudiobookStorageCapabilityID: it downloads into
-// Bookwarehouse with its own installation's connection and completes into the
-// native library that installation stores.
-const (
-	AudiobookRequestPluginID     = "bloem.requests.audiobooks"
-	AudiobookStorageCapabilityID = "audiobooks"
-)
+// AudiobookRequestPluginID is the only plugin the audiobook lane dispatches to.
+const AudiobookRequestPluginID = "bloem.requests.audiobooks"
 
 // audiobookIdentityFrom selects an integration's identity only; no
 // configuration digest (D3). A platform-owned integration serves the default
@@ -31,17 +24,15 @@ const (
 // Silo's service_kind, which would create a movie/series fallback route.
 const audiobookIdentityFrom = `
  FROM request_integrations ri
- JOIN plugin_installations pi ON pi.id=ri.installation_id AND pi.enabled AND pi.kind='plugin' AND pi.plugin_id IN ('` + AudiobookRequestPluginID + `','` + StorageRequestPluginID + `')
+ JOIN plugin_installations pi ON pi.id=ri.installation_id AND pi.enabled AND pi.kind='plugin' AND pi.plugin_id='` + AudiobookRequestPluginID + `'
  JOIN plugin_capabilities pc ON pc.plugin_installation_id=pi.id AND pc.capability_type='request_router.v1' AND pc.capability_id=ri.capability_id
  JOIN resource_owners ro ON ro.id=pi.owner_id
  JOIN organizations o ON o.id=$1 AND (o.status='active' OR (o.is_default AND o.status='initializing'))
- WHERE ri.enabled AND ri.supported_media_types=ARRAY['audiobook']::text[]
- AND ((pi.plugin_id='` + AudiobookRequestPluginID + `' AND ri.api_key_ref<>'')
-  OR (pi.plugin_id='` + StorageRequestPluginID + `' AND ri.capability_id='` + AudiobookStorageCapabilityID + `'))
+ WHERE ri.enabled AND ri.supported_media_types=ARRAY['audiobook']::text[] AND ri.api_key_ref<>''
  AND NOT (ri.plugin_config ? 'service_kind')
  AND ((ro.kind='organization' AND ro.organization_id=o.id) OR (ro.kind='platform' AND o.is_default))`
 
-const audiobookIdentityColumns = `SELECT ri.id,ri.name,pi.id,ri.capability_id,pi.owner_id,pi.plugin_id='` + StorageRequestPluginID + `'`
+const audiobookIdentityColumns = `SELECT ri.id,ri.name,pi.id,ri.capability_id,pi.owner_id`
 
 // audiobookLibraryOwnership mirrors findLibraryMatch: an organization-owned
 // folder, or a platform folder with an active entitlement for $1.
@@ -61,10 +52,6 @@ type AudiobookIntegrationSummary struct {
 	DownloadRoots   []string `json:"download_roots"`
 	BindingRevision int64    `json:"binding_revision"`
 	Ready           bool     `json:"ready"`
-	// Native is set for the Bookwarehouse storage plugin's connection, which
-	// takes no download folders and binds to the library its installation
-	// stores.
-	Native bool `json:"native,omitempty"`
 	// PluginConfig and StoredCredentials are filled by the setup listing for
 	// a platform administrator only, so an editor can start from the saved
 	// settings. Credential values are never returned; StoredCredentials names
@@ -84,7 +71,7 @@ type AudiobookLibrary struct {
 
 func scanAudiobookIdentity(row pgx.Row, org uuid.UUID) (AudiobookIntegration, error) {
 	in := AudiobookIntegration{OrganizationID: org, DownloadRoots: []string{}}
-	err := row.Scan(&in.ID, &in.Name, &in.InstallationID, &in.CapabilityID, &in.OwnerID, &in.Native)
+	err := row.Scan(&in.ID, &in.Name, &in.InstallationID, &in.CapabilityID, &in.OwnerID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return in, ErrConflict
 	}
@@ -117,9 +104,7 @@ func loadAudiobookIntegration(ctx context.Context, tx pgx.Tx, org uuid.UUID, id 
 	if err != nil {
 		return in, err
 	}
-	if ready, err := audiobookBindingReady(ctx, tx, in, roots, library); err != nil {
-		return in, err
-	} else if !ready {
+	if validDownloadRoots(roots, library.Paths) != nil {
 		return in, ErrConflict
 	}
 	in.DownloadRoots, in.Language = roots, library.Language
@@ -187,46 +172,6 @@ func loadAudiobookLibrary(ctx context.Context, q interface {
 		library.Paths = append(library.Paths, path)
 	}
 	return library, rows.Err()
-}
-
-// audiobookBindingReady reports whether a stored binding can serve in. A
-// request plugin downloads into dedicated folders of the library; the native
-// storage plugin downloads into Bookwarehouse, so its binding has no folders
-// and its library must be stored by the integration's own installation.
-func audiobookBindingReady(ctx context.Context, q querier, in AudiobookIntegration, roots []string, library AudiobookLibrary) (bool, error) {
-	if !in.Native {
-		return validDownloadRoots(roots, library.Paths) == nil, nil
-	}
-	if len(roots) != 0 {
-		return false, nil
-	}
-	return nativeAudiobookLibraryServes(ctx, q, library.ID, in.InstallationID)
-}
-
-// nativeAudiobookLibraryServes reports whether a library reads from a live
-// storage source of the native installation.
-func nativeAudiobookLibraryServes(ctx context.Context, q querier, libraryID, installationID int) (bool, error) {
-	var serves bool
-	err := q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM library_storage_locations l JOIN bloem_storage_sources s ON s.key=l.source_key
- WHERE l.folder_id=$1 AND s.enabled AND s.installation_id=$2 AND s.plugin_id=$3)`, libraryID, installationID, StorageRequestPluginID).Scan(&serves)
-	return serves, err
-}
-
-// nativeAudiobookBinding checks a storage plugin binding: Bookwarehouse
-// imports the download, so there are no download folders, and the library is
-// the one the integration's installation stores.
-func nativeAudiobookBinding(ctx context.Context, q querier, in AudiobookIntegration, libraryID int, roots []string) error {
-	if len(roots) != 0 {
-		return fmt.Errorf("%w: this connection downloads into Bookwarehouse and takes no download folders", ErrInvalid)
-	}
-	serves, err := nativeAudiobookLibraryServes(ctx, q, libraryID, in.InstallationID)
-	if err != nil {
-		return err
-	}
-	if !serves {
-		return fmt.Errorf("%w: choose the library this Bookwarehouse installation stores", ErrInvalid)
-	}
-	return nil
 }
 
 // validDownloadRoots requires dedicated, absolute, clean roots inside the
@@ -322,11 +267,11 @@ func (s *Service) ListAudiobookIntegrations(ctx context.Context, v Viewer) ([]Au
 	out := []AudiobookIntegrationSummary{}
 	for rows.Next() {
 		var in AudiobookIntegration
-		if err = rows.Scan(&in.ID, &in.Name, &in.InstallationID, &in.CapabilityID, &in.OwnerID, &in.Native); err != nil {
+		if err = rows.Scan(&in.ID, &in.Name, &in.InstallationID, &in.CapabilityID, &in.OwnerID); err != nil {
 			rows.Close()
 			return nil, err
 		}
-		out = append(out, AudiobookIntegrationSummary{ID: in.ID, Name: in.Name, InstallationID: in.InstallationID, CapabilityID: in.CapabilityID, DownloadRoots: []string{}, Native: in.Native})
+		out = append(out, AudiobookIntegrationSummary{ID: in.ID, Name: in.Name, InstallationID: in.InstallationID, CapabilityID: in.CapabilityID, DownloadRoots: []string{}})
 	}
 	err = rows.Err()
 	rows.Close()
@@ -351,9 +296,7 @@ func (s *Service) ListAudiobookIntegrations(ctx context.Context, v Viewer) ([]Au
 			return nil, err
 		}
 		out[i].LibraryName = library.Name
-		if out[i].Ready, err = audiobookBindingReady(ctx, tx, AudiobookIntegration{InstallationID: out[i].InstallationID, Native: out[i].Native}, roots, library); err != nil {
-			return nil, err
-		}
+		out[i].Ready = validDownloadRoots(roots, library.Paths) == nil
 	}
 	return out, nil
 }
@@ -428,7 +371,7 @@ func (s *Service) SetAudiobookIntegrationLibrary(ctx context.Context, v Viewer, 
 	if err != nil {
 		return AudiobookIntegrationSummary{}, err
 	}
-	summary := AudiobookIntegrationSummary{ID: in.ID, Name: in.Name, InstallationID: in.InstallationID, CapabilityID: in.CapabilityID, DownloadRoots: []string{}, Native: in.Native}
+	summary := AudiobookIntegrationSummary{ID: in.ID, Name: in.Name, InstallationID: in.InstallationID, CapabilityID: in.CapabilityID, DownloadRoots: []string{}}
 	if libraryID == 0 {
 		if _, err = tx.Exec(ctx, `DELETE FROM bloem_audiobook_request_integrations WHERE integration_id=$1 AND organization_id=$2`, id, v.OrganizationID); err != nil {
 			return summary, err
@@ -446,12 +389,7 @@ func (s *Service) SetAudiobookIntegrationLibrary(ctx context.Context, v Viewer, 
 		}
 		cleaned = append(cleaned, strings.TrimSpace(root))
 	}
-	if in.Native {
-		err = nativeAudiobookBinding(ctx, tx, in, libraryID, cleaned)
-	} else {
-		err = validDownloadRoots(cleaned, library.Paths)
-	}
-	if err != nil {
+	if err = validDownloadRoots(cleaned, library.Paths); err != nil {
 		return summary, err
 	}
 	for _, root := range cleaned {

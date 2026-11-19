@@ -12,12 +12,6 @@ export interface AudiobookIntegration {
   binding_revision: number;
   ready: boolean;
   /**
-   * The Bookwarehouse storage installation's connection: no settings, no
-   * credentials and no download folders; it binds to the library that
-   * installation stores.
-   */
-  native?: boolean;
-  /**
    * Saved settings, filled by the setup listing for a platform administrator
    * only. Absent there means the saved settings could not be read.
    */
@@ -29,7 +23,7 @@ export interface AudiobookSetup {
   available: boolean;
   integrations: AudiobookIntegration[];
   libraries: { id: number; name: string; language: string; paths: string[] }[];
-  installations: { id: number; name: string; capability_id: string; native?: boolean }[];
+  installations: { id: number; name: string; capability_id: string }[];
 }
 export interface AudiobookConnectionInput {
   name: string;
