@@ -50,8 +50,8 @@ The daily GitHub job cannot resolve a conflict or adapt Bloem's code, so it is s
 off ([Bloem CI](../bloem/ci.md#how-silos-work-comes-in)).
 
 On 19 November 2026 Bloem's `main` had all of Silo's work through `bd40bd9eb`, merged
-in `2ab477cc7`, and production ran `948af89de`: Silo through `c58c0bb93`, deployed on
-17 November 2026.
+in `2ab477cc7`, and production ran `66d33c2e7`: Silo through `663882f11`, deployed on
+19 November 2026.
 
 ## Deploying a batch
 
