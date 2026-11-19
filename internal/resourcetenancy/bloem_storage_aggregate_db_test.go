@@ -15,7 +15,7 @@ import (
 func aggregateFixture(t *testing.T, mode string) (*nativeScanFixture, NativeResourceSet) {
 	t.Helper()
 	x := newNativeScanFixture(t, mode)
-	nativeScanSQL(t, x.pool, `UPDATE plugin_installations SET runtime_generation=1 WHERE id=$1`, x.source.InstallationID)
+	nativeScanSQL(t, x.pool, `UPDATE bloem_storage_installations SET runtime_generation=1 WHERE installation_id=$1`, x.source.InstallationID)
 	nativeScanSQL(t, x.pool, `INSERT INTO bloem_storage_selected_roots(id,location_id,directory_id,name,logical_path) VALUES($1,$2,'root','root','') ON CONFLICT(location_id,directory_id) DO NOTHING`, uuid.New(), x.binding.ID)
 	selections, err := x.repo.LocationSelections(t.Context(), x.binding.FolderID)
 	if err != nil {
@@ -27,10 +27,9 @@ func TestNativeAggregateRetainsMixedLibraryDB(t *testing.T) {
 	x, set := aggregateFixture(t, "platform")
 	nativeScanSQL(t, x.pool, `INSERT INTO media_folder_paths(media_folder_id,path) VALUES($1,'/synthetic/local')`, x.binding.FolderID)
 	var installation int64
-	if err := x.pool.QueryRow(t.Context(), `INSERT INTO plugin_installations(plugin_id,version,install_path,owner_id,runtime_generation) VALUES('aggregate-second','1','/synthetic',$1,1) RETURNING id`, x.source.OwnerID).Scan(&installation); err != nil {
+	if err := x.pool.QueryRow(t.Context(), `INSERT INTO bloem_storage_installations(plugin_id,version,install_path,owner_id,runtime_generation) VALUES('aggregate-second','1','/synthetic',$1,1) RETURNING installation_id`, x.source.OwnerID).Scan(&installation); err != nil {
 		t.Fatal(err)
 	}
-	nativeScanSQL(t, x.pool, `INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)`, installation, x.source.OwnerID)
 	other, err := x.repo.CreateSource(t.Context(), storagesource.SourceConfig{OwnerID: x.source.OwnerID, InstallationID: &installation, PluginID: "aggregate-second", ProviderSourceID: "other", RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
 	if err != nil {
 		t.Fatal(err)
@@ -67,7 +66,7 @@ func TestNativeAggregateRejectsChangesAfterInstallationWaitDB(t *testing.T) {
 			}
 			defer holder.Rollback(context.Background())
 			var id int64
-			if err := holder.QueryRow(ctx, `SELECT id FROM plugin_installations WHERE id=$1 FOR UPDATE`, x.source.InstallationID).Scan(&id); err != nil {
+			if err := holder.QueryRow(ctx, `SELECT installation_id FROM bloem_storage_installations WHERE installation_id=$1 FOR UPDATE`, x.source.InstallationID).Scan(&id); err != nil {
 				t.Fatal(err)
 			}
 			result := make(chan error, 1)
@@ -109,13 +108,13 @@ func TestNativeAggregateRejectsChangesAfterInstallationWaitDB(t *testing.T) {
 			}
 			switch effect {
 			case "disable":
-				_, err = holder.Exec(ctx, `UPDATE plugin_installations SET enabled=false WHERE id=$1`, id)
+				_, err = holder.Exec(ctx, `UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=$1`, id)
 			case "uninstall":
 				_, err = holder.Exec(ctx, `UPDATE bloem_storage_sources SET installation_id=NULL,enabled=false,configuration_revision=configuration_revision+1 WHERE key=$1`, x.source.Key)
 			case "configuration":
 				_, err = holder.Exec(ctx, `UPDATE bloem_storage_sources SET configuration_revision=configuration_revision+1 WHERE key=$1`, x.source.Key)
 			case "generation":
-				_, err = holder.Exec(ctx, `UPDATE plugin_installations SET runtime_generation=runtime_generation+1 WHERE id=$1`, id)
+				_, err = holder.Exec(ctx, `UPDATE bloem_storage_installations SET runtime_generation=runtime_generation+1 WHERE installation_id=$1`, id)
 			case "library-delete":
 				_, err = holder.Exec(ctx, `DELETE FROM organization_entitlements WHERE media_folder_id=$1`, x.binding.FolderID)
 				if err == nil {
@@ -124,7 +123,7 @@ func TestNativeAggregateRejectsChangesAfterInstallationWaitDB(t *testing.T) {
 			case "root-change":
 				_, err = holder.Exec(ctx, `UPDATE bloem_storage_selected_roots SET enabled=false WHERE location_id=$1`, x.binding.ID)
 			case "entitlement":
-				_, err = holder.Exec(ctx, `UPDATE organization_entitlements SET status='revoked',revoked_at=clock_timestamp() WHERE plugin_installation_id=$1`, id)
+				_, err = holder.Exec(ctx, `UPDATE organization_entitlements SET status='revoked',revoked_at=clock_timestamp() WHERE storage_installation_id=$1`, id)
 			}
 			if err != nil {
 				t.Fatal(err)
@@ -147,10 +146,9 @@ func TestNativeAggregateRejectsChangesAfterInstallationWaitDB(t *testing.T) {
 func TestNativeAggregateLocksEveryInstallationBeforeOwnersDB(t *testing.T) {
 	x, set := aggregateFixture(t, "platform")
 	var id int64
-	if err := x.pool.QueryRow(t.Context(), `INSERT INTO plugin_installations(plugin_id,version,install_path,owner_id,runtime_generation) VALUES('aggregate-second','1','/synthetic',$1,1) RETURNING id`, x.source.OwnerID).Scan(&id); err != nil {
+	if err := x.pool.QueryRow(t.Context(), `INSERT INTO bloem_storage_installations(plugin_id,version,install_path,owner_id,runtime_generation) VALUES('aggregate-second','1','/synthetic',$1,1) RETURNING installation_id`, x.source.OwnerID).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
-	nativeScanSQL(t, x.pool, `INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)`, id, x.source.OwnerID)
 	other, err := x.repo.CreateSource(t.Context(), storagesource.SourceConfig{OwnerID: x.source.OwnerID, InstallationID: &id, PluginID: "aggregate-second", ProviderSourceID: "second", RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +162,7 @@ func TestNativeAggregateLocksEveryInstallationBeforeOwnersDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer holder.Rollback(context.Background())
-	if _, err := holder.Exec(ctx, `SELECT id FROM plugin_installations WHERE id=$1 FOR NO KEY UPDATE`, id); err != nil {
+	if _, err := holder.Exec(ctx, `SELECT installation_id FROM bloem_storage_installations WHERE installation_id=$1 FOR NO KEY UPDATE`, id); err != nil {
 		t.Fatal(err)
 	}
 	result := make(chan error, 1)
@@ -221,11 +219,11 @@ func TestNativeAggregateAllowsRemovalOfUnavailableExistingSourceDB(t *testing.T)
 			set.Sources = nil
 			switch effect {
 			case "disabled":
-				nativeScanSQL(t, x.pool, `UPDATE plugin_installations SET enabled=false WHERE id=$1`, x.source.InstallationID)
+				nativeScanSQL(t, x.pool, `UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=$1`, x.source.InstallationID)
 			case "detached":
 				nativeScanSQL(t, x.pool, `UPDATE bloem_storage_sources SET installation_id=NULL,enabled=false,configuration_revision=configuration_revision+1 WHERE key=$1`, x.source.Key)
 			case "revoked":
-				nativeScanSQL(t, x.pool, `UPDATE organization_entitlements SET status='revoked',revoked_at=clock_timestamp() WHERE plugin_installation_id=$1`, x.source.InstallationID)
+				nativeScanSQL(t, x.pool, `UPDATE organization_entitlements SET status='revoked',revoked_at=clock_timestamp() WHERE storage_installation_id=$1`, x.source.InstallationID)
 			}
 			tx, err := x.pool.Begin(t.Context())
 			if err != nil {

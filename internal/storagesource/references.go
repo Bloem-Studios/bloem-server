@@ -103,7 +103,7 @@ func (r *Repository) FileReference(ctx context.Context, fileID, authorizedFolder
  JOIN library_storage_locations l ON l.id=x.location_id AND l.folder_id=f.media_folder_id
  JOIN bloem_storage_sources s ON s.key=l.source_key
  JOIN media_folders folder ON folder.id=l.folder_id AND folder.enabled
- LEFT JOIN plugin_installations i ON i.id=s.installation_id
+ LEFT JOIN bloem_storage_installations i ON i.installation_id=s.installation_id
  WHERE f.id=$1 AND f.media_folder_id=$2 AND x.configuration_revision=s.configuration_revision
  AND EXISTS(SELECT 1 FROM bloem_storage_file_roots m
  JOIN bloem_storage_selected_roots root ON root.location_id=m.location_id AND root.id=m.root_id AND root.enabled
@@ -216,7 +216,7 @@ func (r *Repository) coverPublications(ctx context.Context, contentID, revision 
  JOIN media_folders folder ON folder.id=l.folder_id AND folder.enabled
  JOIN bloem_storage_file_roots m ON m.location_id=l.id AND m.media_file_id=f.id AND m.enabled
  JOIN bloem_storage_selected_roots root ON root.location_id=m.location_id AND root.id=m.root_id AND root.enabled
- LEFT JOIN plugin_installations i ON i.id=s.installation_id
+ LEFT JOIN bloem_storage_installations i ON i.installation_id=s.installation_id
  WHERE f.content_id=$1 AND x.cover_entry_id IS NOT NULL AND x.configuration_revision=s.configuration_revision
  AND ($2::bigint=0 OR f.id=$2) AND ($3::uuid='00000000-0000-0000-0000-000000000000' OR m.root_id=$3)
  ORDER BY f.id,m.root_id`, contentID, fileID, rootID)

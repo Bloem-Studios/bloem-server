@@ -56,7 +56,7 @@ func TestNativeSourceRequiresFreshMembershipAndBothResourceGrants(t *testing.T) 
 			case "folder-denied":
 				resources.denied = resourcetenancy.RootMediaFolder
 			case "installation-denied":
-				resources.denied = resourcetenancy.RootPluginInstallation
+				resources.denied = resourcetenancy.RootStorageInstallation
 			case "owner-changed":
 				resources.owner = uuid.New()
 			}
@@ -65,7 +65,7 @@ func TestNativeSourceRequiresFreshMembershipAndBothResourceGrants(t *testing.T) 
 				t.Fatalf("result=%v", err)
 			}
 			if kind == "allowed" {
-				if len(resources.calls) != 2 || resources.calls[0] != (resourcetenancy.RootRef{Kind: resourcetenancy.RootMediaFolder, ID: 9}) || resources.calls[1] != (resourcetenancy.RootRef{Kind: resourcetenancy.RootPluginInstallation, ID: 13}) {
+				if len(resources.calls) != 2 || resources.calls[0] != (resourcetenancy.RootRef{Kind: resourcetenancy.RootMediaFolder, ID: 9}) || resources.calls[1] != (resourcetenancy.RootRef{Kind: resourcetenancy.RootStorageInstallation, ID: 13}) {
 					t.Fatalf("policy calls=%v", resources.calls)
 				}
 			}
@@ -76,7 +76,7 @@ func TestNativeSourceRequiresFreshMembershipAndBothResourceGrants(t *testing.T) 
 // Both resource-policy boundaries must translate wrapped hidden-resource errors
 // into authorization denials while preserving unrelated policy failures.
 func TestNativeSourceResourceErrors(t *testing.T) {
-	for _, root := range []resourcetenancy.RootKind{resourcetenancy.RootMediaFolder, resourcetenancy.RootPluginInstallation} {
+	for _, root := range []resourcetenancy.RootKind{resourcetenancy.RootMediaFolder, resourcetenancy.RootStorageInstallation} {
 		t.Run(string(root), func(t *testing.T) {
 			for _, tc := range []struct {
 				name     string

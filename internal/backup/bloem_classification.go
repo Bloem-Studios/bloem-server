@@ -58,7 +58,7 @@ var bloemRestoredDataTables = strings.Fields(`
 	bloem_organization_branding bloem_organization_domains ambience_packs ambience_assets promotions
 	notification_announcements bloem_upgrade_prompt
 	bloem_book_requests bloem_audiobook_request_integrations bloem_ebook_request_integrations
-	library_storage_locations bloem_storage_sources bloem_storage_installations bloem_storage_selected_roots
+	library_storage_locations bloem_storage_sources bloem_storage_installations bloem_storage_installation_archives bloem_storage_selected_roots
 	livetv_tuners livetv_channels livetv_guide_sources livetv_series_rules livetv_recordings
 `)
 
@@ -120,6 +120,13 @@ var bloemSecretTables = []secretTable{
 		owned:    ownerCarried(columnUserID),
 		describe: `format('admin app push device %s (account %s)', r.id, r.user_id)`,
 	}},
+	// A native storage instance's settings hold its outside service's keys,
+	// encrypted bound to the instance id and key, which the carry keeps.
+	{name: "bloem_storage_installation_configs", handling: secretCarried, why: "native storage instance settings, with the keys the storage plugin presents to its outside service", carry: &carrySpec{
+		key: "installation_id, config_key", same: []string{"installation_id", "config_key"}, credential: everyRow,
+		owned:    `EXISTS (SELECT 1 FROM bloem_storage_installations x WHERE x.installation_id = r.installation_id)`,
+		describe: `format('configuration %L of native storage instance %s', r.config_key, r.installation_id)`,
+	}},
 	// The storefront's ticket keys decide who may open a preview: a key
 	// retired since the backup must not admit anyone again.
 	{name: "bloem_preview_settings", handling: secretCarried, why: "preview storefront settings and the ticket keys that admit guests", carry: &carrySpec{
@@ -140,6 +147,9 @@ func bloemStricterFlags() []stricterFlag {
 		{table: "bloem_storage_sources", column: columnEnabled, stricter: false, id: "t.key::text", key: noKey, scope: everyRow,
 			describe: `format('storage source %s kept off', t.key)`},
 		flag("bloem_storage_selected_roots", columnEnabled, false, "storage root"),
+		// A native storage instance an admin turned off is not run again.
+		{table: "bloem_storage_installations", column: columnEnabled, stricter: false, id: "t.installation_id::text", key: noKey, scope: everyRow,
+			describe: `format('native storage instance %s kept off', t.installation_id)`},
 		// A channel an admin hid stays hidden; a guide source turned off is
 		// not fetched.
 		flag("livetv_channels", columnEnabled, false, "Live TV channel"),

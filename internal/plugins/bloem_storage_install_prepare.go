@@ -166,7 +166,7 @@ func (r *NativeStorageRegistry) PrepareInitialS3InstallAuthorized(ctx context.Co
 		return nil, errors.Join(err, rollbackErr)
 	}
 	var reserved int64
-	if err := r.pool.QueryRow(ctx, `SELECT nextval(pg_get_serial_sequence('plugin_installations','id'))`).Scan(&reserved); err != nil {
+	if err := r.pool.QueryRow(ctx, `SELECT nextval('bloem_storage_installation_id_seq')`).Scan(&reserved); err != nil {
 		return nil, err
 	}
 	id := int(reserved)
@@ -462,15 +462,12 @@ func (r *NativeStorageRegistry) PublishInitialS3InstallAuthorized(ctx context.Co
 	if exists {
 		return nil, initialS3Error("source_attached")
 	}
-	installation, err := scanInstallation(tx.QueryRow(ctx, `INSERT INTO plugin_installations(id,plugin_id,version,install_path,enabled,update_policy,owner_id,runtime_generation) VALUES($1,$2,$3,$4,$5,'manual',$6,1) RETURNING `+installationColumns, p.installation.ID, p.source.PluginID, p.installation.Version, p.installation.InstallPath, p.source.Enabled, p.source.OwnerID))
+	installation, err := scanInstallation(tx.QueryRow(ctx, `INSERT INTO bloem_storage_installations(installation_id,plugin_id,version,install_path,enabled,owner_id,runtime_generation) VALUES($1,$2,$3,$4,$5,$6,1) RETURNING `+nativeInstallationColumns, p.installation.ID, p.source.PluginID, p.installation.Version, p.installation.InstallPath, p.source.Enabled, p.source.OwnerID))
 	if err != nil {
 		return nil, err
 	}
 	id := int64(installation.ID)
-	if _, err := tx.Exec(ctx, `INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)`, id, p.source.OwnerID); err != nil {
-		return nil, err
-	}
-	if _, err := tx.Exec(ctx, `INSERT INTO plugin_archives(plugin_installation_id,manifest_json,checksum,archive_bytes) VALUES($1,$2,$3,$4)`, id, p.manifestJSON, p.artifact.Checksum, p.archive); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO bloem_storage_installation_archives(installation_id,manifest_json,checksum,archive_bytes) VALUES($1,$2,$3,$4)`, id, p.manifestJSON, p.artifact.Checksum, p.archive); err != nil {
 		return nil, err
 	}
 	if err := r.replaceConfigTx(ctx, tx, installation.ID, p.config); err != nil {

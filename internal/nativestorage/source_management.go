@@ -413,14 +413,14 @@ func (s *SourceManagement) DeleteRemovedSource(ctx context.Context, actor auth.A
 // naming it is gone, nothing can ever run it again.
 func deleteOrphanInstallationTx(ctx context.Context, tx pgx.Tx, id int64) error {
 	var orphan bool
-	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_installations p WHERE p.id=$1 AND NOT p.enabled
+	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM bloem_storage_installations p WHERE p.installation_id=$1 AND NOT p.enabled
  AND NOT EXISTS(SELECT 1 FROM bloem_storage_sources s WHERE s.installation_id=$1 OR s.latest_installation_id=$1))`, id).Scan(&orphan)
 	if err != nil || !orphan {
 		return err
 	}
-	if _, err = tx.Exec(ctx, "DELETE FROM organization_entitlements WHERE plugin_installation_id=$1", id); err != nil {
+	if _, err = tx.Exec(ctx, "DELETE FROM organization_entitlements WHERE storage_installation_id=$1", id); err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx, "DELETE FROM plugin_installations WHERE id=$1", id)
+	_, err = tx.Exec(ctx, "DELETE FROM bloem_storage_installations WHERE installation_id=$1", id)
 	return err
 }

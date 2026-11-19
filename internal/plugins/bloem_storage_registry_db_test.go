@@ -248,10 +248,10 @@ func TestNativeS3RegistryRejectsHistoricalPathsAndMalformedShape(t *testing.T) {
 		t.Fatal("historical supplied S3 path accepted by upgrade")
 	}
 	var generation int64
-	if err := r.pool.QueryRow(t.Context(), `SELECT runtime_generation FROM plugin_installations WHERE id=$1`, installed.Installation.ID).Scan(&generation); err != nil || generation != 1 {
+	if err := r.pool.QueryRow(t.Context(), `SELECT runtime_generation FROM bloem_storage_installations WHERE installation_id=$1`, installed.Installation.ID).Scan(&generation); err != nil || generation != 1 {
 		t.Fatal("historical supplied S3 path committed an upgrade before refusal")
 	}
-	if _, err := r.pool.Exec(t.Context(), `DELETE FROM plugin_runtime_configs WHERE plugin_installation_id=$1`, installed.Installation.ID); err != nil {
+	if _, err := r.pool.Exec(t.Context(), `DELETE FROM bloem_storage_installation_configs WHERE installation_id=$1`, installed.Installation.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); err == nil {
@@ -285,7 +285,7 @@ func TestNativeS3RegistryRefusesUnsafeStateBeforeUpgrade(t *testing.T) {
 		t.Fatal("unsafe S3 state accepted during upgrade")
 	}
 	var version string
-	if err := r.pool.QueryRow(t.Context(), `SELECT version FROM plugin_installations WHERE id=$1`, installed.Installation.ID).Scan(&version); err != nil || version != "1.0.0" {
+	if err := r.pool.QueryRow(t.Context(), `SELECT version FROM bloem_storage_installations WHERE installation_id=$1`, installed.Installation.ID).Scan(&version); err != nil || version != "1.0.0" {
 		t.Fatal("refused upgrade still committed its release")
 	}
 }
@@ -452,7 +452,7 @@ func TestNativeStorageRegistryAtomicInstallSnapshot(t *testing.T) {
 	}
 	var raw string
 	var caps int
-	if err = r.pool.QueryRow(t.Context(), `SELECT config_value::text FROM plugin_runtime_configs WHERE plugin_installation_id=$1`, s.Installation.ID).Scan(&raw); err != nil {
+	if err = r.pool.QueryRow(t.Context(), `SELECT config_value::text FROM bloem_storage_installation_configs WHERE installation_id=$1`, s.Installation.ID).Scan(&raw); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(raw, "synthetic-only-secret") || !strings.Contains(raw, encryptedRuntimeConfigField) {
@@ -472,7 +472,7 @@ func TestNativeStorageRegistryAtomicInstallSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := 0
-	if err = r.pool.QueryRow(t.Context(), `SELECT count(*) FROM plugin_installations`).Scan(&before); err != nil {
+	if err = r.pool.QueryRow(t.Context(), `SELECT count(*) FROM bloem_storage_installations`).Scan(&before); err != nil {
 		t.Fatal(err)
 	}
 	req.ArtifactKey = "request-cannot-self-approve"
@@ -485,14 +485,14 @@ func TestNativeStorageRegistryAtomicInstallSnapshot(t *testing.T) {
 		t.Fatal("invalid config accepted")
 	}
 	var after int
-	if err = r.pool.QueryRow(t.Context(), `SELECT count(*) FROM plugin_installations`).Scan(&after); err != nil || after != before {
+	if err = r.pool.QueryRow(t.Context(), `SELECT count(*) FROM bloem_storage_installations`).Scan(&after); err != nil || after != before {
 		t.Fatalf("partial installation: %d %d %v", before, after, err)
 	}
 	dirs, err := os.ReadDir(r.baseDir)
 	if err != nil || len(dirs) != 1 {
 		t.Fatalf("rollback leaked package: %d %v", len(dirs), err)
 	}
-	if _, err = r.pool.Exec(t.Context(), `UPDATE plugin_archives SET archive_bytes='tampered'::bytea WHERE plugin_installation_id=$1`, installed.Installation.ID); err != nil {
+	if _, err = r.pool.Exec(t.Context(), `UPDATE bloem_storage_installation_archives SET archive_bytes='tampered'::bytea WHERE installation_id=$1`, installed.Installation.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); err == nil {
@@ -679,15 +679,14 @@ func TestNativeStorageRegistryInstallKnownCommitRollback(t *testing.T) {
 	if err = r.pool.QueryRow(t.Context(), "SELECT count(*) FROM bloem_storage_sources WHERE key=$1", req.Source.Key).Scan(&sources); err != nil || sources != 0 {
 		t.Fatalf("rolled back source remains: %d %v", sources, err)
 	}
-	var installations, markers, archives, configs int
+	var installations, archives, configs int
 	if err = r.pool.QueryRow(t.Context(), `SELECT
-        (SELECT count(*) FROM plugin_installations WHERE id=$1),
         (SELECT count(*) FROM bloem_storage_installations WHERE installation_id=$1),
-        (SELECT count(*) FROM plugin_archives WHERE plugin_installation_id=$1),
-        (SELECT count(*) FROM plugin_runtime_configs WHERE plugin_installation_id=$1)`, installationID).Scan(&installations, &markers, &archives, &configs); err != nil {
+        (SELECT count(*) FROM bloem_storage_installation_archives WHERE installation_id=$1),
+        (SELECT count(*) FROM bloem_storage_installation_configs WHERE installation_id=$1)`, installationID).Scan(&installations, &archives, &configs); err != nil {
 		t.Fatal(err)
 	}
-	if installations != 0 || markers != 0 || archives != 0 || configs != 0 {
+	if installations != 0 || archives != 0 || configs != 0 {
 		t.Fatal("known rollback left partial installation records")
 	}
 	dirs, err := os.ReadDir(r.baseDir)
@@ -747,7 +746,7 @@ func TestNativeStorageRegistryUpgradeKeepsSource(t *testing.T) {
 	}
 	var version string
 	var key uuid.UUID
-	if err = r.pool.QueryRow(t.Context(), `SELECT i.version, l.source_key FROM plugin_installations i, library_storage_locations l WHERE i.id=$1 AND l.id=$2`,
+	if err = r.pool.QueryRow(t.Context(), `SELECT i.version, l.source_key FROM bloem_storage_installations i, library_storage_locations l WHERE i.installation_id=$1 AND l.id=$2`,
 		s.Installation.ID, location).Scan(&version, &key); err != nil || version != "1.1.0" || key != s.Source.Key {
 		t.Fatalf("version %q location %s: %v", version, key, err)
 	}
@@ -768,7 +767,7 @@ func TestNativeStorageRegistrySnapshotValidatesEachArchiveOnce(t *testing.T) {
 	}
 	// Any write to the row, even one leaving every other column alone, is a
 	// new archive and is validated again.
-	if _, err := r.pool.Exec(t.Context(), `UPDATE plugin_archives SET archive_bytes='tampered'::bytea WHERE plugin_installation_id=$1`, s.Installation.ID); err != nil {
+	if _, err := r.pool.Exec(t.Context(), `UPDATE bloem_storage_installation_archives SET archive_bytes='tampered'::bytea WHERE installation_id=$1`, s.Installation.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.Snapshot(t.Context(), s.Source.Key, s.Source.OwnerID); err == nil {

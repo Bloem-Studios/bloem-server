@@ -19,6 +19,9 @@ type RootKind string
 const (
 	RootMediaFolder        RootKind = "media_folder"
 	RootPluginInstallation RootKind = "plugin_installation"
+	// RootStorageInstallation is a native storage instance
+	// (bloem_storage_installations), which is not a plugin installation.
+	RootStorageInstallation RootKind = "storage_installation"
 )
 
 type EntitlementStatus string

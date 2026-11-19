@@ -227,9 +227,8 @@ func (r *NativeStorageRegistry) NativeStorageIDs(ctx context.Context, ids []int)
 	return result, rows.Err()
 }
 
-// Install atomically publishes the installation, explicit marker, ZIP archive,
-// encrypted config and retained source. The only capability rows it writes are
-// the request_router.v1 capabilities the approved manifest declares.
+// Install atomically publishes the instance, its ZIP archive, encrypted config
+// and retained source, all in Bloem's tables (bloem_storage_instances.go).
 func (r *NativeStorageRegistry) Install(ctx context.Context, req NativeStorageInstallRequest) (*NativeStorageSnapshot, error) {
 	return r.install(ctx, req, nil)
 }
@@ -348,22 +347,16 @@ func (r *NativeStorageRegistry) install(ctx context.Context, req NativeStorageIn
 			return nil, err
 		}
 	}
-	installation, err := scanInstallation(tx.QueryRow(ctx, `INSERT INTO plugin_installations(plugin_id,version,install_path,enabled,update_policy,owner_id,runtime_generation) VALUES($1,$2,$3,$4,'manual',$5,1) RETURNING `+installationColumns, s.PluginID, a.Manifest.GetVersion(), path, s.Enabled, s.OwnerID))
+	installation, err := scanInstallation(tx.QueryRow(ctx, `INSERT INTO bloem_storage_installations(plugin_id,version,install_path,enabled,owner_id,runtime_generation) VALUES($1,$2,$3,$4,$5,1) RETURNING `+nativeInstallationColumns, s.PluginID, a.Manifest.GetVersion(), path, s.Enabled, s.OwnerID))
 	if err != nil {
 		return nil, err
 	}
 	id := int64(installation.ID)
 	s.InstallationID = &id
-	if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)`, id, s.OwnerID); err != nil {
-		return nil, err
-	}
-	if _, err = tx.Exec(ctx, `INSERT INTO plugin_archives(plugin_installation_id,manifest_json,checksum,archive_bytes) VALUES($1,$2,$3,$4)`, id, manifestJSON, a.Checksum, archive); err != nil {
+	if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_installation_archives(installation_id,manifest_json,checksum,archive_bytes) VALUES($1,$2,$3,$4)`, id, manifestJSON, a.Checksum, archive); err != nil {
 		return nil, err
 	}
 	if err = r.replaceConfigTx(ctx, tx, installation.ID, req.Config); err != nil {
-		return nil, err
-	}
-	if err = replaceNativeRequestRoutersTx(ctx, tx, installation.ID, a.Manifest); err != nil {
 		return nil, err
 	}
 	if retained {
@@ -412,7 +405,7 @@ func (r *NativeStorageRegistry) install(ctx context.Context, req NativeStorageIn
 	return &NativeStorageSnapshot{Source: s, Installation: installation, Generation: uint64(installation.RuntimeGeneration), ArtifactChecksum: a.Checksum, Manifest: proto.CloneOf(a.Manifest), Config: entries}, nil
 }
 func (r *NativeStorageRegistry) replaceConfigTx(ctx context.Context, tx pgx.Tx, id int, config map[string]map[string]any) error {
-	if _, err := tx.Exec(ctx, `DELETE FROM plugin_runtime_configs WHERE plugin_installation_id=$1`, id); err != nil {
+	if _, err := tx.Exec(ctx, `DELETE FROM bloem_storage_installation_configs WHERE installation_id=$1`, id); err != nil {
 		return err
 	}
 	for key, value := range config {
@@ -423,7 +416,7 @@ func (r *NativeStorageRegistry) replaceConfigTx(ctx context.Context, tx pgx.Tx, 
 		if err != nil {
 			return err
 		}
-		if _, err = tx.Exec(ctx, `INSERT INTO plugin_runtime_configs(plugin_installation_id,config_key,config_value) VALUES($1,$2,$3)`, id, key, data); err != nil {
+		if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_installation_configs(installation_id,config_key,config_value) VALUES($1,$2,$3)`, id, key, data); err != nil {
 			return err
 		}
 	}
@@ -459,7 +452,7 @@ func (r *NativeStorageRegistry) Snapshot(ctx context.Context, key, owner uuid.UU
 	}
 	archive := &InstallationArchive{InstallationID: installation.ID}
 	var xmin string
-	if err = tx.QueryRow(ctx, `SELECT manifest_json, checksum, xmin::text FROM plugin_archives WHERE plugin_installation_id=$1`, installation.ID).
+	if err = tx.QueryRow(ctx, `SELECT manifest_json, checksum, xmin::text FROM bloem_storage_installation_archives WHERE installation_id=$1`, installation.ID).
 		Scan(&archive.ManifestJSON, &archive.Checksum, &xmin); err != nil {
 		return nil, err
 	}
@@ -468,7 +461,7 @@ func (r *NativeStorageRegistry) Snapshot(ctx context.Context, key, owner uuid.UU
 	known := r.validatedArchives[installation.ID] == identity
 	r.validatedMu.Unlock()
 	if !known {
-		if err = tx.QueryRow(ctx, `SELECT archive_bytes FROM plugin_archives WHERE plugin_installation_id=$1`, installation.ID).Scan(&archive.Bytes); err != nil {
+		if err = tx.QueryRow(ctx, `SELECT archive_bytes FROM bloem_storage_installation_archives WHERE installation_id=$1`, installation.ID).Scan(&archive.Bytes); err != nil {
 			return nil, err
 		}
 	}
@@ -528,7 +521,7 @@ func nativeStorageSource(ctx context.Context, tx pgx.Tx, key, owner uuid.UUID, l
 	return s, err
 }
 func (r *NativeStorageRegistry) checkInstallation(ctx context.Context, tx pgx.Tx, id int, owner uuid.UUID, lock bool) (*Installation, error) {
-	query := `SELECT ` + installationColumns + ` FROM plugin_installations WHERE id=$1 AND owner_id=$2 AND kind='plugin' AND EXISTS(SELECT 1 FROM bloem_storage_installations n WHERE n.installation_id=$1 AND n.owner_id=$2 AND n.protocol_version=1)`
+	query := `SELECT ` + nativeInstallationColumns + ` FROM bloem_storage_installations WHERE installation_id=$1 AND owner_id=$2 AND protocol_version=1`
 	if lock {
 		query += ` FOR NO KEY UPDATE`
 	}
@@ -642,7 +635,7 @@ func (r *NativeStorageRegistry) replaceConfigurationMode(ctx context.Context, ke
 		}
 		// Retain the archive after the existing resources/siblings. The stored
 		// executable checksum alone is insufficient: compare compressed bytes too.
-		archive, e := scanArchive(tx.QueryRow(ctx, `SELECT `+archiveColumns+` FROM plugin_archives WHERE plugin_installation_id=$1 FOR SHARE`, installation.ID))
+		archive, e := scanArchive(tx.QueryRow(ctx, `SELECT `+nativeArchiveColumns+` FROM bloem_storage_installation_archives WHERE installation_id=$1 FOR SHARE`, installation.ID))
 		if e != nil {
 			return 0, catalog.MapNativeOnboardingError(e)
 		}
@@ -679,7 +672,7 @@ func (r *NativeStorageRegistry) replaceConfigurationMode(ctx context.Context, ke
 	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_scan_runs SET state='failed',lease_epoch=lease_epoch+1 WHERE source_key IN(SELECT key FROM bloem_storage_sources WHERE installation_id=$1) AND state='running'`, installation.ID); err != nil {
 		return 0, err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE plugin_installations SET runtime_generation=runtime_generation+1,updated_at=now() WHERE id=$1`, installation.ID); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_installations SET runtime_generation=runtime_generation+1,updated_at=now() WHERE installation_id=$1`, installation.ID); err != nil {
 		return 0, err
 	}
 	if authorize != nil && r.commitManagement != nil {
@@ -775,12 +768,12 @@ func (r *NativeStorageRegistry) removeGuarded(ctx context.Context, id int, owner
 		return err
 	}
 	if uninstall {
-		if _, err = tx.Exec(ctx, `DELETE FROM organization_entitlements WHERE plugin_installation_id=$1`, id); err != nil {
+		if _, err = tx.Exec(ctx, `DELETE FROM organization_entitlements WHERE storage_installation_id=$1`, id); err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `DELETE FROM plugin_installations WHERE id=$1`, id)
+		_, err = tx.Exec(ctx, `DELETE FROM bloem_storage_installations WHERE installation_id=$1`, id)
 	} else {
-		_, err = tx.Exec(ctx, `UPDATE plugin_installations SET enabled=false,runtime_generation=runtime_generation+1,updated_at=now() WHERE id=$1`, id)
+		_, err = tx.Exec(ctx, `UPDATE bloem_storage_installations SET enabled=false,runtime_generation=runtime_generation+1,updated_at=now() WHERE installation_id=$1`, id)
 	}
 	if err != nil {
 		return err

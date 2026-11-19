@@ -43,10 +43,9 @@ func ebookIntegrationFixture(t *testing.T, pool *pgxpool.Pool) (string, int, sto
 		t.Fatal(err)
 	}
 	var storageID, routerID int64
-	if err := pool.QueryRow(t.Context(), `INSERT INTO plugin_installations(plugin_id,version,install_path,owner_id) VALUES('bloem.storage.bookwarehouse','1','/fixture',$1) RETURNING id`, owner).Scan(&storageID); err != nil {
+	if err := pool.QueryRow(t.Context(), `INSERT INTO bloem_storage_installations(plugin_id,version,install_path,owner_id) VALUES('bloem.storage.bookwarehouse','1','/fixture',$1) RETURNING installation_id`, owner).Scan(&storageID); err != nil {
 		t.Fatal(err)
 	}
-	bookSQL(t, pool, `INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)`, storageID, owner)
 	source, err := storagesource.NewRepository(pool).CreateSource(t.Context(), storagesource.SourceConfig{OwnerID: owner, InstallationID: &storageID, PluginID: "bloem.storage.bookwarehouse", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
 	if err != nil {
 		t.Fatal(err)
@@ -57,11 +56,14 @@ func ebookIntegrationFixture(t *testing.T, pool *pgxpool.Pool) (string, int, sto
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := pool.QueryRow(t.Context(), `INSERT INTO plugin_installations(plugin_id,version,install_path,owner_id) VALUES('bloem.requests.bookwarehouse','1','/fixture',$1) RETURNING id`, owner).Scan(&routerID); err != nil {
+	if err := pool.QueryRow(t.Context(), `INSERT INTO plugin_installations(plugin_id,version,install_path,owner_id) VALUES('bloem.requests.bookwarehouse','1','/fixture',$1)
+ ON CONFLICT (plugin_id) WHERE kind='plugin' DO UPDATE SET version=plugin_installations.version RETURNING id`, owner).Scan(&routerID); err != nil {
 		t.Fatal(err)
 	}
-	bookSQL(t, pool, `INSERT INTO plugin_capabilities(plugin_installation_id,capability_type,capability_id) VALUES($1,'request_router.v1','bookwarehouse')`, routerID)
-	id := strconv.FormatInt(routerID*1000000, 10)
+	bookSQL(t, pool, `INSERT INTO plugin_capabilities(plugin_installation_id,capability_type,capability_id) VALUES($1,'request_router.v1','bookwarehouse') ON CONFLICT DO NOTHING`, routerID)
+	// One router installation serves every fixture (one per plugin); each
+	// fixture's own storage instance keeps its integration id distinct.
+	id := strconv.FormatInt(storageID*1000000, 10)
 	bookSQL(t, pool, `INSERT INTO request_integrations(id,name,enabled,base_url,api_key_ref,installation_id,capability_id,supported_media_types,plugin_config) VALUES($1,'Bookwarehouse',true,'https://backend.example','fixture-reference',$2,'bookwarehouse',ARRAY['book'],'{}')`, id, routerID)
 	return id, folder.ID, source
 }
@@ -212,7 +214,7 @@ func TestEbookBookwarehouseBindingDatabase(t *testing.T) {
 		t.Fatalf("wildcard appears as ebook backend: %+v %v", bindings, err)
 	}
 	bookSQL(t, pool, `UPDATE request_integrations SET supported_media_types=ARRAY['book'] WHERE id=$1`, integrationID)
-	bookSQL(t, pool, `UPDATE plugin_installations SET plugin_id='other.storage' WHERE id=(SELECT installation_id FROM bloem_storage_sources WHERE key=(SELECT source_key FROM library_storage_locations WHERE folder_id=$1))`, folderID)
+	bookSQL(t, pool, `UPDATE bloem_storage_installations SET plugin_id='other.storage' WHERE installation_id=(SELECT installation_id FROM bloem_storage_sources WHERE key=(SELECT source_key FROM library_storage_locations WHERE folder_id=$1))`, folderID)
 	if _, err := s.SetEbookIntegrationLibrary(t.Context(), v, integrationID, folderID); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("foreign storage provider accepted: %v", err)
 	}

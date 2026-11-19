@@ -355,7 +355,7 @@ func TestLibraryLocationsSharedSourceAndHiddenLibraryDB(t *testing.T) {
 	a.PolicyRevision = policy
 	a.SecurityRevision = security
 	a.EffectiveAuthority = "organization_admin"
-	if _, err := l.pool.Exec(t.Context(), `INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,plugin_installation_id,status,granted_by_service) SELECT $1,'plugin_availability','plugin_installation',owner_id,installation_id,'active','mutation-test' FROM bloem_storage_sources`, org); err != nil {
+	if _, err := l.pool.Exec(t.Context(), `INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,storage_installation_id,status,granted_by_service) SELECT $1,'plugin_availability','storage_installation',owner_id,installation_id,'active','mutation-test' FROM bloem_storage_sources`, org); err != nil {
 		t.Fatal(err)
 	}
 	// References are actor-bound; obtain organization references.

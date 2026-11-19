@@ -97,7 +97,7 @@ func TestPresentationReferencesRequireEveryTrackDB(t *testing.T) {
 			case "source":
 				execSQL(t, r.pool, `UPDATE bloem_storage_sources SET enabled=false WHERE key=$1`, source.Key)
 			case "installation":
-				execSQL(t, r.pool, `UPDATE plugin_installations SET enabled=false WHERE id=91001`)
+				execSQL(t, r.pool, `UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=91001`)
 			case "configuration":
 				execSQL(t, r.pool, `UPDATE bloem_storage_file_refs SET configuration_revision=2 WHERE media_file_id=91002`)
 			case "missing":

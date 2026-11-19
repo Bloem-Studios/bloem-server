@@ -221,6 +221,12 @@ func (s *Store) RootOwner(ctx context.Context, root RootRef) (Owner, error) {
 			FROM plugin_installations AS roots
 			JOIN resource_owners AS owners ON owners.id = roots.owner_id
 			WHERE roots.id = $1`, root.ID)
+	case RootStorageInstallation:
+		row = s.pool.QueryRow(ctx, `
+			SELECT `+ownerColumns+`
+			FROM bloem_storage_installations AS roots
+			JOIN resource_owners AS owners ON owners.id = roots.owner_id
+			WHERE roots.installation_id = $1`, root.ID)
 	default:
 		return Owner{}, ErrInvalidRoot
 	}
@@ -297,6 +303,15 @@ func (s *Store) activeEntitlement(ctx context.Context, organizationID uuid.UUID,
 			  AND root_kind = 'plugin_installation'
 			  AND plugin_installation_id = $3
 			  AND status = 'active'`, organizationID, ownerID, root.ID)
+	case RootStorageInstallation:
+		row = s.pool.QueryRow(ctx, `
+			SELECT `+entitlementColumns+`
+			FROM organization_entitlements
+			WHERE organization_id = $1
+			  AND root_owner_id = $2
+			  AND root_kind = 'storage_installation'
+			  AND storage_installation_id = $3
+			  AND status = 'active'`, organizationID, ownerID, root.ID)
 	default:
 		return Entitlement{}, ErrInvalidRoot
 	}
@@ -323,7 +338,7 @@ func validateRoot(root RootRef) error {
 		return ErrInvalidRoot
 	}
 	switch root.Kind {
-	case RootMediaFolder, RootPluginInstallation:
+	case RootMediaFolder, RootPluginInstallation, RootStorageInstallation:
 		return nil
 	default:
 		return ErrInvalidRoot

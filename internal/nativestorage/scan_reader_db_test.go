@@ -163,7 +163,7 @@ func (f *scanReadFixture) mutate(t *testing.T, mode string) {
 	case "root":
 		_, err = f.r.pool.Exec(t.Context(), `UPDATE bloem_storage_sources SET root_entry_id='changed-root' WHERE key=$1`, f.source.Key)
 	case "generation":
-		_, err = f.r.pool.Exec(t.Context(), `UPDATE plugin_installations SET runtime_generation=runtime_generation+1 WHERE id=$1`, *f.source.InstallationID)
+		_, err = f.r.pool.Exec(t.Context(), `UPDATE bloem_storage_installations SET runtime_generation=runtime_generation+1 WHERE installation_id=$1`, *f.source.InstallationID)
 	case "configuration":
 		_, err = f.r.host.Registry.ReplaceConfiguration(t.Context(), f.source.Key, f.source.OwnerID, map[string]map[string]any{"connection": {"source_id": f.source.ProviderSourceID}})
 	case "owner":

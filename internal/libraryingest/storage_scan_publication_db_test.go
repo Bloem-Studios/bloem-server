@@ -125,7 +125,7 @@ func TestStorageScanRevocationDuringListPreventsPublication(t *testing.T) {
 			}
 			query, target := "UPDATE media_folders SET enabled=false WHERE id=$1", folder.ID
 			if revoked == "installation" {
-				query, target = "UPDATE plugin_installations SET enabled=false WHERE id=$1", installed.Installation.ID
+				query, target = "UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=$1", installed.Installation.ID
 			}
 			if _, err := pool.Exec(t.Context(), query, target); err != nil {
 				t.Fatal(err)

@@ -178,7 +178,7 @@ func TestStorageScanDescribeAdmissionBeforeDiscovery(t *testing.T) {
 				case "revision":
 					query = "UPDATE bloem_storage_sources SET configuration_revision=configuration_revision+1 WHERE key=$1"
 				case "generation":
-					query, target = "UPDATE plugin_installations SET runtime_generation=runtime_generation+1 WHERE id=$1", installed.Installation.ID
+					query, target = "UPDATE bloem_storage_installations SET runtime_generation=runtime_generation+1 WHERE installation_id=$1", installed.Installation.ID
 				case "authorization":
 					query, target = "UPDATE media_folders SET enabled=false WHERE id=$1", folder.ID
 				case "cancel":

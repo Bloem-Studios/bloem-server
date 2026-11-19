@@ -13,7 +13,7 @@ func fixtureReference(t *testing.T) (*Repository, SourceConfig, Location, Persis
 	pool := storageTestPool(t)
 	r := NewRepository(pool)
 	installation := int64(91001)
-	execSQL(t, pool, `INSERT INTO plugin_installations(id,plugin_id,version,install_path) VALUES(91001,'fixture','1','/synthetic-fixture')`)
+	execSQL(t, pool, `INSERT INTO bloem_storage_installations(installation_id,plugin_id,version,install_path) VALUES(91001,'fixture','1','/synthetic-fixture')`)
 	s, err := r.CreateSource(context.Background(), SourceConfig{InstallationID: &installation, PluginID: "fixture", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +88,7 @@ func TestUnavailableInstallationKeepsCatalogReference(t *testing.T) {
 	if err := attachFile(t, r, 1, 91001, ref); err != nil {
 		t.Fatal(err)
 	}
-	for _, query := range []string{`UPDATE plugin_installations SET enabled=false WHERE id=91001`, `DELETE FROM organization_entitlements WHERE plugin_installation_id=91001; DELETE FROM plugin_installations WHERE id=91001`} {
+	for _, query := range []string{`UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=91001`, `DELETE FROM organization_entitlements WHERE storage_installation_id=91001; DELETE FROM bloem_storage_installations WHERE installation_id=91001`} {
 		execSQL(t, r.pool, query)
 		_, got, err := r.FileReference(context.Background(), 91001, 91001)
 		if !errors.Is(err, ErrSourceUnavailable) || got != ref {

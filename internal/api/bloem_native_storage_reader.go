@@ -82,7 +82,7 @@ func authorizeNativeStorageSource(ctx context.Context, file *models.MediaFile, s
 	if _, err = resources.RequireAccess(ctx, fresh, resourcetenancy.RootRef{Kind: resourcetenancy.RootMediaFolder, ID: int64(file.MediaFolderID)}); err != nil {
 		return nativeStorageAccessError(err)
 	}
-	grant, err := resources.RequireAccess(ctx, fresh, resourcetenancy.RootRef{Kind: resourcetenancy.RootPluginInstallation, ID: *source.InstallationID})
+	grant, err := resources.RequireAccess(ctx, fresh, resourcetenancy.RootRef{Kind: resourcetenancy.RootStorageInstallation, ID: *source.InstallationID})
 	if err != nil {
 		return nativeStorageAccessError(err)
 	}

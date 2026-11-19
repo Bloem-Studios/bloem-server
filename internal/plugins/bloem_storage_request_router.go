@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -13,38 +12,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 )
-
-// replaceNativeRequestRoutersTx publishes the request_router.v1 capabilities
-// an approved native storage manifest declares, replacing the installation's
-// earlier rows. The request lanes join plugin_capabilities to find a router;
-// the ordinary plugin service keeps hiding native installations, so these rows
-// are never served by its runtime.
-func replaceNativeRequestRoutersTx(ctx context.Context, tx pgx.Tx, installationID int, manifest *publicv1.PluginManifest) error {
-	records, err := CapabilityRecordsFromManifest(manifest)
-	if err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `DELETE FROM plugin_capabilities WHERE plugin_installation_id=$1`, installationID); err != nil {
-		return err
-	}
-	for _, record := range records {
-		if record.Type != capability.RequestRouter {
-			return errors.New("native storage manifest declares a public capability other than request_router.v1")
-		}
-		metadata := record.Metadata
-		if metadata == nil {
-			metadata = map[string]any{}
-		}
-		data, err := json.Marshal(metadata)
-		if err != nil {
-			return err
-		}
-		if _, err = tx.Exec(ctx, `INSERT INTO plugin_capabilities(plugin_installation_id,capability_type,capability_id,metadata) VALUES($1,$2,$3,$4)`, installationID, record.Type, record.ID, data); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 // RequestRouterSource returns the live source of a native installation whose
 // session serves its request routers. Snapshot still checks ownership,

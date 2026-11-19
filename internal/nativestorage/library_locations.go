@@ -70,7 +70,7 @@ func (l *LibraryLocations) AttachTx(ctx context.Context, tx pgx.Tx, sourceKey uu
 	// installation -> source order. This is only a lock: the full authority
 	// check below reloads the source and validates the new location after waits.
 	var installationID int64
-	err = tx.QueryRow(ctx, "SELECT id FROM plugin_installations WHERE id=$1 FOR SHARE", *source.InstallationID).Scan(&installationID)
+	err = tx.QueryRow(ctx, "SELECT installation_id FROM bloem_storage_installations WHERE installation_id=$1 FOR SHARE", *source.InstallationID).Scan(&installationID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrLocationSourceUnavailable
 	}

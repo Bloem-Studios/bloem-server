@@ -300,6 +300,8 @@ func TestCompatibilityCreateUsesPlatformOwnerAndDefaultEntitlement(t *testing.T)
 		InstallPath:  "/tmp/repository-compatibility",
 		Enabled:      true,
 		UpdatePolicy: "manual",
+		// Create stores the package with the row (Silo #4525).
+		Archive: plugins.ArchiveInput{ManifestJSON: []byte(`{}`), Checksum: "fixture", Bytes: []byte("fixture")},
 	})
 	if err != nil {
 		t.Fatalf("InstallationStore.Create: %v", err)

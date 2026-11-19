@@ -151,7 +151,7 @@ func (f *rotationFixture) state(t *testing.T) rotationState {
 		t.Fatal(err)
 	}
 	var generation int
-	if err = f.r.pool.QueryRow(t.Context(), `SELECT runtime_generation FROM plugin_installations WHERE id=$1`, f.installationID).Scan(&generation); err != nil {
+	if err = f.r.pool.QueryRow(t.Context(), `SELECT runtime_generation FROM bloem_storage_installations WHERE installation_id=$1`, f.installationID).Scan(&generation); err != nil {
 		t.Fatal(err)
 	}
 	conn, err := f.r.ConnectionConfig(t.Context(), f.installationID)

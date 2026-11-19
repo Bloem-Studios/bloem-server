@@ -37,7 +37,7 @@ func TestStoragePageReplayRequiresCurrentAuthority(t *testing.T) {
 			case "organization":
 				nativeScanSQL(t, x.pool, "UPDATE organizations SET status='suspended' WHERE id=$1", x.org)
 			case "entitlement":
-				nativeScanSQL(t, x.pool, "UPDATE organization_entitlements SET status='revoked',revoked_at=now() WHERE organization_id=$1 AND plugin_installation_id=$2", x.org, x.source.InstallationID)
+				nativeScanSQL(t, x.pool, "UPDATE organization_entitlements SET status='revoked',revoked_at=now() WHERE organization_id=$1 AND storage_installation_id=$2", x.org, x.source.InstallationID)
 			}
 			if err := x.repo.ApplyPageAuthorized(t.Context(), lease, checkpoint, page, authorize, nil); !errors.Is(err, ErrResourceHidden) {
 				t.Fatalf("revoked page replay accepted: %v", err)
@@ -79,7 +79,7 @@ func TestStoragePageAuthorityLocksInstallationBeforeSource(t *testing.T) {
 	}
 	defer func() { _ = mutation.Rollback(context.Background()) }()
 	var installation int64
-	if err := mutation.QueryRow(ctx, "SELECT id FROM plugin_installations WHERE id=$1 FOR UPDATE", x.source.InstallationID).Scan(&installation); err != nil {
+	if err := mutation.QueryRow(ctx, "SELECT installation_id FROM bloem_storage_installations WHERE installation_id=$1 FOR UPDATE", x.source.InstallationID).Scan(&installation); err != nil {
 		t.Fatal(err)
 	}
 	var mutationPID int
@@ -130,7 +130,7 @@ func TestStoragePageAuthorityLocksInstallationBeforeSource(t *testing.T) {
 	if err := mutation.QueryRow(ctx, "SELECT configuration_revision FROM bloem_storage_sources WHERE key=$1 FOR UPDATE NOWAIT", x.source.Key).Scan(&config); err != nil {
 		t.Fatalf("page acquired source before installation: %v", err)
 	}
-	if _, err := mutation.Exec(ctx, "UPDATE plugin_installations SET enabled=false WHERE id=$1", installation); err != nil {
+	if _, err := mutation.Exec(ctx, "UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=$1", installation); err != nil {
 		t.Fatal(err)
 	}
 	if err := mutation.Commit(ctx); err != nil {

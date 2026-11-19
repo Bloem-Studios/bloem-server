@@ -47,7 +47,7 @@ func attachmentSourceFixture(t *testing.T) (*pgxpool.Pool, storagesource.SourceC
 	pool, source := storageSourceFixture(t)
 	// Native management requires an installation that has actually started;
 	// attachment's older fixture alone intentionally exercises no runtime.
-	if _, err := pool.Exec(t.Context(), `UPDATE plugin_installations SET runtime_generation=1 WHERE id=$1`, source.InstallationID); err != nil {
+	if _, err := pool.Exec(t.Context(), `UPDATE bloem_storage_installations SET runtime_generation=1 WHERE installation_id=$1`, source.InstallationID); err != nil {
 		t.Fatal(err)
 	}
 	return pool, source
@@ -226,7 +226,7 @@ func TestLibraryAttachmentRechecksAfterNativeManagement(t *testing.T) {
 			case "configuration":
 				_, err = mutation.Exec(ctx, `UPDATE bloem_storage_sources SET configuration_revision=configuration_revision+1 WHERE key=$1`, source.Key)
 			case "installation-disabled":
-				_, err = mutation.Exec(ctx, `UPDATE plugin_installations SET enabled=false WHERE id=$1`, source.InstallationID)
+				_, err = mutation.Exec(ctx, `UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=$1`, source.InstallationID)
 			case "source-disabled":
 				_, err = mutation.Exec(ctx, `UPDATE bloem_storage_sources SET enabled=false WHERE key=$1`, source.Key)
 			}

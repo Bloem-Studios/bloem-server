@@ -21,7 +21,7 @@ func TestStorageAttachmentDoesNotRequireRunningGenerationDB(t *testing.T) {
 	for _, mode := range []string{"platform", "same-org", "entitled", "foreign"} {
 		t.Run(mode, func(t *testing.T) {
 			x := newNativeScanFixture(t, mode)
-			nativeScanSQL(t, x.pool, `UPDATE plugin_installations SET runtime_generation=0 WHERE id=$1`, *x.source.InstallationID)
+			nativeScanSQL(t, x.pool, `UPDATE bloem_storage_installations SET runtime_generation=0 WHERE installation_id=$1`, *x.source.InstallationID)
 			tx, err := x.pool.Begin(t.Context())
 			if err != nil {
 				t.Fatal(err)
@@ -107,7 +107,7 @@ func TestStorageScanPinnedGraphRechecksInstallationWaitDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer holder.Rollback(context.Background())
-	if _, err = holder.Exec(ctx, `SELECT id FROM plugin_installations WHERE id=$1 FOR UPDATE`, *x.source.InstallationID); err != nil {
+	if _, err = holder.Exec(ctx, `SELECT installation_id FROM bloem_storage_installations WHERE installation_id=$1 FOR UPDATE`, *x.source.InstallationID); err != nil {
 		t.Fatal(err)
 	}
 	pids := make(chan int, 1)
@@ -190,10 +190,9 @@ func newJournalContention(t *testing.T) *journalContention {
 		t.Fatal(err)
 	}
 	var installation int64
-	if err := pool.QueryRow(t.Context(), `INSERT INTO plugin_installations(plugin_id,version,install_path,owner_id,runtime_generation) VALUES('journal-contention','1','/synthetic',$1,1) RETURNING id`, owner).Scan(&installation); err != nil {
+	if err := pool.QueryRow(t.Context(), `INSERT INTO bloem_storage_installations(plugin_id,version,install_path,owner_id,runtime_generation) VALUES('journal-contention','1','/synthetic',$1,1) RETURNING installation_id`, owner).Scan(&installation); err != nil {
 		t.Fatal(err)
 	}
-	nativeScanSQL(t, pool, `INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)`, installation, owner)
 	for i := range x.sources {
 		source, err := x.repo.CreateSource(t.Context(), storagesource.SourceConfig{OwnerID: owner, InstallationID: &installation, PluginID: "journal-contention", ProviderSourceID: fmt.Sprintf("source-%d", i), RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
 		if err != nil {

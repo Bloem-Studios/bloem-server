@@ -85,7 +85,7 @@ func (b *SourceBrowser) snapshot(ctx context.Context, a auth.AdminContextClaims,
 		return nil, nativeDomainError("not_found")
 	}
 	var generation uint64
-	if err := tx.QueryRow(ctx, `SELECT runtime_generation FROM plugin_installations WHERE id=$1`, source.InstallationID).Scan(&generation); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT runtime_generation FROM bloem_storage_installations WHERE installation_id=$1`, source.InstallationID).Scan(&generation); err != nil {
 		return nil, nativeDomainMap(err)
 	}
 	_, err = resourcetenancy.NewStore(b.pool).RetainNativeResourcesTx(ctx, tx, &a, resourcetenancy.NativeResourceSet{Sources: []resourcetenancy.NativeSourceExpectation{{Source: source, Generation: generation}}})

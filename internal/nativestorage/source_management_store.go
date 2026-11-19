@@ -137,7 +137,7 @@ func (s *SourceManagement) sourceViewTx(ctx context.Context, tx pgx.Tx, actor au
 	configured := false
 	if source.InstallationID != nil {
 		var enabled bool
-		err = tx.QueryRow(ctx, "SELECT enabled,EXISTS(SELECT 1 FROM plugin_runtime_configs WHERE plugin_installation_id=$1) FROM plugin_installations WHERE id=$1", *source.InstallationID).Scan(&enabled, &configured)
+		err = tx.QueryRow(ctx, "SELECT enabled,EXISTS(SELECT 1 FROM bloem_storage_installation_configs WHERE installation_id=$1) FROM bloem_storage_installations WHERE installation_id=$1", *source.InstallationID).Scan(&enabled, &configured)
 		if err != nil {
 			return SourceView{}, nativeDomainMap(err)
 		}
@@ -184,8 +184,8 @@ func sourceLibrariesTx(ctx context.Context, tx pgx.Tx, actor auth.AdminContextCl
 // retained actor checks still run for every projected row before it is returned.
 const nativeVisibleSourceSQL = `($1::boolean OR (o.kind='organization' AND o.organization_id=$2) OR
  (o.kind='platform' AND s.installation_id IS NOT NULL AND EXISTS(SELECT 1 FROM organization_entitlements e
- WHERE e.organization_id=$2 AND e.root_owner_id=o.id AND e.root_kind='plugin_installation'
- AND e.entitlement_kind='plugin_availability' AND e.plugin_installation_id=s.installation_id AND e.status='active')))`
+ WHERE e.organization_id=$2 AND e.root_owner_id=o.id AND e.root_kind='storage_installation'
+ AND e.entitlement_kind='plugin_availability' AND e.storage_installation_id=s.installation_id AND e.status='active')))`
 
 func (s *SourceManagement) ListSources(ctx context.Context, actor auth.AdminContextClaims, after *uuid.UUID, limit int) (SourcePage, error) {
 	result := SourcePage{Sources: []SourceView{}}

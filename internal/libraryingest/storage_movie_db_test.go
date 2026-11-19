@@ -345,7 +345,7 @@ func TestNativeMovieStorageRevocationDuringRead(t *testing.T) {
 			}
 			query, target := "UPDATE media_folders SET enabled=false WHERE id=$1", f.folder.ID
 			if revoked == "installation" {
-				query, target = "UPDATE plugin_installations SET enabled=false WHERE id=$1", f.installed.Installation.ID
+				query, target = "UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=$1", f.installed.Installation.ID
 			}
 			if _, err := f.pool.Exec(t.Context(), query, target); err != nil {
 				t.Fatal(err)

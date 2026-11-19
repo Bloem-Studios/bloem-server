@@ -115,21 +115,18 @@ func (r *NativeStorageRegistry) upgrade(ctx context.Context, installationID int,
 	if err != nil {
 		return nil, err
 	}
-	installation, err = scanInstallation(tx.QueryRow(ctx, `UPDATE plugin_installations SET version=$2, install_path=$3, runtime_generation=runtime_generation+1, updated_at=now() WHERE id=$1 RETURNING `+installationColumns,
+	installation, err = scanInstallation(tx.QueryRow(ctx, `UPDATE bloem_storage_installations SET version=$2, install_path=$3, runtime_generation=runtime_generation+1, updated_at=now() WHERE installation_id=$1 RETURNING `+nativeInstallationColumns,
 		installationID, a.Manifest.GetVersion(), path))
 	if err != nil {
 		return nil, err
 	}
-	tag, err := tx.Exec(ctx, `UPDATE plugin_archives SET manifest_json=$2, checksum=$3, archive_bytes=$4, updated_at=now() WHERE plugin_installation_id=$1`,
+	tag, err := tx.Exec(ctx, `UPDATE bloem_storage_installation_archives SET manifest_json=$2, checksum=$3, archive_bytes=$4, updated_at=now() WHERE installation_id=$1`,
 		installationID, manifestJSON, a.Checksum, archive)
 	if err != nil {
 		return nil, err
 	}
 	if tag.RowsAffected() != 1 {
 		return nil, storagesource.ErrSourceUnavailable
-	}
-	if err = replaceNativeRequestRoutersTx(ctx, tx, installationID, a.Manifest); err != nil {
-		return nil, err
 	}
 	// Once COMMIT is attempted, a transport error cannot prove rollback; keep
 	// the package so a committed upgrade stays runnable.

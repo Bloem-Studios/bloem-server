@@ -119,15 +119,14 @@ func newNativeAudioAPIFixture(t *testing.T) *nativeAudioAPIFixture {
 		t.Fatal(err)
 	}
 	var install int64
-	if err := pool.QueryRow(t.Context(), `INSERT INTO plugin_installations(plugin_id,version,install_path,runtime_generation,enabled) VALUES('audio-fixture','1','/synthetic',1,true) RETURNING id`).Scan(&install); err != nil {
+	if err := pool.QueryRow(t.Context(), `INSERT INTO bloem_storage_installations(plugin_id,version,install_path,runtime_generation,enabled) VALUES('audio-fixture','1','/synthetic',1,true) RETURNING installation_id`).Scan(&install); err != nil {
 		t.Fatal(err)
 	}
 	var owner uuid.UUID
-	if err := pool.QueryRow(t.Context(), `SELECT owner_id FROM plugin_installations WHERE id=$1`, install).Scan(&owner); err != nil {
+	if err := pool.QueryRow(t.Context(), `SELECT owner_id FROM bloem_storage_installations WHERE installation_id=$1`, install).Scan(&owner); err != nil {
 		t.Fatal(err)
 	}
-	run(`INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)`, install, owner)
-	run(`INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,plugin_installation_id,status,granted_by_service) SELECT $1,'plugin_availability','plugin_installation',$2,$3,'active','audio-test' WHERE NOT EXISTS(SELECT 1 FROM organization_entitlements WHERE organization_id=$1 AND plugin_installation_id=$3)`, profile.OrganizationID, owner, install)
+	run(`INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,storage_installation_id,status,granted_by_service) SELECT $1,'plugin_availability','storage_installation',$2,$3,'active','audio-test' WHERE NOT EXISTS(SELECT 1 FROM organization_entitlements WHERE organization_id=$1 AND storage_installation_id=$3)`, profile.OrganizationID, owner, install)
 	repo := storagesource.NewRepository(pool)
 	source, err := repo.CreateSource(t.Context(), storagesource.SourceConfig{OwnerID: owner, InstallationID: &install, PluginID: "audio-fixture", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
 	if err != nil {

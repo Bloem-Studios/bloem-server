@@ -59,7 +59,7 @@ func initialGuard(context.Context, pgx.Tx) error { return nil }
 func assertInitialRows(t *testing.T, r *NativeStorageRegistry, id int, key uuid.UUID, want bool) {
 	t.Helper()
 	var present bool
-	if err := r.pool.QueryRow(t.Context(), `SELECT EXISTS(SELECT 1 FROM plugin_installations WHERE id=$1) OR EXISTS(SELECT 1 FROM bloem_storage_sources WHERE key=$2) OR EXISTS(SELECT 1 FROM plugin_archives WHERE plugin_installation_id=$1) OR EXISTS(SELECT 1 FROM plugin_runtime_configs WHERE plugin_installation_id=$1)`, id, key).Scan(&present); err != nil {
+	if err := r.pool.QueryRow(t.Context(), `SELECT EXISTS(SELECT 1 FROM bloem_storage_installations WHERE installation_id=$1) OR EXISTS(SELECT 1 FROM bloem_storage_sources WHERE key=$2) OR EXISTS(SELECT 1 FROM bloem_storage_installation_archives WHERE installation_id=$1) OR EXISTS(SELECT 1 FROM bloem_storage_installation_configs WHERE installation_id=$1)`, id, key).Scan(&present); err != nil {
 		t.Fatal(err)
 	}
 	if present != want {
@@ -276,7 +276,7 @@ func TestInitialS3PreparationRefusals(t *testing.T) {
 				t.Fatal("invalid preparation published")
 			}
 			var exists bool
-			if err := r.pool.QueryRow(t.Context(), `SELECT EXISTS(SELECT 1 FROM plugin_installations WHERE id=$1)`, snapshot.Installation.ID).Scan(&exists); err != nil {
+			if err := r.pool.QueryRow(t.Context(), `SELECT EXISTS(SELECT 1 FROM bloem_storage_installations WHERE installation_id=$1)`, snapshot.Installation.ID).Scan(&exists); err != nil {
 				t.Fatal(err)
 			}
 			if exists {
@@ -457,7 +457,7 @@ func TestInitialS3PublishRechecksAfterRowWait(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer func() { _ = blocker.Rollback(context.Background()) }()
-			if _, err := blocker.Exec(t.Context(), `INSERT INTO plugin_installations(id,plugin_id,version,install_path,enabled,owner_id) VALUES($1,'synthetic.blocker','1','/synthetic',false,$2)`, snapshot.Installation.ID, req.Source.OwnerID); err != nil {
+			if _, err := blocker.Exec(t.Context(), `INSERT INTO bloem_storage_installations(installation_id,plugin_id,version,install_path,enabled,owner_id) VALUES($1,'synthetic.blocker','1','/synthetic',false,$2)`, snapshot.Installation.ID, req.Source.OwnerID); err != nil {
 				t.Fatal(err)
 			}
 			result := make(chan error, 1)
@@ -474,7 +474,7 @@ func TestInitialS3PublishRechecksAfterRowWait(t *testing.T) {
 				select {
 				case <-poll.C:
 					var waiting bool
-					if err := r.pool.QueryRow(t.Context(), `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE 'INSERT INTO plugin_installations(id,%')`).Scan(&waiting); err != nil {
+					if err := r.pool.QueryRow(t.Context(), `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE 'INSERT INTO bloem_storage_installations(installation_id,%')`).Scan(&waiting); err != nil {
 						t.Fatal(err)
 					}
 					if waiting {

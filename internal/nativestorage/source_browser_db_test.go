@@ -251,7 +251,7 @@ func TestSourceBrowserReferenceIsolationDB(t *testing.T) {
 			case "configuration":
 				_, err = b.pool.Exec(t.Context(), `UPDATE bloem_storage_sources SET configuration_revision=configuration_revision+1 WHERE key=$1`, s.Key)
 			case "generation":
-				_, err = b.pool.Exec(t.Context(), `UPDATE plugin_installations SET runtime_generation=runtime_generation+1 WHERE id=$1`, s.InstallationID)
+				_, err = b.pool.Exec(t.Context(), `UPDATE bloem_storage_installations SET runtime_generation=runtime_generation+1 WHERE installation_id=$1`, s.InstallationID)
 			case "root":
 				_, err = b.pool.Exec(t.Context(), `UPDATE bloem_storage_sources SET root_entry_id='elsewhere' WHERE key=$1`, s.Key)
 			case "page-size":
@@ -311,7 +311,7 @@ func TestSourceBrowserRechecksHeldProviderIODB(t *testing.T) {
 				}
 				switch effect {
 				case "disable":
-					_, err = b.pool.Exec(ctx, `UPDATE plugin_installations SET enabled=false WHERE id=$1`, s.InstallationID)
+					_, err = b.pool.Exec(ctx, `UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=$1`, s.InstallationID)
 				case "uninstall":
 					_, err = b.pool.Exec(ctx, `UPDATE bloem_storage_sources SET enabled=false,installation_id=NULL,configuration_revision=configuration_revision+1 WHERE key=$1`, s.Key)
 				case "session":
@@ -345,7 +345,7 @@ func TestSourceBrowserSharedEntitlementRevocationDB(t *testing.T) {
 	a.SecurityRevision = security
 	a.EffectiveAuthority = "organization_admin"
 	var grant uuid.UUID
-	if err := b.pool.QueryRow(t.Context(), `INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,plugin_installation_id,status,granted_by_service) VALUES($1,'plugin_availability','plugin_installation',$2,$3,'active','browse-test') RETURNING id`, org, s.OwnerID, s.InstallationID).Scan(&grant); err != nil {
+	if err := b.pool.QueryRow(t.Context(), `INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,storage_installation_id,status,granted_by_service) VALUES($1,'plugin_availability','storage_installation',$2,$3,'active','browse-test') RETURNING id`, org, s.OwnerID, s.InstallationID).Scan(&grant); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := b.Browse(t.Context(), a, s.Key, BrowseRequest{}); err != nil {
@@ -650,7 +650,7 @@ func TestSourceBrowserReferencesRejectOtherAuthorizedOrganizationDB(t *testing.T
 	a.PolicyRevision = policy
 	a.SecurityRevision = security
 	a.EffectiveAuthority = "organization_admin"
-	if _, err := b.pool.Exec(t.Context(), `INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,plugin_installation_id,status,granted_by_service) VALUES($1,'plugin_availability','plugin_installation',$2,$3,'active','browse-test')`, org, s.OwnerID, s.InstallationID); err != nil {
+	if _, err := b.pool.Exec(t.Context(), `INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,storage_installation_id,status,granted_by_service) VALUES($1,'plugin_availability','storage_installation',$2,$3,'active','browse-test')`, org, s.OwnerID, s.InstallationID); err != nil {
 		t.Fatal(err)
 	}
 	page, err := b.Browse(t.Context(), a, s.Key, BrowseRequest{})
@@ -675,7 +675,7 @@ func TestSourceBrowserReferencesRejectOtherAuthorizedOrganizationDB(t *testing.T
 	other.MembershipID = membership
 	other.PolicyRevision = policy
 	other.SecurityRevision = security
-	if _, err := b.pool.Exec(t.Context(), `INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,plugin_installation_id,status,granted_by_service) VALUES($1,'plugin_availability','plugin_installation',$2,$3,'active','browse-test')`, org, s.OwnerID, s.InstallationID); err != nil {
+	if _, err := b.pool.Exec(t.Context(), `INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,storage_installation_id,status,granted_by_service) VALUES($1,'plugin_availability','storage_installation',$2,$3,'active','browse-test')`, org, s.OwnerID, s.InstallationID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := b.Browse(t.Context(), other, s.Key, BrowseRequest{}); err != nil {

@@ -95,7 +95,7 @@ func (s *Store) retainStorageScanTx(ctx context.Context, tx pgx.Tx, binding stor
 		}
 	} else {
 		var generation uint64
-		if err := tx.QueryRow(ctx, `SELECT runtime_generation FROM plugin_installations WHERE id=$1`, *expected.InstallationID).Scan(&generation); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT runtime_generation FROM bloem_storage_installations WHERE installation_id=$1`, *expected.InstallationID).Scan(&generation); err != nil {
 			return out, storageScanError(err)
 		}
 		set = NativeResourceSet{Sources: []NativeSourceExpectation{{Source: expected, Generation: generation}}, Library: &NativeLibraryExpectation{FolderID: binding.FolderID}}
@@ -137,7 +137,7 @@ func (s *Store) requireLegacyStorageAttachmentTx(ctx context.Context, tx pgx.Tx,
 	var installationOwner uuid.UUID
 	var pluginID, kind string
 	var enabled bool
-	err := tx.QueryRow(ctx, "SELECT owner_id,plugin_id,kind,enabled FROM plugin_installations WHERE id=$1 FOR SHARE", *expected.InstallationID).Scan(&installationOwner, &pluginID, &kind, &enabled)
+	err := tx.QueryRow(ctx, "SELECT owner_id,plugin_id,'plugin',enabled FROM bloem_storage_installations WHERE installation_id=$1 FOR SHARE", *expected.InstallationID).Scan(&installationOwner, &pluginID, &kind, &enabled)
 	if err != nil {
 		return storageScanError(err)
 	}
@@ -264,7 +264,7 @@ func (s *Store) requireLegacyStorageAttachmentTx(ctx context.Context, tx pgx.Tx,
 		return nil
 	}
 	var entitlementID uuid.UUID
-	err = tx.QueryRow(ctx, "SELECT id FROM organization_entitlements WHERE organization_id=$1 AND root_owner_id=$2 AND root_kind='plugin_installation' AND entitlement_kind='plugin_availability' AND plugin_installation_id=$3 AND status='active' FOR SHARE", *folder.OrganizationID, installationOwner, *actual.InstallationID).Scan(&entitlementID)
+	err = tx.QueryRow(ctx, "SELECT id FROM organization_entitlements WHERE organization_id=$1 AND root_owner_id=$2 AND root_kind='storage_installation' AND entitlement_kind='plugin_availability' AND storage_installation_id=$3 AND status='active' FOR SHARE", *folder.OrganizationID, installationOwner, *actual.InstallationID).Scan(&entitlementID)
 	return storageScanError(err)
 }
 

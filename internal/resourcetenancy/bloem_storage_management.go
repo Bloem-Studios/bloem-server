@@ -191,8 +191,8 @@ func nativeManagementOwnerAccessTx(ctx context.Context, tx pgx.Tx, a auth.AdminC
 	}
 	query := `SELECT id FROM organization_entitlements WHERE organization_id=$1 AND root_owner_id=$2 AND status='active' AND security_revision>0`
 	switch root.Kind {
-	case RootPluginInstallation:
-		query += ` AND root_kind='plugin_installation' AND entitlement_kind='plugin_availability' AND plugin_installation_id=$3 FOR SHARE`
+	case RootStorageInstallation:
+		query += ` AND root_kind='storage_installation' AND entitlement_kind='plugin_availability' AND storage_installation_id=$3 FOR SHARE`
 	case RootMediaFolder:
 		query += ` AND root_kind='media_folder' AND entitlement_kind='library_access' AND media_folder_id=$3 FOR SHARE`
 	default:
@@ -251,7 +251,7 @@ func (s *Store) retainNativeResources(ctx context.Context, tx pgx.Tx, actor auth
 		if sourceMutate {
 			lock = " FOR NO KEY UPDATE"
 		}
-		err = tx.QueryRow(ctx, "SELECT owner_id,plugin_id,kind,enabled,runtime_generation FROM plugin_installations WHERE id=$1"+lock, *selectedInstall).Scan(&installOwner, &plugin, &kind, &installEnabled, &generation)
+		err = tx.QueryRow(ctx, "SELECT owner_id,plugin_id,'plugin',enabled,runtime_generation FROM bloem_storage_installations WHERE installation_id=$1"+lock, *selectedInstall).Scan(&installOwner, &plugin, &kind, &installEnabled, &generation)
 		if err != nil {
 			return nil, storageScanError(err)
 		}
@@ -329,7 +329,7 @@ func (s *Store) retainNativeResources(ctx context.Context, tx pgx.Tx, actor auth
 		return nil, ErrAuthorizationStateChanged
 	}
 	if key != uuid.Nil {
-		root := RootRef{Kind: RootPluginInstallation}
+		root := RootRef{Kind: RootStorageInstallation}
 		if selectedInstall != nil {
 			root.ID = *selectedInstall
 		}
@@ -599,7 +599,7 @@ func (s *Store) RetainNativeResourcesTx(ctx context.Context, tx pgx.Tx, actor *a
 			}
 			var generation uint64
 			if source.InstallationID != nil {
-				if err := tx.QueryRow(ctx, `SELECT runtime_generation FROM plugin_installations WHERE id=$1`, source.InstallationID).Scan(&generation); err != nil {
+				if err := tx.QueryRow(ctx, `SELECT runtime_generation FROM bloem_storage_installations WHERE installation_id=$1`, source.InstallationID).Scan(&generation); err != nil {
 					return out, storageScanError(err)
 				}
 			}
@@ -647,7 +647,7 @@ func (s *Store) RetainNativeResourcesTx(ctx context.Context, tx pgx.Tx, actor *a
 		var plugin, kind string
 		var enabled bool
 		var generation uint64
-		if err := tx.QueryRow(ctx, `SELECT owner_id,plugin_id,kind,enabled,runtime_generation FROM plugin_installations WHERE id=$1 FOR SHARE`, id).Scan(&owner, &plugin, &kind, &enabled, &generation); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT owner_id,plugin_id,'plugin',enabled,runtime_generation FROM bloem_storage_installations WHERE installation_id=$1 FOR SHARE`, id).Scan(&owner, &plugin, &kind, &enabled, &generation); err != nil {
 			return out, storageScanError(err)
 		}
 		if owner != e.Source.OwnerID || plugin != e.Source.PluginID || kind != "plugin" || generation != e.Generation {
@@ -723,7 +723,7 @@ func (s *Store) RetainNativeResourcesTx(ctx context.Context, tx pgx.Tx, actor *a
 		}
 		owner := after[e.Source.OwnerID]
 		if actor != nil {
-			if err := nativeManagementOwnerAccessTx(ctx, tx, *actor, owner, RootRef{Kind: RootPluginInstallation, ID: *e.Source.InstallationID}, false); err != nil {
+			if err := nativeManagementOwnerAccessTx(ctx, tx, *actor, owner, RootRef{Kind: RootStorageInstallation, ID: *e.Source.InstallationID}, false); err != nil {
 				return out, err
 			}
 		}
@@ -739,7 +739,7 @@ func (s *Store) RetainNativeResourcesTx(ctx context.Context, tx pgx.Tx, actor *a
 				}
 			} else {
 				var grant uuid.UUID
-				if err := tx.QueryRow(ctx, `SELECT id FROM organization_entitlements WHERE organization_id=$1 AND root_owner_id=$2 AND root_kind='plugin_installation' AND entitlement_kind='plugin_availability' AND plugin_installation_id=$3 AND status='active' AND security_revision>0 FOR SHARE`, *library.OrganizationID, owner.ID, *e.Source.InstallationID).Scan(&grant); err != nil {
+				if err := tx.QueryRow(ctx, `SELECT id FROM organization_entitlements WHERE organization_id=$1 AND root_owner_id=$2 AND root_kind='storage_installation' AND entitlement_kind='plugin_availability' AND storage_installation_id=$3 AND status='active' AND security_revision>0 FOR SHARE`, *library.OrganizationID, owner.ID, *e.Source.InstallationID).Scan(&grant); err != nil {
 					return out, storageScanError(err)
 				}
 			}

@@ -224,7 +224,7 @@ func (r *ScanReader) authorize(ctx context.Context, p *ScanPage) (scanOwnerEvide
 	var generation int64
 	var path, checksum string
 	var manifestJSON []byte
-	if err = tx.QueryRow(ctx, `SELECT i.runtime_generation,i.install_path,a.checksum,a.manifest_json FROM plugin_installations i JOIN plugin_archives a ON a.plugin_installation_id=i.id WHERE i.id=$1`, *p.source.InstallationID).Scan(&generation, &path, &checksum, &manifestJSON); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT i.runtime_generation,i.install_path,a.checksum,a.manifest_json FROM bloem_storage_installations i JOIN bloem_storage_installation_archives a ON a.installation_id=i.installation_id WHERE i.installation_id=$1`, *p.source.InstallationID).Scan(&generation, &path, &checksum, &manifestJSON); err != nil {
 		return owners, err
 	}
 	var manifest publicv1.PluginManifest

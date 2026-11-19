@@ -240,7 +240,7 @@ func TestInitialS3DiscoveryRechecksBeforeStartup(t *testing.T) {
 			}
 			defer func() { _ = blocker.Rollback(context.Background()) }()
 			var sequence string
-			if err := blocker.QueryRow(t.Context(), `SELECT pg_get_serial_sequence('plugin_installations','id')`).Scan(&sequence); err != nil {
+			if err := blocker.QueryRow(t.Context(), `SELECT 'public.bloem_storage_installation_id_seq'`).Scan(&sequence); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := blocker.Exec(t.Context(), "ALTER SEQUENCE "+pgx.Identifier(strings.Split(sequence, ".")).Sanitize()+" CACHE 1"); err != nil {

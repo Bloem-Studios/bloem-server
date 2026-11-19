@@ -231,7 +231,7 @@ func (r *NativeStorageRegistry) prepareManagementConfigurationArtifact(ctx conte
 	if err = nativeManagementRevision(source.ConfigurationRevision, expected); err != nil {
 		return nil, err
 	}
-	archive, err := scanArchive(tx.QueryRow(ctx, `SELECT `+archiveColumns+` FROM plugin_archives WHERE plugin_installation_id=$1`, installation.ID))
+	archive, err := scanArchive(tx.QueryRow(ctx, `SELECT `+nativeArchiveColumns+` FROM bloem_storage_installation_archives WHERE installation_id=$1`, installation.ID))
 	if err != nil {
 		return nil, catalog.MapNativeOnboardingError(err)
 	}

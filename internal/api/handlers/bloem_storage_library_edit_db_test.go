@@ -21,10 +21,7 @@ func TestStorageLibraryEditPreservesKindDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	var installation int64
-	if err := pool.QueryRow(t.Context(), `INSERT INTO plugin_installations(plugin_id,version,install_path,owner_id,runtime_generation) VALUES('storage-edit','1','/synthetic',$1,1) RETURNING id`, owner).Scan(&installation); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(t.Context(), `INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)`, installation, owner); err != nil {
+	if err := pool.QueryRow(t.Context(), `INSERT INTO bloem_storage_installations(plugin_id,version,install_path,owner_id,runtime_generation) VALUES('storage-edit','1','/synthetic',$1,1) RETURNING installation_id`, owner).Scan(&installation); err != nil {
 		t.Fatal(err)
 	}
 	h := NewLibraryHandler(catalog.NewFolderRepository(pool), nil, nil, pool, nil)

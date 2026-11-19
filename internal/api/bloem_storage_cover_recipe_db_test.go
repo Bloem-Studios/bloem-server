@@ -148,15 +148,14 @@ func TestStorageCoverFreshSessionResourceRevocationDB(t *testing.T) {
 				t.Fatal(err)
 			}
 			var install int64
-			if err = pool.QueryRow(t.Context(), `INSERT INTO plugin_installations(plugin_id,version,install_path,runtime_generation,enabled) VALUES('recipe-fixture','1','/synthetic',1,true) RETURNING id`).Scan(&install); err != nil {
+			if err = pool.QueryRow(t.Context(), `INSERT INTO bloem_storage_installations(plugin_id,version,install_path,runtime_generation,enabled) VALUES('recipe-fixture','1','/synthetic',1,true) RETURNING installation_id`).Scan(&install); err != nil {
 				t.Fatal(err)
 			}
 			var owner uuid.UUID
-			if err = pool.QueryRow(t.Context(), `SELECT owner_id FROM plugin_installations WHERE id=$1`, install).Scan(&owner); err != nil {
+			if err = pool.QueryRow(t.Context(), `SELECT owner_id FROM bloem_storage_installations WHERE installation_id=$1`, install).Scan(&owner); err != nil {
 				t.Fatal(err)
 			}
-			exec(`INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)`, install, owner)
-			exec(`INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,plugin_installation_id,status,granted_by_service) SELECT $1,'plugin_availability','plugin_installation',$2,$3,'active','cover-test' WHERE NOT EXISTS(SELECT 1 FROM organization_entitlements WHERE organization_id=$1 AND plugin_installation_id=$3)`, profile.OrganizationID, owner, install)
+			exec(`INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,storage_installation_id,status,granted_by_service) SELECT $1,'plugin_availability','storage_installation',$2,$3,'active','cover-test' WHERE NOT EXISTS(SELECT 1 FROM organization_entitlements WHERE organization_id=$1 AND storage_installation_id=$3)`, profile.OrganizationID, owner, install)
 			repo := storagesource.NewRepository(pool)
 			source, err := repo.CreateSource(t.Context(), storagesource.SourceConfig{OwnerID: owner, InstallationID: &install, PluginID: "recipe-fixture", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
 			if err != nil {
@@ -297,7 +296,7 @@ func TestStorageCoverFreshSessionResourceRevocationDB(t *testing.T) {
 			case "library":
 				exec(`UPDATE media_folders SET enabled=false WHERE id=$1`, folder)
 			case "shared-source":
-				exec(`UPDATE organization_entitlements SET status='revoked',revoked_at=now() WHERE organization_id=$1 AND plugin_installation_id=$2`, profile.OrganizationID, install)
+				exec(`UPDATE organization_entitlements SET status='revoked',revoked_at=now() WHERE organization_id=$1 AND storage_installation_id=$2`, profile.OrganizationID, install)
 			case "root":
 				exec(`UPDATE bloem_storage_selected_roots SET enabled=false WHERE location_id=$1`, location.ID)
 			case "membership":
@@ -364,15 +363,14 @@ func TestStorageCoverRecipeChoosesViewersPublicationDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	var install int64
-	if err = pool.QueryRow(t.Context(), `INSERT INTO plugin_installations(plugin_id,version,install_path,runtime_generation,enabled) VALUES('recipe-fixture','1','/synthetic',1,true) RETURNING id`).Scan(&install); err != nil {
+	if err = pool.QueryRow(t.Context(), `INSERT INTO bloem_storage_installations(plugin_id,version,install_path,runtime_generation,enabled) VALUES('recipe-fixture','1','/synthetic',1,true) RETURNING installation_id`).Scan(&install); err != nil {
 		t.Fatal(err)
 	}
 	var owner uuid.UUID
-	if err = pool.QueryRow(t.Context(), `SELECT owner_id FROM plugin_installations WHERE id=$1`, install).Scan(&owner); err != nil {
+	if err = pool.QueryRow(t.Context(), `SELECT owner_id FROM bloem_storage_installations WHERE installation_id=$1`, install).Scan(&owner); err != nil {
 		t.Fatal(err)
 	}
-	exec(`INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)`, install, owner)
-	exec(`INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,plugin_installation_id,status,granted_by_service) SELECT $1,'plugin_availability','plugin_installation',$2,$3,'active','cover-test' WHERE NOT EXISTS(SELECT 1 FROM organization_entitlements WHERE organization_id=$1 AND plugin_installation_id=$3)`, profile.OrganizationID, owner, install)
+	exec(`INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,storage_installation_id,status,granted_by_service) SELECT $1,'plugin_availability','storage_installation',$2,$3,'active','cover-test' WHERE NOT EXISTS(SELECT 1 FROM organization_entitlements WHERE organization_id=$1 AND storage_installation_id=$3)`, profile.OrganizationID, owner, install)
 	repo := storagesource.NewRepository(pool)
 	source, err := repo.CreateSource(t.Context(), storagesource.SourceConfig{OwnerID: owner, InstallationID: &install, PluginID: "recipe-fixture", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
 	if err != nil {

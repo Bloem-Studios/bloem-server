@@ -171,7 +171,7 @@ func testStorageScanCompletionAuthority(t *testing.T, binary []byte, manifest *p
 				t.Fatal(err)
 			}
 		case "installation":
-			if _, err := pool.Exec(ctx, "UPDATE plugin_installations SET enabled=false WHERE id=$1", installed.Installation.ID); err != nil {
+			if _, err := pool.Exec(ctx, "UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=$1", installed.Installation.ID); err != nil {
 				t.Fatal(err)
 			}
 		case "cleanup-failure":

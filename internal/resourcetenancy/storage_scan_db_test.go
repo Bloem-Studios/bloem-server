@@ -129,10 +129,9 @@ func newNativeScanFixture(t *testing.T, mode string) *nativeScanFixture {
 		t.Fatal(err)
 	}
 	var installation int64
-	if err := pool.QueryRow(t.Context(), "INSERT INTO plugin_installations(plugin_id,version,install_path,owner_id,runtime_generation) VALUES('authority-fixture','1','/synthetic',$1,1) RETURNING id", sourceOwner).Scan(&installation); err != nil {
+	if err := pool.QueryRow(t.Context(), "INSERT INTO bloem_storage_installations(plugin_id,version,install_path,owner_id,runtime_generation) VALUES('authority-fixture','1','/synthetic',$1,1) RETURNING installation_id", sourceOwner).Scan(&installation); err != nil {
 		t.Fatal(err)
 	}
-	nativeScanSQL(t, pool, "INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)", installation, sourceOwner)
 	var err error
 	x.source, err = x.repo.CreateSource(t.Context(), storagesource.SourceConfig{OwnerID: sourceOwner, InstallationID: &installation, PluginID: "authority-fixture", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
 	if err != nil {
@@ -142,7 +141,7 @@ func newNativeScanFixture(t *testing.T, mode string) *nativeScanFixture {
 	nativeScanSQL(t, pool, "INSERT INTO library_storage_locations(id,source_key,folder_id) VALUES($1,$2,$3)", x.binding.ID, x.binding.SourceKey, x.binding.FolderID)
 	nativeScanSQL(t, pool, `INSERT INTO bloem_storage_selected_roots(id,location_id,directory_id,name,logical_path) VALUES($1,$2,'root','root','')`, uuid.New(), x.binding.ID)
 	if mode == "entitled" {
-		nativeScanSQL(t, pool, "INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,plugin_installation_id,status,granted_by_service) VALUES($1,'plugin_availability','plugin_installation',$2,$3,'active','native-test')", x.org, platform, installation)
+		nativeScanSQL(t, pool, "INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,storage_installation_id,status,granted_by_service) VALUES($1,'plugin_availability','storage_installation',$2,$3,'active','native-test')", x.org, platform, installation)
 	}
 	return x
 }
@@ -162,7 +161,7 @@ func TestNativeScanAuthorityOwnerPolicy(t *testing.T) {
 	}
 }
 func TestNativeScanAuthorityRejectsActualAndRetainedDrift(t *testing.T) {
-	for _, mode := range []string{"missing-binding", "binding-folder", "binding-source", "expected-owner", "expected-installation", "expected-config", "expected-plugin", "expected-provider", "expected-root", "expected-disabled", "source-owner", "source-plugin", "source-installation", "source-config", "source-provider", "source-root", "source-disabled", "installation-disabled", "installation-kind", "native-mark", "folder-disabled", "folder-type", "org-suspended", "grant-missing", "grant-suspended", "grant-revoked", "grant-foreign"} {
+	for _, mode := range []string{"missing-binding", "binding-folder", "binding-source", "expected-owner", "expected-installation", "expected-config", "expected-plugin", "expected-provider", "expected-root", "expected-disabled", "source-owner", "source-plugin", "source-installation", "source-config", "source-provider", "source-root", "source-disabled", "installation-disabled", "installation-plugin", "folder-disabled", "folder-type", "org-suspended", "grant-missing", "grant-suspended", "grant-revoked", "grant-foreign"} {
 		t.Run(mode, func(t *testing.T) {
 			x := newNativeScanFixture(t, "entitled")
 			b, s := x.binding, x.source
@@ -194,7 +193,7 @@ func TestNativeScanAuthorityRejectsActualAndRetainedDrift(t *testing.T) {
 				nativeScanSQL(t, x.pool, "UPDATE bloem_storage_sources SET plugin_id='changed' WHERE key=$1", s.Key)
 			case "source-installation":
 				var second int64
-				if err := x.pool.QueryRow(t.Context(), "INSERT INTO plugin_installations(plugin_id,version,install_path,owner_id) VALUES($1,'1','/synthetic/second',$2) RETURNING id", s.PluginID, s.OwnerID).Scan(&second); err != nil {
+				if err := x.pool.QueryRow(t.Context(), "INSERT INTO bloem_storage_installations(plugin_id,version,install_path,owner_id) VALUES($1,'1','/synthetic/second',$2) RETURNING installation_id", s.PluginID, s.OwnerID).Scan(&second); err != nil {
 					t.Fatal(err)
 				}
 				nativeScanSQL(t, x.pool, "UPDATE bloem_storage_sources SET installation_id=$2 WHERE key=$1", s.Key, second)
@@ -207,11 +206,9 @@ func TestNativeScanAuthorityRejectsActualAndRetainedDrift(t *testing.T) {
 			case "source-disabled":
 				nativeScanSQL(t, x.pool, "UPDATE bloem_storage_sources SET enabled=false WHERE key=$1", s.Key)
 			case "installation-disabled":
-				nativeScanSQL(t, x.pool, "UPDATE plugin_installations SET enabled=false WHERE id=$1", s.InstallationID)
-			case "installation-kind":
-				nativeScanSQL(t, x.pool, "UPDATE plugin_installations SET kind='builtin' WHERE id=$1", s.InstallationID)
-			case "native-mark":
-				nativeScanSQL(t, x.pool, "DELETE FROM bloem_storage_installations WHERE installation_id=$1", s.InstallationID)
+				nativeScanSQL(t, x.pool, "UPDATE bloem_storage_installations SET enabled=false WHERE installation_id=$1", s.InstallationID)
+			case "installation-plugin":
+				nativeScanSQL(t, x.pool, "UPDATE bloem_storage_installations SET plugin_id='changed' WHERE installation_id=$1", s.InstallationID)
 			case "folder-disabled":
 				nativeScanSQL(t, x.pool, "UPDATE media_folders SET enabled=false WHERE id=$1", b.FolderID)
 			case "folder-type":
@@ -219,13 +216,13 @@ func TestNativeScanAuthorityRejectsActualAndRetainedDrift(t *testing.T) {
 			case "org-suspended":
 				nativeScanSQL(t, x.pool, "UPDATE organizations SET status='suspended' WHERE id=$1", x.org)
 			case "grant-missing":
-				nativeScanSQL(t, x.pool, "DELETE FROM organization_entitlements WHERE organization_id=$1 AND plugin_installation_id=$2", x.org, s.InstallationID)
+				nativeScanSQL(t, x.pool, "DELETE FROM organization_entitlements WHERE organization_id=$1 AND storage_installation_id=$2", x.org, s.InstallationID)
 			case "grant-suspended":
-				nativeScanSQL(t, x.pool, "UPDATE organization_entitlements SET status='suspended' WHERE organization_id=$1 AND plugin_installation_id=$2", x.org, s.InstallationID)
+				nativeScanSQL(t, x.pool, "UPDATE organization_entitlements SET status='suspended' WHERE organization_id=$1 AND storage_installation_id=$2", x.org, s.InstallationID)
 			case "grant-revoked":
-				nativeScanSQL(t, x.pool, "UPDATE organization_entitlements SET status='revoked',revoked_at=now() WHERE organization_id=$1 AND plugin_installation_id=$2", x.org, s.InstallationID)
+				nativeScanSQL(t, x.pool, "UPDATE organization_entitlements SET status='revoked',revoked_at=now() WHERE organization_id=$1 AND storage_installation_id=$2", x.org, s.InstallationID)
 			case "grant-foreign":
-				nativeScanSQL(t, x.pool, "UPDATE organization_entitlements SET organization_id=$3 WHERE organization_id=$1 AND plugin_installation_id=$2", x.org, s.InstallationID, x.otherOrg)
+				nativeScanSQL(t, x.pool, "UPDATE organization_entitlements SET organization_id=$3 WHERE organization_id=$1 AND storage_installation_id=$2", x.org, s.InstallationID, x.otherOrg)
 			}
 			if err := x.store.RequireStorageScan(t.Context(), b, s); !errors.Is(err, ErrResourceHidden) {
 				t.Fatalf("drift allowed: %v", err)

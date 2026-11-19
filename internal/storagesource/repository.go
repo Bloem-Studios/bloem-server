@@ -24,8 +24,8 @@ func (r *Repository) CreateSource(ctx context.Context, config SourceConfig) (Sou
 		owner = config.OwnerID
 	}
 	err := r.pool.QueryRow(ctx, `INSERT INTO bloem_storage_sources(key,installation_id,plugin_id,provider_source_id,root_entry_id,configuration_revision,enabled,owner_id)
- SELECT $1,$2,$3,$4,$5,$6,$7,COALESCE($8::uuid,(SELECT owner_id FROM plugin_installations WHERE id=$2),bloem_platform_resource_owner_id())
- WHERE $2::bigint IS NULL OR EXISTS(SELECT 1 FROM plugin_installations WHERE id=$2 AND plugin_id=$3 AND owner_id=COALESCE($8::uuid,owner_id))
+ SELECT $1,$2,$3,$4,$5,$6,$7,COALESCE($8::uuid,(SELECT owner_id FROM bloem_storage_installations WHERE installation_id=$2),bloem_platform_resource_owner_id())
+ WHERE $2::bigint IS NULL OR EXISTS(SELECT 1 FROM bloem_storage_installations WHERE installation_id=$2 AND plugin_id=$3 AND owner_id=COALESCE($8::uuid,owner_id))
  RETURNING owner_id`, config.Key, config.InstallationID, config.PluginID, config.ProviderSourceID, config.RootEntryID, config.ConfigurationRevision, config.Enabled, owner).Scan(&config.OwnerID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return SourceConfig{}, ErrSourceUnavailable

@@ -35,10 +35,7 @@ func storageSourceFixture(t *testing.T) (*pgxpool.Pool, storagesource.SourceConf
 	}
 	plugin := fmt.Sprintf("storage.fixture.%d", time.Now().UnixNano())
 	var installation int64
-	if err := pool.QueryRow(ctx, `INSERT INTO plugin_installations(plugin_id,version,install_path,owner_id) VALUES($1,'1','/synthetic',$2) RETURNING id`, plugin, owner).Scan(&installation); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `INSERT INTO bloem_storage_installations(installation_id,owner_id) VALUES($1,$2)`, installation, owner); err != nil {
+	if err := pool.QueryRow(ctx, `INSERT INTO bloem_storage_installations(plugin_id,version,install_path,owner_id) VALUES($1,'1','/synthetic',$2) RETURNING installation_id`, plugin, owner).Scan(&installation); err != nil {
 		t.Fatal(err)
 	}
 	source, err := storagesource.NewRepository(pool).CreateSource(ctx, storagesource.SourceConfig{OwnerID: owner, InstallationID: &installation, PluginID: plugin, ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
@@ -50,8 +47,8 @@ func storageSourceFixture(t *testing.T) (*pgxpool.Pool, storagesource.SourceConf
 		_, _ = pool.Exec(ctx, `DELETE FROM organization_entitlements WHERE media_folder_id IN (SELECT folder_id FROM library_storage_locations WHERE source_key=$1)`, source.Key)
 		_, _ = pool.Exec(ctx, `DELETE FROM media_folders WHERE id IN (SELECT folder_id FROM library_storage_locations WHERE source_key=$1)`, source.Key)
 		_, _ = pool.Exec(ctx, `DELETE FROM bloem_storage_sources WHERE key=$1`, source.Key)
-		_, _ = pool.Exec(ctx, `DELETE FROM organization_entitlements WHERE plugin_installation_id=$1`, installation)
-		_, _ = pool.Exec(ctx, `DELETE FROM plugin_installations WHERE id=$1`, installation)
+		_, _ = pool.Exec(ctx, `DELETE FROM organization_entitlements WHERE storage_installation_id=$1`, installation)
+		_, _ = pool.Exec(ctx, `DELETE FROM bloem_storage_installations WHERE installation_id=$1`, installation)
 	})
 	return pool, source
 }

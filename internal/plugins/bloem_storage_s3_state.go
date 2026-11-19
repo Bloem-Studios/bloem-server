@@ -32,7 +32,7 @@ func validateNativeS3UserConfig(pluginID string, config map[string]map[string]an
 // Both Snapshot and Upgrade prepare runtime configuration from their retained
 // transaction view. No derived host path is written back to the config store.
 func (r *NativeStorageRegistry) nativeRuntimeConfigTx(ctx context.Context, tx pgx.Tx, installation *Installation) ([]*publicv1.ConfigEntry, error) {
-	rows, err := tx.Query(ctx, `SELECT config_key,config_value FROM plugin_runtime_configs WHERE plugin_installation_id=$1 ORDER BY config_key`, installation.ID)
+	rows, err := tx.Query(ctx, `SELECT config_key,config_value FROM bloem_storage_installation_configs WHERE installation_id=$1 ORDER BY config_key`, installation.ID)
 	if err != nil {
 		return nil, err
 	}
