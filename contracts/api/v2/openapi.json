@@ -5724,6 +5724,10 @@
             "description": "refreshAdminItemMetadata accepts mode reset, which resets an item, season or episode to its providers",
             "type": "boolean"
           },
+          "item_posters": {
+            "description": "listAdminCatalogItems returns poster_url, and admin poster URLs (here and on session rows) are always URLs this server issued",
+            "type": "boolean"
+          },
           "revision": {
             "description": "Opaque revision of this document",
             "type": "string"
@@ -5747,6 +5751,7 @@
           "item_metadata",
           "item_metadata_reset",
           "item_file_paths",
+          "item_posters",
           "revision",
           "state",
           "allowed"
@@ -5891,6 +5896,11 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "poster_url": {
+            "description": "Card-size poster of a movie or series, or of an episode's series, as a URL this server issued: the cached artwork's signed URL, or a signed getItemPoster link while the art is not cached yet. Never a metadata provider's URL. Absent when there is no poster, and on a server that cannot issue poster links (the capabilities then report item_posters false). The URL expires; read it again from a later page or session row",
+            "format": "uri-reference",
+            "type": "string"
           },
           "rating_imdb": {
             "description": "Stored IMDb rating of a movie or series on IMDb's 0-10 scale",
@@ -10324,6 +10334,10 @@
           "available": {
             "type": "boolean"
           },
+          "change_events": {
+            "description": "download.changed on the v2 events socket's admin downloads channel reports a managed download being created, changing status or revision, moving to another title in a catalog merge, or being removed. Delivery is at most once, so re-read the admin download routes on subscribe and reconnect",
+            "type": "boolean"
+          },
           "client_ip": {
             "description": "Download rows carry created_client_ip and last_client_ip",
             "type": "boolean"
@@ -10361,6 +10375,7 @@
           "devices",
           "revocation",
           "client_ip",
+          "change_events",
           "revision",
           "state",
           "allowed"
@@ -15788,6 +15803,88 @@
             "patternDescription": "a non-zero RFC 3339 instant",
             "type": "string"
           },
+          "subtitle": {
+            "additionalProperties": false,
+            "description": "The subtitle the play's plan delivered when it ended, in the live session row's shape; null when it showed none, for a Jellyfin-protocol or Audiobookshelf play, and on rows recorded before the server kept it",
+            "properties": {
+              "codec": {
+                "description": "The track's format in its source, as the inventory's codec names it; null when unknown",
+                "examples": [
+                  "subrip"
+                ],
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "delivery": {
+                "description": "How the plan delivers it: burned into the video (subtitle.mode burn_in), carried in the stream the client plays (subtitle.embedded), a WebVTT rendition of the HLS stream (subtitle.hls_rendition), or a sidecar file the client fetches (subtitle.artifact). Clients ignore values they do not know",
+                "enum": [
+                  "burn_in",
+                  "embedded",
+                  "hls_rendition",
+                  "sidecar"
+                ],
+                "type": "string"
+              },
+              "forced": {
+                "type": "boolean"
+              },
+              "format": {
+                "description": "Format the client receives the track in: the sidecar artifact's or the HLS rendition's format. Null when it is burned in or carried in the stream as the source has it",
+                "examples": [
+                  "vtt"
+                ],
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "hearing_impaired": {
+                "type": "boolean"
+              },
+              "language": {
+                "description": "The track's language as the inventory names it (BCP 47; older rows may carry a legacy value); null when unknown",
+                "examples": [
+                  "en"
+                ],
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source": {
+                "description": "Where the track comes from, as the inventory's source names it: a track in the media file, a subtitle file beside it, or one the server downloaded or stored",
+                "enum": [
+                  "embedded",
+                  "external",
+                  "downloaded"
+                ],
+                "type": "string"
+              },
+              "track_id": {
+                "description": "The track's inventory track_id, as the plan's subtitle.track_id names it",
+                "examples": [
+                  "file:42:subtitle:2"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "track_id",
+              "language",
+              "codec",
+              "format",
+              "source",
+              "delivery",
+              "forced",
+              "hearing_impaired"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "user_id": {
             "description": "Opaque identifier",
             "examples": [
@@ -15847,6 +15944,7 @@
           "video_decision",
           "audio_decision",
           "end_reason",
+          "subtitle",
           "lifecycle_seq"
         ],
         "type": "object"
@@ -15987,9 +16085,6 @@
           "client_version": {
             "type": "string"
           },
-          "content_id": {
-            "type": "string"
-          },
           "device_id": {
             "description": "Device the client declared in X-Silo-Device-Id when playback started, the profile device registry's identity; a Jellyfin play carries the DeviceId of its MediaBrowser authorization. Absent when none was declared.",
             "type": "string"
@@ -16002,10 +16097,8 @@
             "description": "Whole-session method: direct, remux, direct_stream (copied video, converted audio) or transcode; absent when unknown",
             "type": "string"
           },
-          "episode_name": {
-            "type": "string"
-          },
           "episode_number": {
+            "description": "Episode number; absent when not an episode",
             "format": "int64",
             "type": "integer"
           },
@@ -16039,10 +16132,16 @@
             "minLength": 1,
             "type": "string"
           },
+          "media_item_id": {
+            "description": "Catalog content id of what is playing: the episode for an episode, as admin playback history's media_item_id. Absent when unknown",
+            "type": "string"
+          },
           "media_title": {
+            "description": "Episode or item title, as admin playback history names it; empty when the item is no longer in the catalog",
             "type": "string"
           },
           "media_type": {
+            "description": "episode, or the catalog item type; empty when unknown",
             "type": "string"
           },
           "node_display_name": {
@@ -16064,6 +16163,7 @@
             "type": "number"
           },
           "poster_url": {
+            "description": "Card-size poster of the title (an episode's series poster) as a URL this server issued: the cached artwork's signed URL, or a signed getItemPoster link while the art is not cached yet. Never a metadata provider's URL. Absent when there is no poster, and for art that is not cached yet on a server that cannot issue poster links (the catalog capabilities then report item_posters false)",
             "format": "uri-reference",
             "type": "string"
           },
@@ -16126,10 +16226,12 @@
             "type": "string"
           },
           "season_number": {
+            "description": "Episode season; absent when not an episode",
             "format": "int64",
             "type": "integer"
           },
-          "series_name": {
+          "series_title": {
+            "description": "Series title for an episode; absent otherwise",
             "type": "string"
           },
           "session_id": {
@@ -16197,6 +16299,88 @@
               "remote"
             ],
             "type": "string"
+          },
+          "subtitle": {
+            "additionalProperties": false,
+            "description": "The subtitle the session's current plan delivers, following each replan (a subtitle switch the client reports, a recovery); null when it shows none, for a session planned before the server recorded it, and for Jellyfin-protocol and Audiobookshelf sessions. A client that turns an already delivered sidecar on or off without a replan is not seen.",
+            "properties": {
+              "codec": {
+                "description": "The track's format in its source, as the inventory's codec names it; null when unknown",
+                "examples": [
+                  "subrip"
+                ],
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "delivery": {
+                "description": "How the plan delivers it: burned into the video (subtitle.mode burn_in), carried in the stream the client plays (subtitle.embedded), a WebVTT rendition of the HLS stream (subtitle.hls_rendition), or a sidecar file the client fetches (subtitle.artifact). Clients ignore values they do not know",
+                "enum": [
+                  "burn_in",
+                  "embedded",
+                  "hls_rendition",
+                  "sidecar"
+                ],
+                "type": "string"
+              },
+              "forced": {
+                "type": "boolean"
+              },
+              "format": {
+                "description": "Format the client receives the track in: the sidecar artifact's or the HLS rendition's format. Null when it is burned in or carried in the stream as the source has it",
+                "examples": [
+                  "vtt"
+                ],
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "hearing_impaired": {
+                "type": "boolean"
+              },
+              "language": {
+                "description": "The track's language as the inventory names it (BCP 47; older rows may carry a legacy value); null when unknown",
+                "examples": [
+                  "en"
+                ],
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source": {
+                "description": "Where the track comes from, as the inventory's source names it: a track in the media file, a subtitle file beside it, or one the server downloaded or stored",
+                "enum": [
+                  "embedded",
+                  "external",
+                  "downloaded"
+                ],
+                "type": "string"
+              },
+              "track_id": {
+                "description": "The track's inventory track_id, as the plan's subtitle.track_id names it",
+                "examples": [
+                  "file:42:subtitle:2"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "track_id",
+              "language",
+              "codec",
+              "format",
+              "source",
+              "delivery",
+              "forced",
+              "hearing_impaired"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "target_audio_channels": {
             "format": "int64",
@@ -16272,7 +16456,8 @@
           "stream_bitrate_kbps",
           "target_bitrate_kbps",
           "source_bitrate_kbps",
-          "source_audio_channels"
+          "source_audio_channels",
+          "subtitle"
         ],
         "type": "object"
       },
@@ -16357,6 +16542,10 @@
           "stream_location": {
             "type": "boolean"
           },
+          "subtitle": {
+            "description": "Rows and admin playback history entries carry subtitle",
+            "type": "boolean"
+          },
           "summary": {
             "type": "boolean"
           },
@@ -16401,6 +16590,7 @@
           "device_identity",
           "lifecycle_events",
           "adaptation_reasons",
+          "subtitle",
           "adaptation_reason_values",
           "revision",
           "state",
@@ -16465,9 +16655,6 @@
       "AdminPlaybackSummaryItem": {
         "additionalProperties": false,
         "properties": {
-          "episode_name": {
-            "type": "string"
-          },
           "episode_number": {
             "format": "int64",
             "type": "integer"
@@ -16476,16 +16663,19 @@
             "type": "boolean"
           },
           "media_title": {
+            "description": "Episode or item title, as the session row names it",
             "type": "string"
           },
           "media_type": {
+            "description": "episode, or the catalog item type; empty when unknown",
             "type": "string"
           },
           "season_number": {
             "format": "int64",
             "type": "integer"
           },
-          "series_name": {
+          "series_title": {
+            "description": "Series title for an episode; absent otherwise",
             "type": "string"
           },
           "user_id": {
@@ -46245,24 +46435,10 @@
             ],
             "type": "string"
           },
-          "content_id": {
-            "description": "Catalog content id of the playing item; empty when unknown",
-            "examples": [
-              "tt0111161"
-            ],
-            "type": "string"
-          },
           "effective_play_method": {
             "description": "Bucketed method: direct, remux, direct_stream or transcode; empty when unknown",
             "examples": [
               "direct"
-            ],
-            "type": "string"
-          },
-          "episode_name": {
-            "description": "Empty unless an episode",
-            "examples": [
-              ""
             ],
             "type": "string"
           },
@@ -46323,14 +46499,22 @@
             "minLength": 1,
             "type": "string"
           },
+          "media_item_id": {
+            "description": "Catalog content id of what is playing: the episode for an episode; empty when unknown",
+            "examples": [
+              "tt0111161"
+            ],
+            "type": "string"
+          },
           "media_title": {
+            "description": "Episode or item title; empty when unknown",
             "examples": [
               "The Shawshank Redemption"
             ],
             "type": "string"
           },
           "media_type": {
-            "description": "Catalog item type; empty when unknown",
+            "description": "episode, or the catalog item type; empty when unknown",
             "examples": [
               "movie"
             ],
@@ -46480,8 +46664,8 @@
               "null"
             ]
           },
-          "series_name": {
-            "description": "Empty unless an episode",
+          "series_title": {
+            "description": "Series title for an episode; empty otherwise",
             "examples": [
               ""
             ],
@@ -46682,11 +46866,10 @@
           "profile_name",
           "media_file_id",
           "requested_media_file_id",
-          "content_id",
+          "media_item_id",
           "media_title",
           "media_type",
-          "series_name",
-          "episode_name",
+          "series_title",
           "season_number",
           "episode_number",
           "poster_url",
@@ -46759,6 +46942,84 @@
         },
         "required": [
           "items"
+        ],
+        "type": "object"
+      },
+      "PlaybackSessionSubtitle": {
+        "additionalProperties": false,
+        "properties": {
+          "codec": {
+            "description": "The track's format in its source, as the inventory's codec names it; null when unknown",
+            "examples": [
+              "subrip"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivery": {
+            "description": "How the plan delivers it: burned into the video (subtitle.mode burn_in), carried in the stream the client plays (subtitle.embedded), a WebVTT rendition of the HLS stream (subtitle.hls_rendition), or a sidecar file the client fetches (subtitle.artifact). Clients ignore values they do not know",
+            "enum": [
+              "burn_in",
+              "embedded",
+              "hls_rendition",
+              "sidecar"
+            ],
+            "type": "string"
+          },
+          "forced": {
+            "type": "boolean"
+          },
+          "format": {
+            "description": "Format the client receives the track in: the sidecar artifact's or the HLS rendition's format. Null when it is burned in or carried in the stream as the source has it",
+            "examples": [
+              "vtt"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hearing_impaired": {
+            "type": "boolean"
+          },
+          "language": {
+            "description": "The track's language as the inventory names it (BCP 47; older rows may carry a legacy value); null when unknown",
+            "examples": [
+              "en"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "description": "Where the track comes from, as the inventory's source names it: a track in the media file, a subtitle file beside it, or one the server downloaded or stored",
+            "enum": [
+              "embedded",
+              "external",
+              "downloaded"
+            ],
+            "type": "string"
+          },
+          "track_id": {
+            "description": "The track's inventory track_id, as the plan's subtitle.track_id names it",
+            "examples": [
+              "file:42:subtitle:2"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id",
+          "language",
+          "codec",
+          "format",
+          "source",
+          "delivery",
+          "forced",
+          "hearing_impaired"
         ],
         "type": "object"
       },
@@ -183683,6 +183944,96 @@
         "x-silo-service-backed": true
       }
     },
+    "/api/v2/item-posters/{content_id}": {
+      "get": {
+        "operationId": "getItemPoster",
+        "parameters": [
+          {
+            "description": "Content ID of the movie or series whose poster the link names.",
+            "in": "path",
+            "name": "content_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exp",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sig",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Poster bytes of art not cached yet"
+          },
+          "302": {
+            "description": "Redirect to the cached poster's signed URL",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "format": "uri-reference",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Link invalid or expired, item gone, no poster, or the provider refused or failed"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Poster request rate limit exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Poster fetches are busy or not configured; retry after Retry-After"
+          }
+        },
+        "summary": "Read a catalog item's current poster from a signed link that admin reads return in poster_url. Cached art redirects to its stored object; art not cached yet is fetched from its provider through the server and queued for caching.",
+        "tags": [
+          "artwork"
+        ],
+        "x-silo-class": "public",
+        "x-silo-raw-protocol": "artwork-image",
+        "x-silo-raw-reason": "Poster bytes and redirects bypass JSON encoding.",
+        "x-silo-service-backed": true
+      }
+    },
     "/api/v2/libraries": {
       "get": {
         "operationId": "listLibraries",
@@ -252305,6 +252656,9 @@
             "format": "double",
             "type": "number"
           },
+          "subtitle": {
+            "$ref": "#/x-silo-worker-protocols/schemas/playback_SessionSubtitle"
+          },
           "subtitle_burn_in": {
             "type": "boolean"
           },
@@ -252446,6 +252800,43 @@
         "required": [
           "path",
           "description"
+        ],
+        "type": "object"
+      },
+      "playback_SessionSubtitle": {
+        "additionalProperties": false,
+        "properties": {
+          "codec": {
+            "type": "string"
+          },
+          "delivery": {
+            "type": "string"
+          },
+          "forced": {
+            "type": "boolean"
+          },
+          "format": {
+            "type": "string"
+          },
+          "hearing_impaired": {
+            "type": "boolean"
+          },
+          "language": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "track_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id",
+          "source",
+          "delivery",
+          "forced",
+          "hearing_impaired"
         ],
         "type": "object"
       },

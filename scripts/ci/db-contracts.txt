@@ -563,6 +563,7 @@
 ./internal/notifications TestPluginDestinationTextNeverCarriesSecretsDB
 ./internal/notifications TestPluginDestinationExhaustedScheduleDB
 ./internal/notifications TestPluginDestinationRetryOutlivesInboxRetentionDB
+./internal/notifications TestPushRetryOutlivesInboxRetentionDB
 ./internal/notifications TestFanoutQueuesPluginDestinationAttemptsDB
 ./internal/notifications TestPluginDestinationCreateAndAccountDeletionDontDeadlockDB
 ./internal/notifications TestPluginDestinationCreateRechecksTheProfileDB
@@ -613,6 +614,7 @@
 ./internal/downloads TestParkedDownloadIsNotServedOrPreparedFromItsOldFileDB
 ./internal/downloads TestRegistrationRefusesAFileOfAnotherTitleDB
 ./internal/downloads TestDownloadClientAddressesDB
+./internal/downloads TestDownloadChangeOutboxDB
 ./internal/downloads TestRegistrationAndRetitleSerializeOnTheFileRowDB
 ./internal/downloads TestDeadAccountTransferReleasesItsConcurrentSlotDB
 ./internal/downloads TestManagedRequestRegistersNothingWhenAFileLeftItsTitleDB
@@ -712,6 +714,8 @@
 ./internal/api/handlers TestLifecycleSweepSelectsWhatItCanEndDB
 ./internal/api/handlers TestLifecycleSweepPassesLiveJellyfinPlaysDB
 ./internal/api/handlers TestLifecycleSweepBacksOffFailedEndsDB
+# A live row names an episode as the history entry its play leaves does.
+./internal/api/handlers TestEpisodeLiveRowNamesItAsHistoryDB
 
 # An Audiobookshelf play a client only reports through its local session is
 # one play across servers under a cluster-wide account cap; Activity lists it

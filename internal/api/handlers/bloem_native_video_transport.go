@@ -227,7 +227,7 @@ func (h *PlaybackHandler) prepareNativeVideoTransportV3(r *http.Request, session
 	// native source authority check before registering the session.
 	var sessionRecipe *playback.RecipeCard
 	if mode.headerAuth {
-		sessionRecipe = sessionRecipeCardV3(card, &routeSession, result.AdaptationReasons)
+		sessionRecipe = sessionRecipeCardV3(card, &routeSession, result)
 	}
 	completed := false
 	return preparedTransportV3{sessionRecipe: sessionRecipe, url: url, routingWorkload: workload, routingExecution: noderouting.Execution(routeSession.RoutingExecution), routingEgress: noderouting.EgressAPI, commit: func() *transportErrorV3 {

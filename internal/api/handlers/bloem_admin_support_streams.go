@@ -100,10 +100,9 @@ type SupportStream struct {
 }
 
 func supportStreamFrom(row AdminPlaybackSessionView, deviceName string, protected bool, canStop, canMessage bool) SupportStream {
+	// For an episode, Silo's MediaTitle is the episode's own title and
+	// SeriesTitle its show, as on history rows.
 	title := row.MediaTitle
-	if row.SeriesName != "" && row.EpisodeName != "" {
-		title = row.EpisodeName
-	}
 	method := row.EffectivePlayMethod
 	if method == "audio" {
 		method = "direct_stream"
@@ -117,7 +116,7 @@ func supportStreamFrom(row AdminPlaybackSessionView, deviceName string, protecte
 	}
 	return SupportStream{
 		SessionID: row.SessionID, AccountID: row.UserID, PersonName: row.Username, ProfileID: row.ProfileID, ProfileName: row.ProfileName,
-		Title: title, SeriesName: row.SeriesName, SeasonNumber: row.SeasonNumber, EpisodeNumber: row.EpisodeNumber, MediaType: row.MediaType,
+		Title: title, SeriesName: row.SeriesTitle, SeasonNumber: row.SeasonNumber, EpisodeNumber: row.EpisodeNumber, MediaType: row.MediaType,
 		StartedAt: row.StartedAt, UpdatedAt: row.UpdatedAt, PositionSeconds: row.PositionSeconds, DurationSeconds: row.FileDuration, IsPaused: row.IsPaused,
 		PlayMethod: method, VideoDecision: row.VideoDecision, AudioDecision: row.AudioDecision,
 		Device:  supportStreamDevice{Name: name, Platform: row.DevicePlatform, ID: row.DeviceID, App: row.ClientLabel},
