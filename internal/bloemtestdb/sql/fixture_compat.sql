@@ -270,6 +270,47 @@ FOR EACH ROW EXECUTE FUNCTION public.bloem_fixture_media_request_unset_placehold
 ALTER TABLE public.media_requests
     ALTER COLUMN organization_id SET DEFAULT public.bloem_fixture_media_request_placeholder_organization();
 
+-- Upstream fixtures also copy user_profiles into a test schema with
+-- CREATE TABLE ... (LIKE public.user_profiles INCLUDING DEFAULTS), which keeps
+-- Bloem's NOT NULL organization_id and access_group_id but no trigger. LIKE
+-- copies defaults, so the columns get placeholder defaults here: the
+-- media_requests placeholder organization (no real organization has it) and
+-- group -1, which no access group has. A package whose tests read a copy's
+-- organization creates that organization on its own database (see
+-- internal/notifications). On public.user_profiles a trigger that sorts
+-- before every other one (a_bloem_fixture_0…) takes the placeholders out
+-- again: armed, it clears the organization so a_bloem_fixture_profile_org
+-- does the profile's bookkeeping (its membership and group); unarmed, the
+-- profile gets the default organization. An organization the insert names,
+-- the default one included, is never touched.
+CREATE OR REPLACE FUNCTION public.bloem_fixture_profile_unset_placeholder()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NEW.organization_id = public.bloem_fixture_media_request_placeholder_organization() THEN
+        IF public.bloem_fixture_compat_armed() THEN
+            NEW.organization_id := NULL;
+        ELSE
+            NEW.organization_id := public.bloem_default_organization_id();
+        END IF;
+    END IF;
+    IF NEW.access_group_id = -1 THEN
+        NEW.access_group_id := NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS a_bloem_fixture_0_profile_placeholder ON public.user_profiles;
+CREATE TRIGGER a_bloem_fixture_0_profile_placeholder
+BEFORE INSERT ON public.user_profiles
+FOR EACH ROW EXECUTE FUNCTION public.bloem_fixture_profile_unset_placeholder();
+
+ALTER TABLE public.user_profiles
+    ALTER COLUMN organization_id SET DEFAULT public.bloem_fixture_media_request_placeholder_organization(),
+    ALTER COLUMN access_group_id SET DEFAULT -1;
+
 -- An earlier version gave each copy the production trigger from an event
 -- trigger, which a dump restored as an ordinary role cannot recreate.
 DO $$

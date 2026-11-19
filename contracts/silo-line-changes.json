@@ -1160,7 +1160,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "8120df8494d6b1e6"
+   "func main() {": "bf0855126f3869bb"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1567,8 +1567,8 @@
   },
   "web/src/components/notifications/NotificationInbox.tsx": {
    "function EntryPoster({": "30ce1037dac462bf",
-   "function notificationDescription(t: Translate, notification: AppNotification): s": "f10b6a9e30e11c90",
-   "function notificationTitle(t: Translate, notification: AppNotification): string": "32ca8188b41ea7ef"
+   "function notificationDescription(t: Translate, notification: AppNotification): s": "b8361855c47cf4fe",
+   "function notificationTitle(t: Translate, notification: AppNotification): string": "55bd607d746566f9"
   },
   "web/src/hooks/useAuth.tsx": {
    "export function AuthProvider({ children }: { children: ReactNode }) {": "70a81126fb160ff9"
@@ -1590,5 +1590,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "663882f1165882eec18b7150e6932866ececc01e"
+ "silo": "bd40bd9ebfa46694818c8cabee581a479c51a8a1"
 }

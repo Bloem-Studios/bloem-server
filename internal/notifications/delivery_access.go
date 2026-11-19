@@ -19,6 +19,9 @@ var accountLevelDeliveryTypes = []string{
 	DeliveryTypeRequestApproved,
 	DeliveryTypeRequestDeclined,
 	DeliveryTypeWebhookAutoDisabled,
+	// Like a webhook's, a plugin destination's auto-disable notice goes to the
+	// profile that owns the destination and carries no library.
+	DeliveryTypePluginDestinationAutoDisabled,
 	DeliveryTypeSystemAlert,
 	DeliveryTypeSystemAnnouncement,
 }
