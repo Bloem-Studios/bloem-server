@@ -405,7 +405,6 @@
    "lines": [
     "\tbase, err := url.Parse(h.currentHostBaseURL())",
     "\tredirect := h.PostLogoutRedirectURL()",
-    "\tredirectURI := h.CallbackURL(req.Prefix, req.InstallID)",
     "\treturn h.webCompletionURL() + \"?\" + values.Encode()"
    ]
   },
@@ -1133,7 +1132,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "6e2ea01cdfe83765"
+   "func main() {": "8510d44da8362fe3"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1259,7 +1258,7 @@
    "func adminAccountsDB(t *testing.T) *UserRepository {": "2a5c19ecc33fbedf"
   },
   "internal/auth/oauth_handler.go": {
-   "func (h *OAuthHandler) Callback(ctx context.Context, in OAuthCallbackInput) stri": "906546ec958aefd3"
+   "func (h *OAuthHandler) Callback(ctx context.Context, in OAuthCallbackInput) stri": "4aeafd9f206b956b"
   },
   "internal/auth/repository.go": {
    "func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInpu": "c1f6c882ba429626",
@@ -1562,5 +1561,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "8b51cb43cea752a46db5fd4510c843ef50dbe6f0"
+ "silo": "2c2dc7c00c28d51b9653beef98afe2bcdb1d3029"
 }

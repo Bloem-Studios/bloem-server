@@ -144,6 +144,7 @@ func TestV2PluginProvisionStatusUsesDeclaringReplicaLookup(t *testing.T) {
 	}
 	newChiRouter(deps)
 	admin := v2WiringIdentity{role: models.RoleAdmin}
+	v2.TenantIdentity = nil // Bloem: the tenant identity gate reads the dead pool; this test fakes the gates around the handler
 	v2.Auth = apimw.NewAuthMiddleware(admin, admin, nil, nil)
 	v2.ViewerAccess = apimw.NewViewerAccessMiddleware(v2WiringViewer{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v2/admin/plugins/provisioning-status", nil)

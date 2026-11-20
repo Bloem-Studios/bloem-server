@@ -72,6 +72,7 @@ internal/api/middleware/auth.go
 internal/api/middleware/policy_gates.go  # added lines only: policy decisions carry the request tenant's facts, and the two EffectivePolicyForUser calls see a context naming the declared profile and requiring the tenant (bloem_policy_gates.go), with the original request restored after
 internal/api/middleware/viewer_access.go
 internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher; four lines put native inputs on core-access transcode nodes: the playback handler's granter, the node control grant issuer and catalog check, Bloem's sources/open in the /self node routes and its source bytes middleware (bloem_native_node_sources.go, 2026-11-16); one line wraps the request lifecycle notifier for admin push (bloemAdminPushLifecycle)
+internal/api/router_v2_plugin_settings_test.go  # the provisioning-status test drops Bloem's tenant identity gate, which reads the test's dead pool, as it fakes Silo's own gates
 internal/api/testdata/media_routes.txt
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
 internal/apiv2/artwork_test.go  # TestArtworkNestedKeyBytesAndRanges checks max-age against the lifetime left at the start and the end of its request instead of at a later instant; the later reading failed in Bloem CI whenever a loaded runner let a clock second tick over in between (2026-11-16)
