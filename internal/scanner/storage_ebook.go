@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -125,6 +126,7 @@ func StorageEbookFromEntry(e *storagev1.Entry) (StorageEbook, bool) {
 		book.PublishedAt = published
 	}
 	book.sanitize()
+	normalizeStorageEbook(&book, time.Now())
 	out := StorageEbook{Entry: e, Book: book, CoverThumbhash: strings.TrimSpace(meta.GetCoverThumbhash())}
 	if meta.GetCoverEntryId() != "" && meta.GetCoverRevision() != "" {
 		out.CoverEntryID, out.CoverRevision = meta.GetCoverEntryId(), meta.GetCoverRevision()
@@ -143,9 +145,42 @@ func ParseStorageEbook(ctx context.Context, e *storagev1.Entry, file mediasource
 	// Embedded covers are not extracted on this path: cover bytes would have
 	// to be uploaded inside the scan. A later cover pass can read them.
 	book.Cover = nil
+	normalizeStorageEbook(&book, time.Now())
 	out := StorageEbook{Entry: e, Book: book}
 	out.dropPlaceholderISBN(book.ISBN)
 	return out, nil
+}
+
+// storageEbookSubjectCode matches a BISAC subject code such as FIC042030,
+// which some publishers list among a book's subjects.
+var storageEbookSubjectCode = regexp.MustCompile(`^[A-Z]{3}[0-9]{6}$`)
+
+// normalizeStorageEbook cleans what a storage book's file or provider says
+// about it. Some files pack every subject into one entry separated by
+// semicolons, BISAC codes among them; each subject becomes its own genre and
+// the codes are dropped. A publication date more than a year ahead is a typo
+// in the file (2922 for 2022) and is ignored. Publication merges genres into
+// the stored ones and keeps a stored year, so migration
+// 20261120120000_bloem_storage_ebook_metadata_cleanup.sql cleaned the books
+// stored before this.
+func normalizeStorageEbook(book *parsedEbook, now time.Time) {
+	var genres []string
+	for _, value := range book.Genres {
+		for _, part := range strings.Split(value, ";") {
+			part = strings.TrimSpace(part)
+			if part != "" && !storageEbookSubjectCode.MatchString(part) {
+				genres = append(genres, part)
+			}
+		}
+	}
+	book.Genres = boundedStrings(uniqueTrimmedStrings(genres))
+	latest := now.Year() + 1
+	if book.PublishedAt.Year() > latest {
+		book.PublishedAt = time.Time{}
+	}
+	if book.Year > latest {
+		book.Year = 0
+	}
 }
 
 func boundedStrings(values []string) []string {
