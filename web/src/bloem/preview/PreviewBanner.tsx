@@ -113,7 +113,7 @@ export default function PreviewBanner() {
     <div
       ref={banner}
       role="status"
-      className="bg-primary/10 sticky top-0 z-50 flex flex-wrap items-center gap-3 border-b px-4 py-2 text-sm"
+      className="sticky top-0 z-50 flex flex-wrap items-center gap-3 border-b bg-[color-mix(in_srgb,var(--primary)_10%,var(--background))] px-4 py-2 text-sm"
     >
       <span>{deadline}</span>
       <Button size="sm" className="ms-auto" onClick={() => requestSubscription()}>

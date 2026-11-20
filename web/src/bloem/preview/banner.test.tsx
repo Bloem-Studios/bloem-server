@@ -80,3 +80,15 @@ it("keeps Exit preview when the operator gives no subscription link", () => {
   expect(screen.getByRole("button", { name: "Exit preview" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Subscribe!" })).not.toBeInTheDocument();
 });
+it("paints the sticky banner opaque so scrolled artwork never shows through its buttons", () => {
+  render(
+    <PreviewModeContext.Provider value={guestPresentation("https://store.test/plans")}>
+      <PreviewBanner />
+    </PreviewModeContext.Provider>,
+  );
+  const banner = screen.getByRole("status");
+  // The brand tint is mixed into the page background rather than laid over
+  // whatever scrolls beneath the sticky bar.
+  expect(banner.className).toContain("var(--background)");
+  expect(banner.className).not.toMatch(/\bbg-primary\/\d+/);
+});
