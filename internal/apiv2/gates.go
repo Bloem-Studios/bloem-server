@@ -75,7 +75,7 @@ func classGate(deps Dependencies) func(huma.Context, func(huma.Context)) {
 				"The server is not wired to authorize this operation ("+missing+" unavailable)."))
 			return
 		}
-		next = bloemThenContentGate(next) // Bloem: playback-gated content after the class gates (bloem_content_gate.go)
+		next = bloemThenContentGate(deps, next) // Bloem: playback-gated content and request organizations after the class gates (bloem_content_gate.go)
 		runChain(ctx, next, chain)
 	}
 }

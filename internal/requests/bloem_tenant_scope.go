@@ -21,6 +21,7 @@ package requests
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
@@ -141,6 +142,23 @@ func (s *Service) requireRequestOrganization(ctx context.Context, viewer Viewer,
 		return ErrForbidden
 	}
 	return nil
+}
+
+// BloemRequireAdminRequestOrganization refuses an administrator's read of a
+// request filed in another organization. Silo's admin poster read
+// (AdminRequestPosterURL) loads the request by id with no organization check,
+// so the v2 poster route runs this first (apiv2 bloem_content_gate.go). It
+// reads the stored row only, like that read, so it answers while requests are
+// turned off. Without a tenant scope it passes and Silo's read decides.
+func (s *Service) BloemRequireAdminRequestOrganization(ctx context.Context, viewer Viewer, id string) error {
+	if s.tenantScope == nil {
+		return nil
+	}
+	req, err := s.store.GetRequest(ctx, strings.TrimSpace(id))
+	if err != nil {
+		return err
+	}
+	return s.requireRequestOrganization(ctx, viewer, req, false)
 }
 
 // boundToViewerOrganization drops requests belonging to other organizations.
