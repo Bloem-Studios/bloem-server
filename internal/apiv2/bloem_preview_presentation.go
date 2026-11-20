@@ -38,8 +38,13 @@ type BloemAccount struct {
 }
 
 // Schema retains the stable Account schema and adds only the Bloem properties.
+// A router built from the shared runtime snapshot only reads them: building
+// the snapshot already added them, and routers built at once share it.
 func (BloemAccount) Schema(r huma.Registry) *huma.Schema {
 	ref := r.Schema(reflect.TypeFor[Account](), true, "")
+	if _, shared := r.(*runtimeSchemaRegistry); shared {
+		return ref
+	}
 	base := r.SchemaFromRef(ref.Ref)
 	base.Properties["preview"] = &huma.Schema{AnyOf: []*huma.Schema{r.Schema(reflect.TypeFor[BloemPreviewPresentation](), true, ""), {Type: "null"}}}
 	base.Properties["playback_allowed"] = &huma.Schema{Type: "boolean", Description: "Whether the effective account policy permits playback."}
@@ -58,6 +63,9 @@ type BloemPlaybackCapabilities struct {
 
 func (BloemPlaybackCapabilities) Schema(r huma.Registry) *huma.Schema {
 	ref := r.Schema(reflect.TypeFor[PlaybackCapabilities](), true, "")
+	if _, shared := r.(*runtimeSchemaRegistry); shared {
+		return ref
+	}
 	r.SchemaFromRef(ref.Ref).Properties["denial"] = r.Schema(reflect.TypeFor[BloemPreviewDenial](), true, "")
 	return ref
 }
