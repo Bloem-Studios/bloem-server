@@ -1039,8 +1039,7 @@
   "web/src/components/MediaCarousel.tsx": {
    "kind": "lines",
    "lines": [
-    "    \"text-muted-foreground hover:text-primary text-[0.75rem] font-semibold tracking-[0.16em] uppercase transition-all active:scale-[0.98]\";",
-    "    : \"text-foreground text-xl font-semibold tracking-tight\";"
+    "    \"text-muted-foreground hover:text-primary text-[0.75rem] font-semibold tracking-[0.16em] uppercase transition-all active:scale-[0.98]\";"
    ]
   },
   "web/src/components/admin/libraries/useLibraryForm.ts": {
@@ -1132,7 +1131,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "8510d44da8362fe3"
+   "func main() {": "8bdf66bb7624b112"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1252,7 +1251,7 @@
    "func (fakeResolver) Resolve(_ context.Context, in access.ResolveInput) (access.S": "3ee6ec37bb0cf630"
   },
   "internal/apiv2/registry.go": {
-   "func Register[I, O any](reg *Registry, op Operation, handler func(context.Contex": "00bac42ab2396937"
+   "func Register[I, O any](reg *Registry, op Operation, handler func(context.Contex": "a1a05fa554c104e4"
   },
   "internal/auth/admin_users_test.go": {
    "func adminAccountsDB(t *testing.T) *UserRepository {": "2a5c19ecc33fbedf"
@@ -1289,7 +1288,7 @@
   },
   "internal/backup/service.go": {
    "func (s *Service) backup(ctx context.Context, prep backupPrep, kind Kind, starte": "039124a40e6ee7d6",
-   "func (s *Service) backupWith(ctx context.Context, held Held, kind Kind, id strin": "f6e6ae75ed869797"
+   "func (s *Service) backupWith(ctx context.Context, held Held, kind Kind, id strin": "3f12ae3ba06b79bc"
   },
   "internal/backup/swap.go": {
    "func validateForSwap(ctx context.Context, src *Source, loader DatabaseLoader, op": "f4bb3392e36b8444"
@@ -1561,5 +1560,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "165ab2b066340a44644f7d0d052302a090cfe681"
+ "silo": "f11b8df31db408b3451b2a025cfc1a4d0e5117b3"
 }
