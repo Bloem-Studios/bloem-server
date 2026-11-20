@@ -9272,19 +9272,20 @@
       "namespace": "legacy_unversioned",
       "method": "GET",
       "path": "/api/bloem/v2/admin/platform/entitlement-templates/{key}/revisions",
-      "route_group": "/api/bloem/v2/admin",
+      "route_group": "/api/bloem/v2",
       "handler": "(*internal/api/handlers.EntitlementTemplatesHandler).HandleListRevisions",
       "handler_expr": "entitlement.HandleListRevisions",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 2,
+      "middleware_chain": 12,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
-        "admin_context"
+        "admin_context",
+        "authenticated"
       ],
       "conditions": [
-        "entitlementHandler != nil"
+        "entitlement != nil"
       ],
       "conditional": true,
       "request_kind": "none",

@@ -429,12 +429,18 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemEntitlementTemplateResponse]](reg, op)
 	}
 
-	for _, revisions := range []struct{ path, id, summary string }{
-		{"/admin/platform/entitlement-templates/{key}/revisions", "listBloemEntitlementTemplateRevisions", "List immutable template revisions."},
-		{"/admin/platform/entitlement-templates/{key}/history", "listBloemEntitlementTemplateHistory", "List immutable template revisions (history alias)."},
+	for _, revisions := range []struct {
+		path, id, summary string
+		apiKey            bool
+	}{
+		{"/admin/platform/entitlement-templates/{key}/revisions", "listBloemEntitlementTemplateRevisions", "List immutable template revisions.", true},
+		{"/admin/platform/entitlement-templates/{key}/history", "listBloemEntitlementTemplateHistory", "List immutable template revisions (history alias).", false},
 	} {
 		op := bloemAdminDocumentOp(reg, "GET", revisions.path, revisions.id, revisions.summary, "bloemPlatformContext", 200)
 		op.Description = bloemPlatformAuthorityDescription + " Revisions are ordered newest first."
+		if revisions.apiKey {
+			bloemDocumentPlatformAPIKey(&op, "bloemEntitlementAccountsKey")
+		}
 		bloemDocumentDescribe(&op, map[int]string{404: "not_found: the template does not exist."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemEntitlementRevisionsResponse]](reg, op)
 	}

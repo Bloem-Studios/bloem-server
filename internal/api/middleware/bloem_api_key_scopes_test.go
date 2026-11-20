@@ -46,7 +46,8 @@ func TestBloemEntitlementBulkAPIKeyScope(t *testing.T) {
 }
 
 // TestBloemEntitlementAccountsAPIKeyScope covers admin:entitlements:accounts:
-// the template catalog read and per-account preview and apply, nothing else.
+// the template catalog and revision reads and per-account preview and apply,
+// nothing else.
 func TestBloemEntitlementAccountsAPIKeyScope(t *testing.T) {
 	accounts := []string{auth.ScopeAdminEntitlementsAccounts}
 	tests := []struct {
@@ -59,6 +60,12 @@ func TestBloemEntitlementAccountsAPIKeyScope(t *testing.T) {
 		{"accounts scope lists templates", accounts, http.MethodGet, "/api/bloem/v2/admin/platform/entitlement-templates", true},
 		{"accounts scope previews an account", accounts, http.MethodPost, "/api/bloem/v2/admin/platform/accounts/42/entitlement/dry-run", true},
 		{"accounts scope applies to an account", accounts, http.MethodPost, "/api/bloem/v2/admin/platform/accounts/42/entitlement/apply", true},
+		{"accounts scope reads one template's revisions", accounts, http.MethodGet, "/api/bloem/v2/admin/platform/entitlement-templates/standard/revisions", true},
+		{"accounts scope denies the revision history alias", accounts, http.MethodGet, "/api/bloem/v2/admin/platform/entitlement-templates/standard/history", false},
+		{"accounts scope denies revisions under a nested key", accounts, http.MethodGet, "/api/bloem/v2/admin/platform/entitlement-templates/standard/extra/revisions", false},
+		{"accounts scope denies revisions without a key", accounts, http.MethodGet, "/api/bloem/v2/admin/platform/entitlement-templates//revisions", false},
+		{"accounts scope denies template clone", accounts, http.MethodPost, "/api/bloem/v2/admin/platform/entitlement-templates/standard/clone", false},
+		{"accounts scope denies template archive", accounts, http.MethodPost, "/api/bloem/v2/admin/platform/entitlement-templates/standard/archive", false},
 		{"accounts scope denies template creation", accounts, http.MethodPost, "/api/bloem/v2/admin/platform/entitlement-templates", false},
 		{"accounts scope denies template revision", accounts, http.MethodPost, "/api/bloem/v2/admin/platform/entitlement-templates/standard/revisions", false},
 		{"accounts scope denies one template read", accounts, http.MethodGet, "/api/bloem/v2/admin/platform/entitlement-templates/standard", false},
@@ -66,6 +73,7 @@ func TestBloemEntitlementAccountsAPIKeyScope(t *testing.T) {
 		{"accounts scope denies malformed account id", accounts, http.MethodPost, "/api/bloem/v2/admin/platform/accounts/abc/entitlement/apply", false},
 		{"accounts scope denies bulk jobs", accounts, http.MethodPost, "/api/bloem/v2/admin/platform/accounts/entitlement-bulk/policy-jobs", false},
 		{"bulk scope still denies account apply", []string{auth.ScopeAdminEntitlementsBulk}, http.MethodPost, "/api/bloem/v2/admin/platform/accounts/42/entitlement/dry-run", false},
+		{"bulk scope denies template revisions", []string{auth.ScopeAdminEntitlementsBulk}, http.MethodGet, "/api/bloem/v2/admin/platform/entitlement-templates/standard/revisions", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

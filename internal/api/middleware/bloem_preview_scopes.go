@@ -52,6 +52,7 @@ func init() {
 		auth.ScopeAdminPreview: bloemPreviewScopeRoutes(),
 		auth.ScopeAdminEntitlementsAccounts: {
 			{http.MethodGet, regexp.MustCompile(`^/api/bloem/v2/admin/platform/entitlement-templates$`)},
+			{http.MethodGet, regexp.MustCompile(`^/api/bloem/v2/admin/platform/entitlement-templates/[^/]+/revisions$`)},
 			{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/accounts/[0-9]+/entitlement/dry-run$`)},
 			{http.MethodPost, regexp.MustCompile(`^/api/bloem/v2/admin/platform/accounts/[0-9]+/entitlement/apply$`)},
 		},

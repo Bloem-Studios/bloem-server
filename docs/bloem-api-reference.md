@@ -1584,6 +1584,9 @@ Template routes:
 
 Template responses contain `key`, `name`, `revision`, `enabled`, `archived`,
 `status` (`enabled`, `disabled`, or `archived`), `policy`, and `created_at`.
+The catalog list and `GET {key}/revisions` also accept a platform administrator's
+`sa_` API key, unscoped or with `admin:entitlements:accounts`; the other template
+routes need a platform context.
 Revision conflicts return 409; invalid policies and revisions return 422.
 
 Target detail and application routes:

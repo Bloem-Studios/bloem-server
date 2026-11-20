@@ -108,7 +108,7 @@ the link are the administrator's.
 | --- | --- |
 | Platform administrator | Plans and their revisions, applying them to direct accounts and organizations, bulk moves, the preview's settings and libraries, the upgrade prompt. |
 | Organization administrator | Moving their own organization's people between plans and cohorts, with the same preview and confirmation. |
-| The storefront | Creating accounts and reseller organizations on a plan, moving an account to another plan, preview launch links and free-play allowances, using a platform administrator's API key. |
+| The storefront | Creating accounts and reseller organizations on a plan, moving an account to another plan, reading a plan's revisions, preview launch links and free-play allowances, using a platform administrator's API key. |
 
 ## Words used in the code
 
@@ -134,6 +134,12 @@ the link are the administrator's.
   new account on a plan with `POST /api/bloem/v2/admin/platform/accounts`, and an
   organization with `POST /api/bloem/v2/admin/platform/tenants`
   ([organizations API](../bloem/api/organizations.md)).
+- **API keys on templates:** a platform administrator's API key, unscoped or with
+  `admin:entitlements:accounts`, may read the plan list and one plan's revisions
+  (`GET .../entitlement-templates/{key}/revisions`), so the storefront can show
+  the limits of a plan an account holds at an older revision. Reading one
+  template, the `/history` alias and every change to a plan need a platform
+  administrator's session.
 - [Entitlement templates guide](../wiki/admin/entitlement-templates.md): the
   built-in plans, policy fields, key rules, confirmation and audit. Bulk moves and
   policy cohorts are in the [plans and preview API](../bloem/api/plans.md).

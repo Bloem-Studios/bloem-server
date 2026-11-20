@@ -81,8 +81,9 @@ type EntitlementTemplatesHandler struct {
 }
 
 // SetPlatformAdminAuthorizer lets an admin-owned API key read the template
-// catalog and preview or apply a template to one account, as a storefront does
-// when it provisions accounts. Template authoring stays session-only.
+// catalog and one template's revisions, and preview or apply a template to one
+// account, as a storefront does when it provisions accounts. Template authoring
+// stays session-only.
 func (h *EntitlementTemplatesHandler) SetPlatformAdminAuthorizer(authorizer auth.PlatformAdminAuthorizer) {
 	h.platformAdmins = authorizer
 }
@@ -235,8 +236,10 @@ func (h *EntitlementTemplatesHandler) HandleGet(w http.ResponseWriter, r *http.R
 	writeTemplateJSON(w, http.StatusOK, item)
 }
 
+// HandleListRevisions serves both GET {key}/revisions, which a platform
+// administrator's API key may also call, and the session-only /history alias.
 func (h *EntitlementTemplatesHandler) HandleListRevisions(w http.ResponseWriter, r *http.Request) {
-	if !h.requirePlatform(w, r) {
+	if _, ok := h.requirePlatformAccountCaller(w, r); !ok {
 		return
 	}
 	items, err := h.store.ListRevisions(r.Context(), chi.URLParam(r, "key"))
@@ -820,9 +823,9 @@ func (h *EntitlementTemplatesHandler) requirePlatformMutation(w http.ResponseWri
 
 // requirePlatformAccountCaller admits a platform admin context, or an API key
 // owned by an enabled platform administrator that is unscoped or carries
-// admin:entitlements:accounts. It guards only the catalog read and per-account
-// preview and apply; the key's account becomes the actor that confirmations
-// and receipts are bound to.
+// admin:entitlements:accounts. It guards only the catalog and revisions reads
+// and per-account preview and apply; the key's account becomes the actor that
+// confirmations and receipts are bound to.
 func (h *EntitlementTemplatesHandler) requirePlatformAccountCaller(w http.ResponseWriter, r *http.Request) (auth.AdminContextClaims, bool) {
 	if _, ok := middleware.GetAdminContextClaims(r.Context()); ok {
 		return h.requirePlatformMutation(w, r)

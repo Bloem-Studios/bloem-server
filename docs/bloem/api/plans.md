@@ -424,9 +424,9 @@ Requires a current platform administrative context, except where the security al
 List immutable template revisions.
 
 Operation ID: `listBloemEntitlementTemplateRevisions`.
-Credentials: `bloemPlatformContext`.
+Credentials: `bloemPlatformContext`; or `bloemEntitlementAccountsKey`.
 
-Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. Revisions are ordered newest first.
+Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. Revisions are ordered newest first. Also accepts a bearer API key owned by a currently enabled platform administrator. Unscoped keys are supported; scoped keys need the permission named by this security scheme. An organization context cannot broaden its authority.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -435,10 +435,10 @@ Requires a current platform administrative context, except where the security al
 | Status | Body | Meaning |
 | --- | --- | --- |
 | 200 | [`BloemEntitlementRevisionsResponse`](#bloementitlementrevisionsresponse) | OK |
-| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the context is not platform-scoped or its account is no longer a platform administrator; organization_suspended: an organization context names a suspended organization or membership. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required: the bearer is not a valid administrative-context token; authorization_state_stale: its login session, account, membership or revisions changed. Exchange a new context through /admin/session. With an API key, unauthorized: the key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the context is not platform-scoped or its account is no longer a platform administrator; organization_suspended: an organization context names a suspended organization or membership. With an API key, forbidden: the key's scopes do not permit this route; insufficient_platform_authority: its account is not an enabled platform administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: the template does not exist. |
-| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: administrative authorization is unavailable; entitlements_unavailable: entitlement administration is unavailable. With an API key, service_unavailable: the key could not be checked; retry after Retry-After. |
 
 ### `POST /api/bloem/v2/admin/platform/entitlement-templates/{key}/revisions`
 

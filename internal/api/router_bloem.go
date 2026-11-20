@@ -244,10 +244,10 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 			mountBloemNativeStorageManagement(r, surfaces.NativeStorage)
 			if entitlementHandler != nil {
 				entitlement := entitlementHandler
-				// The catalog list (with create, on the same path) and the
-				// per-account dry-run/apply are in mountPlatformEntitlementScopedRoutes.
+				// The catalog list (with create, on the same path), the revisions
+				// read and the per-account dry-run/apply are in
+				// mountPlatformEntitlementScopedRoutes.
 				r.Get("/platform/entitlement-templates/{key}", entitlement.HandleGet)
-				r.Get("/platform/entitlement-templates/{key}/revisions", entitlement.HandleListRevisions)
 				r.Get("/platform/entitlement-templates/{key}/history", entitlement.HandleListRevisions)
 				r.Post("/platform/entitlement-templates/{key}/revisions", entitlement.HandleRevise)
 				r.Post("/platform/entitlement-templates/{key}/clone", entitlement.HandleClone)
@@ -356,13 +356,17 @@ func mountPlatformEntitlementScopedRoutes(r chi.Router, handler *handlers.AdminH
 	eitherPlatformCredential := bloemEitherPlatformCredential(authMW, adminMW)
 	if entitlement != nil {
 		// A storefront provisions accounts on templates with its API key: it reads
-		// the enabled catalog and previews and applies one template per account.
-		// Create shares the catalog path, so it moves too; its handler still
-		// requires an admin session.
+		// the enabled catalog and one template's revisions (to show the limits of
+		// a plan an account holds at an older revision), and previews and applies
+		// one template per account. Create shares the catalog path, so it moves
+		// too; its handler still requires an admin session. Only GET revisions
+		// moves: POST revisions, the history alias and the single-template read
+		// stay in the session-only /admin group, which chi still reaches for them.
 		r.Group(func(r chi.Router) {
 			r.Use(eitherPlatformCredential)
 			r.Get("/admin/platform/entitlement-templates", entitlement.HandleList)
 			r.Post("/admin/platform/entitlement-templates", entitlement.HandleCreate)
+			r.Get("/admin/platform/entitlement-templates/{key}/revisions", entitlement.HandleListRevisions)
 			r.Post("/admin/platform/accounts/{account_id}/entitlement/dry-run", entitlement.HandleAccountDryRun)
 			r.Post("/admin/platform/accounts/{account_id}/entitlement/apply", entitlement.HandleAccountApply)
 		})
