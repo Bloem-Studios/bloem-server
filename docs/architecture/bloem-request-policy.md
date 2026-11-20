@@ -158,6 +158,14 @@ revision-checked transaction. A preflight against another organization's group
 cannot authorize its quota or approval policy. These adapters keep the request
 repository's other optional capabilities.
 
+Silo's admin poster read (`GET /api/v2/admin/requests/{id}/poster`) loads the
+request by id and has no organization check of its own. Bloem's v2 content gate
+(`internal/apiv2/bloem_content_gate.go`) runs
+`BloemRequireAdminRequestOrganization` (`internal/requests/bloem_tenant_scope.go`)
+first, so an administrator gets the poster of a request filed in their own
+organization only, and the poster is never fetched otherwise. Like Silo's read,
+the check reads the stored row only and works while requests are turned off.
+
 ### Global routing administration
 
 Request routes and the routing mode are server-global. The tenant service
