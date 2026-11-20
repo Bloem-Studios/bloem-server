@@ -53,10 +53,32 @@ func isPlaceholderISBN(isbn string) bool {
 
 // dropPlaceholderISBN clears a placeholder ISBN, so the book is grouped by its
 // title, authors or path, and the placeholder is not published as its ISBN.
-func (b *StorageEbook) dropPlaceholderISBN() {
-	if isPlaceholderISBN(normalizeEbookISBN(b.Book.ISBN)) {
+// raw is the ISBN as the source gave it: Silo's normalization refuses a
+// placeholder outright, so only the raw value still shows that the source
+// gave one.
+func (b *StorageEbook) dropPlaceholderISBN(raw string) {
+	if isPlaceholderISBN(rawISBNDigits(raw)) || isPlaceholderISBN(normalizeEbookISBN(b.Book.ISBN)) {
 		b.Book.ISBN, b.isbnPlaceholder = "", true
 	}
+}
+
+// rawISBNDigits is the digits (and a final X) of an ISBN-10 or ISBN-13 as a
+// source wrote it, separators dropped; empty for anything else.
+func rawISBNDigits(raw string) string {
+	var b strings.Builder
+	for _, r := range strings.ToUpper(raw) {
+		switch {
+		case r >= '0' && r <= '9', r == 'X':
+			b.WriteRune(r)
+		case r == '-' || r == ' ':
+		default:
+			return ""
+		}
+	}
+	if d := b.String(); len(d) == 10 || len(d) == 13 {
+		return d
+	}
+	return ""
 }
 
 // storageEbookGroupKey is the identity a new file of the book joins. A book
@@ -107,7 +129,7 @@ func StorageEbookFromEntry(e *storagev1.Entry) (StorageEbook, bool) {
 	if meta.GetCoverEntryId() != "" && meta.GetCoverRevision() != "" {
 		out.CoverEntryID, out.CoverRevision = meta.GetCoverEntryId(), meta.GetCoverRevision()
 	}
-	out.dropPlaceholderISBN()
+	out.dropPlaceholderISBN(meta.GetIsbn())
 	return out, true
 }
 
@@ -122,7 +144,7 @@ func ParseStorageEbook(ctx context.Context, e *storagev1.Entry, file mediasource
 	// to be uploaded inside the scan. A later cover pass can read them.
 	book.Cover = nil
 	out := StorageEbook{Entry: e, Book: book}
-	out.dropPlaceholderISBN()
+	out.dropPlaceholderISBN(book.ISBN)
 	return out, nil
 }
 
