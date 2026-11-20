@@ -147,11 +147,14 @@ func TestEbookCompletionRequiresExactLinkedNativeFileDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, otherFolder, otherSource := ebookIntegrationFixture(t, pool)
-	publishEbookCatalogFixture(t, pool, otherSource, otherFolder, "other-library", r.ISBN, "other-edition")
+	otherFile, _ := publishEbookCatalogFixture(t, pool, otherSource, otherFolder, "other-library", r.ISBN, "other-edition")
 	dueEbook(t, pool, r.ID)
 	if n, err := s.ReconcileEbooks(t.Context(), 100); err != nil || n != 0 {
 		t.Fatalf("other library completed request: %d %v", n, err)
 	}
+	// An ISBN stays with the item that first owns it, and the linked edition's
+	// ISBN-10 is stored as the same ISBN-13, so the other library gives it up.
+	bookSQL(t, pool, `DELETE FROM media_item_provider_ids WHERE content_id=(SELECT content_id FROM media_files WHERE id=$1)`, otherFile)
 	file, path := publishEbookCatalogFixture(t, pool, source, folder, "linked-edition", "0306406152", "linked-edition")
 	var linkedID string
 	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE id=$1`, file).Scan(&linkedID); err != nil {
