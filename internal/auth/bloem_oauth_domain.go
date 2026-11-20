@@ -34,9 +34,10 @@ func (h *OAuthHandler) baseURLFor(ctx context.Context) string {
 	return h.currentHostBaseURL()
 }
 
-// callbackURLFor is CallbackURL on the base of ctx's request.
-func (h *OAuthHandler) callbackURLFor(ctx context.Context, prefix string, installID int) string {
-	return strings.Replace(h.CallbackURL(prefix, installID), h.currentHostBaseURL(), h.baseURLFor(ctx), 1)
+// onRequestDomain moves a URL on the public base to the base of ctx's
+// request, so an OAuth callback returns to the domain the flow started on.
+func (h *OAuthHandler) onRequestDomain(ctx context.Context, u string) string {
+	return strings.Replace(u, h.currentHostBaseURL(), h.baseURLFor(ctx), 1)
 }
 
 // postLogoutRedirectURLFor is PostLogoutRedirectURL on the base of ctx's

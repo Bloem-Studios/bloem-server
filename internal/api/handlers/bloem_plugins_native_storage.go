@@ -14,6 +14,8 @@ type pluginInstallations interface {
 	ListCapabilities(ctx context.Context, installationID int) ([]*plugins.Capability, error)
 	Update(ctx context.Context, id int, input plugins.UpdateInstallationInput) error
 	Delete(ctx context.Context, id int) error
+	GetProvisionOwnership(ctx context.Context, installationID int) (plugins.ProvisionOwnership, error)
+	ListProvisionOwnership(ctx context.Context) (map[int]plugins.ProvisionOwnership, error)
 }
 
 // HideNativeStorage keeps native storage installations out of the ordinary

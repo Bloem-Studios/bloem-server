@@ -847,6 +847,13 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "plugins" {
+		if err := runPluginRecoveryCommand(context.Background(), os.Args[2:], os.Stdout); err != nil {
+			log.Fatalf("plugins: %v", err)
+		}
+		return
+	}
+
 	if len(os.Args) > 1 && os.Args[1] == "backup" {
 		if err := runBackupMain(os.Args[2:], os.Stdout, os.Stderr); err != nil {
 			log.Fatalf("backup: %v", err)
@@ -1907,8 +1914,9 @@ func main() {
 	var pluginRuntimeConfigStore *plugins.RuntimeConfigStore
 	var refreshMarkerProviders func(context.Context) error
 	var pluginHTTPProxy *plugins.HTTPProxy
-	pluginAutoUpdateDone := make(chan struct{})
 	var pluginAutoUpdater *plugins.AutoUpdateService
+	var pluginProvisionWriter *plugins.ProvisionWriter
+	var pluginProvisionDone chan struct{}
 	// Network access providers: ingress tokens issued per plugin start and the
 	// providers' last reported status. Shared by the plugin host (issue,
 	// revoke, status pushes) and all three listeners (token validation).
@@ -1940,7 +1948,7 @@ func main() {
 			defer closeCoverCache()
 		}
 		repositoryStore := plugins.NewRepositoryStore(deps.DB)
-		installationStore := plugins.NewInstallationStore(deps.DB)
+		installationStore := plugins.NewInstallationStore(deps.DB, deps.SecretCipher)
 		runtimeConfigStore := plugins.NewRuntimeConfigStore(deps.DB, deps.SecretCipher)
 		// This process is the api host: its resident plugins keep their
 		// per-instance state (overlay node keys) under the "api" scope.
@@ -1999,6 +2007,9 @@ func main() {
 		})
 		if err := installer.IsolateNativeStorage(nativeHost.Registry); err != nil {
 			log.Fatalf("native storage installer isolation: %v", err)
+		}
+		if err := installer.CleanupProvisionStaging(); err != nil {
+			slog.WarnContext(appCtx, "could not clear abandoned plugin staging files", "component", "plugins", "error", err)
 		}
 
 		libSource := pluginLibrarySource{groups: accessGroupStore}
@@ -2093,6 +2104,20 @@ func main() {
 		)
 		if err := pluginService.IsolateNativeStorage(nativeHost.Registry); err != nil {
 			log.Fatalf("native storage service isolation: %v", err)
+		}
+		provisionDocument, err := plugins.ReadProvisionDocument()
+		if err != nil {
+			log.Fatalf("read plugin provisioning: %v", err)
+		}
+		if provisionDocument != nil {
+			pluginProvisionWriter = plugins.NewProvisionWriter(deps.DB, repositoryStore, installationStore, installer, catalogService, runtimeConfigStore, pluginService, provisionDocument,
+				metadata.ApplyProvisionedMetadataPlacement)
+			runtimeConfigStore.SetProvisionWriter(pluginProvisionWriter)
+			deps.PluginProvisionStatus = runtimeConfigStore.ListProvisionStatus
+			if err := pluginProvisionWriter.StartOffline(appCtx); err != nil {
+				pluginProvisionWriter.Close()
+				log.Fatalf("plugin provisioning: %v", err)
+			}
 		}
 		// Crashes of resident plugins (network access providers) reach the
 		// supervisor through the host's exit watcher so they restart with
@@ -2196,7 +2221,6 @@ func main() {
 			installationStore,
 			catalogService,
 			installer,
-			pluginHost,
 			slog.Default(),
 			// Auto-updates rewrite installation rows (new version-specific
 			// InstallPath/Version) and delete the old install dir without going
@@ -2216,7 +2240,6 @@ func main() {
 			})
 		}
 		go func() {
-			defer close(pluginAutoUpdateDone)
 			if err := pluginAutoUpdater.Run(appCtx); err != nil {
 				slog.Error("plugin auto-update failed", "error", err)
 			}
@@ -2232,9 +2255,11 @@ func main() {
 		// and refresh the shared status cache with what the provider answers.
 		pluginService.SetNetworkAccessHostInfo(hostInfo)
 		pluginService.SetNetworkAccessStatusSink(networkAccess)
-		// Proxy nodes run the same resident installations; every lifecycle
-		// change here is announced so they reconcile at once.
+		// API and proxy hosts reconcile changes to the committed installations.
 		pluginService.PublishLifecycleChanges(eventBus)
+		if err := pluginService.FollowLifecycleChanges(appCtx, eventBus, plugins.DefaultLifecyclePollInterval); err != nil {
+			slog.Warn("subscribe plugin lifecycle changes failed; polling committed state", "component", "plugins", "error", err)
+		}
 		deps.PluginService = pluginService
 		deps.PluginHTTPProxy = pluginHTTPProxy
 		defer func() {
@@ -2247,8 +2272,6 @@ func main() {
 				slog.Warn("failed to shut down plugin host", "error", err)
 			}
 		}()
-	} else {
-		close(pluginAutoUpdateDone)
 	}
 	if pluginService != nil && pluginInstallationStore != nil {
 		dispatcher := plugins.NewEventDispatcherWithTypedResolver(deps.EventBus, deps.EventsHub, pluginInstallationStore, pluginService, plugins.NewEventDeliveryStore(deps.DB), 4)
@@ -2315,22 +2338,15 @@ func main() {
 		personRepo := catalog.NewPersonRepository(deps.DB)
 		libraryRepo := catalog.NewLibraryItemRepository(deps.DB)
 
-		// Wait for plugin auto-update to finish before registering image resolvers.
-		<-pluginAutoUpdateDone
-
 		imageResolver := metadata.NewPluginImageResolver()
 		bloemImageResolverSources = bloemImageSources(deps)
 		if pluginService == nil || pluginInstallationStore == nil {
 			imageResolver.ReplaceSources(bloemImageResolverSources)
 		}
 		if pluginService != nil && pluginInstallationStore != nil {
-			reloadImageResolvers := func(ctx context.Context) {
-				if err := reloadPluginImageResolvers(ctx, pluginInstallationStore, imageResolver, pluginService); err != nil {
-					slog.WarnContext(ctx, "failed to reload plugin image resolvers", "component", "app", "error", err)
-				}
-			}
-			pluginService.AddLifecycleHook(reloadImageResolvers)
-			reloadImageResolvers(appCtx)
+			pluginService.AddRetryableLifecycleHook(appCtx, "image resolvers", func(ctx context.Context) error {
+				return reloadPluginImageResolvers(ctx, pluginInstallationStore, imageResolver, pluginService)
+			})
 		}
 		if deps.Blobs.Assets != nil {
 			imageResolver.SetArtworkResolver(deps.ArtworkResolver)
@@ -3429,7 +3445,11 @@ func main() {
 				}
 			}).WithSecretCipher(dataCipher)
 		authProviderRegistry = auth.NewPluginProviderRegistry(auth.PluginProviderRegistryConfig{
-			Bindings:      pluginRuntimeConfigStore,
+			Bindings:   pluginRuntimeConfigStore,
+			NeedsSetup: auth.NewUserRepository(deps.DB).NeedsSetup,
+			OAuthAvailable: func() bool {
+				return strings.TrimSpace(deps.CurrentConfig().Server.PublicURL) != ""
+			},
 			Installations: pluginInstallationStore,
 			GlobalConfigs: pluginRuntimeConfigStore,
 			Manifests:     deps.PluginService,
@@ -3451,6 +3471,11 @@ func main() {
 			}
 		}
 		go authProviderRegistry.RunRebuilds(appCtx, auth.ProviderRegistryResyncInterval, auth.ProviderRegistryRetryWait)
+		deps.OnConfigChange(func(old, updated *config.Config) {
+			if old == nil || old.Server.PublicURL != updated.Server.PublicURL {
+				authProviderRegistry.RequestRebuild()
+			}
+		})
 		deps.PluginService.AddLifecycleHook(rebuildAuthProviders)
 		if err := eventBus.Subscribe(appCtx, cache.ChannelAdmin, func(event cache.Event) {
 			if event.Type == cache.EventAuthProvidersChanged || event.Type == cache.EventPluginsChanged {
@@ -4509,6 +4534,9 @@ func main() {
 	// listener, are only started once it exists.
 	apiListener, _, apiListenErr := tcpcongestion.Listen(appCtx, "tcp", cfg.Server.Listen, tcpcongestion.ListenerAPI, opts)
 	if apiListenErr != nil {
+		if pluginProvisionWriter != nil {
+			pluginProvisionWriter.Close()
+		}
 		errCh <- fmt.Errorf("HTTP server listen: %w", apiListenErr)
 	} else {
 		go func() {
@@ -4527,6 +4555,13 @@ func main() {
 			go func() {
 				defer close(lanDiscoveryDone)
 				advertiseOnLAN(lanCtx, apiListener.Addr(), serveridentity.New(catalog.NewServerSettingsRepo(pool)), brandingSvc)
+			}()
+		}
+		if pluginProvisionWriter != nil {
+			pluginProvisionDone = make(chan struct{})
+			go func() {
+				defer close(pluginProvisionDone)
+				pluginProvisionWriter.Run(appCtx)
 			}()
 		}
 		if pluginService != nil {
@@ -4568,6 +4603,13 @@ func main() {
 	// still running to deliver the goodbye packets.
 	if lanAdvertiser != nil {
 		lanAdvertiser.Stop()
+	}
+	if pluginProvisionDone != nil {
+		select {
+		case <-pluginProvisionDone:
+		case <-time.After(2 * time.Second):
+			slog.WarnContext(shutdownCtx, "plugin provisioning did not stop before shutdown")
+		}
 	}
 
 	// Let the LAN advertiser withdraw the service (appCtx is already
@@ -5297,7 +5339,7 @@ func replaceWatchSyncPluginProviders(
 
 type markerPluginRuntimeConfigStore interface {
 	ListGlobalConfigs(ctx context.Context, installationID int) ([]*plugins.RuntimeConfig, error)
-	PutGlobalConfig(ctx context.Context, installationID int, key string, value map[string]any) error
+	CompareAndSwapGlobalConfig(ctx context.Context, installationID int, key string, value map[string]any, expectedUpdatedAt *time.Time) (bool, error)
 }
 
 type markerLegacySettingsStore interface {
@@ -5569,9 +5611,9 @@ func copyLegacyIntroDBPluginConfig(
 	if strings.TrimSpace(apiKey) == "" {
 		return nil
 	}
-	if err := runtimeConfigs.PutGlobalConfig(ctx, installation.ID, "account", map[string]any{
+	if _, err := runtimeConfigs.CompareAndSwapGlobalConfig(ctx, installation.ID, "account", map[string]any{
 		"api_key": strings.TrimSpace(apiKey),
-	}); err != nil {
+	}, nil); err != nil && !errors.Is(err, plugins.ErrManagedByEnvironment) {
 		return fmt.Errorf("copy legacy introdb.api_key to plugin config: %w", err)
 	}
 	return nil
