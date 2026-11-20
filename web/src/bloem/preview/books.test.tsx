@@ -11,6 +11,17 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: { id: 1 }, profile: null }),
   useOptionalAuth: () => null,
 }));
+// The related rail is an Embla carousel, which needs matchMedia; jsdom has none.
+vi.mock("@/hooks/useCarouselEmbla", () => ({
+  useCarouselEmbla: () => ({
+    emblaApi: undefined,
+    emblaRef: vi.fn(),
+    canScrollPrev: false,
+    canScrollNext: false,
+    scrollPrev: vi.fn(),
+    scrollNext: vi.fn(),
+  }),
+}));
 it.each(["ebook", "audiobook", "manga"] as const)(
   "keeps %s descriptions while removing personal and content controls",
   (type) => {
