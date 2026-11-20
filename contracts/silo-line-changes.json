@@ -1551,7 +1551,7 @@
    "function adminTitle(pathname: string): AdminTitle {": "9df7ffd3d929a8b8"
   },
   "web/src/pages/Home.tsx": {
-   "export default function Home() {": "560b44685d130e11"
+   "export default function Home() {": "4dcfc790af364b8d"
   },
   "web/src/playback/WatchPlaybackChrome.tsx": {
    "export function WatchPlaybackProvider({ children }: { children: ReactNode }) {": "5f279fdabf6a9942",
@@ -1561,5 +1561,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "e66dc6ec9cf84422441eb6363f749a7750fefe38"
+ "silo": "165ab2b066340a44644f7d0d052302a090cfe681"
 }
