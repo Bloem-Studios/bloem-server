@@ -49,6 +49,11 @@ type User struct {
 	// Bloem: AccountIncarnationID identifies this incarnation of the account;
 	// authority bound to an earlier incarnation no longer applies.
 	AccountIncarnationID bloemUUID
+	// Bloem: HouseholdMainUserID links a household login to its main account
+	// (nil for every other account). HouseholdDisabled marks a login that was
+	// switched off because its main account was.
+	HouseholdMainUserID *int
+	HouseholdDisabled   bool
 }
 
 // CreateUserInput contains the fields required to create a new user.

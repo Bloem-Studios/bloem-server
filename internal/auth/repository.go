@@ -61,7 +61,8 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 const allColumns = `id, email, username, password_hash, local_password_login_enabled, password_change_required, role, permissions, enabled,
 	library_ids, max_playback_quality, access_policy_revision,
 	max_streams, max_transcodes, max_remote_stream_bitrate_kbps, max_local_stream_bitrate_kbps, transcode_allowed, audio_transcode_allowed, max_profiles, download_allowed,
-	download_transcode_allowed, requests_allowed, access_group_id, is_owner, break_glass, created_at, updated_at, account_incarnation_id`
+	download_transcode_allowed, requests_allowed, access_group_id, is_owner, break_glass, created_at, updated_at, account_incarnation_id,
+	household_main_user_id, household_disabled`
 
 // userLogin receives users.email, users.username, and users.password_hash,
 // all nullable: an account can have only one of a username and an email, and
@@ -123,6 +124,8 @@ func scanUser(row pgx.Row) (*models.User, error) {
 		&u.CreatedAt,
 		&u.UpdatedAt,
 		&u.AccountIncarnationID,
+		&u.HouseholdMainUserID,
+		&u.HouseholdDisabled,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -169,6 +172,8 @@ func scanUsers(rows pgx.Rows) ([]*models.User, error) {
 			&u.CreatedAt,
 			&u.UpdatedAt,
 			&u.AccountIncarnationID,
+			&u.HouseholdMainUserID,
+			&u.HouseholdDisabled,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning user row: %w", err)

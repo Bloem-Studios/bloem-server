@@ -240,3 +240,44 @@ func TestSwitchableAcceptsSilosProfileAndRoleWrites(t *testing.T) {
 		t.Fatalf("reset links after a promotion = %d (%v), want 0", links, err)
 	}
 }
+
+// TestSwitchableAcceptsSilosAccountWritesBesideHouseholdLogins pins the
+// household login columns against upstream Silo: its account inserts never
+// name them and read as ordinary accounts, its enabled and delete writes on
+// ordinary accounts keep working, and only deleting a main account that still
+// has a Bloem login is refused (Bloem's account service deletes the logins first).
+func TestSwitchableAcceptsSilosAccountWritesBesideHouseholdLogins(t *testing.T) {
+	ctx, pool, user, _ := switchablePool(t)
+	var main *int
+	var householdDisabled bool
+	if err := pool.QueryRow(ctx, `SELECT household_main_user_id, household_disabled FROM users WHERE id = $1`, user).Scan(&main, &householdDisabled); err != nil {
+		t.Fatal(err)
+	}
+	if main != nil || householdDisabled {
+		t.Fatalf("a Silo account reads as a household login: main=%v household_disabled=%t", main, householdDisabled)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET enabled = false WHERE id = $1`, user); err != nil {
+		t.Fatalf("Silo disabling an account is refused: %v", err)
+	}
+	// Silo's own insert, once switching gives each new account its membership.
+	insert := func(username string) int {
+		var id int
+		if err := pool.QueryRow(ctx, `
+			INSERT INTO users (username, email, password_hash, role, enabled, permissions, max_streams, transcode_allowed, requests_allowed, access_group_id)
+			VALUES ($1::text, $1::text || '@example.invalid', 'x', 'user', true, '{}', 2, true, true, (SELECT id FROM access_groups WHERE is_default))
+			RETURNING id`, username).Scan(&id); err != nil {
+			t.Fatalf("a Silo account insert is refused: %v", err)
+		}
+		return id
+	}
+	other := insert("u2")
+	if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, other); err != nil {
+		t.Fatalf("Silo deleting an ordinary account is refused: %v", err)
+	}
+	login := insert("login1")
+	if _, err := pool.Exec(ctx, `UPDATE users SET household_main_user_id = $1 WHERE id = $2`, user, login); err != nil {
+		t.Fatal(err)
+	}
+	_, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, user)
+	wantError(t, err, "23001")
+}
