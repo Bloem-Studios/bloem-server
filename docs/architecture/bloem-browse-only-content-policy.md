@@ -366,7 +366,11 @@ title holding both words.
 Preview detail uses request-local readers without probe repair, copy-safety racing,
 chapter extraction, marker population or watchlist promotion. Metadata refresh
 queueing remains. Artwork resolution refuses file frames and manga chapter covers
-before signing, including cached variants. Item covers and external trailers remain.
+before signing, including cached variants. File frames are chapter, marker and
+trickplay images and the stills Bloem takes from an extra's video (an extra whose
+still source starts with `frame:`). Library artwork remains: sidecar posters,
+backdrops, logos and episode thumbnails cached under `local/` and `nfo/` keys are
+signed for a preview as for a subscriber. Item covers and external trailers remain.
 
 Preview JSON responses are bounded to 8 MiB and scrub nested filenames, release
 names, paths and chapter artwork. Invalid, oversized or excessively nested output

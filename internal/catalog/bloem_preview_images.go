@@ -17,35 +17,56 @@ type bloemPreviewImages struct {
 }
 
 // BloemPreviewImages refuses file frames and manga chapter covers before signing.
-// A database lookup failure refuses artwork for previews.
+// File frames are the chapter, marker and trickplay images and the stills Bloem
+// takes from an extra's video. Library artwork (sidecar posters, backdrops,
+// logos and episode thumbnails, cached under local/ and nfo/ keys) is not a
+// frame and is signed as for a subscriber. A database lookup failure refuses
+// artwork for previews.
 func BloemPreviewImages(next ImageResolver, pool *pgxpool.Pool) ImageResolver {
 	if next == nil {
 		return nil
 	}
 	return &bloemPreviewImages{next: next, pool: pool}
 }
+
+// extraStillPrefix starts the key of every cached extra still. A still Bloem
+// took from the extra's video shares the key layout of a sidecar one, so only
+// the extra's still source tells them apart.
+const extraStillPrefix = artworkkey.LocalPrefix + "extras/"
+
 func (r *bloemPreviewImages) allowed(ctx context.Context, paths []string) []string {
 	if !previewcontext.Active(ctx) {
 		return paths
 	}
 	candidates := make([]string, 0, len(paths))
 	dirs := make([]string, 0, len(paths))
+	var extras, extraDirs []string
 	for _, p := range paths {
 		key := p
 		if _, rest, ok := strings.Cut(key, "://"); ok {
 			key = rest
 		}
 		lower := strings.ToLower(key)
-		if strings.HasPrefix(lower, "chapter-images/") || strings.HasPrefix(lower, "marker-images/") || strings.HasPrefix(lower, "chapters/") || strings.HasPrefix(lower, "markers/") || strings.HasPrefix(lower, "trickplay/") || strings.HasPrefix(lower, "frames/") || artworkkey.IsLocal(key) && artworkkey.ImageTypeFromPath(key) != artworkkey.ImagePoster {
+		if strings.HasPrefix(lower, "chapter-images/") || strings.HasPrefix(lower, "marker-images/") || strings.HasPrefix(lower, "chapters/") || strings.HasPrefix(lower, "markers/") || strings.HasPrefix(lower, "trickplay/") || strings.HasPrefix(lower, "frames/") {
 			continue
 		}
 		candidates = append(candidates, p)
 		dirs = append(dirs, path.Dir(p))
+		if strings.HasPrefix(p, extraStillPrefix) {
+			extras = append(extras, p)
+			extraDirs = append(extraDirs, path.Dir(p))
+		}
 	}
 	if len(candidates) == 0 || r.pool == nil {
 		return nil
 	}
-	rows, err := r.pool.Query(ctx, `SELECT poster_path FROM media_items WHERE type='manga_chapter' AND poster_path<>'' AND (poster_path=ANY($1) OR regexp_replace(poster_path,'/[^/]+$','')=ANY($2))`, candidates, dirs)
+	query := `SELECT poster_path FROM media_items WHERE type='manga_chapter' AND poster_path<>'' AND (poster_path=ANY($1) OR regexp_replace(poster_path,'/[^/]+$','')=ANY($2))`
+	args := []any{candidates, dirs}
+	if len(extras) > 0 {
+		query += ` UNION ALL SELECT still_path FROM media_extras WHERE still_source LIKE $5 AND still_path<>'' AND (still_path=ANY($3) OR regexp_replace(still_path,'/[^/]+$','')=ANY($4))`
+		args = append(args, extras, extraDirs, StillSourceFramePrefix+"%")
+	}
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil
 	}
