@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -102,7 +103,7 @@ func (s *Service) ExecuteRestore(ctx context.Context, run RestoreRun) (any, erro
 		pinned[req.BackupID] = true
 	}
 	work = bloemBeforeRestoreContext(work, req) // Bloem: bloem_user_data_backup.go
-	result, err := s.backupWith(work, held, KindBeforeRestore, "", nil, pinned, nil)
+	result, err := s.backupWith(work, held, KindBeforeRestore, "", time.Time{}, nil, pinned, nil)
 	if err != nil {
 		return fail(fmt.Errorf("%w: %w", errBeforeRestoreBackup, err))
 	}
