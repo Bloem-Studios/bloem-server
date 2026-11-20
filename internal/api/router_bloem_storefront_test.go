@@ -65,6 +65,8 @@ func TestBloemPlatformStorefrontRoutesAreMountedBehindThePlatformGate(t *testing
 		{http.MethodDelete, "/admin/platform/tenants/" + tenant + "/members/42/auth-sessions"},
 		{http.MethodPost, "/admin/platform/accounts"},
 		{http.MethodPut, "/admin/platform/accounts/42"},
+		{http.MethodPost, "/admin/platform/accounts/42/logins"},
+		{http.MethodGet, "/admin/platform/accounts/42/logins"},
 		{http.MethodGet, "/admin/platform/accounts/42/profiles"},
 		{http.MethodPut, "/admin/platform/accounts/42/profiles/p1"},
 		{http.MethodDelete, "/admin/platform/accounts/42/devices/d1"},

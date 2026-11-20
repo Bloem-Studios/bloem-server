@@ -186,6 +186,7 @@ func registerBloemStorefrontDocument(reg *Registry) {
 	registerBloemTenantMemberDocument(reg)
 	registerBloemPlatformAccountDocument(reg)
 	registerBloemPlatformAccountResourceDocument(reg)
+	registerBloemHouseholdLoginsDocument(reg)
 	registerBloemAnnouncementDocument(reg)
 	registerBloemAmbienceAssetDocument(reg)
 	registerBloemOrganizationDomainsDocument(reg)
@@ -406,6 +407,39 @@ func registerBloemPlatformAccountResourceDocument(reg *Registry) {
 	op = bloemStorefrontOp(reg, "DELETE", base+"/auth-sessions", "revokeAllBloemPlatformAccountAuthSessions", "End every sign-in session of an account.", http.StatusNoContent, errors)
 	op.Description += scope
 	registerBloemChiDocument[BloemPlatformAccountInput, struct{}](reg, op)
+}
+
+type BloemHouseholdLoginCreateInput struct {
+	AccountID string `path:"account_id" doc:"The main account's ID."`
+	Body      handlers.BloemHouseholdLoginCreateRequest
+}
+type BloemHouseholdLoginOutput struct {
+	Body handlers.BloemHouseholdLoginView
+}
+type BloemHouseholdLoginListOutput struct {
+	Body handlers.BloemHouseholdLoginListResponse
+}
+
+// registerBloemHouseholdLoginsDocument documents household logins: accounts
+// of their own that belong to a main account (feature token
+// household_logins_v1).
+func registerBloemHouseholdLoginsDocument(reg *Registry) {
+	const about = "A household login signs in with its own username and password and has its own profiles, devices and sessions. It sits in the main account's access group and organization, with its own limits on top, and follows the main account when it moves group. It is enabled only while the main account is: disabling the main account disables and signs out its logins, and enabling it brings back only those. It is deleted with the main account. Every other operation on a login (password, limits, profiles, devices, sessions, delete) is the ordinary account operation on the login's own ID. "
+	create := bloemStorefrontOp(reg, "POST", "/accounts/{account_id}/logins", "createBloemPlatformHouseholdLogin", "Create a household login for an account.", http.StatusCreated, map[int]string{
+		400: "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password of 8 to 72 bytes are required, and max_streams and max_profiles must be at least 1.",
+		404: "not_found: no such main account.",
+		409: "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use.",
+		501: "capability_unsupported: this server's account store cannot create accounts and profiles transactionally.",
+		503: "service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked.",
+	})
+	create.Description += about + "The login starts with one profile named profile_name. Under a disabled main account it starts disabled, with household_disabled true. On Silo 0 is unlimited for streams and transcodes, so a login without transcodes sends transcode_allowed false and no max_transcodes."
+	registerBloemChiDocument[BloemHouseholdLoginCreateInput, BloemHouseholdLoginOutput](reg, create)
+	list := bloemStorefrontOp(reg, "GET", "/accounts/{account_id}/logins", "listBloemPlatformHouseholdLogins", "List an account's household logins.", http.StatusOK, map[int]string{
+		400: "bad_request: an invalid account ID.",
+		404: "not_found: no such main account.",
+	})
+	list.Description += about + "Oldest first; an account without logins answers an empty list."
+	registerBloemChiDocument[BloemPlatformAccountInput, BloemHouseholdLoginListOutput](reg, list)
 }
 
 func registerBloemAnnouncementDocument(reg *Registry) {

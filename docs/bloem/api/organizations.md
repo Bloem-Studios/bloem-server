@@ -14,7 +14,7 @@ For the plain-language picture, read the [Organizations and administration expla
 - [OPA tenant authorization](../../architecture/opa-tenant-authorization.md)
 - [Lifecycle safety](../../architecture/bloem-lifecycle-safety.md)
 
-## Operations (114)
+## Operations (116)
 
 | Method and path | Summary |
 | --- | --- |
@@ -68,6 +68,8 @@ For the plain-language picture, read the [Organizations and administration expla
 | [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions/{session_id}`](#delete-apibloemv2adminplatformaccountsaccount_idauth-sessionssession_id) | End one of an account's sign-in sessions. |
 | [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/devices`](#get-apibloemv2adminplatformaccountsaccount_iddevices) | List an account's devices. |
 | [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/devices/{device_id}`](#delete-apibloemv2adminplatformaccountsaccount_iddevicesdevice_id) | Remove an account's device. |
+| [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/logins`](#get-apibloemv2adminplatformaccountsaccount_idlogins) | List an account's household logins. |
+| [`POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins`](#post-apibloemv2adminplatformaccountsaccount_idlogins) | Create a household login for an account. |
 | [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/profiles`](#get-apibloemv2adminplatformaccountsaccount_idprofiles) | List an account's profiles. |
 | [`POST /api/bloem/v2/admin/platform/accounts/{account_id}/profiles`](#post-apibloemv2adminplatformaccountsaccount_idprofiles) | Create a profile for an account. |
 | [`PUT /api/bloem/v2/admin/platform/accounts/{account_id}/profiles/{profile_id}`](#put-apibloemv2adminplatformaccountsaccount_idprofilesprofile_id) | Change an account's profile. |
@@ -1305,6 +1307,56 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 422 | [`BloemNativeError`](README.md#bloemnativeerror) | profile_limit_reached: the account's plan allows no more profiles. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `GET /api/bloem/v2/admin/platform/accounts/{account_id}/logins`
+
+List an account's household logins.
+
+Operation ID: `listBloemPlatformHouseholdLogins`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household login signs in with its own username and password and has its own profiles, devices and sessions. It sits in the main account's access group and organization, with its own limits on top, and follows the main account when it moves group. It is enabled only while the main account is: disabling the main account disables and signs out its logins, and enabling it brings back only those. It is deleted with the main account. Every other operation on a login (password, limits, profiles, devices, sessions, delete) is the ordinary account operation on the login's own ID. Oldest first; an account without logins answers an empty list.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `account_id` | path | string | yes | The account ID. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemHouseholdLoginListResponse`](#bloemhouseholdloginlistresponse) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an invalid account ID. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins`
+
+Create a household login for an account.
+
+Operation ID: `createBloemPlatformHouseholdLogin`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household login signs in with its own username and password and has its own profiles, devices and sessions. It sits in the main account's access group and organization, with its own limits on top, and follows the main account when it moves group. It is enabled only while the main account is: disabling the main account disables and signs out its logins, and enabling it brings back only those. It is deleted with the main account. Every other operation on a login (password, limits, profiles, devices, sessions, delete) is the ordinary account operation on the login's own ID. The login starts with one profile named profile_name. Under a disabled main account it starts disabled, with household_disabled true. On Silo 0 is unlimited for streams and transcodes, so a login without transcodes sends transcode_allowed false and no max_transcodes.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `account_id` | path | string | yes | The main account's ID. |
+
+Request body (required, `application/json`): [`BloemHouseholdLoginCreateRequest`](#bloemhouseholdlogincreaterequest).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 201 | [`BloemHouseholdLoginView`](#bloemhouseholdloginview) | Created |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password of 8 to 72 bytes are required, and max_streams and max_profiles must be at least 1. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot create accounts and profiles transactionally. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked. |
 
 ### `GET /api/bloem/v2/admin/platform/accounts/{account_id}/profiles`
 
@@ -3232,6 +3284,63 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `playback_allowed` | boolean | yes |  |
 | `requests_allowed` | boolean | yes |  |
 | `transcode_allowed` | boolean | yes |  |
+
+### BloemHouseholdLoginCreateRequest
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `email` | string |  | Email address; omitted, the login has none and its password is reset by an administrator. |
+| `max_profiles` | integer (int64) | yes | Profiles the login may have; at least 1. |
+| `max_streams` | integer (int64) | yes | Concurrent streams the login may use; at least 1. |
+| `max_transcodes` | integer (int64) |  | Concurrent transcodes the login may run. 0 is unlimited, so a login without transcodes sends transcode_allowed false instead. |
+| `password` | string | yes | Initial password, 8 to 72 bytes. |
+| `profile_name` | string | yes | Name of the login's first profile. |
+| `transcode_allowed` | boolean |  | Whether the login may transcode; omitted follows the plan. |
+| `username` | string | yes | Sign-in name of the login. |
+
+### BloemHouseholdLoginListResponse
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `logins` | array of [`BloemHouseholdLoginSummary`](#bloemhouseholdloginsummary) | yes |  |
+
+### BloemHouseholdLoginSummary
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `enabled` | boolean | yes |  |
+| `household_disabled` | boolean | yes | Disabled because the main account is; it comes back with the main account. |
+| `id` | integer (int64) | yes |  |
+| `username` | string | yes |  |
+
+### BloemHouseholdLoginView
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `access_group_id` | integer or null (int64) | yes |  |
+| `applied_entitlement_revision` | integer (int64) |  |  |
+| `audio_transcode_allowed` | boolean or null | yes |  |
+| `created_at` | string (date-time) | yes |  |
+| `download_allowed` | boolean or null | yes |  |
+| `download_transcode_allowed` | boolean or null | yes |  |
+| `effective_policy` | [`EffectivePolicyView`](#effectivepolicyview) | yes |  |
+| `email` | string | yes |  |
+| `enabled` | boolean | yes |  |
+| `household_disabled` | boolean | yes | The login is disabled because its main account is. |
+| `household_main_user_id` | integer (int64) | yes | The main account this login belongs to. |
+| `id` | integer (int64) | yes |  |
+| `last_active_at` | string (date-time) |  |  |
+| `library_ids` | array of integer (int64) | yes |  |
+| `max_playback_quality` | string or null | yes |  |
+| `max_profiles` | integer (int64) | yes |  |
+| `max_streams` | integer or null (int64) | yes |  |
+| `max_transcodes` | integer or null (int64) | yes |  |
+| `permissions` | array of string | yes |  |
+| `requests_allowed` | boolean or null | yes |  |
+| `role` | string | yes |  |
+| `transcode_allowed` | boolean or null | yes |  |
+| `updated_at` | string (date-time) | yes |  |
+| `username` | string | yes |  |
 
 ### BloemJSONInputStruct {}Body
 

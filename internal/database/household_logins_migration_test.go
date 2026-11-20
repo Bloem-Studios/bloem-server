@@ -59,7 +59,8 @@ func TestHouseholdLoginsMigration(t *testing.T) {
 		t.Fatalf("deleting the main account after its login: %v", err)
 	}
 
-	if _, err := provider.Down(ctx); err != nil {
+	// The version before the household logins migrations.
+	if err := MigrateDownTo(ctx, pool, migrations.BloemFS, "sql", 20261120120000); err != nil {
 		t.Fatalf("household logins rollback: %v", err)
 	}
 	var column bool

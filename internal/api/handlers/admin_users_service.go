@@ -288,6 +288,7 @@ func (h *AdminHandler) UpdateAdminAccount(ctx context.Context, id int, revision,
 	if revoked && h.OnUserSessionsRevoked != nil {
 		h.OnUserSessionsRevoked(ctx, id)
 	}
+	h.endBloemHouseholdLoginSessions(ctx, id, input) // Bloem: logins switched off with their main account
 	if accountScopeChanged(input) {
 		notifyAccountsScopeChanged(ctx, h.RecWorker, id)
 	}
@@ -297,6 +298,9 @@ func (h *AdminHandler) DeleteAdminAccount(ctx context.Context, id int, revision,
 	repo, ok := h.userRepo.(adminAccountRepository)
 	if !ok {
 		return apiError(501, "capability_unsupported", "Guarded account management is unavailable")
+	}
+	if err := h.deleteBloemHouseholdLogins(ctx, id, revision); err != nil { // Bloem: a main account's logins go first
+		return err
 	}
 	actor, err := requestOwnerActor(ctx, h.userRepo)
 	if err != nil {

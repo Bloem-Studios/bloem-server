@@ -102,6 +102,10 @@ const (
 	// without typing a password on it. Protocol details live on
 	// /auth/device/capability.
 	featureDevicePairingV1 = "device_pairing_v1"
+	// featureHouseholdLoginsV1 covers household logins: accounts of their own
+	// that belong to a main account, created and listed under
+	// /api/bloem/v2/admin/platform/accounts/{account_id}/logins.
+	featureHouseholdLoginsV1 = "household_logins_v1"
 	// featureDeclaredEventChannels is the aggregate name for the events
 	// websocket's declared-channel handshake, reported in detail as
 	// declared_channels on /events/capability.
@@ -144,7 +148,7 @@ func buildBloemCapabilityTokens() []string {
 	}
 	add(playbackFeatures...)
 	add(featureDeclaredEventChannels, "live_tv_access_v1", "organization_activity_v1", "organization_invitation_lifecycle_v1", "organization_invitation_links_v1", "platform_engagement_authoring_v1")
-	add(featureWatchDocumentV1, featureDevicePairingV1)
+	add(featureWatchDocumentV1, featureDevicePairingV1, featureHouseholdLoginsV1)
 	return tokens
 }
 

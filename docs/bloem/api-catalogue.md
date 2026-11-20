@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 972 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 290 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 292 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher
@@ -129,6 +129,8 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement` | `getBloemDirectAccountPolicy` | Read authoritative account and profile entitlement policies. |
 | `POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/apply` | `applyBloemAccountEntitlement` | Apply a pinned entitlement template. |
 | `POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/dry-run` | `previewBloemAccountEntitlement` | Preview a pinned entitlement template. |
+| `GET /api/bloem/v2/admin/platform/accounts/{account_id}/logins` | `listBloemPlatformHouseholdLogins` | List an account's household logins. |
+| `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins` | `createBloemPlatformHouseholdLogin` | Create a household login for an account. |
 | `GET /api/bloem/v2/admin/platform/accounts/{account_id}/profiles` | `listBloemPlatformAccountProfiles` | List an account's profiles. |
 | `POST /api/bloem/v2/admin/platform/accounts/{account_id}/profiles` | `createBloemPlatformAccountProfile` | Create a profile for an account. |
 | `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/profiles/{profile_id}` | `deleteBloemPlatformAccountProfile` | Delete an account's profile. |

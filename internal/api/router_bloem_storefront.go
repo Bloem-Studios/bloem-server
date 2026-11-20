@@ -113,6 +113,8 @@ func mountBloemPlatformStorefront(r chi.Router, h bloemPlatformStorefrontHandler
 			// (the one behind /api/v2/admin/users, which takes no plan).
 			r.Post("/admin/platform/accounts", accounts.HandleBloemPlatformAccountCreate)
 			r.Put("/admin/platform/accounts/{account_id}", accounts.HandleBloemPlatformAccountUpdate)
+			r.Post("/admin/platform/accounts/{account_id}/logins", accounts.HandleBloemPlatformHouseholdLoginCreate)
+			r.Get("/admin/platform/accounts/{account_id}/logins", accounts.HandleBloemPlatformHouseholdLoginList)
 			r.Get("/admin/platform/accounts/{account_id}/profiles", handlers.BloemPlatformAccountResource(accounts.HandleListUserProfiles))
 			r.Post("/admin/platform/accounts/{account_id}/profiles", handlers.BloemPlatformAccountResource(accounts.HandleCreateUserProfile))
 			r.Put("/admin/platform/accounts/{account_id}/profiles/{profile_id}", handlers.BloemPlatformAccountResource(accounts.HandleUpdateUserProfile))

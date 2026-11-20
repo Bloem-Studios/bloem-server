@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/Silo-Server/silo-server/internal/models"
 )
@@ -22,16 +21,11 @@ import (
 // account is disabled.
 var ErrHouseholdMainDisabled = errors.New("the main account is disabled")
 
-type householdDB interface {
-	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
-	QueryRow(context.Context, string, ...any) pgx.Row
-}
-
 // householdBeforeUpdate runs before an update writes account id. It reports
 // whether id is a household login, and refuses enabling a login whose main
 // account is disabled. The main account is locked first, in the same order
 // a main account's own update takes (main, then its logins).
-func householdBeforeUpdate(ctx context.Context, db householdDB, id int, input models.UpdateUserInput) (bool, error) {
+func householdBeforeUpdate(ctx context.Context, db userCreateQuerier, id int, input models.UpdateUserInput) (bool, error) {
 	if input.Enabled == nil {
 		return false, nil
 	}
@@ -63,7 +57,7 @@ func householdBeforeUpdate(ctx context.Context, db householdDB, id int, input mo
 // as disabling an account does) or switches back on only the logins it
 // switched off. Each changed login gets the access-policy bump an enabled
 // write gives.
-func householdAfterUpdate(ctx context.Context, db householdDB, id int, input models.UpdateUserInput, login bool) error {
+func householdAfterUpdate(ctx context.Context, db userCreateQuerier, id int, input models.UpdateUserInput, login bool) error {
 	if input.Enabled == nil {
 		return nil
 	}

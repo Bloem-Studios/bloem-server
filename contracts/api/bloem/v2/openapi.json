@@ -3005,6 +3005,243 @@
         ],
         "type": "object"
       },
+      "BloemHouseholdLoginCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "description": "Email address; omitted, the login has none and its password is reset by an administrator.",
+            "type": "string"
+          },
+          "max_profiles": {
+            "description": "Profiles the login may have; at least 1.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_streams": {
+            "description": "Concurrent streams the login may use; at least 1.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_transcodes": {
+            "description": "Concurrent transcodes the login may run. 0 is unlimited, so a login without transcodes sends transcode_allowed false instead.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "password": {
+            "description": "Initial password, 8 to 72 bytes.",
+            "type": "string"
+          },
+          "profile_name": {
+            "description": "Name of the login's first profile.",
+            "type": "string"
+          },
+          "transcode_allowed": {
+            "description": "Whether the login may transcode; omitted follows the plan.",
+            "type": "boolean"
+          },
+          "username": {
+            "description": "Sign-in name of the login.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password",
+          "profile_name",
+          "max_streams",
+          "max_profiles"
+        ],
+        "type": "object"
+      },
+      "BloemHouseholdLoginListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "logins": {
+            "items": {
+              "$ref": "#/components/schemas/BloemHouseholdLoginSummary"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "logins"
+        ],
+        "type": "object"
+      },
+      "BloemHouseholdLoginSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "household_disabled": {
+            "description": "Disabled because the main account is; it comes back with the main account.",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "enabled",
+          "household_disabled"
+        ],
+        "type": "object"
+      },
+      "BloemHouseholdLoginView": {
+        "additionalProperties": false,
+        "properties": {
+          "access_group_id": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "applied_entitlement_revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "audio_transcode_allowed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "download_allowed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "download_transcode_allowed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "effective_policy": {
+            "$ref": "#/components/schemas/EffectivePolicyView"
+          },
+          "email": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "household_disabled": {
+            "description": "The login is disabled because its main account is.",
+            "type": "boolean"
+          },
+          "household_main_user_id": {
+            "description": "The main account this login belongs to.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "last_active_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "library_ids": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "max_playback_quality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max_profiles": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_streams": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "max_transcodes": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "requests_allowed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "role": {
+            "type": "string"
+          },
+          "transcode_allowed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "household_main_user_id",
+          "household_disabled",
+          "id",
+          "username",
+          "email",
+          "role",
+          "permissions",
+          "enabled",
+          "library_ids",
+          "max_playback_quality",
+          "max_streams",
+          "max_transcodes",
+          "transcode_allowed",
+          "audio_transcode_allowed",
+          "max_profiles",
+          "download_allowed",
+          "download_transcode_allowed",
+          "requests_allowed",
+          "access_group_id",
+          "effective_policy",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
+      },
       "BloemItemCollection": {
         "additionalProperties": false,
         "properties": {
@@ -25291,6 +25528,238 @@
           }
         ],
         "summary": "Preview a pinned entitlement template.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/accounts/{account_id}/logins": {
+      "get": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household login signs in with its own username and password and has its own profiles, devices and sessions. It sits in the main account's access group and organization, with its own limits on top, and follows the main account when it moves group. It is enabled only while the main account is: disabling the main account disables and signs out its logins, and enabling it brings back only those. It is deleted with the main account. Every other operation on a login (password, limits, profiles, devices, sessions, delete) is the ordinary account operation on the login's own ID. Oldest first; an account without logins answers an empty list.",
+        "operationId": "listBloemPlatformHouseholdLogins",
+        "parameters": [
+          {
+            "description": "The account ID.",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "The account ID.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemHouseholdLoginListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: an invalid account ID."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such main account."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List an account's household logins.",
+        "tags": [
+          "administration"
+        ]
+      },
+      "post": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household login signs in with its own username and password and has its own profiles, devices and sessions. It sits in the main account's access group and organization, with its own limits on top, and follows the main account when it moves group. It is enabled only while the main account is: disabling the main account disables and signs out its logins, and enabling it brings back only those. It is deleted with the main account. Every other operation on a login (password, limits, profiles, devices, sessions, delete) is the ordinary account operation on the login's own ID. The login starts with one profile named profile_name. Under a disabled main account it starts disabled, with household_disabled true. On Silo 0 is unlimited for streams and transcodes, so a login without transcodes sends transcode_allowed false and no max_transcodes.",
+        "operationId": "createBloemPlatformHouseholdLogin",
+        "parameters": [
+          {
+            "description": "The main account's ID.",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "The main account's ID.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemHouseholdLoginCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemHouseholdLoginView"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password of 8 to 72 bytes are required, and max_streams and max_profiles must be at least 1."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such main account."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "capability_unsupported: this server's account store cannot create accounts and profiles transactionally."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create a household login for an account.",
         "tags": [
           "administration"
         ]

@@ -259,6 +259,9 @@ func TestSwitchableAcceptsSilosAccountWritesBesideHouseholdLogins(t *testing.T) 
 	if _, err := pool.Exec(ctx, `UPDATE users SET enabled = false WHERE id = $1`, user); err != nil {
 		t.Fatalf("Silo disabling an account is refused: %v", err)
 	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = NULL WHERE id = $1`, user); err != nil {
+		t.Fatalf("Silo moving an account out of its group is refused: %v", err)
+	}
 	// Silo's own insert, once switching gives each new account its membership.
 	insert := func(username string) int {
 		var id int

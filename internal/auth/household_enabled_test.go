@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -120,5 +121,45 @@ func TestDisablingHouseholdDisabledLoginKeepsItOff(t *testing.T) {
 	}
 	if login := f.state(f.login); login.enabled {
 		t.Fatalf("login an administrator disabled came back with its main account: %+v", login)
+	}
+}
+
+// A login sees what its main account sees: when the main account moves to
+// another access group (a plan change writes the column directly), the login
+// and its profiles that sat on the old group move with it.
+func TestLoginFollowsMainAccessGroup(t *testing.T) {
+	f := newHouseholdFixture(t)
+	ctx := t.Context()
+	var oldGroup, newGroup int64
+	for i, g := range []*int64{&oldGroup, &newGroup} {
+		if err := f.pool.QueryRow(ctx, `INSERT INTO access_groups (organization_id, name) SELECT id, $1 FROM organizations WHERE is_default RETURNING id`,
+			fmt.Sprintf("household-group-%s-%d", f.suffix, i)).Scan(g); err != nil {
+			t.Fatal(err)
+		}
+		id := *g
+		t.Cleanup(func() { _, _ = f.pool.Exec(context.WithoutCancel(ctx), `DELETE FROM access_groups WHERE id = $1`, id) })
+	}
+	if _, err := f.pool.Exec(ctx, `UPDATE users SET access_group_id = $1 WHERE id = ANY($2)`, oldGroup, []int{f.main, f.login}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(ctx, `INSERT INTO user_profiles (id, user_id, name, is_primary) VALUES ($1, $2, 'Sam', true)`, "household-profile-"+f.suffix, f.login); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(ctx, `UPDATE user_profiles SET access_group_id = $1 WHERE user_id = $2`, oldGroup, f.login); err != nil {
+		t.Fatal(err)
+	}
+	before := f.state(f.login)
+	if _, err := f.pool.Exec(ctx, `UPDATE users SET access_group_id = $1 WHERE id = $2`, newGroup, f.main); err != nil {
+		t.Fatal(err)
+	}
+	var loginGroup, profileGroup *int64
+	if err := f.pool.QueryRow(ctx, `SELECT u.access_group_id, p.access_group_id FROM users u JOIN user_profiles p ON p.user_id = u.id WHERE u.id = $1`, f.login).Scan(&loginGroup, &profileGroup); err != nil {
+		t.Fatal(err)
+	}
+	if loginGroup == nil || *loginGroup != newGroup || profileGroup == nil || *profileGroup != newGroup {
+		t.Fatalf("login group %v, profile group %v; want both on the main account's new group %d", loginGroup, profileGroup, newGroup)
+	}
+	if after := f.state(f.login); after.policyRevision <= before.policyRevision {
+		t.Fatal("the login's access policy revision did not move with its group")
 	}
 }
