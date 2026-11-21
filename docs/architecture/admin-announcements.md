@@ -146,9 +146,9 @@ every inbox by itself.
   `recipient_count`.
 - There is no draft persistence, scheduled start or edit-published operation.
 - `Withdraw` deletes unread inbox rows (their pending outbox attempts cascade away,
-  cancelling undelivered pushes), expires read rows so no feed shows them again, and
-  sends each affected profile a `notification.withdrawn` realtime event. It is
-  idempotent and keeps the publication record; `List` includes withdrawn ones.
+  cancelling undelivered pushes) and expires read rows so no feed shows them again. It
+  sends no realtime event, since the events socket is Silo's and never carried the rows.
+  It is idempotent and keeps the publication record; `List` includes withdrawn ones.
 
 ### The web settings page
 
@@ -194,8 +194,8 @@ Migration `20260901120000_system_alert_notifications.sql`:
   `notification_preferences.enabled`. For an announcement the opted-out profiles are
   dropped before the publication row is stored, so `recipient_count` and a later
   withdrawal never include them, and no per-profile record of the skip exists.
-- **One row shape everywhere.** The REST inbox, the realtime snapshot and
-  `notification.created` all carry `DeliveryRowPayload`
+- **One row shape everywhere.** The native inbox (`/api/bloem/v2/notifications`),
+  generic webhooks and web push carry `DeliveryRowPayload`
   (`internal/notifications/dispatcher.go`), which gains these optional fields on system
   rows only: `title`, `body`, `severity`, `deeplink`, `image_url`, `dismissible`, `cta`
   (`{label, url}`), `expires_at`, `dismissed_at`. Release rows omit every one of them,
@@ -203,15 +203,25 @@ Migration `20260901120000_system_alert_notifications.sql`:
   same object under `alert`; Discord embeds and web push derive their title, text
   and link from it (`BuildNotificationDisplay` categories `system_alert` and
   `system_announcement`, thread `announcement:{id}`).
+- **Silo's routes leave the notices out.** Silo's apps read Silo's `/api/v2`
+  notification routes and events socket, and a Silo server never writes a system row.
+  So on a Bloem server those answer a Silo app as Silo would: `GET /notifications`,
+  `/sync` and `/unread-count` skip system rows; `GET /notifications/{id}`, the Apple
+  push display route and `POST /notifications/{id}/read` answer Silo's `404 not_found`
+  for one; `POST /notifications/read-all` leaves them unread; and the socket's snapshot
+  and `notification.created` events carry Silo's rows only. The routes read through
+  `handlers.BloemSiloInboxView`, which is Silo's inbox service over Silo's own queries
+  with system rows left out (`internal/notifications/bloem_silo_inbox.go`). Bloem's web
+  inbox reads the native routes instead, which serve every row whole; it picks up a new
+  notice when it next reads the inbox, not live from the socket.
 - **No push to Silo's apps.** System rows never queue a push for a `push_devices`
   row: those are the phones of Silo's apps, and a Silo app reads a woken delivery
   from Silo's routes, which have no place for the alert's text. Every producer of a
   system row uses `DispatchBloemOperational` or the batch, which leave those devices
   out ([push relays](bloem-push-relays.md#bloems-own-notices-never-wake-a-silo-app)).
-- **Feeds hide expired rows, always.** `GET /notifications` and
-  `GET /notifications/sync` filter expired rows on the server; dismissed rows are
-  filtered too unless `?include_dismissed=1`. The realtime snapshot (`RecentUnread`)
-  and `unread-count` apply both filters, and email and Discord digests skip expired
+- **Feeds hide expired rows, always.** `GET /notifications/sync` filters expired rows
+  on the server; dismissed rows are filtered too unless `?include_dismissed=1`.
+  `unread-count` applies both filters, and email and Discord digests skip expired
   rows. `GET /notifications/{id}` also applies the not-expired rule, so a withdrawn row
   answers 404.
 - **Dismissing is not reading.** `POST /notifications/{id}/dismiss` answers `204`
@@ -220,7 +230,7 @@ Migration `20260901120000_system_alert_notifications.sql`:
   alert). It never touches `read_at`, and it sends the realtime event
   `notification.dismissed` (`{id, profile_id}`). Bloem's handlers are in
   `internal/api/handlers/bloem_notifications.go` and `bloem_notifications_ext.go`;
-  `/api/v2` lists the same rows (`internal/apiv2/bloem_native_notifications.go`).
+  the native inbox is documented in `internal/apiv2/bloem_native_notifications.go`.
 - **Apps discover it.** `GET /notifications/capability` adds `"announcements": true`,
   `"dismiss": true` and `supported_types`, which lists `episode.available`,
   `request.fulfilled`, `request.approved`, `request.declined`, `webhook.auto_disabled`,

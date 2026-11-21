@@ -17,7 +17,7 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 - [Admin app push notifications](../../architecture/bloem-admin-push.md)
 - [How push notifications reach each app](../../architecture/bloem-push-relays.md)
 
-## Operations (34)
+## Operations (37)
 
 | Method and path | Summary |
 | --- | --- |
@@ -50,8 +50,11 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 | [`GET /api/bloem/v2/ambience/assets/{ref}`](#get-apibloemv2ambienceassetsref) | Serve uploaded seasonal and campaign artwork. |
 | [`GET /api/bloem/v2/ambience/public`](#get-apibloemv2ambiencepublic) | List the active deployment-wide seasonal packs. |
 | [`GET /api/bloem/v2/notifications`](#get-apibloemv2notifications) | The acting profile's inbox, newest first, with the alert fields a row needs to render. |
+| [`POST /api/bloem/v2/notifications/read-all`](#post-apibloemv2notificationsread-all) | Mark every inbox row up to a page's read_cutoff read, Bloem's own notices included. |
 | [`GET /api/bloem/v2/notifications/sync`](#get-apibloemv2notificationssync) | Rows newer than a cursor, for a client waking from a push or reconnecting across a gap. |
+| [`GET /api/bloem/v2/notifications/unread-count`](#get-apibloemv2notificationsunread-count) | How many inbox rows are unread, Bloem's own notices included. |
 | [`GET /api/bloem/v2/notifications/{id}`](#get-apibloemv2notificationsid) | One inbox row. Another profile's row is absent, not forbidden. |
+| [`POST /api/bloem/v2/notifications/{id}/read`](#post-apibloemv2notificationsidread) | Mark one inbox row read. Repeating it is not an error. |
 | [`GET /api/bloem/v2/promotions`](#get-apibloemv2promotions) | List the campaign cards a profile sees on a surface. |
 | [`PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}`](#put-apibloemv2promotionsiddismissalssurface) | Stop showing a campaign to a profile on a surface. |
 | [`POST /api/bloem/v2/promotions/{id}/save`](#post-apibloemv2promotionsidsave) | Save an in-playback campaign to the profile's inbox. |
@@ -682,6 +685,31 @@ Credentials: `bearerAuth`.
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the inbox could not be read. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
+### `POST /api/bloem/v2/notifications/read-all`
+
+Mark every inbox row up to a page's read_cutoff read, Bloem's own notices included.
+
+Operation ID: `markBloemNotificationsRead`.
+Credentials: `bearerAuth`.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `X-Profile-Id` | header | string | yes | The household profile acting for this request; it must belong to the authenticated account. |
+| `X-Profile-Token` | header | string |  | Verification proof for a PIN-locked profile; required only when the selected profile is locked. API keys skip PIN verification. |
+
+Request body (required, `application/json`): [`BloemNotificationReadAll`](#bloemnotificationreadall).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing, or through is missing or not a read_cutoff. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
+| 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the inbox could not be updated. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
+
 ### `GET /api/bloem/v2/notifications/sync`
 
 Rows newer than a cursor, for a client waking from a push or reconnecting across a gap.
@@ -702,6 +730,29 @@ Without a cursor, returns the newest rows up to limit, oldest first, with has_mo
 | --- | --- | --- |
 | 200 | [`BloemNotificationSyncPage`](#bloemnotificationsyncpage) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing or cursor is invalid. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
+| 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the inbox could not be read. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
+
+### `GET /api/bloem/v2/notifications/unread-count`
+
+How many inbox rows are unread, Bloem's own notices included.
+
+Operation ID: `getBloemNotificationUnreadCount`.
+Credentials: `bearerAuth`.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `X-Profile-Id` | header | string | yes | The household profile acting for this request; it must belong to the authenticated account. |
+| `X-Profile-Token` | header | string |  | Verification proof for a PIN-locked profile; required only when the selected profile is locked. API keys skip PIN verification. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemNotificationCount`](#bloemnotificationcount) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: X-Profile-Id names no profile of this account. |
@@ -731,6 +782,30 @@ Credentials: `bearerAuth`.
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no row with this ID belongs to the selected profile, or X-Profile-Id names no profile of this account. |
 | 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the row could not be read. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
+
+### `POST /api/bloem/v2/notifications/{id}/read`
+
+Mark one inbox row read. Repeating it is not an error.
+
+Operation ID: `markBloemNotificationRead`.
+Credentials: `bearerAuth`.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `X-Profile-Id` | header | string | yes | The household profile acting for this request; it must belong to the authenticated account. |
+| `X-Profile-Token` | header | string |  | Verification proof for a PIN-locked profile; required only when the selected profile is locked. API keys skip PIN verification. |
+| `id` | path | string | yes | Delivery identity. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: X-Profile-Id is missing. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: the bearer credential is missing, invalid or expired, its login session ended, or the account's role changed since the token was issued. tenant_session_required: the account's organization could not be resolved. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | forbidden: API key scopes, a preview session, a remote-playback binding or a device binding does not permit this request. password_change_required: the session must replace its temporary password first. organization_suspended: the account's organization is suspended. profile_unverified: the selected profile is PIN-locked and X-Profile-Token is missing or invalid. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no row with this ID belongs to the selected profile, or X-Profile-Id names no profile of this account. |
+| 429 | [`BloemNativeRateLimitError`](#bloemnativeratelimiterror) | The configured rate limit was exceeded. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the viewer's access could not be resolved, or the row could not be updated. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. |
 
 ### `GET /api/bloem/v2/promotions`
@@ -1032,6 +1107,12 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | `message` | string | yes |  |
 | `retry_after` | integer (int64) | yes | Seconds to wait before retrying. |
 
+### BloemNotificationCount
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `count` | integer (int64) | yes | Unread rows in the whole inbox, Bloem's own notices included. |
+
 ### BloemNotificationPage
 
 | Field | Type | Required | Description |
@@ -1046,6 +1127,12 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | --- | --- | --- | --- |
 | `has_more` | boolean | yes | Whether another page exists. Always false on an initial sync snapshot. |
 | `next_cursor` | string |  | Inbox: cursor for the next page, absent on the last page. Sync: the position to resume from, present whenever the page has rows or a cursor was sent. |
+
+### BloemNotificationReadAll
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `through` | string | yes | read_cutoff of the inbox page the viewer saw. Rows that arrived after it stay unread. |
 
 ### BloemNotificationSyncPage
 

@@ -188,8 +188,7 @@ account bearer token and `X-Profile-Id`, and resolve the organization natively
   `GET /api/bloem/v2/watch/search`
 - `GET /api/bloem/v2/persons/{person_id}`
 - `GET /api/bloem/v2/catalog/items/{content_id}/collections`
-- `GET /api/bloem/v2/notifications`, `GET /api/bloem/v2/notifications/sync` and
-  `GET /api/bloem/v2/notifications/{id}` ([inbox](#native-notification-inbox))
+- the inbox routes under `/api/bloem/v2/notifications` ([inbox](#native-notification-inbox))
 - the Live TV routes under `/api/bloem/v2/livetv` ([Live TV routes](#live-tv-routes)), whose
   signed HLS delivery paths also accept a headerless delivery ticket
 
@@ -3311,9 +3310,11 @@ from the route registrations and that document; use the OpenAPI schemas for the 
 
 Mounted in the client surface
 (`internal/api/router_bloem_client.go`) and served by
-`internal/api/handlers/bloem_notifications.go`. Silo's `/api/v2` inbox projection drops the
-alert fields Bloem's `system.alert` and `system.announcement` rows need (title, body, severity,
-call to action, dismissibility, expiry), so this surface serves the same rows with those fields.
+`internal/api/handlers/bloem_notifications.go`. This is the inbox for Bloem's own clients: every
+row, Bloem's `system.alert` and `system.announcement` notices included, with the fields a notice
+needs (title, body, severity, call to action, dismissibility, expiry). Silo's `/api/v2`
+notification routes and events socket serve a Silo app what a Silo server would, so they leave
+the notices out ([announcements](architecture/admin-announcements.md#what-viewers-apps-receive)).
 Each route needs an ordinary account bearer token and `X-Profile-Id` (plus `X-Profile-Token` for a
 PIN-protected profile).
 
@@ -3322,8 +3323,11 @@ PIN-protected profile).
 | `GET /api/bloem/v2/notifications` | The acting profile's inbox, newest first. Query `status` (`all` or `unread`), `limit`, `cursor`. Returns `{items: [DeliveryRowPayload], page: {has_more, next_cursor?}, read_cutoff}`. |
 | `GET /api/bloem/v2/notifications/sync` | Rows newer than `cursor`, for a client waking from a push or reconnecting; omit `cursor` for the newest snapshot. Returns `{items, page, unread_count, initial_snapshot}`. |
 | `GET /api/bloem/v2/notifications/{id}` | One inbox row (`DeliveryRowPayload`). Another profile's row answers `404`, not `403`. |
+| `GET /api/bloem/v2/notifications/unread-count` | `{count}`: unread rows in the whole inbox, notices included. |
+| `POST /api/bloem/v2/notifications/{id}/read` | Marks one row read; `204`, also when it was already read. `404` for a row the profile does not have. A Silo row sends Silo's `notification.read` event; a notice sends none, because the events socket is Silo's. |
+| `POST /api/bloem/v2/notifications/read-all` | Body `{through}`: a list page's `read_cutoff`. Marks every row up to it read, notices included; `204`. `400` when `through` is missing or is not a cutoff. |
 
-Marking read and dismissing stay on Silo's `/api/v2` notification routes.
+Preferences, series mutes and channel settings stay on Silo's `/api/v2` notification routes.
 
 #### Organization cohort reads and people policy jobs
 

@@ -205,8 +205,10 @@ func TestDeliveryRepositoryFiltersExpiredAndDismissed(t *testing.T) {
 	if got := rowIDs(synced); len(got) != 3 || containsString(got, "expired") {
 		t.Fatalf("sync include_dismissed from cursor: %v", got)
 	}
+	// The events socket's snapshot is Silo's and leaves the alerts out
+	// (bloem_silo_inbox.go); the plain row is dismissed, so nothing is left.
 	recent, _ := repo.RecentUnread(ctx, 1, profile, 10)
-	if got := rowIDs(recent); len(got) != 1 || got[0] != "critical" {
+	if got := rowIDs(recent); len(got) != 0 {
 		t.Fatalf("snapshot: %v", got)
 	}
 	loaded, err := repo.GetRowsByIDs(ctx, []string{"active", "expired"})

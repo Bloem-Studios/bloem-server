@@ -8,18 +8,16 @@ import (
 
 // The notification inbox on Bloem's native surface.
 //
-// Silo's /api/v2 inbox exists and works. What it cannot do is describe a Bloem
-// alert: its NotificationItem projects the media fields of a delivery row and
-// has no place for the headline, body, severity, deeplink, call to action,
-// expiry or dismissal that a system.alert or system.announcement row carries
-// (docs/architecture/admin-announcements.md). A client reading the v2 inbox can list
-// an alert it has no way to render.
+// Silo's /api/v2 inbox is Silo's: on a Bloem server it serves a Silo app the
+// inbox a Silo server would, which leaves Bloem's own notices (system.alert,
+// system.announcement) out (handlers.BloemSiloInboxView). Its NotificationItem
+// also has no place for the headline, body, severity, deeplink, call to
+// action, expiry or dismissal a notice carries
+// (docs/architecture/admin-announcements.md).
 //
-// Adding those fields to the v2 projection would mean editing a Silo-owned
-// file for a Bloem-only concept -- Silo has no alert model at all -- so the
-// native surface serves the same rows whole instead. Both surfaces read the
-// same rows through the same service methods, so they cannot drift into
-// serving different inboxes.
+// The native surface is where Bloem's clients read every row, notices
+// included, whole. It reads through Silo's own inbox service methods, so the
+// two surfaces differ only by the notices.
 //
 // The routes are served by chi in the native client group, mounted only when
 // the deployment has notifications; bloemClientDocumentOp declares that
@@ -93,6 +91,26 @@ type BloemNotificationItemOutput struct {
 	Body notifications.DeliveryRowPayload
 }
 
+// BloemNotificationCount is the unread total.
+type BloemNotificationCount struct {
+	Count int `json:"count" doc:"Unread rows in the whole inbox, Bloem's own notices included."`
+}
+
+// BloemNotificationCountOutput is the unread total.
+type BloemNotificationCountOutput struct {
+	Body BloemNotificationCount
+}
+
+// BloemNotificationReadAll names the boundary a read-all covers.
+type BloemNotificationReadAll struct {
+	Through string `json:"through" minLength:"1" doc:"read_cutoff of the inbox page the viewer saw. Rows that arrived after it stay unread."`
+}
+
+// BloemNotificationReadAllInput marks the inbox read up to a cutoff.
+type BloemNotificationReadAllInput struct {
+	Body BloemNotificationReadAll
+}
+
 func registerBloemNotifications(reg *Registry) {
 	{
 		op := bloemClientDocumentOp(reg, "GET", "/notifications", "listBloemNotifications", "notifications",
@@ -123,5 +141,35 @@ func registerBloemNotifications(reg *Registry) {
 			500: "internal_error: the viewer's access could not be resolved, or the row could not be read.",
 		})
 		registerBloemChiDocument[BloemNotificationItemInput, BloemNotificationItemOutput](reg, op)
+	}
+
+	{
+		op := bloemClientDocumentOp(reg, "GET", "/notifications/unread-count", "getBloemNotificationUnreadCount", "notifications",
+			"How many inbox rows are unread, Bloem's own notices included.", http.StatusOK)
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
+			400: "bad_request: X-Profile-Id is missing.",
+			500: "internal_error: the viewer's access could not be resolved, or the inbox could not be read.",
+		})
+		registerBloemChiDocument[struct{}, BloemNotificationCountOutput](reg, op)
+	}
+
+	{
+		op := bloemClientDocumentOp(reg, "POST", "/notifications/{id}/read", "markBloemNotificationRead", "notifications",
+			"Mark one inbox row read. Repeating it is not an error.", http.StatusNoContent)
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
+			404: "not_found: no row with this ID belongs to the selected profile, or X-Profile-Id names no profile of this account.",
+			500: "internal_error: the viewer's access could not be resolved, or the row could not be updated.",
+		})
+		registerBloemChiDocument[BloemNotificationItemInput, struct{}](reg, op)
+	}
+
+	{
+		op := bloemClientDocumentOp(reg, "POST", "/notifications/read-all", "markBloemNotificationsRead", "notifications",
+			"Mark every inbox row up to a page's read_cutoff read, Bloem's own notices included.", http.StatusNoContent)
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
+			400: "bad_request: X-Profile-Id is missing, or through is missing or not a read_cutoff.",
+			500: "internal_error: the viewer's access could not be resolved, or the inbox could not be updated.",
+		})
+		registerBloemChiDocument[BloemNotificationReadAllInput, struct{}](reg, op)
 	}
 }

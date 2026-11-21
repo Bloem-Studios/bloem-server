@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 972 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 299 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 302 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher
@@ -309,8 +309,11 @@ security declaration and the wire reference before sending credentials or mutati
 | `DELETE /api/bloem/v2/livetv/tuners/{tunerId}` | `deleteBloemLiveTVTuner` | Delete a tuner. |
 | `POST /api/bloem/v2/livetv/tuners/{tunerId}/scan` | `scanBloemLiveTVTuner` | Scan a saved tuner and refresh its channel lineup. |
 | `GET /api/bloem/v2/notifications` | `listBloemNotifications` | The acting profile's inbox, newest first, with the alert fields a row needs to render. |
+| `POST /api/bloem/v2/notifications/read-all` | `markBloemNotificationsRead` | Mark every inbox row up to a page's read_cutoff read, Bloem's own notices included. |
 | `GET /api/bloem/v2/notifications/sync` | `syncBloemNotifications` | Rows newer than a cursor, for a client waking from a push or reconnecting across a gap. |
+| `GET /api/bloem/v2/notifications/unread-count` | `getBloemNotificationUnreadCount` | How many inbox rows are unread, Bloem's own notices included. |
 | `GET /api/bloem/v2/notifications/{id}` | `getBloemNotification` | One inbox row. Another profile's row is absent, not forbidden. |
+| `POST /api/bloem/v2/notifications/{id}/read` | `markBloemNotificationRead` | Mark one inbox row read. Repeating it is not an error. |
 | `GET /api/bloem/v2/organization/live/ws` | `connectBloemOrganizationLiveSocket` | Open the organization live socket with a ticket. |
 | `GET /api/bloem/v2/organizations` | `listBloemOrganizations` | The organizations this account belongs to. |
 | `GET /api/bloem/v2/persons/{person_id}` | `getBloemPersonDetail` | One person and their credits, filtered to what this viewer may see. |

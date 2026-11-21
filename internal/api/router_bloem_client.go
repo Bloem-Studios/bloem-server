@@ -226,16 +226,20 @@ func (s bloemClientSurface) mount(r chi.Router) {
 
 		if s.notifications != nil {
 			// The inbox, paged and synced the way v2 pages everything else.
-			// The rows are the difference: they carry the alert fields Silo's
-			// v2 projection drops, which is what makes a system.alert row
-			// renderable rather than merely listable.
+			// The rows are the difference: every row, Bloem's own notices
+			// included, which Silo's /api/v2 routes leave out
+			// (handlers.BloemSiloInboxView), with the alert fields a notice
+			// needs to render.
 			// Mounted flat rather than through r.Route: chi renders a
 			// subrouter's "/" as a trailing slash, and the document -- which is
 			// what a client generator reads -- names the collection without
 			// one.
 			r.Get("/notifications", s.notifications.HandleBloemNotificationList)
 			r.Get("/notifications/sync", s.notifications.HandleBloemNotificationSync)
+			r.Get("/notifications/unread-count", s.notifications.HandleBloemNotificationUnreadCount)
+			r.Post("/notifications/read-all", s.notifications.HandleBloemNotificationReadAll)
 			r.Get("/notifications/{id}", s.notifications.HandleBloemNotificationGet)
+			r.Post("/notifications/{id}/read", s.notifications.HandleBloemNotificationRead)
 		}
 		if s.liveTV != nil {
 			r.Get("/livetv/capability", s.liveTV.HandleCapability)

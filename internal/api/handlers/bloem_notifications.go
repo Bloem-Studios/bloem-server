@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -220,4 +221,88 @@ func (h *NotificationsHandler) HandleBloemNotificationGet(w http.ResponseWriter,
 		return
 	}
 	writeJSON(w, http.StatusOK, row)
+}
+
+// bloemNotificationCount is the unread total, spelled as v2 spells it.
+type bloemNotificationCount struct {
+	Count int `json:"count"`
+}
+
+// HandleBloemNotificationUnreadCount handles GET
+// /api/bloem/v2/notifications/unread-count: every unread row, Bloem's own
+// notices included, which Silo's /api/v2 count leaves out.
+func (h *NotificationsHandler) HandleBloemNotificationUnreadCount(w http.ResponseWriter, r *http.Request) {
+	count, err := h.NotificationUnreadCount(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to count notifications")
+		return
+	}
+	writeJSON(w, http.StatusOK, bloemNotificationCount{Count: count})
+}
+
+// HandleBloemNotificationRead handles POST /api/bloem/v2/notifications/{id}/read.
+// A Silo row goes through Silo's own path, which tells Silo's clients through
+// notification.read. A Bloem notice is marked read without that event: the
+// events socket is Silo's, and its clients never saw the row.
+func (h *NotificationsHandler) HandleBloemNotificationRead(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, profileID, id := apimw.GetUserID(ctx), apimw.GetProfileID(ctx), chi.URLParam(r, "id")
+	kind, err := h.system.Deliveries.DeliveryType(ctx, userID, profileID, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mark notification read")
+		return
+	}
+	switch {
+	case kind == "":
+		writeError(w, http.StatusNotFound, "not_found", "Notification not found")
+		return
+	case notifications.SiloInboxType(kind):
+		err = h.MarkNotificationRead(ctx, userID, profileID, id)
+	default:
+		_, err = h.system.Deliveries.MarkRead(ctx, userID, profileID, id)
+	}
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// bloemReadAllRequest names the boundary a read-all covers: the read_cutoff of
+// the inbox page the viewer saw, so rows that arrived since stay unread.
+type bloemReadAllRequest struct {
+	Through string `json:"through"`
+}
+
+// HandleBloemNotificationReadAll handles POST
+// /api/bloem/v2/notifications/read-all: every row up to the cutoff, Bloem's
+// notices included.
+func (h *NotificationsHandler) HandleBloemNotificationReadAll(w http.ResponseWriter, r *http.Request) {
+	var body bloemReadAllRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.Through == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "through is required")
+		return
+	}
+	through, ok := decodeBloemReadCutoff(body.Through)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "bad_request", "Invalid through")
+		return
+	}
+	if err := h.MarkNotificationInboxThrough(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), through); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mark notifications read")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// decodeBloemReadCutoff reads a page's read_cutoff. An empty inbox's cutoff
+// names no row (a zero time and no ID) and marks nothing, as on /api/v2.
+func decodeBloemReadCutoff(raw string) (notifications.Cursor, bool) {
+	if cursor, err := notifications.DecodeCursor(raw); err == nil {
+		return cursor, true
+	}
+	if raw == (notifications.Cursor{}).Encode() {
+		return notifications.Cursor{}, true
+	}
+	return notifications.Cursor{}, false
 }

@@ -3256,6 +3256,14 @@
     {
       "type": "internal/apiv2.ProfileSectionBaselineRow",
       "reason": "Upstream Silo home layout export baseline (API v2, synced 2026-11-20); the bundled web client records it in a home layout export and reads it on import, and Bloem native clients do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.BloemNotificationCount",
+      "reason": "The native inbox's unread total ({count}); Bloem's web reads it through its notification adapter, and no generated client decodes it yet."
+    },
+    {
+      "type": "internal/apiv2.BloemNotificationReadAll",
+      "reason": "The native inbox's read-all body ({through}); Bloem's web sends it through its notification adapter, and no generated client encodes it yet."
     }
   ]
 }

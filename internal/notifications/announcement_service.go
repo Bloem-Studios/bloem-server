@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/jackc/pgx/v5"
 	"github.com/oklog/ulid/v2"
 )
@@ -149,8 +148,9 @@ func (s *AnnouncementService) List(ctx context.Context) ([]Announcement, error) 
 
 // Withdraw stops an announcement: unread inbox rows are deleted (their
 // pending outbox attempts cascade away, canceling undelivered pushes) and
-// read rows are expired so no feed shows them again; each affected profile
-// gets a notification.withdrawn realtime event. Idempotent.
+// read rows are expired so no feed shows them again. Idempotent. No realtime
+// event is sent: the events socket is Silo's, and Silo's clients never saw
+// the rows (bloem_silo_inbox.go).
 func (s *AnnouncementService) Withdraw(ctx context.Context, id string) error {
 	if s == nil {
 		return ErrAnnouncementNotFound
@@ -167,19 +167,11 @@ func (s *AnnouncementService) Withdraw(ctx context.Context, id string) error {
 	if !found {
 		return ErrAnnouncementNotFound
 	}
-	withdrawn, err := s.system.Deliveries.WithdrawAnnouncement(ctx, tx, id)
-	if err != nil {
+	if _, err := s.system.Deliveries.WithdrawAnnouncement(ctx, tx, id); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit withdraw: %w", err)
-	}
-	if s.system.hub != nil {
-		for _, row := range withdrawn {
-			_ = s.system.hub.PublishJSON(ctx, evt.ChannelNotifications, EventNotificationWithdrawn,
-				map[string]any{"id": row.ID, "profile_id": row.ProfileID},
-				evt.PublishOptions{UserID: row.UserID, ProfileID: row.ProfileID})
-		}
 	}
 	return nil
 }

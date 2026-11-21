@@ -3138,6 +3138,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		inbox := handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub)
 		inbox.SetApplePushDisplayTokenIssuer(jwtService)
 		v2deps.NotificationInbox = inbox
+		v2deps.NotificationInbox = handlers.BloemSiloInboxView{NotificationsHandler: inbox} // Bloem: replaces the line above
 		v2deps.NotificationDestinations = inbox
 		if deps.Notifications.PluginDestinations != nil {
 			v2deps.NotificationPluginDestinations = deps.Notifications.PluginDestinations

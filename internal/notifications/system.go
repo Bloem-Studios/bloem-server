@@ -142,6 +142,7 @@ func NewSystem(
 
 	wsDispatcher := NewWebsocketDispatcher(hub)
 	dispatchers := []Dispatcher{wsDispatcher}
+	dispatchers[0] = siloSocketDispatcher{wsDispatcher} // Bloem: Silo's socket carries Silo's rows (bloem_silo_inbox.go)
 
 	// Outbound webhooks require the at-rest cipher: destination URLs are
 	// bearer credentials (Discord) and must never be stored in plaintext.

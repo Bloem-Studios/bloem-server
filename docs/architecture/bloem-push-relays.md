@@ -35,6 +35,11 @@ routes, which have no place for a Bloem notice's title or message. On Android th
 phone would show only the type's first word and "Open Silo to view it". A Silo server
 never sends such a notice, so a Bloem server does not either.
 
+Silo's notification routes and events socket leave these notices out altogether, so a
+Silo app's inbox and unread count are the ones a Silo server would give it. Bloem's
+web inbox reads them from Bloem's own routes
+([announcements](admin-announcements.md#what-viewers-apps-receive)).
+
 ## What a relay sees
 
 Neither relay ever sees a notification's text, a title's name or a person's name. The

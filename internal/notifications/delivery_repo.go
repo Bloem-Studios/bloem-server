@@ -387,10 +387,11 @@ func (r *DeliveryRepository) HasTransactionalForProfileSince(ctx context.Context
 }
 
 // RecentUnread returns the newest unread rows for the websocket snapshot.
+// Bloem: Silo's events socket is its only caller, so it serves Silo's rows (bloem_silo_inbox.go).
 func (r *DeliveryRepository) RecentUnread(ctx context.Context, userID int, profileID string, limit int) ([]DeliveryRow, error) {
 	rows, err := r.pool.Query(ctx,
 		deliveryRowSelect+`
-		WHERE d.user_id = $1 AND d.profile_id = $2 AND d.read_at IS NULL AND `+deliveryVisibility(false)+`
+		WHERE d.user_id = $1 AND d.profile_id = $2 AND d.read_at IS NULL AND `+deliveryVisibility(false)+` AND `+siloInboxTypes("d")+`
 		ORDER BY d.created_at DESC, d.id DESC
 		LIMIT $3`,
 		userID, profileID, limit)
