@@ -2,9 +2,11 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
 )
 
@@ -183,7 +185,12 @@ func progressiveDeliverySession(urlPath string) (string, bool) {
 // delivery paths, and only with a signature that names their own session.
 // It adds nothing once the playback's login session has ended
 // (streamTokenLoginSessionLive), so signing out, a revoked session and a
-// disabled account end the media URL as they do on Silo.
+// disabled account end the media URL as they do on Silo. Nor does it when the
+// request carries a valid account credential of its own (credentialAccount):
+// Silo then decides by that credential, its declared profile and the
+// handler's ownership check. An expired or malformed one is ignored, so a
+// stale bearer sent beside the URL leaves the token to decide. Live TV
+// delivery is outside both rules.
 func (am *AuthMiddleware) StreamTokenAuth(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		if secret == "" {
@@ -209,6 +216,21 @@ func (am *AuthMiddleware) StreamTokenAuth(secret string) func(http.Handler) http
 				next.ServeHTTP(w, r)
 				return
 			}
+			if _, liveTV := liveHLSDeliverySession(r.URL.Path); !liveTV {
+				account, err := am.credentialAccount(r)
+				if err != nil {
+					writeCredentialCheckUnavailable(w, r, err)
+					return
+				}
+				if account > 0 {
+					// Silo decides a request with a valid account credential
+					// by that credential (RequireStreamReferenceAuth): its
+					// declared profile's proof and the handler's ownership
+					// check answer, not the URL token.
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
 			live, err := am.streamTokenLoginSessionLive(r.Context(), claims)
 			if err != nil {
 				writeCredentialCheckUnavailable(w, r, err)
@@ -224,6 +246,39 @@ func (am *AuthMiddleware) StreamTokenAuth(secret string) func(http.Handler) http
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// credentialAccount returns the account a request's own credential names
+// (bearer header, `token` query or API key), or 0 when it carries none or the
+// credential does not validate: an expired or malformed bearer leaves the
+// stream token to decide, as it did before. An error means an API key could
+// not be checked.
+func (am *AuthMiddleware) credentialAccount(r *http.Request) (int, error) {
+	token, ok := extractBearerToken(r)
+	if !ok {
+		return 0, nil
+	}
+	if strings.HasPrefix(token, "sa_") {
+		if am.apiKeyValidator == nil {
+			return 0, nil
+		}
+		key, err := am.apiKeyValidator.GetByKey(r.Context(), token)
+		if errors.Is(err, auth.ErrAPIKeyNotFound) || (err == nil && key == nil) {
+			return 0, nil
+		}
+		if err != nil {
+			return 0, err
+		}
+		return key.UserID, nil
+	}
+	if am.tokenValidator == nil {
+		return 0, nil
+	}
+	// An invalid or expired token names no account: the stream token decides.
+	if claims, err := am.tokenValidator.ValidateToken(token); err == nil && claims != nil && claims.TokenType == auth.TokenTypeAccess {
+		return claims.UserID, nil
+	}
+	return 0, nil
 }
 
 // streamTokenLoginSessionLive applies Silo's stream reference rule
