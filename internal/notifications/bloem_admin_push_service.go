@@ -39,6 +39,10 @@ const (
 	// AdminWidgetWakesCapabilityToken tells an app this server accepts its widget report and
 	// sends widget wakes. It is advertised with AdminPushCapabilityToken, never without it.
 	AdminWidgetWakesCapabilityToken = "admin_widget_wakes_v1"
+	// AdminWidgetHealthCapabilityToken tells an app this server also accepts the health widget
+	// channel and wakes it. An older server refuses a widget report that names health, so an app
+	// reports health only to a server that lists this token. It is advertised with the other two.
+	AdminWidgetHealthCapabilityToken = "admin_widget_health_v1"
 
 	adminPushBatch       = 50
 	adminPushTick        = 5 * time.Second

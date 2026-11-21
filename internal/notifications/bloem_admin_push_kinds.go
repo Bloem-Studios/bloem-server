@@ -45,11 +45,14 @@ const (
 
 // Widget channels: what the admin app's home-screen widgets can show. An app
 // reports the channels its placed widgets show, and a wake names the ones that changed.
+// Health is the Needs a look widget: it wakes when a backup or a plugin fails or
+// recovers. Apps name it only to a server that lists AdminWidgetHealthCapabilityToken.
 const (
 	AdminWidgetSessions  = "sessions"
 	AdminWidgetRequests  = "requests"
 	AdminWidgetLibraries = "libraries"
 	AdminWidgetNodes     = "nodes"
+	AdminWidgetHealth    = "health"
 )
 
 // Widget wake rate limit (bloem-staff-widgets.md, "Widget wakes"), applied per device on the server.
@@ -62,7 +65,7 @@ const (
 	adminWakeAfterVisible = 2 * time.Minute
 )
 
-var adminWidgetChannels = []string{AdminWidgetSessions, AdminWidgetRequests, AdminWidgetLibraries, AdminWidgetNodes}
+var adminWidgetChannels = []string{AdminWidgetSessions, AdminWidgetRequests, AdminWidgetLibraries, AdminWidgetNodes, AdminWidgetHealth}
 
 // AdminWidgetChannels lists the channels a widget report may name.
 func AdminWidgetChannels() []string { return append([]string(nil), adminWidgetChannels...) }

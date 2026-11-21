@@ -824,7 +824,7 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | `installation_id` | string | yes | A key the app generates once per installation and keeps across token refreshes and sign-ins. |
 | `platform` | string: `apple`, `android` | yes |  |
 | `token` | string | yes | The APNs device token (hex) or the FCM registration token. |
-| `widget_channels` | array of string: `sessions`, `requests`, `libraries`, `nodes` |  | What the placed widgets show: sessions (now playing), requests, libraries, nodes. Required, and not empty, when widgets_placed is true. |
+| `widget_channels` | array of string: `sessions`, `requests`, `libraries`, `nodes`, `health` |  | What the placed widgets show: sessions (now playing), requests, libraries, nodes, health (Needs a look: backup and plugin failures; only to a server that lists admin_widget_health_v1). Required, and not empty, when widgets_placed is true. |
 | `widgets_placed` | boolean |  | Whether the app has at least one home-screen widget placed. Only then does the server send widget wakes. Omit to keep what the server holds. Reporting false clears the channels. |
 
 ### BloemAdminPushRegistered
@@ -848,7 +848,7 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `channels` | array of string: `sessions`, `requests`, `libraries`, `nodes` | yes | What the placed widgets show. Required, and not empty, when widgets_placed is true; ignored when false. |
+| `channels` | array of string: `sessions`, `requests`, `libraries`, `nodes`, `health` | yes | What the placed widgets show; health only to a server that lists admin_widget_health_v1. Required, and not empty, when widgets_placed is true; ignored when false. |
 | `widgets_placed` | boolean | yes | Whether at least one widget is placed. Send false when the last widget is removed. |
 
 ### BloemAmbienceAttachForm

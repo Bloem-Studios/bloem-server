@@ -212,8 +212,8 @@ func TestAdminPushWatchersEmitFromServerState(t *testing.T) {
 
 	// Backups: only a fresh failed run, once.
 	run := AdminBackupRun{ID: "run-1", Status: "failed", Error: "write /backups/x: disk full", FinishedAt: f.now.Add(-time.Minute)}
-	f.svc.watchBackup(ctx, func(context.Context) (AdminBackupRun, bool, error) { return run, true, nil }, f.now)
-	f.svc.watchBackup(ctx, func(context.Context) (AdminBackupRun, bool, error) { return run, true, nil }, f.now.Add(time.Minute))
+	f.svc.watchBackup(ctx, func(context.Context) (AdminBackupRun, bool, error) { return run, true, nil }, f.now, nil)
+	f.svc.watchBackup(ctx, func(context.Context) (AdminBackupRun, bool, error) { return run, true, nil }, f.now.Add(time.Minute), nil)
 	if got := deliveries(AdminKindBackupFailed); got != 1 {
 		t.Fatalf("a failed run produced %d deliveries over two polls, want 1", got)
 	}
@@ -226,10 +226,10 @@ func TestAdminPushWatchersEmitFromServerState(t *testing.T) {
 	}
 	f.svc.watchBackup(ctx, func(context.Context) (AdminBackupRun, bool, error) {
 		return AdminBackupRun{ID: "old", Status: "failed", FinishedAt: f.now.Add(-48 * time.Hour)}, true, nil
-	}, f.now)
+	}, f.now, nil)
 	f.svc.watchBackup(ctx, func(context.Context) (AdminBackupRun, bool, error) {
 		return AdminBackupRun{ID: "ok", Status: "complete", FinishedAt: f.now}, true, nil
-	}, f.now)
+	}, f.now, nil)
 	if got := deliveries(AdminKindBackupFailed); got != 1 {
 		t.Fatalf("an old failure or a success produced a delivery (%d)", got)
 	}
@@ -329,5 +329,150 @@ func TestAdminPushWatchScansTurnsAFailedScanEventIntoANotice(t *testing.T) {
 	}
 	if title != "Scan failed: Movies" || body != "open input/output error" {
 		t.Fatalf("scan notice = %q / %q", title, body)
+	}
+}
+
+// healthWoken reports whether the device has a health wake pending, then clears every pending wake.
+func healthWoken(f *adminPushFixture, deviceID string) bool {
+	f.t.Helper()
+	got := strings.Join(f.pending(deviceID), ",")
+	f.clearWakes()
+	return got == AdminWidgetHealth
+}
+
+func TestAdminHealthWakeFollowsBackupFailuresOnce(t *testing.T) {
+	f := newAdminPushFixture(t)
+	ctx := context.Background()
+	admin := f.account("root", "admin", true)
+	phone := f.register(admin, apnsRegistration("install-root-aaaa", 'a'))
+	f.widgets(admin, phone.DeviceID, "health")
+	states := newStateTracker()
+	backup := func(states *stateTracker, id, status string, finished, at time.Time) {
+		t.Helper()
+		run := AdminBackupRun{ID: id, Status: status, FinishedAt: finished}
+		f.svc.watchBackup(ctx, func(context.Context) (AdminBackupRun, bool, error) { return run, true, nil }, at, states)
+	}
+	start := f.now
+
+	// A server that starts with a good backup has nothing new to show.
+	backup(states, "run-0", "complete", start.Add(-time.Hour), start)
+	if healthWoken(f, phone.DeviceID) {
+		t.Fatal("the first sight of a good backup woke the health widget")
+	}
+	backup(states, "run-1", "failed", start.Add(-time.Minute), start)
+	if !healthWoken(f, phone.DeviceID) {
+		t.Fatal("a failed backup did not wake the health widget")
+	}
+	backup(states, "run-1", "failed", start.Add(-time.Minute), start.Add(time.Minute))
+	if healthWoken(f, phone.DeviceID) {
+		t.Fatal("the same failed run seen on the next tick woke the widget again")
+	}
+	backup(states, "run-2", "complete", start.Add(time.Hour), start.Add(time.Hour))
+	if !healthWoken(f, phone.DeviceID) {
+		t.Fatal("a backup that succeeded after a failure did not wake the health widget")
+	}
+	backup(states, "run-3", "complete_with_warnings", start.Add(2*time.Hour), start.Add(2*time.Hour))
+	if healthWoken(f, phone.DeviceID) {
+		t.Fatal("a success after a success woke the widget")
+	}
+	backup(states, "run-4", "interrupted", start.Add(3*time.Hour), start.Add(3*time.Hour))
+	if !healthWoken(f, phone.DeviceID) {
+		t.Fatal("an interrupted backup did not wake the health widget")
+	}
+	backup(states, "run-5", "failed", start.Add(4*time.Hour), start.Add(4*time.Hour))
+	if !healthWoken(f, phone.DeviceID) {
+		t.Fatal("a new failed run after an interrupted one did not wake the health widget")
+	}
+
+	// At start-up, a failure older than the freshness window is old news, as it is for the alert.
+	restarted := newStateTracker()
+	backup(restarted, "run-6", "failed", start.Add(-adminBackupFreshness-time.Minute), start)
+	if healthWoken(f, phone.DeviceID) {
+		t.Fatal("an old failed run at start-up woke the health widget")
+	}
+	// The widget still shows that failure, so the success that replaces it is a change.
+	backup(restarted, "run-7", "complete", start.Add(time.Hour), start.Add(time.Hour))
+	if !healthWoken(f, phone.DeviceID) {
+		t.Fatal("a success after an old failure did not wake the health widget")
+	}
+}
+
+func TestAdminHealthWakeFollowsPluginFailureAndRecovery(t *testing.T) {
+	f := newAdminPushFixture(t)
+	ctx := context.Background()
+	admin := f.account("root", "admin", true)
+	phone := f.register(admin, apnsRegistration("install-root-aaaa", 'a'))
+	f.widgets(admin, phone.DeviceID, "health")
+	plugins := newOutageTracker()
+	watch := func(failed bool) {
+		t.Helper()
+		f.svc.watchPlugins(ctx, func(context.Context) ([]AdminPluginHealth, error) {
+			return []AdminPluginHealth{
+				{InstallationID: "9", Name: "Metadata", Failed: failed, Reason: "exit status 2"},
+				{InstallationID: "10", Name: "Subtitles"},
+			}, nil
+		}, plugins, f.now)
+	}
+
+	watch(false)
+	if healthWoken(f, phone.DeviceID) {
+		t.Fatal("healthy plugins woke the health widget")
+	}
+	watch(true)
+	if !healthWoken(f, phone.DeviceID) {
+		t.Fatal("a plugin turning failed did not wake the health widget")
+	}
+	watch(true)
+	if healthWoken(f, phone.DeviceID) {
+		t.Fatal("a plugin staying failed woke the widget again")
+	}
+	watch(false)
+	if !healthWoken(f, phone.DeviceID) {
+		t.Fatal("a plugin recovering did not wake the health widget")
+	}
+	watch(false)
+	if healthWoken(f, phone.DeviceID) {
+		t.Fatal("a plugin staying healthy woke the widget")
+	}
+}
+
+func TestAdminHealthWakeStillSendsTheAlert(t *testing.T) {
+	f := newAdminPushFixture(t)
+	ctx := context.Background()
+	admin := f.account("root", "admin", true)
+	alerted := f.register(admin, apnsRegistration("install-root-aaaa", 'a'))
+	quiet := f.register(admin, fcmRegistration("install-root-bbbb", 'b'))
+	f.widgets(admin, alerted.DeviceID, "health")
+	f.widgets(admin, quiet.DeviceID, "health")
+	if _, err := f.svc.SetKinds(ctx, admin, quiet.DeviceID, map[string]bool{AdminKindBackupFailed: false}); err != nil {
+		t.Fatal(err)
+	}
+	// The clock moves on every read, as a real one does, so the wake must be marked before the
+	// alert is stored for the alert to cover it.
+	f.svc.now = func() time.Time { f.now = f.now.Add(time.Millisecond); return f.now }
+	states := newStateTracker()
+	run := AdminBackupRun{ID: "run-1", Status: "failed", Error: "disk full", FinishedAt: f.now.Add(-time.Minute)}
+	last := func(context.Context) (AdminBackupRun, bool, error) { return run, true, nil }
+	f.svc.watchBackup(ctx, last, f.now, states)
+	f.svc.watchBackup(ctx, last, f.now.Add(time.Minute), states)
+	// FlushWakes reads the clock from several goroutines; hold it still from here on.
+	f.svc.now = func() time.Time { return f.now }
+	if got := f.count(`SELECT count(*) FROM bloem_admin_push_deliveries WHERE kind = $1`, AdminKindBackupFailed); got != 1 {
+		t.Fatalf("backup_failed deliveries = %d, want 1", got)
+	}
+	if got := f.count(`SELECT count(*) FROM bloem_admin_push_attempts a JOIN bloem_admin_push_devices d ON d.id = a.device_id
+		WHERE d.server_device_id = $1`, alerted.DeviceID); got != 1 {
+		t.Fatalf("the device with the alert on has %d attempts, want 1", got)
+	}
+
+	// The alert refreshes the widgets of the device it reaches; the device with the alert off gets the wake.
+	f.now = f.now.Add(3 * time.Minute)
+	f.flush()
+	calls := f.relay.wakeCalls()
+	if len(calls) != 1 {
+		t.Fatalf("wake calls = %d, want 1 for the device without the alert", len(calls))
+	}
+	if id, _ := calls[0].Body["delivery_id"].(string); !strings.HasPrefix(id, quiet.DeviceID+".widgets-health-") {
+		t.Fatalf("wake %q went to the wrong device or channel", id)
 	}
 }

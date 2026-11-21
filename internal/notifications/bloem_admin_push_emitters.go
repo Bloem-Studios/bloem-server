@@ -251,19 +251,26 @@ func (t *outageTracker) bucket(start time.Time) time.Time {
 	return start.Truncate(adminOutageBucket)
 }
 
+// reported tells whether the subject's current outage has already fired.
+func (t *outageTracker) reported(id string) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.fired[id]
+}
+
 // RunWatchers polls backup, node, plugin and mount state until ctx ends. Every
 // replica may run it.
 func (s *AdminPushService) RunWatchers(ctx context.Context, sources AdminPushSources) {
 	if !s.Available() {
 		return
 	}
-	nodes, plugins, nodeStates := newOutageTracker(), newOutageTracker(), newStateTracker()
+	nodes, plugins, nodeStates, backupStates := newOutageTracker(), newOutageTracker(), newStateTracker(), newStateTracker()
 	startedAt := s.now()
 	lastWarning := startedAt
 	tick := time.NewTicker(adminWatchEvery)
 	defer tick.Stop()
 	for {
-		s.watchOnce(ctx, sources, nodes, plugins, nodeStates, &lastWarning)
+		s.watchOnce(ctx, sources, nodes, plugins, nodeStates, backupStates, &lastWarning)
 		select {
 		case <-ctx.Done():
 			return
@@ -272,10 +279,10 @@ func (s *AdminPushService) RunWatchers(ctx context.Context, sources AdminPushSou
 	}
 }
 
-func (s *AdminPushService) watchOnce(ctx context.Context, sources AdminPushSources, nodes, plugins *outageTracker, nodeStates *stateTracker, lastWarning *time.Time) {
+func (s *AdminPushService) watchOnce(ctx context.Context, sources AdminPushSources, nodes, plugins *outageTracker, nodeStates, backupStates *stateTracker, lastWarning *time.Time) {
 	now := s.now()
 	if sources.LastBackup != nil {
-		s.watchBackup(ctx, sources.LastBackup, now)
+		s.watchBackup(ctx, sources.LastBackup, now, backupStates)
 	}
 	s.watchNodes(ctx, nodes, nodeStates, now)
 	if sources.Plugins != nil {
@@ -284,7 +291,9 @@ func (s *AdminPushService) watchOnce(ctx context.Context, sources AdminPushSourc
 	s.watchMounts(ctx, lastWarning)
 }
 
-func (s *AdminPushService) watchBackup(ctx context.Context, last func(context.Context) (AdminBackupRun, bool, error), now time.Time) {
+// watchBackup reads the latest backup run. states remembers the runs seen, so the health widget is
+// woken once per change; nil skips the wake.
+func (s *AdminPushService) watchBackup(ctx context.Context, last func(context.Context) (AdminBackupRun, bool, error), now time.Time, states *stateTracker) {
 	run, ok, err := last(ctx)
 	if err != nil {
 		if ctx.Err() == nil {
@@ -292,8 +301,22 @@ func (s *AdminPushService) watchBackup(ctx context.Context, last func(context.Co
 		}
 		return
 	}
+	if !ok {
+		return
+	}
+	failed := run.Status == "failed" || run.Status == "interrupted"
 	// A run that is old news on a restart is not a new failure.
-	if !ok || (run.Status != "failed" && run.Status != "interrupted") || now.Sub(run.FinishedAt) > adminBackupFreshness {
+	fresh := now.Sub(run.FinishedAt) <= adminBackupFreshness
+	if states != nil {
+		// The health widget shows whether the latest run failed: a new failed run changes it, and so
+		// does a success after a failure, however old that failure was.
+		_, runSeen := states.record("backup:"+run.ID, !failed)
+		latestSucceeded, latestSeen := states.record("backup", !failed)
+		if (failed && !runSeen && fresh) || (!failed && latestSeen && !latestSucceeded) {
+			s.wakeHealth(ctx, "backup", run.ID)
+		}
+	}
+	if !failed || !fresh {
 		return
 	}
 	reason := adminReason(run.Error, "The backup did not finish")
@@ -312,11 +335,26 @@ type stateTracker struct {
 func newStateTracker() *stateTracker { return &stateTracker{last: map[string]bool{}} }
 
 func (t *stateTracker) changed(id string, up bool) bool {
+	previous, seen := t.record(id, up)
+	return seen && previous != up
+}
+
+// record stores the subject's state and returns the one it had before, if it was seen.
+func (t *stateTracker) record(id string, up bool) (previous, seen bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	previous, seen := t.last[id]
+	previous, seen = t.last[id]
 	t.last[id] = up
-	return seen && previous != up
+	return previous, seen
+}
+
+// wakeHealth wakes the health widget (Needs a look). The watchers call it before they notify, so
+// the alert, which refreshes the widgets of every device it reaches, covers the wake for those
+// devices; a device with that alert switched off still gets the wake.
+func (s *AdminPushService) wakeHealth(ctx context.Context, subject, id string) {
+	if err := s.Wake(ctx, AdminWidgetHealth, 0); err != nil && ctx.Err() == nil {
+		s.logger.WarnContext(ctx, "admin widget wake for health failed", "subject", subject, "id", id, "error", err)
+	}
 }
 
 func (s *AdminPushService) watchNodes(ctx context.Context, tracker *outageTracker, states *stateTracker, now time.Time) {
@@ -363,7 +401,13 @@ func (s *AdminPushService) watchPlugins(ctx context.Context, list func(context.C
 		return
 	}
 	for _, p := range plugins {
-		if start, fire := tracker.observe(p.InstallationID, p.Failed, now, 0); fire {
+		wasReported := tracker.reported(p.InstallationID)
+		start, fire := tracker.observe(p.InstallationID, p.Failed, now, 0)
+		// A plugin failing, or recovering after its failure was reported, changes the health widget.
+		if fire || (wasReported && !p.Failed) {
+			s.wakeHealth(ctx, "plugin", p.InstallationID)
+		}
+		if fire {
 			reason := adminReason(p.Reason, "The plugin stopped")
 			if err := s.Notify(ctx, PluginFailedNotice(p.InstallationID, p.Name, reason, tracker.bucket(start))); err != nil {
 				s.logger.WarnContext(ctx, "admin push for a failed plugin failed", "plugin", p.InstallationID, "error", err)

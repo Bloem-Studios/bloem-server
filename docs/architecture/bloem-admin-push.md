@@ -78,14 +78,21 @@ message) that tells an app with a widget placed to re-read what the widget shows
 content, and it never opens anything.
 
 - **Who gets one.** Only a device that reported `widgets_placed`, and only for the channels its widgets show:
-  `sessions` (now playing), `requests`, `libraries`, `nodes`. The app reports them with `POST devices`
-  (`widgets_placed`, `widget_channels`) or `PUT devices/{device_id}/widgets` (`widgets_placed`, `channels`), and
-  again whenever a widget is added or removed. Reporting `widgets_placed` false clears the channels and any wake
-  waiting. A server that lists `admin_widget_wakes_v1` accepts the report.
+  `sessions` (now playing), `requests`, `libraries`, `nodes`, `health` (the Needs a look widget). The app reports
+  them with `POST devices` (`widgets_placed`, `widget_channels`) or `PUT devices/{device_id}/widgets`
+  (`widgets_placed`, `channels`), and again whenever a widget is added or removed. Reporting `widgets_placed` false
+  clears the channels and any wake waiting. A server that lists `admin_widget_wakes_v1` accepts the report; only a
+  server that also lists `admin_widget_health_v1` accepts `health`. An older server refuses the whole report when it
+  names a channel it does not know, so an app leaves `health` out for a server without that token.
 - **What triggers one.** A session starting, pausing, resuming or stopping (`sessions`); a request arriving, whether
   it waits for an admin or was auto-approved (`requests`, only to admins of the requester's organization); a scan
   starting, completing, being cancelled or failing (`libraries`); a node going offline or coming back (`nodes`).
-  Progress ticks, traffic and similar figures never wake.
+  `health` wakes on state changes only: a new failed or interrupted backup run (within six hours of finishing, so a
+  restart does not wake for old news), a successful run after a failed one, a plugin failing, and a plugin whose
+  failure was reported recovering. The backup and plugin watchers wake before they notify, so the
+  `admin.backup_failed` or `admin.plugin_failed` alert covers the wake on the devices it reaches; a device with that
+  alert switched off still gets the wake. Progress ticks, traffic, error-log counts and similar figures never
+  wake.
 - **Rate limit,** applied per device in the database so every replica agrees: changes gather for 30 seconds into one
   wake; a device gets at most one wake every 10 minutes, and the changes held back go out together when the gap has
   passed; and none goes out within 2 minutes after a visible alert push to that device, because the push already
@@ -103,7 +110,8 @@ content, and it never opens anything.
 `GET /api/bloem/v2/capabilities` lists `admin_push_v1` in `feature_tokens` only while the routes are
 mounted and the operator has push delivery on for at least one platform. A server without the token is
 treated as a plain Silo server by the apps. `admin_widget_wakes_v1` is advertised with it, and says the server
-accepts the widget report and sends wakes.
+accepts the widget report and sends wakes. `admin_widget_health_v1` is advertised with both, and says the server
+also accepts and wakes the `health` channel.
 
 ## Seams
 

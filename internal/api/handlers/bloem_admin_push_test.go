@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -322,4 +323,54 @@ func TestAdminPushRegistrationPassesTheWidgetReportAndEchoesIt(t *testing.T) {
 	if g := stub.registered[0]; g.WidgetsPlaced != nil || g.WidgetChannels != nil {
 		t.Fatalf("an omitted widget report must stay nil: %+v", g)
 	}
+}
+
+func TestCapabilitiesAdvertiseWidgetHealthWithWakes(t *testing.T) {
+	probe := func(h *BloemSystemHandler) string {
+		rec := httptest.NewRecorder()
+		h.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, "/capabilities", nil))
+		return rec.Body.String()
+	}
+	if got := probe(NewBloemSystemHandler(nil)); strings.Contains(got, "admin_widget_wakes_v1") || strings.Contains(got, "admin_widget_health_v1") {
+		t.Fatalf("a server without push advertised a widget token: %s", got)
+	}
+	stub := &adminPushStub{enabled: true}
+	system := NewBloemSystemHandler(nil)
+	system.SetAdminPushReadiness(NewBloemAdminPushHandlerWith(stub).Ready)
+	if got := probe(system); !strings.Contains(got, `"admin_widget_wakes_v1"`) || !strings.Contains(got, `"admin_widget_health_v1"`) {
+		t.Fatalf("a ready server must advertise admin_widget_wakes_v1 and admin_widget_health_v1: %s", got)
+	}
+	if notifications.AdminWidgetHealthCapabilityToken != "admin_widget_health_v1" {
+		t.Fatalf("token = %q", notifications.AdminWidgetHealthCapabilityToken)
+	}
+	stub.enabled = false
+	if got := probe(system); strings.Contains(got, "admin_widget_wakes_v1") || strings.Contains(got, "admin_widget_health_v1") {
+		t.Fatalf("push delivery switched off must withdraw both widget tokens: %s", got)
+	}
+}
+
+// The published contract lists the channels the service accepts, so an app reading the document
+// learns about health from it.
+func TestAdminPushWidgetChannelEnumsMatchTheService(t *testing.T) {
+	want := strings.Join(notifications.AdminWidgetChannels(), ",")
+	for name, field := range map[string]reflect.StructField{
+		"register widget_channels": adminPushStructField(t, reflect.TypeFor[BloemAdminPushRegisterRequest](), "WidgetChannels"),
+		"widgets channels":         adminPushStructField(t, reflect.TypeFor[BloemAdminPushWidgetsRequest](), "Channels"),
+	} {
+		if got := field.Tag.Get("enum"); got != want {
+			t.Errorf("%s enum = %q, want %q", name, got, want)
+		}
+		if !strings.Contains(field.Tag.Get("doc"), "health") {
+			t.Errorf("%s doc does not describe health: %q", name, field.Tag.Get("doc"))
+		}
+	}
+}
+
+func adminPushStructField(t *testing.T, typ reflect.Type, name string) reflect.StructField {
+	t.Helper()
+	field, ok := typ.FieldByName(name)
+	if !ok {
+		t.Fatalf("%s has no field %s", typ, name)
+	}
+	return field
 }

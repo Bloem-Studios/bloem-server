@@ -70,7 +70,7 @@ type BloemAdminPushRegisterRequest struct {
 	APNsTopic       string    `json:"apns_topic,omitempty" doc:"Required for apple; must be com.bloemstudios.admin."`
 	DisabledKinds   *[]string `json:"disabled_kinds,omitempty" doc:"Kind ids this device has switched off. Replaces the stored switches when present; omit to keep them."`
 	WidgetsPlaced   *bool     `json:"widgets_placed,omitempty" doc:"Whether the app has at least one home-screen widget placed. Only then does the server send widget wakes. Omit to keep what the server holds. Reporting false clears the channels."`
-	WidgetChannels  *[]string `json:"widget_channels,omitempty" enum:"sessions,requests,libraries,nodes" doc:"What the placed widgets show: sessions (now playing), requests, libraries, nodes. Required, and not empty, when widgets_placed is true."`
+	WidgetChannels  *[]string `json:"widget_channels,omitempty" enum:"sessions,requests,libraries,nodes,health" doc:"What the placed widgets show: sessions (now playing), requests, libraries, nodes, health (Needs a look: backup and plugin failures; only to a server that lists admin_widget_health_v1). Required, and not empty, when widgets_placed is true."`
 }
 
 // BloemAdminPushRegistered answers a registration.
@@ -86,7 +86,7 @@ type BloemAdminPushRegistered struct {
 // BloemAdminPushWidgetsRequest reports the widgets an app has placed.
 type BloemAdminPushWidgetsRequest struct {
 	WidgetsPlaced bool     `json:"widgets_placed" doc:"Whether at least one widget is placed. Send false when the last widget is removed."`
-	Channels      []string `json:"channels" enum:"sessions,requests,libraries,nodes" doc:"What the placed widgets show. Required, and not empty, when widgets_placed is true; ignored when false."`
+	Channels      []string `json:"channels" enum:"sessions,requests,libraries,nodes,health" doc:"What the placed widgets show; health only to a server that lists admin_widget_health_v1. Required, and not empty, when widgets_placed is true; ignored when false."`
 }
 
 // BloemAdminPushWidgets echoes what the server holds.

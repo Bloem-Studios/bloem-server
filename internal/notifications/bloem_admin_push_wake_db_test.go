@@ -52,6 +52,71 @@ func (f *adminPushFixture) flush() int {
 	return f.svc.FlushWakes(context.Background())
 }
 
+// clearWakes drops every pending wake, so a test can see whether the next step marks one.
+func (f *adminPushFixture) clearWakes() {
+	f.t.Helper()
+	if _, err := f.pool.Exec(context.Background(), `UPDATE bloem_admin_push_devices SET wake_pending_channels = '{}', wake_pending_since = NULL`); err != nil {
+		f.t.Fatal(err)
+	}
+}
+
+func TestAdminWidgetReportAcceptsHealth(t *testing.T) {
+	f := newAdminPushFixture(t)
+	ctx := context.Background()
+	admin := f.account("root", "admin", true)
+	phone := f.register(admin, apnsRegistration("install-root-aaaa", 'a'))
+	placed, channels, err := f.svc.SetWidgets(ctx, admin, phone.DeviceID, true, []string{"health", "nodes"})
+	if err != nil || !placed || strings.Join(channels, ",") != "health,nodes" {
+		t.Fatalf("report = %v %v %v, want health and nodes stored", placed, channels, err)
+	}
+	var stored []string
+	if err := f.pool.QueryRow(ctx, `SELECT widget_channels FROM bloem_admin_push_devices WHERE server_device_id = $1`, phone.DeviceID).Scan(&stored); err != nil || strings.Join(stored, ",") != "health,nodes" {
+		t.Fatalf("stored channels = %v (%v)", stored, err)
+	}
+	if _, _, err := f.svc.SetWidgets(ctx, admin, phone.DeviceID, true, []string{"health", "errors"}); !errors.Is(err, ErrAdminPushInvalid) {
+		t.Fatalf("an unknown channel beside health: err = %v, want invalid", err)
+	}
+	f.wake("health")
+	if got := strings.Join(f.pending(phone.DeviceID), ","); got != "health" {
+		t.Fatalf("pending after a health wake = %q", got)
+	}
+}
+
+func TestAdminHealthWakeGoesOnlyToDevicesShowingHealth(t *testing.T) {
+	f := newAdminPushFixture(t)
+	ctx := context.Background()
+	admin := f.account("root", "admin", true)
+	health := f.register(admin, fcmRegistration("install-root-aaaa", 'a'))
+	nodes := f.register(admin, fcmRegistration("install-root-bbbb", 'b'))
+	f.widgets(admin, health.DeviceID, "health", "nodes")
+	f.widgets(admin, nodes.DeviceID, "nodes")
+	// Neither device takes the alert, so the wake is all that refreshes their widgets.
+	for _, device := range []string{health.DeviceID, nodes.DeviceID} {
+		if _, err := f.svc.SetKinds(ctx, admin, device, map[string]bool{AdminKindBackupFailed: false}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := AdminBackupRun{ID: "run-1", Status: "failed", FinishedAt: f.now.Add(-time.Minute)}
+	f.svc.watchBackup(ctx, func(context.Context) (AdminBackupRun, bool, error) { return run, true, nil }, f.now, newStateTracker())
+	if got := strings.Join(f.pending(health.DeviceID), ","); got != "health" {
+		t.Fatalf("the device showing health: pending = %q", got)
+	}
+	if got := f.pending(nodes.DeviceID); len(got) != 0 {
+		t.Fatalf("a device showing only nodes got a health wake: %v", got)
+	}
+	f.now = f.now.Add(31 * time.Second)
+	if sent := f.flush(); sent != 1 {
+		t.Fatalf("flushed %d wakes, want 1", sent)
+	}
+	calls := f.relay.wakeCalls()
+	if len(calls) != 1 {
+		t.Fatalf("wake calls = %d, want 1", len(calls))
+	}
+	if id, _ := calls[0].Body["delivery_id"].(string); !strings.HasPrefix(id, health.DeviceID+".widgets-health-") {
+		t.Fatalf("wake delivery id %q should name the health channel", id)
+	}
+}
+
 func TestAdminWidgetReportIsAccountScopedAndValidated(t *testing.T) {
 	f := newAdminPushFixture(t)
 	ctx := context.Background()
@@ -577,7 +642,7 @@ func TestAdminWakeIDCarriesTheReasonAndTheSortedChannels(t *testing.T) {
 	if got != "widgets-nodes-requests-sessions-1763254800" {
 		t.Fatalf("wake id = %q", got)
 	}
-	if !slices.Equal(AdminWidgetChannels(), []string{"sessions", "requests", "libraries", "nodes"}) {
+	if !slices.Equal(AdminWidgetChannels(), []string{"sessions", "requests", "libraries", "nodes", "health"}) {
 		t.Fatalf("channels = %v", AdminWidgetChannels())
 	}
 	// The id must fit what the relay accepts after the device id is put in front of it.
