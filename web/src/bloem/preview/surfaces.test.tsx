@@ -71,6 +71,7 @@ it("removes library shuffle", () => {
         <Tabs value="library">
           <LibraryHeader
             libraryName="Library"
+            activeTab="library"
             onShuffle={() => {
               throw new Error("mutation");
             }}
@@ -107,7 +108,7 @@ it.each([
           }
         >
           <Tabs value="library">
-            <LibraryHeader libraryName="Library" libraryType={libraryType} />
+            <LibraryHeader libraryName="Library" libraryType={libraryType} activeTab="library" />
           </Tabs>
         </PreviewModeContext.Provider>
       </MemoryRouter>,

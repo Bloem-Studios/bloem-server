@@ -164,6 +164,7 @@ function AudiobookLibraryHome({
           libraryName={library.name}
           libraryType={libraryType}
           overlay={hasRenderedHero}
+          activeTab="recommended"
           onShuffle={
             isShuffleLibraryType(libraryType)
               ? () => startShuffle({ kind: "library", id: String(library.id) })
