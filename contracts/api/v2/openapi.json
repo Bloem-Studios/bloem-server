@@ -252553,6 +252553,7 @@
               "qsv",
               "vaapi",
               "nvenc",
+              "videotoolbox",
               "none"
             ],
             "type": "string"
