@@ -7,7 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
@@ -47,11 +46,10 @@ func TestBloemRequestGroupLimitTransportOrganizationBoundaryDB(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	requestHandler := handlers.NewRequestsHandler(mediarequests.NewService(repo, nil, nil))
-	if err := requestHandler.EnableTenantGroupLimits(); err != nil {
+	service, err := mediarequests.NewTenantGroupLimitService(mediarequests.NewService(repo, nil, nil))
+	if err != nil {
 		t.Fatal(err)
 	}
-	service := requestHandler.Service()
 	newHandler := func(org uuid.UUID) http.Handler {
 		deps := requestDeps(fixtureRequests())
 		deps.AdminRequests = service

@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"net/http"
 
+	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -270,38 +272,50 @@ func newBloemTenantMiddleware(deps Dependencies) *apimw.TenantMiddleware {
 }
 
 // wireBloemRouter runs Bloem's router-level wiring at the point Silo's router
-// has built every legacy handler: request group limits and policy, the
-// Bloem-native /api/bloem/v2 surface and the private compatibility API.
+// has built every legacy handler: the Bloem-native /api/bloem/v2 surface and
+// the private compatibility API.
 func wireBloemRouter(
 	r chi.Router,
 	deps Dependencies,
 	tenantMiddleware *apimw.TenantMiddleware,
-	requests *handlers.RequestsHandler,
 	admin *handlers.AdminHandler,
 	authMiddleware *apimw.AuthMiddleware,
 	searchProvider catalog.CatalogSearchProvider,
 	requireActingAdmin func(http.Handler) http.Handler,
 ) {
-	if deps.DB != nil && requests != nil {
-		enableBloemRequestPolicy(requests, authMiddleware != nil)
-	}
 	mountBloem(r, deps, authMiddleware, tenantMiddleware, searchProvider, admin, requireActingAdmin)
 }
 
-// enableBloemRequestPolicy installs the tenant request group limits and, with
-// authentication present, the profile request policy. Authentication and its
-// user repository are absent from a DB-only discovery router, where request
-// routes are unreachable; every authenticated composition still requires the
-// profile policy.
-func enableBloemRequestPolicy(requests *handlers.RequestsHandler, authenticated bool) {
-	if err := requests.EnableTenantGroupLimits(); err != nil {
-		panic(fmt.Errorf("compose Bloem request group limits: %w", err))
-	}
-	if !authenticated {
+// wireBloemRequestPolicy binds the request service Silo hands the v2 listener
+// to Bloem's tenant group limits and, with authentication present, the profile
+// request policy. Silo assigns its bare *requests.Service to each request
+// field (#5052), so this runs after those assignments and gives every field
+// that holds it the bounded service. Authentication and its user repository
+// are absent from a DB-only discovery router, where request routes are
+// unreachable; every authenticated composition still requires the policy.
+func wireBloemRequestPolicy(v2deps *apiv2.Dependencies, authenticated bool) {
+	service, ok := v2deps.AdminRequests.(*mediarequests.Service)
+	if !ok {
 		return
 	}
-	if err := requests.EnableTenantRequestPolicy(); err != nil {
-		panic(fmt.Errorf("compose Bloem request policy: %w", err))
+	bounded, err := mediarequests.NewTenantGroupLimitService(service)
+	if err != nil {
+		panic(fmt.Errorf("compose Bloem request group limits: %w", err))
+	}
+	if authenticated {
+		if err := bounded.EnableTenantRequestPolicy(); err != nil {
+			panic(fmt.Errorf("compose Bloem request policy: %w", err))
+		}
+	}
+	v2deps.AdminRequests = bounded
+	if current, ok := v2deps.Requests.(*mediarequests.Service); ok && current == service {
+		v2deps.Requests = bounded
+	}
+	if current, ok := v2deps.RequestLifecycle.(*mediarequests.Service); ok && current == service {
+		v2deps.RequestLifecycle = bounded
+	}
+	if current, ok := v2deps.WatchlistRequests.(*mediarequests.Service); ok && current == service {
+		v2deps.WatchlistRequests = bounded
 	}
 }
 
@@ -309,6 +323,7 @@ func enableBloemRequestPolicy(requests *handlers.RequestsHandler, authenticated 
 // stream-token authorizer its media routes accept.
 func wireBloemV2(v2deps *apiv2.Dependencies, deps Dependencies, tenantMiddleware *apimw.TenantMiddleware, authMiddleware *apimw.AuthMiddleware) {
 	if deps.DB != nil {
+		wireBloemRequestPolicy(v2deps, authMiddleware != nil)
 		wireBloemAdminRequestUsage(v2deps)
 	}
 	if tenantMiddleware != nil {

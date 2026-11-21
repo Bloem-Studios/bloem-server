@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
-	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -20,7 +19,6 @@ import (
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
@@ -92,15 +90,13 @@ func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 	service.SetUserRepository(auth.NewUserRepository(pool))
 	service.SetGroupPolicyProvider(access.NewTenantGroupStore(pool))
 	service.SetTenantScopeResolver(tenancy.NewStore(pool))
-	handler := handlers.NewRequestsHandler(service)
 	const signingKey = "routing-authority-test-secret"
 	tokens := auth.NewJWTService(signingKey, time.Hour, time.Hour)
 	sessions := auth.NewSessionRepository(pool)
 	authMW := apimw.NewAuthMiddleware(tokens, sessions, nil, nil)
 	tenantResolver := tenancy.NewResolver(tenancy.NewStore(pool))
 	tenantMW := apimw.NewTenantMiddleware(tenantResolver)
-	wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, tenantMW, handler, nil, authMW, nil, nil)
-	v2deps := apiv2.Dependencies{Auth: authMW, AdminRequests: handler.Service(), ActingAdmin: apimw.NewActingAdminDecider(nil, nil), ViewerAccess: apimw.NewViewerAccessMiddleware(access.NewResolver(auth.NewUserRepository(pool), pgstore.NewPostgresProvider(pool), nil, access.NewTenantGroupStore(pool)))}
+	v2deps := apiv2.Dependencies{Auth: authMW, AdminRequests: service, ActingAdmin: apimw.NewActingAdminDecider(nil, nil), ViewerAccess: apimw.NewViewerAccessMiddleware(access.NewResolver(auth.NewUserRepository(pool), pgstore.NewPostgresProvider(pool), nil, access.NewTenantGroupStore(pool)))}
 	wireBloemV2(&v2deps, Dependencies{DB: pool}, tenantMW, authMW)
 	v2 := apiv2.NewHandler(v2deps)
 	token := func(account int, role string) string {

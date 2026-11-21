@@ -19,7 +19,6 @@ import (
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
@@ -34,12 +33,14 @@ func TestBloemRouterScopesRequestGroupLimitsWithoutLifecycleConfig(t *testing.T)
 	service := mediarequests.NewService(mediarequests.NewRepository(pool, nil), nil, nil)
 	service.SetUserRepository(auth.NewUserRepository(pool))
 	service.SetGroupPolicyProvider(access.NewTenantGroupStore(pool))
-	handler := handlers.NewRequestsHandler(service)
 	jwt := auth.NewJWTService("wiring-test-secret", time.Hour, time.Hour)
 	sessions := auth.NewSessionRepository(pool)
 	authMW := apimw.NewAuthMiddleware(jwt, sessions, nil, nil)
-	wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, nil, handler, nil, authMW, nil, nil)
-	limits, ok := handler.Service().(interface {
+	// Silo hands the v2 listener its bare service; Bloem's wiring bounds it.
+	composedDeps := apiv2.Dependencies{AdminRequests: service, Requests: service, RequestLifecycle: service}
+	wireBloemV2(&composedDeps, Dependencies{DB: pool}, nil, authMW)
+	composed := composedDeps.AdminRequests
+	limits, ok := composed.(interface {
 		GetGroupLimit(context.Context, mediarequests.Viewer, int64) (*mediarequests.GroupLimit, error)
 	})
 	if !ok {
@@ -104,7 +105,7 @@ func TestBloemRouterScopesRequestGroupLimitsWithoutLifecycleConfig(t *testing.T)
 			t.Fatal(err)
 		}
 	}
-	policyService, ok := handler.Service().(interface {
+	policyService, ok := composed.(interface {
 		EffectivePolicy(context.Context, int) (mediarequests.EffectivePolicy, error)
 	})
 	if !ok {
@@ -119,10 +120,13 @@ func TestBloemRouterScopesRequestGroupLimitsWithoutLifecycleConfig(t *testing.T)
 	if _, err := policyService.EffectivePolicy(t.Context(), accountID); !errors.Is(err, mediarequests.ErrForbidden) {
 		t.Fatalf("production request policy accepted missing scope: %v", err)
 	}
-	if err := handler.EnableTenantRequestPolicy(); err != nil {
+	if err := composed.(*mediarequests.TenantGroupLimitService).EnableTenantRequestPolicy(); err != nil {
 		t.Fatalf("repeated installation: %v", err)
 	}
-	requestLifecycle, ok := handler.Service().(apiv2.RequestLifecycleService)
+	if composedDeps.Requests != composed || composedDeps.RequestLifecycle != composed {
+		t.Fatal("the v2 request fields kept Silo's unbounded service")
+	}
+	requestLifecycle, ok := composedDeps.RequestLifecycle.(apiv2.RequestLifecycleService)
 	if !ok {
 		t.Fatal("composed service lost the v2 lifecycle capability")
 	}
@@ -257,13 +261,10 @@ func TestBloemRouterAdminRequestUsageAccountTarget(t *testing.T) {
 	service := mediarequests.NewService(repository, nil, nil)
 	service.SetUserRepository(auth.NewUserRepository(pool))
 	service.SetGroupPolicyProvider(access.NewTenantGroupStore(pool))
-	requestHandler := handlers.NewRequestsHandler(service)
 	jwt := auth.NewJWTService("usage-wiring-secret", time.Hour, time.Hour)
 	sessions := auth.NewSessionRepository(pool)
 	authMW := apimw.NewAuthMiddleware(jwt, sessions, nil, nil)
-	wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, nil, requestHandler, nil, authMW, nil, nil)
-	usage := requestHandler.Service().(apiv2.AdminRequestUsageService)
-	v2deps := apiv2.Dependencies{Auth: authMW, AdminRequestUsage: usage, ActingAdmin: apimw.NewActingAdminDecider(nil, nil)}
+	v2deps := apiv2.Dependencies{Auth: authMW, AdminRequests: service, AdminRequestUsage: service, ActingAdmin: apimw.NewActingAdminDecider(nil, nil)}
 	v2deps.AdminAccounts = handlers.NewAdminHandler(auth.NewUserRepository(pool), pool, pgstore.NewPostgresProvider(pool))
 	v2deps.ViewerAccess = apimw.NewViewerAccessMiddleware(access.NewResolver(auth.NewUserRepository(pool), pgstore.NewPostgresProvider(pool), nil, access.NewTenantGroupStore(pool)))
 	wireBloemV2(&v2deps, Dependencies{DB: pool}, nil, authMW)
