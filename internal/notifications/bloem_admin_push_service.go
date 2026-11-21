@@ -132,6 +132,11 @@ type AdminPushService struct {
 
 	// ServerName names this server in copy such as "Backup failed on {server}".
 	serverName func(context.Context) string
+
+	// liveMu guards liveOffUntil: until then the relay is taken to have no
+	// live_activity mode, and no live request is sent to it.
+	liveMu       sync.Mutex
+	liveOffUntil time.Time
 }
 
 func isNoRows(err error) bool { return errors.Is(err, pgx.ErrNoRows) }
@@ -486,9 +491,11 @@ func (s *AdminPushService) Run(ctx context.Context) {
 		case <-s.wake:
 			s.Drain(ctx)
 			s.FlushWakes(ctx)
+			s.FlushLive(ctx)
 		case <-tick.C:
 			s.Drain(ctx)
 			s.FlushWakes(ctx)
+			s.FlushLive(ctx)
 		case <-purge.C:
 			if _, err := s.store.purgeExpired(ctx); err != nil && ctx.Err() == nil {
 				s.logger.WarnContext(ctx, "purge expired admin push deliveries failed", "error", err)
@@ -615,22 +622,30 @@ func (s *AdminPushService) process(ctx context.Context, a adminPushAttempt) {
 }
 
 func (s *AdminPushService) send(ctx context.Context, a adminPushAttempt, device *AdminPushDevice, delivery *adminDeliveryRow, token string) pushSendResult {
+	path, payload := adminRelayPayload(device, delivery, token)
+	result, _ := s.relaySend(ctx, path, payload, a.ID, device.Platform)
+	return result
+}
+
+// relaySend posts one request to the relay with the server's credential, renewing it
+// once when the relay says it expired. key is the request's Idempotency-Key.
+func (s *AdminPushService) relaySend(ctx context.Context, path string, payload any, key, platform string) (pushSendResult, relayErrorDetail) {
 	credential, err := s.sender.prepareRelayCredential(ctx)
 	if err != nil {
-		return pushSendResult{HTTPStatus: http.StatusServiceUnavailable, Message: err.Error(), UpstreamReason: "relay_credential_unavailable"}
+		return pushSendResult{HTTPStatus: http.StatusServiceUnavailable, Message: err.Error(), UpstreamReason: "relay_credential_unavailable"}, relayErrorDetail{}
 	}
-	result := s.post(ctx, a, device, delivery, token, credential.RelayURL, credential.APIKey)
+	result, detail := s.relayPost(ctx, path, payload, key, platform, credential.RelayURL, credential.APIKey)
 	if result.HTTPStatus == http.StatusUnauthorized {
 		recovered, err := s.sender.recoverRelayCredential(ctx, credential, result.UpstreamReason)
 		if err != nil {
 			if result.UpstreamReason == relayCodeDeploymentDisabled {
-				return result
+				return result, detail
 			}
-			return pushSendResult{HTTPStatus: http.StatusServiceUnavailable, Message: err.Error(), UpstreamReason: "relay_credential_unavailable"}
+			return pushSendResult{HTTPStatus: http.StatusServiceUnavailable, Message: err.Error(), UpstreamReason: "relay_credential_unavailable"}, relayErrorDetail{}
 		}
-		result = s.post(ctx, a, device, delivery, token, recovered.RelayURL, recovered.APIKey)
+		result, detail = s.relayPost(ctx, path, payload, key, platform, recovered.RelayURL, recovered.APIKey)
 	}
-	return result
+	return result, detail
 }
 
 // adminRelayApple and adminRelayFCM are the relay's send contracts. The relay
@@ -686,26 +701,32 @@ func adminRelayPayload(device *AdminPushDevice, delivery *adminDeliveryRow, toke
 	}
 }
 
-func (s *AdminPushService) post(ctx context.Context, a adminPushAttempt, device *AdminPushDevice, delivery *adminDeliveryRow, token, relayURL, apiKey string) pushSendResult {
-	path, payload := adminRelayPayload(device, delivery, token)
+// relayErrorDetail is what a relay refusal says about the token: its state (dead,
+// suspect or unaffected) and the provider's own reason.
+type relayErrorDetail struct {
+	TokenState     string `json:"token_state"`
+	ProviderReason string `json:"provider_reason"`
+}
+
+func (s *AdminPushService) relayPost(ctx context.Context, path string, payload any, key, platform, relayURL, apiKey string) (pushSendResult, relayErrorDetail) {
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return pushSendResult{Message: "relay payload build failed", UpstreamReason: "payload_build_failed"}
+		return pushSendResult{Message: "relay payload build failed", UpstreamReason: "payload_build_failed"}, relayErrorDetail{}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, relayURL+path, bytes.NewReader(body))
 	if err != nil || req.URL.Scheme != schemeHTTPS {
-		return pushSendResult{Message: "invalid push relay URL", UpstreamReason: "invalid_relay_url"}
+		return pushSendResult{Message: "invalid push relay URL", UpstreamReason: "invalid_relay_url"}, relayErrorDetail{}
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Bloem-Admin-Push/1.0")
 	// One attempt keeps one key across transport retries, so the relay can tell
 	// a safe retry from a new delivery.
-	req.Header.Set("Idempotency-Key", a.ID)
+	req.Header.Set("Idempotency-Key", key)
 
 	resp, err := s.sender.client.Do(req)
 	if err != nil {
-		return pushSendResult{Message: classifyWebhookError(err), UpstreamReason: "relay_unreachable"}
+		return pushSendResult{Message: classifyWebhookError(err), UpstreamReason: "relay_unreachable"}, relayErrorDetail{}
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
@@ -714,11 +735,15 @@ func (s *AdminPushService) post(ctx context.Context, a adminPushAttempt, device 
 		if parsed.RequestID == "" {
 			parsed.RequestID = resp.Header.Get("X-Request-ID")
 		}
-		return pushSendResult{OK: true, HTTPStatus: resp.StatusCode, RelayRequestID: parsed.RequestID}
+		return pushSendResult{OK: true, HTTPStatus: resp.StatusCode, RelayRequestID: parsed.RequestID}, relayErrorDetail{}
 	}
 	var parsed pushRelayErrorResponse
+	var detail struct {
+		Error relayErrorDetail `json:"error"`
+	}
 	data, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
 	_ = json.Unmarshal(data, &parsed)
+	_ = json.Unmarshal(data, &detail)
 	code := parsed.Error.Code
 	if code == "" {
 		code = fmt.Sprintf("http_%d", resp.StatusCode)
@@ -730,8 +755,8 @@ func (s *AdminPushService) post(ctx context.Context, a adminPushAttempt, device 
 	return pushSendResult{
 		HTTPStatus: resp.StatusCode, RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"), time.Now()),
 		RelayRequestID: parsed.Error.RequestID, UpstreamReason: code, Message: message,
-		TerminalDevice: terminalDeviceRejection(device.Platform, resp.StatusCode, code, message),
-	}
+		TerminalDevice: terminalDeviceRejection(platform, resp.StatusCode, code, message),
+	}, detail.Error
 }
 
 // adminWakeCollapse is the relay collapse id of every wake to a device: a wake still
