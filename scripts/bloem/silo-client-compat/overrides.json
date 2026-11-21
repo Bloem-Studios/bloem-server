@@ -1,0 +1,21 @@
+{
+ "note": "Corrections to what extract_calls.py reads from the Silo apps. 'calls' adds operations the patterns miss; each names why.",
+ "calls": {
+  "GET /api/v1/ready": {"clients": {"curated": ["readiness probe that Silo keeps under /api/v1 beside health"]}},
+  "GET /api/v1/home/sections": {"clients": {"curated": ["v1 route older Silo app builds call (named in the apps' upgrade tests); Silo answers its v1 tombstone"]}},
+  "GET /api/v1/items/{id}": {"clients": {"curated": ["v1 route older Silo app builds call; Silo answers its v1 tombstone"]}},
+  "GET /api/v1/catalog/home": {"clients": {"curated": ["v1 route older Silo app builds call; Silo answers its v1 tombstone"]}},
+  "GET /api/v1/watch/history": {"clients": {"curated": ["v1 route older Silo app builds call; Silo answers its v1 tombstone"]}},
+  "POST /api/v1/playback/start": {"clients": {"curated": ["v1 route older Silo app builds call; Silo answers its v1 tombstone"]}},
+  "GET /api/v1/settings/values/effective": {"clients": {"curated": ["v1 route older Silo app builds call; Silo answers its v1 tombstone"]}},
+  "POST /api/v1/auth/login": {"clients": {"curated": ["v1 sign-in of older Silo app builds and third-party clients; Silo answers its v1 tombstone"]}},
+  "GET /api/v1/profiles": {"clients": {"curated": ["v1 profile list of older Silo app builds; Silo answers its v1 tombstone"]}},
+  "GET /api/v1/system/info": {"clients": {"curated": ["v1 server probe of older clients; Silo answers its v1 tombstone"]}},
+  "GET /api/v2/capabilities": {"clients": {"curated": ["the capability index system/info links to; third-party clients read it for feature detection"]}},
+  "GET /api/v2/openapi.json": {"clients": {"curated": ["the contract system/info links to"]}}
+ },
+ "ignore_unmatched": [
+  "/api/v2/invitations",
+  "/api/v2/watch-together"
+ ]
+}
