@@ -11,6 +11,9 @@ type TenantGroup struct {
 	ManagedTemplateKey      *string
 	ManagedTemplateRevision *int64
 	ManagedCohortID         uuid.UUID
+	// ProfileCount is how many profiles the group assigns, which a delete
+	// reassigns. Group.MemberCount stays Silo's account count.
+	ProfileCount int
 }
 
 func (g TenantGroup) Policy() GroupPolicy {

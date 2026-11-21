@@ -113,21 +113,49 @@ func TestGroupStoreNeverReadsOrMutatesAnotherOrganization(t *testing.T) {
 	assertSingleDefaultGroup(t, ctx, fixture.pool, fixture.orgB, foreignDefault.ID)
 }
 
-func TestGroupStoreMemberCountsUseProfilesNotLegacyAccounts(t *testing.T) {
+// member_count is Silo's account count (GroupStore counts users in the
+// group), so a Silo admin app reads the same number from Bloem. Bloem assigns
+// groups per profile, so profile_count carries the profiles a delete would
+// reassign.
+func TestGroupStoreCountsAccountsAsSiloAndProfilesApart(t *testing.T) {
 	ctx, fixture := newOrganizationGroupStoreDBTest(t)
 	group := fixture.createGroup(fixture.orgA, "Profile Members")
-	canonicalAccountID := fixture.createUser(nil, 1)
-	fixture.createProfile(canonicalAccountID, fixture.orgA, &group.ID)
-	fixture.createProfile(canonicalAccountID, fixture.orgA, &group.ID)
-	legacyOnlyAccountID := fixture.createUser(&group.ID, 1)
-	fixture.createProfile(legacyOnlyAccountID, fixture.orgA, nil)
+	profilesOnlyAccountID := fixture.createUser(nil, 1)
+	fixture.createProfile(profilesOnlyAccountID, fixture.orgA, &group.ID)
+	fixture.createProfile(profilesOnlyAccountID, fixture.orgA, &group.ID)
+	accountOnlyID := fixture.createUser(&group.ID, 1)
+	fixture.createProfile(accountOnlyID, fixture.orgA, nil)
 
+	check := func(name string, got TenantGroup) {
+		t.Helper()
+		if got.MemberCount != 1 || got.ProfileCount != 2 {
+			t.Fatalf("%s: member_count = %d, profile_count = %d; want one account and two profiles", name, got.MemberCount, got.ProfileCount)
+		}
+	}
 	got, err := fixture.store.Get(ctx, fixture.orgA, group.ID)
 	if err != nil {
 		t.Fatalf("Get() error: %v", err)
 	}
-	if got.MemberCount != 2 {
-		t.Fatalf("member_count = %d, want two assigned profiles", got.MemberCount)
+	check("Get", *got)
+	listed, err := fixture.store.List(ctx, fixture.orgA)
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	paged, _, err := fixture.store.ListPage(ctx, fixture.orgA, nil, 200)
+	if err != nil {
+		t.Fatalf("ListPage() error: %v", err)
+	}
+	for name, groups := range map[string][]TenantGroup{"List": listed, "ListPage": paged} {
+		found := false
+		for _, g := range groups {
+			if g.ID == group.ID {
+				found = true
+				check(name, g)
+			}
+		}
+		if !found {
+			t.Fatalf("%s: group %d missing", name, group.ID)
+		}
 	}
 }
 

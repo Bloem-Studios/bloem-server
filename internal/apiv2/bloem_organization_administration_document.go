@@ -113,7 +113,16 @@ type BloemOrganizationSummaryResponse struct {
 }
 
 type BloemOrganizationGroupsResponse struct {
-	Groups []AdminAccessGroupListItem `json:"groups"`
+	Groups []BloemOrganizationGroupListItem `json:"groups"`
+}
+
+// BloemOrganizationGroupListItem is /api/v2's access group list item plus the
+// profiles the group assigns. member_count stays /api/v2's account count;
+// Bloem assigns groups per profile, so profile_count is what a delete
+// reassigns.
+type BloemOrganizationGroupListItem struct {
+	AdminAccessGroupListItem
+	ProfileCount int `json:"profile_count" doc:"Profiles the group assigns; deleting the group reassigns them to the organization's default group"`
 }
 
 type BloemOrganizationGroupResponse struct {

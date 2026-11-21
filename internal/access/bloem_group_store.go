@@ -38,14 +38,10 @@ func (s *TenantGroupStore) GetInTransaction(ctx context.Context, tx pgx.Tx, orga
 
 func getTenantGroup(ctx context.Context, querier groupQueryRower, organizationID uuid.UUID, id int64) (*TenantGroup, error) {
 	group, err := scanTenantGroup(querier.QueryRow(ctx, `
-		SELECT `+tenantGroupSelectColumns+`, COUNT(p.id)::int AS member_count
+		SELECT `+tenantGroupSelectColumns+tenantGroupCounts+`
 		FROM access_groups g
-		LEFT JOIN user_profiles p
-		  ON p.organization_id = g.organization_id
-		 AND p.access_group_id = g.id
 		WHERE g.organization_id = $1
-		  AND g.id = $2
-		GROUP BY g.id`, organizationID, id))
+		  AND g.id = $2`, organizationID, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrGroupNotFound
 	}
@@ -69,11 +65,8 @@ func (s *TenantGroupStore) GetForAccountInTransaction(ctx context.Context, tx pg
 
 func getTenantGroupForAccount(ctx context.Context, querier groupQueryRower, accountID int, id int64) (*TenantGroup, error) {
 	group, err := scanTenantGroup(querier.QueryRow(ctx, `
-		SELECT `+tenantGroupSelectColumns+`, COUNT(p.id)::int AS member_count
+		SELECT `+tenantGroupSelectColumns+tenantGroupCounts+`
 		FROM access_groups g
-		LEFT JOIN user_profiles p
-		  ON p.organization_id = g.organization_id
-		 AND p.access_group_id = g.id
 		WHERE g.id = $2
 		  AND EXISTS (
 			SELECT 1 FROM organization_memberships m
@@ -81,8 +74,7 @@ func getTenantGroupForAccount(ctx context.Context, querier groupQueryRower, acco
 			WHERE m.account_id = $1
 			  AND m.organization_id = g.organization_id
 			  AND u.access_group_id = g.id
-		  )
-		GROUP BY g.id`, accountID, id))
+		  )`, accountID, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrGroupNotFound
 	}
@@ -104,13 +96,9 @@ func (s *TenantGroupStore) GetDefaultInTransaction(ctx context.Context, tx pgx.T
 
 func getDefaultTenantGroup(ctx context.Context, querier groupQueryRower, organizationID uuid.UUID) (*TenantGroup, error) {
 	group, err := scanTenantGroup(querier.QueryRow(ctx, `
-		SELECT `+tenantGroupSelectColumns+`, COUNT(p.id)::int AS member_count
+		SELECT `+tenantGroupSelectColumns+tenantGroupCounts+`
 		FROM access_groups g
-		LEFT JOIN user_profiles p
-		  ON p.organization_id = g.organization_id
-		 AND p.access_group_id = g.id
-		WHERE g.organization_id = $1 AND g.is_default
-		GROUP BY g.id`, organizationID))
+		WHERE g.organization_id = $1 AND g.is_default`, organizationID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrGroupNotFound
 	}
@@ -490,6 +478,17 @@ type tenantGroupScanner interface {
 	Scan(dest ...any) error
 }
 
+// tenantGroupCounts follows tenantGroupSelectColumns. member_count is Silo's
+// GroupStore count, the accounts assigned to the group, here limited to
+// accounts in the group's organization; profile_count is the profiles the
+// group assigns, which is what Bloem's per-profile groups reassign on delete.
+const tenantGroupCounts = `,
+	(SELECT count(*)::int FROM users u
+	   JOIN organization_memberships m ON m.account_id = u.id AND m.organization_id = g.organization_id
+	  WHERE u.access_group_id = g.id) AS member_count,
+	(SELECT count(*)::int FROM user_profiles p
+	  WHERE p.organization_id = g.organization_id AND p.access_group_id = g.id) AS profile_count`
+
 func scanTenantGroup(row tenantGroupScanner) (*TenantGroup, error) {
 	var g TenantGroup
 	var managedCohortID *uuid.UUID
@@ -520,6 +519,7 @@ func scanTenantGroup(row tenantGroupScanner) (*TenantGroup, error) {
 		&g.UpdatedAt,
 		&g.Revision,
 		&g.MemberCount,
+		&g.ProfileCount,
 	); err != nil {
 		return nil, err
 	}
@@ -530,16 +530,13 @@ func scanTenantGroup(row tenantGroupScanner) (*TenantGroup, error) {
 	return &g, nil
 }
 
-// List returns all access groups in an organization with profile member counts.
+// List returns all access groups in an organization with their account and
+// profile counts.
 func (s *TenantGroupStore) List(ctx context.Context, organizationID uuid.UUID) ([]TenantGroup, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT `+tenantGroupSelectColumns+`, COUNT(p.id)::int AS member_count
+		SELECT `+tenantGroupSelectColumns+tenantGroupCounts+`
 		FROM access_groups g
-		LEFT JOIN user_profiles p
-		  ON p.organization_id = g.organization_id
-		 AND p.access_group_id = g.id
 		WHERE g.organization_id = $1
-		GROUP BY g.id
 		ORDER BY lower(g.name), g.id`, organizationID)
 	if err != nil {
 		return nil, fmt.Errorf("listing access groups: %w", err)
@@ -600,7 +597,7 @@ func (s *TenantGroupStore) ListPage(ctx context.Context, organizationID uuid.UUI
 	if after != nil {
 		id = after.ID
 	}
-	rows, err := s.pool.Query(ctx, `SELECT `+tenantGroupSelectColumns+`,(SELECT count(*)::int FROM user_profiles p WHERE p.organization_id=g.organization_id AND p.access_group_id=g.id) FROM access_groups g WHERE g.organization_id=$1 AND g.id>$2 ORDER BY g.id LIMIT $3`, organizationID, id, limit+1)
+	rows, err := s.pool.Query(ctx, `SELECT `+tenantGroupSelectColumns+tenantGroupCounts+` FROM access_groups g WHERE g.organization_id=$1 AND g.id>$2 ORDER BY g.id LIMIT $3`, organizationID, id, limit+1)
 	if err != nil {
 		return nil, false, err
 	}

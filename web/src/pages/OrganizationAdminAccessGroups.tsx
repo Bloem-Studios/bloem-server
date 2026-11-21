@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
+  type OrganizationAccessGroup,
   useAccessGroups,
   useCreateAccessGroup,
   useDeleteAccessGroup,
@@ -259,7 +260,7 @@ function AccessGroupCard({ group, onClick }: { group: AccessGroup; onClick: () =
 }
 
 interface AccessGroupEditorProps {
-  group: AccessGroup;
+  group: OrganizationAccessGroup;
   defaultGroupName: string;
   onDeleted: () => void;
 }
@@ -268,6 +269,9 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
   const bt = useBloemT();
   const { active } = useAdminContext();
   const organization = active?.scope === "organization";
+  // Groups are per profile in an organization: a delete reassigns the
+  // group's profiles, while member_count is /api/v2's account count.
+  const reassignedProfiles = group.profile_count ?? group.member_count;
   const legacyLibraries = useAdminLibraries({ enabled: !organization });
   const organizationLibraries = useOrganizationLibraries(
     active?.key ?? "organization:unavailable",
@@ -539,9 +543,9 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
             </AlertDialogTitle>
             <AlertDialogDescription>
               {organization
-                ? group.member_count > 0
+                ? reassignedProfiles > 0
                   ? bt("bloem.admin.orgAccessGroups.delete.reassignProfiles", {
-                      count: group.member_count,
+                      count: reassignedProfiles,
                       organization:
                         active?.name ?? bt("bloem.admin.orgAccessGroups.delete.thisOrganization"),
                       defaultGroup: defaultGroupName,

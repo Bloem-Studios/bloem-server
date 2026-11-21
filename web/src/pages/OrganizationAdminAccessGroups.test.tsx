@@ -52,7 +52,9 @@ const kidsGroup = {
   name: "Kids",
   library_ids: [4],
   is_default: false,
-  member_count: 4,
+  // /api/v2's account count; the delete warning names the profiles.
+  member_count: 1,
+  profile_count: 4,
 };
 
 function renderPage() {

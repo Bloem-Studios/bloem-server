@@ -2530,6 +2530,10 @@
       "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
     },
     {
+      "type": "internal/apiv2.BloemOrganizationGroupListItem",
+      "reason": "OpenAPI-only declaration of one organization group list entry: Silo's /api/v2 AdminAccessGroupListItem plus profile_count, the profiles the web delete warning names. Native administration-client adoption is separate; it is not a client DTO root."
+    },
+    {
       "type": "internal/apiv2.BloemOrganizationGroupsResponse",
       "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
     },

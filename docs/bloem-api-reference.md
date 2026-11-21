@@ -1039,13 +1039,14 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
       "requests_allowed": true,
       "is_default": false,
       "member_count": 0,
+      "profile_count": 0,
       "created_at": "RFC3339",
       "updated_at": "RFC3339"
     }
   ]
 }
 ```
-`max_streams`/`max_transcodes` of `0` mean "no group-level cap." A null `library_ids` means no additional group library restriction. The current group response serializer collapses empty library and permission arrays to null, so the response does not preserve that distinction. Omit the field on updates to retain the existing policy. Group permissions remain bounded by the account and organization. Type: `accessGroupResponse` (shared with the v1 `AccessGroupHandler`).
+`member_count` is Silo's `/api/v2` count, the accounts assigned to the group. `profile_count` is the profiles the group assigns; groups are per profile, so deleting the group reassigns that many profiles to the organization's default group. `max_streams`/`max_transcodes` of `0` mean "no group-level cap." A null `library_ids` means no additional group library restriction. The current group response serializer collapses empty library and permission arrays to null, so the response does not preserve that distinction. Omit the field on updates to retain the existing policy. Group permissions remain bounded by the account and organization. Type: `accessGroupResponse` (shared with the v1 `AccessGroupHandler`).
 - Errors: `503 tenant_unavailable`.
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.

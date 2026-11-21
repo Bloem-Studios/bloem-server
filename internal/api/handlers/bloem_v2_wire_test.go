@@ -26,8 +26,10 @@ type testV2Invitation struct {
 	Email string `json:"email"`
 }
 
-func (testBloemV2Wire) AccessGroup(g access.Group) any         { return testV2Group{g.ID, g.Name} }
-func (testBloemV2Wire) AccessGroupListItem(g access.Group) any { return testV2Group{g.ID, g.Name} }
+func (testBloemV2Wire) AccessGroup(g access.Group) any { return testV2Group{g.ID, g.Name} }
+func (testBloemV2Wire) AccessGroupListItem(g access.TenantGroup) any {
+	return testV2Group{g.ID, g.Name}
+}
 func (testBloemV2Wire) Invitation(inv *models.Invitation) any {
 	return testV2Invitation{inv.ID, inv.Email}
 }

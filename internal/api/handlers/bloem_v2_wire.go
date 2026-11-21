@@ -17,7 +17,7 @@ import (
 // *APIError values carrying the v2 problem's status and identifier.
 type BloemV2Wire interface {
 	AccessGroup(access.Group) any
-	AccessGroupListItem(access.Group) any
+	AccessGroupListItem(access.TenantGroup) any
 	AccessGroupCreate(raw []byte) (access.CreateGroupInput, error)
 	AccessGroupUpdate(raw []byte) (access.UpdateGroupInput, error)
 	Invitation(*models.Invitation) any

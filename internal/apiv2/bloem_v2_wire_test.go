@@ -22,9 +22,20 @@ func TestBloemV2WireServesTheV2Shapes(t *testing.T) {
 	if got, want := wire.AccessGroup(group), adminAccessGroupOf(&group); !reflect.DeepEqual(got, want) {
 		t.Fatalf("group = %#v, want the v2 AdminAccessGroup %#v", got, want)
 	}
-	item, ok := wire.AccessGroupListItem(group).(AdminAccessGroupListItem)
-	if !ok || item.MemberCount != 3 || item.ID != "21" {
-		t.Fatalf("list item = %#v, want the v2 AdminAccessGroupListItem", wire.AccessGroupListItem(group))
+	// The organization list adds profile_count, the profiles a delete
+	// reassigns, beside /api/v2's account member_count.
+	tenantGroup := access.TenantGroup{Group: group, ProfileCount: 5}
+	item, ok := wire.AccessGroupListItem(tenantGroup).(BloemOrganizationGroupListItem)
+	if !ok || !reflect.DeepEqual(item.AdminAccessGroupListItem, AdminAccessGroupListItem{AdminAccessGroup: adminAccessGroupOf(&group), MemberCount: 3}) || item.ProfileCount != 5 {
+		t.Fatalf("list item = %#v, want the v2 AdminAccessGroupListItem with profile_count", wire.AccessGroupListItem(tenantGroup))
+	}
+	encoded, err := json.Marshal(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]any
+	if err := json.Unmarshal(encoded, &fields); err != nil || fields["member_count"] != float64(3) || fields["profile_count"] != float64(5) || fields["id"] != "21" {
+		t.Fatalf("list item JSON = %s, want member_count 3 and profile_count 5 beside the v2 fields", encoded)
 	}
 	invitation := &models.Invitation{ID: 7, Email: "new@example.test", Role: "user", ExpiresAt: at, CreatedAt: at}
 	if got, want := wire.Invitation(invitation), invitationOf(invitation); !reflect.DeepEqual(got, want) {

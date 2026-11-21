@@ -28,13 +28,19 @@ function groupID(value: string) {
   return id;
 }
 
-function fromV2(group: V2Group, memberCount = 0): AccessGroup {
+// An organization's group list adds profile_count, the profiles the group
+// assigns, beside /api/v2's account member_count. Groups are per profile, so
+// a delete reassigns profile_count profiles.
+export type OrganizationAccessGroup = AccessGroup & { profile_count?: number };
+
+function fromV2(group: V2Group, memberCount = 0, profileCount?: number): OrganizationAccessGroup {
   return {
     ...group,
     id: groupID(group.id),
     library_ids: group.library_ids?.map(groupID) ?? null,
     allowed_permissions: group.allowed_permissions ?? null,
     member_count: memberCount,
+    ...(profileCount === undefined ? {} : { profile_count: profileCount }),
   };
 }
 
@@ -52,13 +58,17 @@ function groupKey(context?: AdminContextSummary | null) {
 }
 
 export function useAccessGroups(context?: AdminContextSummary | null) {
-  return useQuery({
+  return useQuery<OrganizationAccessGroup[]>({
     queryKey: groupKey(context),
     queryFn: () =>
       context?.scope === "organization"
-        ? adminV2Api<{ groups: (V2Group & { member_count: number })[] }>(
-            "/organization/groups",
-          ).then((data) => (data.groups ?? []).map((group) => fromV2(group, group.member_count)))
+        ? adminV2Api<{
+            groups: (V2Group & { member_count: number; profile_count?: number })[];
+          }>("/organization/groups").then((data) =>
+            (data.groups ?? []).map((group) =>
+              fromV2(group, group.member_count, group.profile_count),
+            ),
+          )
         : listAccessGroups(),
     staleTime: ADMIN_STALE_TIME,
   });

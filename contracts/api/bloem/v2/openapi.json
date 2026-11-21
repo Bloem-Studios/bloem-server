@@ -323,136 +323,6 @@
         ],
         "type": "object"
       },
-      "AdminAccessGroupListItem": {
-        "additionalProperties": false,
-        "properties": {
-          "allowed_permissions": {
-            "items": {
-              "type": "string"
-            },
-            "type": [
-              "array",
-              "null"
-            ]
-          },
-          "audio_transcode_allowed": {
-            "type": "boolean"
-          },
-          "created_at": {
-            "description": "RFC 3339 instant in UTC with millisecond precision",
-            "format": "date-time",
-            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
-            "patternDescription": "a non-zero RFC 3339 instant",
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "download_allowed": {
-            "type": "boolean"
-          },
-          "download_transcode_allowed": {
-            "type": "boolean"
-          },
-          "id": {
-            "description": "Opaque identifier",
-            "examples": [
-              "1"
-            ],
-            "minLength": 1,
-            "type": "string"
-          },
-          "is_default": {
-            "type": "boolean"
-          },
-          "library_ids": {
-            "items": {
-              "description": "Opaque identifier",
-              "examples": [
-                "1"
-              ],
-              "minLength": 1,
-              "type": "string"
-            },
-            "type": [
-              "array",
-              "null"
-            ]
-          },
-          "max_local_stream_bitrate_kbps": {
-            "description": "Local per-stream bitrate ceiling in kbps; 0 means unlimited",
-            "format": "int64",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "max_playback_quality": {
-            "type": "string"
-          },
-          "max_profiles": {
-            "description": "Household profiles each member account may have, unless the account overrides it",
-            "format": "int64",
-            "minimum": 1,
-            "type": "integer"
-          },
-          "max_remote_stream_bitrate_kbps": {
-            "description": "Remote per-stream bitrate ceiling in kbps; 0 means unlimited",
-            "format": "int64",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "max_streams": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "max_transcodes": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "member_count": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "name": {
-            "type": "string"
-          },
-          "requests_allowed": {
-            "type": "boolean"
-          },
-          "transcode_allowed": {
-            "type": "boolean"
-          },
-          "updated_at": {
-            "description": "RFC 3339 instant in UTC with millisecond precision",
-            "format": "date-time",
-            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
-            "patternDescription": "a non-zero RFC 3339 instant",
-            "type": "string"
-          }
-        },
-        "required": [
-          "member_count",
-          "id",
-          "name",
-          "description",
-          "library_ids",
-          "max_playback_quality",
-          "download_allowed",
-          "download_transcode_allowed",
-          "transcode_allowed",
-          "audio_transcode_allowed",
-          "max_streams",
-          "max_transcodes",
-          "max_remote_stream_bitrate_kbps",
-          "max_local_stream_bitrate_kbps",
-          "max_profiles",
-          "allowed_permissions",
-          "requests_allowed",
-          "is_default",
-          "created_at",
-          "updated_at"
-        ],
-        "type": "object"
-      },
       "AdminBrandingAssetForm": {
         "additionalProperties": false,
         "properties": {
@@ -5513,6 +5383,142 @@
         ],
         "type": "object"
       },
+      "BloemOrganizationGroupListItem": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "audio_transcode_allowed": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "download_allowed": {
+            "type": "boolean"
+          },
+          "download_transcode_allowed": {
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Opaque identifier",
+            "examples": [
+              "1"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "library_ids": {
+            "items": {
+              "description": "Opaque identifier",
+              "examples": [
+                "1"
+              ],
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "max_local_stream_bitrate_kbps": {
+            "description": "Local per-stream bitrate ceiling in kbps; 0 means unlimited",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_playback_quality": {
+            "type": "string"
+          },
+          "max_profiles": {
+            "description": "Household profiles each member account may have, unless the account overrides it",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "max_remote_stream_bitrate_kbps": {
+            "description": "Remote per-stream bitrate ceiling in kbps; 0 means unlimited",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_streams": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_transcodes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "member_count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "profile_count": {
+            "description": "Profiles the group assigns; deleting the group reassigns them to the organization's default group",
+            "format": "int64",
+            "type": "integer"
+          },
+          "requests_allowed": {
+            "type": "boolean"
+          },
+          "transcode_allowed": {
+            "type": "boolean"
+          },
+          "updated_at": {
+            "description": "RFC 3339 instant in UTC with millisecond precision",
+            "format": "date-time",
+            "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
+            "patternDescription": "a non-zero RFC 3339 instant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_count",
+          "member_count",
+          "id",
+          "name",
+          "description",
+          "library_ids",
+          "max_playback_quality",
+          "download_allowed",
+          "download_transcode_allowed",
+          "transcode_allowed",
+          "audio_transcode_allowed",
+          "max_streams",
+          "max_transcodes",
+          "max_remote_stream_bitrate_kbps",
+          "max_local_stream_bitrate_kbps",
+          "max_profiles",
+          "allowed_permissions",
+          "requests_allowed",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
+      },
       "BloemOrganizationGroupMutationResponse": {
         "additionalProperties": false,
         "properties": {
@@ -5638,7 +5644,7 @@
         "properties": {
           "groups": {
             "items": {
-              "$ref": "#/components/schemas/AdminAccessGroupListItem"
+              "$ref": "#/components/schemas/BloemOrganizationGroupListItem"
             },
             "type": "array"
           }

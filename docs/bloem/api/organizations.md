@@ -3032,31 +3032,6 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `transcode_allowed` | boolean | yes |  |
 | `updated_at` | string (date-time) | yes | RFC 3339 instant in UTC with millisecond precision |
 
-### AdminAccessGroupListItem
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `allowed_permissions` | array of string or null | yes |  |
-| `audio_transcode_allowed` | boolean | yes |  |
-| `created_at` | string (date-time) | yes | RFC 3339 instant in UTC with millisecond precision |
-| `description` | string | yes |  |
-| `download_allowed` | boolean | yes |  |
-| `download_transcode_allowed` | boolean | yes |  |
-| `id` | string | yes | Opaque identifier |
-| `is_default` | boolean | yes |  |
-| `library_ids` | array of string or null | yes |  |
-| `max_local_stream_bitrate_kbps` | integer (int64) | yes | Local per-stream bitrate ceiling in kbps; 0 means unlimited |
-| `max_playback_quality` | string | yes |  |
-| `max_profiles` | integer (int64) | yes | Household profiles each member account may have, unless the account overrides it |
-| `max_remote_stream_bitrate_kbps` | integer (int64) | yes | Remote per-stream bitrate ceiling in kbps; 0 means unlimited |
-| `max_streams` | integer (int64) | yes |  |
-| `max_transcodes` | integer (int64) | yes |  |
-| `member_count` | integer (int64) | yes |  |
-| `name` | string | yes |  |
-| `requests_allowed` | boolean | yes |  |
-| `transcode_allowed` | boolean | yes |  |
-| `updated_at` | string (date-time) | yes | RFC 3339 instant in UTC with millisecond precision |
-
 ### AdminBrandingAssetForm
 
 | Field | Type | Required | Description |
@@ -3594,6 +3569,32 @@ Type: object.
 | `expected_revision` | integer (int64) | yes |  |
 | `status` | string: `active`, `suspended` | yes |  |
 
+### BloemOrganizationGroupListItem
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `allowed_permissions` | array of string or null | yes |  |
+| `audio_transcode_allowed` | boolean | yes |  |
+| `created_at` | string (date-time) | yes | RFC 3339 instant in UTC with millisecond precision |
+| `description` | string | yes |  |
+| `download_allowed` | boolean | yes |  |
+| `download_transcode_allowed` | boolean | yes |  |
+| `id` | string | yes | Opaque identifier |
+| `is_default` | boolean | yes |  |
+| `library_ids` | array of string or null | yes |  |
+| `max_local_stream_bitrate_kbps` | integer (int64) | yes | Local per-stream bitrate ceiling in kbps; 0 means unlimited |
+| `max_playback_quality` | string | yes |  |
+| `max_profiles` | integer (int64) | yes | Household profiles each member account may have, unless the account overrides it |
+| `max_remote_stream_bitrate_kbps` | integer (int64) | yes | Remote per-stream bitrate ceiling in kbps; 0 means unlimited |
+| `max_streams` | integer (int64) | yes |  |
+| `max_transcodes` | integer (int64) | yes |  |
+| `member_count` | integer (int64) | yes |  |
+| `name` | string | yes |  |
+| `profile_count` | integer (int64) | yes | Profiles the group assigns; deleting the group reassigns them to the organization's default group |
+| `requests_allowed` | boolean | yes |  |
+| `transcode_allowed` | boolean | yes |  |
+| `updated_at` | string (date-time) | yes | RFC 3339 instant in UTC with millisecond precision |
+
 ### BloemOrganizationGroupMutationResponse
 
 | Field | Type | Required | Description |
@@ -3633,7 +3634,7 @@ Type: object.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `groups` | array of [`AdminAccessGroupListItem`](#adminaccessgrouplistitem) | yes |  |
+| `groups` | array of [`BloemOrganizationGroupListItem`](#bloemorganizationgrouplistitem) | yes |  |
 
 ### BloemOrganizationInvitationCreate
 

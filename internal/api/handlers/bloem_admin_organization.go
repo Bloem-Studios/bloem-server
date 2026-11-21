@@ -86,7 +86,7 @@ func (h *BloemAdminOrganizationHandler) HandleListGroups(w http.ResponseWriter, 
 	}
 	items := make([]any, 0, len(groups))
 	for _, group := range groups {
-		items = append(items, bloemV2.AccessGroupListItem(group.Group))
+		items = append(items, bloemV2.AccessGroupListItem(group))
 	}
 	writeJSON(w, http.StatusOK, struct {
 		Groups []any `json:"groups"`

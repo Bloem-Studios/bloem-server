@@ -23,8 +23,11 @@ type bloemV2Wire struct{}
 
 func (bloemV2Wire) AccessGroup(g access.Group) any { return adminAccessGroupOf(&g) }
 
-func (bloemV2Wire) AccessGroupListItem(g access.Group) any {
-	return AdminAccessGroupListItem{AdminAccessGroup: adminAccessGroupOf(&g), MemberCount: g.MemberCount}
+func (bloemV2Wire) AccessGroupListItem(g access.TenantGroup) any {
+	return BloemOrganizationGroupListItem{
+		AdminAccessGroupListItem: AdminAccessGroupListItem{AdminAccessGroup: adminAccessGroupOf(&g.Group), MemberCount: g.MemberCount},
+		ProfileCount:             g.ProfileCount,
+	}
 }
 
 // AccessGroupCreate decodes an AdminAccessGroupBody as createAdminAccessGroup
