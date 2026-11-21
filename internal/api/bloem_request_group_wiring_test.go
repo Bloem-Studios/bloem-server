@@ -126,8 +126,8 @@ func TestBloemRouterScopesRequestGroupLimitsWithoutLifecycleConfig(t *testing.T)
 	if composedDeps.Requests != composed || composedDeps.RequestLifecycle != composed {
 		t.Fatal("the v2 request fields kept Silo's unbounded service")
 	}
-	requestLifecycle, ok := composedDeps.RequestLifecycle.(apiv2.RequestLifecycleService)
-	if !ok {
+	requestLifecycle := composedDeps.RequestLifecycle
+	if requestLifecycle == nil {
 		t.Fatal("composed service lost the v2 lifecycle capability")
 	}
 	// Use the actual handler service and viewer resolver on the v2 listener.
