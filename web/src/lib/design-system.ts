@@ -198,7 +198,9 @@ export const DESIGN_PRINCIPLES = [
 // │  --primary-foreground│ Text on primary elements            │
 // │  --secondary         │ Secondary element backgrounds       │
 // │  --accent            │ Active/highlighted backgrounds      │
-// │  --destructive       │ Danger/delete actions               │
+// │  --destructive       │ Danger text, icons, borders, dots   │
+// │  --destructive-fill  │ Danger fill under white text        │
+// │  --<status>-label    │ Status text on its own 10% tint     │
 // │  --ring              │ Focus ring color                    │
 // ├─────────────────────────────────────────────────────────────┤
 // │  BORDERS                                                   │

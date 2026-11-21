@@ -15252,8 +15252,20 @@ export interface components {
     AdminBackupRestoreCollection: {
       /** @description The template bundle that created a template collection */
       bundle_id?: string;
-      /** @description A template collection's fields the admin changed from the template's defaults that a restore writes here: title, description, visibility, featured, sort order, item sort, source, sync schedule, poster, backdrop */
-      changes?: string[];
+      /** @description What a restore writes to a template collection here: the fields the admin changed from the template's defaults, and libraries when it adds the collection to more of them */
+      changes?: (
+        | "title"
+        | "description"
+        | "visibility"
+        | "featured"
+        | "sort_order"
+        | "item_sort"
+        | "source"
+        | "sync_schedule"
+        | "poster"
+        | "backdrop"
+        | "libraries"
+      )[];
       /** Format: int64 */
       items: number;
       /** @description Libraries here the collection maps to */
@@ -15305,8 +15317,20 @@ export interface components {
       pending?: number;
     };
     AdminBackupRestoreHomeSection: {
-      /** @description What a restore replaces in the section here: title, position, featured, item limit, enabled, web only, configuration, and N collection items */
-      changes?: string[];
+      /** @description What a restore replaces in the section here */
+      changes?: (
+        | "type"
+        | "title"
+        | "title_translation"
+        | "position"
+        | "featured"
+        | "item_limit"
+        | "enabled"
+        | "web_only"
+        | "collection_replaced"
+        | "configuration"
+        | "collection_items"
+      )[];
       /**
        * @description The library here whose page holds the section
        * @example 1
@@ -15314,6 +15338,11 @@ export interface components {
       library_id?: string;
       /** @description The matching section here: the same id on the server that took the backup, else the one section of the page with the same type and title */
       local_id?: string;
+      /**
+       * Format: int64
+       * @description With the collection_items change: the items of the backup's collection, in this server's catalog, that the section's collection here lacks and a restore adds
+       */
+      missing_collection_items?: number;
       /** @enum {string} */
       scope: "home" | "library";
       section_type: string;
@@ -19301,6 +19330,8 @@ export interface components {
        * @description RFC 3339 instant in UTC with millisecond precision
        */
       created_at: string;
+      /** @description The API servers' deployment configuration (SILO_TRANSCODE_NODES or SILO_TRANSCODE_NODES_FILE) lists this transcode node and supplies its key. issueAdminNodeKey and deleteAdminNode refuse it with node_deployment_managed until an API server starts with a document that no longer lists it (nodes: {} releases every node). An API server started with neither variable set leaves it managed. Requires the deployment_nodes node capability. */
+      deployment_managed: boolean;
       /** @description This node's own prepared-download directory; absent when inherited. */
       download_artifact_dir_override?: string;
       /**
@@ -19363,6 +19394,8 @@ export interface components {
     AdminNodeCapabilities: {
       /** @description Whether the current principal may use the capability */
       allowed: boolean;
+      /** @description API servers can create transcode nodes and their keys from their deployment configuration (SILO_TRANSCODE_NODES or SILO_TRANSCODE_NODES_FILE): deployment_managed on node rows, and issueAdminNodeKey and deleteAdminNode refuse such a node with node_deployment_managed. An API server that starts with a document no longer listing a node releases it (nodes: {} releases every node); one started with neither variable set changes nothing. */
+      deployment_nodes: boolean;
       /** @description Transcode nodes can drain: the drain and resume operations, and drain_requested and drain_state on node rows. */
       drain: boolean;
       /** @description Nodes can declare their own configuration from their environment: env_managed on node rows names the fields a node declares, and updateAdminNode refuses a change to them with field code managed_by_environment. */
@@ -68725,6 +68758,15 @@ export interface operations {
       };
       /** @description Not Acceptable */
       406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };

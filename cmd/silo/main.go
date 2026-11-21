@@ -847,6 +847,13 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "node-key" {
+		if err := runNodeKeyCommand(os.Args[2:], os.Stdout); err != nil {
+			log.Fatalf("node-key: %v", err)
+		}
+		return
+	}
+
 	if len(os.Args) > 1 && os.Args[1] == "plugins" {
 		if err := runPluginRecoveryCommand(context.Background(), os.Args[2:], os.Stdout); err != nil {
 			log.Fatalf("plugins: %v", err)
@@ -1710,6 +1717,10 @@ func main() {
 	if mode == "integrated" || mode == "api" {
 		nodeRepo := nodepool.NewRepository(pool)
 		deps.NodeRepo = nodeRepo
+
+		// Before the first pool and credential loads, so both see the
+		// declared nodes.
+		provisionTranscodeNodes(appCtx, pool, dataCipher, eventBus)
 
 		proxyPool := nodepool.NewProxyPool()
 		transcodePool := nodepool.NewTranscodePool()

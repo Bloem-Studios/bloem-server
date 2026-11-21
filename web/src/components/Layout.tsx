@@ -389,7 +389,13 @@ export default function Layout({ children }: LayoutProps) {
       itemDetailsReady={itemDetailsReady}
       enteredItemFromHome={enteredItemFromHome}
     >
-      <div ref={shellRef} className="bg-background relative min-h-[100dvh] overflow-x-clip">
+      {/* `flow-root` keeps the phone header's top margin inside this wrapper.
+        With `overflow-x-clip` alone the margin collapses through it, and the
+        body's background shows as a band above the header. */}
+      <div
+        ref={shellRef}
+        className="bg-background relative flow-root min-h-[100dvh] overflow-x-clip"
+      >
         <a
           href="#main-content"
           className="focus:bg-background focus:text-foreground focus:ring-ring sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:ring-2 focus:outline-none"
@@ -494,13 +500,14 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         )}
 
-        {/* Main content — offset by sidebar width on desktop */}
+        {/* Main content — offset by sidebar width on desktop. `scroll-mt-24`
+          keeps Skip to content's jump clear of the pinned phone header. */}
         <main
           id="main-content"
           tabIndex={-1}
           data-sidebar-target-collapsed={targetDetailImmersion ? "true" : undefined}
           data-sidebar-visual-collapsed={visualDetailImmersion ? "true" : undefined}
-          className={`sidebar-main-stage relative min-h-screen outline-none ${
+          className={`sidebar-main-stage relative min-h-screen scroll-mt-24 outline-none lg:scroll-mt-0 ${
             targetDetailImmersion ? "lg:ms-16" : "lg:ms-[260px]"
           } ${hasBackgroundBar ? "pb-32 sm:pb-36" : ""}`}
           style={{ viewTransitionName: "main-content" }}
