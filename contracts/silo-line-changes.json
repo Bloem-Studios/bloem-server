@@ -140,12 +140,6 @@
     "\tif h.fileResolver == nil || h.ItemAccess == nil {"
    ]
   },
-  "internal/api/handlers/playback_test.go": {
-   "kind": "lines",
-   "lines": [
-    "\treturn apimw.SetProfileID(ctx, \"profile-1\")"
-   ]
-  },
   "internal/api/handlers/playback_v3.go": {
    "kind": "lines",
    "lines": [
@@ -468,11 +462,7 @@
   "internal/downloads/policy_action_test.go": {
    "kind": "lines",
    "lines": [
-    "\tcapability, err := svc.Capability(context.Background(), user.ID)",
-    "\tctx := context.Background()",
-    "\tctx := context.Background()",
-    "\tctx := context.Background()",
-    "func (p downloadGroupProvider) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {"
+    "\tcapability, err := svc.Capability(context.Background(), user.ID)"
    ]
   },
   "internal/ebooks/enrichment.go": {
@@ -570,14 +560,6 @@
     "\tvar users, profiles, claims int",
     "\t}",
     "\t}"
-   ]
-  },
-  "internal/invitations/service_atomic_test.go": {
-   "kind": "lines",
-   "lines": [
-    "\tsvc := NewService(f.repo, users, auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(f.pool)), &fakeSessions{}, sender, nil, nil, \"https://server.example.invalid\")",
-    "\tsvc := NewService(f.repo, users, auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(f.pool)), &fakeSessions{}, sender, nil, nil, \"https://server.example.invalid\")",
-    "\tsvc := NewService(f.repo, users, auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(f.pool)), sessions, sender, nil, nil, \"https://server.example.invalid\")"
    ]
   },
   "internal/libraryingest/executor.go": {
@@ -710,13 +692,6 @@
     "func (m *SessionManager) TouchActivity(sessionID string) error {",
     "func (m *SessionManager) limitsForUser(ctx context.Context, userID int) (SessionLimits, error) {",
     "func (m *SessionManager) updateProgress(sessionID string, position float64, isPaused bool, sequence int64) error {"
-   ]
-  },
-  "internal/playback/session_test.go": {
-   "kind": "lines",
-   "lines": [
-    "\t\t\t\t\t\t\twithPolicy.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(pdp))",
-    "\tctx := context.Background()"
    ]
   },
   "internal/playback/testdata/protocol_v3/decision_response.json": {
@@ -1112,9 +1087,6 @@
   },
   "internal/api/handlers/playback_missing.go": {
    "func preflightPlaybackFile(": "ca723ad4fe69ec87"
-  },
-  "internal/api/handlers/playback_test.go": {
-   "func newAuthorizedPlaybackContext() context.Context {": "53102f4e939877a6"
   },
   "internal/api/handlers/playback_v3.go": {
    "func (h *PlaybackHandler) deleteRequiredProgressiveRemuxAuthorityV3(ctx context.": "a907ccb3b12d875a",

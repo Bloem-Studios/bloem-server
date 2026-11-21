@@ -111,8 +111,18 @@ func TestSessionManager_PlaybackDisabledRejectsRecipeReconstruction(t *testing.T
 	}
 }
 
+// withPlaybackResolvedTenant adds the resolved tenant Bloem's admission binds
+// to, on a Bloem line after Silo's test context.
+func withPlaybackResolvedTenant(ctx context.Context) context.Context {
+	return tenancy.WithContext(ctx, playbackResolvedTenant())
+}
+
 func playbackResolvedTenantContext() context.Context {
-	return tenancy.WithContext(context.Background(), tenancy.Context{
+	return tenancy.WithContext(context.Background(), playbackResolvedTenant())
+}
+
+func playbackResolvedTenant() tenancy.Context {
+	return tenancy.Context{
 		OrganizationID:      uuid.MustParse("10000000-0000-0000-0000-000000000001"),
 		MembershipID:        uuid.MustParse("20000000-0000-0000-0000-000000000001"),
 		AccountID:           1,
@@ -122,5 +132,5 @@ func playbackResolvedTenantContext() context.Context {
 		SecurityRevision:    11,
 		Legacy:              true,
 		OrganizationDefault: true,
-	})
+	}
 }

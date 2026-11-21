@@ -299,7 +299,6 @@ func newPlaybackTestStore(t *testing.T) userstore.UserStore {
 func newAuthorizedPlaybackContext() context.Context {
 	ctx := context.Background()
 	ctx = apimw.SetClaims(ctx, &auth.Claims{UserID: 1, Role: "user", TokenType: auth.TokenTypeAccess})
-	ctx = apimw.SetProfileID(ctx, "profile-1")
 	// Simulates RequireViewerAccess having already run, as it always has by
 	// the time a handler executes in production (including on the
 	// stream-token-only path, which now resolves a scope of its own instead
@@ -308,7 +307,8 @@ func newAuthorizedPlaybackContext() context.Context {
 	// handler behavior, not library-scope enforcement, which
 	// playback_library_access_test.go and playback_delivery_access_test.go
 	// cover directly.
-	return access.SetScope(ctx, access.Scope{UserID: 1})
+	ctx = access.SetScope(ctx, access.Scope{UserID: 1})
+	return apimw.SetProfileID(ctx, "profile-1")
 }
 
 func TestHeaderAuthenticatedMediaEnforcesHLSOwnerOnEveryRequest(t *testing.T) {

@@ -71,7 +71,8 @@ func TestSessionManager_DisabledAudioTranscodingRejectsAudioTranscode(t *testing
 
 func TestSessionManager_PolicyAdmissionDeciderMatchesLegacy(t *testing.T) {
 	pdp := newPlaybackPolicyPDP(t)
-	ctx := playbackResolvedTenantContext()
+	ctx := context.Background()
+	ctx = withPlaybackResolvedTenant(ctx)
 
 	for _, maxStreams := range []int{0, 1, 2} {
 		for _, maxTranscodes := range []int{0, 1, 2} {
@@ -87,7 +88,8 @@ func TestSessionManager_PolicyAdmissionDeciderMatchesLegacy(t *testing.T) {
 							limits := playback.SessionLimits{MaxStreams: maxStreams, MaxTranscodes: maxTranscodes}
 							legacy := withFixedLimits(seededSessionManager(t, activeStreams, activeTranscodes), limits)
 							withPolicy := withFixedLimits(seededSessionManager(t, activeStreams, activeTranscodes), limits)
-							withPolicy.SetAdmissionDecider(policy.NewBloemPlaybackAdmissionDecider(pdp))
+							withPolicy.SetAdmissionDecider(policy.NewPlaybackAdmissionDecider(pdp))
+							withPolicy.SetAdmissionDecider(policy.NewBloemPlaybackAdmissionDecider(pdp)) // Bloem: replaces the line above
 
 							_, legacyErr := legacy.StartSessionWithContext(ctx, 1, "profile-1", 900, method, false)
 							_, policyErr := withPolicy.StartSessionWithContext(ctx, 1, "profile-1", 900, method, false)

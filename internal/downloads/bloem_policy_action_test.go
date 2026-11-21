@@ -267,8 +267,33 @@ func downloadResolvedTenantContext() context.Context {
 	return downloadResolvedTenantContextForAccount(9)
 }
 
+// withDownloadResolvedTenant adds the resolved tenant Bloem's download policy
+// binds to, on a Bloem line after Silo's test context.
+func withDownloadResolvedTenant(ctx context.Context, accountID int) context.Context {
+	return tenancy.WithContext(ctx, downloadResolvedTenant(accountID))
+}
+
+// withLegacyGroupTenant adds a legacy tenant for a grouped account, so the
+// group policy layer applies to it.
+func withLegacyGroupTenant(ctx context.Context, accountID int) context.Context {
+	return tenancy.WithContext(ctx, tenancy.Context{
+		OrganizationID: uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+		AccountID:      accountID,
+		Legacy:         true,
+	})
+}
+
+// ResolvePolicy answers Bloem's subject lookup with Silo's account lookup.
+func (p downloadGroupProvider) ResolvePolicy(ctx context.Context, subject access.GroupSubject) (*access.GroupPolicy, error) {
+	return p.GetPolicyForUser(ctx, subject.AccountID)
+}
+
 func downloadResolvedTenantContextForAccount(accountID int) context.Context {
-	return tenancy.WithContext(context.Background(), tenancy.Context{
+	return tenancy.WithContext(context.Background(), downloadResolvedTenant(accountID))
+}
+
+func downloadResolvedTenant(accountID int) tenancy.Context {
+	return tenancy.Context{
 		OrganizationID:      uuid.MustParse("10000000-0000-0000-0000-000000000001"),
 		MembershipID:        uuid.MustParse("20000000-0000-0000-0000-000000000001"),
 		AccountID:           accountID,
@@ -278,7 +303,7 @@ func downloadResolvedTenantContextForAccount(accountID int) context.Context {
 		SecurityRevision:    11,
 		Legacy:              true,
 		OrganizationDefault: true,
-	})
+	}
 }
 
 // SetActionDecider's wrapper binds the request tenant to the transcode check

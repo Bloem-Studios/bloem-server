@@ -14,12 +14,11 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	policyengine "github.com/Silo-Server/silo-server/internal/policy"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 )
 
 func TestPolicyActionDeciderMatchesLegacyCapability(t *testing.T) {
-	ctx := downloadResolvedTenantContext()
+	ctx := context.Background()
+	ctx = withDownloadResolvedTenant(ctx, 9)
 	pdp := newDownloadPolicyPDP(t)
 
 	for _, downloadsEnabled := range []bool{false, true} {
@@ -52,11 +51,8 @@ func TestPolicyActionDeciderMatchesLegacyCapability(t *testing.T) {
 }
 
 func TestPolicyActionDeciderUsesGroupDownloadFlags(t *testing.T) {
-	ctx := tenancy.WithContext(context.Background(), tenancy.Context{
-		OrganizationID: uuid.MustParse("10000000-0000-0000-0000-000000000001"),
-		AccountID:      9,
-		Legacy:         true,
-	})
+	ctx := context.Background()
+	ctx = withLegacyGroupTenant(ctx, 9)
 	// Grouped account: the group policy layer only applies to a member.
 	groupID := int64(4)
 	user := &models.User{ID: 9, AccessGroupID: &groupID, DownloadTranscodeAllowed: ptrBool(true)}
@@ -167,11 +163,7 @@ type downloadGroupProvider struct {
 	err   error
 }
 
-func (p downloadGroupProvider) GetPolicyForUser(ctx context.Context, userID int) (*access.GroupPolicy, error) {
-	return p.ResolvePolicy(ctx, access.GroupSubject{AccountID: userID})
-}
-
-func (p downloadGroupProvider) ResolvePolicy(context.Context, access.GroupSubject) (*access.GroupPolicy, error) {
+func (p downloadGroupProvider) GetPolicyForUser(context.Context, int) (*access.GroupPolicy, error) {
 	return p.group, p.err
 }
 
@@ -192,7 +184,8 @@ override(_, _) := {"allowed": true, "quality_ceiling": "1080p"}
 // no other quality to offer, so the refusal is a policy denial (403), not
 // quality_unavailable.
 func TestResolveDirectFileHonorsOverrideQualityCeiling(t *testing.T) {
-	ctx := downloadResolvedTenantContext()
+	ctx := context.Background()
+	ctx = withDownloadResolvedTenant(ctx, 9)
 	engine, err := policyengine.NewEngineWithCustom(ctx, map[string]policyengine.ActiveSource{
 		policyengine.DomainAction: {DocumentID: 1, VersionID: 1, Source: ceilingOverrideSource},
 	})
