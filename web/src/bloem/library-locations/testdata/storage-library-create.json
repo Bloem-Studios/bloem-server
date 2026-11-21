@@ -1,0 +1,19 @@
+{
+  "library": {
+    "name": "Books",
+    "paths": [],
+    "type": "ebooks",
+    "metadata_language": "en",
+    "chapter_thumbnails_enabled": false,
+    "intro_detection_enabled": false,
+    "trailer_kinds": [],
+    "realtime_monitoring": true
+  },
+  "selections": [
+    {
+      "source_key": "00000000-0000-0000-0000-000000000201",
+      "configuration_revision": 1,
+      "selection_ref": "books"
+    }
+  ]
+}

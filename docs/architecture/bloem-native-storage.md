@@ -271,6 +271,14 @@ The source must be enabled, with an enabled instance. A
 refused attach rolls the whole library creation back. The library is then
 scanned like any other.
 
+The create's `library` object takes only the members of
+`BloemLibraryCreateOptions` and answers `invalid_request` for any other. It has
+no `enabled`, `auto_translate_metadata` or box set members, so a client saves
+those with Silo's `updateLibrary` on the library the create returns. If that
+update fails, the library already exists: the client's next save edits it
+(replacing its locations and updating its options) rather than creating
+another. The web form and the Admin apps work this way.
+
 Silo's `CreateLibrary` and `normalizeNewLibrary`
 (`internal/api/handlers/libraries_service.go`) stay as Silo wrote them; Bloem's
 part is on added lines that call `bloemLibraryAttachment`

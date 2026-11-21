@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -59,6 +62,49 @@ func TestLibraryLocationsCreateRequiresDocumentedArrays(t *testing.T) {
 		w := httptest.NewRecorder()
 		h.HandleCreate(w, r)
 		assertNativeError(t, w, http.StatusBadRequest, "invalid_request")
+	}
+}
+
+// The web's storage-source library create sends the body in this file
+// (web/src/bloem/library-locations/LibraryFormIntegration.test.tsx asserts it).
+// The create accepts it, and refuses each library option the web used to add
+// to it, which it now saves with an update of the new library.
+func TestLibraryLocationsCreateAcceptsTheWebBody(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "web", "src", "bloem", "library-locations", "testdata", "storage-library-create.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := (&BloemLibraryLocationsHandler{}).ForAdminScope(auth.AdminScopePlatform)
+	a := auth.AdminContextClaims{AccountID: 1, AccountIncarnationID: uuid.New(), SessionID: "fixture-session", Scope: auth.AdminScopePlatform}
+	post := func(body []byte) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "/", bytes.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		r = r.WithContext(middleware.SetAdminContextClaims(r.Context(), a))
+		w := httptest.NewRecorder()
+		h.HandleCreate(w, r)
+		return w
+	}
+	// Past the request checks, this handler has no services to create with.
+	assertNativeError(t, post(raw), http.StatusServiceUnavailable, nativeStorageUnavailableCode)
+	for field, value := range map[string]any{
+		"enabled":                 false,
+		"auto_translate_metadata": true,
+		"box_sets_enabled":        true,
+		"box_set_min_movies":      3,
+		"box_sets_in_search":      false,
+	} {
+		t.Run(field, func(t *testing.T) {
+			var body map[string]any
+			if err := json.Unmarshal(raw, &body); err != nil {
+				t.Fatal(err)
+			}
+			body["library"].(map[string]any)[field] = value
+			extended, err := json.Marshal(body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertNativeError(t, post(extended), http.StatusBadRequest, "invalid_request")
+		})
 	}
 }
 func TestLibraryLocationsErrorRevisionAndUnknownOutcome(t *testing.T) {

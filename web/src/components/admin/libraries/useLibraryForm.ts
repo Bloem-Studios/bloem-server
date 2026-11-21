@@ -12,6 +12,7 @@ import { t as translate, useT, type MessageKey } from "@/i18n";
 import { PROVIDER_TRAILER_KINDS } from "@/lib/extraKinds";
 
 import { useLibraryLocations } from "@/bloem/library-locations/useLibraryLocations";
+import { afterLocationCreate } from "@/bloem/library-locations/createOptions";
 import {
   bloemCloseInContext,
   bloemFormPending,
@@ -422,8 +423,9 @@ export function useLibraryForm({
     if (locations.enabled) {
       void locations.save(body).then((saved) => {
         if (!saved || !locations.isCurrent()) return;
-        const afterOptions = () => {
+        const afterOptions = (updated?: Library) => {
           if (!locations.isCurrent()) return;
+          const created = updated ?? saved.library!;
           if (chainDirty) {
             setChainMutation.mutate(
               {
@@ -434,19 +436,23 @@ export function useLibraryForm({
                 onSuccess: () => {
                   if (locations.isCurrent()) {
                     if (library) onClose?.();
-                    else finishCreate(saved.library!);
+                    else finishCreate(created);
                   }
                 },
               },
             );
           } else if (library) onClose?.();
-          else finishCreate(saved.library!);
+          else finishCreate(created);
         };
         const savedLibrary = library ?? locations.createdLibrary;
-        if (savedLibrary) {
-          const { paths: _paths, ...options } = body;
+        // A new library's create carries only its own options; the rest
+        // follow as an update. Should that fail, the next save edits the
+        // created library (locations.createdLibrary) instead of creating again.
+        const { paths: _paths, ...options } = body;
+        const update = savedLibrary ? options : afterLocationCreate(body, saved.library!);
+        if (update) {
           updateMutation.mutate(
-            { id: savedLibrary.id, body: options },
+            { id: (savedLibrary ?? saved.library!).id, body: update },
             { onSuccess: afterOptions },
           );
         } else afterOptions();

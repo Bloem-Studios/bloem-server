@@ -1,6 +1,7 @@
 import { adminV2Api, type AdminRequestContext } from "@/api/adminV2Client";
 import { bloemT } from "@/bloem/i18n";
 import type { CreateLibraryRequest, Library } from "@/api/types";
+import { locationCreateOptions } from "./createOptions";
 import type {
   LocationCapabilities,
   MixedLibraryLocations,
@@ -74,7 +75,7 @@ export function locationApi(scope: "platform" | "organization", context: AdminRe
         {
           method: "POST",
           body: JSON.stringify({
-            library,
+            library: locationCreateOptions(library),
             selections: selections.map(({ source_key, configuration_revision, selection_ref }) => ({
               source_key,
               configuration_revision,
