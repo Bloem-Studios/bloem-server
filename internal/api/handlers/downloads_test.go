@@ -277,6 +277,8 @@ func downloadTestRequest(method, target string, body []byte, userID int, profile
 		if profileID != "" {
 			ctx = apimw.SetProfileID(ctx, profileID)
 		}
+		// Bloem: downloads are tenant-bound; the account's resolved tenant.
+		ctx = bloemDownloadTenantContext(ctx, userID)
 		r = r.WithContext(ctx)
 	}
 	if deviceID != "" {
@@ -545,14 +547,10 @@ func overrideCeilingDownloadService(t *testing.T, resolution string) *downloads.
 // 1080p override ceiling with the policy denial, and serves nothing.
 func TestDirectDownloadRefusesOriginalAboveOverrideCeiling(t *testing.T) {
 	svc := overrideCeilingDownloadService(t, "2160p")
-	request := func(method, target string) *http.Request {
-		r := downloadTestRequest(method, target, nil, 7, "", "")
-		return r.WithContext(bloemDownloadTenantContext(r.Context(), 7))
-	}
 	for _, method := range []string{http.MethodGet, http.MethodHead} {
 		t.Run("direct_"+method, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			NewDownloadHandler(svc).HandleDirectDownload(rec, request(method, "/direct-download?file_id=42"))
+			NewDownloadHandler(svc).HandleDirectDownload(rec, downloadTestRequest(method, "/direct-download?file_id=42", nil, 7, "", ""))
 			if rec.Code != http.StatusForbidden || strings.Contains(rec.Body.String(), "original bytes") {
 				t.Fatalf("status = %d body = %q, want 403 without file bytes", rec.Code, rec.Body.String())
 			}
@@ -569,7 +567,7 @@ func TestDirectDownloadRefusesOriginalAboveOverrideCeiling(t *testing.T) {
 			h := NewDownloadHandler(svc)
 			h.SetProxyDelivery(nodepool.NewPlanner(proxies, nodepooltest.NewTranscodePool()), func() string { return "secret" })
 			rec := httptest.NewRecorder()
-			h.HandleDirectDownloadViaProxy(rec, request(method, "/direct-download-proxy?file_id=42"))
+			h.HandleDirectDownloadViaProxy(rec, downloadTestRequest(method, "/direct-download-proxy?file_id=42", nil, 7, "", ""))
 			if rec.Code != http.StatusForbidden || rec.Header().Get("Location") != "" || proxyRequests != 0 {
 				t.Fatalf("status = %d location = %q proxy requests = %d, want 403 with no redirect", rec.Code, rec.Header().Get("Location"), proxyRequests)
 			}
@@ -579,9 +577,10 @@ func TestDirectDownloadRefusesOriginalAboveOverrideCeiling(t *testing.T) {
 		issuer := &countingLinkIssuer{}
 		h := NewDownloadHandler(svc)
 		h.SetDirectDownloadLinks(issuer)
-		ctx := apimw.SetProfileID(apimw.SetClaims(bloemDownloadTenantContext(context.Background(), 7), &auth.Claims{
+		ctx := apimw.SetProfileID(apimw.SetClaims(context.Background(), &auth.Claims{
 			UserID: 7, Role: "user", SessionID: "s1", TokenType: auth.TokenTypeAccess,
 		}), "p1")
+		ctx = bloemDownloadTenantContext(ctx, 7)
 		if _, _, err := h.CreateDirectDownloadLink(ctx, 42); !errors.Is(err, downloads.ErrDownloadNotAllowed) || issuer.calls != 0 {
 			t.Fatalf("CreateDirectDownloadLink() error = %v, issuer calls = %d; want ErrDownloadNotAllowed and no link", err, issuer.calls)
 		}
@@ -589,7 +588,7 @@ func TestDirectDownloadRefusesOriginalAboveOverrideCeiling(t *testing.T) {
 
 	// The same override leaves a file at the ceiling downloadable.
 	rec := httptest.NewRecorder()
-	NewDownloadHandler(overrideCeilingDownloadService(t, "1080p")).HandleDirectDownload(rec, request(http.MethodGet, "/direct-download?file_id=42"))
+	NewDownloadHandler(overrideCeilingDownloadService(t, "1080p")).HandleDirectDownload(rec, downloadTestRequest(http.MethodGet, "/direct-download?file_id=42", nil, 7, "", ""))
 	if rec.Code != http.StatusOK || rec.Body.String() != "original bytes" {
 		t.Fatalf("1080p original: status = %d body = %q, want 200 with the file", rec.Code, rec.Body.String())
 	}

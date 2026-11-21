@@ -113,15 +113,6 @@
     "\treturn job, nil"
    ]
   },
-  "internal/api/handlers/downloads_test.go": {
-   "kind": "lines",
-   "lines": [
-    "\t\t\tNewDownloadHandler(svc).HandleDirectDownload(rec, downloadTestRequest(method, \"/direct-download?file_id=42\", nil, 7, \"\", \"\"))",
-    "\t\t\th.HandleDirectDownloadViaProxy(rec, downloadTestRequest(method, \"/direct-download-proxy?file_id=42\", nil, 7, \"\", \"\"))",
-    "\t\tctx := apimw.SetProfileID(apimw.SetClaims(context.Background(), &auth.Claims{",
-    "\tNewDownloadHandler(overrideCeilingDownloadService(t, \"1080p\")).HandleDirectDownload(rec, downloadTestRequest(http.MethodGet, \"/direct-download?file_id=42\", nil, 7, \"\", \"\"))"
-   ]
-  },
   "internal/api/handlers/notifications.go": {
    "kind": "lines",
    "lines": [
@@ -1055,9 +1046,6 @@
   "internal/api/handlers/catalog_transfer_service.go": {
    "func (h *CatalogSeedHandler) CreateCatalogImportJob(ctx context.Context, userID": "102d7ee8933ec0dc",
    "func (h *CatalogSeedHandler) PublishCatalogExportJob(ctx context.Context, id str": "5fec4088112ad00c"
-  },
-  "internal/api/handlers/downloads_test.go": {
-   "func TestDirectDownloadRefusesOriginalAboveOverrideCeiling(t *testing.T) {": "8f6b63ceb6520dd4"
   },
   "internal/api/handlers/libraries_service.go": {
    "func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateReq": "07a6e8fcc49cd4de",
