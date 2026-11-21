@@ -5,7 +5,7 @@
 > Do not edit by hand: change the handler's OpenAPI declaration, run `make bloem-openapi`, then
 > the script. Shared conventions, credentials and the error body are on the [index](README.md).
 
-The native inbox, announcements, seasonal packs and their public artwork, the campaign cards a viewer sees, campaign authoring, the upgrade prompt and the admin apps' push notifications.
+The native inbox, announcements, seasonal packs and their public artwork, the campaign cards a viewer sees, campaign authoring, the upgrade prompt, the admin apps' push notifications and the server's registration with Bloem's push relay.
 
 For the plain-language picture, read the [Messages and promotions explainer](../../architecture/bloem-messages-and-promotions.md). The invariants are in:
 
@@ -15,8 +15,9 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 - [Presentation evaluators](../../architecture/bloem-presentation-evaluators.md)
 - [Campaign and seasonal asset storage](../../architecture/bloem-campaign-asset-storage.md)
 - [Admin app push notifications](../../architecture/bloem-admin-push.md)
+- [How push notifications reach each app](../../architecture/bloem-push-relays.md)
 
-## Operations (33)
+## Operations (34)
 
 | Method and path | Summary |
 | --- | --- |
@@ -29,6 +30,7 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 | [`GET /api/bloem/v2/admin/platform/announcements`](#get-apibloemv2adminplatformannouncements) | List published announcements, including withdrawn ones. |
 | [`POST /api/bloem/v2/admin/platform/announcements`](#post-apibloemv2adminplatformannouncements) | Publish an announcement to its audience's inboxes. |
 | [`DELETE /api/bloem/v2/admin/platform/announcements/{id}`](#delete-apibloemv2adminplatformannouncementsid) | Withdraw an announcement. |
+| [`POST /api/bloem/v2/admin/platform/notifications/push/relay/register`](#post-apibloemv2adminplatformnotificationspushrelayregister) | Register the server with Bloem's push relay again, or rotate its credential there. |
 | [`GET /api/bloem/v2/admin/platform/promotions/`](#get-apibloemv2adminplatformpromotions) | List platform-managed campaigns and supported delivery surfaces. |
 | [`POST /api/bloem/v2/admin/platform/promotions/`](#post-apibloemv2adminplatformpromotions) | Create a registry entry. |
 | [`PUT /api/bloem/v2/admin/platform/promotions/{id}`](#put-apibloemv2adminplatformpromotionsid) | Replace every editable field of a registry entry. |
@@ -248,6 +250,26 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such announcement. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: announcements are not configured. tenant_unavailable or service_unavailable: the credential could not be checked. |
+
+### `POST /api/bloem/v2/admin/platform/notifications/push/relay/register`
+
+Register the server with Bloem's push relay again, or rotate its credential there.
+
+Operation ID: `registerBloemPlatformPushRelay`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Takes no body. Bloem's push relay delivers the Bloem Admin app's notifications; Silo's apps go through Silo's relay, which Silo's push settings register (registerAdminNotificationRelay). A working credential is rotated, and a relay that no longer accepts it gets a fresh registration. A missing credential, or one parked because the relay disabled this deployment, is replaced by a fresh registration; that is the only way to resume the Bloem Admin app's push after the relay disabled the deployment. The result is stored under bloem.notifications.push_relay_*; Silo's relay credential is never read or changed. The response never carries the credential.
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemPushRelayRegistration`](#bloempushrelayregistration) | OK |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | relay_deployment_rejected: Bloem's relay refused to register this server. |
+| 429 | [`BloemNativeError`](README.md#bloemnativeerror) | relay_rate_limited: Bloem's relay is limiting registrations; Retry-After says when to try again. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 502 | [`BloemNativeError`](README.md#bloemnativeerror) | relay_error or the relay's own code: Bloem's relay failed or could not be reached. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | push_relay_unavailable: this server has no push backing. relay_unavailable: Bloem's relay is unavailable. tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
 ### `GET /api/bloem/v2/admin/platform/promotions/`
 
@@ -1092,6 +1114,18 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `ambience` | array of [`Wire`](#wire) | yes |  |
+
+### BloemPushRelayRegistration
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `api_key_configured` | boolean | yes | Always true: a credential is stored. |
+| `apns_topics` | array of string |  | The Apple topics the relay sends for, when it says. |
+| `deployment_id` | string | yes | This server's deployment at Bloem's relay. |
+| `expires_at` | string (date-time) | yes | When the capability expires; the server renews it before then. |
+| `key_prefix` | string | yes | The stored capability's public prefix. |
+| `relay_request_id` | string |  | The relay's request id, for its support. |
+| `relay_url` | string | yes | Bloem's push relay origin. |
 
 ### BloemSeasonalViewerResponse
 

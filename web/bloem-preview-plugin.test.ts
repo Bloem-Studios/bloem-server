@@ -148,3 +148,23 @@ describe("bloemPreview admin pages", () => {
     ).resolves.toBeNull();
   });
 });
+
+describe("bloemPreview notification settings", () => {
+  it("gives the admin settings layout Bloem's notification page", async () => {
+    await expect(
+      resolveFrom("pages/admin-settings/AdminSettingsLayout.tsx", "./NotificationsAdminSettings"),
+    ).resolves.toBe(path.join(SRC, "bloem/admin/BloemNotificationsAdminSettings.tsx"));
+  });
+
+  it("leaves Silo's page itself to Bloem's page and every other importer", async () => {
+    await expect(
+      resolveFrom(
+        "bloem/admin/BloemNotificationsAdminSettings.tsx",
+        "@/pages/admin-settings/NotificationsAdminSettings",
+      ),
+    ).resolves.toBeNull();
+    await expect(
+      resolveFrom("pages/admin-settings/AdminSettings.test.tsx", "./NotificationsAdminSettings"),
+    ).resolves.toBeNull();
+  });
+});

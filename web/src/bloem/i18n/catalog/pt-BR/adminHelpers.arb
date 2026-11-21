@@ -397,5 +397,12 @@
   "bloem.liveTv.recordingWrites.reloaded": "Gravações recarregadas. Confira a lista antes de outra ação de gravação.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Não foi possível agendar a gravação",
   "bloem.liveTv.recordingWrites.scheduled": "Gravação agendada",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Aguarde a releitura das gravações antes de recarregar."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Aguarde a releitura das gravações antes de recarregar.",
+  "bloem.admin.pushRelay.title": "Relay de push do app Bloem Admin",
+  "bloem.admin.pushRelay.description": "Entrega as notificações do app Bloem Admin. Os apps do Silo recebem as deles pelo cartão de notificações push móveis acima.",
+  "bloem.admin.pushRelay.help": "Registre o servidor novamente quando o app Bloem Admin parar de receber notificações, por exemplo depois que o relay desativou este servidor. Um registro que funciona recebe credenciais novas.",
+  "bloem.admin.pushRelay.register": "Registrar novamente",
+  "bloem.admin.pushRelay.registered": "Registrado como implantação {deployment}. As credenciais valem até {expires}.",
+  "bloem.admin.pushRelay.registeredToast": "Registrado no relay de push do app Bloem Admin",
+  "bloem.admin.pushRelay.registerFailed": "Não foi possível registrar no relay de push do app Bloem Admin"
 }

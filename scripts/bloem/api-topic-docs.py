@@ -59,12 +59,14 @@ TOPICS = [
      [("Server admin announcements", "admin-announcements.md"), ("Playback overlays", "playback-overlays.md"),
       ("Seasonal scheduling", "seasonal-scheduling.md"), ("Presentation evaluators", "bloem-presentation-evaluators.md"),
       ("Campaign and seasonal asset storage", "bloem-campaign-asset-storage.md"),
-      ("Admin app push notifications", "bloem-admin-push.md")],
+      ("Admin app push notifications", "bloem-admin-push.md"),
+      ("How push notifications reach each app", "bloem-push-relays.md")],
      [r"^/notifications(/|$)", r"^/ambience(/|$)", r"^/promotions(/|$)",
-      r"^/admin/platform/(ambience|promotions|upgrade-prompt|announcements)(/|$)",
+      r"^/admin/platform/(ambience|promotions|upgrade-prompt|announcements|notifications)(/|$)",
       r"^/admin/push(/|$)"],
      "The native inbox, announcements, seasonal packs and their public artwork, the campaign cards a "
-     "viewer sees, campaign authoring, the upgrade prompt and the admin apps' push notifications."),
+     "viewer sees, campaign authoring, the upgrade prompt, the admin apps' push notifications and the "
+     "server's registration with Bloem's push relay."),
     ("apps", "Apps and clients", "bloem-apps.md",
      [("Bloem native client surface", "bloem-client-surface.md"),
       ("SDK compatibility and contract generation", "bloem-sdk-compatibility.md"),

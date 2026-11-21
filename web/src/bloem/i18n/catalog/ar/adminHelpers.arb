@@ -398,5 +398,12 @@
   "bloem.liveTv.recordingWrites.reloaded": "أُعيد تحميل التسجيلات. راجع القائمة قبل أي إجراء تسجيل آخر.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "تعذّرت جدولة التسجيل",
   "bloem.liveTv.recordingWrites.scheduled": "تمت جدولة التسجيل",
-  "bloem.liveTv.recordingWrites.waitForReadback": "انتظر حتى تكتمل قراءة التسجيلات قبل إعادة التحميل."
+  "bloem.liveTv.recordingWrites.waitForReadback": "انتظر حتى تكتمل قراءة التسجيلات قبل إعادة التحميل.",
+  "bloem.admin.pushRelay.title": "مُرحِّل الإشعارات لتطبيق Bloem Admin",
+  "bloem.admin.pushRelay.description": "يوصل إشعارات تطبيق Bloem Admin. تتلقى تطبيقات Silo إشعاراتها عبر بطاقة الإشعارات الفورية للجوال أعلاه.",
+  "bloem.admin.pushRelay.help": "سجّل الخادم مرة أخرى عندما يتوقف تطبيق Bloem Admin عن تلقي الإشعارات، مثلًا بعد أن يعطّل المُرحِّل هذا الخادم. يحصل التسجيل الذي يعمل على بيانات اعتماد جديدة.",
+  "bloem.admin.pushRelay.register": "التسجيل مرة أخرى",
+  "bloem.admin.pushRelay.registered": "تم التسجيل بصفته النشر {deployment}. بيانات الاعتماد صالحة حتى {expires}.",
+  "bloem.admin.pushRelay.registeredToast": "تم التسجيل لدى مُرحِّل الإشعارات لتطبيق Bloem Admin",
+  "bloem.admin.pushRelay.registerFailed": "تعذّر التسجيل لدى مُرحِّل الإشعارات لتطبيق Bloem Admin"
 }

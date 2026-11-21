@@ -13050,6 +13050,64 @@
       "value": "是"
     }
   ],
+  "bloem.admin.pushRelay.description": [
+    {
+      "type": 0,
+      "value": "负责发送 Bloem Admin 应用的通知。Silo 应用通过上方的移动推送卡片接收通知。"
+    }
+  ],
+  "bloem.admin.pushRelay.help": [
+    {
+      "type": 0,
+      "value": "当 Bloem Admin 应用收不到通知时（例如中继停用了此服务器之后），请重新注册。注册仍有效时会获得新的凭据。"
+    }
+  ],
+  "bloem.admin.pushRelay.register": [
+    {
+      "type": 0,
+      "value": "重新注册"
+    }
+  ],
+  "bloem.admin.pushRelay.registerFailed": [
+    {
+      "type": 0,
+      "value": "无法在 Bloem Admin 应用的推送中继注册"
+    }
+  ],
+  "bloem.admin.pushRelay.registered": [
+    {
+      "type": 0,
+      "value": "已注册为部署 "
+    },
+    {
+      "type": 1,
+      "value": "deployment"
+    },
+    {
+      "type": 0,
+      "value": "。凭据有效期至 "
+    },
+    {
+      "type": 1,
+      "value": "expires"
+    },
+    {
+      "type": 0,
+      "value": "。"
+    }
+  ],
+  "bloem.admin.pushRelay.registeredToast": [
+    {
+      "type": 0,
+      "value": "已在 Bloem Admin 应用的推送中继注册"
+    }
+  ],
+  "bloem.admin.pushRelay.title": [
+    {
+      "type": 0,
+      "value": "Bloem Admin 应用的推送中继"
+    }
+  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

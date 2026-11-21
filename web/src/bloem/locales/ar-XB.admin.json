@@ -14329,6 +14329,64 @@
       "value": "‏‮Yes‬"
     }
   ],
+  "bloem.admin.pushRelay.description": [
+    {
+      "type": 0,
+      "value": "‏‮Delivers the Bloem Admin app's notifications. Silo's apps get theirs through the mobile push card above.‬"
+    }
+  ],
+  "bloem.admin.pushRelay.help": [
+    {
+      "type": 0,
+      "value": "‏‮Register again when the Bloem Admin app stops getting notifications, for example after the relay turned this server off. A working registration gets a new credential.‬"
+    }
+  ],
+  "bloem.admin.pushRelay.register": [
+    {
+      "type": 0,
+      "value": "‏‮Register again‬"
+    }
+  ],
+  "bloem.admin.pushRelay.registerFailed": [
+    {
+      "type": 0,
+      "value": "‏‮Could not register with the Bloem Admin app's push relay‬"
+    }
+  ],
+  "bloem.admin.pushRelay.registered": [
+    {
+      "type": 0,
+      "value": "‏‮Registered as deployment ‬"
+    },
+    {
+      "type": 1,
+      "value": "deployment"
+    },
+    {
+      "type": 0,
+      "value": "‮. The credential is valid until ‬"
+    },
+    {
+      "type": 1,
+      "value": "expires"
+    },
+    {
+      "type": 0,
+      "value": "‮.‬"
+    }
+  ],
+  "bloem.admin.pushRelay.registeredToast": [
+    {
+      "type": 0,
+      "value": "‏‮Registered with the Bloem Admin app's push relay‬"
+    }
+  ],
+  "bloem.admin.pushRelay.title": [
+    {
+      "type": 0,
+      "value": "‏‮Push relay for the Bloem Admin app‬"
+    }
+  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

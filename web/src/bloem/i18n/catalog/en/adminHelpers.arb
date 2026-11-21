@@ -796,5 +796,19 @@
   "bloem.liveTv.recordingWrites.scheduled": "Recording scheduled",
   "@bloem.liveTv.recordingWrites.scheduled": { "description": "Live TV recordings: toast after a recording is scheduled." },
   "bloem.liveTv.recordingWrites.waitForReadback": "Wait for recording readback before reloading.",
-  "@bloem.liveTv.recordingWrites.waitForReadback": { "description": "Live TV recordings: error when reloading while the recordings list is still being read back." }
+  "@bloem.liveTv.recordingWrites.waitForReadback": { "description": "Live TV recordings: error when reloading while the recordings list is still being read back." },
+  "bloem.admin.pushRelay.title": "Push relay for the Bloem Admin app",
+  "@bloem.admin.pushRelay.title": { "description": "Notification settings page, Bloem section below Silo's: heading of the group that registers the server with the push relay serving the Bloem Admin app." },
+  "bloem.admin.pushRelay.description": "Delivers the Bloem Admin app's notifications. Silo's apps get theirs through the mobile push card above.",
+  "@bloem.admin.pushRelay.description": { "description": "Notification settings page, push relay for the Bloem Admin app: line under the heading. \"The mobile push card above\" is Silo's push relay card on the same page." },
+  "bloem.admin.pushRelay.help": "Register again when the Bloem Admin app stops getting notifications, for example after the relay turned this server off. A working registration gets a new credential.",
+  "@bloem.admin.pushRelay.help": { "description": "Notification settings page, push relay for the Bloem Admin app: when to use the button below it." },
+  "bloem.admin.pushRelay.register": "Register again",
+  "@bloem.admin.pushRelay.register": { "description": "Notification settings page, push relay for the Bloem Admin app: button that registers the server with the relay again." },
+  "bloem.admin.pushRelay.registered": "Registered as deployment {deployment}. The credential is valid until {expires}.",
+  "@bloem.admin.pushRelay.registered": { "description": "Notification settings page, push relay for the Bloem Admin app: line after a successful registration. {deployment} is the relay's id for this server; {expires} is a date and time." },
+  "bloem.admin.pushRelay.registeredToast": "Registered with the Bloem Admin app's push relay",
+  "@bloem.admin.pushRelay.registeredToast": { "description": "Notification settings page, push relay for the Bloem Admin app: toast after a successful registration." },
+  "bloem.admin.pushRelay.registerFailed": "Could not register with the Bloem Admin app's push relay",
+  "@bloem.admin.pushRelay.registerFailed": { "description": "Notification settings page, push relay for the Bloem Admin app: error toast when the registration failed; the server's reason is shown under it." }
 }

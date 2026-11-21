@@ -397,5 +397,12 @@
   "bloem.liveTv.recordingWrites.reloaded": "録画を再読み込みしました。次の録画操作の前に一覧を確認してください。",
   "bloem.liveTv.recordingWrites.scheduleFailed": "録画を予約できませんでした",
   "bloem.liveTv.recordingWrites.scheduled": "録画を予約しました",
-  "bloem.liveTv.recordingWrites.waitForReadback": "再読み込みする前に、録画の読み戻しが完了するまでお待ちください。"
+  "bloem.liveTv.recordingWrites.waitForReadback": "再読み込みする前に、録画の読み戻しが完了するまでお待ちください。",
+  "bloem.admin.pushRelay.title": "Bloem Admin アプリのプッシュリレー",
+  "bloem.admin.pushRelay.description": "Bloem Admin アプリの通知を配信します。Silo のアプリは上のモバイルプッシュのカードから通知を受け取ります。",
+  "bloem.admin.pushRelay.help": "Bloem Admin アプリに通知が届かなくなったとき（リレーがこのサーバーを無効にした後など）は、もう一度登録してください。登録が有効な場合は新しい認証情報が発行されます。",
+  "bloem.admin.pushRelay.register": "もう一度登録",
+  "bloem.admin.pushRelay.registered": "デプロイメント {deployment} として登録しました。認証情報の有効期限は {expires} です。",
+  "bloem.admin.pushRelay.registeredToast": "Bloem Admin アプリのプッシュリレーに登録しました",
+  "bloem.admin.pushRelay.registerFailed": "Bloem Admin アプリのプッシュリレーに登録できませんでした"
 }

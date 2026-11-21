@@ -398,5 +398,12 @@
   "bloem.liveTv.recordingWrites.reloaded": "Enregistrements rechargés. Vérifiez la liste avant une autre action d’enregistrement.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Impossible de programmer l’enregistrement",
   "bloem.liveTv.recordingWrites.scheduled": "Enregistrement programmé",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Attendez la relecture des enregistrements avant de recharger."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Attendez la relecture des enregistrements avant de recharger.",
+  "bloem.admin.pushRelay.title": "Relais push de l’app Bloem Admin",
+  "bloem.admin.pushRelay.description": "Transmet les notifications de l’app Bloem Admin. Les apps Silo reçoivent les leurs via la carte des notifications push mobiles ci-dessus.",
+  "bloem.admin.pushRelay.help": "Réenregistrez le serveur lorsque l’app Bloem Admin ne reçoit plus de notifications, par exemple après que le relais a désactivé ce serveur. Un enregistrement qui fonctionne reçoit de nouveaux identifiants.",
+  "bloem.admin.pushRelay.register": "Réenregistrer",
+  "bloem.admin.pushRelay.registered": "Enregistré comme déploiement {deployment}. Les identifiants sont valables jusqu’au {expires}.",
+  "bloem.admin.pushRelay.registeredToast": "Enregistré auprès du relais push de l’app Bloem Admin",
+  "bloem.admin.pushRelay.registerFailed": "Impossible de s’enregistrer auprès du relais push de l’app Bloem Admin"
 }

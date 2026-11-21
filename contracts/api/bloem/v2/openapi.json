@@ -7188,6 +7188,51 @@
         ],
         "type": "object"
       },
+      "BloemPushRelayRegistration": {
+        "additionalProperties": false,
+        "properties": {
+          "api_key_configured": {
+            "description": "Always true: a credential is stored.",
+            "type": "boolean"
+          },
+          "apns_topics": {
+            "description": "The Apple topics the relay sends for, when it says.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "deployment_id": {
+            "description": "This server's deployment at Bloem's relay.",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "When the capability expires; the server renews it before then.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "key_prefix": {
+            "description": "The stored capability's public prefix.",
+            "type": "string"
+          },
+          "relay_request_id": {
+            "description": "The relay's request id, for its support.",
+            "type": "string"
+          },
+          "relay_url": {
+            "description": "Bloem's push relay origin.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "relay_url",
+          "deployment_id",
+          "key_prefix",
+          "api_key_configured",
+          "expires_at"
+        ],
+        "type": "object"
+      },
       "BloemRevisionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -32839,6 +32884,116 @@
         "summary": "List recent additions to libraries.",
         "tags": [
           "libraries"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/notifications/push/relay/register": {
+      "post": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Takes no body. Bloem's push relay delivers the Bloem Admin app's notifications; Silo's apps go through Silo's relay, which Silo's push settings register (registerAdminNotificationRelay). A working credential is rotated, and a relay that no longer accepts it gets a fresh registration. A missing credential, or one parked because the relay disabled this deployment, is replaced by a fresh registration; that is the only way to resume the Bloem Admin app's push after the relay disabled the deployment. The result is stored under bloem.notifications.push_relay_*; Silo's relay credential is never read or changed. The response never carries the credential.",
+        "operationId": "registerBloemPlatformPushRelay",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPushRelayRegistration"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "relay_deployment_rejected: Bloem's relay refused to register this server."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "relay_rate_limited: Bloem's relay is limiting registrations; Retry-After says when to try again."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "relay_error or the relay's own code: Bloem's relay failed or could not be reached."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "push_relay_unavailable: this server has no push backing. relay_unavailable: Bloem's relay is unavailable. tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Register the server with Bloem's push relay again, or rotate its credential there.",
+        "tags": [
+          "administration"
         ]
       }
     },

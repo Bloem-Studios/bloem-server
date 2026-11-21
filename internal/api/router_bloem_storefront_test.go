@@ -35,6 +35,7 @@ func TestBloemPlatformStorefrontRoutesAreMountedBehindThePlatformGate(t *testing
 			Accounts: handlers.NewAdminHandler(nil, nil, nil), Announcements: &handlers.AdminAnnouncementsHandler{},
 			Promotions: &handlers.AdminPromotionsHandler{}, Ambience: &handlers.AmbienceHandler{}, ServeAmbienceAssets: true,
 			Domains: &handlers.BloemOrganizationDomainsHandler{}, PublicAmbience: handlers.NewBloemPublicAmbienceHandler(nil),
+			PushRelay: handlers.NewBloemPushRelayHandlerWith(nil),
 		},
 	})
 	mint := func(claims auth.AdminContextClaims) string {
@@ -74,6 +75,7 @@ func TestBloemPlatformStorefrontRoutesAreMountedBehindThePlatformGate(t *testing
 		{http.MethodPut, "/admin/platform/accounts/42/profiles/p1"},
 		{http.MethodDelete, "/admin/platform/accounts/42/devices/d1"},
 		{http.MethodDelete, "/admin/platform/accounts/42/auth-sessions/s1"},
+		{http.MethodPost, "/admin/platform/notifications/push/relay/register"},
 		{http.MethodGet, "/admin/platform/announcements"},
 		{http.MethodDelete, "/admin/platform/announcements/a1"},
 		{http.MethodGet, "/admin/platform/promotions/"},

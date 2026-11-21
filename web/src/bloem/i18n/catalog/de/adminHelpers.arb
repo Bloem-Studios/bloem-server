@@ -398,5 +398,12 @@
   "bloem.liveTv.recordingWrites.reloaded": "Aufnahmen neu geladen. Prüfe die Liste, bevor du eine weitere Aufnahmeaktion ausführst.",
   "bloem.liveTv.recordingWrites.scheduleFailed": "Die Aufnahme konnte nicht geplant werden",
   "bloem.liveTv.recordingWrites.scheduled": "Aufnahme geplant",
-  "bloem.liveTv.recordingWrites.waitForReadback": "Warte, bis die Aufnahmen zurückgelesen wurden, bevor du neu lädst."
+  "bloem.liveTv.recordingWrites.waitForReadback": "Warte, bis die Aufnahmen zurückgelesen wurden, bevor du neu lädst.",
+  "bloem.admin.pushRelay.title": "Push-Relay für die Bloem Admin-App",
+  "bloem.admin.pushRelay.description": "Stellt die Benachrichtigungen der Bloem Admin-App zu. Die Silo-Apps erhalten ihre über die Karte für mobile Push-Benachrichtigungen oben.",
+  "bloem.admin.pushRelay.help": "Registriere den Server erneut, wenn die Bloem Admin-App keine Benachrichtigungen mehr erhält, zum Beispiel nachdem das Relay diesen Server deaktiviert hat. Eine funktionierende Registrierung erhält neue Zugangsdaten.",
+  "bloem.admin.pushRelay.register": "Erneut registrieren",
+  "bloem.admin.pushRelay.registered": "Als Deployment {deployment} registriert. Die Zugangsdaten gelten bis {expires}.",
+  "bloem.admin.pushRelay.registeredToast": "Beim Push-Relay der Bloem Admin-App registriert",
+  "bloem.admin.pushRelay.registerFailed": "Registrierung beim Push-Relay der Bloem Admin-App fehlgeschlagen"
 }

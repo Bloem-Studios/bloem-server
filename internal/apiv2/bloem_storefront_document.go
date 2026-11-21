@@ -11,8 +11,8 @@ import (
 
 // The platform administration a storefront (Bloem HQ) drives with its API
 // key: reseller organizations (tenants) and their members, an account's
-// profiles, devices and sign-in sessions, and announcements
-// (api.mountBloemPlatformStorefront).
+// profiles, devices and sign-in sessions, announcements, and the server's
+// registration with Bloem's push relay (api.mountBloemPlatformStorefront).
 
 // bloemPlatformCredential401 describes a refused Platform context or API key.
 const bloemPlatformCredential401 = "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
@@ -189,6 +189,7 @@ func registerBloemStorefrontDocument(reg *Registry) {
 	registerBloemHouseholdLoginsDocument(reg)
 	registerBloemHouseholdPoolDocument(reg)
 	registerBloemAnnouncementDocument(reg)
+	registerBloemPushRelayDocument(reg)
 	registerBloemAmbienceAssetDocument(reg)
 	registerBloemOrganizationDomainsDocument(reg)
 }

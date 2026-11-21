@@ -63,6 +63,12 @@ an administrator registers it from the push settings. The first notification for
 Silo app's phone signs the server up with Silo's relay, and the credential renews
 itself from then on. Bloem's relay works the same way for the Bloem Admin app.
 
+When a relay turns a server off, the server stops sending through it and does not sign
+up again on its own. A platform administrator signs it up again: for Silo's relay with
+the mobile push card in the notification settings, as on Silo; for Bloem's relay with
+**Register again** under "Push relay for the Bloem Admin app", below Silo's settings on
+the same page. Either button also gives a working registration a new credential.
+
 Bloem servers used to keep their Bloem relay credential under the settings Silo's
 relay uses. A server's background worker checks those settings when it starts and
 every five minutes after. When they hold Bloem's credential, it moves the credential
@@ -98,7 +104,7 @@ administrator has the Bloem Admin app on an Android phone.
 
 | Who | What they decide |
 | --- | --- |
-| A platform administrator | Whether mobile push is delivered at all (the Apple and Android delivery switches), and re-registering or clearing the server's credential for Silo's relay from the push settings. |
+| A platform administrator | Whether mobile push is delivered at all (the Apple and Android delivery switches), re-registering or clearing the server's credential for Silo's relay from the push settings, and re-registering the server with Bloem's relay. |
 | Silo's maintainers | Which apps Silo's relay serves and what it shows on a lock screen. |
 | Bloem's maintainers | Which apps Bloem's relay serves and what it shows on a lock screen. |
 | A person with an app | Whether their phone registers for push, and from which app. |
@@ -114,6 +120,7 @@ administrator has the Bloem Admin app on an Android phone.
 | Relay credential (Silo's) | settings `notifications.push_relay_*` |
 | Relay credential (Bloem's) | settings `bloem.notifications.push_relay_*` |
 | Moving Bloem's credential | `AdminPushService.separateRelayCredentials` |
+| Registering with Bloem's relay again | `AdminPushService.RegisterBloemRelay`, `POST /api/bloem/v2/admin/platform/notifications/push/relay/register` |
 | Each sender reaches only its own relay | `relayOriginGuard` on Bloem's sender; `NormalizePushRelayURL` on Silo's |
 
 ## For developers
@@ -177,6 +184,28 @@ requests go to `/v1/deployments/register` (no credential, body `{}`), `/renew` a
 `/rotate`. Bloem's rotation Idempotency-Key (`bloem-rotate-` + an HMAC under the
 server's signing secret) is within Silo's relay's 255-character limit.
 
+### Registering with Bloem's relay again
+
+`POST /api/bloem/v2/admin/platform/notifications/push/relay/register`
+(`registerBloemPlatformPushRelay`, `handlers.BloemPushRelayHandler`) is the counterpart
+of Silo's `registerAdminNotificationRelay` for Bloem's relay. It needs a Platform
+administrative context or an enabled administrator's unscoped API key, takes no body,
+and answers Silo's registration shape (`relay_url`, `deployment_id`, `key_prefix`,
+`api_key_configured`, `relay_request_id`, `apns_topics`, `expires_at`) with
+`Cache-Control: no-store` and never the credential. Relay failures map as on Silo's
+route (`mapRelayRegistrationError`, `Retry-After` kept); a server with no push backing
+answers `503 push_relay_unavailable`.
+
+`AdminPushService.RegisterBloemRelay` holds the Bloem sender's renewal lock and runs
+Silo's credential functions over `bloemRelayStore`: a usable credential at the sender's
+own origin is rotated (`RotateRelayCredential`, falling back to `RegisterRelayCredential`
+on 401), and anything else (parked by `deployment_disabled`, missing, a legacy key, or
+issued by another Bloem origin) is replaced by `RegisterRelayCredential`. The origin is
+the sender's: `BloemPushRelayURL`, or `BLOEM_PUSH_RELAY_DEVELOPMENT_URL`. The web button
+is `web/src/bloem/admin/BloemPushRelaySettings.tsx`, shown in the Platform context below
+Silo's notification settings (`BloemNotificationsAdminSettings.tsx`, swapped in for the
+settings layout by `bloem-preview-plugin.ts`).
+
 ### Settings
 
 | Key | Holds |
@@ -225,6 +254,13 @@ once the older build stops the settings stay separate.
 - `internal/notifications/bloem_silo_app_push_test.go`: each Bloem notice still writes
   its inbox row and queues no push for a Silo app's Apple or Android device, while a
   Silo `request.approved` does (`TestBloemOnlyNoticesQueueNoSiloAppPush`).
+- `internal/notifications/bloem_push_relay_register_test.go`: after `deployment_disabled`
+  the admin app's pushes stay off until `RegisterBloemRelay`, which registers, stores
+  Bloem's new credential and resumes them; rotation of a working credential, the 401
+  fallback, a failed relay leaving the parked credential; Silo's relay and credential
+  untouched throughout. `internal/api/handlers/bloem_push_relay_test.go` pins the route's
+  answer and error mapping; the platform gate is in
+  `TestBloemPlatformStorefrontRoutesAreMountedBehindThePlatformGate`.
 - `internal/notifications/bloem_relay_credentials_test.go`: Silo's default is Silo's
   relay and Silo's path refuses Bloem's origin.
 - `internal/backup/bloem_push_relay_restore_test.go`: classification, and

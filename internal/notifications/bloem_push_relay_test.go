@@ -56,6 +56,28 @@ type fakePushRelay struct {
 
 	mu    sync.Mutex
 	calls []twoRelayCall
+	// refusals answers a path with a relay error instead (refuse).
+	refusals map[string]relayRefusal
+}
+
+type relayRefusal struct {
+	status int
+	code   string
+}
+
+// refuse makes the relay answer path with status and the relay error code;
+// a zero status answers it normally again.
+func (r *fakePushRelay) refuse(path string, status int, code string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.refusals == nil {
+		r.refusals = map[string]relayRefusal{}
+	}
+	if status == 0 {
+		delete(r.refusals, path)
+		return
+	}
+	r.refusals[path] = relayRefusal{status: status, code: code}
 }
 
 func newFakePushRelay(t *testing.T, origin, deployment string) *fakePushRelay {
@@ -65,8 +87,14 @@ func newFakePushRelay(t *testing.T, origin, deployment string) *fakePushRelay {
 		raw, _ := io.ReadAll(r.Body)
 		relay.mu.Lock()
 		relay.calls = append(relay.calls, twoRelayCall{Host: r.Host, Path: r.URL.Path, Authorization: r.Header.Get("Authorization"), Body: string(raw)})
+		refusal, refused := relay.refusals[r.URL.Path]
 		relay.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
+		if refused {
+			w.WriteHeader(refusal.status)
+			_, _ = fmt.Fprintf(w, `{"error":{"code":%q,"message":"refused by the test relay"}}`, refusal.code)
+			return
+		}
 		switch r.URL.Path {
 		case relayRegisterPath, relayRenewPath, relayRotatePath:
 			// Each relay issues capabilities under its own origin.

@@ -13992,6 +13992,64 @@
       "value": "Oui"
     }
   ],
+  "bloem.admin.pushRelay.description": [
+    {
+      "type": 0,
+      "value": "Transmet les notifications de l’app Bloem Admin. Les apps Silo reçoivent les leurs via la carte des notifications push mobiles ci-dessus."
+    }
+  ],
+  "bloem.admin.pushRelay.help": [
+    {
+      "type": 0,
+      "value": "Réenregistrez le serveur lorsque l’app Bloem Admin ne reçoit plus de notifications, par exemple après que le relais a désactivé ce serveur. Un enregistrement qui fonctionne reçoit de nouveaux identifiants."
+    }
+  ],
+  "bloem.admin.pushRelay.register": [
+    {
+      "type": 0,
+      "value": "Réenregistrer"
+    }
+  ],
+  "bloem.admin.pushRelay.registerFailed": [
+    {
+      "type": 0,
+      "value": "Impossible de s’enregistrer auprès du relais push de l’app Bloem Admin"
+    }
+  ],
+  "bloem.admin.pushRelay.registered": [
+    {
+      "type": 0,
+      "value": "Enregistré comme déploiement "
+    },
+    {
+      "type": 1,
+      "value": "deployment"
+    },
+    {
+      "type": 0,
+      "value": ". Les identifiants sont valables jusqu’au "
+    },
+    {
+      "type": 1,
+      "value": "expires"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "bloem.admin.pushRelay.registeredToast": [
+    {
+      "type": 0,
+      "value": "Enregistré auprès du relais push de l’app Bloem Admin"
+    }
+  ],
+  "bloem.admin.pushRelay.title": [
+    {
+      "type": 0,
+      "value": "Relais push de l’app Bloem Admin"
+    }
+  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

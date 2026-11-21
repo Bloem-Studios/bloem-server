@@ -398,5 +398,12 @@
   "bloem.liveTv.recordingWrites.reloaded": "录像已重新加载。请先查看列表，再执行其他录像操作。",
   "bloem.liveTv.recordingWrites.scheduleFailed": "安排录像失败。",
   "bloem.liveTv.recordingWrites.scheduled": "已安排录像",
-  "bloem.liveTv.recordingWrites.waitForReadback": "请等待录像回读完成后再重新加载。"
+  "bloem.liveTv.recordingWrites.waitForReadback": "请等待录像回读完成后再重新加载。",
+  "bloem.admin.pushRelay.title": "Bloem Admin 应用的推送中继",
+  "bloem.admin.pushRelay.description": "负责发送 Bloem Admin 应用的通知。Silo 应用通过上方的移动推送卡片接收通知。",
+  "bloem.admin.pushRelay.help": "当 Bloem Admin 应用收不到通知时（例如中继停用了此服务器之后），请重新注册。注册仍有效时会获得新的凭据。",
+  "bloem.admin.pushRelay.register": "重新注册",
+  "bloem.admin.pushRelay.registered": "已注册为部署 {deployment}。凭据有效期至 {expires}。",
+  "bloem.admin.pushRelay.registeredToast": "已在 Bloem Admin 应用的推送中继注册",
+  "bloem.admin.pushRelay.registerFailed": "无法在 Bloem Admin 应用的推送中继注册"
 }

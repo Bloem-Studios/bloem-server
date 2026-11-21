@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 972 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 298 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 299 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher
@@ -178,6 +178,7 @@ security declaration and the wire reference before sending credentials or mutati
 | `PUT /api/bloem/v2/admin/platform/native-storage/sources/{source_key}/configuration` | `replaceConfigurationBloemPlatformNativeStorage` | Replace complete configuration only while the source namespace is empty. |
 | `POST /api/bloem/v2/admin/platform/native-storage/sources/{source_key}/credentials` | `rotateCredentialsBloemPlatformNativeStorage` | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
 | `GET /api/bloem/v2/admin/platform/new-arrivals` | `getBloemNewArrivals` | List recent additions to libraries. |
+| `POST /api/bloem/v2/admin/platform/notifications/push/relay/register` | `registerBloemPlatformPushRelay` | Register the server with Bloem's push relay again, or rotate its credential there. |
 | `GET /api/bloem/v2/admin/platform/organizations/` | `listBloemPlatformOrganizations` | Page organizations with current summary counts. |
 | `POST /api/bloem/v2/admin/platform/organizations/` | `createBloemPlatformOrganization` | Create an organization for an existing owner account. |
 | `GET /api/bloem/v2/admin/platform/organizations/{id}/` | `getBloemPlatformOrganization` | Read an organization summary. |

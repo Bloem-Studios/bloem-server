@@ -98,6 +98,11 @@ const importerModules: Record<string, Record<string, string>> = {
   },
   // Bloem's admin pages have Bloem titles.
   "lib/documentTitle.ts": { "i18n/index.ts": "adapters/i18nWithBloem.ts" },
+  // The notification settings page adds the push relay for the Bloem Admin app.
+  "pages/admin-settings/AdminSettingsLayout.tsx": {
+    "pages/admin-settings/NotificationsAdminSettings.tsx":
+      "../admin/BloemNotificationsAdminSettings.tsx",
+  },
 };
 export function bloemPreview(): Plugin {
   let src = "";

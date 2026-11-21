@@ -13070,6 +13070,64 @@
       "value": "はい"
     }
   ],
+  "bloem.admin.pushRelay.description": [
+    {
+      "type": 0,
+      "value": "Bloem Admin アプリの通知を配信します。Silo のアプリは上のモバイルプッシュのカードから通知を受け取ります。"
+    }
+  ],
+  "bloem.admin.pushRelay.help": [
+    {
+      "type": 0,
+      "value": "Bloem Admin アプリに通知が届かなくなったとき（リレーがこのサーバーを無効にした後など）は、もう一度登録してください。登録が有効な場合は新しい認証情報が発行されます。"
+    }
+  ],
+  "bloem.admin.pushRelay.register": [
+    {
+      "type": 0,
+      "value": "もう一度登録"
+    }
+  ],
+  "bloem.admin.pushRelay.registerFailed": [
+    {
+      "type": 0,
+      "value": "Bloem Admin アプリのプッシュリレーに登録できませんでした"
+    }
+  ],
+  "bloem.admin.pushRelay.registered": [
+    {
+      "type": 0,
+      "value": "デプロイメント "
+    },
+    {
+      "type": 1,
+      "value": "deployment"
+    },
+    {
+      "type": 0,
+      "value": " として登録しました。認証情報の有効期限は "
+    },
+    {
+      "type": 1,
+      "value": "expires"
+    },
+    {
+      "type": 0,
+      "value": " です。"
+    }
+  ],
+  "bloem.admin.pushRelay.registeredToast": [
+    {
+      "type": 0,
+      "value": "Bloem Admin アプリのプッシュリレーに登録しました"
+    }
+  ],
+  "bloem.admin.pushRelay.title": [
+    {
+      "type": 0,
+      "value": "Bloem Admin アプリのプッシュリレー"
+    }
+  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

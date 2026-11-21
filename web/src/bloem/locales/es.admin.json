@@ -13980,6 +13980,64 @@
       "value": "Sí"
     }
   ],
+  "bloem.admin.pushRelay.description": [
+    {
+      "type": 0,
+      "value": "Entrega las notificaciones de la app Bloem Admin. Las apps de Silo reciben las suyas mediante la tarjeta de notificaciones push móviles de arriba."
+    }
+  ],
+  "bloem.admin.pushRelay.help": [
+    {
+      "type": 0,
+      "value": "Vuelve a registrar el servidor cuando la app Bloem Admin deje de recibir notificaciones, por ejemplo después de que el relé haya desactivado este servidor. Un registro que funciona recibe credenciales nuevas."
+    }
+  ],
+  "bloem.admin.pushRelay.register": [
+    {
+      "type": 0,
+      "value": "Volver a registrar"
+    }
+  ],
+  "bloem.admin.pushRelay.registerFailed": [
+    {
+      "type": 0,
+      "value": "No se pudo registrar en el relé push de la app Bloem Admin"
+    }
+  ],
+  "bloem.admin.pushRelay.registered": [
+    {
+      "type": 0,
+      "value": "Registrado como despliegue "
+    },
+    {
+      "type": 1,
+      "value": "deployment"
+    },
+    {
+      "type": 0,
+      "value": ". Las credenciales son válidas hasta "
+    },
+    {
+      "type": 1,
+      "value": "expires"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "bloem.admin.pushRelay.registeredToast": [
+    {
+      "type": 0,
+      "value": "Registrado en el relé push de la app Bloem Admin"
+    }
+  ],
+  "bloem.admin.pushRelay.title": [
+    {
+      "type": 0,
+      "value": "Relé push de la app Bloem Admin"
+    }
+  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

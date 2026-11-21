@@ -15118,6 +15118,64 @@
       "value": "نعم"
     }
   ],
+  "bloem.admin.pushRelay.description": [
+    {
+      "type": 0,
+      "value": "يوصل إشعارات تطبيق Bloem Admin. تتلقى تطبيقات Silo إشعاراتها عبر بطاقة الإشعارات الفورية للجوال أعلاه."
+    }
+  ],
+  "bloem.admin.pushRelay.help": [
+    {
+      "type": 0,
+      "value": "سجّل الخادم مرة أخرى عندما يتوقف تطبيق Bloem Admin عن تلقي الإشعارات، مثلًا بعد أن يعطّل المُرحِّل هذا الخادم. يحصل التسجيل الذي يعمل على بيانات اعتماد جديدة."
+    }
+  ],
+  "bloem.admin.pushRelay.register": [
+    {
+      "type": 0,
+      "value": "التسجيل مرة أخرى"
+    }
+  ],
+  "bloem.admin.pushRelay.registerFailed": [
+    {
+      "type": 0,
+      "value": "تعذّر التسجيل لدى مُرحِّل الإشعارات لتطبيق Bloem Admin"
+    }
+  ],
+  "bloem.admin.pushRelay.registered": [
+    {
+      "type": 0,
+      "value": "تم التسجيل بصفته النشر "
+    },
+    {
+      "type": 1,
+      "value": "deployment"
+    },
+    {
+      "type": 0,
+      "value": ". بيانات الاعتماد صالحة حتى "
+    },
+    {
+      "type": 1,
+      "value": "expires"
+    },
+    {
+      "type": 0,
+      "value": "."
+    }
+  ],
+  "bloem.admin.pushRelay.registeredToast": [
+    {
+      "type": 0,
+      "value": "تم التسجيل لدى مُرحِّل الإشعارات لتطبيق Bloem Admin"
+    }
+  ],
+  "bloem.admin.pushRelay.title": [
+    {
+      "type": 0,
+      "value": "مُرحِّل الإشعارات لتطبيق Bloem Admin"
+    }
+  ],
   "bloem.admin.requests.actionUnavailable": [
     {
       "type": 0,

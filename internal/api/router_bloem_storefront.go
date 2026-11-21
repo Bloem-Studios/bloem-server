@@ -29,6 +29,8 @@ type bloemPlatformStorefrontHandlers struct {
 	// ambience registry itself, not only a handler that answers 503.
 	ServeAmbienceAssets bool
 	DB                  *pgxpool.Pool
+	// PushRelay registers the server with Bloem's push relay again.
+	PushRelay *handlers.BloemPushRelayHandler
 }
 
 // newBloemPlatformStorefrontHandlers builds them from the same pieces as
@@ -43,6 +45,7 @@ func newBloemPlatformStorefrontHandlers(deps Dependencies, admin *handlers.Admin
 	}
 	if deps.Notifications != nil {
 		out.Announcements = handlers.NewAdminAnnouncementsHandler(deps.Notifications)
+		out.PushRelay = handlers.NewBloemPushRelayHandler(deps.Notifications.BloemAdminPush())
 	}
 	if deps.OrganizationDomainStore != nil && deps.OrganizationDomains != nil {
 		out.Domains = handlers.NewBloemOrganizationDomainsHandler(deps.OrganizationDomainStore, deps.OrganizationDomains, deps.BrandingService)
@@ -57,7 +60,8 @@ func newBloemPlatformStorefrontHandlers(deps Dependencies, admin *handlers.Admin
 // platform administration that a storefront (Bloem HQ) needs: reseller
 // organizations (tenants) and their members, creating and updating an account
 // on a plan, an account's profiles, devices and sign-in sessions,
-// announcements, campaigns and seasonal packs. Each
+// announcements, campaigns, seasonal packs and the server's registration
+// with Bloem's push relay. Each
 // route takes a Platform administrative context or an enabled administrator's
 // unscoped API key. The handlers are Silo's own admin handlers, which its
 // retired v1 admin routes used.
@@ -132,6 +136,11 @@ func mountBloemPlatformStorefront(r chi.Router, h bloemPlatformStorefrontHandler
 			r.Get("/admin/platform/announcements", announcements.HandleList)
 			r.Post("/admin/platform/announcements", announcements.HandleCreate)
 			r.Delete("/admin/platform/announcements/{id}", announcements.HandleDelete)
+		}
+		if relay := h.PushRelay; relay != nil {
+			// Bloem's relay, for the Bloem Admin app; Silo's push settings
+			// keep Silo's relay (docs/architecture/bloem-push-relays.md).
+			r.Post("/admin/platform/notifications/push/relay/register", relay.HandleRegister)
 		}
 		if promotion := h.Promotions; promotion != nil {
 			r.Route("/admin/platform/promotions", func(r chi.Router) {
