@@ -30,6 +30,7 @@ kept in a 0600 file in the work directory, which is removed afterwards unless
 
 import argparse
 import base64
+import hashlib
 import json
 import os
 import re
@@ -414,6 +415,16 @@ def seed(server, creds, movies_dir, shows_dir):
     current = admin.call("GET", "/api/v2/admin/rate-limits/config", expect=(200,))
     admin.call("PATCH", "/api/v2/admin/rate-limits/config", body={"enabled": False},
                headers={"If-Match": current["headers"].get("etag", "*")}, expect=(200, 204))
+    # The replay registers Silo-app push devices as the apps do. With mobile
+    # push delivery off, as an operator can set it, a notification fanned out
+    # to one ends at the server and never reaches a real push relay.
+    current = admin.call("GET", "/api/v2/admin/settings", expect=(200,))
+    admin.call("PUT", "/api/v2/admin/settings", body={"values": {
+        "notifications.apple_push_delivery_enabled": "false", "notifications.android_push_delivery_enabled": "false",
+    }}, headers={"If-Match": current["headers"].get("etag", "*")}, expect=(200,))
+    for persona in PERSONAS:
+        # Each persona's device gets its own invented APNs token (hex).
+        ctx[f"push_apns_token:{persona}"] = hashlib.sha256(f"silo-client-compat:{persona}".encode()).hexdigest()
 
     for kind, name, path in (("movies", "Invented Movies", movies_dir), ("series", "Invented Shows", shows_dir)):
         r = admin.call("POST", "/api/v2/libraries", body={"name": name, "type": kind, "paths": [str(path)]},

@@ -225,5 +225,32 @@
     "note": "the events socket a Silo app opens with the ticket; compares the upgrade and the hello frame"
    }
   ]
+ },
+ "POST /api/v2/notifications/push/devices": {
+  "headers": {
+   "X-Push-Installation-Key": "c2lsby1jbGllbnQtY29tcGF0IHB1c2gga2V5IDAwMDE",
+   "X-Push-Generation": "1"
+  },
+  "body": {
+   "device_id": "compat-android-${persona}",
+   "platform": "android",
+   "token": "compat-fcm-token-${persona}-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "push_mode": "private_push"
+  },
+  "note": "a Silo Android app's ordered registration: an FCM token, the installation key and its first generation"
+ },
+ "POST /api/v2/devices/push/apple": {
+  "headers": {
+   "X-Push-Installation-Key": "c2lsby1jbGllbnQtY29tcGF0IHB1c2gga2V5IDAwMDE",
+   "X-Push-Generation": "1"
+  },
+  "body": {
+   "device_id": "compat-apple-${persona}",
+   "apns_token": "${push_apns_token}",
+   "apns_topic": "org.siloserver.silo",
+   "apns_environment": "sandbox",
+   "push_mode": "private_push"
+  },
+  "note": "a Silo iOS app's ordered registration with Silo's topic; seed() turns push delivery off, so nothing reaches a relay"
  }
 }
