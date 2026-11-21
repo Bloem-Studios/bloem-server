@@ -388,7 +388,8 @@ func (l *DecisionLogger) insertBatch(ctx context.Context, entries []Entry) error
 			b.WriteString(", ")
 		}
 		base := i * 16
-		fmt.Fprintf(&b, "($%d, COALESCE($%d, public.bloem_default_organization_id()), $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d::jsonb, $%d::jsonb, $%d)",
+		// Bloem: a membership deleted while its decisions were buffered is stored as none (ON DELETE SET NULL).
+		fmt.Fprintf(&b, "($%d, COALESCE($%d, public.bloem_default_organization_id()), (SELECT m.id FROM organization_memberships m WHERE m.id = $%d), $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d::jsonb, $%d::jsonb, $%d)",
 			base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9, base+10, base+11, base+12, base+13, base+14, base+15, base+16)
 		args = append(args,
 			e.Timestamp,
