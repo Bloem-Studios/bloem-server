@@ -3194,6 +3194,14 @@
       "reason": "OpenAPI-only declaration of the organization support routes (an organization administrator's password reset, sessions, devices, profiles, streams and break-glass support access). Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
     },
     {
+      "type": "internal/api/handlers.BloemAdminLiveActivityRequest",
+      "reason": "Wire type of the admin-app Live Activity routes (/api/bloem/v2/admin/push/devices/{device_id}/live-activities and live-activity-start), called only by Bloem's staff admin app with an administrator's sign-in; the streaming clients this generator serves never register Live Activities or decode them."
+    },
+    {
+      "type": "internal/api/handlers.BloemAdminLiveStartRequest",
+      "reason": "Wire type of the admin-app Live Activity routes (/api/bloem/v2/admin/push/devices/{device_id}/live-activities and live-activity-start), called only by Bloem's staff admin app with an administrator's sign-in; the streaming clients this generator serves never register Live Activities or decode them."
+    },
+    {
       "type": "internal/api/handlers.BloemAdminPushContent",
       "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
     },

@@ -16,7 +16,7 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 - [Campaign and seasonal asset storage](../../architecture/bloem-campaign-asset-storage.md)
 - [Admin app push notifications](../../architecture/bloem-admin-push.md)
 
-## Operations (30)
+## Operations (33)
 
 | Method and path | Summary |
 | --- | --- |
@@ -39,6 +39,9 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 | [`POST /api/bloem/v2/admin/push/devices`](#post-apibloemv2adminpushdevices) | Register an admin app installation for push. |
 | [`DELETE /api/bloem/v2/admin/push/devices/{device_id}`](#delete-apibloemv2adminpushdevicesdevice_id) | Remove one of the account's devices. |
 | [`PATCH /api/bloem/v2/admin/push/devices/{device_id}/kinds`](#patch-apibloemv2adminpushdevicesdevice_idkinds) | Switch notification kinds on or off for one device. |
+| [`POST /api/bloem/v2/admin/push/devices/{device_id}/live-activities`](#post-apibloemv2adminpushdevicesdevice_idlive-activities) | Register a scan or backup Live Activity the app runs. |
+| [`DELETE /api/bloem/v2/admin/push/devices/{device_id}/live-activities/{activity_id}`](#delete-apibloemv2adminpushdevicesdevice_idlive-activitiesactivity_id) | Forget a Live Activity that ended. |
+| [`PUT /api/bloem/v2/admin/push/devices/{device_id}/live-activity-start`](#put-apibloemv2adminpushdevicesdevice_idlive-activity-start) | Store or clear the device's push-to-start token. |
 | [`POST /api/bloem/v2/admin/push/devices/{device_id}/retire`](#post-apibloemv2adminpushdevicesdevice_idretire) | Stop pushes to a device using its display token. |
 | [`PUT /api/bloem/v2/admin/push/devices/{device_id}/widgets`](#put-apibloemv2adminpushdevicesdevice_idwidgets) | Report the widgets the app has placed. |
 | [`GET /api/bloem/v2/ambience`](#get-apibloemv2ambience) | Read seasonal presentation for the current verified tenant viewer. |
@@ -453,6 +456,79 @@ Request body (required, `application/json`): [`BloemAdminPushKindsRequest`](#blo
 | 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: a kind id is unknown. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
 
+### `POST /api/bloem/v2/admin/push/devices/{device_id}/live-activities`
+
+Register a scan or backup Live Activity the app runs.
+
+Operation ID: `registerBloemAdminLiveActivity`.
+Credentials: `bloemAccountSession`.
+
+Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. The server builds each update from ids, counts, state words and Unix-second times only; names come from the app. Use only on a server that lists admin_live_activities_v1. On iOS send the activity's push token and its environment; the server sends start, update and end events through the push relay's live_activity mode: at most one update every 30 seconds with the newest state, a change of phase and the end at once, and nothing after the end or 8 hours after registration. On Android send no token; the server sends an ordinary push whose delivery id is {device_id}.live-{activity_id}-{unix seconds}, and the app re-reads the job and redraws its ongoing notification. Registering the same activity_id again replaces its token. A device keeps at most five activities; a sixth replaces the oldest.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `device_id` | path | string | yes | The device_id a registration returned. |
+
+Request body (required, `application/json`): [`BloemAdminLiveActivityRequest`](#bloemadminliveactivityrequest).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 201 |  | Created |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: the body is not valid JSON for this route. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: no valid access token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required or account_session_required, as for device registration. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no device with this id belongs to the account. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: a field is missing or malformed, the platform does not match the device, or the activity_id belongs to another device. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery or the operator's Live Activities switch is off on this server, or it has no push backing. |
+
+### `DELETE /api/bloem/v2/admin/push/devices/{device_id}/live-activities/{activity_id}`
+
+Forget a Live Activity that ended.
+
+Operation ID: `deleteBloemAdminLiveActivity`.
+Credentials: `bloemAccountSession`.
+
+Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Deletes the activity and its token; the server sends it nothing more. Call it when the activity ends on the phone. An activity the server no longer has is not an error.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `device_id` | path | string | yes | The device_id a registration returned. |
+| `activity_id` | path | string (uuid) | yes | The activity_id the app registered. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: no valid access token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required or account_session_required, as for device registration. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no device with this id belongs to the account. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: activity_id is not a UUID. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery or the operator's Live Activities switch is off on this server, or it has no push backing. |
+
+### `PUT /api/bloem/v2/admin/push/devices/{device_id}/live-activity-start`
+
+Store or clear the device's push-to-start token.
+
+Operation ID: `setBloemAdminLiveActivityStart`.
+Credentials: `bloemAccountSession`.
+
+Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. The server builds each update from ids, counts, state words and Unix-second times only; names come from the app. Apple devices on iOS 17.2 or later. With a token and kinds, the server may start an activity on this device: for a scan that has run 60 seconds, and for a backup at once, and only while the device has the matching alert kind switched on (admin.scan_failed for scans, admin.backup_failed for backups). Each job is started once per device. Send token null and no kinds when the person turns the setting off; the server then starts nothing. Clearing works with the operator's switch off.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `device_id` | path | string | yes | The device_id a registration returned. |
+
+Request body (required, `application/json`): [`BloemAdminLiveStartRequest`](#bloemadminlivestartrequest).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: the body is not valid JSON for this route. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: no valid access token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required or account_session_required, as for device registration. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no device with this id belongs to the account. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: the token is malformed, a kind is unknown, kinds were sent without a token, or the device is not an Apple device. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery or the operator's Live Activities switch is off on this server, or it has no push backing. |
+
 ### `POST /api/bloem/v2/admin/push/devices/{device_id}/retire`
 
 Stop pushes to a device using its display token.
@@ -784,6 +860,24 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | --- | --- | --- | --- |
 | `banner_url` | string |  |  |
 | `sprites` | array of string |  |  |
+
+### BloemAdminLiveActivityRequest
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `activity_id` | string (uuid) | yes | A UUID the app makes for the activity. Registering the same id again replaces its push token, for example after the token rotated. |
+| `environment` | string: `production`, `sandbox` |  | The APNs environment of the token. Required for ios; omit for android. |
+| `kind` | string: `scan`, `backup` | yes |  |
+| `platform` | string: `ios`, `android` | yes | ios for an ActivityKit Live Activity, android for an ongoing notification. Must match the device's platform. |
+| `push_token` | string |  | The activity's APNs push token, hex (64 to 200 characters). Required for ios; omit for android. |
+| `subject_id` | string |  | The library id of a scan. Omit for a backup. |
+
+### BloemAdminLiveStartRequest
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `kinds` | array of string: `scan`, `backup` | yes | The jobs the person allowed the server to start an activity for. Must be empty when token is null. |
+| `token` | string or null | yes | The device's ActivityKit push-to-start token, hex (64 to 200 characters), or null to clear it. Apple devices only. |
 
 ### BloemAdminPushContent
 

@@ -25,6 +25,8 @@ func bloemAdminPushHandler(deps Dependencies) *handlers.BloemAdminPushHandler {
 // Registration, kind switches and removal need an administrator's login session.
 // Reading a notification and retiring a device carry the device's display token
 // and no login: the iOS notification extension runs while the phone is locked.
+// The Live Activity routes are mounted with the backend that keeps them, and
+// admin_live_activities_v1 is advertised only while the operator's switch is on.
 func mountBloemAdminPush(r chi.Router, h *handlers.BloemAdminPushHandler, system *handlers.BloemSystemHandler, authMW *apimw.AuthMiddleware) {
 	if h == nil || !h.Available() || authMW == nil {
 		return
@@ -35,10 +37,18 @@ func mountBloemAdminPush(r chi.Router, h *handlers.BloemAdminPushHandler, system
 		r.Patch("/admin/push/devices/{device_id}/kinds", h.HandleSetKinds)
 		r.Put("/admin/push/devices/{device_id}/widgets", h.HandleSetWidgets)
 		r.Delete("/admin/push/devices/{device_id}", h.HandleDelete)
+		if h.LiveAvailable() {
+			r.Post("/admin/push/devices/{device_id}/live-activities", h.HandleRegisterLiveActivity)
+			r.Delete("/admin/push/devices/{device_id}/live-activities/{activity_id}", h.HandleEndLiveActivity)
+			r.Put("/admin/push/devices/{device_id}/live-activity-start", h.HandleSetLiveStart)
+		}
 	})
 	r.Post("/admin/push/devices/{device_id}/retire", h.HandleRetire)
 	r.Get("/admin/push/content/{delivery_id}", h.HandleContent)
 	if system != nil {
 		system.SetAdminPushReadiness(h.Ready)
+		if h.LiveAvailable() {
+			system.SetAdminLiveActivitiesReadiness(h.LiveReady)
+		}
 	}
 }

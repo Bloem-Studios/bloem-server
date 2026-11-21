@@ -1746,6 +1746,81 @@
         ],
         "type": "object"
       },
+      "BloemAdminLiveActivityRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "activity_id": {
+            "description": "A UUID the app makes for the activity. Registering the same id again replaces its push token, for example after the token rotated.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "environment": {
+            "description": "The APNs environment of the token. Required for ios; omit for android.",
+            "enum": [
+              "production",
+              "sandbox"
+            ],
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "scan",
+              "backup"
+            ],
+            "type": "string"
+          },
+          "platform": {
+            "description": "ios for an ActivityKit Live Activity, android for an ongoing notification. Must match the device's platform.",
+            "enum": [
+              "ios",
+              "android"
+            ],
+            "type": "string"
+          },
+          "push_token": {
+            "description": "The activity's APNs push token, hex (64 to 200 characters). Required for ios; omit for android.",
+            "type": "string"
+          },
+          "subject_id": {
+            "description": "The library id of a scan. Omit for a backup.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_id",
+          "kind",
+          "platform"
+        ],
+        "type": "object"
+      },
+      "BloemAdminLiveStartRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "kinds": {
+            "description": "The jobs the person allowed the server to start an activity for. Must be empty when token is null.",
+            "items": {
+              "enum": [
+                "scan",
+                "backup"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "token": {
+            "description": "The device's ActivityKit push-to-start token, hex (64 to 200 characters), or null to clear it. Apple devices only.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "token",
+          "kinds"
+        ],
+        "type": "object"
+      },
       "BloemAdminPushContent": {
         "additionalProperties": false,
         "properties": {
@@ -40956,6 +41031,336 @@
           }
         ],
         "summary": "Switch notification kinds on or off for one device.",
+        "tags": [
+          "admin-push"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/push/devices/{device_id}/live-activities": {
+      "post": {
+        "description": "Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. The server builds each update from ids, counts, state words and Unix-second times only; names come from the app. Use only on a server that lists admin_live_activities_v1. On iOS send the activity's push token and its environment; the server sends start, update and end events through the push relay's live_activity mode: at most one update every 30 seconds with the newest state, a change of phase and the end at once, and nothing after the end or 8 hours after registration. On Android send no token; the server sends an ordinary push whose delivery id is {device_id}.live-{activity_id}-{unix seconds}, and the app re-reads the job and redraws its ongoing notification. Registering the same activity_id again replaces its token. A device keeps at most five activities; a sixth replaces the oldest.",
+        "operationId": "registerBloemAdminLiveActivity",
+        "parameters": [
+          {
+            "description": "The device_id a registration returned.",
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "description": "The device_id a registration returned.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemAdminLiveActivityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: the body is not valid JSON for this route."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unauthorized: no valid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_required or account_session_required, as for device registration."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no device with this id belongs to the account."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_registration: a field is missing or malformed, the platform does not match the device, or the activity_id belongs to another device."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_push_unavailable: push delivery or the operator's Live Activities switch is off on this server, or it has no push backing."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Register a scan or backup Live Activity the app runs.",
+        "tags": [
+          "admin-push"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/push/devices/{device_id}/live-activities/{activity_id}": {
+      "delete": {
+        "description": "Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Deletes the activity and its token; the server sends it nothing more. Call it when the activity ends on the phone. An activity the server no longer has is not an error.",
+        "operationId": "deleteBloemAdminLiveActivity",
+        "parameters": [
+          {
+            "description": "The device_id a registration returned.",
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "description": "The device_id a registration returned.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "The activity_id the app registered.",
+            "in": "path",
+            "name": "activity_id",
+            "required": true,
+            "schema": {
+              "description": "The activity_id the app registered.",
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unauthorized: no valid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_required or account_session_required, as for device registration."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no device with this id belongs to the account."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_registration: activity_id is not a UUID."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_push_unavailable: push delivery or the operator's Live Activities switch is off on this server, or it has no push backing."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Forget a Live Activity that ended.",
+        "tags": [
+          "admin-push"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/push/devices/{device_id}/live-activity-start": {
+      "put": {
+        "description": "Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. The server builds each update from ids, counts, state words and Unix-second times only; names come from the app. Apple devices on iOS 17.2 or later. With a token and kinds, the server may start an activity on this device: for a scan that has run 60 seconds, and for a backup at once, and only while the device has the matching alert kind switched on (admin.scan_failed for scans, admin.backup_failed for backups). Each job is started once per device. Send token null and no kinds when the person turns the setting off; the server then starts nothing. Clearing works with the operator's switch off.",
+        "operationId": "setBloemAdminLiveActivityStart",
+        "parameters": [
+          {
+            "description": "The device_id a registration returned.",
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "description": "The device_id a registration returned.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemAdminLiveStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: the body is not valid JSON for this route."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unauthorized: no valid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_required or account_session_required, as for device registration."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no device with this id belongs to the account."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_registration: the token is malformed, a kind is unknown, kinds were sent without a token, or the device is not an Apple device."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_push_unavailable: push delivery or the operator's Live Activities switch is off on this server, or it has no push backing."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Store or clear the device's push-to-start token.",
         "tags": [
           "admin-push"
         ]

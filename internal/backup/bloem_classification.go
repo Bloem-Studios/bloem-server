@@ -73,7 +73,7 @@ var bloemServerStateTables = strings.Fields(`
 	admin_people_bulk_jobs admin_people_bulk_job_receipts admin_people_bulk_targets admin_people_selections
 	bloem_audiobook_request_acquisitions bloem_audiobook_request_decisions bloem_ebook_request_dispatches
 	bloem_ebook_request_policy_epoch bloem_library_location_state bloem_livetv_xtream_leases
-	bloem_admin_push_attempts bloem_admin_push_deliveries
+	bloem_admin_push_attempts bloem_admin_push_deliveries bloem_admin_live_starts
 	bloem_org_session_revocations bloem_preview_event_counts bloem_preview_personal_presentation bloem_remote_sources
 	bloem_preview_ticket_uses bloem_silo_switching
 	bloem_storage_audio_probes bloem_storage_audio_staged_tracks bloem_storage_change_tokens bloem_storage_entries
@@ -123,6 +123,9 @@ var bloemSecretTables = []secretTable{
 		owned:    ownerCarried(columnUserID),
 		describe: `format('admin app push device %s (account %s)', r.id, r.user_id)`,
 	}},
+	// An admin app's Live Activity lives at most 8 hours and its push token
+	// reaches a phone without a session: a restored one would be pushed to again.
+	{name: "bloem_admin_live_activities", handling: secretLeftOut, why: "admin app Live Activity push tokens, which live at most 8 hours"},
 	// A native storage instance's settings hold its outside service's keys,
 	// encrypted bound to the instance id and key, which the carry keeps.
 	{name: "bloem_storage_installation_configs", handling: secretCarried, why: "native storage instance settings, with the keys the storage plugin presents to its outside service", carry: &carrySpec{
@@ -232,8 +235,9 @@ var bloemExcludedUserTables = map[string]string{
 }
 
 // bloemServerSpecificSettings describe this server: where it records Live
-// TV and its hardware.
-var bloemServerSpecificSettings = strings.Fields(`livetv.dvr_path livetv.hw_accel livetv.hw_decode`)
+// TV and its hardware, and whether its push relay has Live Activities.
+var bloemServerSpecificSettings = strings.Fields(`livetv.dvr_path livetv.hw_accel livetv.hw_decode
+	bloem.notifications.admin_live_activities_enabled`)
 
 // bloemRestoredSettings are restored as the backup has them: how Live TV
 // plays and transcodes.
@@ -260,4 +264,7 @@ var bloemSettingRules = map[string]settingRule{
 	"livetv.dvr_path":                    {page: pageLiveTV, class: SettingServerSpecific},
 	"livetv.hw_accel":                    {page: pageLiveTV, class: SettingServerSpecific},
 	"livetv.hw_decode":                   {page: pageLiveTV, class: SettingServerSpecific},
+	// Whether this server's push relay has the live_activity mode, as the relay
+	// settings beside it are this server's.
+	"bloem.notifications.admin_live_activities_enabled": {page: "notifications", class: SettingServerSpecific},
 }

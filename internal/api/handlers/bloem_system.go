@@ -34,6 +34,8 @@ type BloemSystemHandler struct {
 	// adminPushReady reports whether the admin push routes are mounted and the
 	// operator has push delivery on. Nil means the routes are not mounted.
 	adminPushReady func(context.Context) bool
+	// adminLiveReady reports whether the operator has admin Live Activities on.
+	adminLiveReady func(context.Context) bool
 }
 
 func NewBloemSystemHandler(organizations BloemOrganizationStore) *BloemSystemHandler {
@@ -228,6 +230,9 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 		// The admin apps show their push settings only on a server that says so.
 		featureTokens = append(featureTokens, notifications.AdminPushCapabilityToken, notifications.AdminWidgetWakesCapabilityToken,
 			notifications.AdminWidgetHealthCapabilityToken)
+		if h.adminLiveReady != nil && h.adminLiveReady(request.Context()) {
+			featureTokens = append(featureTokens, notifications.AdminLiveActivitiesCapabilityToken)
+		}
 	}
 	writeJSON(w, http.StatusOK, bloemCapabilitiesResponse{
 		API:            nativeAPIIdentifier,
@@ -311,6 +316,13 @@ func (h *BloemSystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.
 // the token at once. Without it the token is never advertised.
 func (h *BloemSystemHandler) SetAdminPushReadiness(ready func(context.Context) bool) {
 	h.adminPushReady = ready
+}
+
+// SetAdminLiveActivitiesReadiness advertises admin_live_activities_v1 while ready
+// reports true, and only alongside admin_push_v1. It is asked on every probe, so
+// the operator's switch takes effect at once.
+func (h *BloemSystemHandler) SetAdminLiveActivitiesReadiness(ready func(context.Context) bool) {
+	h.adminLiveReady = ready
 }
 
 // SetNativeAudioReadiness advertises only the composed native audio service.

@@ -128,6 +128,7 @@ func registerBloemAll(reg *Registry) {
 	registerBloemNewArrivalsDocument(reg)
 	registerBloemBookRequestsDocument(reg)
 	registerBloemAdminPushDocument(reg)
+	registerBloemAdminLiveActivitiesDocument(reg)
 }
 
 // GenerateBloemOpenAPI writes the native surface's OpenAPI document from the Go

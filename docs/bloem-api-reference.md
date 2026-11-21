@@ -376,7 +376,10 @@ Field notes:
   has push delivery on for a platform; asked on every probe; see
   [Admin app push notifications](architecture/bloem-admin-push.md)) with `admin_widget_wakes_v1` (the
   server also accepts the app's widget report and sends silent widget wakes) and `admin_widget_health_v1`
-  (the widget report may name the `health` channel, which wakes when a backup or plugin fails or recovers).
+  (the widget report may name the `health` channel, which wakes when a backup or plugin fails or recovers),
+  and, only while the operator has turned on `bloem.notifications.admin_live_activities_enabled`,
+  `admin_live_activities_v1` (the server keeps the app's scan and backup Live Activities current through
+  the `live-activities` and `live-activity-start` routes under each device).
 - `features.legacy_silo_v1` is `false`; `shared_device_pairing` and `delegated_admin_roles` are always `false`.
 - `media_types`: the fixed vocabulary of `mediaTypesServed` — the item types *this build* can
   serve at all (a property of the software, not of what an operator's libraries happen to

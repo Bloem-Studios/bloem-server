@@ -9,12 +9,20 @@ const (
 	// on the server's private network (loopback, link-local, private, CGNAT,
 	// metadata). Off by default; internal/remotesource reads it.
 	StrmAllowPrivateAddressesSettingKey = "bloem.strm.allow_private_addresses"
+
+	// AdminLiveActivitiesSettingKey lets the server keep the admin apps' scan and
+	// backup Live Activities current through the push relay's live_activity mode.
+	// Off by default: an operator turns it on once the relay has that mode, and
+	// until then the server advertises nothing and the apps keep their own updates.
+	// internal/notifications reads it.
+	AdminLiveActivitiesSettingKey = "bloem.notifications.admin_live_activities_enabled"
 )
 
 // bloemAdminSettingDefaults extends Silo's adminSettingDefaults.
 var bloemAdminSettingDefaults = map[string]string{
 	EbookRequestsEnabledSettingKey:      "false",
 	StrmAllowPrivateAddressesSettingKey: "false",
+	AdminLiveActivitiesSettingKey:       "false",
 	"livetv.dvr_path":                   DefaultLiveTVDVRPath,
 	"livetv.max_transcodes":             "3",
 	"livetv.hw_accel":                   DefaultLiveTVHWAccel,
@@ -45,7 +53,7 @@ func normalizeBloemAdminSetting(key, value string) (string, bool, error) {
 		err        error
 	)
 	switch key {
-	case EbookRequestsEnabledSettingKey, StrmAllowPrivateAddressesSettingKey, "lan.advertisement_enabled":
+	case EbookRequestsEnabledSettingKey, StrmAllowPrivateAddressesSettingKey, AdminLiveActivitiesSettingKey, "lan.advertisement_enabled":
 		normalized, err = normalizeAdminBool(key, value)
 	case "livetv.max_transcodes":
 		normalized, err = normalizeAdminInt(key, value, -1, 1024)

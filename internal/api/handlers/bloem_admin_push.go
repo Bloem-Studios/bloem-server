@@ -21,6 +21,8 @@ import (
 // take the device's display token, which opens nothing else.
 type BloemAdminPushHandler struct {
 	service AdminPushBackend
+	// live is the backend's Live Activity half; nil when it has none.
+	live AdminLiveActivityBackend
 }
 
 // AdminPushBackend is what the handler needs from the push service; the real
@@ -49,7 +51,7 @@ func NewBloemAdminPushHandlerWith(backend AdminPushBackend) *BloemAdminPushHandl
 	if backend == nil {
 		return nil
 	}
-	return &BloemAdminPushHandler{service: backend}
+	return &BloemAdminPushHandler{service: backend, live: liveBackend(backend)}
 }
 
 // Available reports whether the routes can be mounted at all.
