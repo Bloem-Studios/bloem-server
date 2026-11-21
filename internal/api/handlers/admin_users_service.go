@@ -283,7 +283,7 @@ func (h *AdminHandler) UpdateAdminAccount(ctx context.Context, id int, revision,
 		return revoked, nil
 	})
 	if err != nil {
-		return 0, err
+		return 0, bloemHouseholdUpdateError(err) // Bloem: a household login's refusal is a conflict
 	}
 	if revoked && h.OnUserSessionsRevoked != nil {
 		h.OnUserSessionsRevoked(ctx, id)

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -282,5 +283,29 @@ func TestCapabilitiesReportHouseholdLogins(t *testing.T) {
 	}
 	if !slices.Contains(body.FeatureTokens, "household_logins_v1") {
 		t.Fatalf("feature tokens %v; want household_logins_v1", body.FeatureTokens)
+	}
+}
+
+// Enabling a login while its main account is disabled is refused as the
+// conflict it is, through the account service and the platform account route.
+func TestEnablingLoginUnderDisabledMainIsAConflict(t *testing.T) {
+	f := newHouseholdLoginsFixture(t)
+	main := f.main("main")
+	login := f.create(main, "sam", `"max_streams":1,"max_profiles":1`)
+	if _, err := f.h.UpdateAdminAccount(t.Context(), main, -1, 0, models.UpdateUserInput{Enabled: new(false)}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := f.h.UpdateAdminAccount(t.Context(), login.ID, -1, 0, models.UpdateUserInput{Enabled: new(true)})
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusConflict || apiErr.Code != "household_main_disabled" {
+		t.Fatalf("enabling the login: %v, want 409 household_main_disabled", err)
+	}
+	r := chi.NewRouter()
+	r.Put("/accounts/{account_id}", f.h.HandleBloemPlatformAccountUpdate)
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/accounts/%d", login.ID), strings.NewReader(`{"enabled":true}`))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "household_main_disabled") {
+		t.Fatalf("platform account update: %d %s, want 409 household_main_disabled", rec.Code, rec.Body)
 	}
 }

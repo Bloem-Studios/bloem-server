@@ -27,7 +27,7 @@ is on.
 
 1. **Check.** `silo silo-switching status` says whether the database is switchable.
 2. **Switch on.** `silo silo-switching enable` refuses unless the database has exactly
-   one organization. Then it gives every account
+   one organization and no household logins. Then it gives every account
    its place in the default organization and sets the flag. Running it again is safe.
 3. **Switch off.** `silo silo-switching disable` clears the flag. From then on, Silo
    must not serve the database.
@@ -86,7 +86,7 @@ the same columns. What remains is what Silo cannot honor, and one flag,
 | Command | Effect |
 |---|---|
 | `silo silo-switching status` | Reports whether the database is switchable. |
-| `silo silo-switching enable` | Refuses unless there is exactly one organization and no profile has its own login. Then gives every account its default-organization membership, reconciles membership roles from `users.role`, and sets the flag. Idempotent. |
+| `silo silo-switching enable` | Refuses unless there is exactly one organization, no profile has its own login and no account is a [household login](bloem-household-logins.md). Then gives every account its default-organization membership, reconciles membership roles from `users.role`, and sets the flag. Idempotent. |
 | `silo silo-switching disable` | Clears the flag, lifting the guards below. Silo must not serve the database afterwards. |
 
 Each command takes `-env` (default `.env`) for the bootstrap file that names the
@@ -104,6 +104,11 @@ policy back onto `users`) kept switching enabled through that migration.
   organizations, so it cannot honor a second one. A second organization therefore also
   rules out [organization domains](bloem-organization-domains.md) for anyone but the
   default organization while switching is on.
+- **No household logins.** Making an account a household login (setting
+  `users.household_main_user_id`) raises `bloem_silo_switching_household_login`
+  (`users_household_login_switching_guard`). Silo does not know about logins: it
+  would keep one signing in while its main account is disabled. Remove a database's
+  logins before switching it on.
 - **Group moves carry profiles; roles follow both ways.** Bloem applies a profile's own
   access group, so when Silo moves an account to another group, the account's profiles
   that were on the old group move with it (`users_silo_profiles_follow_group`, which

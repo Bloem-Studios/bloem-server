@@ -24532,7 +24532,7 @@
                 }
               }
             },
-            "description": "duplicate: the username or email is already in use. Silo's account rules can also answer 409, such as break_glass_required."
+            "description": "duplicate: the username or email is already in use. Silo's account rules can also answer 409, such as break_glass_required. household_main_disabled: the account is a household login and its main account is disabled; it comes back when the main account is enabled."
           },
           "422": {
             "content": {
@@ -25718,7 +25718,7 @@
                 }
               }
             },
-            "description": "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use."
+            "description": "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. silo_switching_on: Silo switching is on, which refuses household logins."
           },
           "500": {
             "content": {

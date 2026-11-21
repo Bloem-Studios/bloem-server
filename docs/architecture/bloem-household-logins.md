@@ -83,9 +83,16 @@ never `max_transcodes: 0`.
 
 ## Silo switching
 
-The two columns accept upstream Silo's writes: an account Silo writes never
-names them and reads as an ordinary account. While upstream Silo serves a
-switched database it does not know about logins: it keeps a login's own
-enabled state, and its plain delete of a main account that still has logins
-is refused (delete the logins first).
-`TestSwitchableAcceptsSilosAccountWritesBesideHouseholdLogins` pins this.
+Upstream Silo does not know about logins: it would keep a login signing in
+while its main account is disabled. So household logins and
+[Silo switching](silo-backend-switching.md) never coexist.
+`silo silo-switching enable` refuses while any account is a login, and while
+switching is on, making an account a login raises
+`bloem_silo_switching_household_login` (`users_household_login_switching_guard`,
+which takes a share lock on the switching flag so a login made during an enable
+is either counted or refused). Remove a database's logins before switching it
+on. The two columns accept upstream Silo's writes: an account Silo writes never
+names them and reads as an ordinary account.
+`TestEnableSiloSwitchingRefusesHouseholdLogins`,
+`TestSwitchableRefusesHouseholdLogins` and
+`TestSwitchableAcceptsSilosAccountWritesBesideHouseholdLogins` pin this.

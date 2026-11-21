@@ -160,6 +160,13 @@ func bloemStricterFlags() []stricterFlag {
 		f.absentOff = true
 		f.describeAbsent = fmt.Sprintf(`format('%s %%s restored with %s off: removed after the backup', %s)`, f.table, f.column, f.idOf())
 	}
+	// A household login switched off with its main account keeps that mark
+	// whichever side has it: the restore keeps users.enabled at its stricter
+	// value, and without the mark a login the live server had switched off
+	// with a suspended main account would stay off when the customer resumes.
+	// The mark only ever lets the login come back with its main account.
+	flags = append(flags, stricterFlag{table: tableUsers, column: "household_disabled", stricter: true, key: accountKey, scope: everyRow,
+		describe: `format('account %s kept to come back with its main account', t.username)`, rollsBack: whyAccountsRollBack})
 	return flags
 }
 

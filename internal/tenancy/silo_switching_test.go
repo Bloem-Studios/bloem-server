@@ -242,10 +242,9 @@ func TestSwitchableAcceptsSilosProfileAndRoleWrites(t *testing.T) {
 }
 
 // TestSwitchableAcceptsSilosAccountWritesBesideHouseholdLogins pins the
-// household login columns against upstream Silo: its account inserts never
-// name them and read as ordinary accounts, its enabled and delete writes on
-// ordinary accounts keep working, and only deleting a main account that still
-// has a Bloem login is refused (Bloem's account service deletes the logins first).
+// household login columns and the follow-group trigger against upstream Silo:
+// its account inserts never name the columns and read as ordinary accounts,
+// and its enabled, group and delete writes on ordinary accounts keep working.
 func TestSwitchableAcceptsSilosAccountWritesBesideHouseholdLogins(t *testing.T) {
 	ctx, pool, user, _ := switchablePool(t)
 	var main *int
@@ -262,25 +261,48 @@ func TestSwitchableAcceptsSilosAccountWritesBesideHouseholdLogins(t *testing.T) 
 	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = NULL WHERE id = $1`, user); err != nil {
 		t.Fatalf("Silo moving an account out of its group is refused: %v", err)
 	}
-	// Silo's own insert, once switching gives each new account its membership.
-	insert := func(username string) int {
-		var id int
-		if err := pool.QueryRow(ctx, `
-			INSERT INTO users (username, email, password_hash, role, enabled, permissions, max_streams, transcode_allowed, requests_allowed, access_group_id)
-			VALUES ($1::text, $1::text || '@example.invalid', 'x', 'user', true, '{}', 2, true, true, (SELECT id FROM access_groups WHERE is_default))
-			RETURNING id`, username).Scan(&id); err != nil {
-			t.Fatalf("a Silo account insert is refused: %v", err)
-		}
-		return id
+	var other int
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users (username, email, password_hash, role, enabled, permissions, max_streams, transcode_allowed, requests_allowed, access_group_id)
+		VALUES ('u2', 'u2@example.invalid', 'x', 'user', true, '{}', 2, true, true, (SELECT id FROM access_groups WHERE is_default))
+		RETURNING id`).Scan(&other); err != nil {
+		t.Fatalf("a Silo account insert is refused: %v", err)
 	}
-	other := insert("u2")
 	if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, other); err != nil {
 		t.Fatalf("Silo deleting an ordinary account is refused: %v", err)
 	}
-	login := insert("login1")
-	if _, err := pool.Exec(ctx, `UPDATE users SET household_main_user_id = $1 WHERE id = $2`, user, login); err != nil {
+}
+
+// Upstream Silo knows nothing of household logins: it would keep a login
+// signing in while its main account is suspended. So switching is not
+// enabled while any login exists, and no login is made while it is on.
+func TestEnableSiloSwitchingRefusesHouseholdLogins(t *testing.T) {
+	ctx, pool, _ := buildTenantPool(t)
+	main := siloAccount(t, ctx, pool, "main1", "user")
+	login := siloAccount(t, ctx, pool, "login1", "user")
+	if _, err := pool.Exec(ctx, `UPDATE users SET household_main_user_id = $1 WHERE id = $2`, main, login); err != nil {
 		t.Fatal(err)
 	}
-	_, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, user)
-	wantError(t, err, "23001")
+	_, err := tenancy.EnableSiloSwitching(ctx, pool)
+	wantError(t, err, "household login")
+	if switching(t, ctx, pool) {
+		t.Fatal("switching was enabled with a household login in place")
+	}
+}
+
+func TestSwitchableRefusesHouseholdLogins(t *testing.T) {
+	ctx, pool, user, _ := switchablePool(t)
+	var other int
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users (username, email, password_hash, role, enabled, access_group_id)
+		VALUES ('u3', 'u3@example.invalid', 'x', 'user', true, (SELECT id FROM access_groups WHERE is_default))
+		RETURNING id`).Scan(&other); err != nil {
+		t.Fatal(err)
+	}
+	_, err := pool.Exec(ctx, `UPDATE users SET household_main_user_id = $1 WHERE id = $2`, user, other)
+	wantError(t, err, "bloem_silo_switching_household_login")
+	_, err = pool.Exec(ctx, `
+		INSERT INTO users (username, email, password_hash, role, enabled, household_main_user_id)
+		VALUES ('u4', 'u4@example.invalid', 'x', 'user', true, $1)`, user)
+	wantError(t, err, "bloem_silo_switching_household_login")
 }

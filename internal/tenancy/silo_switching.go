@@ -30,8 +30,9 @@ func SiloSwitchingEnabled(ctx context.Context, pool *pgxpool.Pool) (bool, error)
 
 // EnableSiloSwitching makes the database switchable. Account policy already
 // lives on users, where Silo reads it, so what remains is what Silo cannot
-// honor: it refuses a second organization or a profile with its own login.
-// Once enabled, triggers keep refusing both, place the accounts and profiles
+// honor: it refuses a second organization, a profile with its own login, or
+// a household login (Silo would keep one signing in while its main account is
+// disabled). Once enabled, triggers keep refusing all three, place the accounts and profiles
 // Silo creates in the default organization, and keep each account's role and
 // its membership's in step.
 func EnableSiloSwitching(ctx context.Context, pool *pgxpool.Pool) (SiloSwitchingReport, error) {
@@ -58,6 +59,13 @@ func EnableSiloSwitching(ctx context.Context, pool *pgxpool.Pool) (SiloSwitching
 	}
 	if organizations != 1 {
 		return report, fmt.Errorf("tenancy: silo switching needs exactly one organization, found %d", organizations)
+	}
+	var householdLogins int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM users WHERE household_main_user_id IS NOT NULL`).Scan(&householdLogins); err != nil {
+		return report, fmt.Errorf("tenancy: silo switching preflight: %w", err)
+	}
+	if householdLogins != 0 {
+		return report, fmt.Errorf("tenancy: silo switching refuses household logins, found %d: Silo would keep them signing in while their main account is disabled", householdLogins)
 	}
 	tag, err := tx.Exec(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)

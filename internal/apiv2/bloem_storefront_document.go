@@ -362,7 +362,7 @@ func registerBloemPlatformAccountDocument(reg *Registry) {
 	update := bloemStorefrontOp(reg, "PUT", "/accounts/{account_id}", "updateBloemPlatformAccount", "Update an account, optionally moving it to a plan.", http.StatusOK, map[int]string{
 		400: errors[400],
 		404: "not_found: no such account.",
-		409: errors[409],
+		409: errors[409] + " household_main_disabled: the account is a household login and its main account is disabled; it comes back when the main account is enabled.",
 		422: errors[422],
 		501: errors[501],
 		503: errors[503],
@@ -428,7 +428,7 @@ func registerBloemHouseholdLoginsDocument(reg *Registry) {
 	create := bloemStorefrontOp(reg, "POST", "/accounts/{account_id}/logins", "createBloemPlatformHouseholdLogin", "Create a household login for an account.", http.StatusCreated, map[int]string{
 		400: "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password of 8 to 72 bytes are required, and max_streams and max_profiles must be at least 1.",
 		404: "not_found: no such main account.",
-		409: "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use.",
+		409: "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. silo_switching_on: Silo switching is on, which refuses household logins.",
 		501: "capability_unsupported: this server's account store cannot create accounts and profiles transactionally.",
 		503: "service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked.",
 	})

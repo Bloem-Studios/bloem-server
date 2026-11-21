@@ -1175,7 +1175,7 @@ Request body (required, `application/json`): [`BloemPlatformAccountUpdateBody`](
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such account. |
-| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | duplicate: the username or email is already in use. Silo's account rules can also answer 409, such as break_glass_required. |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | duplicate: the username or email is already in use. Silo's account rules can also answer 409, such as break_glass_required. household_main_disabled: the account is a household login and its main account is disabled; it comes back when the main account is enabled. |
 | 422 | [`BloemNativeError`](README.md#bloemnativeerror) | entitlement_template_unavailable: that plan revision cannot be applied. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot manage accounts transactionally. |
@@ -1353,7 +1353,7 @@ Request body (required, `application/json`): [`BloemHouseholdLoginCreateRequest`
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. |
-| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. silo_switching_on: Silo switching is on, which refuses household logins. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot create accounts and profiles transactionally. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked. |
