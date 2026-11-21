@@ -1036,12 +1036,6 @@
     "function sortByLibraryOrder(libraries: Library[], ids: number[]) {"
    ]
   },
-  "web/src/components/MediaCarousel.tsx": {
-   "kind": "lines",
-   "lines": [
-    "    \"text-muted-foreground hover:text-primary text-[0.75rem] font-semibold tracking-[0.16em] uppercase transition-all active:scale-[0.98]\";"
-   ]
-  },
   "web/src/components/admin/libraries/useLibraryForm.ts": {
    "kind": "lines",
    "lines": [
@@ -1560,5 +1554,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "7746c542a5315ab02f90a069640b19a31aa1418a"
+ "silo": "b40db86e360ef30a6a393b60e4b8fa8a454e8da9"
 }
