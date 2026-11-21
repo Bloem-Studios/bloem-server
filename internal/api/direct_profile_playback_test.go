@@ -10,6 +10,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/playback/planstore"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -55,16 +56,37 @@ func TestStreamTokenAuthorizesClaimlessProgressiveDelivery(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT id FROM user_profiles WHERE user_id = $1 AND is_primary`, accountID).Scan(&profileID); err != nil {
 		t.Fatalf("load profile: %v", err)
 	}
-	session, err := sessionMgr.StartSession(accountID, profileID, 1, playback.PlayDirect, false)
+	// The attempt names a catalog file; its bytes are never on disk.
+	var folderID, fileID int
+	if err := pool.QueryRow(ctx, `INSERT INTO media_folders(type,name) VALUES('movies','Claimless delivery') RETURNING id`).Scan(&folderID); err != nil {
+		t.Fatalf("seed library: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO media_files(content_id,media_folder_id,file_path,container,file_size) VALUES('claimless-movie',$1,'/invented/claimless/movie.mp4','mp4',4) RETURNING id`, folderID).Scan(&fileID); err != nil {
+		t.Fatalf("seed file: %v", err)
+	}
+	session, err := sessionMgr.StartSession(accountID, profileID, fileID, playback.PlayDirect, false)
 	if err != nil {
 		t.Fatalf("start session: %v", err)
 	}
+	// startPlayback records the attempt with the login session that started
+	// it; Silo's stream-reference check reads that record on every request.
+	var loginSessionID string
+	if err := pool.QueryRow(ctx, `SELECT id FROM auth_sessions WHERE user_id = $1 AND revoked_at IS NULL LIMIT 1`, accountID).Scan(&loginSessionID); err != nil {
+		t.Fatalf("load login session: %v", err)
+	}
+	if err := planstore.NewPostgres(pool).SaveAttempt(ctx, playback.AttemptRecordV3{
+		PlaybackAttemptID: "claimless-delivery", SessionID: session.ID, UserID: accountID, ProfileID: profileID,
+		RequestedMediaFileID: fileID, EffectiveMediaFileID: fileID, CurrentPlanID: "plan-1",
+		LoginSessionID: loginSessionID, ExpiresAt: time.Now().Add(time.Hour),
+	}); err != nil {
+		t.Fatalf("save attempt: %v", err)
+	}
 
-	// UserID/ProfileID are the same recipe-card fields every real stream_url
-	// token carries; RequireViewerAccess now uses them as lookup keys to
-	// resolve a real, organization-bounded scope for this bearer-less
+	// UserID/ProfileID/PlayMethod are the same recipe-card fields every real
+	// stream_url token carries; RequireViewerAccess now uses them as lookup
+	// keys to resolve a real, organization-bounded scope for this bearer-less
 	// request instead of skipping scope resolution entirely.
-	token, err := streamtoken.Sign(streamtoken.Claims{SessionID: session.ID, UserID: accountID, ProfileID: profileID}, jwtSecret, time.Hour)
+	token, err := streamtoken.Sign(streamtoken.Claims{SessionID: session.ID, PlayMethod: string(playback.PlayDirect), UserID: accountID, ProfileID: profileID}, jwtSecret, time.Hour)
 	if err != nil {
 		t.Fatalf("sign stream token: %v", err)
 	}
@@ -96,5 +118,17 @@ func TestStreamTokenAuthorizesClaimlessProgressiveDelivery(t *testing.T) {
 	if crossed.Code != http.StatusUnauthorized {
 		t.Fatalf("cross-session token = %d %s, want %d",
 			crossed.Code, crossed.Body.String(), http.StatusUnauthorized)
+	}
+
+	// A stopped attempt ends its references with Silo's answer, which Silo's
+	// apps read as "this playback is over", not as a missing file.
+	if _, err := pool.Exec(ctx, `UPDATE playback_v3_attempts SET stopped_at = now() WHERE session_id = $1::uuid`, session.ID); err != nil {
+		t.Fatalf("stop attempt: %v", err)
+	}
+	ended := performJSONRequest(t, router, http.MethodGet,
+		"/api/v2/stream/"+session.ID+"?st="+token, "", "", nil)
+	if ended.Code != http.StatusGone || !strings.Contains(ended.Body.String(), "/problems/playback_session_ended") {
+		t.Fatalf("stopped attempt's reference = %d %s, want 410 playback_session_ended",
+			ended.Code, ended.Body.String())
 	}
 }

@@ -3,8 +3,6 @@ package apiv2
 import (
 	"net/http"
 	"strings"
-
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 )
 
 // bloemDependencies holds the Bloem-only middleware slots embedded in
@@ -40,32 +38,21 @@ func bloemAuthChain(deps Dependencies, requireAuth func(http.Handler) http.Handl
 // auth prefix. Silo swaps a delivery chain's first gate for
 // RequireStreamReferenceAuth, but Bloem's chain starts with its stream-token
 // gate (bloemAuthChain), so the swap dropped it and left Silo's RequireAuth
-// behind Silo's reference check. This rebuilds the prefix around
-// bloemStreamReferenceAuth and keeps every gate after it.
+// behind Silo's reference check. This rebuilds the prefix with Silo's
+// RequireStreamReferenceAuth in RequireAuth's place and keeps every gate
+// after it.
+//
+// Both gates read the same `st`. Silo's check runs on every request the
+// stream-token gate authorized too: a Silo app is told playback_session_ended
+// for a stopped attempt and 401 once the login session that started it has
+// ended, as Silo answers. A request it admits keeps Bloem's delivery path
+// (tenant and viewer scope from the token's own account and profile).
 func bloemStreamReferenceChain(deps Dependencies, chain []func(http.Handler) http.Handler) []func(http.Handler) http.Handler {
 	head := len(bloemAuthChain(deps, deps.Auth.RequireAuth))
 	if len(chain) < head {
 		return chain
 	}
-	return append(bloemAuthChain(deps, bloemStreamReferenceAuth(deps)), chain[head:]...)
-}
-
-// bloemStreamReferenceAuth is Silo's RequireStreamReferenceAuth for a request
-// Bloem's stream-token gate has not already authorized. Both read the same
-// `st`; a token the stream-token gate accepted keeps Bloem's delivery path
-// (tenant and viewer scope from the token's own account and profile), as it
-// did behind RequireAuth before Silo added stream references.
-func bloemStreamReferenceAuth(deps Dependencies) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		reference := deps.Auth.RequireStreamReferenceAuth(next)
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if apimw.IsStreamTokenAuthorized(r.Context()) {
-				next.ServeHTTP(w, r)
-				return
-			}
-			reference.ServeHTTP(w, r)
-		})
-	}
+	return append(bloemAuthChain(deps, deps.Auth.RequireStreamReferenceAuth), chain[head:]...)
 }
 
 // bloemTenantIdentityGate wraps h with the tenant identity gate when one is wired.

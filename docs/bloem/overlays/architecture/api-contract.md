@@ -71,12 +71,13 @@ delivery routes (`getPlaybackMedia`, …) accept the plan's signed stream refere
 On Bloem, the stream-token gate reads the same `st` first. It accepts a token with a valid
 signature, not expired, naming the session in the path, while the login session that
 started that session's playback attempt is still active, as the reference check requires.
-An accepted token authorizes delivery of that session's bytes, and viewer access then
-resolves the token's own account and profile. A session with no playback attempt (a Live
-TV stream) keeps its token. Any other request with `st`, including one whose login
-session has ended or whose attempt was started with an API key, goes through the
-reference check as described, so signing out, a revoked session and a disabled account
-end the media URL as on Silo. See
+On the playback delivery routes the reference check above then runs on every request with
+`st`, those the stream-token gate accepted included, so a Silo app gets Silo's answers:
+`playback_session_ended` for a stopped attempt, 401 once the login session that started it
+has ended (signing out, a revoked session, a disabled account), and the account credential
+for an attempt started with an API key. A request the check admits keeps Bloem's delivery
+path: viewer access resolves the token's own account and profile. A Live TV stream, which
+has no playback attempt and its own routes, keeps its token. See
 [tenant identity in Silo's own gate chains](../../../architecture/bloem-upstream-adapters.md#tenant-identity-in-silos-own-gate-chains).
 
 ---
