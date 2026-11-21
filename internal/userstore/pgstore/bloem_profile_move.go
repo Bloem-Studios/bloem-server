@@ -88,7 +88,7 @@ var bloemProfileMoveTables = map[string]profileMoveRule{
 	"user_watch_progress":        moveCarry("where the person is in each title"),
 	"user_watch_history":         moveCarry("what the person has watched"),
 	"user_history_hidden_items":  moveCarry("history the person hid"),
-	"user_favorites":             moveCarry("the person's favourites"),
+	"user_favorites":             moveCarry("the person's favorites"),
 	"user_watchlist":             moveCarry("the person's watchlist"),
 	"user_watchlist_titles":      moveCarry("titles on the person's watchlist that are not in a library"),
 	"watchlist_title_promotions": moveCarry("arrival notices of the person's watchlisted titles"),
@@ -452,6 +452,9 @@ func moveSectionOverrides(ctx context.Context, tx pgx.Tx, from, to int, profileI
 			return nil
 		}); err != nil {
 			return nil, err
+		}
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("profile move: reading section overrides: %w", err)
 		}
 		return values, nil
 	}

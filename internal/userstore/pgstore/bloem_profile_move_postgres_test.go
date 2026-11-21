@@ -167,7 +167,7 @@ func TestMoveCarriesThePersonsData(t *testing.T) {
 	f.exec(`INSERT INTO user_ratings (user_id, profile_id, media_item_id, rating) VALUES ($1, $2, 'film-1', 8)`, f.main, f.sam)
 	f.exec(`INSERT INTO user_audio_preferences (user_id, profile_id, series_id) VALUES ($1, $2, 'series-1')`, f.main, f.sam)
 	f.exec(`INSERT INTO user_watch_progress (user_id, profile_id, media_item_id, position_seconds) VALUES ($1, $2, 'film-1', 60)`, f.main, f.alex)
-	collection := f.collection(f.main, f.sam, "Sam's favourites", "family")
+	collection := f.collection(f.main, f.sam, "Sam's favorites", "family")
 	mainStore := newStore(f.pool, f.main)
 	if err := mainStore.SaveSectionOverrides(ctx, f.sam, "home", "", []userstore.SectionOverride{{SectionID: "default-recently-added", Hidden: true}}); err != nil {
 		t.Fatal(err)
