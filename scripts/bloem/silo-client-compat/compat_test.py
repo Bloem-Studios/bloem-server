@@ -15,6 +15,7 @@ sys.path.insert(0, str(HERE))
 import compare  # noqa: E402
 import compat  # noqa: E402
 import extract_calls  # noqa: E402
+import notices  # noqa: E402
 
 
 def resp(status=200, body=None, headers=None, kind=None):
@@ -196,6 +197,21 @@ class ExtractTest(unittest.TestCase):
         self.assertEqual(extract_calls.match_route("/api/v2/watch/{}/trickplay", routes), ["/api/v2/watch/{id}/trickplay"])
         self.assertEqual(extract_calls.match_route("/api/v2/watchlist/{}", routes), ["/api/v2/watchlist/{item_id}"])
 
+
+
+class NoticeTest(unittest.TestCase):
+    def test_a_reading_that_differs_from_silo_is_a_divergence(self):
+        silo = {"GET /api/v2/notifications": 0, "GET /api/v2/notifications/unread-count": 0,
+                "GET /api/v2/notifications/{id} for the notice": (404, "not_found")}
+        bloem = {"GET /api/v2/notifications": 1, "GET /api/v2/notifications/unread-count": 0,
+                 "GET /api/v2/notifications/{id} for the notice": (200, None)}
+        got = [(d.kind, d.field, d.failing) for d in notices.diffs(silo, bloem)]
+        self.assertEqual(got, [("bloem notice", "GET /api/v2/notifications", True),
+                               ("bloem notice", "GET /api/v2/notifications/{id} for the notice", True)])
+
+    def test_matching_readings_pass(self):
+        same = {"GET /api/v2/notifications": 2, "events socket notifications snapshot": 0}
+        self.assertEqual(notices.diffs(same, dict(same)), [])
 
 if __name__ == "__main__":
     unittest.main()

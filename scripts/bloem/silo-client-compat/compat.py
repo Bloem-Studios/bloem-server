@@ -19,7 +19,9 @@ admin, an ordinary user and a PIN-locked profile (plus the refusals those apps
 meet: no sign-in, no profile picked, a locked profile without its PIN proof,
 another account's profile), against both servers in lockstep. Follow-ups
 replay what the answers name: the playback plan's stream URL and the events
-WebSocket with its ticket. compare.py decides what counts as a divergence. Every divergence not
+WebSocket with its ticket. Before the replay, notices.py publishes one Bloem
+announcement on Bloem and checks that a Silo app's inbox, unread count and
+events socket still match Silo's. compare.py decides what counts as a divergence. Every divergence not
 in allowlist.json fails the run; the allowlist may only shrink.
 
 Ports default to 18230 (Bloem), 18231 (Silo) and 18232-18235 (PostgreSQL and
@@ -53,6 +55,7 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE))
 
 import compare  # noqa: E402
+import notices  # noqa: E402
 
 CALLS = ROOT / "contracts" / "client" / "silo-clients" / "calls.json"
 ALLOWLIST = HERE / "allowlist.json"
@@ -297,12 +300,20 @@ def http(base, method, path, query=None, body=None, headers=None, timeout=30):
 
 def websocket_first_frame(base, path, protocols, headers, timeout=5):
     """Open a WebSocket like a Silo app and read the server's first text frame."""
+    return websocket_frames(base, path, protocols, headers, 1, timeout)
+
+
+def websocket_frames(base, path, protocols, headers, count, timeout=5):
+    """Open a WebSocket like a Silo app and read up to count frames.
+
+    The answer is the first frame's, as websocket_first_frame returns it, with
+    every frame read under "frames"."""
     host, port = urllib.parse.urlsplit(base).hostname, urllib.parse.urlsplit(base).port
     key = base64.b64encode(secrets.token_bytes(16)).decode()
     lines = [f"GET {path} HTTP/1.1", f"Host: {host}:{port}", "Upgrade: websocket", "Connection: Upgrade",
              f"Sec-WebSocket-Key: {key}", "Sec-WebSocket-Version: 13", f"Sec-WebSocket-Protocol: {', '.join(protocols)}"]
     lines += [f"{k}: {v}" for k, v in headers.items()]
-    out = {"status": 0, "headers": {}, "json": None, "kind": "empty"}
+    out = {"status": 0, "headers": {}, "json": None, "kind": "empty", "frames": []}
     try:
         with socket.create_connection((host, port), timeout=timeout) as sock:
             sock.sendall(("\r\n".join(lines) + "\r\n\r\n").encode())
@@ -331,25 +342,44 @@ def websocket_first_frame(base, path, protocols, headers, timeout=5):
                     if not chunk:
                         raise ConnectionError("socket closed")
                     data += chunk
-            need(2)
-            length = data[1] & 0x7F
-            offset = 2
-            if length == 126:
-                need(4)
-                length, offset = int.from_bytes(data[2:4], "big"), 4
-            elif length == 127:
-                need(10)
-                length, offset = int.from_bytes(data[2:10], "big"), 10
-            need(offset + length)
-            payload = data[offset:offset + length]
-            out["frame_opcode"] = data[0] & 0x0F
-            try:
-                out["json"], out["kind"] = json.loads(payload), "json"
-            except ValueError:
-                out["kind"] = "binary"
+            while len(out["frames"]) < count:
+                need(2)
+                length = data[1] & 0x7F
+                offset = 2
+                if length == 126:
+                    need(4)
+                    length, offset = int.from_bytes(data[2:4], "big"), 4
+                elif length == 127:
+                    need(10)
+                    length, offset = int.from_bytes(data[2:10], "big"), 10
+                need(offset + length)
+                opcode, payload = data[0] & 0x0F, data[offset:offset + length]
+                data = data[offset + length:]
+                try:
+                    frame = {"frame_opcode": opcode, "json": json.loads(payload), "kind": "json"}
+                except ValueError:
+                    frame = {"frame_opcode": opcode, "json": None, "kind": "binary"}
+                if not out["frames"]:
+                    out.update(frame)
+                out["frames"].append(frame)
     except (OSError, ValueError) as err:
-        out.update(status=out["status"] or 0, kind="error", error=str(err))
+        out.update(status=out["status"] or 0, kind=out["kind"] if out["frames"] else "error", error=str(err))
     return out
+
+
+def notifications_snapshot(session):
+    """The events socket's notifications snapshot, as a Silo app subscribes to it: its row count."""
+    ticket = session.call("POST", "/api/v2/events/ws-ticket")
+    value = (ticket.get("json") or {}).get("ticket")
+    if not value:
+        return f"ticket status {ticket['status']}"
+    got = websocket_frames(session.server.base, "/api/v2/events/ws?channels=notifications",
+                           ["silo.events.v2", f"silo.ticket.{value}"], dict(DEVICE), 4)
+    for frame in got["frames"]:
+        body = frame.get("json") or {}
+        if body.get("type") == "snapshot" and body.get("channel") == "notifications":
+            return len(body.get("data") or [])
+    return f"no snapshot (status {got['status']}, {got.get('error') or len(got['frames'])} frames)"
 
 
 class Session:
@@ -951,18 +981,20 @@ def run(args):
             print(f"CANARY FAILED: both servers answer GET /api/bloem/v2/capabilities with {canary['silo']}; "
                   "the Bloem build under test is not Bloem, or the Silo build is not Silo")
             return 1
+        allow = compare.Allowlist(json.loads(ALLOWLIST.read_text()) if ALLOWLIST.exists() else [])
+        notice_results = notices.check(http, servers, sessions, notifications_snapshot, allow)
+        log("checked a Silo app's inbox with a Bloem notice present")
         calls = json.loads(CALLS.read_text())
         overrides = json.loads(REQUESTS.read_text()) if REQUESTS.exists() else {}
         spec_doc = json.loads(git("show", f"{silo_ref}:contracts/api/v2/openapi.json"))
         decoded = {f"{op['method']} {op['path']}": op.get("response", {}) for op in calls["operations"]}
-        allow = compare.Allowlist(json.loads(ALLOWLIST.read_text()) if ALLOWLIST.exists() else [])
         ops = list(calls["operations"])
         if not args.apps_only:
             known = {(op["method"], op["path"]) for op in ops}
             for path, methods in spec_doc.get("paths", {}).items():
                 if "get" in methods and ("GET", path) not in known and not re.search(r"/(ws|stream|download)\b|/events$", path):
                     ops.append({"method": "GET", "path": path, "response": {}, "clients": {"openapi": []}})
-        results = replay(ops, Spec(spec_doc), servers, sessions, ctxs, overrides, decoded, allow, args.only)
+        results = notice_results + replay(ops, Spec(spec_doc), servers, sessions, ctxs, overrides, decoded, allow, args.only)
         status = report(results, allow, work / "results.json", full=not (args.only or args.apps_only))
         log(f"done in {int(time.monotonic() - started)}s; details in {work / 'results.json'}")
         return status
