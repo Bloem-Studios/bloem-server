@@ -122,6 +122,8 @@ func mountBloemPlatformStorefront(r chi.Router, h bloemPlatformStorefrontHandler
 			r.Put("/admin/platform/accounts/{account_id}/household-pool", accounts.HandleBloemPlatformHouseholdPoolPut)
 			r.Get("/admin/platform/accounts/{account_id}/household-pool", accounts.HandleBloemPlatformHouseholdPoolGet)
 			r.Delete("/admin/platform/accounts/{account_id}/household-pool", accounts.HandleBloemPlatformHouseholdPoolDelete)
+			r.Post("/admin/platform/accounts/{account_id}/logins/move-profile", accounts.HandleBloemPlatformHouseholdLoginMoveProfile)
+			r.Post("/admin/platform/accounts/{account_id}/logins/{login_id}/move-to-main", accounts.HandleBloemPlatformHouseholdLoginMoveToMain)
 			r.Get("/admin/platform/accounts/{account_id}/profiles", handlers.BloemPlatformAccountResource(accounts.HandleListUserProfiles))
 			r.Post("/admin/platform/accounts/{account_id}/profiles", handlers.BloemPlatformAccountResource(accounts.HandleCreateUserProfile))
 			r.Put("/admin/platform/accounts/{account_id}/profiles/{profile_id}", handlers.BloemPlatformAccountResource(accounts.HandleUpdateUserProfile))

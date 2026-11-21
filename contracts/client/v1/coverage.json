@@ -2862,6 +2862,14 @@
       "reason": "Storefront-only answer about a household's shared pool and what it uses now; the phone apps see a refusal at the pool as the ordinary stream or transcode limit, and no native client reads the pool."
     },
     {
+      "type": "internal/api/handlers.BloemHouseholdLoginMoveProfileRequest",
+      "reason": "Storefront-only request body for giving an account's profile a household login of its own; no native client moves profiles."
+    },
+    {
+      "type": "internal/api/handlers.BloemHouseholdLoginMoveToMainResponse",
+      "reason": "Storefront-only answer to making a household login's profiles the main account's again; no native client moves profiles."
+    },
+    {
       "type": "internal/api/handlers.BloemPublicAmbienceResponse",
       "reason": "Public deployment-wide seasonal packs read by the embedded web app's signed-out seasonal layer; the phone apps read the same packs from Silo's v1 branding route until Silo retired it and have not adopted the native route."
     },

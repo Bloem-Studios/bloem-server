@@ -1253,6 +1253,8 @@ GET /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool	non-media
 PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool	non-media
 GET /api/bloem/v2/admin/platform/accounts/{account_id}/logins	non-media
 POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins	non-media
+POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/move-profile	non-media
+POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/{login_id}/move-to-main	non-media
 GET /api/bloem/v2/admin/platform/accounts/{account_id}/profiles	non-media
 POST /api/bloem/v2/admin/platform/accounts/{account_id}/profiles	non-media
 DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/profiles/{profile_id}	non-media

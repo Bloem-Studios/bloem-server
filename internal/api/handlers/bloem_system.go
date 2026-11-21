@@ -112,6 +112,11 @@ const (
 	// transcodes, set on the main account under
 	// /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool.
 	featureHouseholdPoolV1 = "household_pool_v1"
+	// featureHouseholdLoginMovesV1 covers moving a person between a profile of
+	// a main account and a household login of their own:
+	// .../accounts/{account_id}/logins/move-profile and
+	// .../logins/{login_id}/move-to-main.
+	featureHouseholdLoginMovesV1 = "household_login_moves_v1"
 	// featureDeclaredEventChannels is the aggregate name for the events
 	// websocket's declared-channel handshake, reported in detail as
 	// declared_channels on /events/capability.
@@ -154,7 +159,7 @@ func buildBloemCapabilityTokens() []string {
 	}
 	add(playbackFeatures...)
 	add(featureDeclaredEventChannels, "live_tv_access_v1", "organization_activity_v1", "organization_invitation_lifecycle_v1", "organization_invitation_links_v1", "platform_engagement_authoring_v1")
-	add(featureWatchDocumentV1, featureDevicePairingV1, featureHouseholdLoginsV1, featureHouseholdPoolV1)
+	add(featureWatchDocumentV1, featureDevicePairingV1, featureHouseholdLoginsV1, featureHouseholdPoolV1, featureHouseholdLoginMovesV1)
 	return tokens
 }
 

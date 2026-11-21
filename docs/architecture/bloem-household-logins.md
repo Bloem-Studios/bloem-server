@@ -159,6 +159,71 @@ A restore brings a pool back with its main account (it is account policy).
 Upstream Silo never sees a pool in use: pools apply only to households, and
 households never coexist with Silo switching.
 
+## Moving a person
+
+A person can move between a profile of the main account and a login of their
+own, keeping everything the profile holds. Servers that support it advertise
+`household_login_moves_v1`.
+
+- `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/move-profile`
+  creates a login as the create route does, but with no profile of its own,
+  and moves the named profile into it as its primary profile. The main
+  account's primary profile cannot move (409 `primary_profile`).
+- `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/{login_id}/move-to-main`
+  moves every profile of the login onto the main account as ordinary profiles
+  and deletes the login. It runs inside the account service's own delete
+  transaction (`MutateAdminAccount`), so the login's sign-ins are revoked and
+  its deletion audited as any account's are. A main account without room for
+  the profiles answers 409 `profile_limit`.
+
+Each move is one transaction: it completes, or both accounts are as they
+were. A move never writes either account's limits; the storefront makes room
+first (it owns the split of the household's limits, and reads a limit it did
+not write as the operator's own).
+
+**How a profile moves** (`MoveProfileInTx`,
+`internal/userstore/pgstore/bloem_profile_move.go`). A profile's rows are keyed
+by (account, profile), and the foreign keys to `user_profiles(user_id, id)`
+neither cascade on update nor defer, so the profile row cannot simply change
+account. The move takes both accounts' import locks in id order, then the
+profile's history lock and its collections, then:
+
+1. copies the profile row under the target account with the same id (its
+   PIN, settings and restrictions with it); the copy passes the target
+   account's profile limit like any new profile;
+2. copies the profile's own collections, and the shelf groups they sit in
+   (found by slug or label in the target account, or copied there), and moves
+   their items, posters and collages;
+3. removes what joins the profile to collections that stay, and other
+   profiles to collections that move: sharing, allowances and sort orders
+   cannot cross accounts;
+4. carries the person's data to the target account, replacing any stray row
+   already there for the profile;
+5. moves the profile's section overrides between the accounts' values, and
+   its Jellyfin-compatible display preferences;
+6. ends what the old account's sign-ins had as the profile: sessions bound to
+   it are revoked, Jellyfin- and Audiobookshelf-compatible sessions, push
+   registrations, download device libraries, device settings, remote-control
+   state and profile-bound API keys go; a webhook sync connection that
+   defaulted to the profile defaults to the old account's primary profile;
+7. deletes the old collection rows and the old profile row.
+
+What happens to each table with a profile column is in `bloemProfileMoveTables`
+(carry, end, keep, follows) with its reason. Carried: watching (progress,
+history, watchlists, ratings, dismissals, taste), settings and preferences,
+reading and listening positions, recordings and recording rules, requests,
+notification choices and inbox, and the person's links to other services.
+Kept with the old account: records of what happened there (playback logs and
+reservations, administrators' playback history, access decisions, diagnostic
+reports, request events, the old devices' download change feed, watch-together
+rooms). **`TestProfileMoveCoversEveryProfileTable` fails for a table with a
+column ending in `profile_id` that the registry does not classify**, so a new
+table, Silo's or Bloem's, is classified when it arrives.
+
+An uploaded avatar keeps its stored key under the old account's
+`profile-avatars/` prefix; it is served from the key in the row, and nothing
+deletes an account's avatar prefix.
+
 ## Silo switching
 
 Upstream Silo does not know about logins: it would keep a login signing in

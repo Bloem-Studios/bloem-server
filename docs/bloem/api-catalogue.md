@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 974 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 302 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 304 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher
@@ -134,6 +134,8 @@ security declaration and the wire reference before sending credentials or mutati
 | `PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool` | `setBloemPlatformHouseholdPool` | Set a household's shared pool on its main account. |
 | `GET /api/bloem/v2/admin/platform/accounts/{account_id}/logins` | `listBloemPlatformHouseholdLogins` | List an account's household logins. |
 | `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins` | `createBloemPlatformHouseholdLogin` | Create a household login for an account. |
+| `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/move-profile` | `moveBloemPlatformProfileToHouseholdLogin` | Give one of an account's profiles a household login of its own. |
+| `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/{login_id}/move-to-main` | `moveBloemPlatformHouseholdLoginToMain` | Make a household login's profiles the main account's again and delete the login. |
 | `GET /api/bloem/v2/admin/platform/accounts/{account_id}/profiles` | `listBloemPlatformAccountProfiles` | List an account's profiles. |
 | `POST /api/bloem/v2/admin/platform/accounts/{account_id}/profiles` | `createBloemPlatformAccountProfile` | Create a profile for an account. |
 | `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/profiles/{profile_id}` | `deleteBloemPlatformAccountProfile` | Delete an account's profile. |

@@ -73,6 +73,8 @@ For the plain-language picture, read the [Organizations and administration expla
 | [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`](#delete-apibloemv2adminplatformaccountsaccount_idhousehold-pool) | Remove a household's shared pool. |
 | [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/logins`](#get-apibloemv2adminplatformaccountsaccount_idlogins) | List an account's household logins. |
 | [`POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins`](#post-apibloemv2adminplatformaccountsaccount_idlogins) | Create a household login for an account. |
+| [`POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/move-profile`](#post-apibloemv2adminplatformaccountsaccount_idloginsmove-profile) | Give one of an account's profiles a household login of its own. |
+| [`POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/{login_id}/move-to-main`](#post-apibloemv2adminplatformaccountsaccount_idloginslogin_idmove-to-main) | Make a household login's profiles the main account's again and delete the login. |
 | [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/profiles`](#get-apibloemv2adminplatformaccountsaccount_idprofiles) | List an account's profiles. |
 | [`POST /api/bloem/v2/admin/platform/accounts/{account_id}/profiles`](#post-apibloemv2adminplatformaccountsaccount_idprofiles) | Create a profile for an account. |
 | [`PUT /api/bloem/v2/admin/platform/accounts/{account_id}/profiles/{profile_id}`](#put-apibloemv2adminplatformaccountsaccount_idprofilesprofile_id) | Change an account's profile. |
@@ -1431,6 +1433,59 @@ Request body (required, `application/json`): [`BloemHouseholdLoginCreateRequest`
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot create accounts and profiles transactionally. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked. |
+
+### `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/move-profile`
+
+Give one of an account's profiles a household login of its own.
+
+Operation ID: `moveBloemPlatformProfileToHouseholdLogin`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A move keeps the profile's ID and everything it holds: watch history and progress, lists, ratings, collections, settings and PIN. It ends the sign-ins and device registrations the account it leaves had as that profile, so the person signs in to the account it joins. It is one transaction: it completes, or both accounts stay as they were. It never changes either account's limits; the caller makes room first. The login is created as the create route creates one, with the profile as its only profile and its primary, and the profile leaves the main account. Under a disabled main account the login starts disabled, with household_disabled true.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `account_id` | path | string | yes | The main account's ID. |
+
+Request body (required, `application/json`): [`BloemHouseholdLoginMoveProfileRequest`](#bloemhouseholdloginmoveprofilerequest).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 201 | [`BloemHouseholdLoginView`](#bloemhouseholdloginview) | Created |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a profile_id, a username and a password of 8 to 72 bytes are required, and max_streams and max_profiles must be at least 1. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. profile_not_found: the main account has no such profile. |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | primary_profile: the main account's primary profile cannot move. household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. silo_switching_on: Silo switching is on, which refuses household logins. profile_conflict: the new login could not take the profile. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot create accounts and profiles transactionally. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked. |
+
+### `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/{login_id}/move-to-main`
+
+Make a household login's profiles the main account's again and delete the login.
+
+Operation ID: `moveBloemPlatformHouseholdLoginToMain`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A move keeps the profile's ID and everything it holds: watch history and progress, lists, ratings, collections, settings and PIN. It ends the sign-ins and device registrations the account it leaves had as that profile, so the person signs in to the account it joins. It is one transaction: it completes, or both accounts stay as they were. It never changes either account's limits; the caller makes room first. Every profile of the login joins the main account as an ordinary profile (never its primary), then the login is deleted as any account is: its sign-ins revoked and its deletion audited.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `account_id` | path | string | yes | The main account's ID. |
+| `login_id` | path | string | yes | The login's account ID. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemHouseholdLoginMoveToMainResponse`](#bloemhouseholdloginmovetomainresponse) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an invalid account or login ID. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | login_not_found: the account has no such login. |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | profile_limit: the main account's profile limit has no room for the login's profiles. profile_conflict: the main account already has one of the profiles. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot change accounts transactionally. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
 ### `GET /api/bloem/v2/admin/platform/accounts/{account_id}/profiles`
 
@@ -3352,6 +3407,25 @@ Requires an account bearer token or API key; no profile or organization needs to
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `logins` | array of [`BloemHouseholdLoginSummary`](#bloemhouseholdloginsummary) | yes |  |
+
+### BloemHouseholdLoginMoveProfileRequest
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `email` | string |  | Email address; omitted, the login has none and its password is reset by an administrator. |
+| `max_profiles` | integer (int64) | yes | Profiles the login may have; at least 1. |
+| `max_streams` | integer (int64) | yes | Concurrent streams the login may use; at least 1. |
+| `max_transcodes` | integer (int64) |  | Concurrent transcodes the login may run. 0 is unlimited, so a login without transcodes sends transcode_allowed false instead. |
+| `password` | string | yes | Initial password, 8 to 72 bytes. |
+| `profile_id` | string | yes | The main account's profile that becomes the login's only profile, with its history, lists, settings and PIN. Not the main account's primary profile. |
+| `transcode_allowed` | boolean |  | Whether the login may transcode; omitted follows the plan. |
+| `username` | string | yes | Sign-in name of the login. |
+
+### BloemHouseholdLoginMoveToMainResponse
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `profile_ids` | array of string | yes | The login's profiles, now the main account's, in the order they moved. |
 
 ### BloemHouseholdLoginSummary
 

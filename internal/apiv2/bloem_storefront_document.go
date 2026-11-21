@@ -188,6 +188,7 @@ func registerBloemStorefrontDocument(reg *Registry) {
 	registerBloemPlatformAccountResourceDocument(reg)
 	registerBloemHouseholdLoginsDocument(reg)
 	registerBloemHouseholdPoolDocument(reg)
+	registerBloemHouseholdLoginMovesDocument(reg)
 	registerBloemAnnouncementDocument(reg)
 	registerBloemPushRelayDocument(reg)
 	registerBloemAmbienceAssetDocument(reg)

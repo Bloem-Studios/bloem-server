@@ -3015,6 +3015,70 @@
         ],
         "type": "object"
       },
+      "BloemHouseholdLoginMoveProfileRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "description": "Email address; omitted, the login has none and its password is reset by an administrator.",
+            "type": "string"
+          },
+          "max_profiles": {
+            "description": "Profiles the login may have; at least 1.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_streams": {
+            "description": "Concurrent streams the login may use; at least 1.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_transcodes": {
+            "description": "Concurrent transcodes the login may run. 0 is unlimited, so a login without transcodes sends transcode_allowed false instead.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "password": {
+            "description": "Initial password, 8 to 72 bytes.",
+            "type": "string"
+          },
+          "profile_id": {
+            "description": "The main account's profile that becomes the login's only profile, with its history, lists, settings and PIN. Not the main account's primary profile.",
+            "type": "string"
+          },
+          "transcode_allowed": {
+            "description": "Whether the login may transcode; omitted follows the plan.",
+            "type": "boolean"
+          },
+          "username": {
+            "description": "Sign-in name of the login.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "username",
+          "password",
+          "max_streams",
+          "max_profiles"
+        ],
+        "type": "object"
+      },
+      "BloemHouseholdLoginMoveToMainResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "profile_ids": {
+            "description": "The login's profiles, now the main account's, in the order they moved.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "profile_ids"
+        ],
+        "type": "object"
+      },
       "BloemHouseholdLoginSummary": {
         "additionalProperties": false,
         "properties": {
@@ -26291,6 +26355,270 @@
           }
         ],
         "summary": "Create a household login for an account.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/accounts/{account_id}/logins/move-profile": {
+      "post": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A move keeps the profile's ID and everything it holds: watch history and progress, lists, ratings, collections, settings and PIN. It ends the sign-ins and device registrations the account it leaves had as that profile, so the person signs in to the account it joins. It is one transaction: it completes, or both accounts stay as they were. It never changes either account's limits; the caller makes room first. The login is created as the create route creates one, with the profile as its only profile and its primary, and the profile leaves the main account. Under a disabled main account the login starts disabled, with household_disabled true.",
+        "operationId": "moveBloemPlatformProfileToHouseholdLogin",
+        "parameters": [
+          {
+            "description": "The main account's ID.",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "The main account's ID.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemHouseholdLoginMoveProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemHouseholdLoginView"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a profile_id, a username and a password of 8 to 72 bytes are required, and max_streams and max_profiles must be at least 1."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such main account. profile_not_found: the main account has no such profile."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "primary_profile: the main account's primary profile cannot move. household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. silo_switching_on: Silo switching is on, which refuses household logins. profile_conflict: the new login could not take the profile."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "capability_unsupported: this server's account store cannot create accounts and profiles transactionally."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Give one of an account's profiles a household login of its own.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/accounts/{account_id}/logins/{login_id}/move-to-main": {
+      "post": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A move keeps the profile's ID and everything it holds: watch history and progress, lists, ratings, collections, settings and PIN. It ends the sign-ins and device registrations the account it leaves had as that profile, so the person signs in to the account it joins. It is one transaction: it completes, or both accounts stay as they were. It never changes either account's limits; the caller makes room first. Every profile of the login joins the main account as an ordinary profile (never its primary), then the login is deleted as any account is: its sign-ins revoked and its deletion audited.",
+        "operationId": "moveBloemPlatformHouseholdLoginToMain",
+        "parameters": [
+          {
+            "description": "The main account's ID.",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "The main account's ID.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The login's account ID.",
+            "in": "path",
+            "name": "login_id",
+            "required": true,
+            "schema": {
+              "description": "The login's account ID.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemHouseholdLoginMoveToMainResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: an invalid account or login ID."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "login_not_found: the account has no such login."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "profile_limit: the main account's profile limit has no room for the login's profiles. profile_conflict: the main account already has one of the profiles."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "capability_unsupported: this server's account store cannot change accounts transactionally."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Make a household login's profiles the main account's again and delete the login.",
         "tags": [
           "administration"
         ]
