@@ -2787,7 +2787,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 	}
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, actingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
-	wireBloemV2(&v2deps, deps, tenantMiddleware, authMiddleware)
 	v2deps.CompatConnectInfo = compatConnectInfoHandler
 	// Server identity is public discovery data, so it reads through the raw
 	// settings repo: a SECRET_KEY rotation must not change who the server is.
@@ -3562,6 +3561,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.BrandingService != nil {
 		v2deps.AdminBrandingAssets = handlers.NewBrandingHandler(deps.BrandingService)
 	}
+	wireBloemV2(&v2deps, deps, tenantMiddleware, authMiddleware) // Bloem: after Silo's assignments, so its adapters wrap the final services (router_bloem_wiring.go)
 	if deps.v2Wiring != nil {
 		deps.v2Wiring(v2deps)
 	}

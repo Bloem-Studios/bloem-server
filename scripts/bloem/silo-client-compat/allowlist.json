@@ -1,4 +1,2 @@
 [
- {"op": "GET /api/v2/admin/request-users/{user_id}/usage", "kind": "status", "persona": "admin", "reason": "Open, auth lane (2026-11-21): on a fresh server Silo reports the ordinary account's request quota (200) and Bloem refuses 403 permission_denied from TenantAdminRequestUsageService (internal/requests/bloem_admin_request_usage.go), whose actor/target membership query finds no row. Remove once Bloem answers as Silo does."},
- {"op": "GET /api/v2/admin/request-users/{user_id}/usage", "kind": "problem_type", "persona": "admin", "reason": "Open, auth lane (2026-11-21): the problem Bloem sends with the 403 above; goes with that entry."}
 ]
