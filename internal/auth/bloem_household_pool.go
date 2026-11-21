@@ -23,16 +23,11 @@ type HouseholdPool struct {
 	MaxTranscodes int
 }
 
-// HouseholdPoolQuerier runs the lookup: a pool, a connection or a
-// transaction.
-type HouseholdPoolQuerier interface {
-	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
-}
-
 // HouseholdPoolForAccount is the pool accountID plays in: its own, as a main
 // account with at least one login, or its main account's, as a login. found
-// is false when it plays in none.
-func HouseholdPoolForAccount(ctx context.Context, db HouseholdPoolQuerier, accountID int) (HouseholdPool, bool, error) {
+// is false when it plays in none. db is a pool, a connection or a
+// transaction.
+func HouseholdPoolForAccount(ctx context.Context, db rowQuerier, accountID int) (HouseholdPool, bool, error) {
 	var pool HouseholdPool
 	err := db.QueryRow(ctx, `
 		SELECT household.main_user_id, household.max_streams, household.max_transcodes
