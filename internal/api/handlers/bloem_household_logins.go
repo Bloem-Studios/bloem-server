@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -244,6 +245,16 @@ func bloemHouseholdMainID(w http.ResponseWriter, r *http.Request) (int, bool) {
 // account service before the main account itself is deleted, so each gets the
 // cleanup a deleted account gets. A conditional delete checks the main
 // account's revision first, so a stale request deletes nothing.
+// deleteBloemHouseholdLoginsFirst deletes a main account's logins before
+// Silo deletes the account. It never stops Silo's delete: a stale revision
+// leaves the logins, and Silo's own revision check then refuses the delete;
+// any other failure leaves logins whose foreign key refuses it.
+func (h *AdminHandler) deleteBloemHouseholdLoginsFirst(ctx context.Context, mainID int, revision int64) {
+	if err := h.deleteBloemHouseholdLogins(ctx, mainID, revision); err != nil && !errors.Is(err, auth.ErrAdminUserRevision) {
+		slog.WarnContext(ctx, "delete household logins before their main account failed", "component", "api", "user_id", mainID, "error", err)
+	}
+}
+
 func (h *AdminHandler) deleteBloemHouseholdLogins(ctx context.Context, mainID int, revision int64) error {
 	if h.pool == nil {
 		return nil

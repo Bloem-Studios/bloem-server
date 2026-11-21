@@ -251,6 +251,25 @@ func TestDeleteMainDeletesItsLogins(t *testing.T) {
 
 // Disabling a main account through the account service also ends its logins'
 // live connections, as it does the main account's own.
+// A delete with a stale revision changes nothing: the main account and its
+// logins all stay.
+func TestDeleteMainWithStaleRevisionKeepsItsLogins(t *testing.T) {
+	f := newHouseholdLoginsFixture(t)
+	main := f.main("main")
+	login := f.create(main, "sam", `"max_streams":1,"max_profiles":1`)
+	view, err := f.h.GetAdminAccount(t.Context(), main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.h.DeleteAdminAccount(t.Context(), main, view.Revision+1, 0); !errors.Is(err, auth.ErrAdminUserRevision) {
+		t.Fatalf("delete with a stale revision: %v, want ErrAdminUserRevision", err)
+	}
+	var left int
+	if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM users WHERE id = ANY($1)`, []int{main, login.ID}).Scan(&left); err != nil || left != 2 {
+		t.Fatalf("accounts left after a refused delete: %d (%v), want both", left, err)
+	}
+}
+
 func TestDisablingMainEndsItsLoginsLiveSessions(t *testing.T) {
 	f := newHouseholdLoginsFixture(t)
 	main := f.main("main")

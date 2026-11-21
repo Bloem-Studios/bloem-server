@@ -283,7 +283,8 @@ func (h *AdminHandler) UpdateAdminAccount(ctx context.Context, id int, revision,
 		return revoked, nil
 	})
 	if err != nil {
-		return 0, bloemHouseholdUpdateError(err) // Bloem: a household login's refusal is a conflict
+		err = bloemHouseholdUpdateError(err) // Bloem: a household login's refusal is a conflict
+		return 0, err
 	}
 	if revoked && h.OnUserSessionsRevoked != nil {
 		h.OnUserSessionsRevoked(ctx, id)
@@ -299,9 +300,7 @@ func (h *AdminHandler) DeleteAdminAccount(ctx context.Context, id int, revision,
 	if !ok {
 		return apiError(501, "capability_unsupported", "Guarded account management is unavailable")
 	}
-	if err := h.deleteBloemHouseholdLogins(ctx, id, revision); err != nil { // Bloem: a main account's logins go first
-		return err
-	}
+	h.deleteBloemHouseholdLoginsFirst(ctx, id, revision) // Bloem: a main account's logins go first
 	actor, err := requestOwnerActor(ctx, h.userRepo)
 	if err != nil {
 		return err
