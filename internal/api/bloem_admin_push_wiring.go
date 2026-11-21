@@ -83,6 +83,15 @@ func ConfigureBloemAdminPush(deps *Dependencies, workers bool) {
 			}
 			return notifications.AdminBackupRun{ID: last.ID, Status: last.Status, Error: last.Error, FinishedAt: finished}, true, nil
 		}
+		// The backup running now, for the admin apps' Live Activities.
+		sources.ActiveBackup = func(ctx context.Context) (*notifications.AdminActiveBackup, error) {
+			record, err := status.Read(ctx)
+			if err != nil || record.Active == nil || record.Active.Operation != backup.OperationBackup {
+				return nil, err
+			}
+			active := record.Active
+			return &notifications.AdminActiveBackup{ID: active.BackupID, StartedAt: active.StartedAt, Progress: active.Progress}, nil
+		}
 	}
 	if deps.DB != nil && deps.PluginService != nil {
 		installations := plugins.NewInstallationStore(deps.DB)

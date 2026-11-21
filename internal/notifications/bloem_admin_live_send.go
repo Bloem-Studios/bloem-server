@@ -124,6 +124,8 @@ type liveUpdate struct {
 	SubjectID string
 	Event     string
 	State     adminJobState
+	// CreatedBefore, when set, limits the update to activities registered before it.
+	CreatedBefore time.Time
 }
 
 // adminRelayLive is the relay's live_activity request. It has no field for text.
@@ -232,7 +234,11 @@ func (s *AdminPushService) queueLive(ctx context.Context, u liveUpdate) error {
 	if err != nil {
 		return err
 	}
-	n, err := s.store.queueLive(ctx, u.Kind, u.SubjectID, u.Event, state, s.now())
+	var createdBefore *time.Time
+	if !u.CreatedBefore.IsZero() {
+		createdBefore = &u.CreatedBefore
+	}
+	n, err := s.store.queueLive(ctx, u.Kind, u.SubjectID, u.Event, state, s.now(), createdBefore)
 	if err != nil {
 		return err
 	}
@@ -430,31 +436,43 @@ func (s *AdminPushService) sendLiveStart(ctx context.Context, device *AdminPushD
 
 // ---- store -----------------------------------------------------------------
 
-func (s *adminPushStore) queueLive(ctx context.Context, kind, subject, event string, state []byte, now time.Time) (int64, error) {
-	tag, err := s.pool.Exec(ctx, `UPDATE bloem_admin_live_activities SET pending_state = $3::jsonb, pending_event = $4,
+// queueLive writes the newest state of a job on the live activities that show it. A
+// state equal to the one the activity was last sent (updatedAt aside) is not sent: it
+// clears a waiting one instead, as the activity already shows it. An end is always
+// queued. An activity past its lifetime gets nothing.
+func (s *adminPushStore) queueLive(ctx context.Context, kind, subject, event string, state []byte, now time.Time, createdBefore *time.Time) (int64, error) {
+	tag, err := s.pool.Exec(ctx, `UPDATE bloem_admin_live_activities SET
+			pending_state = CASE WHEN $4 <> 'end' AND last_state_hash IS NOT DISTINCT FROM md5(($3::jsonb - 'updatedAt')::text) THEN NULL ELSE $3::jsonb END,
+			pending_event = CASE WHEN $4 <> 'end' AND last_state_hash IS NOT DISTINCT FROM md5(($3::jsonb - 'updatedAt')::text) THEN NULL ELSE $4 END,
 			ended_at = CASE WHEN $4 = 'end' THEN $5 ELSE ended_at END
-		WHERE kind = $1 AND subject_id IS NOT DISTINCT FROM NULLIF($2, '') AND ended_at IS NULL`,
-		kind, subject, string(state), event, now)
+		WHERE kind = $1 AND subject_id IS NOT DISTINCT FROM NULLIF($2, '') AND ended_at IS NULL AND expires_at > $5
+			AND ($6::timestamptz IS NULL OR created_at <= $6)
+			AND ($4 = 'end' OR pending_state IS NOT NULL OR last_state_hash IS DISTINCT FROM md5(($3::jsonb - 'updatedAt')::text))`,
+		kind, subject, string(state), event, now, createdBefore)
 	return tag.RowsAffected(), err
 }
 
 // claimDueLive takes the states that may go out now and stamps each with the next
 // timestamp, larger than any the activity was sent, so replicas and retries never send
-// out of order. appleOK false leaves the iOS activities waiting.
+// out of order. A state is due once the activity's 30 second cadence has run, at once
+// when it ends the activity or changes its phase, never during a relay hold, and never
+// past the activity's lifetime. appleOK false leaves the iOS activities waiting.
 func (s *adminPushStore) claimDueLive(ctx context.Context, now time.Time, limit int, appleOK bool) ([]liveClaim, error) {
 	rows, err := s.pool.Query(ctx, `
 		WITH due AS (
 			SELECT activity_id, pending_state AS state, pending_event AS event, COALESCE(last_phase, '') AS previous_phase
 			FROM bloem_admin_live_activities
 			WHERE pending_state IS NOT NULL AND (hold_until IS NULL OR hold_until <= $1) AND ($3 OR platform = 'android')
+				AND expires_at > $1
+				AND (pending_event = 'end' OR (pending_state->>'phase') IS DISTINCT FROM last_phase OR next_send_at IS NULL OR next_send_at <= $1)
 			ORDER BY activity_id LIMIT $2 FOR UPDATE SKIP LOCKED)
 		UPDATE bloem_admin_live_activities AS a SET
 			last_timestamp = GREATEST(floor(extract(epoch FROM $1::timestamptz))::bigint, a.last_timestamp + 1),
 			last_state_hash = md5((due.state - 'updatedAt')::text), last_phase = due.state->>'phase', last_sent_at = $1,
-			pending_state = NULL, pending_event = NULL, hold_until = NULL
+			pending_state = NULL, pending_event = NULL, hold_until = NULL, next_send_at = $1::timestamptz + $4::interval
 		FROM due WHERE a.activity_id = due.activity_id
 		RETURNING a.activity_id::text, a.device_id, a.kind, COALESCE(a.subject_id, ''), a.platform, COALESCE(a.token_ciphertext, ''),
-			COALESCE(a.environment, ''), due.event, due.state, due.previous_phase, a.last_timestamp`, now, limit, appleOK)
+			COALESCE(a.environment, ''), due.event, due.state, due.previous_phase, a.last_timestamp`, now, limit, appleOK, adminLiveCadence)
 	if err != nil {
 		return nil, err
 	}

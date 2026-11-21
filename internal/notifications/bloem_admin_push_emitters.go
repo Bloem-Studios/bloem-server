@@ -165,11 +165,16 @@ func (s *AdminPushService) WatchEvents(ctx context.Context, hub *evt.Hub) {
 					s.logger.WarnContext(ctx, "admin widget wake failed", "channel", channel, "error", err)
 				}
 			}
-			if env.Channel != evt.ChannelScans || env.Event != "scan.failed" {
+			if env.Channel != evt.ChannelScans || !strings.HasPrefix(env.Event, "scan.") {
 				continue
 			}
 			var run evt.ScanRun
 			if err := json.Unmarshal(env.Data, &run); err != nil {
+				continue
+			}
+			// Live Activities follow every scan event; only a failure notifies.
+			s.followScan(ctx, env.Event, run)
+			if env.Event != "scan.failed" {
 				continue
 			}
 			s.noticeScanFailed(ctx, run.LibraryID, adminReason(run.ErrorMessage, "The scan did not finish"), time.Now())
@@ -209,6 +214,8 @@ type AdminPushSources struct {
 	LastBackup func(context.Context) (run AdminBackupRun, ok bool, err error)
 	// Plugins lists installed plugins with their runtime state.
 	Plugins func(context.Context) ([]AdminPluginHealth, error)
+	// ActiveBackup reports the backup running now, or nil, for Live Activities.
+	ActiveBackup func(context.Context) (*AdminActiveBackup, error)
 }
 
 // outageTracker reports each outage once, after it has lasted the grace
@@ -284,6 +291,7 @@ func (s *AdminPushService) watchOnce(ctx context.Context, sources AdminPushSourc
 	if sources.LastBackup != nil {
 		s.watchBackup(ctx, sources.LastBackup, now, backupStates)
 	}
+	s.watchLiveBackup(ctx, sources.ActiveBackup, sources.LastBackup)
 	s.watchNodes(ctx, nodes, nodeStates, now)
 	if sources.Plugins != nil {
 		s.watchPlugins(ctx, sources.Plugins, plugins, now)
