@@ -1891,13 +1891,14 @@
             "type": "string"
           },
           "widget_channels": {
-            "description": "What the placed widgets show: sessions (now playing), requests, libraries, nodes. Required, and not empty, when widgets_placed is true.",
+            "description": "What the placed widgets show: sessions (now playing), requests, libraries, nodes, health (Needs a look: backup and plugin failures; only to a server that lists admin_widget_health_v1). Required, and not empty, when widgets_placed is true.",
             "items": {
               "enum": [
                 "sessions",
                 "requests",
                 "libraries",
-                "nodes"
+                "nodes",
+                "health"
               ],
               "type": "string"
             },
@@ -1974,13 +1975,14 @@
         "additionalProperties": false,
         "properties": {
           "channels": {
-            "description": "What the placed widgets show. Required, and not empty, when widgets_placed is true; ignored when false.",
+            "description": "What the placed widgets show; health only to a server that lists admin_widget_health_v1. Required, and not empty, when widgets_placed is true; ignored when false.",
             "items": {
               "enum": [
                 "sessions",
                 "requests",
                 "libraries",
-                "nodes"
+                "nodes",
+                "health"
               ],
               "type": "string"
             },
