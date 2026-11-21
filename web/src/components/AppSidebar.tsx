@@ -100,9 +100,21 @@ function getLibraryIdFromPathname(pathname: string): number | null {
  * layout box in both states and only fade — the moving frame hides them. Animating
  * `max-width` here used to reflow the whole nav subtree on every frame.
  */
-function SidebarLabel({ children, show }: { children: ReactNode; show: boolean }) {
+function SidebarLabel({
+  children,
+  show,
+  dir,
+}: {
+  children: ReactNode;
+  show: boolean;
+  /** "auto" for a name someone typed, so a cut one keeps its start in either script. */
+  dir?: "auto";
+}) {
   return (
-    <span className={`sidebar-fade max-w-[180px] truncate ${show ? "opacity-100" : "opacity-0"}`}>
+    <span
+      dir={dir}
+      className={`sidebar-fade max-w-[180px] truncate ${show ? "opacity-100" : "opacity-0"}`}
+    >
       {children}
     </span>
   );
@@ -202,6 +214,8 @@ interface ResolvedPrimaryMenuLink {
   href: string;
   label: string;
   icon: ReactNode;
+  /** "auto" when the label is a library, section or collection name. */
+  dir?: "auto";
 }
 
 export default function AppSidebar({ onNavigate, collapsed = false, swap }: AppSidebarProps) {
@@ -311,6 +325,7 @@ export default function AppSidebar({ onNavigate, collapsed = false, swap }: AppS
             href: `/library/${library.id}`,
             label: item.label || library.name,
             icon: getLibraryIcon(library.type),
+            dir: "auto",
           },
         ];
       }
@@ -328,6 +343,7 @@ export default function AppSidebar({ onNavigate, collapsed = false, swap }: AppS
             }),
             label,
             icon: <LayoutGrid className="h-[18px] w-[18px] shrink-0" />,
+            dir: "auto",
           },
         ];
       }
@@ -348,6 +364,7 @@ export default function AppSidebar({ onNavigate, collapsed = false, swap }: AppS
                 : buildLibraryCollectionCatalogHref(item.collection_id, label, item.library_id),
             label,
             icon: <FolderOpen className="h-[18px] w-[18px] shrink-0" />,
+            dir: "auto",
           },
         ];
       }
@@ -623,7 +640,9 @@ export default function AppSidebar({ onNavigate, collapsed = false, swap }: AppS
                         />
                       ) : null}
                       {link.icon}
-                      <SidebarLabel show={showLabels}>{link.label}</SidebarLabel>
+                      <SidebarLabel show={showLabels} dir={link.dir}>
+                        {link.label}
+                      </SidebarLabel>
                     </ViewTransitionLink>
                   </li>
                 );
@@ -726,7 +745,9 @@ export default function AppSidebar({ onNavigate, collapsed = false, swap }: AppS
                             <span className="flex w-[18px] flex-shrink-0 items-center justify-center">
                               {getLibraryIcon(lib.type)}
                             </span>
-                            <SidebarLabel show={showLabels}>{lib.name}</SidebarLabel>
+                            <SidebarLabel show={showLabels} dir="auto">
+                              {lib.name}
+                            </SidebarLabel>
                           </ViewTransitionLink>
                           {hasPins ? (
                             <button
