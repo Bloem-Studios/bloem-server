@@ -227,7 +227,6 @@ web/src/components/AdminSectionCommandDialog.tsx  # upstreamable: avoid deferred
 web/src/components/AdminSidebar.tsx
 web/src/components/AppSidebar.tsx
 web/src/components/LibraryAccessSelector.tsx
-web/src/components/MediaCarousel.tsx  # row titles stay on one line on phones (All link); temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/components/admin/access-groups/AccessGroupPermissionsSection.tsx  # offers Bloem's Watch Live TV permission in the group editor
 web/src/components/admin/libraries/LibraryCardList.tsx  # shows a storage library's source on the phone library cards
 web/src/components/admin/libraries/LibraryFormSections.tsx  # added lines only: Bloem's library locations editor, or an existing storage library's fixed-source notice, in place of the folder fields (BloemFolderFields.tsx)
