@@ -45,6 +45,7 @@ more detailed pages of its area, and ends with a "For developers" section.
 - [How search finds titles by words and by meaning](../architecture/bloem-search-and-embeddings.md) — the two halves of a search, dropping the most common words first, task labels for `gemini-embedding-2`, changing the embedding model.
 - [How messages and promotions work](../architecture/bloem-messages-and-promotions.md) — announcements, campaign and playback cards, seasonal packs.
 - [Admin app push notifications](../architecture/bloem-admin-push.md) — which events push to the admin apps, how a device registers, how the phone reads its text, how the server keeps scan and backup Live Activities current without names reaching the relay, and why a plain Silo server cannot send them.
+- [How push notifications reach each app](../architecture/bloem-push-relays.md) — Silo's apps through Silo's relay and Bloem's apps through Bloem's, each with its own credential; what each relay sees, when the server signs up with each, and how a restore keeps both credentials.
 - [How apps connect](../architecture/bloem-apps.md) — the three entrances, signing in, remote control.
 - [Switching between Silo and Bloem](../architecture/bloem-silo-switching-explained.md) — one database, two servers taking turns, both install layouts.
 - [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md) — the merge bot and each Silo batch, its deploy, "Silo wins", where Bloem keeps its own work.

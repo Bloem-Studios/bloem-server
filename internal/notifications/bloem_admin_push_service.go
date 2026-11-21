@@ -152,8 +152,10 @@ func (s *System) BloemAdminPush() *AdminPushService {
 	}
 	s.adminPushOnce.Do(func() {
 		s.adminPush = &AdminPushService{
-			store:    newAdminPushStore(s.pool),
-			sender:   s.pushSender,
+			store: newAdminPushStore(s.pool),
+			// Bloem's apps are delivered through Bloem's relay only, with its
+			// own credential; Silo's sender keeps Silo's (bloem_push_relay.go).
+			sender:   newBloemRelaySender(s.pushSender),
 			settings: s.Settings,
 			cipher:   s.pushSender.cipher,
 			logger:   slog.Default().With("component", "notifications.admin_push"),
@@ -483,14 +485,19 @@ func (s *AdminPushService) Run(ctx context.Context) {
 	if !s.Available() {
 		return
 	}
+	s.separateRelays(ctx)
 	tick := time.NewTicker(adminPushTick)
 	defer tick.Stop()
 	purge := time.NewTicker(adminPushPurgeEvery)
 	defer purge.Stop()
+	separate := time.NewTicker(adminRelaySeparateEvery)
+	defer separate.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-separate.C:
+			s.separateRelays(ctx)
 		case <-s.wake:
 			s.Drain(ctx)
 			s.FlushWakes(ctx)

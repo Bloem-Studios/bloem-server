@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Each app's push goes through its own relay</title>
+<desc id="d">Top row: a Silo app on a phone registers through Silo's push routes; Bloem's server sends its notifications with Silo's sender and Silo's relay credential to Silo's relay, which delivers them with Silo's Apple and Firebase credentials. Bottom row: the Bloem Admin app registers through Bloem's push routes; the server sends with Bloem's sender and Bloem's relay credential to Bloem's relay, which delivers with Bloem's credentials. Between the rows: neither sender can reach the other relay, and neither relay sees the other's tokens or credential.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="639" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Each app's push goes through its own relay</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The app that registered a phone decides the relay. Nothing crosses between the two rows.</text>
+<text x="40" y="140" font-size="16" font-weight="700" fill="#6B7280" text-anchor="start">Silo's apps</text>
+<rect x="40" y="156" width="250" height="128" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<text x="58" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo app</text>
+<text x="58" y="212" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Registers with Silo's topic</text>
+<text x="58" y="232" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">and Silo's Firebase project.</text>
+<rect x="330" y="156" width="260" height="128" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="348" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's sender</text>
+<text x="348" y="212" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's push routes, Silo's</text>
+<text x="348" y="232" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">settings and credential.</text>
+<rect x="630" y="156" width="260" height="128" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<text x="648" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's relay</text>
+<text x="648" y="212" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's Apple and Firebase</text>
+<text x="648" y="232" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">credentials.</text>
+<rect x="930" y="156" width="230" height="128" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<text x="948" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The phone</text>
+<text x="948" y="212" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Fetches the text from the</text>
+<text x="948" y="232" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">server.</text>
+<line x1="294" y1="220" x2="326" y2="220" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="594" y1="220" x2="626" y2="220" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="894" y1="220" x2="926" y2="220" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="330" y="306" width="560" height="62" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<circle cx="360" cy="337" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M354.6,331.6 L365.4,342.4 M365.4,331.6 L354.6,342.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="384" y="331" font-size="15.5" font-weight="700" fill="#B91C1C" text-anchor="start">No token, credential or delivery crosses</text>
+<text x="384" y="354" font-size="14" font-weight="normal" fill="#B91C1C" text-anchor="start">Each sender reaches only its own relay</text>
+<text x="40" y="410" font-size="16" font-weight="700" fill="#6B7280" text-anchor="start">Bloem's apps</text>
+<rect x="40" y="426" width="250" height="128" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="58" y="458" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem Admin app</text>
+<text x="58" y="482" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Registers with Bloem's topic</text>
+<text x="58" y="502" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">and Bloem's Firebase project.</text>
+<rect x="330" y="426" width="260" height="128" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="348" y="458" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's sender</text>
+<text x="348" y="482" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's push routes, Bloem's</text>
+<text x="348" y="502" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">settings and credential.</text>
+<rect x="630" y="426" width="260" height="128" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="648" y="458" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's relay</text>
+<text x="648" y="482" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's Apple and Firebase</text>
+<text x="648" y="502" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">credentials.</text>
+<rect x="930" y="426" width="230" height="128" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="948" y="458" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The phone</text>
+<text x="948" y="482" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Fetches the text from the</text>
+<text x="948" y="502" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">server.</text>
+<line x1="294" y1="490" x2="326" y2="490" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="594" y1="490" x2="626" y2="490" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="894" y1="490" x2="926" y2="490" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="604" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Neither relay ever sees a notification's text: only ids, and a token it can deliver to.</text>
+</svg>

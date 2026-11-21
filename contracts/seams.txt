@@ -151,7 +151,6 @@ internal/notifications/interest_repo.go
 internal/notifications/relay_credentials.go  # one hook line: the relay rotation Idempotency-Key comes from a server secret (bloem_relay_rotation_key.go), so a leaked old capability cannot replay it
 internal/notifications/relay_credentials_test.go  # the rotation test stores the signing secret the key is derived from
 internal/notifications/release_types.go
-internal/notifications/settings.go
 internal/notifications/system.go  # added lines only: the Bloem system fields, organization-scoped interests and the announcement service
 internal/notifications/webhook_payload_discord.go
 internal/notifications/webhook_payload_generic.go

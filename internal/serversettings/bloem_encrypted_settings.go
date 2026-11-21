@@ -8,3 +8,10 @@ func init() {
 	delete(SensitiveSettingKeys, "s3.user_db_access_key")
 	delete(SensitiveSettingKeys, "s3.user_db_secret_key")
 }
+
+// Bloem's push relay credential (internal/notifications bloem_push_relay.go)
+// is encrypted at rest like Silo's notifications.push_relay_api_key. Do not
+// rename it: the value is bound to the key name.
+func init() {
+	SensitiveSettingKeys["bloem.notifications.push_relay_api_key"] = true
+}

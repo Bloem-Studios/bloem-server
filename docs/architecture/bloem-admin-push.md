@@ -41,7 +41,8 @@ requests. The other kinds describe the deployment, so every admin hears them.
    delivery per admin plus one attempt per device in a single transaction. The delivery id is a
    UUIDv5 of kind, subject, occurrence and recipient, so replicas that see one event store it once.
 3. The sender claims due attempts with `SKIP LOCKED` and posts to the Bloem relay in `private_alert`
-   mode, using the deployment's existing relay credential. Retries follow Silo's push schedule and keep
+   mode, using the server's credential for Bloem's relay (`bloem.notifications.push_relay_*`), never the
+   one Silo's apps are sent with ([how push reaches each app](bloem-push-relays.md)). Retries follow Silo's push schedule and keep
    one idempotency key per attempt. A token the push service reports as gone disables the device until
    the app registers again.
 4. The phone wakes with only a delivery id and fetches the text from this server.

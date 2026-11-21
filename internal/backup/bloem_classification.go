@@ -5,6 +5,8 @@ import (
 	"maps"
 	"slices"
 	"strings"
+
+	"github.com/Silo-Server/silo-server/internal/notifications"
 )
 
 // Bloem's tables, switches, per-user tables and settings, classified for
@@ -35,6 +37,12 @@ func init() {
 	for key, rule := range bloemSettingRules {
 		settingRules[key] = rule
 	}
+	// Bloem's push relay credential is this server's, as Silo's relay
+	// credential is: a full restore keeps the live server's, and its key is
+	// a secret the restore never takes from a backup on its own.
+	outboundBundles = append(outboundBundles, outboundBundle{name: "Bloem's push relay",
+		keys: notifications.BloemRelaySettingKeys(), secrets: []string{notifications.BloemSettingPushRelayAPIKey}})
+	restoredSecretSettings = append(restoredSecretSettings, notifications.BloemSettingPushRelayAPIKey)
 	// Bloem keeps user databases as node-local SQLite: the Silo user-DB S3
 	// credentials are not Bloem settings (internal/catalog's
 	// bloem_encrypted_settings.go drops them from SensitiveSettingKeys too).
@@ -235,9 +243,10 @@ var bloemExcludedUserTables = map[string]string{
 }
 
 // bloemServerSpecificSettings describe this server: where it records Live
-// TV and its hardware, and whether its push relay has Live Activities.
+// TV and its hardware, its credential for Bloem's push relay, and whether
+// that relay has Live Activities.
 var bloemServerSpecificSettings = strings.Fields(`livetv.dvr_path livetv.hw_accel livetv.hw_decode
-	bloem.notifications.admin_live_activities_enabled`)
+	bloem.notifications.push_relay_ bloem.notifications.admin_live_activities_enabled`)
 
 // bloemRestoredSettings are restored as the backup has them: how Live TV
 // plays and transcodes.
@@ -267,4 +276,6 @@ var bloemSettingRules = map[string]settingRule{
 	// Whether this server's push relay has the live_activity mode, as the relay
 	// settings beside it are this server's.
 	"bloem.notifications.admin_live_activities_enabled": {page: "notifications", class: SettingServerSpecific},
+	// The credential for Bloem's push relay, as Silo's notifications.push_relay_.
+	"bloem.notifications.push_relay_": {page: "notifications", class: SettingServerSpecific},
 }

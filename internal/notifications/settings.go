@@ -81,7 +81,7 @@ const (
 	minServerChannelsBatchSeconds     = 120
 	// DefaultPushRelayURL is the public Silo relay origin used when no
 	// notifications.push_relay_url override is stored.
-	DefaultPushRelayURL = "https://push.bloem-studios.com" // Bloem: see bloem_push_relay.go
+	DefaultPushRelayURL = "https://push.siloserver.org"
 
 	settingsCacheTTL = 15 * time.Second
 )

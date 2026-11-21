@@ -730,12 +730,6 @@
     "\tstore := &lockedRelaySettings{values: map[string]string{}}"
    ]
   },
-  "internal/notifications/settings.go": {
-   "kind": "lines",
-   "lines": [
-    "\tDefaultPushRelayURL = \"https://push.siloserver.org\""
-   ]
-  },
   "internal/playback/session.go": {
    "kind": "lines",
    "lines": [
