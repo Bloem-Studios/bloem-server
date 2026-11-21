@@ -129,7 +129,7 @@ func (h *PromotionsHandler) HandleSave(w http.ResponseWriter, r *http.Request) {
 		sum := sha256.Sum256([]byte("playback-save:" + viewer.ProfileID + ":" + card.ID))
 		var id ulid.ULID
 		copy(id[:], sum[:16])
-		_, err = h.inbox.DispatchOperational(r.Context(), notifications.Delivery{ID: id.String(), UserID: viewer.UserID, ProfileID: viewer.ProfileID, Type: notifications.DeliveryTypeSystemAnnouncement, Body: body}, notifications.OperationalDispatch{})
+		_, err = h.inbox.DispatchBloemOperational(r.Context(), notifications.Delivery{ID: id.String(), UserID: viewer.UserID, ProfileID: viewer.ProfileID, Type: notifications.DeliveryTypeSystemAnnouncement, Body: body}, notifications.OperationalDispatch{})
 		if err != nil {
 			writeError(w, 500, "internal_error", "Could not save campaign")
 			return

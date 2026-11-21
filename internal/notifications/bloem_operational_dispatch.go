@@ -107,8 +107,16 @@ func (s *System) dispatchOperationalBatch(ctx context.Context, deliveries []Deli
 			if err != nil {
 				return nil, err
 			}
+			types := make(map[string]string, len(deliveries))
+			for _, delivery := range deliveries {
+				types[delivery.ID] = delivery.Type
+			}
 			attempts := make([]PushDeliveryAttempt, 0, len(inserted))
 			for _, row := range inserted {
+				// Silo-app devices get Silo's notices only (bloem_silo_app_push.go).
+				if !sendsToSiloAppPush(types[row.ID]) {
+					continue
+				}
 				attempts = append(attempts, newPushDeliveryAttempts(row.ID, devicesByProfile[profileKey{row.UserID, row.ProfileID}])...)
 			}
 			if err := s.pushDeviceRepo.EnqueuePushAttempts(ctx, tx, attempts); err != nil {

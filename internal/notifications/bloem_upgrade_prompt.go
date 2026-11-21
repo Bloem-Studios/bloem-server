@@ -161,7 +161,7 @@ func (s *System) dispatchUpgradePrompt(ctx context.Context, userID int, profileI
 	if err != nil {
 		return err
 	}
-	_, err = s.DispatchOperational(ctx, Delivery{
+	_, err = s.DispatchBloemOperational(ctx, Delivery{
 		ID: deliveryID, UserID: userID, ProfileID: profileID, Type: DeliveryTypeSystemAlert, Body: raw,
 	}, OperationalDispatch{})
 	return err

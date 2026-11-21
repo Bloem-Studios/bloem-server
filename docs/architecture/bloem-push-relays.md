@@ -26,6 +26,15 @@ Each relay has its own **relay credential**: the server's sign-in with that rela
 server keeps the two apart, under different settings, and each half of the server can
 only reach its own relay.
 
+## Bloem's own notices never wake a Silo app
+
+Announcements, upgrade prompts, book request notices and saved campaigns are Bloem's
+own notices. They reach the inbox, web push, webhooks and Bloem's own routes, but
+never a Silo app's phone. A Silo app reads a woken notice from Silo's notification
+routes, which have no place for a Bloem notice's title or message. On Android the
+phone would show only the type's first word and "Open Silo to view it". A Silo server
+never sends such a notice, so a Bloem server does not either.
+
 ## What a relay sees
 
 Neither relay ever sees a notification's text, a title's name or a person's name. The
@@ -129,6 +138,13 @@ Related pages: [admin app push](bloem-admin-push.md), Silo's
   project): it needs a Bloem registration path that stores which relay its devices
   use. None exists today, and none of Bloem's consumer apps ships a Bloem push
   identity.
+- **Bloem's notices stay off Silo's push.** `system.alert` and `system.announcement`
+  rows queue no `push_delivery_attempts` (`sendsToSiloAppPush`,
+  `internal/notifications/bloem_silo_app_push.go`). Their producers call
+  `DispatchBloemOperational`, which is Silo's `DispatchOperational` with the push
+  platforms cleared, or `DispatchOperationalBatch`, which skips them per row.
+  `TestBloemOnlyDeliveriesAvoidSiloDispatch` fails when a producer hands Silo's
+  `DispatchOperational` a system row.
 - **Bloem's apps register on Bloem's routes only.** The Bloem Admin app uses
   `/api/bloem/v2/admin/push/*` (`bloem_admin_push_devices`, topic
   `com.bloemstudios.admin`). Every send for it, including widget wakes and Live
@@ -206,6 +222,9 @@ once the older build stops the settings stay separate.
   (`TestBloemRelaySenderNeverReachesSiloRelay`, `TestRelayOriginGuardRefusesOtherOrigins`),
   and the move (`TestUpgradeMovesBloemRelayCredentialOffSiloKeys`,
   `TestSeparateRelayCredentialsCases`).
+- `internal/notifications/bloem_silo_app_push_test.go`: each Bloem notice still writes
+  its inbox row and queues no push for a Silo app's Apple or Android device, while a
+  Silo `request.approved` does (`TestBloemOnlyNoticesQueueNoSiloAppPush`).
 - `internal/notifications/bloem_relay_credentials_test.go`: Silo's default is Silo's
   relay and Silo's path refuses Bloem's origin.
 - `internal/backup/bloem_push_relay_restore_test.go`: classification, and

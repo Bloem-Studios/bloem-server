@@ -124,7 +124,7 @@ func (s *System) dispatchBookRequestNotice(ctx context.Context, r bookrequests.R
 	// Stable delivery IDs give manual/submitted notices the same retry safety
 	// that request.* notices obtain from their partial unique indexes.
 	id := uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("bloem-book-request:%s:%s:%d:%s", r.ID, event, recipient.UserID, recipient.ProfileID))).String()
-	_, err = s.DispatchOperational(ctx, Delivery{ID: id, UserID: recipient.UserID, ProfileID: recipient.ProfileID, Type: DeliveryTypeSystemAlert, Body: raw}, OperationalDispatch{WebhookFilter: func(hook Webhook) bool { return hook.NotifyRequests }})
+	_, err = s.DispatchBloemOperational(ctx, Delivery{ID: id, UserID: recipient.UserID, ProfileID: recipient.ProfileID, Type: DeliveryTypeSystemAlert, Body: raw}, OperationalDispatch{WebhookFilter: func(hook Webhook) bool { return hook.NotifyRequests }})
 	return err
 }
 

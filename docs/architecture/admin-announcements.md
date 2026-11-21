@@ -200,9 +200,14 @@ Migration `20260901120000_system_alert_notifications.sql`:
   rows only: `title`, `body`, `severity`, `deeplink`, `image_url`, `dismissible`, `cta`
   (`{label, url}`), `expires_at`, `dismissed_at`. Release rows omit every one of them,
   `dismissible` included (it is a pointer for that reason). Generic webhooks carry the
-  same object under `alert`; Discord embeds, web push and APNs derive their title, text
+  same object under `alert`; Discord embeds and web push derive their title, text
   and link from it (`BuildNotificationDisplay` categories `system_alert` and
   `system_announcement`, thread `announcement:{id}`).
+- **No push to Silo's apps.** System rows never queue a push for a `push_devices`
+  row: those are the phones of Silo's apps, and a Silo app reads a woken delivery
+  from Silo's routes, which have no place for the alert's text. Every producer of a
+  system row uses `DispatchBloemOperational` or the batch, which leave those devices
+  out ([push relays](bloem-push-relays.md#bloems-own-notices-never-wake-a-silo-app)).
 - **Feeds hide expired rows, always.** `GET /notifications` and
   `GET /notifications/sync` filter expired rows on the server; dismissed rows are
   filtered too unless `?include_dismissed=1`. The realtime snapshot (`RecentUnread`)
