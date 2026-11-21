@@ -2834,6 +2834,22 @@
       "reason": "Storefront-only request body for updating an account on a plan; no native client updates accounts."
     },
     {
+      "type": "internal/api/handlers.BloemHouseholdLoginCreateRequest",
+      "reason": "Storefront-only request body for creating a household login under an account; no native client creates logins."
+    },
+    {
+      "type": "internal/api/handlers.BloemHouseholdLoginListResponse",
+      "reason": "Storefront-only list of an account's household logins; a login signs in to the phone apps as an ordinary account, and no native client lists logins."
+    },
+    {
+      "type": "internal/api/handlers.BloemHouseholdLoginSummary",
+      "reason": "One login in the storefront-only household login list; no native client decodes it."
+    },
+    {
+      "type": "internal/api/handlers.BloemHouseholdLoginView",
+      "reason": "Storefront-only answer to creating a household login; no native client creates logins."
+    },
+    {
       "type": "internal/api/handlers.BloemPublicAmbienceResponse",
       "reason": "Public deployment-wide seasonal packs read by the embedded web app's signed-out seasonal layer; the phone apps read the same packs from Silo's v1 branding route until Silo retired it and have not adopted the native route."
     },
