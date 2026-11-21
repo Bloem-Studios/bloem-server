@@ -14,7 +14,7 @@ For the plain-language picture, read the [Organizations and administration expla
 - [OPA tenant authorization](../../architecture/opa-tenant-authorization.md)
 - [Lifecycle safety](../../architecture/bloem-lifecycle-safety.md)
 
-## Operations (116)
+## Operations (119)
 
 | Method and path | Summary |
 | --- | --- |
@@ -68,6 +68,9 @@ For the plain-language picture, read the [Organizations and administration expla
 | [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions/{session_id}`](#delete-apibloemv2adminplatformaccountsaccount_idauth-sessionssession_id) | End one of an account's sign-in sessions. |
 | [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/devices`](#get-apibloemv2adminplatformaccountsaccount_iddevices) | List an account's devices. |
 | [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/devices/{device_id}`](#delete-apibloemv2adminplatformaccountsaccount_iddevicesdevice_id) | Remove an account's device. |
+| [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`](#get-apibloemv2adminplatformaccountsaccount_idhousehold-pool) | Read a household's shared pool and what it uses now. |
+| [`PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`](#put-apibloemv2adminplatformaccountsaccount_idhousehold-pool) | Set a household's shared pool on its main account. |
+| [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`](#delete-apibloemv2adminplatformaccountsaccount_idhousehold-pool) | Remove a household's shared pool. |
 | [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/logins`](#get-apibloemv2adminplatformaccountsaccount_idlogins) | List an account's household logins. |
 | [`POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins`](#post-apibloemv2adminplatformaccountsaccount_idlogins) | Create a household login for an account. |
 | [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/profiles`](#get-apibloemv2adminplatformaccountsaccount_idprofiles) | List an account's profiles. |
@@ -1305,6 +1308,77 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such account, or a profile, device or session the account does not have. |
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | name_conflict: another profile has this name. primary_profile_protected: the account's main profile cannot be deleted. |
 | 422 | [`BloemNativeError`](README.md#bloemnativeerror) | profile_limit_reached: the account's plan allows no more profiles. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `GET /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`
+
+Read a household's shared pool and what it uses now.
+
+Operation ID: `getBloemPlatformHouseholdPool`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household is a main account and its household logins. Its shared pool is the concurrent streams and transcodes all of them draw on together while they play, beside each account's own limits; a start that the pool has no room for is refused as the account's own stream or transcode limit is. 0 is unlimited. The pool applies only while the main account has at least one login, so a household of one plays as it always has. Streams and transcodes in use are the live playback reservations of the main account and its logins.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `account_id` | path | string | yes | The account ID. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemHouseholdPoolView`](#bloemhouseholdpoolview) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an invalid account ID. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such account. household_pool_not_found: the account has no pool. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`
+
+Set a household's shared pool on its main account.
+
+Operation ID: `setBloemPlatformHouseholdPool`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household is a main account and its household logins. Its shared pool is the concurrent streams and transcodes all of them draw on together while they play, beside each account's own limits; a start that the pool has no room for is refused as the account's own stream or transcode limit is. 0 is unlimited. The pool applies only while the main account has at least one login, so a household of one plays as it always has. Streams and transcodes in use are the live playback reservations of the main account and its logins. Setting it again replaces both values.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `account_id` | path | string | yes | The main account's ID. |
+
+Request body (required, `application/json`): [`BloemHouseholdPoolRequest`](#bloemhouseholdpoolrequest).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemHouseholdPoolView`](#bloemhouseholdpoolview) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an invalid account ID, a body that is not valid JSON or exceeds 4 KiB, or max_streams or max_transcodes missing or negative (the message names it). |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such account. |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`
+
+Remove a household's shared pool.
+
+Operation ID: `deleteBloemPlatformHouseholdPool`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household is a main account and its household logins. Its shared pool is the concurrent streams and transcodes all of them draw on together while they play, beside each account's own limits; a start that the pool has no room for is refused as the account's own stream or transcode limit is. 0 is unlimited. The pool applies only while the main account has at least one login, so a household of one plays as it always has. Streams and transcodes in use are the live playback reservations of the main account and its logins. Removing a pool that is not there succeeds, so a repeated request is safe.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `account_id` | path | string | yes | The account ID. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an invalid account ID. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
@@ -3341,6 +3415,24 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `transcode_allowed` | boolean or null | yes |  |
 | `updated_at` | string (date-time) | yes |  |
 | `username` | string | yes |  |
+
+### BloemHouseholdPoolRequest
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `max_streams` | integer or null (int64) | yes | Concurrent streams the household's accounts may use together; 0 is unlimited. |
+| `max_transcodes` | integer or null (int64) | yes | Concurrent transcodes the household's accounts may run together; 0 is unlimited. |
+
+### BloemHouseholdPoolView
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `account_id` | integer (int64) | yes | The main account. |
+| `logins` | integer (int64) | yes | The main account's household logins. The pool applies only while there is at least one. |
+| `max_streams` | integer (int64) | yes | Concurrent streams the household's accounts may use together; 0 is unlimited. |
+| `max_transcodes` | integer (int64) | yes | Concurrent transcodes the household's accounts may run together; 0 is unlimited. |
+| `streams_in_use` | integer (int64) | yes | Streams the main account and its logins hold now. |
+| `transcodes_in_use` | integer (int64) | yes | Of those, the ones transcoding. |
 
 ### BloemJSONInputStruct {}Body
 

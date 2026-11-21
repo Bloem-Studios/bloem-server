@@ -187,6 +187,7 @@ func registerBloemStorefrontDocument(reg *Registry) {
 	registerBloemPlatformAccountDocument(reg)
 	registerBloemPlatformAccountResourceDocument(reg)
 	registerBloemHouseholdLoginsDocument(reg)
+	registerBloemHouseholdPoolDocument(reg)
 	registerBloemAnnouncementDocument(reg)
 	registerBloemAmbienceAssetDocument(reg)
 	registerBloemOrganizationDomainsDocument(reg)
@@ -440,6 +441,38 @@ func registerBloemHouseholdLoginsDocument(reg *Registry) {
 	})
 	list.Description += about + "Oldest first; an account without logins answers an empty list."
 	registerBloemChiDocument[BloemPlatformAccountInput, BloemHouseholdLoginListOutput](reg, list)
+}
+
+type BloemHouseholdPoolPutInput struct {
+	AccountID string `path:"account_id" doc:"The main account's ID."`
+	Body      handlers.BloemHouseholdPoolRequest
+}
+type BloemHouseholdPoolOutput struct {
+	Body handlers.BloemHouseholdPoolView
+}
+
+// registerBloemHouseholdPoolDocument documents a household's shared pool
+// (feature token household_pool_v1).
+func registerBloemHouseholdPoolDocument(reg *Registry) {
+	const about = "A household is a main account and its household logins. Its shared pool is the concurrent streams and transcodes all of them draw on together while they play, beside each account's own limits; a start that the pool has no room for is refused as the account's own stream or transcode limit is. 0 is unlimited. The pool applies only while the main account has at least one login, so a household of one plays as it always has. Streams and transcodes in use are the live playback reservations of the main account and its logins. "
+	put := bloemStorefrontOp(reg, "PUT", "/accounts/{account_id}/household-pool", "setBloemPlatformHouseholdPool", "Set a household's shared pool on its main account.", http.StatusOK, map[int]string{
+		400: "bad_request: an invalid account ID, a body that is not valid JSON or exceeds 4 KiB, or max_streams or max_transcodes missing or negative (the message names it).",
+		404: "not_found: no such account.",
+		409: "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins.",
+	})
+	put.Description += about + "Setting it again replaces both values."
+	registerBloemChiDocument[BloemHouseholdPoolPutInput, BloemHouseholdPoolOutput](reg, put)
+	get := bloemStorefrontOp(reg, "GET", "/accounts/{account_id}/household-pool", "getBloemPlatformHouseholdPool", "Read a household's shared pool and what it uses now.", http.StatusOK, map[int]string{
+		400: "bad_request: an invalid account ID.",
+		404: "not_found: no such account. household_pool_not_found: the account has no pool.",
+	})
+	get.Description += about
+	registerBloemChiDocument[BloemPlatformAccountInput, BloemHouseholdPoolOutput](reg, get)
+	del := bloemStorefrontOp(reg, "DELETE", "/accounts/{account_id}/household-pool", "deleteBloemPlatformHouseholdPool", "Remove a household's shared pool.", http.StatusNoContent, map[int]string{
+		400: "bad_request: an invalid account ID.",
+	})
+	del.Description += about + "Removing a pool that is not there succeeds, so a repeated request is safe."
+	registerBloemChiDocument[BloemPlatformAccountInput, struct{}](reg, del)
 }
 
 func registerBloemAnnouncementDocument(reg *Registry) {

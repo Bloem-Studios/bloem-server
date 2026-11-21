@@ -3244,6 +3244,76 @@
         ],
         "type": "object"
       },
+      "BloemHouseholdPoolRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "max_streams": {
+            "description": "Concurrent streams the household's accounts may use together; 0 is unlimited.",
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "max_transcodes": {
+            "description": "Concurrent transcodes the household's accounts may run together; 0 is unlimited.",
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "max_streams",
+          "max_transcodes"
+        ],
+        "type": "object"
+      },
+      "BloemHouseholdPoolView": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "description": "The main account.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "logins": {
+            "description": "The main account's household logins. The pool applies only while there is at least one.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_streams": {
+            "description": "Concurrent streams the household's accounts may use together; 0 is unlimited.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "max_transcodes": {
+            "description": "Concurrent transcodes the household's accounts may run together; 0 is unlimited.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "streams_in_use": {
+            "description": "Streams the main account and its logins hold now.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "transcodes_in_use": {
+            "description": "Of those, the ones transcoding.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "account_id",
+          "max_streams",
+          "max_transcodes",
+          "streams_in_use",
+          "transcodes_in_use",
+          "logins"
+        ],
+        "type": "object"
+      },
       "BloemItemCollection": {
         "additionalProperties": false,
         "properties": {
@@ -25530,6 +25600,311 @@
           }
         ],
         "summary": "Preview a pinned entitlement template.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/accounts/{account_id}/household-pool": {
+      "delete": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household is a main account and its household logins. Its shared pool is the concurrent streams and transcodes all of them draw on together while they play, beside each account's own limits; a start that the pool has no room for is refused as the account's own stream or transcode limit is. 0 is unlimited. The pool applies only while the main account has at least one login, so a household of one plays as it always has. Streams and transcodes in use are the live playback reservations of the main account and its logins. Removing a pool that is not there succeeds, so a repeated request is safe.",
+        "operationId": "deleteBloemPlatformHouseholdPool",
+        "parameters": [
+          {
+            "description": "The account ID.",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "The account ID.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: an invalid account ID."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Remove a household's shared pool.",
+        "tags": [
+          "administration"
+        ]
+      },
+      "get": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household is a main account and its household logins. Its shared pool is the concurrent streams and transcodes all of them draw on together while they play, beside each account's own limits; a start that the pool has no room for is refused as the account's own stream or transcode limit is. 0 is unlimited. The pool applies only while the main account has at least one login, so a household of one plays as it always has. Streams and transcodes in use are the live playback reservations of the main account and its logins. ",
+        "operationId": "getBloemPlatformHouseholdPool",
+        "parameters": [
+          {
+            "description": "The account ID.",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "The account ID.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemHouseholdPoolView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: an invalid account ID."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such account. household_pool_not_found: the account has no pool."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read a household's shared pool and what it uses now.",
+        "tags": [
+          "administration"
+        ]
+      },
+      "put": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household is a main account and its household logins. Its shared pool is the concurrent streams and transcodes all of them draw on together while they play, beside each account's own limits; a start that the pool has no room for is refused as the account's own stream or transcode limit is. 0 is unlimited. The pool applies only while the main account has at least one login, so a household of one plays as it always has. Streams and transcodes in use are the live playback reservations of the main account and its logins. Setting it again replaces both values.",
+        "operationId": "setBloemPlatformHouseholdPool",
+        "parameters": [
+          {
+            "description": "The main account's ID.",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "The main account's ID.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemHouseholdPoolRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemHouseholdPoolView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: an invalid account ID, a body that is not valid JSON or exceeds 4 KiB, or max_streams or max_transcodes missing or negative (the message names it)."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such account."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Set a household's shared pool on its main account.",
         "tags": [
           "administration"
         ]
