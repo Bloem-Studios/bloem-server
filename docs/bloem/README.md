@@ -103,6 +103,7 @@ same path. Read the upstream document together with its overlay.
 - [How library ownership and grants work](../architecture/resource-tenancy-foundation.md) — resource owners and the first resource-isolation boundary.
 - [How tenant authorization works](../architecture/opa-tenant-authorization.md) — how tenant facts, OPA and SQL scope catalog and playback reads.
 - [How Silo backend switching works](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the flag, its invariants, the all-in-one procedure, and `make silo-switch-check` and `make silo-switch-check-all-in-one`.
+- [Silo client compatibility check](../../contracts/client/silo-clients/README.md) — `make silo-client-compat`: every call Silo's own apps make, replayed against Bloem and upstream Silo, and the allowlist of known differences, which may only shrink.
 - [How request rules apply to organizations and profiles](../architecture/bloem-request-policy.md) — verified profile quotas, scoped administrative usage and group limits on Silo's request service.
 - [How retiring an organization and deleting a library stay safe](../architecture/bloem-lifecycle-safety.md) — atomic tenant retirement and library deletion.
 - [How Bloem's security foundation works](../architecture/bloem-security-foundation.md) — the `/api/bloem/v2` discovery and administration boundary beside Silo's `/api/v2` login.

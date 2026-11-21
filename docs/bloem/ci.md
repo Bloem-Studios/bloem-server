@@ -374,7 +374,9 @@ machine, in this order of phases: `build` (gofmt, build, vet), `verify` (the Go
 contract checks, client coverage, local paths), `lint`, `web` (the web checks
 and the four Vitest shards), `go` (the four Go test shards), `db` (the database
 pins and regressions) and `tenancy` (Tenant identity, Tenant stores and Native
-authentication). Commands assume the repository root is the cwd:
+authentication). One more phase, `compat`, runs only when `--only` names it: the
+[Silo client compatibility check](../../contracts/client/silo-clients/README.md),
+which is not a CI job. Commands assume the repository root is the cwd:
 
 ```sh
 python3 scripts/bloem/local-gate.py run                     # every phase, compared with origin/main

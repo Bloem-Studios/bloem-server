@@ -18,6 +18,10 @@ fresh database here, in one PostgreSQL container sized like CI's.
 
 `services up` starts the containers, creates bloem_test, prints shell exports
 for it and leaves them running for debugging; `services down ID` removes them.
+
+OPTIONAL_PHASES run only when `--only` names them: `compat` is the Silo
+client compatibility check (make silo-client-compat), which builds upstream
+Silo beside Bloem and takes its own ports, 18230-18235.
 """
 
 import argparse
@@ -41,7 +45,8 @@ REDIS_IMAGE = "redis:7-alpine"
 PG_USER = "bloem_tenant"
 PG_PASSWORD = "invented-ci-password"
 
-PHASES = ["build", "verify", "lint", "web", "go", "db", "tenancy"]
+PHASES = ["build", "verify", "lint", "web", "go", "db", "tenancy", "compat"]
+OPTIONAL_PHASES = {"compat"}
 
 
 class Step(NamedTuple):
@@ -280,6 +285,9 @@ STEPS = [
          _needs("pg", "fresh_db:silo_identity_setup_ci")),
     Step("tenancy", "auth-race", _AUTH + "go test -race -timeout=60m ./internal/auth -count=1",
          _needs("pg", "fresh_db:silo_identity_setup_ci")),
+    # Optional: not a CI job. Builds upstream Silo at the merged commit and
+    # diffs it against this tree as Silo's apps call it.
+    Step("compat", "silo-client-compat", "git fetch --quiet upstream main && make silo-client-compat"),
 ]
 
 
@@ -398,7 +406,7 @@ def expand(cmd, *, base, pg_port, r_port, env):
 
 def select(only):
     if not only:
-        return list(STEPS)
+        return [s for s in STEPS if s.phase not in OPTIONAL_PHASES]
     wanted = set(only.split(","))
     unknown = wanted - set(PHASES)
     if unknown:

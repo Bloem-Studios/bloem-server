@@ -89,8 +89,13 @@ class LocalGateTest(unittest.TestCase):
     def test_phases_in_order(self):
         seen = list(dict.fromkeys(step.phase for step in self.gate.STEPS))
         self.assertEqual(
-            seen, ["build", "verify", "lint", "web", "go", "db", "tenancy"]
+            seen, ["build", "verify", "lint", "web", "go", "db", "tenancy", "compat"]
         )
+
+    def test_optional_phases_run_only_when_named(self):
+        default = {s.phase for s in self.gate.select(None)}
+        self.assertNotIn("compat", default)
+        self.assertEqual({s.phase for s in self.gate.select("compat")}, {"compat"})
 
     def test_every_ci_make_target_and_go_test_is_in_the_gate(self):
         ci = commands(run_blocks(WORKFLOW.read_text()))

@@ -2,6 +2,21 @@
 # includes this file: where Bloem changes a Silo target, it adds prerequisites
 # or target-specific variables here instead of editing the Silo recipe.
 
+.PHONY: silo-client-compat silo-client-calls
+# A Silo client gets the same answers from Bloem as from upstream Silo: builds
+# both, seeds both the same way and diffs every app call
+# (scripts/bloem/silo-client-compat/compat.py). SILO_REF picks the Silo build
+# (default: the Silo commit Bloem last merged); SILO_CLIENT_COMPAT_ARGS passes
+# options such as --apps-only or --keep.
+silo-client-compat:
+	SILO_REF=$(SILO_REF) python3 scripts/bloem/silo-client-compat/compat.py run $(SILO_CLIENT_COMPAT_ARGS)
+
+# Regenerate contracts/client/silo-clients/calls.json from fresh checkouts of
+# the Silo apps: make silo-client-calls SILO_APPS=<dir with silo-android, silo-apple, silo-roku>
+silo-client-calls:
+	@if [ -z "$(SILO_APPS)" ]; then echo "usage: make silo-client-calls SILO_APPS=<dir holding silo-android, silo-apple and silo-roku>" >&2; exit 1; fi
+	python3 scripts/bloem/silo-client-compat/extract_calls.py --android $(SILO_APPS)/silo-android --apple $(SILO_APPS)/silo-apple --roku $(SILO_APPS)/silo-roku
+
 .PHONY: bloem-openapi verify-bloem-openapi migrate-continuum-check verify-upstream-sync-merge settings-bindings-native client-dtos verify-client-dtos client-digest verify-client-digest verify-client-coverage verify-seams verify-silo-lines silo-lines-ledger test-db-prepare test-bloem-library-locations client-copies client-copies-settings client-copies-dtos silo-switch-check silo-switch-check-all-in-one
 
 # Local lint runs on the Go version go.mod names (CI builds with that version
