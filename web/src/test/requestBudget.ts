@@ -55,13 +55,20 @@ const PUBLIC_OPERATIONS = new Set<string>([
   "POST /api/v2/auth/refresh",
 ]);
 
-const operationMatchers = [...new Set([...Object.keys(v2Operations), ...PUBLIC_OPERATIONS])].map(
-  (key) => {
-    const [method, route] = key.split(" ", 2) as [string, string];
-    const pattern = new RegExp(`^${route.replace(/\{[^}]+\}/g, "[^/]+")}$`);
-    return { key, method, pattern };
-  },
-);
+const operationMatchers = Object.keys(v2Operations).map((key) => {
+  const [method, route] = key.split(" ", 2) as [string, string];
+  const pattern = new RegExp(`^${route.replace(/\{[^}]+\}/g, "[^/]+")}$`);
+  return { key, method, pattern };
+});
+// Bloem: its public routes are not among Silo's v2 operations.
+for (const key of [...PUBLIC_OPERATIONS].filter((operation) => !(operation in v2Operations))) {
+  const [method, route] = key.split(" ", 2) as [string, string];
+  operationMatchers.push({
+    key,
+    method,
+    pattern: new RegExp(`^${route.replace(/\{[^}]+\}/g, "[^/]+")}$`),
+  });
+}
 
 function matchOperation(method: string, pathname: string): string | null {
   return (

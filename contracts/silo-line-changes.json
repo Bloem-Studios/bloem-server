@@ -975,16 +975,6 @@
     "import { isPlaybackSessionEndedError } from \"../player-fetch\";"
    ]
   },
-  "web/src/test/requestBudget.ts": {
-   "kind": "lines",
-   "lines": [
-    "  const [method, route] = key.split(\" \", 2) as [string, string];",
-    "  const pattern = new RegExp(`^${route.replace(/\\{[^}]+\\}/g, \"[^/]+\")}$`);",
-    "  return { key, method, pattern };",
-    "const operationMatchers = Object.keys(v2Operations).map((key) => {",
-    "});"
-   ]
-  },
   "web/src/test/signedInBoot.test.tsx": {
    "kind": "lines",
    "lines": [
