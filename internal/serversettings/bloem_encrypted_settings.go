@@ -1,4 +1,4 @@
-package catalog
+package serversettings
 
 // Bloem keeps user databases as node-local SQLite (internal/userdb), so the
 // Silo user-DB S3 credentials are not settings Bloem registers or stores.

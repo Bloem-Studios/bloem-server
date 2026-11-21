@@ -46,7 +46,7 @@ type searchMirrorTestEnv struct {
 	t *testing.T
 	// settings is the live server_settings view the mirrors read: provider meilisearch, the
 	// main's address and Prefix. Tests may change it before they run a mirror.
-	settings *memSettings
+	settings *searchMirrorSettings
 }
 
 // newSearchMirrorTestEnv makes a schema for the test, two fake Meilisearch servers and an
@@ -107,7 +107,7 @@ func newSearchMirrorTestEnv(t *testing.T) *searchMirrorTestEnv {
 		Prefix: DefaultCatalogSearchSettings().MeilisearchIndex,
 		t:      t,
 	}
-	e.settings = newMemSettings()
+	e.settings = &searchMirrorSettings{m: map[string]string{}}
 	e.settings.m[SearchSettingProvider] = SearchProviderMeilisearch
 	e.settings.m[SearchSettingMeilisearchURL] = e.Main.URL()
 	e.settings.m[SearchSettingMeilisearchIndex] = e.Prefix
@@ -402,4 +402,11 @@ func (d *fakeMirrorDocuments) all(schemaVersion int) map[string]catalogSearchDoc
 		out[id] = doc
 	}
 	return out
+}
+
+// searchMirrorSettings is the in-memory server_settings view the test mirrors read.
+type searchMirrorSettings struct{ m map[string]string }
+
+func (s *searchMirrorSettings) GetAll(context.Context) (map[string]string, error) {
+	return maps.Clone(s.m), nil
 }

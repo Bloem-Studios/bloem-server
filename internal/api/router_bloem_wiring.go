@@ -28,6 +28,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/serverid"
 	"github.com/Silo-Server/silo-server/internal/serveridentity"
+	"github.com/Silo-Server/silo-server/internal/serversettings"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
@@ -40,7 +41,7 @@ import (
 func bloemServerIdentity(deps Dependencies) *serverid.Resolver {
 	var store serveridentity.Store
 	if deps.DB != nil {
-		store = catalog.NewServerSettingsRepo(deps.DB)
+		store = serversettings.NewServerSettingsRepo(deps.DB)
 	}
 	return serverid.FromService(serveridentity.New(store))
 }

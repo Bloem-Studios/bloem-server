@@ -13,6 +13,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
+	"github.com/Silo-Server/silo-server/internal/serversettings"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
@@ -31,7 +32,7 @@ func nativeStorageActorPolicy(deps Dependencies) nativeVideoPolicy {
 	p.credentials = middleware.NewAuthMiddleware(auth.NewJWTService(cfg.Auth.JWTSecret, time.Hour, time.Hour), logins, keys, users)
 	groups := access.NewTenantGroupStore(deps.DB)
 	tokens := access.NewProfileTokenService(cfg.Auth.JWTSecret, 0)
-	unrated := config.NewUnratedContentPolicy(catalog.NewEncryptedSettingsRepo(catalog.NewServerSettingsRepo(deps.DB), deps.SecretCipher))
+	unrated := config.NewUnratedContentPolicy(serversettings.NewEncryptedSettingsRepo(serversettings.NewServerSettingsRepo(deps.DB), deps.SecretCipher))
 	var viewer middleware.ViewerResolver
 	if deps.PolicySystem != nil {
 		viewer = policy.NewViewerResolver(users, deps.UserStoreProvider, tokens, deps.PolicySystem.PDP(), groups).WithUnratedContentPolicy(unrated).WithAdminDefaults(deps.AdminDefaults).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))

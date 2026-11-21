@@ -43,6 +43,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
 	"github.com/Silo-Server/silo-server/internal/serveridentity"
+	"github.com/Silo-Server/silo-server/internal/serversettings"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/taskmanager"
 	"github.com/Silo-Server/silo-server/internal/taskmanager/tasks"
@@ -434,7 +435,7 @@ func bloemIdentityStore(pool *pgxpool.Pool) serveridentity.Store {
 	if pool == nil {
 		return nil
 	}
-	return catalog.NewServerSettingsRepo(pool)
+	return serversettings.NewServerSettingsRepo(pool)
 }
 
 // storageCovers is the artwork routes' reader for storage covers, or nil when
@@ -517,7 +518,7 @@ func bloemUserSessionsRevoker(
 // Without SILO_MEILISEARCH_MIRROR_URL it does nothing else: no task, no lease, no metrics, no log
 // line. A configuration with a problem logs one error and registers no task; the metrics still
 // start so the state shows misconfigured. Nothing here ever stops Silo.
-func bloemWireSearchMirror(ctx context.Context, taskMgr *taskmanager.TaskManager, pool *pgxpool.Pool, settings catalog.SettingsStore,
+func bloemWireSearchMirror(ctx context.Context, taskMgr *taskmanager.TaskManager, pool *pgxpool.Pool, settings serversettings.SettingsStore,
 	startup catalog.CatalogSearchSettings, indexer *catalog.CatalogSearchIndexer, steps []taskmanager.Task) []taskmanager.Task {
 	for i, step := range steps {
 		if step != nil && step.Key() == "cleanup_catalog_search_index_events" {

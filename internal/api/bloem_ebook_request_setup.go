@@ -10,9 +10,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/bookrequests"
-	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/requests"
+	"github.com/Silo-Server/silo-server/internal/serversettings"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -66,7 +66,7 @@ func (s bloemEbookSetup) List(ctx context.Context, v bookrequests.Viewer) (handl
 	if err != nil {
 		return handlers.EbookRequestSetup{}, err
 	}
-	enabled, err := catalog.NewServerSettingsRepo(s.pool).Get(ctx, config.EbookRequestsEnabledSettingKey)
+	enabled, err := serversettings.NewServerSettingsRepo(s.pool).Get(ctx, config.EbookRequestsEnabledSettingKey)
 	if err != nil {
 		return handlers.EbookRequestSetup{}, err
 	}
@@ -77,7 +77,7 @@ func (s bloemEbookSetup) SetEnabled(ctx context.Context, v bookrequests.Viewer, 
 	if err := s.requirePlatform(ctx, v); err != nil {
 		return err
 	}
-	return catalog.NewServerSettingsRepo(s.pool).UpdateAtomicInTransaction(ctx, func(_ map[string]string, tx pgx.Tx) (map[string]string, error) {
+	return serversettings.NewServerSettingsRepo(s.pool).UpdateAtomicInTransaction(ctx, func(_ map[string]string, tx pgx.Tx) (map[string]string, error) {
 		// Recheck durable authority under row locks before the policy write.
 		var id int
 		err := tx.QueryRow(ctx, `SELECT u.id FROM users u

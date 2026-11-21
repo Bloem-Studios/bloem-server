@@ -10,9 +10,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/mail"
 	"github.com/Silo-Server/silo-server/internal/passwordreset"
+	"github.com/Silo-Server/silo-server/internal/serversettings"
 	"github.com/Silo-Server/silo-server/internal/supportaccess"
 )
 
@@ -37,7 +37,7 @@ func newBloemSupportHandler(deps Dependencies, people *adminpeople.Service, admi
 	if deps.DB == nil || people == nil {
 		return nil
 	}
-	settings := catalog.NewEncryptedSettingsRepo(catalog.NewServerSettingsRepo(deps.DB), deps.SecretCipher)
+	settings := serversettings.NewEncryptedSettingsRepo(serversettings.NewServerSettingsRepo(deps.DB), deps.SecretCipher)
 	sender := deps.SupportMail
 	if sender == nil {
 		sender = mail.NewSMTPSender(settings)

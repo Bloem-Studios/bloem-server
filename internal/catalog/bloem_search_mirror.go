@@ -109,7 +109,7 @@ var _ searchMirrorDocuments = (*CatalogSearchIndexer)(nil)
 type SearchMirror struct {
 	pool     *pgxpool.Pool
 	cfg      SearchMirrorConfig
-	settings SettingsStore         // live settings: page and batch sizes
+	settings SearchSettingsStore   // live settings: page and batch sizes
 	startup  CatalogSearchSettings // what this process built its main index for
 	docs     searchMirrorDocuments
 	opts     SearchMirrorOptions
@@ -132,7 +132,7 @@ type SearchMirror struct {
 }
 
 // newSearchMirror builds a mirror; opts' zero fields take their production values.
-func newSearchMirror(pool *pgxpool.Pool, cfg SearchMirrorConfig, settings SettingsStore, startup CatalogSearchSettings,
+func newSearchMirror(pool *pgxpool.Pool, cfg SearchMirrorConfig, settings SearchSettingsStore, startup CatalogSearchSettings,
 	docs searchMirrorDocuments, main, mirror *meilisearchClient, opts SearchMirrorOptions) *SearchMirror {
 	return &SearchMirror{
 		pool:     pool,
@@ -155,7 +155,7 @@ const searchMirrorLeaseTouchTimeout = 10 * time.Second
 // meilisearchIndexingTimeout. A process whose main search was not Meilisearch at start gets no main
 // client; its runs wait with provider_not_meilisearch. docs builds the documents; in production it
 // is the main index's *CatalogSearchIndexer. Errors never carry the mirror's key or credentials.
-func NewSearchMirror(pool *pgxpool.Pool, cfg SearchMirrorConfig, settings SettingsStore, startup CatalogSearchSettings,
+func NewSearchMirror(pool *pgxpool.Pool, cfg SearchMirrorConfig, settings SearchSettingsStore, startup CatalogSearchSettings,
 	docs searchMirrorDocuments, opts SearchMirrorOptions) (*SearchMirror, error) {
 	switch {
 	case pool == nil:

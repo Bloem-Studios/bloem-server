@@ -9,10 +9,10 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
+	"github.com/Silo-Server/silo-server/internal/serversettings"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
@@ -45,7 +45,7 @@ func TestBloemTenancySnapshotReadsRequireTenant(t *testing.T) {
 	}
 	resolver := policy.NewViewerResolver(auth.NewUserRepository(pool), provider, nil, policy.NewPDP(engine), access.NewTenantGroupStore(pool)).
 		WithBloemTenancy(resourcetenancy.NewStore(pool))
-	service := NewService(pool, provider, catalog.NewServerSettingsRepo(pool), resolver).WithBloemTenancy()
+	service := NewService(pool, provider, serversettings.NewServerSettingsRepo(pool), resolver).WithBloemTenancy()
 	input := access.ResolveInput{UserID: ownerID, ProfileID: profileID}
 
 	tx, err := pool.Begin(t.Context())

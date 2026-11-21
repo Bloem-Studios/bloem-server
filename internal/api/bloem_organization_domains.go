@@ -5,16 +5,16 @@ import (
 	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/mail"
 	"github.com/Silo-Server/silo-server/internal/orgdomains"
+	"github.com/Silo-Server/silo-server/internal/serversettings"
 )
 
 // bloemAccountMailSettings is the settings reader account mail (invitations
 // and password reset) builds its links and server name from. With the domain
 // directory wired, an organization's emails link to its primary domain and
 // carry its name; without it, every email uses the server's.
-func bloemAccountMailSettings(deps Dependencies, settings catalog.SettingsStore) mail.SettingReader {
+func bloemAccountMailSettings(deps Dependencies, settings serversettings.SettingsStore) mail.SettingReader {
 	if deps.OrganizationDomains == nil {
 		return settings
 	}
@@ -23,7 +23,7 @@ func bloemAccountMailSettings(deps Dependencies, settings catalog.SettingsStore)
 
 // bloemInstallSignInDomainCheck refuses a sign-in on another organization's
 // domain, when the domain directory is wired.
-func bloemInstallSignInDomainCheck(deps Dependencies, authService *auth.Service, settings catalog.SettingsStore) {
+func bloemInstallSignInDomainCheck(deps Dependencies, authService *auth.Service, settings serversettings.SettingsStore) {
 	if authService == nil || deps.OrganizationDomains == nil || deps.OrganizationDomainStore == nil {
 		return
 	}
@@ -32,7 +32,7 @@ func bloemInstallSignInDomainCheck(deps Dependencies, authService *auth.Service,
 
 // bloemInstallOAuthDomains keeps a web sign-in through an OAuth provider on the
 // organization domain it started on, when the domain directory is wired.
-func bloemInstallOAuthDomains(deps Dependencies, oauthHandler *auth.OAuthHandler, settings catalog.SettingsStore) {
+func bloemInstallOAuthDomains(deps Dependencies, oauthHandler *auth.OAuthHandler, settings serversettings.SettingsStore) {
 	if oauthHandler == nil || deps.OrganizationDomains == nil {
 		return
 	}
@@ -40,7 +40,7 @@ func bloemInstallOAuthDomains(deps Dependencies, oauthHandler *auth.OAuthHandler
 }
 
 // bloemServerPublicURL reads server.public_url at the time it is asked.
-func bloemServerPublicURL(settings catalog.SettingsStore) func(context.Context) string {
+func bloemServerPublicURL(settings serversettings.SettingsStore) func(context.Context) string {
 	return func(ctx context.Context) string {
 		if settings == nil {
 			return ""
