@@ -44,9 +44,9 @@
         { "contains": { "const": "plan_source_duration_v1" } }
       ],
       "items": {
-		"type": "string",
-		"minLength": 1,
-		"maxLength": 128
+        "minLength": 1,
+        "maxLength": 128,
+        "type": "string"
       }
     },
     "deliveries": {

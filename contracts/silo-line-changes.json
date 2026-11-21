@@ -40,42 +40,6 @@
   "contracts/api/v2/route-inventory.json": {
    "kind": "generated"
   },
-  "docs/design/schemas/playback-v3/v3/capability-response.schema.json": {
-   "kind": "lines",
-   "lines": [
-    "        \"type\": \"string\""
-   ]
-  },
-  "docs/design/schemas/playback-v3/v3/decision-response.schema.json": {
-   "kind": "lines",
-   "lines": [
-    "        \"type\": \"string\""
-   ]
-  },
-  "docs/design/schemas/playback-v3/v3/fixtures/invalid/native-and-artifact-decision_response.json": {
-   "kind": "lines",
-   "lines": [
-    "  }"
-   ]
-  },
-  "docs/design/schemas/playback-v3/v3/fixtures/invalid/native-convert-decision_response.json": {
-   "kind": "lines",
-   "lines": [
-    "  }"
-   ]
-  },
-  "docs/design/schemas/playback-v3/v3/fixtures/invalid/native-negative-index-decision_response.json": {
-   "kind": "lines",
-   "lines": [
-    "  }"
-   ]
-  },
-  "docs/design/schemas/playback-v3/v3/fixtures/invalid/native-remux-decision_response.json": {
-   "kind": "lines",
-   "lines": [
-    "  }"
-   ]
-  },
   "docs/design/schemas/playback-v3/v3/fixtures/valid/decision_response.json": {
    "kind": "generated"
   },
