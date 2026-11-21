@@ -140,6 +140,15 @@ func TestProfileScopedPreludeStatementBudget(t *testing.T) {
 			t.Fatalf("seed user: %v", err)
 		}
 		t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID) })
+		// The account's default-organization membership. make test-db-prepare's
+		// fixture triggers add it to a bare users insert; a database that was
+		// only migrated has none, and the tenant gate would refuse the request.
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+			SELECT id, $1, 'active', 'user' FROM organizations WHERE is_default
+			ON CONFLICT (organization_id, account_id) DO NOTHING`, userID); err != nil {
+			t.Fatalf("seed membership: %v", err)
+		}
 		if grouped {
 			var organizationID uuid.UUID
 			if err := pool.QueryRow(ctx, `SELECT id FROM organizations WHERE is_default`).Scan(&organizationID); err != nil {
