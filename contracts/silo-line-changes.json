@@ -7,7 +7,6 @@
   "cmd/silo/main.go": {
    "kind": "lines",
    "lines": [
-    "\t\t\t\trecEngine.WithScopeResolver(policy.NewViewerResolver(recUserRepo, userStoreProvider, nil, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults))",
     "\t\t\tapiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair), ipResolver, networkAccess.Registry)",
     "\t\t\tdefer heartbeatWriter.Stop()",
     "\t\tdefer reconciler.Stop()",
@@ -1119,7 +1118,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "c175d940793a9a06"
+   "func main() {": "70c929faaec8ec70"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1548,5 +1547,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "6fa4579570a1a9a82beca5631ff016eafdfe21df"
+ "silo": "1bbc479cb4a2e5f1b1b8c58c2208ad62d0c7e316"
 }
