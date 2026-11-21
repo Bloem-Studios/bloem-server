@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/Silo-Server/silo-server/internal/playback"
@@ -33,18 +32,15 @@ func (h *PlaybackHandler) bloemNegotiateClientFeaturesV3(ctx context.Context, re
 }
 
 // bloemCheckStartTranscodingAllowedV3 enforces the per-profile transcoding
-// permission before a v3 start creates a session that would transcode.
+// permission before a v3 start creates a session that would transcode. The
+// refusal is the terminal Silo's session start answers for the same error.
 func (h *PlaybackHandler) bloemCheckStartTranscodingAllowedV3(ctx context.Context, userID int, profileID string, method playback.PlayMethod, transcodeAudio bool) *transportErrorV3 {
 	checker, ok := h.sessionMgr.(transcodePermissionChecker)
 	if !ok || (method != playback.PlayTranscode && !transcodeAudio) {
 		return nil
 	}
 	if err := checker.CheckTranscodingAllowed(ctx, userID, profileID, method == playback.PlayTranscode); err != nil {
-		reason := "transcoding_disabled"
-		if errors.Is(err, playback.ErrAudioTranscodingDisabled) {
-			reason = "audio_transcoding_disabled"
-		}
-		return &transportErrorV3{reason: reason, message: "The selected server adaptation is disabled for this user."}
+		return sessionStartErrorV3(err)
 	}
 	return nil
 }
