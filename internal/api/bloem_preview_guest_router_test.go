@@ -184,7 +184,7 @@ func TestPreviewGuestJourneyThroughTheRouter(t *testing.T) {
 	}
 	// ...and the shared account cannot sign in anywhere else either: the
 	// early guard returns a named refusal before any session insert.
-	if w := do("lib.example.test", "POST", "/api/v2/auth/login", "", map[string]string{"username": "preview-shared", "password": "synthetic-password"}); w.Code != http.StatusForbidden || !bytes.Contains(w.Body.Bytes(), []byte(`"code":"preview_account"`)) {
+	if w := do("lib.example.test", "POST", "/api/v2/auth/login", "", map[string]string{"username": "preview-shared", "password": "synthetic-password"}); w.Code != http.StatusForbidden || w.Header().Get("X-Bloem-Denial") != "preview_account" {
 		t.Fatalf("shared account login needs an explicit refusal: %d %s", w.Code, w.Body)
 	}
 	var nonGuest int

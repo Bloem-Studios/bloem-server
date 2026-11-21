@@ -284,6 +284,17 @@ token on another host, while the preview is off, or for another account with 401
 surfaces, and accepts only guest credentials. A settings-read outage fails
 closed.
 
+The host and login guards run ahead of routing, so Silo's gate translation never
+sees their refusals. On a Silo `/api/v2` route they answer with Silo's problem
+types and carry Bloem's code in the `X-Bloem-Denial` header, never in the body:
+`permission_denied` for a refused path and for `preview_account`,
+`invalid_token` for `preview_host` and `preview_session_invalid` credentials,
+`rate_limited` for `preview_busy`, and `dependency_unavailable` with
+`Retry-After` when settings cannot be read. Bloem's own routes keep the guards'
+JSON body with `code`. The login guard reads at most Silo's 1 MiB request body
+limit; anything else it passes on whole, so Silo's own size limit and validation
+answer it.
+
 Capacity is counted and allocated under the same PostgreSQL advisory lock as
 settings changes, with a default of 200 live guests (`max_concurrent`, 1 to
 10,000). An IPv4 address or IPv6 /64 has at most three live sessions

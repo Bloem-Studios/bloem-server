@@ -64,10 +64,7 @@ func previewHostGuard(settings auth.PreviewGuestSettingsSource, tokens previewTo
 			carriesGuest := previewRequestCarriesGuest(r, tokens)
 			guestRequest := (current.Host != "" && host == current.Host) || strings.HasPrefix(r.URL.Path, "/api/bloem/v2/preview/") || carriesGuest
 			if guestRequest && !previewTrafficExempt(r) && !traffic.AllowGlobal() {
-				w.Header().Set("Content-Type", "application/json")
-				w.Header().Set("Retry-After", "1")
-				w.WriteHeader(http.StatusTooManyRequests)
-				_, _ = w.Write([]byte(`{"error":"rate_limited","message":"The preview is busy; try again shortly."}`))
+				previewRefusalBusy.write(w, r)
 				return
 			}
 			if guestRequest {
@@ -84,18 +81,14 @@ func previewHostGuard(settings auth.PreviewGuestSettingsSource, tokens previewTo
 				// anyway; refusing it would also fail liveness and readiness
 				// probes whenever the database is unreachable.
 				if previewHostAuthPath(r.URL.Path) || carriesGuest || previewHostCredential(r) != "" {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusServiceUnavailable)
-					_, _ = w.Write([]byte(`{"error":"unavailable","message":"Preview host configuration is unavailable."}`))
+					previewRefusalHostUnavailable.write(w, r)
 					return
 				}
 				next.ServeHTTP(w, r)
 				return
 			}
 			if carriesGuest && host != current.Host {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusUnauthorized)
-				_, _ = w.Write([]byte(`{"error":"unauthorized","code":"preview_session_invalid","message":"This preview session is not valid here."}`))
+				previewRefusalSessionInvalid.write(w, r)
 				return
 			}
 			if current.Host == "" || host != current.Host {
@@ -103,17 +96,13 @@ func previewHostGuard(settings auth.PreviewGuestSettingsSource, tokens previewTo
 				return
 			}
 			if previewHostRefusesPath(r.URL.Path) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusForbidden)
-				_, _ = w.Write([]byte(`{"error":"forbidden","code":"preview_host","message":"This address only serves the preview."}`))
+				previewRefusalHostPath.write(w, r)
 				return
 			}
 			if token := previewHostCredential(r); token != "" {
 				claims, err := tokens.ValidateToken(token)
 				if strings.HasPrefix(token, "sa_") || (err == nil && claims != nil && claims.AuthMethod != auth.AuthMethodPreviewGuest) {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusUnauthorized)
-					_, _ = w.Write([]byte(`{"error":"unauthorized","code":"preview_host","message":"Only preview sessions are accepted at this address."}`))
+					previewRefusalHostCredential.write(w, r)
 					return
 				}
 			}
