@@ -1571,7 +1571,8 @@ func (h *PlaybackHandler) planPlaybackWithCapabilitiesV3(ctx context.Context, in
 	if h.SubtitleTrackFacts != nil {
 		input.SubtitleTrackFacts = h.SubtitleTrackFacts.SubtitleTrackFacts(ctx, input.EffectiveFile)
 	}
-	result := playback.PlanPlaybackAirPlayAwareV3(input) // Bloem seam: bloem_airplay_v3.go
+	result := playback.PlanPlaybackV3(input)
+	result = playback.AirPlayAwarePlanV3(input, result) // Bloem: bloem_airplay_v3.go
 	// On-demand renditions fall back to the single pipeline rendition, which
 	// falls back to the sidecar.
 	for range 2 {
@@ -1583,7 +1584,8 @@ func (h *PlaybackHandler) planPlaybackWithCapabilitiesV3(ctx context.Context, in
 		// advertise. Marking the rendition attempted plans the next shape.
 		input.AttemptedKeys = append(slices.Clone(input.AttemptedKeys),
 			playback.PlanAttemptKeyV3(*result.Plan, input.Request.ClientPlaybackContext.Output.OutputContextID, nil))
-		result = playback.PlanPlaybackAirPlayAwareV3(input) // Bloem seam: bloem_airplay_v3.go
+		result = playback.PlanPlaybackV3(input)
+		result = playback.AirPlayAwarePlanV3(input, result) // Bloem: bloem_airplay_v3.go
 	}
 	if result.ToneMapDependentRefusal() {
 		return result, snapshot.capabilityError()
@@ -5883,7 +5885,8 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 			cancelReservation()
 		}
 	}()
-	start := h.applyRemotePlanOverridesV3(r.Context(), record.SessionID, record.NormalizedRequest)
+	start := record.NormalizedRequest
+	start = h.applyRemotePlanOverridesV3(r.Context(), record.SessionID, start) // Bloem: remote_control.go
 	operation := req.EffectiveOperation()
 	if onDemandSubtitleSwitchV3(record, req) {
 		// A client that switched among on-demand renditions in its player may

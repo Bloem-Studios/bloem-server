@@ -146,16 +146,13 @@
     "\t\t\treturn playback.NewTerminalResponseV3(terminalSessionExpiredV3, \"The playback session for this attempt has ended.\", true), nil",
     "\t\tif err := checker.CheckTranscodingAllowed(ctx, session.UserID, result.PlayMethod == playback.PlayTranscode); err != nil {",
     "\t\tresponse := playback.NewTerminalResponseV3(replanErr.reason, replanErr.message, replanErr.retryable)",
-    "\t\tresult = playback.PlanPlaybackV3(input)",
     "\t\treturn nil",
     "\t\treturn normalizeDecisionResponseV3(record.StartResponse)",
     "\t\treturn playback.NewTerminalResponseV3(result.Terminal.Reason, result.Terminal.Message, result.Terminal.Retryable), *record, nil, nil",
     "\th.maybeQueueLazyPlaybackMarkers(ctx, &task.session, &task.file)",
     "\tif h.ChapterThumbnailQueuer != nil {",
     "\tparts, err := h.FileVersionFetcher.GetByContentID(ctx, file.ContentID)",
-    "\tresult := playback.PlanPlaybackV3(input)",
     "\treturn normalizeDecisionResponseV3(playback.DecisionResponseV3{ProtocolVersion: playback.ProtocolV3, ServerFeatures: playback.ServerFeaturesV3(), Outcome: playback.OutcomePlayableV3, SessionID: record.SessionID, PlaybackPlan: &plan})",
-    "\tstart := record.NormalizedRequest",
     "\ttimeline, timelineErr := h.prepareTransportTimelineV3(r.Context(), session, file, result)",
     "\tunlock := h.tm.LockSessionLifecycle(session.ID)"
    ]

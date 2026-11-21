@@ -100,14 +100,22 @@ func AirPlayAwareRequestV3(request StartRequestV3) StartRequestV3 {
 // or DTS, is then moved from AAC to AC-3 or E-AC-3 when the client decodes it
 // (see adaptAirPlayAudioV3).
 func PlanPlaybackAirPlayAwareV3(input PlannerInputV3) PlannerResultV3 {
+	return AirPlayAwarePlanV3(input, PlanPlaybackV3(input))
+}
+
+// AirPlayAwarePlanV3 is PlanPlaybackAirPlayAwareV3 for a caller that already
+// has planned, PlanPlaybackV3's result for input: the playback handler keeps
+// Silo's planner line and passes its result here on Bloem's own line. Any
+// output but an AirPlay receiver keeps planned as it is.
+func AirPlayAwarePlanV3(input PlannerInputV3, planned PlannerResultV3) PlannerResultV3 {
 	if !IsAirPlayOutputV3(input.Request.ClientPlaybackContext.Output) {
-		return PlanPlaybackV3(input)
+		return planned
 	}
 	capped := input
 	capped.Request = AirPlayAwareRequestV3(input.Request)
 	result := PlanPlaybackV3(capped)
 	if result.Terminal != nil && input.LowerVersion == nil {
-		return PlanPlaybackV3(input)
+		return planned
 	}
 	return adaptAirPlayAudioV3(capped, result)
 }
