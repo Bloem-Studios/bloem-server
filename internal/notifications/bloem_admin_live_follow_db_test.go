@@ -381,3 +381,65 @@ func TestWatchEventsFollowsScans(t *testing.T) {
 	cancel()
 	<-done
 }
+
+// ---- S1-4: cleanup ------------------------------------------------------------
+
+func TestPrunerDeletesOldLiveActivities(t *testing.T) {
+	f, _ := newLiveRelayFixture(t)
+	ctx := context.Background()
+	admin := f.account("root", "admin", true)
+	device := f.register(admin, apnsRegistration("install-root-apple", 'a'))
+	signedOut := f.startOptIn(admin, "install-signed-out", 'b', liveStart, LiveKindScan)
+	base := f.now
+	ids := map[string]string{
+		"ended and sent":         "6f1c2b9e-1d4a-4c7e-9a2b-000000000201",
+		"ended, end still owed":  "6f1c2b9e-1d4a-4c7e-9a2b-000000000202",
+		"past lifetime + 4 h":    "6f1c2b9e-1d4a-4c7e-9a2b-000000000203",
+		"past lifetime only":     "6f1c2b9e-1d4a-4c7e-9a2b-000000000204",
+		"live":                   "6f1c2b9e-1d4a-4c7e-9a2b-000000000205",
+		"device login has ended": "6f1c2b9e-1d4a-4c7e-9a2b-000000000206",
+	}
+	for name, id := range ids {
+		on := device.DeviceID
+		if name == "device login has ended" {
+			on = signedOut.DeviceID
+		}
+		f.registerLive(admin, on, iosActivity(id, LiveKindBackup, "", liveTokenA))
+	}
+	exec := func(query string, args ...any) {
+		t.Helper()
+		if _, err := f.pool.Exec(ctx, query, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	exec(`UPDATE bloem_admin_live_activities SET ended_at = $2 WHERE activity_id = $1`, ids["ended and sent"], base)
+	exec(`UPDATE bloem_admin_live_activities SET ended_at = $2, pending_state = '{"phase":"finished","updatedAt":1}', pending_event = 'end'
+		WHERE activity_id = $1`, ids["ended, end still owed"], base)
+	exec(`UPDATE bloem_admin_live_activities SET created_at = $2, expires_at = $3 WHERE activity_id = $1`,
+		ids["past lifetime + 4 h"], base.Add(-13*time.Hour), base.Add(-5*time.Hour))
+	exec(`UPDATE bloem_admin_live_activities SET created_at = $2, expires_at = $3 WHERE activity_id = $1`,
+		ids["past lifetime only"], base.Add(-9*time.Hour), base.Add(-time.Hour))
+	// The login that registered this device has ended (signed out, or revoked).
+	exec(`UPDATE bloem_admin_push_devices SET login_session_id = 'ended-login' WHERE server_device_id = $1`, signedOut.DeviceID)
+	signedOutRow := f.deviceRowID(signedOut.DeviceID)
+	exec(`INSERT INTO bloem_admin_live_starts (device_id, job_key, created_at) VALUES ($1, 'scan:old', $2), ($1, 'scan:new', $3)`,
+		f.deviceRowID(device.DeviceID), base.Add(-13*time.Hour), base.Add(-time.Hour))
+
+	f.svc.pruneLive(ctx)
+
+	for name, id := range ids {
+		kept := name == "ended, end still owed" || name == "past lifetime only" || name == "live"
+		if got := f.liveCount(id) == 1; got != kept {
+			t.Fatalf("%s: kept = %t, want %t", name, got, kept)
+		}
+	}
+	if got := f.count(`SELECT count(*) FROM bloem_admin_push_devices WHERE id = $1 AND live_start_token_ciphertext IS NULL AND cardinality(live_start_kinds) = 0`, signedOutRow); got != 1 {
+		t.Fatal("a device whose login ended must lose its push-to-start token")
+	}
+	if got := f.count(`SELECT count(*) FROM bloem_admin_live_starts WHERE job_key = 'scan:old'`); got != 0 {
+		t.Fatal("start claims past a job's lifetime must be deleted")
+	}
+	if got := f.count(`SELECT count(*) FROM bloem_admin_live_starts WHERE job_key = 'scan:new'`); got != 1 {
+		t.Fatal("a recent start claim was deleted")
+	}
+}

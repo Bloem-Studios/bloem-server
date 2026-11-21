@@ -202,3 +202,33 @@ func (s *adminPushStore) claimLiveStart(ctx context.Context, deviceID, jobKey st
 	}
 	return err == nil, err
 }
+
+// adminLiveKeep is how long an activity row outlives its lifetime before the pruner
+// deletes it, and a start claim outlives its job.
+const adminLiveKeep = 4 * time.Hour
+
+// pruneLive runs with the hourly push purge. It deletes activities that ended and were
+// sent their end, activities 4 hours past their lifetime, and the activities and
+// push-to-start token of a device whose login ended or whose account is no longer an
+// admin; and start claims older than a job's lifetime.
+func (s *AdminPushService) pruneLive(ctx context.Context) {
+	if err := s.store.pruneLive(ctx, s.now()); err != nil && ctx.Err() == nil {
+		s.logger.WarnContext(ctx, "prune admin live activities failed", "error", err)
+	}
+}
+
+func (s *adminPushStore) pruneLive(ctx context.Context, now time.Time) error {
+	if _, err := s.pool.Exec(ctx, `DELETE FROM bloem_admin_live_activities a
+		WHERE (a.ended_at IS NOT NULL AND a.pending_state IS NULL) OR a.expires_at < $1::timestamptz - $2::interval
+			OR EXISTS (SELECT 1 FROM bloem_admin_push_devices d WHERE d.id = a.device_id
+				AND NOT (`+adminAccountLive+` AND `+adminLoginLive+`))`, now, adminLiveKeep); err != nil {
+		return err
+	}
+	if _, err := s.pool.Exec(ctx, `UPDATE bloem_admin_push_devices d SET live_start_token_ciphertext = NULL, live_start_kinds = '{}'
+		WHERE d.live_start_token_ciphertext IS NOT NULL AND NOT (`+adminAccountLive+` AND `+adminLoginLive+`)`); err != nil {
+		return err
+	}
+	_, err := s.pool.Exec(ctx, `DELETE FROM bloem_admin_live_starts WHERE created_at < $1::timestamptz - $2::interval`,
+		now, adminLiveLifetime+adminLiveKeep)
+	return err
+}

@@ -500,6 +500,7 @@ func (s *AdminPushService) Run(ctx context.Context) {
 			if _, err := s.store.purgeExpired(ctx); err != nil && ctx.Err() == nil {
 				s.logger.WarnContext(ctx, "purge expired admin push deliveries failed", "error", err)
 			}
+			s.pruneLive(ctx)
 		}
 	}
 }
