@@ -100,7 +100,11 @@ func wireBloemPlaybackSessionLimits(sessions *playback.SessionManager, pool *pgx
 	if sessionTenants != nil {
 		sessions.SetContextProvider(playbackSessionContextProvider(sessionTenants))
 	}
-	sessions.SetProfileLimitProvider(playbackSessionLimitProvider(users, groups, sessionTenants, tenantOrgStore))
+	var householdPools householdPoolResolver
+	if pool != nil {
+		householdPools = databaseHouseholdPools{pool: pool}
+	}
+	sessions.SetProfileLimitProvider(withHouseholdPoolLimits(playbackSessionLimitProvider(users, groups, sessionTenants, tenantOrgStore), householdPools))
 }
 
 func playbackSessionContextProvider(tenants policy.SubjectTenantResolver) playback.SessionContextProvider {

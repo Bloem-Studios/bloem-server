@@ -112,7 +112,8 @@ func (m *SessionManager) acquireFleetReservation(ctx context.Context, session *S
 	//
 	// A tenant session still reserves: the shared tenant transcode pool is the
 	// thing the reservation exists to defend, and it must never go unmetered.
-	if session.ProfileID == "" && limits.TenantID == "" {
+	// So does a household session, for the household's shared pool.
+	if session.ProfileID == "" && limits.TenantID == "" && limits.Household.ID == 0 {
 		return nil
 	}
 	request := ReservationRequest{
@@ -126,6 +127,7 @@ func (m *SessionManager) acquireFleetReservation(ctx context.Context, session *S
 		TenantTranscodes:  limits.TenantMaxTranscodes,
 		LeaseUntil:        time.Now().Add(lease),
 	}
+	withHousehold(&request, limits)
 	storeCtx, cancel := reservationStoreContext(ctx)
 	defer cancel()
 	reservation, err := store.Acquire(storeCtx, request)
@@ -261,10 +263,10 @@ func (m *SessionManager) replacementReservationRequestLocked(session *Session, m
 	if session.reservationGeneration > 0 && session.reservationRequest.IsTranscode == requestedTranscode {
 		return ReservationRequest{}, false
 	}
-	if session.reservationGeneration <= 0 && session.ProfileID == "" && limits.TenantID == "" {
+	if session.reservationGeneration <= 0 && session.ProfileID == "" && limits.TenantID == "" && limits.Household.ID == 0 {
 		return ReservationRequest{}, false
 	}
-	return ReservationRequest{
+	request := ReservationRequest{
 		SessionID:         session.ID,
 		AccountID:         session.UserID,
 		ProfileID:         session.ProfileID,
@@ -274,7 +276,9 @@ func (m *SessionManager) replacementReservationRequestLocked(session *Session, m
 		AccountTranscodes: limits.MaxTranscodes,
 		TenantTranscodes:  limits.TenantMaxTranscodes,
 		LeaseUntil:        time.Now().Add(m.reservationLeaseLocked()),
-	}, true
+	}
+	withHousehold(&request, limits)
+	return request, true
 }
 
 // admitReplacementLocked publishes an admitted replacement method and moves

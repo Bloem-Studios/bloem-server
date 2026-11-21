@@ -163,3 +163,20 @@ func TestLoginFollowsMainAccessGroup(t *testing.T) {
 		t.Fatal("the login's access policy revision did not move with its group")
 	}
 }
+
+// A login's Jellyfin-compatible sign-ins end with its main account, as every
+// other sign-in does, so a Jellyfin app on the login stops working too.
+func TestDisablingMainDeletesItsLoginsJellyfinSessions(t *testing.T) {
+	f := newHouseholdFixture(t)
+	insertJellyfinSession(t, f.pool, f.login)
+	if err := f.setEnabled(f.main, false); err != nil {
+		t.Fatal(err)
+	}
+	var left int
+	if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM jellycompat_sessions WHERE streamapp_user_id = $1`, f.login).Scan(&left); err != nil {
+		t.Fatal(err)
+	}
+	if left != 0 {
+		t.Fatalf("Jellyfin sessions left on the login after its main account was disabled: %d", left)
+	}
+}

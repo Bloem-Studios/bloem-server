@@ -8,7 +8,8 @@ and transcodes are split between the main account and its logins; the server
 keeps the logins tied to the main account.
 
 Servers that support household logins advertise the feature token
-`household_logins_v1` on `GET /api/bloem/v2/capabilities`.
+`household_logins_v1` on `GET /api/bloem/v2/capabilities`, and servers that
+can also give a household a shared pool advertise `household_pool_v1`.
 
 ## What a login is
 
@@ -80,6 +81,59 @@ delete) uses the ordinary account routes with the login's own ID.
 On Silo, 0 means unlimited for streams and transcodes. A login without
 transcodes is written as `transcode_allowed: false` with no `max_transcodes`,
 never `max_transcodes: 0`.
+
+## Shared pool
+
+A storefront can hold a household to its budget in two ways. With **shares**
+it gives each account its own fixed limits that add up to the budget; the
+server needs nothing more. With a **shared pool** every account of the
+household draws on the same streams and transcodes at the moment it plays:
+
+- The pool is a row on the main account (`bloem_household_pools`:
+  `max_streams`, `max_transcodes`, 0 unlimited). It applies only while the
+  main account has at least one login, so a household of one plays exactly as
+  before.
+- The playback limit provider adds the pool of the household an account plays
+  in (`withHouseholdPoolLimits`, `internal/api/bloem_household_pool_wiring.go`;
+  `auth.HouseholdPoolForAccount`). A pool that cannot be read refuses the
+  start, as a tenant lookup does.
+- The fleet reservation (`internal/playback/bloem_household_reservation.go`)
+  stores the household on each reservation (`household_id`, the main account's
+  id) and, for a household with a pool, takes the household's advisory lock
+  after the account's and before a tenant's, counts the household's live
+  reservations other than the one being made, and refuses a start the pool has
+  no room for. The household's reservations are those made in its name and
+  every live reservation of its main account and logins, so a session that
+  started before the pool applied (the main account playing when its first
+  login is made, or a household a storefront moves from shares to a pool)
+  counts too. Every account's own limits still apply too, so a login can carry
+  its own cap inside the pool.
+- A refusal at the pool wraps Silo's own stream or transcode limit
+  (`ErrHouseholdStreamsExceeded`, `ErrHouseholdTranscodesExceeded`), so
+  clients, the stream-limit notice and lease renewal treat it as that limit.
+- Only the fleet reservation counts the pool. It leaves out the session being
+  reserved again, so a session moving between direct play and transcoding
+  keeps its stream in a full pool. A household session reserves even without
+  an active profile, so nothing plays outside the pool.
+- Jellyfin-compatible sessions start through the same session manager as the
+  signed-in account (a login signs in as itself), so they count against that
+  account and its household, and they end with the main account like every
+  other sign-in (above).
+
+Under the platform credential:
+
+- `PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`
+  sets the pool: `max_streams` and `max_transcodes`, both required. A login
+  (`household_nested`) and an admin account (`household_main_ineligible`)
+  cannot have one.
+- `GET` on the same path answers the pool with `streams_in_use`,
+  `transcodes_in_use` (the live reservations of the main account and its
+  logins) and `logins`; `404 household_pool_not_found` when there is none.
+- `DELETE` on the same path removes it, and succeeds when there is none.
+
+A restore brings a pool back with its main account (it is account policy).
+Upstream Silo never sees a pool in use: pools apply only to households, and
+households never coexist with Silo switching.
 
 ## Silo switching
 

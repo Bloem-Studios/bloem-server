@@ -106,6 +106,10 @@ const (
 	// that belong to a main account, created and listed under
 	// /api/bloem/v2/admin/platform/accounts/{account_id}/logins.
 	featureHouseholdLoginsV1 = "household_logins_v1"
+	// featureHouseholdPoolV1 covers a household's shared pool of streams and
+	// transcodes, set on the main account under
+	// /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool.
+	featureHouseholdPoolV1 = "household_pool_v1"
 	// featureDeclaredEventChannels is the aggregate name for the events
 	// websocket's declared-channel handshake, reported in detail as
 	// declared_channels on /events/capability.
@@ -148,7 +152,7 @@ func buildBloemCapabilityTokens() []string {
 	}
 	add(playbackFeatures...)
 	add(featureDeclaredEventChannels, "live_tv_access_v1", "organization_activity_v1", "organization_invitation_lifecycle_v1", "organization_invitation_links_v1", "platform_engagement_authoring_v1")
-	add(featureWatchDocumentV1, featureDevicePairingV1, featureHouseholdLoginsV1)
+	add(featureWatchDocumentV1, featureDevicePairingV1, featureHouseholdLoginsV1, featureHouseholdPoolV1)
 	return tokens
 }
 
