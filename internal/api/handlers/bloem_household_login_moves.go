@@ -102,8 +102,13 @@ func (h *AdminHandler) moveBloemProfileToNewLogin(ctx context.Context, mainID in
 	if err != nil {
 		return 0, false, err
 	}
-	var primary bool
-	err = tx.QueryRow(ctx, `SELECT is_primary FROM user_profiles WHERE user_id = $1 AND id = $2`, mainID, profileID).Scan(&primary)
+	// A login's only profile is its primary, which manages the login's
+	// profiles, its own included, and which Silo holds to no library limit;
+	// so a profile with parental limits stays a profile.
+	var primary, restricted bool
+	err = tx.QueryRow(ctx, `SELECT is_primary, is_child OR library_restrictions_enabled OR max_content_rating <> ''
+			OR max_advisory_age IS NOT NULL OR require_advisory_age OR requests_blocked
+		FROM user_profiles WHERE user_id = $1 AND id = $2`, mainID, profileID).Scan(&primary, &restricted)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return 0, false, bloemProfileMoveError(pgstore.ErrProfileMoveNotFound)
@@ -111,6 +116,8 @@ func (h *AdminHandler) moveBloemProfileToNewLogin(ctx context.Context, mainID in
 		return 0, false, err
 	case primary:
 		return 0, false, apiError(http.StatusConflict, "primary_profile", "The main account's primary profile manages the household and cannot have a login of its own")
+	case restricted:
+		return 0, false, apiError(http.StatusConflict, "restricted_profile", "A profile with parental limits cannot have a login of its own: as its login's main profile it would manage its own limits")
 	}
 	user, err := h.accountProvisioner.CreateAccountInTransaction(tenancy.WithCreationOrganization(ctx, main.organizationID), tx, auth.CreateAccountInput{
 		User: models.CreateUserInput{
@@ -179,6 +186,17 @@ func (h *AdminHandler) moveBloemLoginToMain(ctx context.Context, mainID, loginID
 		}
 		if _, err := lockBloemHouseholdMain(ctx, tx, mainID); err != nil {
 			return false, err
+		}
+		// Silo keeps an account's profile names unique (case-insensitively);
+		// two alike would make sign-in by profile name ambiguous.
+		var clash bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM user_profiles AS moving JOIN user_profiles AS staying
+				ON lower(btrim(staying.name)) = lower(btrim(moving.name))
+			WHERE moving.user_id = $1 AND staying.user_id = $2)`, loginID, mainID).Scan(&clash); err != nil {
+			return false, err
+		}
+		if clash {
+			return false, apiError(http.StatusConflict, "profile_name_conflict", "The main account already has a profile with the name of one of the login's profiles; rename one first")
 		}
 		rows, err := tx.Query(ctx, `SELECT id FROM user_profiles WHERE user_id = $1 ORDER BY created_at, id`, loginID)
 		if err != nil {

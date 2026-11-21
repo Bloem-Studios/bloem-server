@@ -132,8 +132,6 @@ var bloemProfileMoveTables = map[string]profileMoveRule{
 	"notification_webhooks":             moveCarry("the person's notification webhooks"),
 	"notification_deliveries":           moveCarry("the person's notification inbox"),
 	// Links to other services, made by the person.
-	"watch_provider_connections":   moveCarry("the person's watch-service links (secrets are bound to the row id, not the account)"),
-	"watch_provider_auth_sessions": moveCarry("the person's watch-service link in progress"),
 	"history_import_user_mappings": moveColumns(moveCarry("which external user's history is imported into the person"), "silo_user_id", "silo_profile_id"),
 	"backup_restored_profiles":     moveCarry("which backup profile a restore made this profile from"),
 
@@ -160,6 +158,12 @@ var bloemProfileMoveTables = map[string]profileMoveRule{
 	"playback_stop_commits":        moveEnd("stop receipts of the old account's sessions"),
 	"device_login_requests":        moveColumns(moveEnd("device sign-ins approved by the old account as the profile"), "approved_by_user_id", "approved_profile_id"),
 	"history_import_runs":          moveEnd("import runs into the old account (a run's target cannot change; the imported history itself is carried)"),
+	// Their tokens are encrypted for the account and profile they were made
+	// under (watchsync.TokenAAD, authStateAAD), so they cannot be read under
+	// another account. The history they brought in is carried; the person
+	// links the service again from the login.
+	"watch_provider_connections":   moveEnd("watch-service links, whose tokens are bound to the old account and profile"),
+	"watch_provider_auth_sessions": moveEnd("watch-service links being made, bound to the old account and profile"),
 	"webhook_sync_profile_mappings": {Kind: profileMoveEnd, UserColumn: "", ProfileColumn: "silo_profile_id",
 		Reason: "the old account's webhook sync no longer maps to the profile (deleted by the webhook step)"},
 
@@ -190,9 +194,9 @@ var bloemProfileMoveSteps = map[string]string{
 	"user_personal_collections":                "the profile's own collections are copied under the target account, then deleted under the old one",
 	"user_personal_collection_items":           "the moved collections' items change account",
 	"user_personal_collection_poster_variants": "the moved collections' posters change account",
-	"user_personal_collection_smart_collages":  "the moved collections' collages change account",
+	"user_personal_collection_smart_collages":  "the moved collections' collage records are dropped: a cache the next list read rebuilds, which a repoint cannot carry (its foreign key to the poster variants does not follow an account change)",
 	"user_collection_groups":                   "a moved collection's shelf group is found by slug or label in the target account, or copied there",
-	"user_settings":                            "the profile's section overrides move between the accounts' values",
+	"user_settings":                            "the profile's section overrides move between the accounts' values, and its Jellyfin-client configuration (bloemJellyfinConfigurationKey) changes account",
 	"jellycompat_displayprefs":                 "Jellyfin-compatible display preferences keyed by the profile's prefix change account",
 	"webhook_sync_connections":                 "a connection of the old account whose default is the profile defaults to the old account's primary profile",
 }
@@ -202,7 +206,6 @@ var bloemProfileMoveSteps = map[string]string{
 var moveCollectionDependants = []string{
 	"user_personal_collection_items",
 	"user_personal_collection_poster_variants",
-	"user_personal_collection_smart_collages",
 }
 
 // MoveProfileInTx moves profile profileID from account from to account to in
@@ -273,6 +276,13 @@ func MoveProfileInTx(ctx context.Context, tx pgx.Tx, from, to int, profileID str
 	}
 	if _, err := tx.Exec(ctx, `UPDATE jellycompat_displayprefs SET user_id = $3 WHERE user_id = $1 AND left(prefs_id, length($2)) = $2`, from, prefix, to); err != nil {
 		return fmt.Errorf("profile move: moving display preferences: %w", err)
+	}
+	configuration := bloemJellyfinConfigurationKey(profileID)
+	if _, err := tx.Exec(ctx, `DELETE FROM user_settings WHERE user_id = $1 AND key = $2`, to, configuration); err != nil {
+		return fmt.Errorf("profile move: clearing the Jellyfin configuration: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE user_settings SET user_id = $3 WHERE user_id = $1 AND key = $2`, from, configuration, to); err != nil {
+		return fmt.Errorf("profile move: moving the Jellyfin configuration: %w", err)
 	}
 	if err := endOldSignIns(ctx, tx, from, profileID); err != nil {
 		return err
@@ -365,6 +375,13 @@ func moveCollections(ctx context.Context, tx pgx.Tx, from, to int, profileID str
 		if _, err := tx.Exec(ctx, `UPDATE user_personal_collections SET group_id = $3 WHERE user_id = $1 AND id = $2`, to, c.id, groups[*c.group]); err != nil {
 			return nil, fmt.Errorf("profile move: shelving a collection: %w", err)
 		}
+	}
+	// A smart collage record points at a poster variant by (account,
+	// collection, variant), and that key cannot change while the record
+	// holds it. The record is a cache the next list read rebuilds.
+	if _, err := tx.Exec(ctx, `DELETE FROM user_personal_collection_smart_collages WHERE user_id = ANY($1) AND collection_id = ANY($2)`,
+		[]int{from, to}, ids); err != nil {
+		return nil, fmt.Errorf("profile move: dropping smart collages: %w", err)
 	}
 	for _, table := range moveCollectionDependants {
 		if _, err := tx.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE user_id = $1 AND collection_id = ANY($2)`, moveIdent(table)), to, ids); err != nil {
@@ -562,3 +579,10 @@ func sortedMoveTables(kind profileMoveKind) []string {
 }
 
 func moveIdent(name string) string { return pgx.Identifier{name}.Sanitize() }
+
+// bloemJellyfinConfigurationKey is the account setting holding one profile's
+// Jellyfin-client configuration (the key internal/jellycompat writes,
+// configurationKey).
+func bloemJellyfinConfigurationKey(profileID string) string {
+	return "jellycompat:configuration:" + profileID
+}

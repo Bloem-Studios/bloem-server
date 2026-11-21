@@ -177,6 +177,11 @@ func TestMoveCarriesThePersonsData(t *testing.T) {
 	}
 	f.exec(`INSERT INTO jellycompat_displayprefs (user_id, prefs_id, client, value) VALUES ($1, $2, 'emby', '{}')`,
 		f.main, userstore.ProfileDisplayPrefsPrefix(f.sam)+"usersettings")
+	// The collection's poster and a built smart collage that uses it.
+	f.exec(`INSERT INTO user_personal_collection_poster_variants (user_id, collection_id, variant_key, poster_path) VALUES ($1, $2, 'v1', 'posters/v1.webp')`, f.main, collection)
+	f.exec(`INSERT INTO user_personal_collection_smart_collages (user_id, collection_id, access_key, definition_key, variant_key) VALUES ($1, $2, 'all', 'def', 'v1')`, f.main, collection)
+	// The person's Jellyfin-client configuration, kept in the account's settings.
+	f.exec(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, $2, '{"OrderedViews":["a"]}')`, f.main, bloemJellyfinConfigurationKey(f.sam))
 
 	f.mustMove(f.main, f.login, f.sam, true)
 
@@ -224,6 +229,28 @@ func TestMoveCarriesThePersonsData(t *testing.T) {
 	}
 	if got := f.count(`SELECT count(*) FROM jellycompat_displayprefs WHERE user_id = $1`, f.login); got != 1 {
 		t.Errorf("display preferences under the login: %d; want 1", got)
+	}
+	if got := f.count(`SELECT count(*) FROM user_personal_collection_poster_variants WHERE user_id = $1 AND collection_id = $2`, f.login, collection); got != 1 {
+		t.Errorf("collection poster under the login: %d; want 1", got)
+	}
+	// The collage record is a cache: it is rebuilt for the login on its next read.
+	if got := f.count(`SELECT count(*) FROM user_personal_collection_smart_collages WHERE collection_id = $1`, collection); got != 0 {
+		t.Errorf("smart collage records left: %d; want none until the next read rebuilds one", got)
+	}
+	if got := f.count(`SELECT count(*) FROM user_settings WHERE user_id = $1 AND key = $2`, f.login, bloemJellyfinConfigurationKey(f.sam)); got != 1 {
+		t.Errorf("Jellyfin configuration under the login: %d; want 1", got)
+	}
+}
+
+// Watch-service links keep their tokens encrypted for the account and
+// profile they were made under, so a move ends them; the person links the
+// service again from their own login.
+func TestMoveEndsWatchServiceLinks(t *testing.T) {
+	f := newMoveFixture(t)
+	f.exec(`INSERT INTO watch_provider_connections (provider, user_id, profile_id) VALUES ('trakt', $1, $2)`, f.main, f.sam)
+	f.mustMove(f.main, f.login, f.sam, true)
+	if got := f.count(`SELECT count(*) FROM watch_provider_connections WHERE profile_id = $1`, f.sam); got != 0 {
+		t.Fatalf("watch-service links left: %d; want the link ended", got)
 	}
 }
 

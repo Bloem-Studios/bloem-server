@@ -56,6 +56,9 @@ func (f *householdLoginsFixture) profiles(userID int) (ids []string, primary str
 			primary = id
 		}
 	}
+	if err := rows.Err(); err != nil {
+		f.t.Fatal(err)
+	}
 	return ids, primary
 }
 
@@ -234,5 +237,40 @@ func (f *householdLoginsFixture) exec(sql string, args ...any) {
 	f.t.Helper()
 	if _, err := f.pool.Exec(f.t.Context(), sql, args...); err != nil {
 		f.t.Fatalf("%s: %v", sql, err)
+	}
+}
+
+// A profile with parental limits would manage itself as its login's primary
+// profile, and Silo applies no library limit to a primary profile.
+func TestMoveProfileRefusesARestrictedProfile(t *testing.T) {
+	f := newMovesFixture(t)
+	main := f.main("main")
+	f.addProfile(main, "Main")
+	kid := f.addProfile(main, "Kid")
+	f.exec(`UPDATE user_profiles SET library_restrictions_enabled = true WHERE user_id = $1 AND id = $2`, main, kid)
+	rec := f.moveProfile(main, kid, "kid")
+	if rec.Code != http.StatusConflict || errorCode(t, rec) != "restricted_profile" {
+		t.Fatalf("move a restricted profile: %d %s; want 409 restricted_profile", rec.Code, rec.Body)
+	}
+	if ids, _ := f.profiles(main); !slices.Contains(ids, kid) {
+		t.Fatalf("the restricted profile left the main account: %v", ids)
+	}
+}
+
+// Two profiles of one account with the same name make Jellyfin sign-in by
+// name ambiguous, so a login whose profile shares a name with one of the main
+// account's stays a login.
+func TestMoveToMainRefusesAProfileNameTheMainAccountHas(t *testing.T) {
+	f := newMovesFixture(t)
+	main := f.main("main")
+	f.addProfile(main, "Main")
+	f.addProfile(main, "Sam")
+	login := f.create(main, "sam", `"max_streams":1,"max_profiles":1`)
+	rec := f.post(fmt.Sprintf("/accounts/%d/logins/%d/move-to-main", main, login.ID), "")
+	if rec.Code != http.StatusConflict || errorCode(t, rec) != "profile_name_conflict" {
+		t.Fatalf("move a same-named profile to main: %d %s; want 409 profile_name_conflict", rec.Code, rec.Body)
+	}
+	if ids, _ := f.profiles(login.ID); len(ids) != 1 {
+		t.Fatalf("the login has %d profiles; want its one", len(ids))
 	}
 }

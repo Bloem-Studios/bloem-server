@@ -168,13 +168,17 @@ own, keeping everything the profile holds. Servers that support it advertise
 - `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/move-profile`
   creates a login as the create route does, but with no profile of its own,
   and moves the named profile into it as its primary profile. The main
-  account's primary profile cannot move (409 `primary_profile`).
+  account's primary profile cannot move (409 `primary_profile`), nor can a
+  profile with parental limits (409 `restricted_profile`): as its login's
+  primary it would manage its own limits, and Silo holds a primary profile to
+  no library limit.
 - `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins/{login_id}/move-to-main`
   moves every profile of the login onto the main account as ordinary profiles
   and deletes the login. It runs inside the account service's own delete
   transaction (`MutateAdminAccount`), so the login's sign-ins are revoked and
   its deletion audited as any account's are. A main account without room for
-  the profiles answers 409 `profile_limit`.
+  the profiles answers 409 `profile_limit`; one that already has a profile
+  named like one of the login's answers 409 `profile_name_conflict`.
 
 Each move is one transaction: it completes, or both accounts are as they
 were. A move never writes either account's limits; the storefront makes room
@@ -193,18 +197,23 @@ profile's history lock and its collections, then:
    account's profile limit like any new profile;
 2. copies the profile's own collections, and the shelf groups they sit in
    (found by slug or label in the target account, or copied there), and moves
-   their items, posters and collages;
+   their items and posters (a smart collage record is a cache that points at
+   a poster by account, so it is dropped and the next list read rebuilds it);
 3. removes what joins the profile to collections that stay, and other
    profiles to collections that move: sharing, allowances and sort orders
    cannot cross accounts;
 4. carries the person's data to the target account, replacing any stray row
    already there for the profile;
-5. moves the profile's section overrides between the accounts' values, and
-   its Jellyfin-compatible display preferences;
+5. moves the profile's section overrides between the accounts' values, its
+   Jellyfin-compatible display preferences, and its Jellyfin-client
+   configuration (`jellycompat:configuration:<profile>`);
 6. ends what the old account's sign-ins had as the profile: sessions bound to
    it are revoked, Jellyfin- and Audiobookshelf-compatible sessions, push
    registrations, download device libraries, device settings, remote-control
-   state and profile-bound API keys go; a webhook sync connection that
+   state and profile-bound API keys go, and so do watch-service links, whose
+   tokens are encrypted for the account and profile they were made under (the
+   person links the service again; the history it brought in is carried); a
+   webhook sync connection that
    defaulted to the profile defaults to the old account's primary profile;
 7. deletes the old collection rows and the old profile row.
 
@@ -212,7 +221,7 @@ What happens to each table with a profile column is in `bloemProfileMoveTables`
 (carry, end, keep, follows) with its reason. Carried: watching (progress,
 history, watchlists, ratings, dismissals, taste), settings and preferences,
 reading and listening positions, recordings and recording rules, requests,
-notification choices and inbox, and the person's links to other services.
+notification choices and inbox, and history import mappings.
 Kept with the old account: records of what happened there (playback logs and
 reservations, administrators' playback history, access decisions, diagnostic
 reports, request events, the old devices' download change feed, watch-together
