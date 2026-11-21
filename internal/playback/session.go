@@ -406,6 +406,7 @@ type SessionLimits struct {
 	TenantID            string
 	TenantMaxTranscodes int
 	TenantFrozen        bool
+	Household           HouseholdLimits // Bloem: a household's shared pool (bloem_household_reservation.go)
 }
 
 // SessionLimitProvider returns the current admission limits for a user.

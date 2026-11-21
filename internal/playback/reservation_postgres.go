@@ -64,6 +64,11 @@ func (store *PostgresReservationStore) Acquire(ctx context.Context, request Rese
 			return Reservation{}, ErrAttemptStoppedV3
 		}
 	}
+	// The household lock comes after the account lock and before the tenant
+	// lock (bloem_household_reservation.go).
+	if err := reserveHouseholdCapacity(ctx, tx, request); err != nil {
+		return Reservation{}, err
+	}
 	if request.TenantID != "" {
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "playback-tenant:"+request.TenantID); err != nil {
 			return Reservation{}, fmt.Errorf("lock playback tenant capacity: %w", err)
@@ -101,8 +106,8 @@ func (store *PostgresReservationStore) Acquire(ctx context.Context, request Rese
 	var generation int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO playback_capacity_reservations (
-			session_id, account_id, profile_id, tenant_id, is_transcode, lease_until, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, now())
+			session_id, account_id, profile_id, tenant_id, is_transcode, lease_until, household_id, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, now())
 		ON CONFLICT (session_id) DO UPDATE SET
 			generation = nextval('playback_capacity_reservation_generation_seq'),
 			account_id = EXCLUDED.account_id,
@@ -110,9 +115,10 @@ func (store *PostgresReservationStore) Acquire(ctx context.Context, request Rese
 			tenant_id = EXCLUDED.tenant_id,
 			is_transcode = EXCLUDED.is_transcode,
 			lease_until = EXCLUDED.lease_until,
+			household_id = EXCLUDED.household_id,
 			updated_at = now()
 		RETURNING generation`,
-		request.SessionID, request.AccountID, request.ProfileID, request.TenantID, request.IsTranscode, request.LeaseUntil,
+		request.SessionID, request.AccountID, request.ProfileID, request.TenantID, request.IsTranscode, request.LeaseUntil, request.HouseholdID,
 	).Scan(&generation); err != nil {
 		return Reservation{}, fmt.Errorf("store playback reservation: %w", err)
 	}
