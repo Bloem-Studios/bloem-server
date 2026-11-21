@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { LibraryAccessScope } from "@/bloem/libraryAccessScope";
+import { organizationLibraryOptions } from "@/bloem/organizationLibraryOptions";
 
 import { LibraryAccessSelector } from "./LibraryAccessSelector";
 
@@ -14,10 +15,10 @@ describe("LibraryAccessSelector", () => {
     render(
       <LibraryAccessScope name="North Sea Media">
         <LibraryAccessSelector
-          libraries={[
-            { id: 4, name: "Family Movies", type: "movies", enabled: true },
-            { id: 8, name: "Platform Series", type: "series", enabled: true },
-          ]}
+          libraries={organizationLibraryOptions([
+            { folder_id: 4, name: "Family Movies", type: "movies", access_kind: "owned" },
+            { folder_id: 8, name: "Platform Series", type: "series", access_kind: "owned" },
+          ])}
           value={[4]}
           onChange={vi.fn()}
         />

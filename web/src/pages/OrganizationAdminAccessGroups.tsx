@@ -37,6 +37,7 @@ import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useOrganizationLibraries } from "@/hooks/queries/admin/organizationLibraries";
+import { organizationLibraryOptions } from "@/bloem/organizationLibraryOptions";
 import { PERMISSION_WATCH_LIVE_TV } from "@/lib/bloemPermissions";
 import { PERMISSION_MARKER_EDIT, PERMISSION_METADATA_CURATION } from "@/lib/permissions";
 import {
@@ -278,12 +279,7 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
     organization,
   );
   const libraries = organization
-    ? (organizationLibraries.data ?? []).map((library) => ({
-        id: library.folder_id,
-        name: library.name,
-        type: library.type,
-        enabled: library.access_kind === "owned" || library.entitlement?.status === "active",
-      }))
+    ? organizationLibraryOptions(organizationLibraries.data ?? [])
     : (legacyLibraries.data ?? []);
   const updateGroup = useUpdateAccessGroup(active);
   const deleteGroup = useDeleteAccessGroup(active);

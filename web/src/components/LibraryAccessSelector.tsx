@@ -6,7 +6,7 @@ import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 interface LibraryAccessSelectorProps {
-  libraries: Pick<Library, "id" | "name" | "type" | "enabled">[];
+  libraries: Library[];
   value: number[] | null;
   onChange: (value: number[] | null) => void;
   // Label for the null state. Groups and invitations use the default "All
@@ -19,10 +19,7 @@ interface LibraryAccessSelectorProps {
   emptyHint?: string;
 }
 
-function sortByLibraryOrder(
-  libraries: Pick<Library, "id" | "name" | "type" | "enabled">[],
-  ids: number[],
-) {
+function sortByLibraryOrder(libraries: Library[], ids: number[]) {
   const selected = new Set(ids);
   return libraries.filter((library) => selected.has(library.id)).map((library) => library.id);
 }

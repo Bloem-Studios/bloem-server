@@ -55,6 +55,7 @@ import { formatDate } from "@/lib/datetime";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import InvitationsTab from "./InvitationsTab";
 import { useOrganizationLibraries } from "@/hooks/queries/admin/organizationLibraries";
+import { organizationLibraryOptions } from "@/bloem/organizationLibraryOptions";
 import type { AdminContextSummary } from "@/api/bloemTypes";
 import { useBloemCapabilities } from "@/hooks/queries/useBloemCapabilities";
 
@@ -418,12 +419,7 @@ function CreateInvitationForm({
     organization,
   );
   const libraries = organization
-    ? organizationLibraries.map((library) => ({
-        id: library.folder_id,
-        name: library.name,
-        type: library.type,
-        enabled: library.access_kind === "owned" || library.entitlement?.status === "active",
-      }))
+    ? organizationLibraryOptions(organizationLibraries)
     : legacyLibraries;
   // Silo offers a link with no address first when it cannot send email, and
   // organization invitations are never emailed.
