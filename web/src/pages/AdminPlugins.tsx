@@ -122,14 +122,11 @@ function PluginsBoard() {
   const { data: pluginUpdateTask } = useTask(CHECK_PLUGIN_UPDATES_TASK_KEY);
   const previousTaskState = useRef<string | null>(null);
 
+  const activeTab = searchParams.get("tab") === "catalog" ? "catalog" : "installed";
   // Storage plugins are managed through the administrative context, so the
-  // tab exists only inside one.
+  // tab exists only inside one; the page's tabs select it
+  // (bloem/preview/adapters/pluginTabs.tsx).
   const storageAvailable = (useOptionalAdminContext()?.active ?? null) !== null;
-  const requestedTab = searchParams.get("tab");
-  const activeTab =
-    requestedTab === "catalog" || (requestedTab === "storage" && storageAvailable)
-      ? requestedTab
-      : "installed";
   const isCheckingUpdates =
     pluginUpdateTask?.state === "running" || pluginUpdateTask?.state === "cancelling";
 
@@ -223,7 +220,7 @@ function PluginsBoard() {
       <Tabs
         value={activeTab}
         onValueChange={(value) =>
-          updatePluginView({ tab: value === "installed" ? undefined : value }, { replace: false })
+          updatePluginView({ tab: value === "catalog" ? "catalog" : undefined }, { replace: false })
         }
       >
         <TabsList variant="line" className="mb-2">

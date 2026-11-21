@@ -945,13 +945,6 @@
     "    void refreshSignInProviders();"
    ]
   },
-  "web/src/pages/AdminPlugins.tsx": {
-   "kind": "lines",
-   "lines": [
-    "          updatePluginView({ tab: value === \"catalog\" ? \"catalog\" : undefined }, { replace: false })",
-    "  const activeTab = searchParams.get(\"tab\") === \"catalog\" ? \"catalog\" : \"installed\";"
-   ]
-  },
   "web/src/pages/Home.tsx": {
    "kind": "lines",
    "lines": [

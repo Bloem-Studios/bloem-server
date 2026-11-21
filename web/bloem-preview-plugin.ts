@@ -81,6 +81,8 @@ const importerModules: Record<string, Record<string, string>> = {
     "hooks/queries/admin/stats.ts": "adapters/adminSessions.ts",
     "hooks/queries/admin/plugins.ts": "adapters/adminPluginNav.ts",
   },
+  // The plugins page adds Bloem's storage tab beside Silo's tabs.
+  "pages/AdminPlugins.tsx": { "components/ui/tabs.tsx": "adapters/pluginTabs.tsx" },
   // Silo's all-libraries switch gets an accessible name naming the scope.
   "components/LibraryAccessSelector.tsx": {
     "components/ui/switch.tsx": "adapters/LibraryAccessSwitch.tsx",
