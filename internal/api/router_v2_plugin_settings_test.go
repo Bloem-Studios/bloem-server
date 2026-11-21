@@ -93,6 +93,7 @@ func TestV2PluginSettingsWiredWhenPluginsConfigured(t *testing.T) {
 	// plugin handler (here a failed query on the dead pool), never from the
 	// dependency_unavailable fallback.
 	v2 := *sealed
+	v2.TenantIdentity = nil // Bloem: the tenant identity gate reads the dead pool; this test fakes the gates around the handler
 	member := v2WiringIdentity{role: models.RoleUser}
 	v2.Auth = apimw.NewAuthMiddleware(member, member, nil, nil)
 	v2.ViewerAccess = apimw.NewViewerAccessMiddleware(v2WiringViewer{})
