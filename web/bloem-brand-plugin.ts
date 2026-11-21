@@ -8,7 +8,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Plugin } from "vite";
 import { brandTestRegexes } from "./product-brand-regex";
-import { applyBrand, PRODUCT_NAME } from "./src/lib/product-brand";
+import { applyBrand, applyCatalogBrand, PRODUCT_NAME } from "./src/lib/product-brand";
 import { applyBloemTestConfig } from "./bloem-test-config";
 
 const BRANDABLE = /\.(ts|tsx|html)$/;
@@ -21,6 +21,30 @@ const PUBLIC_ASSETS = ["site.webmanifest", "sw.js"] as const;
 // a build must ship it unchanged. Only the dev server, which has no server
 // rendering in front of it, brands the title itself.
 const SERVER_RENDERED_TITLE = "<title>Silo</title>";
+
+/**
+ * Brand a Silo catalog module message by message, so Silo's push relay
+ * messages keep Silo's name (applyCatalogBrand). A catalog is megabytes, and
+ * Vite hands one on as `export default JSON.parse("...")`; any other form is
+ * branded as text, as before.
+ */
+function brandCatalogModule(code: string): string | undefined {
+  const call = "JSON.parse(";
+  const start = code.indexOf(call);
+  const end = code.lastIndexOf(")");
+  if (!code.startsWith("export default") || start < 0 || end < start) return undefined;
+  let messages: unknown;
+  try {
+    messages = JSON.parse(JSON.parse(code.slice(start + call.length, end)) as string);
+  } catch {
+    return undefined;
+  }
+  if (!messages || typeof messages !== "object" || Array.isArray(messages)) return undefined;
+  const branded = applyCatalogBrand(messages as Record<string, unknown>);
+  return (
+    code.slice(0, start + call.length) + JSON.stringify(JSON.stringify(branded)) + code.slice(end)
+  );
+}
 
 function brandPublicAsset(fileName: (typeof PUBLIC_ASSETS)[number], source: string): string {
   if (fileName === "site.webmanifest") {
@@ -70,7 +94,9 @@ export function bloemBrand(): Plugin {
           (_match, quote: string, asset: string) => quote + "/bloem-" + asset + ".png" + quote,
         );
       }
-      branded = applyBrand(/\.test\.tsx?$/.test(sourceId) ? brandTestRegexes(branded) : branded);
+      const catalog = SILO_CATALOG.test(sourceId) ? brandCatalogModule(branded) : undefined;
+      branded =
+        catalog ?? applyBrand(/\.test\.tsx?$/.test(sourceId) ? brandTestRegexes(branded) : branded);
       return branded === code ? null : { code: branded, map: null };
     },
     transformIndexHtml(html, ctx) {

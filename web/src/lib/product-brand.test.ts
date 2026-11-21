@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { applyBrand } from "./product-brand";
+import { applyBrand, applyCatalogBrand } from "./product-brand";
 
 describe("applyBrand", () => {
   // The whole point: upstream's prose, rebranded, without editing upstream's
@@ -70,6 +70,99 @@ describe("applyBrand", () => {
     }
     for (const owned of ["bloem-icon-1024.png", "bloem-wordmark-sidebar.png"]) {
       expect(existsSync(publicPath(owned))).toBe(true);
+    }
+  });
+});
+
+// Silo's apps on a Bloem server are woken through Silo's relay
+// (docs/architecture/bloem-push-relays.md). Silo's relay card, its settings
+// search entry, the setup step and the viewer's privacy notice describe that
+// relay, so they keep Silo's name; the server itself is still this build.
+describe("Silo's push relay keeps Silo's name", () => {
+  it("leaves the relay card's title alone", () => {
+    expect(applyBrand('const PUSH_RELAY_TITLE = "Silo Push Relay";')).toBe(
+      'const PUSH_RELAY_TITLE = "Silo Push Relay";',
+    );
+    expect(applyBrand("Silo Server")).toBe("Bloem Server");
+  });
+
+  it("leaves Silo's relay messages alone and brands the rest", () => {
+    const relay = [
+      { type: 0, value: "Mobile push through Silo's relay, delivered by APNs or FCM." },
+    ];
+    const other = [{ type: 0, value: "Silo couldn't reach the server" }];
+    expect(
+      applyCatalogBrand({
+        "web.admin.settings.notifications.relay.description": relay,
+        "web.admin.settings.search.notifications.setting.siloPushRelay": [
+          { type: 0, value: "Relais push Silo" },
+        ],
+        "web.setup.features.pushDescription": [
+          {
+            type: 0,
+            value: "Delivers to the iOS and Android apps through Silo's open-source relay.",
+          },
+        ],
+        "web.other": other,
+      }),
+    ).toEqual({
+      "web.admin.settings.notifications.relay.description": relay,
+      "web.admin.settings.search.notifications.setting.siloPushRelay": [
+        { type: 0, value: "Relais push Silo" },
+      ],
+      "web.setup.features.pushDescription": [
+        {
+          type: 0,
+          value: "Delivers to the iOS and Android apps through Silo's open-source relay.",
+        },
+      ],
+      "web.other": [{ type: 0, value: "Bloem couldn't reach the server" }],
+    });
+  });
+
+  it("names this server, then Silo's relay, in the privacy notice", () => {
+    const notice = applyCatalogBrand({
+      "web.notifications.pushPrivacy.relay": [
+        {
+          type: 0,
+          value:
+            "When push notifications are enabled, your Silo Server sends a content-free request to Silo's push relay so Silo can deliver notifications. The relay is ",
+        },
+        { type: 8, value: "link", children: [{ type: 0, value: "fully open source" }] },
+      ],
+    });
+    expect(notice["web.notifications.pushPrivacy.relay"]).toEqual([
+      {
+        type: 0,
+        value:
+          "When push notifications are enabled, your Bloem Server sends a content-free request to Silo's push relay so Silo can deliver notifications. The relay is ",
+      },
+      { type: 8, value: "link", children: [{ type: 0, value: "fully open source" }] },
+    ]);
+  });
+
+  it("holds in every language: the notice names the server before Silo's relay", async () => {
+    const { readdirSync, readFileSync } = await import("node:fs");
+    const dir = resolve(process.cwd(), "src/locales");
+    const languages = readdirSync(dir).filter((file) => file.endsWith(".json"));
+    expect(languages.length).toBeGreaterThanOrEqual(39);
+    for (const file of languages) {
+      const messages = JSON.parse(readFileSync(resolve(dir, file), "utf8")) as Record<
+        string,
+        unknown
+      >;
+      const before = JSON.stringify(messages["web.notifications.pushPrivacy.relay"]);
+      const after = JSON.stringify(
+        applyCatalogBrand({
+          "web.notifications.pushPrivacy.relay": messages["web.notifications.pushPrivacy.relay"],
+        })["web.notifications.pushPrivacy.relay"],
+      );
+      const silo = (text: string) => (text.match(/Silo/g) ?? []).length;
+      // The en-XA pseudo-locale spells the name with accents; nothing brands it.
+      if (file === "en-XA.json") continue;
+      // One "Silo" becomes this build; at least one still names Silo's relay.
+      expect(silo(before) - silo(after), file).toBe(1);
+      expect(silo(after), file).toBeGreaterThanOrEqual(1);
     }
   });
 });

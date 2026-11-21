@@ -40,6 +40,17 @@ Silo app's inbox and unread count are the ones a Silo server would give it. Bloe
 web inbox reads them from Bloem's own routes
 ([announcements](admin-announcements.md#what-viewers-apps-receive)).
 
+## What the web calls each relay
+
+The web's rebranding (`web/src/lib/product-brand.ts`) renames Silo to Bloem in Silo's
+interface text, but the text about Silo's relay keeps Silo's name, because that relay
+is Silo's: the notification settings card "Silo Push Relay" and its line "Mobile push
+through Silo's relay", its settings search entry, the setup step's push line, and the
+viewer's privacy notice ("your Bloem Server sends a content-free request to Silo's push
+relay so Silo can deliver notifications"). The rule is by message key, so it holds in
+every language. Bloem's own relay has its own card, "Push relay for the Bloem Admin
+app", in Bloem's catalog.
+
 ## What a relay sees
 
 Neither relay ever sees a notification's text, a title's name or a person's name. The

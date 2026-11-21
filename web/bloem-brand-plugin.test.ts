@@ -218,11 +218,12 @@ describe("Bloem brand adapter through Vite", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  async function startDev(base = "/") {
+  async function startDev(base = "/", json?: { namedExports: boolean }) {
     server = await createServer({
       root,
       base,
       configFile: false,
+      json,
       plugins: [bloemBrand()],
       logLevel: "silent",
       server: { host: "127.0.0.1", port: 0, watch: null },
@@ -262,6 +263,46 @@ describe("Bloem brand adapter through Vite", () => {
     expect(silo).toContain("Made by Silo");
     const bloem = await (await fetch(url + "src/bloem/locales/en.json?import")).text();
     expect(bloem).toContain("Silo plugins");
+  });
+
+  // A real catalog is megabytes, which Vite hands on as JSON.parse("...").
+  // Silo's push relay messages keep Silo's name (src/lib/product-brand.ts).
+  it("keeps Silo's push relay messages in a full-size catalog", async () => {
+    const padding = Object.fromEntries(
+      Array.from({ length: 400 }, (_, i) => [
+        `web.pad.${i}`,
+        [{ type: 0, value: `Silo row ${i}` }],
+      ]),
+    );
+    await writeFile(
+      path.join(root, "src/locales/fr.json"),
+      JSON.stringify({
+        ...padding,
+        "web.admin.settings.notifications.relay.description": [
+          { type: 0, value: "Notifications push mobiles via le relais de Silo" },
+        ],
+        "web.notifications.pushPrivacy.relay": [
+          {
+            type: 0,
+            value: "votre serveur Silo envoie une demande au relais push de Silo afin que Silo",
+          },
+        ],
+      }),
+    );
+    // The app's JSON setting (vite.config.ts).
+    const url = await startDev("/", { namedExports: false });
+    const code = await (await fetch(url + "src/locales/fr.json?import")).text();
+    expect(code).toContain("JSON.parse(");
+    const messages = JSON.parse(
+      JSON.parse(code.slice(code.indexOf("JSON.parse(") + 11, code.lastIndexOf(")"))) as string,
+    ) as Record<string, [{ value: string }]>;
+    expect(messages["web.pad.7"]![0].value).toBe("Bloem row 7");
+    expect(messages["web.admin.settings.notifications.relay.description"]![0].value).toBe(
+      "Notifications push mobiles via le relais de Silo",
+    );
+    expect(messages["web.notifications.pushPrivacy.relay"]![0].value).toBe(
+      "votre serveur Bloem envoie une demande au relais push de Silo afin que Silo",
+    );
   });
 
   it.each(["/", "/media/"])(

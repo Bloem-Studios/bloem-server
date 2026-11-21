@@ -39,11 +39,58 @@ const UPSTREAM_NAME = "Silo";
  * alone, because every occurrence of it is technical.
  */
 // Plugin authorship is provenance, so the "Made by Silo" credit stays intact.
+// Silo's relay card is titled "Silo Push Relay": that relay is Silo's (below).
 const BRAND_PATTERN = new RegExp(
-  `(^|[^A-Za-z0-9_/.\\-])(?<!Made by )${UPSTREAM_NAME}(?![A-Za-z0-9_\\-])`,
+  `(^|[^A-Za-z0-9_/.\\-])(?<!Made by )${UPSTREAM_NAME}(?![A-Za-z0-9_\\-])(?! Push Relay)`,
   "g",
 );
 
 export function applyBrand(source: string, productName: string = PRODUCT_NAME): string {
   return source.replace(BRAND_PATTERN, (_match, before: string) => `${before}${productName}`);
+}
+
+/**
+ * Silo's messages about Silo's push relay keep Silo's name. Silo's apps on
+ * this server are woken through Silo's relay
+ * (docs/architecture/bloem-push-relays.md), and these describe that relay:
+ * the relay card, its settings search entry and the setup step. Bloem's own
+ * relay, for the Bloem Admin app, has its own card in Bloem's catalog.
+ */
+const SILO_RELAY_MESSAGES = new Set([
+  // Catalog keys the build matches; this module loads no text.
+  // eslint-disable-next-line silo-admin-text/no-admin-message -- a key the build matches, not text shown
+  "web.admin.settings.notifications.relay.description",
+  // eslint-disable-next-line silo-admin-text/no-admin-message -- a key the build matches, not text shown
+  "web.admin.settings.search.notifications.setting.siloPushRelay",
+  "web.setup.features.pushDescription",
+]);
+
+/**
+ * The viewer's privacy notice names the server first ("your Silo Server
+ * sends…"), which is this build, and then Silo's relay, which stays Silo's.
+ * Every translation keeps that order.
+ */
+const SERVER_THEN_SILO_RELAY = new Set(["web.notifications.pushPrivacy.relay"]);
+
+/** Brand one catalog message, given as JSON text, under its key's rule. */
+function brandMessage(key: string, message: string, productName: string): string {
+  if (SILO_RELAY_MESSAGES.has(key)) return message;
+  if (!SERVER_THEN_SILO_RELAY.has(key)) return applyBrand(message, productName);
+  let first = true;
+  return message.replace(BRAND_PATTERN, (match: string, before: string) => {
+    if (!first) return match;
+    first = false;
+    return `${before}${productName}`;
+  });
+}
+
+/** Rebrand a Silo message catalog (key to message), keeping Silo's relay messages Silo's. */
+export function applyCatalogBrand(
+  messages: Record<string, unknown>,
+  productName: string = PRODUCT_NAME,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, message] of Object.entries(messages))
+    out[key] = JSON.parse(brandMessage(key, JSON.stringify(message), productName)) as unknown;
+  return out;
 }
