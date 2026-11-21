@@ -10,6 +10,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/livetv"
 	"github.com/Silo-Server/silo-server/internal/mail"
+	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/orgdomains"
 	"github.com/Silo-Server/silo-server/internal/promotions"
 )
@@ -22,6 +23,10 @@ import (
 //
 //	api.Dependencies{DB: pool, BloemDependencies: api.BloemDependencies{LiveTV: svc}}
 type BloemDependencies struct {
+	// NativeStorage is the native storage host: files that live in a storage
+	// provider rather than on disk. May be nil.
+	NativeStorage *nativestorage.Host
+
 	// NativeNodeSources grants native inputs to core-access transcode nodes
 	// and answers their source requests (bloem_native_node_sources.go). main
 	// creates it so the download preparer's granter shares it; the router

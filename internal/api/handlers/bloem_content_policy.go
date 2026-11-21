@@ -25,6 +25,14 @@ func BloemContentAccessFilter(ctx context.Context, filter catalog.AccessFilter) 
 // and adds Bloem's playback policy at mint and local grant-consumption time.
 type BloemThemeSongsHandler struct{ *ThemeSongsHandler }
 
+// BloemThemeSongs gives the theme songs handler Silo's router built Bloem's
+// content viewer and Bloem's content policy, so the router keeps Silo's
+// construction line.
+func BloemThemeSongs(h *ThemeSongsHandler, viewer apimw.ViewerResolver) *BloemThemeSongsHandler {
+	h.Resolver = viewer
+	return &BloemThemeSongsHandler{ThemeSongsHandler: h}
+}
+
 func (h *BloemThemeSongsHandler) Authorize(ctx context.Context, identity themesongs.Identity, owner, id string, filter catalog.AccessFilter, accepted []themesongs.Format, expiry time.Time) (themesongs.Authorization, error) {
 	filter = BloemContentAccessFilter(ctx, filter)
 	if filter.PlaybackDenied {

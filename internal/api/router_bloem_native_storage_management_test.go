@@ -110,7 +110,7 @@ func TestNativeOnboardingHTTPRouteFallbacksKeepPrivacyHeaders(t *testing.T) {
 }
 
 func TestNativeOnboardingHTTPWiringUnavailable(t *testing.T) {
-	for _, deps := range []Dependencies{{}, {NativeStorage: &nativestorage.Host{}}} {
+	for _, deps := range []Dependencies{{}, {BloemDependencies: BloemDependencies{NativeStorage: &nativestorage.Host{}}}} {
 		got := nativeStorageDependencies(deps)
 		if got.NativeStorageManagement != nil {
 			t.Fatal("missing stores created management dependencies")

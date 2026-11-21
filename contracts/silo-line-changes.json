@@ -10,11 +10,7 @@
     "\t\t\tapiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair), ipResolver, networkAccess.Registry)",
     "\t\t\tdefer heartbeatWriter.Stop()",
     "\t\tdefer reconciler.Stop()",
-    "\t\tmigErr := database.MigrateDownTo(migCtx, pool, migrations.FS, \"sql\", *migrateDownTo)",
     "\t\tresolver.ReplaceSources(nil)",
-    "\t\tstatusErr := database.PrintMigrationStatus(migCtx, pool, migrations.FS, \"sql\", os.Stdout)",
-    "\t_ = heartbeatWriter",
-    "\t_ = reconciler",
     "\taccessGroupStore := access.NewGroupStore(pool)",
     "\tresolver.ReplaceSources(registrations)"
    ]
@@ -212,26 +208,11 @@
   "internal/api/router.go": {
    "kind": "lines",
    "lines": [
-    "\t\t\t\tsettingsRepo,",
-    "\t\t\t\tsettingsRepo,",
-    "\t\t\tService: themesongs.NewService(themesongs.NewRepository(deps.DB), deps.Config.Auth.JWTSecret), Sessions: sessionRepo, Users: userRepo, Resolver: viewerResolver,",
-    "\t\t\tdeps.FileRepo,",
-    "\t\t\trequestSvc.SetLifecycleNotifier(lifecycle)",
-    "\t\t\tsocket := handlers.NewEventsSocketV2(events, evt.NewSocketTicketStore(deps.RedisClient, evt.SocketAudienceEvents), sessionRepo, userRepo, viewerResolver, actingAdmin, socketKeys, deps.PublicURL)",
-    "\t\t\tsocket := handlers.NewPlaybackControlSocketV2(playbackHandler, deps.RedisClient, sessionRepo, userRepo, viewerResolver, actingAdmin, deps.PublicURL)",
-    "\t\t\tviewerAccessMiddleware = apimw.NewViewerAccessMiddleware(viewerResolver)",
     "\t\taccessGroupHandler = handlers.NewAccessGroupHandler(accessGroupStore)",
     "\t\taccessGroupStore = access.NewGroupStore(deps.DB)",
     "\t\tr.Use(activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub))",
-    "\t\tv2deps.EbookFiles = ebookReaderHandler",
-    "\t\tv2deps.ThemeSongs = &handlers.ThemeSongsHandler{",
-    "\t\t}",
-    "\tConfig *config.Config",
     "\tr.Use(apimw.RequestLogger(deps.NodeID))",
-    "\tv2deps.PluginContent = plugins.NewContentHandler(deps.PluginHTTPProxy, func(r *http.Request) plugins.ContentAccess {",
-    "\tvar accessGroupStore *access.GroupStore",
-    "\t})",
-    "\t}, func(r *http.Request) plugins.ContentAccess {"
+    "\tvar accessGroupStore *access.GroupStore"
    ]
   },
   "internal/apiv2/admin_scoped_email_db_test.go": {

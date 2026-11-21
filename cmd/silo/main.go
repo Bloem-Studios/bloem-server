@@ -976,7 +976,7 @@ func main() {
 
 	if *migrateStatus {
 		migCtx, migCancel := database.MigrationContext(ctx)
-		statusErr := database.PrintMigrationStatus(migCtx, pool, migrations.BloemFS, "sql", os.Stdout)
+		statusErr := database.PrintMigrationStatus(migCtx, pool, migrations.FS, "sql", os.Stdout)
 		migCancel()
 		if statusErr != nil {
 			log.Fatalf("failed to read migration status: %v", statusErr)
@@ -990,7 +990,7 @@ func main() {
 		// the goose CLI cannot reach, so it is the only way to undo them
 		// short of restoring a backup.
 		migCtx, migCancel := database.MigrationContext(ctx)
-		migErr := database.MigrateDownTo(migCtx, pool, migrations.BloemFS, "sql", *migrateDownTo)
+		migErr := database.MigrateDownTo(migCtx, pool, migrations.FS, "sql", *migrateDownTo)
 		migCancel()
 		if migErr != nil {
 			log.Fatalf("failed to roll back migrations: %v", migErr)
@@ -4731,6 +4731,8 @@ func main() {
 	// 4. (match worker is now managed by the task manager — no separate cancel needed)
 
 	// Suppress unused variable warnings for workers used only in deferred calls.
+	_ = reconciler
+	_ = heartbeatWriter
 	_ = refreshWorker
 	_ = adminJobRunner
 

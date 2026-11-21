@@ -40,6 +40,14 @@ type bloemOrgRevocationViewer struct {
 	pool  *pgxpool.Pool
 }
 
+// bloemOrgRevocationAwareViewers wraps a viewer resolver the way
+// bloemOrgRevocationAwareViewer does, for ViewerAccessMiddleware.WrapResolver.
+func bloemOrgRevocationAwareViewers(pool *pgxpool.Pool) func(apimw.ViewerResolver) apimw.ViewerResolver {
+	return func(inner apimw.ViewerResolver) apimw.ViewerResolver {
+		return bloemOrgRevocationAwareViewer(inner, pool)
+	}
+}
+
 // bloemOrgRevocationAwareViewer decorates the viewer resolver the legacy
 // viewer-access middleware uses. Without a database there is nothing to check.
 func bloemOrgRevocationAwareViewer(inner apimw.ViewerResolver, pool *pgxpool.Pool) apimw.ViewerResolver {

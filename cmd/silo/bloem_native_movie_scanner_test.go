@@ -18,7 +18,7 @@ func TestNativeMovieScannerStartupRequiresCompleteDependencies(t *testing.T) {
 		t.Run(missing, func(t *testing.T) {
 			pool := new(pgxpool.Pool)
 			fileRepo := scanner.NewFileRepository(pool)
-			deps := &api.Dependencies{DB: pool, NativeStorage: &nativestorage.Host{Registry: new(plugins.NativeStorageRegistry), Manager: storageplugin.NewManager(storageplugin.Config{})}, Scanner: scanner.NewScanner(fileRepo, "ffprobe", nil, 1, false, 0), FileRepo: fileRepo, BloemDependencies: api.BloemDependencies{NativeMovieScannerReady: true, NativeSeriesScannerReady: true}}
+			deps := &api.Dependencies{DB: pool, Scanner: scanner.NewScanner(fileRepo, "ffprobe", nil, 1, false, 0), FileRepo: fileRepo, BloemDependencies: api.BloemDependencies{NativeStorage: &nativestorage.Host{Registry: new(plugins.NativeStorageRegistry), Manager: storageplugin.NewManager(storageplugin.Config{})}, NativeMovieScannerReady: true, NativeSeriesScannerReady: true}}
 			switch missing {
 			case "deps":
 				deps = nil

@@ -331,3 +331,12 @@ func (s *Service) sendResetNotice(ctx context.Context, target organizationTarget
 		}
 	})
 }
+
+// UseMailSettings replaces the settings the service reads its mail settings
+// from, so the router can keep Silo's construction and pass Bloem's
+// organization-aware settings on its own line. Nil keeps the current ones.
+func (s *Service) UseMailSettings(settings mail.SettingReader) {
+	if s != nil && settings != nil {
+		s.settings = settings
+	}
+}

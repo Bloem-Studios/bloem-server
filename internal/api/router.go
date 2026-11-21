@@ -133,8 +133,7 @@ type ArtworkDelivery struct {
 }
 
 type Dependencies struct {
-	NativeStorage *nativestorage.Host
-	Config        *config.Config
+	Config *config.Config
 	// SubtitlePlaySync receives subtitles a player is served, so one never
 	// synced is aligned the first time it is played. The routes here connect
 	// it to the subtitle sync service; the Jellyfin routes share it. May be nil.
@@ -742,19 +741,21 @@ func newChiRouter(deps Dependencies) chi.Router {
 				auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider),
 				authService,
 				mail.NewSMTPSender(settingsRepo),
-				accountMailSettings,
+				settingsRepo,
 				deps.EmailBrand,
 				"",
 			)
+			invitationService.UseMailSettings(accountMailSettings)
 			passwordResetService = passwordreset.NewService(
 				passwordreset.NewRepository(deps.DB),
 				userRepo,
 				authService,
 				mail.NewSMTPSender(settingsRepo),
-				accountMailSettings,
+				settingsRepo,
 				deps.EmailBrand,
 				"",
 			)
+			passwordResetService.UseMailSettings(accountMailSettings)
 			passwordResetService.OnSessionsRevoked(deps.OnUserSessionsRevoked)
 		}
 		profileTokenService = access.NewProfileTokenService(deps.Config.Auth.JWTSecret, 0)
@@ -797,7 +798,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 				viewerResolver = access.NewResolver(userRepo, deps.UserStoreProvider, profileTokenService, accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
 			}
-			viewerAccessMiddleware = apimw.NewViewerAccessMiddleware(bloemOrgRevocationAwareViewer(viewerResolver, deps.DB))
+			viewerAccessMiddleware = apimw.NewViewerAccessMiddleware(viewerResolver)
+			viewerAccessMiddleware.WrapResolver(bloemOrgRevocationAwareViewers(deps.DB))
 			wireBloemViewerTokenResolver(viewerAccessMiddleware, viewerResolver, deps.DB)
 			// Shared personal collections are limited to their owner's
 			// access, resolved by the same resolver the request gates use.
@@ -1167,6 +1169,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		// on manual approve/decline. Fulfilled rides the reconcile service's
 		// fulfillment notifier instead.
 		if lifecycle := notifications.NewRequestLifecycleNotifier(deps.Notifications); lifecycle != nil {
+			requestSvc.SetLifecycleNotifier(lifecycle)
+			// Bloem: admin pushes ride the same notifier (replaces the line above).
 			requestSvc.SetLifecycleNotifier(bloemAdminPushLifecycle(lifecycle, deps, requestsRepo))
 		}
 
@@ -2556,7 +2560,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			downloadRepo,
 			downloadBandwidth,
 			downloadLimiter,
-			downloads.GuardNativeStorageFiles(deps.FileRepo),
+			deps.FileRepo,
 			itemRepo,
 			episodeRepo,
 			userRepo,
@@ -2564,6 +2568,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			settingsRepo,
 			&deps.Config.Download,
 		)
+		downloadSvc.GuardNativeStorageFiles()
 		downloadSvc.SetGroupPolicyProvider(accessGroupStore)
 		if deps.PolicySystem != nil {
 			downloadSvc.SetActionDecider(deps.PolicySystem.PDP())
@@ -2864,6 +2869,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if ebookReaderHandler != nil {
 		v2deps.EbookProgress = ebookReaderHandler
 		v2deps.EbookConfig = ebookReaderHandler
+		v2deps.EbookFiles = ebookReaderHandler
 		nativeEbookFiles = nativeStorageReader(deps, ebookReaderHandler)
 		attachNativeStorageReader(deps, nativeEbookFiles)
 		if coordinator, ok := nativeEbookFiles.Native.(*nativestorage.Coordinator); ok && playbackHandler != nil {
@@ -2902,11 +2908,13 @@ func newChiRouter(deps Dependencies) chi.Router {
 		contentViewer = bloemContentViewer{inner: bloemOrgRevocationAwareViewer(viewerResolver, deps.DB), tenants: tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore)}
 	}
 	if deps.DB != nil && deps.Config != nil && viewerResolver != nil {
-		v2deps.ThemeSongs = &handlers.BloemThemeSongsHandler{ThemeSongsHandler: &handlers.ThemeSongsHandler{
-			Service: themesongs.NewService(themesongs.NewRepository(deps.DB), deps.Config.Auth.JWTSecret), Sessions: sessionRepo, Users: userRepo, Resolver: contentViewer,
+		v2deps.ThemeSongs = &handlers.ThemeSongsHandler{
+			Service: themesongs.NewService(themesongs.NewRepository(deps.DB), deps.Config.Auth.JWTSecret), Sessions: sessionRepo, Users: userRepo, Resolver: viewerResolver,
 			Router:     deps.themeRouter(playbackHandler),
 			FFmpegPath: func() string { return deps.CurrentConfig().Playback.FFmpegPath },
-		}}
+		}
+		// Bloem: Bloem's content viewer and policy (replaces the value above).
+		v2deps.ThemeSongs = bloemThemeSongs(v2deps.ThemeSongs, contentViewer)
 	}
 	v2deps.ObserveThemeAudio = func(method string, handler http.Handler) http.Handler {
 		return observeNative(deps.StreamTelemetry, method, "/api/v2/catalog/items/{id}/themes/{theme_id}/audio", handler.ServeHTTP)
@@ -2973,9 +2981,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if playbackHandler != nil {
 		v2deps.Playback = playbackHandler
 		if sessionRepo != nil && userRepo != nil {
-			tenantStore := tenancy.NewStore(deps.DB)
-			socket := handlers.NewBloemPlaybackControlSocketV2(playbackHandler, deps.RedisClient, sessionRepo, userRepo, viewerResolver, actingAdmin, tenancy.NewResolver(tenantStore), tenantStore, deps.PublicURL)
+			socket := handlers.NewPlaybackControlSocketV2(playbackHandler, deps.RedisClient, sessionRepo, userRepo, viewerResolver, actingAdmin, deps.PublicURL)
 			v2deps.PlaybackControlSocket = socket
+			// Bloem: the socket carries the tenant authority (replaces the line above).
+			tenantStore := tenancy.NewStore(deps.DB)
+			v2deps.PlaybackControlSocket = handlers.WrapBloemPlaybackControlSocketV2(socket, sessionRepo, userRepo, tenancy.NewResolver(tenantStore), tenantStore)
 			if deps.OnConfigChange != nil {
 				deps.OnConfigChange(func(_, updated *config.Config) { socket.SetPublicOrigin(updated.Server.PublicURL) })
 			}
@@ -3122,9 +3132,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 			if apiKeyRepo != nil {
 				socketKeys = apiKeyRepo
 			}
-			tenantStore := tenancy.NewStore(deps.DB)
-			socket := handlers.NewBloemEventsSocketV2(events, evt.NewSocketTicketStore(deps.RedisClient, evt.SocketAudienceEvents), sessionRepo, userRepo, viewerResolver, actingAdmin, socketKeys, tenancy.NewResolver(tenantStore), tenantStore, deps.PublicURL)
+			socket := handlers.NewEventsSocketV2(events, evt.NewSocketTicketStore(deps.RedisClient, evt.SocketAudienceEvents), sessionRepo, userRepo, viewerResolver, actingAdmin, socketKeys, deps.PublicURL)
 			v2deps.EventsSocket = socket
+			// Bloem: the socket carries the tenant authority (replaces the line above).
+			tenantStore := tenancy.NewStore(deps.DB)
+			v2deps.EventsSocket = handlers.WrapBloemEventsSocketV2(socket, sessionRepo, userRepo, tenancy.NewResolver(tenantStore), tenantStore)
 			if deps.OnConfigChange != nil {
 				deps.OnConfigChange(func(_, updated *config.Config) { socket.SetPublicOrigin(updated.Server.PublicURL) })
 			}
@@ -3544,16 +3556,18 @@ func newChiRouter(deps Dependencies) chi.Router {
 	pluginAssetAccess.noRenewal = true
 	bloemHoldPluginPreviews(sessionRepo, pluginRouteAccess, pluginAssetAccess)
 	pluginBoundary := bloemPluginBoundary{jwt: jwtService, users: userRepo, viewer: contentViewer}
-	v2deps.PluginContent = plugins.NewContentHandler(deps.PluginHTTPProxy, pluginBoundary.content(func(r *http.Request) plugins.ContentAccess {
+	v2deps.PluginContent = plugins.NewContentHandler(deps.PluginHTTPProxy, func(r *http.Request) plugins.ContentAccess {
 		resolved := pluginRouteAccess.resolve(r)
 		return plugins.ContentAccess{
 			Authenticated: resolved.authenticated, Admin: resolved.admin, UserID: resolved.userID, ProfileID: resolved.profileID,
 			RenewedCookie: renewedPluginCookie(r, resolved, plugins.ContentPrefix),
 		}
-	}), pluginBoundary.content(func(r *http.Request) plugins.ContentAccess {
+	}, func(r *http.Request) plugins.ContentAccess {
 		resolved := pluginAssetAccess.resolve(r)
 		return plugins.ContentAccess{Authenticated: resolved.authenticated, Admin: resolved.admin}
-	}))
+	})
+	// Bloem: plugin pages and assets pass Bloem's content boundary.
+	v2deps.PluginContent = bloemPluginContent(v2deps.PluginContent, pluginBoundary)
 	if deps.BrandingService != nil {
 		v2deps.AdminBrandingAssets = handlers.NewBrandingHandler(deps.BrandingService)
 	}

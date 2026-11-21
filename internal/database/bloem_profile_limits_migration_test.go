@@ -1,6 +1,7 @@
 package database
 
 import (
+	"io/fs"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/migrations"
@@ -10,9 +11,21 @@ import (
 // account policy moves back onto users (20261026003000), while the membership
 // still holds it: a default override inherits the group limit.
 func TestBloemProfileLimitsMigration(t *testing.T) {
+	testBloemProfileLimitsMigration(t, migrations.BloemFS)
+}
+
+// cmd/silo's --migrate-status and --migrate-down-to pass Silo's unadapted
+// migrations.FS, as Silo does; the rollback still runs Bloem's adapted
+// migration, because every migration path adapts the directory it opens.
+func TestBloemProfileLimitsMigrationFromSiloFS(t *testing.T) {
+	testBloemProfileLimitsMigration(t, migrations.FS)
+}
+
+func testBloemProfileLimitsMigration(t *testing.T, fsys fs.FS) {
+	t.Helper()
 	pool := newDisposableMigrationDatabase(t)
 	ctx := t.Context()
-	provider, err := newMigrationProvider(pool, migrations.BloemFS, "sql")
+	provider, err := newMigrationProvider(pool, fsys, "sql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +51,7 @@ func TestBloemProfileLimitsMigration(t *testing.T) {
 	if override != nil {
 		t.Fatalf("default override = %v; want inherit", *override)
 	}
-	if err := MigrateDownTo(ctx, pool, migrations.BloemFS, "sql", 20261013231500); err != nil {
+	if err := MigrateDownTo(ctx, pool, fsys, "sql", 20261013231500); err != nil {
 		t.Fatalf("profile limit rollback: %v", err)
 	}
 	var groupColumn bool

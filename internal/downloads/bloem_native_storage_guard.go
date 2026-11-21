@@ -102,3 +102,12 @@ func (r *nativeStorageFiles) ListByEpisodeIDs(ctx context.Context, ids []string)
 	}
 	return out, nil
 }
+
+// GuardNativeStorageFiles makes the service refuse native storage files
+// (GuardNativeStorageFiles above), so the router can keep Silo's construction
+// and add the guard on its own line.
+func (s *Service) GuardNativeStorageFiles() {
+	if s != nil {
+		s.fileRepo = GuardNativeStorageFiles(s.fileRepo)
+	}
+}

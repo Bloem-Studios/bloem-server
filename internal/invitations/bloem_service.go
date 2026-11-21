@@ -19,3 +19,12 @@ func bloemInvitationAccountContext(ctx context.Context, tx pgx.Tx, inv *models.I
 	}
 	return auth.OrganizationAccountContextInTransaction(ctx, tx, inv.OrganizationID)
 }
+
+// UseMailSettings replaces the settings the service reads its mail settings
+// from, so the router can keep Silo's construction and pass Bloem's
+// organization-aware settings on its own line. Nil keeps the current ones.
+func (s *Service) UseMailSettings(settings settingReader) {
+	if s != nil && settings != nil {
+		s.settings = settings
+	}
+}

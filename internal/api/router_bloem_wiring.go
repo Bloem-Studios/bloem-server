@@ -24,6 +24,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/preview"
 	"github.com/Silo-Server/silo-server/internal/previewcontext"
@@ -370,4 +371,30 @@ func bloemPreviewHandler(deps Dependencies) *handlers.BloemPreviewHandler {
 	handler := handlers.NewBloemPreviewHandler(preview.NewExchanger(deps.DB, guests, bloemServerIdentity(deps), buckets), reader, buckets)
 	handler.SetEvents(preview.NewEvents(deps.DB))
 	return handler
+}
+
+// bloemThemeSongs gives the theme songs handler Silo's router built Bloem's
+// content viewer and content policy (handlers.BloemThemeSongs). Silo builds a
+// *handlers.ThemeSongsHandler; anything else means a Silo change moved that
+// construction, and serving themes without Bloem's policy would be wrong, so
+// it panics at startup instead.
+func bloemThemeSongs(service apiv2.ThemeSongService, viewer apimw.ViewerResolver) apiv2.ThemeSongService {
+	songs, ok := service.(*handlers.ThemeSongsHandler)
+	if !ok {
+		panic(fmt.Sprintf("api: theme songs are %T, not *handlers.ThemeSongsHandler; Bloem's content policy cannot wrap them", service))
+	}
+	return handlers.BloemThemeSongs(songs, viewer)
+}
+
+// bloemPluginContent puts plugin pages and assets behind Bloem's content
+// boundary. Silo builds a *plugins.ContentHandler; anything else means a Silo
+// change moved that construction, and serving plugin content without the
+// boundary would be wrong, so it panics at startup instead.
+func bloemPluginContent(service apiv2.PluginContentService, boundary bloemPluginBoundary) apiv2.PluginContentService {
+	content, ok := service.(*plugins.ContentHandler)
+	if !ok {
+		panic(fmt.Sprintf("api: plugin content is %T, not *plugins.ContentHandler; Bloem's content boundary cannot wrap it", service))
+	}
+	content.WrapAccess(boundary.content)
+	return content
 }

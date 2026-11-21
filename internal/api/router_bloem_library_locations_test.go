@@ -79,7 +79,7 @@ func TestLibraryLocationsStartupCompositionReadiness(t *testing.T) {
 	for _, mode := range []string{"complete", "mixed", "mixed-no-publisher", "mixed-no-matcher", "no-redis", "no-cipher", "no-manager"} {
 		t.Run(mode, func(t *testing.T) {
 			localHost := &nativestorage.Host{Registry: host.Registry, Manager: host.Manager}
-			deps := Dependencies{DB: db, RedisClient: client, SecretCipher: cipher, LibraryIngester: &libraryingest.Executor{}, NativeStorage: localHost}
+			deps := Dependencies{DB: db, RedisClient: client, SecretCipher: cipher, LibraryIngester: &libraryingest.Executor{}, BloemDependencies: BloemDependencies{NativeStorage: localHost}}
 			switch mode {
 			case "mixed", "mixed-no-publisher", "mixed-no-matcher":
 				publisher := scanner.NewScanner(scanner.NewFileRepository(db), "", nil, 1, false, 0)

@@ -77,3 +77,12 @@ func (m *ViewerAccessMiddleware) requireStreamTokenViewerAccess(next http.Handle
 	}
 	next.ServeHTTP(w, r.WithContext(ctx))
 }
+
+// WrapResolver replaces the gate's viewer resolver with wrap applied to the
+// one it was built with, so the router can keep Silo's construction and add
+// Bloem's checks around it on its own line.
+func (m *ViewerAccessMiddleware) WrapResolver(wrap func(ViewerResolver) ViewerResolver) {
+	if m != nil && wrap != nil {
+		m.resolver = wrap(m.resolver)
+	}
+}

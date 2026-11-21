@@ -16,7 +16,13 @@ type BloemEventsSocketV2 struct {
 }
 
 func NewBloemEventsSocketV2(events *EventsHandler, tickets *evt.SocketTicketStore, sessions bloemSocketSessions, users access.UserRepository, resolver apimw.ViewerResolver, actingAdmin apimw.ActingAdminDecider, keys SocketAPIKeys, tenants apimw.TenantResolver, profiles bloemSocketProfiles, publicURL string) *BloemEventsSocketV2 {
-	socket := NewEventsSocketV2(events, tickets, sessions, users, resolver, actingAdmin, keys, publicURL)
+	return WrapBloemEventsSocketV2(NewEventsSocketV2(events, tickets, sessions, users, resolver, actingAdmin, keys, publicURL), sessions, users, tenants, profiles)
+}
+
+// WrapBloemEventsSocketV2 adds Bloem's tenant authority to a socket Silo's
+// constructor built, so the router keeps Silo's construction line. The
+// socket's own setters (SetPublicOrigin, SetOverlayOrigins) still apply.
+func WrapBloemEventsSocketV2(socket *EventsSocketV2, sessions bloemSocketSessions, users access.UserRepository, tenants apimw.TenantResolver, profiles bloemSocketProfiles) *BloemEventsSocketV2 {
 	h := &BloemEventsSocketV2{EventsSocketV2: socket, bloemSocketAuthority: &bloemSocketAuthority{sessions: sessions, users: users, tenants: tenants, profiles: profiles, base: socket.Validate}}
 	socket.Validate = h.validate
 	return h

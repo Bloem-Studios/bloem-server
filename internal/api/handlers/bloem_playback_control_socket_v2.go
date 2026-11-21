@@ -18,7 +18,13 @@ type BloemPlaybackControlSocketV2 struct {
 }
 
 func NewBloemPlaybackControlSocketV2(playbackHandler *PlaybackHandler, client *redis.Client, sessions bloemSocketSessions, users access.UserRepository, resolver apimw.ViewerResolver, actingAdmin apimw.ActingAdminDecider, tenants apimw.TenantResolver, profiles bloemSocketProfiles, publicURL string) *BloemPlaybackControlSocketV2 {
-	socket := NewPlaybackControlSocketV2(playbackHandler, client, sessions, users, resolver, actingAdmin, publicURL)
+	return WrapBloemPlaybackControlSocketV2(NewPlaybackControlSocketV2(playbackHandler, client, sessions, users, resolver, actingAdmin, publicURL), sessions, users, tenants, profiles)
+}
+
+// WrapBloemPlaybackControlSocketV2 adds Bloem's tenant authority to a socket
+// Silo's constructor built, so the router keeps Silo's construction line.
+// The socket's own setters (SetPublicOrigin, SetOverlayOrigins) still apply.
+func WrapBloemPlaybackControlSocketV2(socket *PlaybackControlSocketV2, sessions bloemSocketSessions, users access.UserRepository, tenants apimw.TenantResolver, profiles bloemSocketProfiles) *BloemPlaybackControlSocketV2 {
 	authority := &bloemSocketAuthority{sessions: sessions, users: users, tenants: tenants, profiles: profiles, base: socket.Validate}
 	socket.Validate = authority.validate
 	return &BloemPlaybackControlSocketV2{PlaybackControlSocketV2: socket, authority: authority}

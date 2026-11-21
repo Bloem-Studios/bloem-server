@@ -54,7 +54,7 @@ func TestNativeStorageDiscoveryCapabilityUsesActualComposition(t *testing.T) {
 			if tc.manager {
 				host.Manager = &storageplugin.Manager{}
 			}
-			deps := Dependencies{DB: pool, LibraryIngester: &libraryingest.Executor{}, NativeStorage: host}
+			deps := Dependencies{DB: pool, LibraryIngester: &libraryingest.Executor{}, BloemDependencies: BloemDependencies{NativeStorage: host}}
 			if !tc.matching {
 				h := handlers.NewBloemNativeStorageManagementHandler(nativestorage.NewSourceManagement(pool, &plugins.NativeStorageRegistry{}))
 				h.Registry = registry
