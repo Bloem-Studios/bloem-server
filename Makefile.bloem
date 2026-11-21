@@ -9,6 +9,7 @@
 # (default: the Silo commit Bloem last merged); SILO_CLIENT_COMPAT_ARGS passes
 # options such as --apps-only or --keep.
 silo-client-compat:
+	python3 scripts/bloem/silo-client-compat/compat_test.py
 	SILO_REF=$(SILO_REF) python3 scripts/bloem/silo-client-compat/compat.py run $(SILO_CLIENT_COMPAT_ARGS)
 
 # Regenerate contracts/client/silo-clients/calls.json from fresh checkouts of

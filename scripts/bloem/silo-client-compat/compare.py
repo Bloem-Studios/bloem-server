@@ -12,6 +12,13 @@ rules below decide what is volatile, so nothing is ignored by hand:
   Silo client requires it (calls.json); otherwise it is a note;
 - list lengths are not compared, but a list Silo fills and Bloem leaves empty
   is a divergence;
+- a list in SAMPLED_LISTS is a window onto each server's own activity, such as
+  the newest application log lines: which entries it holds depends on what
+  each server logged and when its log drain flushed, so the item set is
+  volatile. Its items' schema is still compared: the fields Silo's schema
+  requires must be there with Silo's types, and a field both send keeps
+  Silo's type. An optional field missing on Bloem is a note, and the keys of a
+  free-form map (a log line's attrs) are not compared;
 - a 429 on one side only is a note: rate-limit windows depend on timing.
 """
 
@@ -29,6 +36,19 @@ CLIENT_HEADERS = (
 VALUE_RULES = {
     ("GET", "/api/v2/system/info"): {"api_major": "equal"},
     ("GET", "/api/v2/settings/contract"): {"revision": "at_least"},
+}
+
+# Lists whose items are a sample of a server's own activity (see the module
+# rules). "required" is the item schema's required fields in Silo's OpenAPI
+# (compat_test pins it); "free_form" names item fields whose keys are the
+# entry's own data.
+SAMPLED_LISTS = {
+    ("GET", "/api/v2/admin/logs/app"): {
+        "list": "items[]",
+        "required": ("id", "timestamp", "level", "component", "message"),
+        "free_form": ("attrs",),
+        "reason": "the newest application log lines differ by what each server logged and when its log drain flushed",
+    },
 }
 
 DYNAMIC_KEY = re.compile(
@@ -94,6 +114,21 @@ def parent_list_empty(path, empties):
     return any(path.startswith(e) and path != e for e in empties)
 
 
+def sampled_field(rule, field):
+    """How SAMPLED_LISTS judges a field: "free" (a free-form map's key, not
+    compared), "optional" (missing on Bloem is a note) or None (as any field)."""
+    prefix = rule["list"] + "."
+    if not field.startswith(prefix):
+        return None
+    name = field[len(prefix):]
+    top = re.split(r"[.\[]", name, maxsplit=1)[0]
+    if top in rule["free_form"] and name != top:
+        return "free"
+    if top not in rule["required"]:
+        return "optional"
+    return None
+
+
 def compare(method, path, silo, bloem, decoded=None):
     """Differences between Silo's response and Bloem's, worst first."""
     decoded = decoded or {}
@@ -124,6 +159,7 @@ def compare(method, path, silo, bloem, decoded=None):
         diffs.append(Diff("body_kind", "", f"Silo json, Bloem {bloem.get('kind')}", True))
         return diffs
     s_shape, b_shape = shape(silo["json"]), shape(bloem["json"])
+    sampled = SAMPLED_LISTS.get((method, path))
     empties = []
     for field in sorted(s_shape):
         s_types = s_shape[field] - {"null"}
@@ -134,8 +170,14 @@ def compare(method, path, silo, bloem, decoded=None):
         who = f" (required by {', '.join(need['required_by'])})" if required else ""
         if parent_list_empty(field, empties):
             continue
+        judged = sampled_field(sampled, field) if sampled else None
+        if judged == "free":
+            continue
         if b_types is None:
             if field.endswith("[]"):
+                continue
+            if judged == "optional":
+                diffs.append(Diff("field_missing", label, f"not in Bloem's sample; {sampled['reason']}", False))
                 continue
             diffs.append(Diff("field_missing", label, f"Silo sends it, Bloem does not{who}", True))
             continue

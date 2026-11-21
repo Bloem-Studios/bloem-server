@@ -84,6 +84,55 @@ class CompareTest(unittest.TestCase):
         self.assertEqual(compare.compare("GET", "/api/v2/x", silo, bloem), [])
 
 
+class SampledListTest(unittest.TestCase):
+    """The admin app log is a window onto each server's own newest lines."""
+
+    LOGS = ("GET", "/api/v2/admin/logs/app")
+
+    @staticmethod
+    def line(component, message, attrs, **extra):
+        return {"id": "1", "timestamp": "2026-11-21T15:00:34.242Z", "level": "info", "component": component,
+                "message": message, "client_ip": "127.0.0.1/32", "node_id": "n", "attrs": attrs, **extra}
+
+    def test_a_window_of_other_lines_is_a_note(self):
+        # The 2026-11-21 merge bot run: Silo's newest five lines were apiv2
+        # request lines, Bloem's drain had not flushed its own yet and its
+        # newest were the v1 tombstone's request lines.
+        silo = resp(body={"items": [self.line("apiv2", "apiv2 request", {
+            "api_major": 2, "auth_class": "session", "operation_id": "listAdminAccessGroups", "status_class": "2xx"},
+            request_id="r1", user_id="1")]})
+        bloem = resp(body={"items": [self.line("api", "api request", {"path": "/api/v1/watch/history", "status": 410},
+                                               request_id="r2")]})
+        diffs = compare.compare(*self.LOGS, silo, bloem)
+        self.assertEqual(kinds(diffs), [])
+        self.assertEqual(kinds(diffs, failing=False), [("field_missing", "items[].user_id")])
+
+    def test_the_log_item_schema_is_still_compared(self):
+        silo = resp(body={"items": [self.line("apiv2", "apiv2 request", {"api_major": 2}, user_id="1")]})
+        missing = self.line("api", "api request", {})
+        del missing["message"]
+        retyped = self.line("api", "api request", {}, user_id=1)
+        retyped["level"] = 3
+        self.assertEqual(kinds(compare.compare(*self.LOGS, silo, resp(body={"items": [missing]}))),
+                         [("field_missing", "items[].message")])
+        self.assertEqual(kinds(compare.compare(*self.LOGS, silo, resp(body={"items": [retyped]}))),
+                         [("field_type", "items[].level"), ("field_type", "items[].user_id")])
+        self.assertEqual(kinds(compare.compare(*self.LOGS, silo, resp(body={"items": []}))),
+                         [("list_empty", "items[]")])
+        # Anywhere else the same answers are divergences.
+        self.assertIn(("field_missing", "items[].user_id"),
+                      kinds(compare.compare("GET", "/api/v2/admin/logs/audit", silo,
+                                            resp(body={"items": [self.line("api", "api request", {})]}))))
+
+    def test_required_fields_are_silos_schema(self):
+        spec = json.loads((HERE.parents[2] / "contracts/api/v2/openapi.json").read_text())
+        schema = spec["components"]["schemas"]["AdminOperationalLog"]
+        rule = compare.SAMPLED_LISTS[self.LOGS]
+        self.assertEqual(sorted(rule["required"]), sorted(schema["required"]))
+        self.assertTrue(set(rule["free_form"]) <= set(schema["properties"]))
+        self.assertGreater(len(rule["reason"]), 10)
+
+
 class AllowlistTest(unittest.TestCase):
     def test_entries_match_by_op_kind_persona_and_field_glob(self):
         allow = compare.Allowlist([{"op": "GET /api/v2/x", "kind": "field_missing", "field": "a.*", "reason": "r" * 12}])
