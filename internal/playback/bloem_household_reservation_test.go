@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -166,5 +167,51 @@ func TestNoHouseholdStoresZero(t *testing.T) {
 	}
 	if err := pool.QueryRow(ctx, `SELECT household_id FROM playback_capacity_reservations WHERE session_id=$1`, householdPoolTestPrefix+"none-full").Scan(&household); err != nil || household != 900001 {
 		t.Fatalf("household_id=%d error=%v, want 900001", household, err)
+	}
+}
+
+// Sessions that started before the household's pool applied (the main
+// account playing when its first login is made, or a household moved from
+// shares to a pool) were reserved without a household. They are the
+// household's all the same, and count against its pool.
+func TestHouseholdPoolCountsSessionsFromBeforeThePool(t *testing.T) {
+	store, pool := householdPoolTestStore(t)
+	ctx := context.Background()
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	var mainID, loginID int
+	if err := pool.QueryRow(ctx, `INSERT INTO users(username,email,password_hash,role) VALUES($1::text,$1::text||'@example.test','x','user') RETURNING id`,
+		"pool-main-"+suffix).Scan(&mainID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO users(username,email,password_hash,role,household_main_user_id) VALUES($1::text,$1::text||'@example.test','x','user',$2) RETURNING id`,
+		"pool-login-"+suffix, mainID).Scan(&loginID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, loginID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, mainID)
+	})
+
+	// The main account and the login each playing from before the pool.
+	for i, account := range []int{mainID, loginID} {
+		if _, err := store.Acquire(ctx, householdRequest(fmt.Sprintf("before-%d", i), account, 0, 0, 0, false)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct {
+		session string
+		account int
+		streams int
+	}{
+		{"before-main-full", loginID, 1}, // the main account's earlier stream fills a 1-stream pool
+		{"before-both-full", mainID, 2},  // and both earlier streams a 2-stream one
+	} {
+		_, err := store.Acquire(ctx, householdRequest(tc.session, tc.account, mainID, tc.streams, 0, false))
+		if !errors.Is(err, ErrHouseholdStreamsExceeded) {
+			t.Fatalf("a start in a %d-stream pool with 2 earlier household streams = %v, want the household's limit", tc.streams, err)
+		}
+	}
+	if _, err := store.Acquire(ctx, householdRequest("before-room", loginID, mainID, 3, 0, false)); err != nil {
+		t.Fatalf("a start in a 3-stream pool with 2 earlier streams: %v", err)
 	}
 }

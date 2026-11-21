@@ -102,7 +102,11 @@ household draws on the same streams and transcodes at the moment it plays:
   id) and, for a household with a pool, takes the household's advisory lock
   after the account's and before a tenant's, counts the household's live
   reservations other than the one being made, and refuses a start the pool has
-  no room for. Every account's own limits still apply too, so a login can carry
+  no room for. The household's reservations are those made in its name and
+  every live reservation of its main account and logins, so a session that
+  started before the pool applied (the main account playing when its first
+  login is made, or a household a storefront moves from shares to a pool)
+  counts too. Every account's own limits still apply too, so a login can carry
   its own cap inside the pool.
 - A refusal at the pool wraps Silo's own stream or transcode limit
   (`ErrHouseholdStreamsExceeded`, `ErrHouseholdTranscodesExceeded`), so
