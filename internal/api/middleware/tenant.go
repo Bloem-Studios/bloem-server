@@ -10,6 +10,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// CodeTenantUnavailable is the tenant gate's refusal when the membership
+// lookup could not answer: the error code of Bloem's body and, on /api/v2,
+// the X-Bloem-Denial value. ReasonTenantUnavailable is the denial reason the
+// v2 gate chain translates.
+const (
+	CodeTenantUnavailable   = "tenant_unavailable"
+	ReasonTenantUnavailable = "tenant_unavailable"
+)
+
 // TenantResolver revalidates an account's current organization membership.
 // The narrow interface keeps request middleware independent from storage.
 type TenantResolver interface {
@@ -73,7 +82,11 @@ func writeTenantResolveError(w http.ResponseWriter, err error) {
 	case errors.Is(err, tenancy.ErrTenantNotFoundOrHidden), errors.Is(err, tenancy.ErrOwnershipResolutionRequired):
 		writeTenantError(w, http.StatusUnauthorized, "tenant_session_required", "Valid tenant session required")
 	default:
-		writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+		// The v2 gate chain answers this as Silo's retryable
+		// dependency_unavailable (apiv2 bloemDenialProblem); the body here
+		// is unchanged for Bloem's own routes.
+		recordDenialReason(w, ReasonTenantUnavailable)
+		writeTenantError(w, http.StatusServiceUnavailable, CodeTenantUnavailable, "Tenant authorization is unavailable")
 	}
 }
 

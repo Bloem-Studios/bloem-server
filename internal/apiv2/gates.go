@@ -270,9 +270,8 @@ func (d *denialWriter) Write(p []byte) (int, error) {
 // Retry-After is carried over on 429 and 503; the legacy X-RateLimit-* fields
 // are not part of v2 and are dropped.
 func (d *denialWriter) problem() *Problem {
-	if d.reason == apimw.ReasonPreviewOnly {
-		return NewProblem(TypePermissionDenied, "This is not available in the preview.").
-			WithHeader("X-Bloem-Denial", apimw.CodePreviewOnly)
+	if p := bloemDenialProblem(d.reason); p != nil { // Bloem: bloem_denial_problem.go
+		return p
 	}
 	var legacy struct {
 		Error   string `json:"error"`

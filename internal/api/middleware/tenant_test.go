@@ -99,3 +99,28 @@ func TestTenantResolveNativeProjectsIntoTheDefaultOrganization(t *testing.T) {
 		t.Fatalf("native request not projected into the default organization: %d %#v legacy=%v organization=%v", status, got, resolver.gotLegacy, resolver.gotOrganizationID)
 	}
 }
+
+// Bloem's own routes keep the tenant gate's JSON body; only the v2 gate chain
+// translates the refusal (by the recorded reason) into Silo's problem.
+func TestTenantResolverFailureKeepsBloemBody(t *testing.T) {
+	middleware := NewTenantMiddleware(&tenantResolverStub{err: errors.New("database unavailable")})
+	req := httptest.NewRequest(http.MethodGet, "/api/bloem/v2/organizations", nil)
+	req = req.WithContext(SetClaims(req.Context(), &auth.Claims{UserID: 41}))
+	rec := httptest.NewRecorder()
+	middleware.ResolveLegacy(http.NotFoundHandler()).ServeHTTP(rec, req)
+	if want := `{"error":"tenant_unavailable","message":"Tenant authorization is unavailable"}` + "\n"; rec.Code != http.StatusServiceUnavailable || rec.Body.String() != want {
+		t.Fatalf("got %d %q, want 503 %q", rec.Code, rec.Body.String(), want)
+	}
+	recorder := &reasonRecorder{ResponseWriter: httptest.NewRecorder()}
+	middleware.ResolveLegacy(http.NotFoundHandler()).ServeHTTP(recorder, req)
+	if recorder.reason != ReasonTenantUnavailable {
+		t.Fatalf("recorded reason %q, want %q", recorder.reason, ReasonTenantUnavailable)
+	}
+}
+
+type reasonRecorder struct {
+	http.ResponseWriter
+	reason string
+}
+
+func (r *reasonRecorder) RecordDenialReason(reason string) { r.reason = reason }
