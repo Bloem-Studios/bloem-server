@@ -726,10 +726,12 @@ gate from `bloemAuthChain`, so on its own the swap drops it and every stream-tok
 request answers 401. A line after Silo's swap in `classGate` calls
 `bloemStreamReferenceChain`, which rebuilds Bloem's prefix with
 `bloemStreamReferenceAuth` in the place of authentication and keeps the gates after it.
-Both read the same `st` parameter. A token the stream-token gate accepted keeps Bloem's
-path: viewer access scopes it from the token's own account and profile, and Silo's
-reference checks (a live playback attempt and an active login session) do not run. Any
-other request takes Silo's `RequireStreamReferenceAuth` unchanged .
+Both read the same `st` parameter. The stream-token gate accepts a token only while the
+login session that started its playback attempt is active (`streamTokenLoginSessionLive`,
+Silo's rule; a session with no attempt, such as Live TV, keeps its token). A token it
+accepted keeps Bloem's path: viewer access scopes it from the token's own account and
+profile. Any other request, an ended login session's included, takes Silo's
+`RequireStreamReferenceAuth` unchanged.
 `TestPlaybackDeliveryV2ScopedStreamToken` and the delivery-access tests in
 `internal/apiv2` fail without it.
 

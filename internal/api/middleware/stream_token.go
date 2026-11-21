@@ -181,6 +181,9 @@ func progressiveDeliverySession(urlPath string) (string, bool) {
 // bearer auth is untouched, so no currently-working request changes behavior;
 // only requests that would have 401'd can now succeed, and only for the two
 // delivery paths, and only with a signature that names their own session.
+// It adds nothing once the playback's login session has ended
+// (streamTokenLoginSessionLive), so signing out, a revoked session and a
+// disabled account end the media URL as they do on Silo.
 func (am *AuthMiddleware) StreamTokenAuth(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		if secret == "" {
@@ -206,11 +209,46 @@ func (am *AuthMiddleware) StreamTokenAuth(secret string) func(http.Handler) http
 				next.ServeHTTP(w, r)
 				return
 			}
+			live, err := am.streamTokenLoginSessionLive(r.Context(), claims)
+			if err != nil {
+				writeCredentialCheckUnavailable(w, r, err)
+				return
+			}
+			if !live {
+				// Silo's stream reference gate or the account credential decides.
+				next.ServeHTTP(w, r)
+				return
+			}
 			ctx := context.WithValue(r.Context(), streamTokenAuthorizedKey, true)
 			ctx = context.WithValue(ctx, streamTokenClaimsKey, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// streamTokenLoginSessionLive applies Silo's stream reference rule
+// (RequireStreamReferenceAuth) to a token StreamTokenAuth verified: a playback
+// attempt's token stops standing in for the account once the login session
+// that started the attempt has ended, and an attempt started without one (an
+// API key) needs the account credential. Without the attempt and session
+// sources there is nothing to check. A session with no v3 playback attempt,
+// such as a Live TV stream, keeps the token as before.
+func (am *AuthMiddleware) streamTokenLoginSessionLive(ctx context.Context, claims *streamtoken.Claims) (bool, error) {
+	if am.streamReferenceSession == nil || am.sessionValidator == nil {
+		return true, nil
+	}
+	attempt, err := am.streamReferenceSession(ctx, claims.SessionID)
+	if err != nil {
+		return false, err
+	}
+	if attempt.UserID == 0 {
+		return true, nil
+	}
+	if attempt.LoginSessionID == "" {
+		return false, nil
+	}
+	_, _, active, err := am.sessionAuthority(ctx, attempt.LoginSessionID, attempt.UserID)
+	return active && err == nil, err
 }
 
 // IsStreamTokenAuthorized reports whether a verified, session-bound stream
