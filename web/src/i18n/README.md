@@ -156,6 +156,24 @@ computed direction (`isRightToLeft` and `readingArrowKey` in `src/lib/direction.
   overflows, goes on the name's own box, since it overflows toward its own end.
   `.bidi-text` alone doesn't keep the start: its `unicode-bidi: plaintext` leaves the box
   in the page's direction, so Firefox drops the "…" and WebKit cuts the start.
+- A name inside a longer line (a name and "(you)", a sentence that names someone, a
+  name and a device) takes `dir="auto"` on its own element, never on the line, where
+  the name's script would set the direction of the translated words too. Pass that
+  element to `t()` as the value
+  (`t(id, { name: <span dir="auto" className="truncate">{name}</span> })`). When the
+  words must stay and the name is cut, make the line a
+  `flex overflow-hidden whitespace-pre` box: the words become flex items that keep the
+  page's direction and don't shrink, and `whitespace-pre` keeps the spaces at their
+  edges. That suits translated words only: user text there would keep its line
+  breaks. A rich-text tag that wraps the name (`<strong>{name}</strong>`) is the flex
+  item, so it needs `overflow-hidden` too, or the name can't shrink inside it. Where
+  the row can squeeze the line narrower than its words (the impersonation banner),
+  the words shrink too, but only once the name is down to a letter and "…"
+  (`wordsYieldLast` in `ImpersonationBanner.tsx`); where the row has other text that
+  doesn't shrink, cap it (`max-w-1/2 truncate`) so the line keeps room. When the text
+  after the name is cut first, which includes user text such as a note, keep the
+  line's `truncate` and make the name an
+  `inline-block max-w-full truncate align-bottom` span.
 - Titles, names, taglines and overviews from metadata use `.bidi-text` (`app.css`).
   Where such text is cut with an ellipsis (`truncate`, `line-clamp`, or a clamp in a
   stylesheet), it also takes `dir="auto"`. Without it, text that runs the other way
@@ -169,6 +187,16 @@ computed direction (`isRightToLeft` and `readingArrowKey` in `src/lib/direction.
   with an Arabic name part in the page's direction; `dir="auto"` would turn it right
   to left on a left-to-right page. Size a cut one as for a name, above; a path that
   wraps instead follows the path or URL rule above.
+- A cut line that joins translated text with a name or email (`<summary> · <email>`)
+  can't be one `truncate` span: the "…" falls at the line's end, so the part there loses
+  its start. Render each part as its own truncating `flex` item, the translated part in
+  the page's direction and the other in its own (`dir="auto"`, or `emailDir` for an
+  email), each with its own `title` so the tooltip reads that way too. Let the line wrap,
+  so a part that doesn't fit moves to a line of its own instead of cutting both, and hide
+  the separator that would open that line, as `UserDetailHeader` does. A part that
+  carries the separator's negative margin keeps the page's direction and takes its `dir`
+  on an inner span, as above. `AccountRow` in `src/pages/admin-backups/RestoreUsers.tsx`
+  does this.
 - Lucide icons that point along the reading direction (chevrons, arrows, undo,
   sign in/out, send) mirror through one rule in `app.css`; play, skip, rotate, clock
   and brand icons don't. Add `no-mirror` to keep one physical. A caret that also
