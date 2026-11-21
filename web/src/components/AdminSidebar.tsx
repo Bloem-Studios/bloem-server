@@ -30,7 +30,6 @@ import { usePrefetchAdminServerSettings } from "@/hooks/queries/admin/settings";
 import { cn } from "@/lib/utils";
 import AdminContextSwitcher from "@/components/admin/AdminContextSwitcher";
 import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
-import { platformAdminScope } from "@/bloem/adminScope";
 import { numberText, useT } from "@/i18n";
 
 interface AdminSidebarProps {
@@ -87,7 +86,6 @@ export default function AdminSidebar({
   const location = useLocation();
   const prefetchSettings = usePrefetchAdminServerSettings();
   const adminContext = useOptionalAdminContext();
-  const platformScope = platformAdminScope(adminContext);
   const sessionCount = useSessionCount();
   const buildInfo = useBuildInfo();
   const policyCapability = usePolicyCapability();
@@ -143,7 +141,7 @@ export default function AdminSidebar({
   // arrouter. The admin sidebar needs the full installation list to render
   // its "Plugin Apps" group.
   const { data: adminInstallations } = useAdminPluginInstallations();
-  const adminPluginItems = platformScope ? buildAdminPluginNavItems(adminInstallations) : [];
+  const adminPluginItems = buildAdminPluginNavItems(adminInstallations);
 
   function isActive(item: AdminNavItem) {
     if (item.exact) return location.pathname === item.href;

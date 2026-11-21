@@ -31,7 +31,23 @@ vi.mock("@/hooks/queries/admin/stats", () => ({
   useAdminSessions: (enabled?: boolean) => mocks.useAdminSessions(enabled),
 }));
 vi.mock("@/hooks/queries/admin/plugins", () => ({
-  useAdminPluginInstallations: () => ({ data: [] }),
+  useAdminPluginInstallations: () => ({
+    data: [
+      {
+        id: 31,
+        plugin_id: "studio-tools",
+        enabled: true,
+        routes: [
+          {
+            path: "/dashboard",
+            navigable: true,
+            navigation_kind: "admin",
+            navigation_label: "Studio tools",
+          },
+        ],
+      },
+    ],
+  }),
 }));
 vi.mock("@/hooks/queries/admin/policy", () => ({
   usePolicyCapability: () => ({ data: { editor_available: true } }),
@@ -77,5 +93,13 @@ describe("AdminSidebar in an administrative context", () => {
     expect(mocks.useAdminSessions).toHaveBeenCalledWith(true);
     expect(mocks.useBuildInfo).toHaveBeenCalledWith(true);
     expect(markup).toContain('href="/admin/platform/organizations"');
+  });
+
+  it("lists plugin admin pages only in the platform context", () => {
+    const pluginPage = "/api/v2/plugin-content/plugins/31/dashboard";
+    mocks.scope = "organization";
+    expect(renderSidebar()).not.toContain(pluginPage);
+    mocks.scope = "platform";
+    expect(renderSidebar()).toContain(pluginPage);
   });
 });

@@ -980,12 +980,6 @@
     "    };"
    ]
   },
-  "web/src/components/AdminSidebar.tsx": {
-   "kind": "lines",
-   "lines": [
-    "  const adminPluginItems = buildAdminPluginNavItems(adminInstallations);"
-   ]
-  },
   "web/src/components/admin/libraries/useLibraryForm.ts": {
    "kind": "lines",
    "lines": [
