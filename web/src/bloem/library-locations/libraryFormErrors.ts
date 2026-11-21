@@ -59,3 +59,33 @@ export function bloemShownErrors(
 ): { errors?: LibraryFormErrors } {
   return { errors: submitAttempted ? errors : {} };
 }
+
+/**
+ * The form's pending flag, counting a library location save. Optional in the
+ * type, as bloemShownErrors' errors are, so it can follow Silo's isPending in
+ * the hook's result.
+ */
+export function bloemFormPending(pending: boolean): { isPending?: boolean } {
+  return { isPending: pending };
+}
+
+/**
+ * onClose for the library form, called only while the administrative context
+ * the form opened in is still current.
+ */
+export function bloemCloseInContext(
+  onClose: (() => void) | undefined,
+  contextCurrent: () => boolean,
+): (() => void) | undefined {
+  return (
+    onClose &&
+    (() => {
+      if (contextCurrent()) onClose();
+    })
+  );
+}
+
+/** Drops the paths from an update: a storage library has none to update. */
+export function bloemOmitPaths(body: { paths?: string[] }) {
+  delete body.paths;
+}

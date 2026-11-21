@@ -933,14 +933,6 @@
     "    };"
    ]
   },
-  "web/src/components/admin/libraries/useLibraryForm.ts": {
-   "kind": "lines",
-   "lines": [
-    "                { onSuccess: () => onClose?.() },",
-    "        { id: library.id, body },",
-    "    createMutation.isPending || updateMutation.isPending || setChainMutation.isPending;"
-   ]
-  },
   "web/src/hooks/queries/admin/stats.ts": {
    "kind": "lines",
    "lines": [

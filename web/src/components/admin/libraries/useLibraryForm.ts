@@ -13,6 +13,9 @@ import { PROVIDER_TRAILER_KINDS } from "@/lib/extraKinds";
 
 import { useLibraryLocations } from "@/bloem/library-locations/useLibraryLocations";
 import {
+  bloemCloseInContext,
+  bloemFormPending,
+  bloemOmitPaths,
   bloemShownErrors,
   useBloemLibraryErrors,
 } from "@/bloem/library-locations/libraryFormErrors";
@@ -195,6 +198,9 @@ export function useLibraryForm({
   const [type, setType] = useState(library?.type ?? "movies");
   const settingSupport = librarySettingSupport(type);
   const locations = useLibraryLocations(library?.id ?? null, type, setPaths);
+  // A save that finishes after the administrative context changed leaves the
+  // form open.
+  onClose = bloemCloseInContext(onClose, locations.contextCurrent);
   const [intentContext] = useState(locations.context);
   const staleContext =
     intentContext?.key !== locations.context?.key ||
@@ -244,10 +250,8 @@ export function useLibraryForm({
   const { data: providerDefaults, isLoading: defaultsLoading } = useLibraryProviderDefaults(type);
 
   const isPending =
-    createMutation.isPending ||
-    updateMutation.isPending ||
-    setChainMutation.isPending ||
-    locations.pending;
+    createMutation.isPending || updateMutation.isPending || setChainMutation.isPending;
+  const formPending = isPending || locations.pending;
 
   const defaultLevelChains = useMemo(
     () => levelChainsFromResponse(providerDefaults),
@@ -374,7 +378,7 @@ export function useLibraryForm({
       locations.loading ||
       locations.blocked ||
       (locations.enabled && !locations.ready) ||
-      isPending
+      formPending
     ) {
       return {
         ok: false,
@@ -452,9 +456,9 @@ export function useLibraryForm({
 
     if (library) {
       // A storage library has no paths to update.
-      const patch = usesStorage ? { ...body, paths: undefined } : body;
+      if (usesStorage) bloemOmitPaths(body);
       updateMutation.mutate(
-        { id: library.id, body: patch },
+        { id: library.id, body },
         {
           onSuccess: () => {
             if (!locations.contextCurrent()) return;
@@ -464,11 +468,7 @@ export function useLibraryForm({
                   id: library.id,
                   body: buildProviderChainBody(activeLevelChains),
                 },
-                {
-                  onSuccess: () => {
-                    if (locations.contextCurrent()) onClose?.();
-                  },
-                },
+                { onSuccess: () => onClose?.() },
               );
             } else {
               onClose?.();
@@ -551,6 +551,7 @@ export function useLibraryForm({
     isPending,
     submit,
     ...bloemShownErrors(submitAttempted, bloemErrors),
+    ...bloemFormPending(formPending),
   };
 }
 
