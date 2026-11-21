@@ -251,17 +251,16 @@ func (s *AdminPushService) queueLive(ctx context.Context, u liveUpdate) error {
 	return nil
 }
 
-// liveModeAvailable reports whether live requests may go to the relay now.
-func (s *AdminPushService) liveModeAvailable() bool {
+// liveModeAvailable reports whether live requests may go to the relay at now.
+func (s *AdminPushService) liveModeAvailable(now time.Time) bool {
 	s.liveMu.Lock()
 	defer s.liveMu.Unlock()
-	return !s.now().Before(s.liveOffUntil)
+	return !now.Before(s.liveOffUntil)
 }
 
-// liveModeMissing stops live requests for an hour and logs it once for that hour.
-func (s *AdminPushService) liveModeMissing(ctx context.Context, code string) {
+// liveModeMissing stops live requests for an hour from now and logs it once for that hour.
+func (s *AdminPushService) liveModeMissing(ctx context.Context, code string, now time.Time) {
 	s.liveMu.Lock()
-	now := s.now()
 	first := !now.Before(s.liveOffUntil)
 	if first {
 		s.liveOffUntil = now.Add(adminLiveModeOff)
@@ -303,7 +302,8 @@ func (s *AdminPushService) FlushLive(ctx context.Context) int {
 	if !s.LiveActivitiesEnabled(ctx) {
 		return 0
 	}
-	claims, err := s.store.claimDueLive(ctx, s.now(), liveBatch, s.liveModeAvailable())
+	now := s.now()
+	claims, err := s.store.claimDueLive(ctx, now, liveBatch, s.liveModeAvailable(now))
 	if err != nil {
 		if ctx.Err() == nil {
 			s.logger.WarnContext(ctx, "claim admin live activity sends failed", "error", err)
@@ -318,7 +318,7 @@ func (s *AdminPushService) FlushLive(ctx context.Context) int {
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			s.deliverLive(ctx, claim)
+			s.deliverLive(ctx, claim, now)
 		}()
 	}
 	wg.Wait()
@@ -326,10 +326,10 @@ func (s *AdminPushService) FlushLive(ctx context.Context) int {
 }
 
 // deliverLive sends one claimed state and acts on the relay's answer.
-func (s *AdminPushService) deliverLive(ctx context.Context, c liveClaim) {
+func (s *AdminPushService) deliverLive(ctx context.Context, c liveClaim, now time.Time) {
 	device, live, err := s.store.deviceByID(ctx, c.DeviceID)
 	if err != nil {
-		s.store.requeueLive(ctx, c, s.now().Add(adminLiveRetry))
+		s.store.requeueLive(ctx, c, now.Add(adminLiveRetry))
 		return
 	}
 	if device == nil {
@@ -376,11 +376,10 @@ func (s *AdminPushService) deliverLive(ctx context.Context, c liveClaim) {
 	}
 	key = "live-" + c.ActivityID + "-" + strconv.FormatInt(c.Timestamp, 10)
 	result, detail := s.relaySend(ctx, path, payload, key, device.Platform)
-	now := s.now()
 	switch {
 	case result.OK:
 	case c.Platform == LivePlatformIOS && relayLacksLiveMode(result):
-		s.liveModeMissing(ctx, result.UpstreamReason)
+		s.liveModeMissing(ctx, result.UpstreamReason, now)
 		s.store.requeueLive(ctx, c, now)
 	case result.HTTPStatus == http.StatusTooManyRequests && result.UpstreamReason == relayCodeLiveRateLimited:
 		hold := result.RetryAfter
@@ -400,10 +399,10 @@ func (s *AdminPushService) deliverLive(ctx context.Context, c liveClaim) {
 	}
 }
 
-// sendLiveStart push-starts an activity on a device through its push-to-start token. It
-// reports whether the relay accepted it. A gone token is cleared with its kinds.
-func (s *AdminPushService) sendLiveStart(ctx context.Context, device *AdminPushDevice, kind string, state adminJobState, startedAt time.Time) bool {
-	if device == nil || device.Platform != PushPlatformApple || !s.liveModeAvailable() || !s.settings.ApplePushDeliveryEnabled(ctx) {
+// sendLiveStart push-starts an activity on a device through its push-to-start token, as
+// of now. It reports whether the relay accepted it. A gone token is cleared with its kinds.
+func (s *AdminPushService) sendLiveStart(ctx context.Context, device *AdminPushDevice, kind string, state adminJobState, startedAt, now time.Time) bool {
+	if device == nil || device.Platform != PushPlatformApple || !s.liveModeAvailable(now) || !s.settings.ApplePushDeliveryEnabled(ctx) {
 		return false
 	}
 	sealed, err := s.store.liveStartToken(ctx, device.ID)
@@ -414,7 +413,7 @@ func (s *AdminPushService) sendLiveStart(ctx context.Context, device *AdminPushD
 	if err != nil {
 		return false
 	}
-	ts := s.now().Unix()
+	ts := now.Unix()
 	path, payload, err := adminLiveStartPayload(device, token, kind, state, startedAt, ts)
 	if err != nil {
 		s.logger.WarnContext(ctx, "admin live activity start refused", "device_id", device.ServerDeviceID, "error", err)
@@ -427,7 +426,7 @@ func (s *AdminPushService) sendLiveStart(ctx context.Context, device *AdminPushD
 	case result.OK:
 		return true
 	case relayLacksLiveMode(result):
-		s.liveModeMissing(ctx, result.UpstreamReason)
+		s.liveModeMissing(ctx, result.UpstreamReason, now)
 	case liveTokenGone(result, detail):
 		s.store.clearLiveStart(ctx, device.ID)
 	}

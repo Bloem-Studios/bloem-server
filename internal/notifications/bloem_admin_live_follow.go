@@ -26,6 +26,8 @@ const (
 	// adminLiveBackupEndWindow lets a backup's end reach activities registered shortly
 	// after the run finished (a push-started one registers its token a moment later).
 	adminLiveBackupEndWindow = 2 * time.Minute
+	// adminLiveStartTimeout bounds one job's push starts.
+	adminLiveStartTimeout = 30 * time.Second
 )
 
 // AdminActiveBackup is the backup running now, for the Live Activity follower.
@@ -144,27 +146,39 @@ func (s *AdminPushService) followBackup(ctx context.Context, running *AdminActiv
 
 // pushStartLive starts the job's activity on every device that allowed the server to
 // start this kind, has the matching alert switched on, and does not show the job
-// already. Each device is started once per job, across replicas.
+// already. Each device is started once per job, across replicas. It returns at once:
+// the hub drops events for a subscriber that falls behind, and the loop that follows
+// scans also sends scan failure alerts, so the relay is called on a goroutine of its own,
+// one per job at a time.
 func (s *AdminPushService) pushStartLive(ctx context.Context, kind, subject, jobKey, alertKind string, state adminJobState, startedAt time.Time) {
-	if !s.liveModeAvailable() || !s.settings.ApplePushDeliveryEnabled(ctx) {
+	now := s.now()
+	if !s.liveModeAvailable(now) || !s.settings.ApplePushDeliveryEnabled(ctx) {
 		return
 	}
-	devices, err := s.store.liveStartDevices(ctx, kind, subject, jobKey, alertKind, s.now())
-	if err != nil {
-		if ctx.Err() == nil {
-			s.logger.WarnContext(ctx, "admin live activity start candidates failed", "kind", kind, "error", err)
-		}
+	if _, busy := s.liveStarting.LoadOrStore(jobKey, struct{}{}); busy {
 		return
 	}
-	for i := range devices {
-		claimed, err := s.store.claimLiveStart(ctx, devices[i].ID, jobKey)
-		if err != nil || !claimed {
-			continue
+	s.liveStarts.Add(1)
+	detached, cancel := context.WithTimeout(context.WithoutCancel(ctx), adminLiveStartTimeout)
+	go func() {
+		defer s.liveStarts.Done()
+		defer cancel()
+		defer s.liveStarting.Delete(jobKey)
+		devices, err := s.store.liveStartDevices(detached, kind, subject, jobKey, alertKind, now)
+		if err != nil {
+			s.logger.WarnContext(detached, "admin live activity start candidates failed", "kind", kind, "error", err)
+			return
 		}
-		// One try per job and device: a start that fails is not retried, so a relay in
-		// trouble is not asked again on every progress event.
-		s.sendLiveStart(ctx, &devices[i], kind, state, startedAt)
-	}
+		for i := range devices {
+			claimed, err := s.store.claimLiveStart(detached, devices[i].ID, jobKey)
+			if err != nil || !claimed {
+				continue
+			}
+			// One try per job and device: a start that fails is not retried, so a relay in
+			// trouble is not asked again on every progress event.
+			s.sendLiveStart(detached, &devices[i], kind, state, startedAt, now)
+		}
+	}()
 }
 
 // liveStartDevices lists the devices a job may be push-started on.
@@ -232,3 +246,6 @@ func (s *adminPushStore) pruneLive(ctx context.Context, now time.Time) error {
 		now, adminLiveLifetime+adminLiveKeep)
 	return err
 }
+
+// waitLiveStarts waits for the push starts in flight.
+func (s *AdminPushService) waitLiveStarts() { s.liveStarts.Wait() }

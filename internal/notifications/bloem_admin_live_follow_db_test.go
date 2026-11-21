@@ -185,8 +185,10 @@ func TestPushStartAfterSixtySecondsOnlyForOptedInDevices(t *testing.T) {
 	}
 	f.now = base.Add(61 * time.Second)
 	f.svc.followScan(ctx, "scan.progress", scanRun("run-1", 7, "running", base, 2, 10))
+	f.svc.waitLiveStarts()
 	f.now = base.Add(90 * time.Second)
 	f.svc.followScan(ctx, "scan.progress", scanRun("run-1", 7, "running", base, 3, 10))
+	f.svc.waitLiveStarts()
 	starts := startsTo(relay.received())
 	if len(starts) != 1 {
 		t.Fatalf("push-started on %d devices, want only the opted-in one: %v", len(starts), starts)
@@ -209,6 +211,7 @@ func TestPushStartAfterSixtySecondsOnlyForOptedInDevices(t *testing.T) {
 	// Another scan of the same library is another job: it may start again.
 	f.now = base.Add(5 * time.Minute)
 	f.svc.followScan(ctx, "scan.progress", scanRun("run-2", 7, "running", base.Add(3*time.Minute), 3, 10))
+	f.svc.waitLiveStarts()
 	if n := len(liveCalls(relay.received())) - countUpdates(relay.received()); n != 2 {
 		t.Fatalf("a second scan started %d times in all, want 2", n)
 	}
@@ -235,6 +238,7 @@ func TestBackupFollowedAtOnce(t *testing.T) {
 	started := f.now.Add(-5 * time.Second)
 
 	f.svc.followBackup(ctx, &AdminActiveBackup{ID: "bk-1", StartedAt: started, Progress: 40}, AdminBackupRun{}, false)
+	f.svc.waitLiveStarts()
 	f.svc.FlushLive(ctx)
 	starts := startsTo(relay.received())
 	if len(starts) != 1 {
@@ -345,6 +349,7 @@ func TestEveryReplicaSendsOnce(t *testing.T) {
 			defer wg.Done()
 			// Every replica hears the same event from the events bus.
 			replica.followScan(ctx, "scan.progress", scanRun("run-1", 7, "running", base, 3, 10))
+			replica.waitLiveStarts()
 			replica.FlushLive(ctx)
 		}()
 	}
@@ -441,5 +446,39 @@ func TestPrunerDeletesOldLiveActivities(t *testing.T) {
 	}
 	if got := f.count(`SELECT count(*) FROM bloem_admin_live_starts WHERE job_key = 'scan:new'`); got != 1 {
 		t.Fatal("a recent start claim was deleted")
+	}
+}
+
+// The events hub drops events for a subscriber that falls behind, and the same loop
+// sends scan failure alerts, so following a scan must never wait for the relay.
+func TestFollowScanDoesNotWaitForTheRelay(t *testing.T) {
+	f, relay := newLiveRelayFixture(t)
+	ctx := context.Background()
+	admin := f.account("root", "admin", true)
+	f.startOptIn(admin, "install-opted-in1", 'a', strings.Repeat("1", 80), LiveKindScan)
+	release := make(chan struct{})
+	relay.mu.Lock()
+	relay.answer = func(relayCall) (int, string, string) {
+		<-release
+		return 200, relayAccepted, ""
+	}
+	relay.mu.Unlock()
+	base := f.now
+	f.now = base.Add(2 * time.Minute)
+	returned := make(chan struct{})
+	go func() {
+		f.svc.followScan(ctx, "scan.progress", scanRun("run-1", 7, "running", base, 1, 10))
+		close(returned)
+	}()
+	select {
+	case <-returned:
+	case <-time.After(3 * time.Second):
+		close(release)
+		t.Fatal("following a scan waited for the relay to answer a push start")
+	}
+	close(release)
+	f.svc.waitLiveStarts()
+	if got := len(startsTo(relay.received())); got != 1 {
+		t.Fatalf("starts = %d, want the one that was waiting", got)
 	}
 }

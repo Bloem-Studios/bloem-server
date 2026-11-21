@@ -137,6 +137,9 @@ type AdminPushService struct {
 	// live_activity mode, and no live request is sent to it.
 	liveMu       sync.Mutex
 	liveOffUntil time.Time
+	// liveStarts counts push starts in flight; liveStarting holds the job keys being started.
+	liveStarts   sync.WaitGroup
+	liveStarting sync.Map
 }
 
 func isNoRows(err error) bool { return errors.Is(err, pgx.ErrNoRows) }

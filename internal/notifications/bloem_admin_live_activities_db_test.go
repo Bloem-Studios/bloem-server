@@ -693,7 +693,7 @@ func TestGoneStartTokenIsCleared(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if f.svc.sendLiveStart(ctx, loaded, LiveKindScan, runningScan("7", f.now), f.now) {
+	if f.svc.sendLiveStart(ctx, loaded, LiveKindScan, runningScan("7", f.now), f.now, f.now) {
 		t.Fatal("a refused start reported as sent")
 	}
 	if got := f.count(`SELECT count(*) FROM bloem_admin_push_devices WHERE server_device_id = $1 AND live_start_token_ciphertext IS NULL AND cardinality(live_start_kinds) = 0 AND enabled`, device.DeviceID); got != 1 {
