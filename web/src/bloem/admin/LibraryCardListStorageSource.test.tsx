@@ -34,6 +34,7 @@ function row(library: Partial<Library> & Pick<Library, "id" | "name">): LibraryR
     cancelJob: vi.fn(),
     cancelScans: vi.fn(),
     edit: vi.fn(),
+    editFolders: vi.fn(),
     remove: vi.fn(),
   };
 }
@@ -49,6 +50,7 @@ describe("LibraryCardList storage source label", () => {
         realtimeMonitoringByLibraryId={new Map()}
         trickplayByLibraryId={new Map()}
         onMove={vi.fn()}
+        onViewActivity={vi.fn()}
         moving={false}
       />,
     );
