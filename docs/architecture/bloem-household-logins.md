@@ -118,7 +118,16 @@ household draws on the same streams and transcodes at the moment it plays:
   clients, the stream-limit notice and lease renewal treat it as that limit.
 - Only the fleet reservation counts the pool. It leaves out the session being
   reserved again, so a session moving between direct play and transcoding
-  keeps its stream in a full pool. A household session reserves even without
+  keeps its stream in a full pool.
+- A transcode's reservation lives as long as its encoder. Client traffic
+  renews a lease (two minutes), but a quiet paused transcode keeps its encoder
+  until cleanup reaps the session (up to 30 minutes), so the 15-second cleanup
+  pass also renews every transcode that still counts toward its account's
+  transcodes (`renewHeldTranscodeReservations`). A transcode whose lease lapsed
+  anyway and that the store no longer admits is ended as an idle session is,
+  which stops its encoder. A held transcode also holds its stream in the pool,
+  where in memory a quiet paused session frees its stream slot after two
+  minutes: the pool errs on the side of what the household pays for. A household session reserves even without
   an active profile, so nothing plays outside the pool.
 - Jellyfin-compatible sessions start through the same session manager as the
   signed-in account (a login signs in as itself), so they count against that

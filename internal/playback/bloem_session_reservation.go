@@ -168,15 +168,16 @@ func (m *SessionManager) releaseFleetReservationGeneration(sessionID string, gen
 // concurrent transport and progress requests renew or reacquire once instead
 // of each minting a generation the manager then loses track of.
 //
-// Renewal is driven only by client traffic (progress, activity, transport);
-// nothing renews on a timer, and CleanInactive neither renews nor releases a
-// session still inside its grace. A session that sends no traffic for longer
-// than the lease -- for example a paused client that stops reporting progress
-// -- stops counting toward fleet capacity once its row expires, while the
-// in-memory paused grace still keeps the session. Its next request reacquires
-// the reservation. The session is stopped when that reacquire is refused for
-// stream, transcode, or tenant capacity, or fails for any reason once the
-// lease the manager held has already lapsed.
+// Client traffic (progress, activity, transport) renews a reservation, and
+// so does the cleanup pass for a transcode that still holds its encoder
+// (renewHeldTranscodeReservations). A direct play or remux that sends no
+// traffic for longer than the lease -- for example a paused client that stops
+// reporting progress -- stops counting toward fleet capacity once its row
+// expires, as its stream slot does in memory (PausedStreamSlotGrace), while
+// the in-memory paused grace still keeps the session. Its next request
+// reacquires the reservation. The session is stopped when that reacquire is
+// refused for stream, transcode, tenant or household capacity, or fails for
+// any reason once the lease the manager held has already lapsed.
 func (m *SessionManager) renewFleetReservation(session *Session) error {
 	if session == nil || session.reservationGeneration <= 0 {
 		return nil
@@ -248,6 +249,87 @@ func (m *SessionManager) renewFleetReservation(session *Session) error {
 	applyFleetReservationLocked(current, reservation, request)
 	m.mu.Unlock()
 	return nil
+}
+
+// renewHeldTranscodeReservations keeps the fleet reservation of every
+// transcode that still holds its encoder current. It runs at the end of each
+// cleanup pass, after idle sessions are reaped.
+//
+// A quiet paused transcode keeps its encoder, and its transcode slot in this
+// manager, until cleanup reaps it (DefaultPausedSessionGrace), but client
+// traffic alone renews its lease, which runs out after two minutes. A killed
+// app's encoder would then drop out of every other replica's count, and out of
+// its household's pool, long before it stopped. Renewing here makes a
+// reservation live exactly as long as the session whose expiry stops its
+// encoder. A transcode whose lease lapsed anyway (the store was unreachable for
+// longer than the lease) and that the store no longer admits is ended as
+// cleanup ends an idle session, which stops its encoder.
+func (m *SessionManager) renewHeldTranscodeReservations() {
+	m.mu.RLock()
+	if m.reservationStore == nil {
+		m.mu.RUnlock()
+		return
+	}
+	now := time.Now()
+	var held []*Session
+	for _, s := range m.sessions {
+		if s.reservationGeneration > 0 && s.reservationRequest.IsTranscode && m.countsTowardLimitsLocked(s, now, noPausedSlotCap) {
+			snapshot := *s
+			held = append(held, &snapshot)
+		}
+	}
+	m.mu.RUnlock()
+
+	var (
+		wg     sync.WaitGroup
+		lostMu sync.Mutex
+		lost   []string
+	)
+	for _, session := range held {
+		wg.Go(func() {
+			if err := m.renewFleetReservation(session); err != nil {
+				lostMu.Lock()
+				lost = append(lost, session.ID)
+				lostMu.Unlock()
+			}
+		})
+	}
+	wg.Wait()
+	m.expireUnreservedSessions(lost)
+}
+
+// expireUnreservedSessions ends the sessions in ids whose fleet lease has
+// lapsed, as cleanup ends an idle session: the expiration hooks stop their
+// encoders and record the end. A session another request reacquired meanwhile
+// is left alone.
+func (m *SessionManager) expireUnreservedSessions(ids []string) {
+	if len(ids) == 0 {
+		return
+	}
+	now := time.Now()
+	m.mu.Lock()
+	var expired []*Session
+	for _, id := range ids {
+		s := m.sessions[id]
+		if s == nil || s.reservationLeaseUntil.After(now) {
+			continue
+		}
+		snapshot := *s
+		expired = append(expired, &snapshot)
+		delete(m.sessions, id)
+		m.stopTransportsLocked(id)
+	}
+	hooks := append([]func(*Session){}, m.expireHooks...)
+	m.mu.Unlock()
+	for _, s := range expired {
+		slog.Warn("ending a transcode that lost its playback reservation", "component", "playback", "session", s.ID, "user", s.UserID)
+		m.releaseFleetReservation(s)
+	}
+	for _, hook := range hooks {
+		for _, s := range expired {
+			hook(s)
+		}
+	}
 }
 
 // replacementReservationRequestLocked reports whether admitting method for
