@@ -66,7 +66,8 @@ func (store *PostgresReservationStore) Acquire(ctx context.Context, request Rese
 	}
 	// The household lock comes after the account lock and before the tenant
 	// lock (bloem_household_reservation.go).
-	if err := reserveHouseholdCapacity(ctx, tx, request); err != nil {
+	household, err := reserveHouseholdCapacity(ctx, tx, request)
+	if err != nil {
 		return Reservation{}, err
 	}
 	if request.TenantID != "" {
@@ -118,7 +119,7 @@ func (store *PostgresReservationStore) Acquire(ctx context.Context, request Rese
 			household_id = EXCLUDED.household_id,
 			updated_at = now()
 		RETURNING generation`,
-		request.SessionID, request.AccountID, request.ProfileID, request.TenantID, request.IsTranscode, request.LeaseUntil, request.HouseholdID,
+		request.SessionID, request.AccountID, request.ProfileID, request.TenantID, request.IsTranscode, request.LeaseUntil, household,
 	).Scan(&generation); err != nil {
 		return Reservation{}, fmt.Errorf("store playback reservation: %w", err)
 	}

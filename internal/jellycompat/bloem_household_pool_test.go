@@ -11,9 +11,12 @@ import (
 )
 
 // householdPoolStore is a fleet reservation store that holds a household to
-// its pool, as the Postgres store does, and records what it was asked.
+// its pool, as the Postgres store does, and records what it was asked. Like
+// the Postgres store it keeps each household's pool itself (streams, by the
+// household's main account).
 type householdPoolStore struct {
 	mu       sync.Mutex
+	streams  map[int]int
 	held     map[string]playback.ReservationRequest
 	requests []playback.ReservationRequest
 }
@@ -22,14 +25,14 @@ func (s *householdPoolStore) Acquire(_ context.Context, request playback.Reserva
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.requests = append(s.requests, request)
-	if request.HouseholdID > 0 && request.HouseholdStreams > 0 {
+	if pool := s.streams[request.HouseholdID]; request.HouseholdID > 0 && pool > 0 {
 		streams := 0
 		for id, held := range s.held {
 			if id != request.SessionID && held.HouseholdID == request.HouseholdID {
 				streams++
 			}
 		}
-		if streams >= request.HouseholdStreams {
+		if streams >= pool {
 			return playback.Reservation{}, playback.ErrHouseholdStreamsExceeded
 		}
 	}
@@ -57,7 +60,7 @@ func (s *householdPoolStore) Release(_ context.Context, sessionID string, _ int6
 func TestCompatStreamStartCountsAgainstTheHousehold(t *testing.T) {
 	const mainID, loginID = 100, 201
 	mgr := playback.NewSessionManager(0, 0)
-	store := &householdPoolStore{}
+	store := &householdPoolStore{streams: map[int]int{mainID: 1}}
 	mgr.SetReservationStore(store, time.Minute)
 	mgr.SetProfileLimitProvider(func(_ context.Context, userID int, _ string) (playback.SessionLimits, error) {
 		if userID != mainID && userID != loginID {

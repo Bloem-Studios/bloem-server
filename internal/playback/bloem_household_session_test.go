@@ -23,7 +23,7 @@ func TestHouseholdSessionReservesWithoutProfile(t *testing.T) {
 		t.Fatalf("a household session must reserve, acquires = %d", len(store.acquires))
 	}
 	got := store.acquires[0]
-	if got.HouseholdID != 9 || got.HouseholdStreams != 3 || got.HouseholdTranscodes != 1 || got.AccountID != 7 {
+	if got.HouseholdID != 9 || got.AccountID != 7 {
 		t.Fatalf("request = %#v", got)
 	}
 }
@@ -48,7 +48,7 @@ func TestReplacementRequestCarriesHousehold(t *testing.T) {
 		t.Fatalf("acquires = %d, want the start and the replacement", len(store.acquires))
 	}
 	got := store.acquires[1]
-	if !got.IsTranscode || got.HouseholdID != 9 || got.HouseholdTranscodes != 1 {
+	if !got.IsTranscode || got.HouseholdID != 9 {
 		t.Fatalf("replacement request = %#v", got)
 	}
 }
@@ -63,8 +63,8 @@ func TestReservationValidAcceptsProfilelessHousehold(t *testing.T) {
 	if request.valid(now) {
 		t.Fatal("a profileless request outside a household is valid")
 	}
-	request.HouseholdID, request.HouseholdStreams = 9, -1
+	request.HouseholdID = -1
 	if request.valid(now) {
-		t.Fatal("negative household streams are valid")
+		t.Fatal("a negative household is valid")
 	}
 }

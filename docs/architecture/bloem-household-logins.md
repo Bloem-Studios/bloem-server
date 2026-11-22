@@ -93,16 +93,21 @@ household draws on the same streams and transcodes at the moment it plays:
   `max_streams`, `max_transcodes`, 0 unlimited). It applies only while the
   main account has at least one login, so a household of one plays exactly as
   before.
-- The playback limit provider adds the pool of the household an account plays
-  in (`withHouseholdPoolLimits`, `internal/api/bloem_household_pool_wiring.go`;
-  `auth.HouseholdPoolForAccount`). A pool that cannot be read refuses the
+- The playback limit provider names the household an account plays in
+  (`withHouseholdPoolLimits`, `internal/api/bloem_household_pool_wiring.go`;
+  `playback.HouseholdPoolForAccount`). A pool that cannot be read refuses the
   start, as a tenant lookup does.
 - The fleet reservation (`internal/playback/bloem_household_reservation.go`)
-  stores the household on each reservation (`household_id`, the main account's
-  id) and, for a household with a pool, takes the household's advisory lock
-  after the account's and before a tenant's, counts the household's live
-  reservations other than the one being made, and refuses a start the pool has
-  no room for. The household's reservations are those made in its name and
+  reads the account's household and its pool again inside every acquire's
+  transaction, never from the request: a session reacquired after its lease
+  lapsed, rebuilt after a restart or restored after a canceled replacement
+  meets the pool as it is now, not the one it started with (none, for a
+  session from before the first login or a move to a pool; the old size, after
+  the pool was lowered). It stores the household on each reservation
+  (`household_id`, the main account's id) and, for a household with a pool,
+  takes the household's advisory lock after the account's and before a
+  tenant's, counts the household's live reservations other than the one being
+  made, and refuses a start the pool has no room for. The household's reservations are those made in its name and
   every live reservation of its main account and logins, so a session that
   started before the pool applied (the main account playing when its first
   login is made, or a household a storefront moves from shares to a pool)

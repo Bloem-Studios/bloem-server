@@ -5,7 +5,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
@@ -44,9 +43,5 @@ func withHouseholdPoolLimits(next playback.ProfileSessionLimitProvider, pools ho
 type databaseHouseholdPools struct{ pool *pgxpool.Pool }
 
 func (d databaseHouseholdPools) HouseholdPoolLimits(ctx context.Context, accountID int) (playback.HouseholdLimits, error) {
-	household, found, err := auth.HouseholdPoolForAccount(ctx, d.pool, accountID)
-	if err != nil || !found {
-		return playback.HouseholdLimits{}, err
-	}
-	return playback.HouseholdLimits{ID: household.MainUserID, MaxStreams: household.MaxStreams, MaxTranscodes: household.MaxTranscodes}, nil
+	return playback.HouseholdPoolForAccount(ctx, d.pool, accountID)
 }

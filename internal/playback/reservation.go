@@ -22,12 +22,12 @@ type ReservationRequest struct {
 	AccountStreams    int
 	AccountTranscodes int
 	TenantTranscodes  int
-	// The household's shared pool (bloem_household_reservation.go):
-	// HouseholdID 0 is no pooled household.
-	HouseholdID         int
-	HouseholdStreams    int
-	HouseholdTranscodes int
-	LeaseUntil          time.Time
+	// HouseholdID is the pooled household the session's limits named, 0 for
+	// none (bloem_household_reservation.go). A household session reserves
+	// even without a profile; the store reads the household and its pool
+	// again at every Acquire.
+	HouseholdID int
+	LeaseUntil  time.Time
 }
 
 // Reservation is the fenced ownership token for one shared capacity slot.
@@ -50,6 +50,6 @@ func (request ReservationRequest) valid(now time.Time) bool {
 	// outside the household's pool.
 	return request.SessionID != "" && request.AccountID > 0 && (request.ProfileID != "" || request.HouseholdID > 0) &&
 		request.AccountStreams >= 0 && request.AccountTranscodes >= 0 && request.TenantTranscodes >= 0 &&
-		request.HouseholdID >= 0 && request.HouseholdStreams >= 0 && request.HouseholdTranscodes >= 0 &&
+		request.HouseholdID >= 0 &&
 		request.LeaseUntil.After(now)
 }
