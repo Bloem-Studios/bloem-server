@@ -988,7 +988,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "d4d7baf8e5f1bcee"
+   "func main() {": "c9b685f9d140f602"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1173,7 +1173,7 @@
    "func (s *Service) ImportReader(ctx context.Context, r io.Reader, opts ImportOpti": "a408994a2849dea1"
   },
   "internal/config/admin_settings.go": {
-   "func NormalizeAdminSetting(key, raw string) (string, error) {": "5ac1ad7381d2b9c0"
+   "func NormalizeAdminSetting(key, raw string) (string, error) {": "99a385c026993f5a"
   },
   "internal/config/db_loader.go": {
    "func LoadFromDB(m map[string]string) (*Config, error) {": "e2e441f49392ed30"
@@ -1411,5 +1411,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "7936acbf22904d9144c1b47fefd021b3f00c143f"
+ "silo": "2b5425c027a940ac550bd64d356adc2fab3856f6"
 }
