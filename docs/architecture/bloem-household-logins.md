@@ -127,7 +127,17 @@ household draws on the same streams and transcodes at the moment it plays:
   anyway and that the store no longer admits is ended as an idle session is,
   which stops its encoder. A held transcode also holds its stream in the pool,
   where in memory a quiet paused session frees its stream slot after two
-  minutes: the pool errs on the side of what the household pays for. A household session reserves even without
+  minutes: the pool errs on the side of what the household pays for.
+- A session rebuilt after a restart never plays outside the pool. Silo admits
+  a rebuild whose limits it cannot evaluate, without the limit gate. When the
+  account plays in a pooled household and only its reservation failed (the
+  store's 5-second timeout, a database blip), the rebuild is refused
+  instead (`ErrHouseholdReservationUnavailable`). When the limits themselves
+  could not be read, the household is unknown and the rebuild is admitted as
+  Silo does, owing a reservation: the next cleanup pass that can read its
+  limits reserves it against its household's pool, or ends it when the pool
+  has no room (`reserveOwedSessions`). An account in no household keeps
+  Silo's fail-open rebuild. A household session reserves even without
   an active profile, so nothing plays outside the pool.
 - Jellyfin-compatible sessions start through the same session manager as the
   signed-in account (a login signs in as itself), so they count against that

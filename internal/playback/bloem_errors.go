@@ -1,6 +1,9 @@
 package playback
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Bloem sentinel errors for playback admission. Each wraps the Silo refusal
 // it is, so Silo's error mapping (the v3 terminal reasons, Jellyfin, ABS)
@@ -24,3 +27,9 @@ var (
 	ErrHouseholdStreamsExceeded    = fmt.Errorf("household stream limit reached: %w", ErrTooManyStreams)
 	ErrHouseholdTranscodesExceeded = fmt.Errorf("household transcode limit reached: %w", ErrTooManyTranscodes)
 )
+
+// ErrHouseholdReservationUnavailable refuses to rebuild a session of a pooled
+// household whose fleet reservation could not be made for a reason other than
+// a limit (the store's timeout, a database blip). Admitted unreserved, nothing
+// would count it against the household's pool (bloem_transcode_manager.go).
+var ErrHouseholdReservationUnavailable = errors.New("household playback reservation unavailable")

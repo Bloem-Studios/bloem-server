@@ -2244,7 +2244,7 @@ func (m *SessionManager) cleanInactive(activeIdle, pausedIdle, startupIdle time.
 			hook(s)
 		}
 	}
-	m.renewHeldTranscodeReservations() // Bloem: a reservation lives as long as its encoder (bloem_session_reservation.go)
+	m.maintainFleetReservations() // Bloem: keep fleet reservations in step with the sessions kept (bloem_session_reservation.go)
 	return expired
 }
 

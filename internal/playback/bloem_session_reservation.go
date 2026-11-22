@@ -93,6 +93,7 @@ func applyFleetReservationLocked(session *Session, reservation Reservation, requ
 	session.reservationGeneration = reservation.Generation
 	session.reservationLeaseUntil = reservation.LeaseUntil
 	session.reservationRequest = request
+	session.reservationOwed = false
 }
 
 func (m *SessionManager) acquireFleetReservation(ctx context.Context, session *Session, limits SessionLimits) error {
@@ -251,9 +252,22 @@ func (m *SessionManager) renewFleetReservation(session *Session) error {
 	return nil
 }
 
+// maintainFleetReservations keeps the fleet reservations of the sessions
+// cleanup keeps in step with them. It runs at the end of each cleanup pass,
+// after idle sessions are reaped.
+func (m *SessionManager) maintainFleetReservations() {
+	m.mu.RLock()
+	store := m.reservationStore
+	m.mu.RUnlock()
+	if store == nil {
+		return
+	}
+	m.renewHeldTranscodeReservations()
+	m.reserveOwedSessions()
+}
+
 // renewHeldTranscodeReservations keeps the fleet reservation of every
-// transcode that still holds its encoder current. It runs at the end of each
-// cleanup pass, after idle sessions are reaped.
+// transcode that still holds its encoder current.
 //
 // A quiet paused transcode keeps its encoder, and its transcode slot in this
 // manager, until cleanup reaps it (DefaultPausedSessionGrace), but client
@@ -266,10 +280,6 @@ func (m *SessionManager) renewFleetReservation(session *Session) error {
 // cleanup ends an idle session, which stops its encoder.
 func (m *SessionManager) renewHeldTranscodeReservations() {
 	m.mu.RLock()
-	if m.reservationStore == nil {
-		m.mu.RUnlock()
-		return
-	}
 	now := time.Now()
 	var held []*Session
 	for _, s := range m.sessions {
@@ -298,10 +308,103 @@ func (m *SessionManager) renewHeldTranscodeReservations() {
 	m.expireUnreservedSessions(lost)
 }
 
+// reserveOwedSessions reserves for the sessions rebuilt without a reservation
+// because their limits could not be read (refuseUnevaluatedReconstruct).
+// Their household was unknown then. Once the limits can be read, a session
+// whose account plays in a pooled household reserves against it, and is ended
+// when the household has no room for it; one in no household keeps Silo's
+// fail-open rebuild and owes nothing more. A session whose limits still cannot
+// be read, or whose reservation fails for another reason, is tried again on
+// the next pass.
+func (m *SessionManager) reserveOwedSessions() {
+	m.mu.RLock()
+	var owed []*Session
+	for _, s := range m.sessions {
+		if s.reservationOwed && s.reservationGeneration <= 0 {
+			snapshot := *s
+			owed = append(owed, &snapshot)
+		}
+	}
+	m.mu.RUnlock()
+
+	var (
+		wg       sync.WaitGroup
+		deniedMu sync.Mutex
+		denied   []string
+		stopped  []string
+	)
+	for _, session := range owed {
+		wg.Go(func() {
+			err := m.reserveOwedSession(session)
+			if err == nil {
+				return
+			}
+			deniedMu.Lock()
+			defer deniedMu.Unlock()
+			if errors.Is(err, ErrAttemptStoppedV3) {
+				stopped = append(stopped, session.ID)
+			} else {
+				denied = append(denied, session.ID)
+			}
+		})
+	}
+	wg.Wait()
+	// Another replica already ended these: tear them down without a new end.
+	if len(stopped) > 0 {
+		m.retireStoppedSessions(stopped)
+	}
+	m.expireUnreservedSessions(denied)
+}
+
+// reserveOwedSession settles one owed reservation and returns the refusal
+// that ends the session, nil otherwise. snapshot is a copy taken by the
+// caller.
+func (m *SessionManager) reserveOwedSession(snapshot *Session) error {
+	unlock := m.lockSessionReservation(snapshot.ID)
+	defer unlock()
+	ctx, cancel := reservationStoreContext(context.Background())
+	defer cancel()
+	limits, err := m.limitsForUser(ctx, snapshot.UserID, snapshot.ProfileID)
+	if err != nil {
+		return nil
+	}
+	if limits.Household.ID <= 0 {
+		m.mu.Lock()
+		if current := m.sessions[snapshot.ID]; current != nil {
+			current.reservationOwed = false
+		}
+		m.mu.Unlock()
+		return nil
+	}
+	candidate := *snapshot
+	if err := m.acquireFleetReservation(ctx, &candidate, limits); err != nil {
+		if errors.Is(err, ErrTooManyStreams) || errors.Is(err, ErrTooManyTranscodes) || errors.Is(err, ErrAttemptStoppedV3) {
+			slog.Warn("ending a rebuilt session its household has no room for", "component", "playback", "session", snapshot.ID, "user", snapshot.UserID, "error", err)
+			return err
+		}
+		slog.Warn("failed to reserve a rebuilt household session; trying again", "component", "playback", "session", snapshot.ID, "error", err)
+		return nil
+	}
+	m.mu.Lock()
+	current := m.sessions[snapshot.ID]
+	if current == nil {
+		m.mu.Unlock()
+		m.releaseFleetReservation(&candidate)
+		return nil
+	}
+	applyFleetReservationLocked(current, Reservation{
+		SessionID:  candidate.ID,
+		Generation: candidate.reservationGeneration,
+		LeaseUntil: candidate.reservationLeaseUntil,
+	}, candidate.reservationRequest)
+	m.mu.Unlock()
+	return nil
+}
+
 // expireUnreservedSessions ends the sessions in ids whose fleet lease has
-// lapsed, as cleanup ends an idle session: the expiration hooks stop their
-// encoders and record the end. A session another request reacquired meanwhile
-// is left alone.
+// lapsed (or that never held one), as cleanup ends an idle session: the
+// expiration hooks stop their encoders and record the end. A session another
+// request reacquired meanwhile is left alone.
 func (m *SessionManager) expireUnreservedSessions(ids []string) {
 	if len(ids) == 0 {
 		return
@@ -322,7 +425,7 @@ func (m *SessionManager) expireUnreservedSessions(ids []string) {
 	hooks := append([]func(*Session){}, m.expireHooks...)
 	m.mu.Unlock()
 	for _, s := range expired {
-		slog.Warn("ending a transcode that lost its playback reservation", "component", "playback", "session", s.ID, "user", s.UserID)
+		slog.Warn("ending a session that lost its playback reservation", "component", "playback", "session", s.ID, "user", s.UserID)
 		m.releaseFleetReservation(s)
 	}
 	for _, hook := range hooks {
@@ -534,6 +637,9 @@ type bloemSessionReservation struct {
 	reservationLeaseUntil          time.Time
 	reservationRequest             ReservationRequest
 	replacementReservationPrevious *ReservationRequest
+	// reservationOwed marks a session rebuilt without a reservation because
+	// its limits could not be read (reserveOwedSessions).
+	reservationOwed bool
 }
 
 // bloemSessionManagerState is the Bloem state SessionManager carries for
@@ -782,6 +888,11 @@ func (m *SessionManager) reserveReconstructed(ctx context.Context, s *Session, l
 	m.mu.Unlock()
 
 	if err := m.acquireFleetReservation(ctx, s, limits); err != nil {
+		// A pooled household's session must not play unreserved: Silo's
+		// fail-open rebuild would keep it out of the pool for its whole life.
+		if limits.Household.ID > 0 {
+			return r, nil, fmt.Errorf("%w: %w", ErrHouseholdReservationUnavailable, err)
+		}
 		return r, nil, err
 	}
 	r.acquired = true

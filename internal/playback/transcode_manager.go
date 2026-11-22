@@ -961,7 +961,7 @@ func (m *TranscodeManager) registerReconstructedSession(ctx context.Context, s *
 			"user", s.UserID, "method", s.PlayMethod, "error", err)
 		return nil, err
 	}
-	if m.refuseUnevaluatedReconstruct(ctx, s.ID, s.UserID, s.PlayMethod, err) { // Bloem: tenant admission denials refuse too (bloem_transcode_manager.go)
+	if m.refuseUnevaluatedReconstruct(ctx, s, err) { // Bloem: tenant admission denials and unreserved household sessions refuse too (bloem_transcode_manager.go)
 		return nil, err
 	}
 	// Otherwise the limit provider itself could not be evaluated (e.g. a
