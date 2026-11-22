@@ -107,18 +107,19 @@ household draws on the same streams and transcodes at the moment it plays:
   (`household_id`, the main account's id) and, for a household with a pool,
   takes the household's advisory lock after the account's and before a
   tenant's, counts the household's live reservations other than the one being
-  made, and refuses a start the pool has no room for. The household's reservations are those made in its name and
-  every live reservation of its main account and logins, so a session that
-  started before the pool applied (the main account playing when its first
-  login is made, or a household a storefront moves from shares to a pool)
-  counts too. Every account's own limits still apply too, so a login can carry
-  its own cap inside the pool.
+  made, and refuses a start the pool has no room for. The household's
+  reservations are those made in its name and every live reservation of its
+  main account and logins, so a session that started before the pool applied
+  (the main account playing when its first login is made, or a household a
+  storefront moves from shares to a pool) counts too. Every account's own
+  limits still apply too, so a login can carry its own cap inside the pool.
 - A refusal at the pool wraps Silo's own stream or transcode limit
   (`ErrHouseholdStreamsExceeded`, `ErrHouseholdTranscodesExceeded`), so
   clients, the stream-limit notice and lease renewal treat it as that limit.
 - Only the fleet reservation counts the pool. It leaves out the session being
   reserved again, so a session moving between direct play and transcoding
-  keeps its stream in a full pool.
+  keeps its stream in a full pool. A household session reserves even without
+  an active profile, so nothing plays outside the pool.
 - A transcode's reservation lives as long as its encoder. Client traffic
   renews a lease (two minutes), but a quiet paused transcode keeps its encoder
   until cleanup reaps the session (up to 30 minutes), so the 15-second cleanup
@@ -137,8 +138,7 @@ household draws on the same streams and transcodes at the moment it plays:
   Silo does, owing a reservation: the next cleanup pass that can read its
   limits reserves it against its household's pool, or ends it when the pool
   has no room (`reserveOwedSessions`). An account in no household keeps
-  Silo's fail-open rebuild. A household session reserves even without
-  an active profile, so nothing plays outside the pool.
+  Silo's fail-open rebuild.
 - Jellyfin-compatible sessions start through the same session manager as the
   signed-in account (a login signs in as itself), so they count against that
   account and its household, and they end with the main account like every
@@ -181,7 +181,9 @@ own, keeping everything the profile holds. Servers that support it advertise
   named like one of the login's answers 409 `profile_name_conflict`.
 
 Each move is one transaction: it completes, or both accounts are as they
-were. A move never writes either account's limits; the storefront makes room
+were. A retry after a lost answer finds the profile or the login gone and is
+refused (404) without changing anything; the storefront reads the household's
+logins to learn that the move landed. A move never writes either account's limits; the storefront makes room
 first (it owns the split of the household's limits, and reads a limit it did
 not write as the operator's own).
 
@@ -228,6 +230,19 @@ reports, request events, the old devices' download change feed, watch-together
 rooms). **`TestProfileMoveCoversEveryProfileTable` fails for a table with a
 column ending in `profile_id` that the registry does not classify**, so a new
 table, Silo's or Bloem's, is classified when it arrives.
+
+**Playback across a move.** A move never lets a household play beyond its
+pool: both accounts are the household's before and after it, and the pool
+counts every live reservation of the main account and its logins, and those
+recorded in the household's name. A session the person started under the old
+account keeps its reservation there until it ends. After giving a profile its
+own login, the handler announces the profile's ended sign-ins
+(`OnUserProfileSessionsRevoked`), so every replica drops its cached
+Jellyfin-compatible sessions as the profile. A stream the main account's
+shared sign-in (one not bound to the profile) was playing for the profile
+plays to its end under the main account, inside the pool. In shares mode the
+storefront gives up the new login's share from the main account before the
+move, and takes it back only after a move back.
 
 An uploaded avatar keeps its stored key under the old account's
 `profile-avatars/` prefix; it is served from the key in the row, and nothing
