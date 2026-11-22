@@ -105,7 +105,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/nodeauth"
+	"github.com/Silo-Server/silo-server/internal/nodebuild"
 	"github.com/Silo-Server/silo-server/internal/nodeconfig"
+	"github.com/Silo-Server/silo-server/internal/nodeinstall"
 	"github.com/Silo-Server/silo-server/internal/nodemetrics"
 	"github.com/Silo-Server/silo-server/internal/nodepool"
 	"github.com/Silo-Server/silo-server/internal/noderecipe"
@@ -160,7 +162,9 @@ import (
 	siloweb "github.com/Silo-Server/silo-server/web"
 )
 
-const serverModeTranscode = "transcode"
+// nodeBuildOnly is what a node build answers anything but a transcode node
+// run or a "silo node" subcommand.
+const nodeBuildOnly = "this silo build runs only as a transcode node: install it with `silo node install`, or set MODE=transcode"
 
 // serverModeProxy is MODE for a proxy node.
 const serverModeProxy = "proxy"
@@ -803,6 +807,11 @@ func addRedisBootstrapSettings(redisURL, redisURLVar string, configured map[stri
 
 // main starts the Silo server or a requested maintenance command.
 func main() {
+	// A node build has no image processing or web app, so it runs no
+	// subcommand but its own; flags still reach the transcode node.
+	if nodebuild.Node && len(os.Args) > 1 && os.Args[1] != "node" && !strings.HasPrefix(os.Args[1], "-") {
+		log.Fatal(nodeBuildOnly)
+	}
 	if runBloemCommand(os.Args) {
 		return
 	}
@@ -877,6 +886,14 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "node" {
+		if err := nodeinstall.Run(os.Args[2:], os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "silo node: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	envFile := flag.String("env", ".env", "path to .env bootstrap file")
 	migrateOnly := flag.Bool("migrate-only", false, "apply database migrations and exit")
 	migrateStatus := flag.Bool("migrate-status", false, "show database migration status and exit")
@@ -909,6 +926,9 @@ func main() {
 	if !*migrateOnly && !*migrateStatus && *migrateDownTo < 0 && transcodeNodeMode(*envFile) {
 		runTranscodeNode()
 		return
+	}
+	if nodebuild.Node {
+		log.Fatal(nodeBuildOnly)
 	}
 
 	// Step 1: Bootstrap from .env
