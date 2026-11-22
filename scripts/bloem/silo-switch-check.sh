@@ -73,6 +73,12 @@ step() { "$driver" "$1" --base "http://127.0.0.1:$2" --state "$state"; }
 
 compose up -d postgres redis-silo redis-bloem >/dev/null
 
+household_sql="
+UPDATE users SET household_main_user_id = (SELECT id FROM users WHERE username = 'sw-hh-main') WHERE username = 'sw-hh-login';
+UPDATE users SET household_main_user_id = (SELECT id FROM users WHERE username = 'sw-pool-main') WHERE username = 'sw-pool-login';
+INSERT INTO bloem_household_pools (main_user_id, max_streams, max_transcodes)
+SELECT id, 3, 2 FROM users WHERE username = 'sw-pool-main';"
+
 # A Silo-origin database: Silo installs and creates the first accounts.
 start_backend silo "$SILO_PORT"
 step silo-setup "$SILO_PORT"
@@ -85,6 +91,11 @@ stop_backend bloem
 
 start_backend bloem "$BLOEM_PORT"
 step bloem-writes "$BLOEM_PORT"
+# Bloem's households: a login of shares and a login of a pooled household.
+# Bloem's platform routes make these links; the check writes them directly.
+compose exec -T postgres psql -U silo -d silo -v ON_ERROR_STOP=1 -q -c "$household_sql" >/dev/null
+# The operator hands the database over to Silo.
+compose exec -T bloem silo silo-switching prepare --env /dev/null
 stop_backend bloem
 
 start_backend silo "$SILO_PORT"

@@ -256,6 +256,12 @@ it from the Bloem image you deploy.
 2. Bloem migrates the database and enables switching.
 3. Bloem, Silo and Bloem again each read what the previous backend wrote and write
    something the next one must read.
+4. Households: after Bloem's writes the script links two households (a login of
+   shares and a login of a pooled household) and runs `silo silo-switching prepare`.
+   Under Silo, the login of shares signs in, is refused once Silo suspends its main
+   account through Silo's own admin API, and signs in again once Silo restores it; the
+   pooled household's login is refused while held. Bloem then gives it back when it
+   starts.
 
 `make silo-switch-check-all-in-one SILO_IMAGE=<Silo all-in-one image by digest> BLOEM_IMAGE=<tag>`
 (`scripts/bloem/silo-switch-check-all-in-one.sh`) runs the same three steps on one

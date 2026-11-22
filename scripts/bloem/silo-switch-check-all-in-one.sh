@@ -81,6 +81,13 @@ bloem_cli() {
 		with-contenv s6-setuidgid silo sh -c 'cd /config/silo && HOME=/config/silo exec silo "$@"' silo "$@"
 }
 
+# SQL against the bundled PostgreSQL, as the silo account, with the
+# container's DATABASE_URL.
+bloem_sql() {
+	docker exec -e PATH=/command:/usr/local/bin:/usr/bin:/bin "$volume-bloem" \
+		with-contenv s6-setuidgid silo sh -c 'exec psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -c "$1"' sh "$1" >/dev/null
+}
+
 # A Silo all-in-one install: Silo creates its database and the first accounts.
 start_backend silo "$SILO_IMAGE"
 step silo-setup
@@ -93,6 +100,15 @@ stop_backend bloem
 
 start_backend bloem "$bloem_aio"
 step bloem-writes
+# Bloem's households: a login of shares and a login of a pooled household.
+# Bloem's platform routes make these links; the check writes them directly.
+bloem_sql "
+UPDATE users SET household_main_user_id = (SELECT id FROM users WHERE username = 'sw-hh-main') WHERE username = 'sw-hh-login';
+UPDATE users SET household_main_user_id = (SELECT id FROM users WHERE username = 'sw-pool-main') WHERE username = 'sw-pool-login';
+INSERT INTO bloem_household_pools (main_user_id, max_streams, max_transcodes)
+SELECT id, 3, 2 FROM users WHERE username = 'sw-pool-main';"
+# The operator hands the database over to Silo.
+bloem_cli silo-switching prepare --env /dev/null
 stop_backend bloem
 
 start_backend silo "$SILO_IMAGE"

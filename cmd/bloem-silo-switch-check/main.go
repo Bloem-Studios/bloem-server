@@ -32,6 +32,13 @@ type state struct {
 	U2            int    `json:"u2"`
 	U3            int    `json:"u3"`
 	ExtraProfile  string `json:"extra_profile"`
+	// Two households, linked by the script after bloem-writes: a main
+	// account and its login of shares, and a main account and its login of
+	// a shared pool.
+	HouseholdMain  int `json:"household_main"`
+	HouseholdLogin int `json:"household_login"`
+	PooledMain     int `json:"pooled_main"`
+	PooledLogin    int `json:"pooled_login"`
 }
 
 type client struct {
@@ -42,6 +49,7 @@ type client struct {
 type adminUser struct {
 	ID               string `json:"id"`
 	Username         string `json:"username"`
+	Enabled          *bool  `json:"enabled"`
 	MaxStreams       *int   `json:"max_streams"`
 	TranscodeAllowed *bool  `json:"transcode_allowed"`
 	RequestsAllowed  *bool  `json:"requests_allowed"`
@@ -113,6 +121,10 @@ func bloemWrites(c *client, st *state) {
 		fail("create extra admin profile on Bloem", errors.New("response has no profile id"))
 	}
 	st.ExtraProfile = created.ID
+	st.HouseholdMain = c.createUser("sw-hh-main", st.UserPassword, nil)
+	st.HouseholdLogin = c.createUser("sw-hh-login", st.UserPassword, nil)
+	st.PooledMain = c.createUser("sw-pool-main", st.UserPassword, nil)
+	st.PooledLogin = c.createUser("sw-pool-login", st.UserPassword, nil)
 }
 
 func siloVerifyAndWrite(c *client, st *state) {
@@ -131,6 +143,18 @@ func siloVerifyAndWrite(c *client, st *state) {
 	// u2 was created on Bloem: deleting it on Silo must cascade cleanly through
 	// Bloem's membership and profile rows.
 	must("delete u2 on Silo", c.writeUser(http.MethodDelete, st.U2, nil))
+
+	// Households, as stock Silo sees them. A login of shares plays under
+	// Silo; Silo suspending its main account switches it off (the database
+	// does, in the column Silo reads), and restoring the main account brings
+	// it back. A login of a pooled household was held by prepare.
+	(&client{base: c.base}).login("sw-hh-login", st.UserPassword, false)
+	must("suspend the household's main account on Silo", c.updateUser(st.HouseholdMain, map[string]any{"enabled": false}))
+	expectBool("household login enabled after Silo suspended its main account", c.getUser(st.HouseholdLogin).Enabled, false)
+	expectRefused(c, "sw-hh-login", st.UserPassword, "a login of a suspended main account signs in on Silo")
+	must("restore the household's main account on Silo", c.updateUser(st.HouseholdMain, map[string]any{"enabled": true}))
+	(&client{base: c.base}).login("sw-hh-login", st.UserPassword, false)
+	expectRefused(c, "sw-pool-login", st.UserPassword, "a pooled household's login held for Silo signs in on Silo")
 }
 
 func bloemVerify(c *client, st *state) {
@@ -144,6 +168,16 @@ func bloemVerify(c *client, st *state) {
 	expectProfiles(c, 1, "admin profiles after Silo deleted one")
 	if err := c.call(http.MethodGet, userPath(st.U2), nil, nil, http.StatusNotFound); err != nil {
 		fail("u2 deleted on Silo is gone on Bloem", err)
+	}
+	// Bloem released the pooled household's login when it started.
+	(&client{base: c.base}).login("sw-pool-login", st.UserPassword, false)
+}
+
+// expectRefused fails unless signing in as username is refused.
+func expectRefused(c *client, username, password, label string) {
+	if err := c.request(http.MethodPost, "/api/v2/auth/login", map[string]any{"username": username, "password": password},
+		nil, nil, nil, http.StatusUnauthorized, http.StatusForbidden); err != nil {
+		fail(label, err)
 	}
 }
 
