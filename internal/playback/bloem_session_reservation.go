@@ -890,7 +890,8 @@ func (m *SessionManager) reserveReconstructed(ctx context.Context, s *Session, l
 	if err := m.acquireFleetReservation(ctx, s, limits); err != nil {
 		// A pooled household's session must not play unreserved: Silo's
 		// fail-open rebuild would keep it out of the pool for its whole life.
-		if limits.Household.ID > 0 {
+		// A limit refusal already refuses the rebuild as itself.
+		if limits.Household.ID > 0 && !errors.Is(err, ErrTooManyStreams) && !errors.Is(err, ErrTooManyTranscodes) {
 			return r, nil, fmt.Errorf("%w: %w", ErrHouseholdReservationUnavailable, err)
 		}
 		return r, nil, err

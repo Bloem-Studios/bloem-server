@@ -204,3 +204,16 @@ func TestRebuiltSessionWithUnreadableLimitsReservesOnceTheyCanBeRead(t *testing.
 		})
 	}
 }
+
+// A household rebuild the pool has no room for is refused as the limit it
+// is, not as an unavailable reservation.
+func TestReconstructRefusedByTheHouseholdPoolIsTheLimit(t *testing.T) {
+	store := &recordingReservationStore{acquireErr: ErrHouseholdTranscodesExceeded}
+	_, manager, _ := householdReconstructRegistry(t, store, 9, nil)
+	card := NewDirectRecipeCard("full-household-recipe", 7, "recipe-profile", 100)
+
+	got, err := manager.ReconstructSessionWithError(t.Context(), card.SessionID, card.UserID, card)
+	if got != nil || !errors.Is(err, ErrHouseholdTranscodesExceeded) || errors.Is(err, ErrHouseholdReservationUnavailable) {
+		t.Fatalf("rebuild in a full household = %v, %v; want the household's transcode limit", got, err)
+	}
+}
