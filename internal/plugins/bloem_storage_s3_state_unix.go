@@ -134,7 +134,7 @@ func nativeS3OpenPrivateFile(path, baseDir string, perm os.FileMode) (*os.File, 
 		return nil, errors.New("cannot open private prepared native file")
 	}
 	var stat unix.Stat_t
-	if err := unix.Fstat(fd, &stat); err != nil || stat.Mode&unix.S_IFMT != unix.S_IFREG || stat.Uid != uint32(os.Geteuid()) || uint32(stat.Mode)&07777 != uint32(perm) || stat.Nlink != 1 {
+	if err := unix.Fstat(fd, &stat); err != nil || stat.Mode&unix.S_IFMT != unix.S_IFREG || int(stat.Uid) != os.Geteuid() || os.FileMode(stat.Mode)&07777 != perm || stat.Nlink != 1 {
 		_ = unix.Close(fd)
 		return nil, errors.New("unsafe private prepared native file")
 	}
