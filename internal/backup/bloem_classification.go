@@ -237,6 +237,7 @@ var bloemInterruptedWork = []struct{ table, sql string }{
 var bloemExcludedUserTables = map[string]string{
 	"bloem_admin_push_devices":       excludedPush,
 	"bloem_admin_push_deliveries":    "admin app push notification log",
+	"bloem_household_silo_holds":     "household logins held while stock Silo serves; Bloem releases them when it starts",
 	"livetv_recordings":              "Live TV recordings, restored with the server's Live TV setup",
 	"livetv_series_rules":            "Live TV recording rules, restored with the server's Live TV setup",
 	"livetv_sessions":                "Live TV tuner sessions in progress",
