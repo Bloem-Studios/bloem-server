@@ -1010,7 +1010,7 @@
    "func (r *Runner) executeDeleteLibrary(job *models.AdminJob) {": "8c16269b0b651518"
   },
   "internal/ai/llm/transcribe.go": {
-   "func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc": "7a3d14a3e2710507"
+   "func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc": "9d6234d318281ec8"
   },
   "internal/api/handlers/admin.go": {
    "func (h *AdminHandler) groupPolicies(ctx context.Context) (map[int64]access.Grou": "d65f465cf90e6bc1"
@@ -1411,5 +1411,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "2b5425c027a940ac550bd64d356adc2fab3856f6"
+ "silo": "ca51b57f06aaffbccf1d0a21b823f9407c1cb09f"
 }
