@@ -26313,7 +26313,7 @@
                 }
               }
             },
-            "description": "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. silo_switching_on: Silo switching is on, which refuses household logins."
+            "description": "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use."
           },
           "500": {
             "content": {
@@ -26445,7 +26445,7 @@
                 }
               }
             },
-            "description": "primary_profile: the main account's primary profile cannot move. restricted_profile: a profile with parental limits (a child profile, library limits, a rating or age limit, requests blocked) cannot have a login of its own, since as its login's main profile it would manage its own limits. household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. silo_switching_on: Silo switching is on, which refuses household logins. profile_conflict: the new login could not take the profile."
+            "description": "primary_profile: the main account's primary profile cannot move. restricted_profile: a profile with parental limits (a child profile, library limits, a rating or age limit, requests blocked) cannot have a login of its own, since as its login's main profile it would manage its own limits. household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. profile_conflict: the new login could not take the profile."
           },
           "500": {
             "content": {

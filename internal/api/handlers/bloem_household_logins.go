@@ -12,7 +12,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/Silo-Server/silo-server/internal/auditmutation"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -151,7 +150,7 @@ func (h *AdminHandler) createBloemHouseholdLogin(ctx context.Context, mainID int
 	// one account can hold; a login without one has none.
 	if _, err = tx.Exec(ctx, `UPDATE users SET household_main_user_id = $2, enabled = $3, household_disabled = NOT $3,
 		email = NULLIF(email, '') WHERE id = $1`, user.ID, mainID, main.enabled); err != nil {
-		return 0, false, bloemHouseholdLinkError(err)
+		return 0, false, err
 	}
 	audit, err := auditmutation.RecordUserMutation(ctx, tx, nil, user, true)
 	if err != nil {
@@ -310,17 +309,6 @@ func (h *AdminHandler) endBloemHouseholdLoginSessions(ctx context.Context, mainI
 func bloemHouseholdUpdateError(err error) error {
 	if errors.Is(err, auth.ErrHouseholdMainDisabled) {
 		return apiError(http.StatusConflict, "household_main_disabled", "This login's main account is disabled; the login comes back when the main account is enabled")
-	}
-	return err
-}
-
-// bloemHouseholdLinkError reports the database's refusal to make an account a
-// login while Silo switching is on (upstream Silo would keep the login
-// signing in while its main account is disabled) as a definite conflict.
-func bloemHouseholdLinkError(err error) error {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Message == "bloem_silo_switching_household_login" {
-		return apiError(http.StatusConflict, "silo_switching_on", "Household logins are unavailable while Silo switching is on")
 	}
 	return err
 }

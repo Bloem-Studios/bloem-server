@@ -13,6 +13,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
 
@@ -78,5 +79,79 @@ func TestBloemAccountCreateWhenSwitchable(t *testing.T) {
 	}
 	if memberships != 1 || streams != 4 {
 		t.Fatalf("default memberships=%d max_streams=%d, want 1 and 4", memberships, streams)
+	}
+}
+
+// A household while Silo switching is on, as Bloem keeps it: a login is
+// made and linked, its household gets a shared pool, a profile moves between
+// the accounts, and suspending the main account switches the login off and
+// back. Every write must pass the switching triggers and land where stock
+// Silo reads it (users.enabled).
+func TestBloemHouseholdWhenSwitchable(t *testing.T) {
+	ctx, pool, main := bloemSwitchableDatabase(t)
+	users := auth.NewUserRepository(pool)
+	accounts := auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(pool))
+	maxProfiles := 2
+	login, err := accounts.CreateAccount(ctx, auth.CreateAccountInput{
+		User: models.CreateUserInput{
+			Username: "bloem-login", Email: "bloem-login@example.invalid", Password: "fixture-password",
+			Role: models.RoleUser, MaxProfiles: &maxProfiles,
+		},
+		DefaultProfile: auth.DefaultProfileOptions{Enabled: true, Name: "Login"},
+	})
+	if err != nil {
+		t.Fatalf("bloem create login account while switchable: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET household_main_user_id = $1 WHERE id = $2`, main, login.ID); err != nil {
+		t.Fatalf("linking a household login while switchable: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO bloem_household_pools (main_user_id, max_streams, max_transcodes) VALUES ($1, 3, 2)`, main); err != nil {
+		t.Fatalf("a household pool while switchable: %v", err)
+	}
+
+	mainStore, err := pgstore.NewPostgresProvider(pool).ForUser(ctx, main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"Main", "Sam"} {
+		if err := mainStore.CreateProfile(ctx, userstore.Profile{ID: pgstore.NewProfileID(), Name: name}); err != nil {
+			t.Fatalf("profile %s on the main account while switchable: %v", name, err)
+		}
+	}
+	var sam string
+	if err := pool.QueryRow(ctx, `SELECT id FROM user_profiles WHERE user_id = $1 AND name = 'Sam'`, main).Scan(&sam); err != nil {
+		t.Fatal(err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pgstore.MoveProfileInTx(ctx, tx, main, login.ID, sam, false); err != nil {
+		_ = tx.Rollback(ctx)
+		t.Fatalf("moving a profile to the login while switchable: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit the move while switchable: %v", err)
+	}
+	var movedOrg, defaultOrg string
+	if err := pool.QueryRow(ctx, `SELECT p.organization_id::text, public.bloem_default_organization_id()::text
+		FROM user_profiles p WHERE p.user_id = $1 AND p.id = $2`, login.ID, sam).Scan(&movedOrg, &defaultOrg); err != nil {
+		t.Fatalf("the moved profile: %v", err)
+	}
+	if movedOrg != defaultOrg {
+		t.Fatalf("the moved profile sits in organization %s, want the default %s", movedOrg, defaultOrg)
+	}
+
+	for _, enabled := range []bool{false, true} {
+		if err := users.Update(ctx, main, models.UpdateUserInput{Enabled: &enabled}); err != nil {
+			t.Fatalf("setting the main account enabled=%t while switchable: %v", enabled, err)
+		}
+		var loginEnabled bool
+		if err := pool.QueryRow(ctx, `SELECT enabled FROM users WHERE id = $1`, login.ID).Scan(&loginEnabled); err != nil {
+			t.Fatal(err)
+		}
+		if loginEnabled != enabled {
+			t.Fatalf("login enabled=%t after the main account was set enabled=%t; want it to follow", loginEnabled, enabled)
+		}
 	}
 }

@@ -270,6 +270,13 @@ func bloemWireCoreDependencies(ctx context.Context, deps *api.Dependencies, pool
 		// adapter is nil and the surface stays unmounted rather than half
 		// wired.
 		deps.OwnershipBootstrapper = tenancyOwnershipBootstrapper{store: tenancy.NewStore(pool)}
+		// Bloem serves this database again: give back the household logins
+		// `silo silo-switching prepare` held while stock Silo served it.
+		if released, err := tenancy.ResumeAfterSilo(ctx, pool); err != nil {
+			slog.WarnContext(ctx, "release household logins held for Silo failed", "component", "silo_switching", "error", err)
+		} else if released > 0 {
+			slog.InfoContext(ctx, "released household logins held for Silo", "component", "silo_switching", "logins", released)
+		}
 	}
 }
 

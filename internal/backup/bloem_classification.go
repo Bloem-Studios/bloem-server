@@ -76,14 +76,16 @@ var bloemRestoredDataTables = strings.Fields(`
 // bloemServerStateTables describe the running server: job and lease state,
 // the admin app push log and its retry queue (as notification_deliveries and
 // push_delivery_attempts are), receipts, counters, caches, the storage scan index (rebuilt by the next
-// scan), the Live TV guide (refetched from its sources), and sessions.
+// scan), the Live TV guide (refetched from its sources), sessions, and which
+// backend serves (the Silo switching flag and the household logins held while
+// stock Silo serves, which Bloem releases when it starts).
 var bloemServerStateTables = strings.Fields(`
 	admin_people_bulk_jobs admin_people_bulk_job_receipts admin_people_bulk_targets admin_people_selections
 	bloem_audiobook_request_acquisitions bloem_audiobook_request_decisions bloem_ebook_request_dispatches
 	bloem_ebook_request_policy_epoch bloem_library_location_state bloem_livetv_xtream_leases
 	bloem_admin_push_attempts bloem_admin_push_deliveries bloem_admin_live_starts
 	bloem_org_session_revocations bloem_preview_event_counts bloem_preview_personal_presentation bloem_remote_sources
-	bloem_preview_ticket_uses bloem_silo_switching
+	bloem_preview_ticket_uses bloem_silo_switching bloem_household_silo_holds
 	bloem_storage_audio_probes bloem_storage_audio_staged_tracks bloem_storage_change_tokens bloem_storage_entries
 	bloem_storage_episode_sidecars
 	bloem_storage_file_refs bloem_storage_file_roots bloem_storage_location_directories bloem_storage_location_edges

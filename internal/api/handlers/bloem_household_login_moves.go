@@ -133,7 +133,7 @@ func (h *AdminHandler) moveBloemProfileToNewLogin(ctx context.Context, mainID in
 	}
 	if _, err = tx.Exec(ctx, `UPDATE users SET household_main_user_id = $2, enabled = $3, household_disabled = NOT $3,
 		email = NULLIF(email, '') WHERE id = $1`, user.ID, mainID, main.enabled); err != nil {
-		return 0, false, bloemHouseholdLinkError(err)
+		return 0, false, err
 	}
 	if err = pgstore.MoveProfileInTx(ctx, tx, mainID, user.ID, profileID, true); err != nil {
 		return 0, false, bloemProfileMoveError(err)

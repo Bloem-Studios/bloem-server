@@ -546,8 +546,7 @@ func updateUser(ctx context.Context, db interface {
 		argIndex = nextArgIndex
 	}
 
-	householdLogin, err := householdBeforeUpdate(ctx, db, id, input) // Bloem: household logins follow their main account
-	if err != nil {
+	if err := householdBeforeUpdate(ctx, db, id, input); err != nil { // Bloem: household logins follow their main account
 		return err
 	}
 
@@ -594,9 +593,6 @@ func updateUser(ctx context.Context, db interface {
 		}
 	}
 	if err := syncMembershipRole(ctx, db, id, input); err != nil { // Bloem: the membership role follows the account role
-		return err
-	}
-	if err := householdAfterUpdate(ctx, db, id, input, householdLogin); err != nil { // Bloem: household logins follow their main account
 		return err
 	}
 	if roleChanging {

@@ -16,9 +16,12 @@ import (
 // upstream Silo, or ends that. Account policy lives on users, where Silo reads
 // it, so enabling only checks what Silo cannot honor and turns on the guards
 // (one organization, no profile logins) and the placement of Silo's writes.
+// prepare holds the logins of pooled households just before stock Silo serves
+// the database (stock Silo does not enforce a household's shared pool);
+// resume releases them, and Bloem runs it itself when it starts.
 func runSiloSwitchingCommand(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: silo silo-switching {status|enable|disable}")
+		return errors.New("usage: silo silo-switching {status|enable|disable|prepare|resume}")
 	}
 	command := args[0]
 	flags := flag.NewFlagSet("silo-switching "+command, flag.ContinueOnError)
@@ -50,6 +53,18 @@ func runSiloSwitchingCommand(ctx context.Context, args []string) error {
 		if err := tenancy.DisableSiloSwitching(ctx, pool); err != nil {
 			return err
 		}
+	case "prepare":
+		held, err := tenancy.PrepareForSilo(ctx, pool)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("household logins held for Silo: %d\n", held)
+	case "resume":
+		released, err := tenancy.ResumeAfterSilo(ctx, pool)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("household logins released: %d\n", released)
 	default:
 		return fmt.Errorf("unknown silo-switching command %q", command)
 	}
@@ -58,5 +73,14 @@ func runSiloSwitchingCommand(ctx context.Context, args []string) error {
 		return err
 	}
 	fmt.Printf("silo switching: %t\n", enabled)
+	households, err := tenancy.SiloSwitchingHouseholds(ctx, pool)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("households: %d with %d logins; pooled: %d with %d logins; held for Silo: %d\n",
+		households.Households, households.Logins, households.Pooled, households.PooledLogins, households.Held)
+	if enabled && households.PooledLogins > households.Held {
+		fmt.Println("before Silo serves this database, run: silo silo-switching prepare")
+	}
 	return nil
 }

@@ -273,24 +273,26 @@ func TestSwitchableAcceptsSilosAccountWritesBesideHouseholdLogins(t *testing.T) 
 	}
 }
 
-// Upstream Silo knows nothing of household logins: it would keep a login
-// signing in while its main account is suspended. So switching is not
-// enabled while any login exists, and no login is made while it is on.
-func TestEnableSiloSwitchingRefusesHouseholdLogins(t *testing.T) {
+// Household logins and Silo switching coexist: the database keeps a login's
+// own enabled state in step with its main account's, which stock Silo
+// honors, so switching turns on with logins in place and a login can be made
+// while it is on.
+func TestEnableSiloSwitchingAcceptsHouseholdLogins(t *testing.T) {
 	ctx, pool, _ := buildTenantPool(t)
 	main := siloAccount(t, ctx, pool, "main1", "user")
 	login := siloAccount(t, ctx, pool, "login1", "user")
 	if _, err := pool.Exec(ctx, `UPDATE users SET household_main_user_id = $1 WHERE id = $2`, main, login); err != nil {
 		t.Fatal(err)
 	}
-	_, err := tenancy.EnableSiloSwitching(ctx, pool)
-	wantError(t, err, "household login")
-	if switching(t, ctx, pool) {
-		t.Fatal("switching was enabled with a household login in place")
+	if _, err := tenancy.EnableSiloSwitching(ctx, pool); err != nil {
+		t.Fatalf("enable silo switching with a household login: %v", err)
+	}
+	if !switching(t, ctx, pool) {
+		t.Fatal("switching is off")
 	}
 }
 
-func TestSwitchableRefusesHouseholdLogins(t *testing.T) {
+func TestSwitchableAcceptsHouseholdLogins(t *testing.T) {
 	ctx, pool, user, _ := switchablePool(t)
 	var other int
 	if err := pool.QueryRow(ctx, `
@@ -299,10 +301,39 @@ func TestSwitchableRefusesHouseholdLogins(t *testing.T) {
 		RETURNING id`).Scan(&other); err != nil {
 		t.Fatal(err)
 	}
-	_, err := pool.Exec(ctx, `UPDATE users SET household_main_user_id = $1 WHERE id = $2`, user, other)
-	wantError(t, err, "bloem_silo_switching_household_login")
-	_, err = pool.Exec(ctx, `
+	if _, err := pool.Exec(ctx, `UPDATE users SET household_main_user_id = $1 WHERE id = $2`, user, other); err != nil {
+		t.Fatalf("making an account a login while switchable: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
 		INSERT INTO users (username, email, password_hash, role, enabled, household_main_user_id)
-		VALUES ('u4', 'u4@example.invalid', 'x', 'user', true, $1)`, user)
-	wantError(t, err, "bloem_silo_switching_household_login")
+		VALUES ('u4', 'u4@example.invalid', 'x', 'user', true, $1)`, user); err != nil {
+		t.Fatalf("inserting a login while switchable: %v", err)
+	}
+}
+
+// Stock Silo deletes an account with one DELETE. While switching is on, a
+// main account's logins go with it, as they do under Bloem, instead of the
+// foreign key refusing Silo's delete.
+func TestSwitchableSiloDeletesAMainWithItsLogins(t *testing.T) {
+	ctx, pool, user, _ := switchablePool(t)
+	var login int
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO users (username, email, password_hash, role, enabled, access_group_id)
+		VALUES ('login-del', 'login-del@example.invalid', 'x', 'user', true, (SELECT id FROM access_groups WHERE is_default))
+		RETURNING id`).Scan(&login); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET household_main_user_id = $1 WHERE id = $2`, user, login); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, user); err != nil {
+		t.Fatalf("stock Silo deleting a main account with a login: %v", err)
+	}
+	var left int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE id = ANY($1)`, []int{user, login}).Scan(&left); err != nil {
+		t.Fatal(err)
+	}
+	if left != 0 {
+		t.Fatalf("%d of the main account and its login left after the delete", left)
+	}
 }
