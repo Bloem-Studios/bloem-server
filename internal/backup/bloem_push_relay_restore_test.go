@@ -122,7 +122,7 @@ func TestBloemRestoreKeepsBothRelayCredentialsDB(t *testing.T) {
 	}
 
 	loader := PGLoader{}
-	carried, _, err := loader.CarryOutboundSettings(ctx, into, dsn)
+	carried, _, err := loader.CarryOutboundSettings(ctx, into, dsn, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestBloemRestoreKeepsBothRelayCredentialsDB(t *testing.T) {
 	}
 
 	put(backupPut, all, "backup:")
-	if _, cleared, err := loader.CarryOutboundSettings(ctx, into, ""); err != nil || !slices.Contains(cleared, "Bloem's push relay") {
+	if _, cleared, err := loader.CarryOutboundSettings(ctx, into, "", nil); err != nil || !slices.Contains(cleared, "Bloem's push relay") {
 		t.Fatalf("carrying none: %v, cleared %v", err, cleared)
 	}
 	if read(notifications.BloemSettingPushRelayAPIKey) != "" || read(notifications.SettingPushRelayAPIKey) != "" {
