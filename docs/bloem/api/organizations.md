@@ -14,7 +14,7 @@ For the plain-language picture, read the [Organizations and administration expla
 - [OPA tenant authorization](../../architecture/opa-tenant-authorization.md)
 - [Lifecycle safety](../../architecture/bloem-lifecycle-safety.md)
 
-## Operations (119)
+## Operations (121)
 
 | Method and path | Summary |
 | --- | --- |
