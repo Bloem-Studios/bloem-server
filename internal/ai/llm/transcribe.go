@@ -207,7 +207,7 @@ func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc
 				return fmt.Errorf("decode transcription response: %w: %w", ErrUnusableResponse, err)
 			}
 			if parsed.Error != nil && parsed.Error.Message != "" {
-				return &HTTPError{StatusCode: http.StatusBadGateway, message: "transcription API error: " + parsed.Error.Message}
+				return &HTTPError{StatusCode: http.StatusBadGateway, InResponse: true, message: "transcription API error: " + parsed.Error.Message}
 			}
 			if parsed.Segments == nil && parsed.Words != nil { // Bloem: NeMo-Speech.cpp answers with words and no segments (bloem_transcribe.go)
 				return bloemWordsOnlyTranscription(parsed, cfg.ASRModel, &result)
