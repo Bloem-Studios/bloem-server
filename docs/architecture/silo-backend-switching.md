@@ -19,17 +19,24 @@ Account settings live on the accounts table, where Silo keeps them, so both serv
 read and write the same columns. What is left is the part of Bloem that Silo cannot
 handle: several **organizations** (customers kept apart on one server). One flag in the
 database, **Silo switching**, keeps the database inside what Silo can handle while it
-is on.
+is on. [Household logins](bloem-household-logins.md) stay: their rules live in the
+database, and one step before Silo serves keeps each household within its budget
+([Households](#households)).
 
 ## Switching on, and off again
 
-![Three commands: status reports, enable checks for one organization and then sets the flag, disable clears it](images/silo-backend-switching/commands.svg)
+![Five commands: status reports, enable checks for one organization and then sets the flag, prepare holds pooled households' logins before Silo serves, resume gives them back, disable clears the flag](images/silo-backend-switching/commands.svg)
 
-1. **Check.** `silo silo-switching status` says whether the database is switchable.
+1. **Check.** `silo silo-switching status` says whether the database is switchable,
+   and counts its households: logins, shared pools, and logins held for Silo.
 2. **Switch on.** `silo silo-switching enable` refuses unless the database has exactly
-   one organization and no household logins. Then it gives every account
-   its place in the default organization and sets the flag. Running it again is safe.
-3. **Switch off.** `silo silo-switching disable` clears the flag. From then on, Silo
+   one organization. Then it gives every account its place in the default
+   organization and sets the flag. Running it again is safe.
+3. **Hand over to Silo.** Stop Bloem, run `silo silo-switching prepare`, then start
+   Silo. It holds the logins of every household with a shared pool, which Silo does
+   not enforce. Bloem gives them back when it starts (`silo silo-switching resume`
+   does the same by hand).
+4. **Switch off.** `silo silo-switching disable` clears the flag. From then on, Silo
    must not serve the database.
 
 ## What happens to Silo's writes
@@ -43,6 +50,26 @@ on, rules inside the database fit those writes into Bloem's model:
 - A new account gets its place in the default organization when it is saved.
 - An account moved to another group takes its profiles on the old group with it.
 - A second organization is refused.
+
+## Households
+
+A [household](bloem-household-logins.md) is a main account and its logins: accounts of
+their own that follow the main account. Silo knows nothing of households, so what keeps
+one safe lives in the database, where it holds whichever server writes:
+
+- **Suspension.** When either server switches a main account off, its logins are
+  switched off with it and signed out everywhere Silo checks. Switching the main
+  account back on restores only those logins, never one an administrator turned off.
+- **Budget.** Silo plays every account to its own limits. A household that splits its
+  streams and transcodes into **shares** fits its budget account by account, and keeps
+  its logins under Silo. A household with a **shared pool** gives the main account the
+  whole budget, and its logins as much again, which Silo would not add up. So before
+  Silo serves, `prepare` holds those logins: switched off and signed out, while the
+  household plays on its main account and profiles. Bloem gives them back when it
+  serves again, each as its household is then.
+- **Everything else.** Silo's own writes fit: an account it creates is an ordinary
+  account, moving a main account to another group carries its logins, and deleting a
+  main account deletes its logins.
 
 ## What Silo doesn't see
 
@@ -66,6 +93,9 @@ servers.
 | --- | --- |
 | Silo switching, the flag | `public.bloem_silo_switching`, read by `public.bloem_silo_switching_enabled()` |
 | Switching on, off, check | `silo silo-switching enable`, `disable`, `status` (`cmd/silo/silo_switching_cmd.go`, `internal/tenancy/silo_switching.go`) |
+| Handing over to Silo, and back | `silo silo-switching prepare`, `resume` (`internal/tenancy/silo_switching_households.go`) |
+| Logins held for Silo | `bloem_household_silo_holds` |
+| A household's rules in the database | `users_household_follow_main_enabled`, `users_household_login_enabled_written`, `users_household_delete_with_main`, `bloem_household_revoke_sign_ins` |
 | Default organization | `public.bloem_default_organization_id()` |
 | A place in the organization | an `organization_memberships` row |
 | Refused | `bloem_silo_switching_single_organization` |
@@ -85,8 +115,10 @@ the same columns. What remains is what Silo cannot honor, and one flag,
 
 | Command | Effect |
 |---|---|
-| `silo silo-switching status` | Reports whether the database is switchable. |
-| `silo silo-switching enable` | Refuses unless there is exactly one organization, no profile has its own login and no account is a [household login](bloem-household-logins.md). Then gives every account its default-organization membership, reconciles membership roles from `users.role`, and sets the flag. Idempotent. |
+| `silo silo-switching status` | Reports whether the database is switchable, and its households: main accounts with logins, logins, households with a shared pool and their logins, and logins held for Silo. While switching is on and a pooled household's logins are not all held, it reminds to run `prepare` before Silo serves. |
+| `silo silo-switching enable` | Refuses unless there is exactly one organization and no profile has its own login. Then gives every account its default-organization membership, reconciles membership roles from `users.role`, and sets the flag. Idempotent. |
+| `silo silo-switching prepare` | Run with Bloem stopped, just before Silo serves. Refuses unless switching is on. Holds the logins of every household whose shared pool limits streams or transcodes: each enabled login is switched off and signed out (`bloem_household_revoke_sign_ins`), and each such login, or one the household had already switched off, is listed in `bloem_household_silo_holds`. A login an administrator disabled is left alone. Idempotent. |
+| `silo silo-switching resume` | Releases the held logins: each comes back enabled under an enabled main account, or switched off by the household (`household_disabled`) under a suspended one. Bloem runs it when it starts (`bloemWireCoreDependencies`). Idempotent. |
 | `silo silo-switching disable` | Clears the flag, lifting the guards below. Silo must not serve the database afterwards. |
 
 Each command takes `-env` (default `.env`) for the bootstrap file that names the
@@ -104,11 +136,19 @@ policy back onto `users`) kept switching enabled through that migration.
   organizations, so it cannot honor a second one. A second organization therefore also
   rules out [organization domains](bloem-organization-domains.md) for anyone but the
   default organization while switching is on.
-- **No household logins.** Making an account a household login (setting
-  `users.household_main_user_id`) raises `bloem_silo_switching_household_login`
-  (`users_household_login_switching_guard`). Silo does not know about logins: it
-  would keep one signing in while its main account is disabled. Remove a database's
-  logins before switching it on.
+- **Households hold under Silo.** A login's enabled state follows its main account's
+  in the database (`users_household_follow_main_enabled`,
+  `users_household_login_enabled_written`), so a suspension Silo writes to
+  `users.enabled` switches the logins off and ends their sign-ins in Silo's tables;
+  enabling a login under a disabled main account raises
+  `bloem_household_main_disabled`. While switching is on, deleting a main account
+  deletes its logins first (`users_household_delete_with_main`), so Silo's delete
+  is not refused by the foreign key. Logins held by `prepare` stay off while Silo
+  serves, even if Silo restores their main account; an administrator's write of one
+  takes it out of the hold. Migration
+  `20261122213808_bloem_household_logins_under_silo_switching` dropped the earlier
+  guard that refused household logins while switchable
+  (`users_household_login_switching_guard`; its function stays unused).
 - **Group moves carry profiles; roles follow both ways.** Bloem applies a profile's own
   access group, so when Silo moves an account to another group, the account's profiles
   that were on the old group move with it (`users_silo_profiles_follow_group`, which
@@ -151,6 +191,10 @@ writes their tables, the author-count view and their settings. The Jellyfin sett
 supplies `server_id` on Silo's health probe in both backends, as in Silo. See [protocol compatibility](bloem-protocol-compatibility.md).
 
 ### Operating rules
+
+- **Hand over with `prepare`.** Stop Bloem, run `silo silo-switching prepare`, then
+  start Silo. Without it, Silo serves a pooled household's logins to their own limits,
+  beyond the household's budget. `status` shows how many are held.
 
 - **One backend at a time.** Stop one before starting the other. Running both at once
   is not supported (background jobs, caches and scheduled work assume one owner).
@@ -229,7 +273,11 @@ merging upstream changes that add Silo writes to tables Bloem constrains, or tha
 `internal/auth/bloem_repository_switching_test.go`,
 `migrations/bloem_account_policy_on_users_test.go` and
 `migrations/auth_session_device_id_null_test.go` and
-`internal/tenancy/bloem_pastime_removal_switching_test.go`.
+`internal/tenancy/bloem_pastime_removal_switching_test.go`. Households are covered by
+`internal/tenancy/silo_switching_households_test.go` (prepare, resume and stock Silo's
+writes to a household), `internal/auth/household_stock_silo_test.go` (a suspension
+written and read as stock Silo does) and `TestBloemHouseholdWhenSwitchable` (Bloem's
+own household writes while switchable).
 
 ### Related pages
 

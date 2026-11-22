@@ -32,22 +32,28 @@ logins.
 
 ## Invariants
 
-- **A login is enabled only while its main account is.** `updateUser`
-  (`internal/auth/repository.go`) is the one place an account's enabled state
-  is written, and it calls the hooks in `internal/auth/bloem_household.go`.
-  Disabling a main account, in the same transaction, disables each of its
-  enabled logins, marks it `household_disabled`, bumps its access policy
-  revision and revokes its sign-ins (login, Jellyfin-compatible and
-  Audiobookshelf-compatible sessions, approved device sign-ins). The account
-  service then ends the logins' live connections as it does the main
-  account's. Enabling the main account enables only the logins marked
-  `household_disabled`. Because Silo checks `users.enabled` wherever it admits
-  an account, this one rule covers sign-in, refresh, device sign-in and the
-  compatibility servers alike.
-- **A login cannot be enabled while its main account is disabled**
-  (`ErrHouseholdMainDisabled`). An administrator's own write to a login's
-  enabled state clears `household_disabled`, so a login an administrator
-  turned off stays off when the main account comes back.
+- **A login is enabled only while its main account is.** The database keeps
+  them in step, so the rule holds whichever server writes the account,
+  Bloem or [stock Silo](silo-backend-switching.md)
+  (`users_household_follow_main_enabled`, migration
+  `20261122213808_bloem_household_logins_under_silo_switching`). Disabling a
+  main account, in the same statement, disables each of its enabled logins,
+  marks it `household_disabled`, bumps its access policy revision and revokes
+  its sign-ins in the tables Silo checks (login, Jellyfin-compatible and
+  Audiobookshelf-compatible sessions, approved device sign-ins:
+  `bloem_household_revoke_sign_ins`, the statements of Silo's own
+  `revokeSignInsInTransaction`). The account service then ends the logins'
+  live connections as it does the main account's. Enabling the main account
+  enables only the logins marked `household_disabled`. Because Silo checks
+  `users.enabled` wherever it admits an account, this one rule covers sign-in,
+  refresh, device sign-in and the compatibility servers alike.
+- **A login cannot be enabled while its main account is disabled.** Bloem's
+  account update refuses it first (`ErrHouseholdMainDisabled`), and the
+  database refuses any other writer (`bloem_household_main_disabled`,
+  `users_household_login_enabled_written`). Any other write of a login's
+  enabled state is an administrator's and clears `household_disabled`, so a
+  login an administrator turned off stays off when the main account comes
+  back.
 - **A login created under a disabled main account** starts disabled and
   `household_disabled`, and comes back with the main account.
 - **A login follows its main account's group.** A plan change moves the main
@@ -59,8 +65,10 @@ logins.
   the same path so each gets a deleted account's cleanup, then the main
   account. The foreign key is `ON DELETE RESTRICT`, so a plain `DELETE` of a
   main account that still has logins is refused rather than leaving logins
-  behind. A conditional delete checks the main account's revision before any
-  login is deleted.
+  behind, except while Silo switching is on: then stock Silo's one-statement
+  delete takes the logins with it (`users_household_delete_with_main`). A
+  conditional delete checks the main account's revision before any login is
+  deleted.
 
 ## API
 
@@ -156,8 +164,9 @@ Under the platform credential:
 - `DELETE` on the same path removes it, and succeeds when there is none.
 
 A restore brings a pool back with its main account (it is account policy).
-Upstream Silo never sees a pool in use: pools apply only to households, and
-households never coexist with Silo switching.
+Stock Silo does not enforce a pool: before it serves a switchable database,
+`silo silo-switching prepare` holds the logins of every pooled household (see
+[Silo switching](#silo-switching) below).
 
 ## Moving a person
 
@@ -250,16 +259,35 @@ deletes an account's avatar prefix.
 
 ## Silo switching
 
-Upstream Silo does not know about logins: it would keep a login signing in
-while its main account is disabled. So household logins and
-[Silo switching](silo-backend-switching.md) never coexist.
-`silo silo-switching enable` refuses while any account is a login, and while
-switching is on, making an account a login raises
-`bloem_silo_switching_household_login` (`users_household_login_switching_guard`,
-which takes a share lock on the switching flag so a login made during an enable
-is either counted or refused). Remove a database's logins before switching it
-on. The two columns accept upstream Silo's writes: an account Silo writes never
-names them and reads as an ordinary account.
-`TestEnableSiloSwitchingRefusesHouseholdLogins`,
-`TestSwitchableRefusesHouseholdLogins` and
-`TestSwitchableAcceptsSilosAccountWritesBesideHouseholdLogins` pin this.
+Household logins and [Silo switching](silo-backend-switching.md) coexist.
+Stock Silo, if it serves the database, knows nothing of households, so the
+rules that keep a household safe live in the database:
+
+- **Suspension holds under stock Silo.** Stock Silo suspends an account by
+  writing `users.enabled`; the database switches the main account's logins
+  off with it and ends their sign-ins where stock Silo checks them, and
+  restoring the main account brings back only the logins the household
+  switched off (invariants above).
+- **Budgets hold under stock Silo.** Stock Silo plays each account to its own
+  limits and does not enforce a shared pool. A household of shares fits its
+  budget account by account. In a pooled household the main account carries
+  the whole budget and each login may carry as much, so the person running the
+  server runs `silo silo-switching prepare` before stock Silo serves: it holds
+  every login of a pooled household (switched off, signed out, listed in
+  `bloem_household_silo_holds`), and the household plays on its main account
+  and profiles, within its budget. Bloem releases them when it starts
+  (`silo silo-switching resume`): each comes back as its household is then,
+  on under an enabled main account, switched off by the household under a
+  suspended one. While held, restoring the main account does not bring them
+  back, and an administrator's write of one under stock Silo takes it out of
+  the hold.
+- **Stock Silo's other writes fit.** It never names the household columns, so
+  an account it creates is an ordinary account; a profile it creates on a
+  login lands in the default organization; moving a main account to another
+  group carries its logins (`users_household_logins_follow_group`); and
+  deleting a main account deletes its logins.
+
+`internal/auth/household_stock_silo_test.go` writes and reads as stock Silo
+does; `internal/tenancy/silo_switching_households_test.go`,
+`TestSwitchableAcceptsHouseholdLogins`, `TestSwitchableSiloDeletesAMainWithItsLogins`
+and `TestBloemHouseholdWhenSwitchable` cover the rest.

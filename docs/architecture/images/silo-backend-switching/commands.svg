@@ -1,14 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
-<title id="t">Switching on, checking and switching off</title>
-<desc id="d">Three commands. silo silo-switching status reports whether the database is switchable. enable refuses unless there is exactly one organization, then gives every account its default-organization membership, matches membership roles to the account's role, and sets the flag. disable clears the flag; after that, Silo must not serve the database.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Switching on, checking, handing over and switching off</title>
+<desc id="d">Five commands. silo silo-switching status reports whether the database is switchable and counts its households. enable refuses unless there is exactly one organization, then gives every account its default-organization membership, matches membership roles to the account's role, and sets the flag. prepare, run just before Silo serves, holds the logins of every household with a shared pool, since Silo does not enforce the pool; resume gives them back, and Bloem runs it itself when it starts. disable clears the flag; after that, Silo must not serve the database.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
-<rect x="0.5" y="0.5" width="1199" height="619" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
-<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Switching on, checking and switching off</text>
+<rect x="0.5" y="0.5" width="1199" height="679" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Switching on, checking, handing over and switching off</text>
 <text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">One flag in the database, set and cleared with the Bloem binary.</text>
-<rect x="40" y="128" width="340" height="130" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<rect x="40" y="128" width="340" height="150" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
 <text x="58" y="160" font-size="16" font-weight="700" fill="#101827" text-anchor="start">silo silo-switching status</text>
 <text x="58" y="184" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Reports whether the database is</text>
-<text x="58" y="204" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">switchable. Changes nothing.</text>
+<text x="58" y="204" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">switchable, and its households: logins,</text>
+<text x="58" y="224" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">shared pools, logins held. Changes</text>
+<text x="58" y="244" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">nothing.</text>
+<rect x="40" y="304" width="340" height="234" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="58" y="336" font-size="16" font-weight="700" fill="#101827" text-anchor="start">silo silo-switching prepare</text>
+<text x="58" y="360" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Run just before Silo serves. Silo does</text>
+<text x="58" y="380" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">not enforce a household's shared pool, so</text>
+<text x="58" y="400" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">the logins of every pooled household are</text>
+<text x="58" y="420" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">held (switched off, signed out); the</text>
+<text x="58" y="440" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">household plays on its main account,</text>
+<text x="58" y="460" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">within its budget. Needs switching on.</text>
 <rect x="420" y="128" width="360" height="410" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
 <text x="440" y="160" font-size="16" font-weight="700" fill="#101827" text-anchor="start">silo silo-switching enable</text>
 <circle cx="456" cy="196" r="12" fill="#10B981"/>
@@ -34,5 +44,11 @@
 <text x="838" y="204" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">then on, Silo must not serve the</text>
 <text x="838" y="224" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">database: Bloem may add what Silo cannot</text>
 <text x="838" y="244" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">read.</text>
-<text x="40" y="584" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Every switching rule reads the flag through public.bloem_silo_switching_enabled().</text>
+<rect x="820" y="324" width="340" height="214" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="838" y="356" font-size="16" font-weight="700" fill="#101827" text-anchor="start">silo silo-switching resume</text>
+<text x="838" y="380" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Gives the held logins back as their</text>
+<text x="838" y="400" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">household is now: on under an enabled</text>
+<text x="838" y="420" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">main account, off with a suspended one.</text>
+<text x="838" y="440" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem runs it itself when it starts.</text>
+<text x="40" y="640" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Every switching rule reads the flag through public.bloem_silo_switching_enabled().</text>
 </svg>

@@ -49,17 +49,24 @@ def silo_writes():
 
 
 def commands():
-    s = Svg(1200, 620, "Switching on, checking and switching off",
-            "Three commands. silo silo-switching status reports whether the database is switchable. enable "
-            "refuses unless there is exactly one organization, then gives "
-            "every account its default-organization membership, matches membership roles to the account's role, "
-            "and sets the flag. disable clears the flag; after that, Silo must not serve the database.")
-    s.header("Switching on, checking and switching off",
+    s = Svg(1200, 680, "Switching on, checking, handing over and switching off",
+            "Five commands. silo silo-switching status reports whether the database is switchable and counts its "
+            "households. enable refuses unless there is exactly one organization, then gives every account its "
+            "default-organization membership, matches membership roles to the account's role, and sets the flag. "
+            "prepare, run just before Silo serves, holds the logins of every household with a shared pool, since "
+            "Silo does not enforce the pool; resume gives them back, and Bloem runs it itself when it starts. "
+            "disable clears the flag; after that, Silo must not serve the database.")
+    s.header("Switching on, checking, handing over and switching off",
              "One flag in the database, set and cleared with the Bloem binary.")
     g, a, st, w = TIERS["grey"], TIERS["account"], TIERS["stop"], TIERS["warn"]
 
-    box(s, 40, 128, 340, 130, g, "silo silo-switching status",
-        "Reports whether the database is switchable. Changes nothing.", size=14.5, title_size=16)
+    box(s, 40, 128, 340, 150, g, "silo silo-switching status",
+        "Reports whether the database is switchable, and its households: logins, shared pools, logins held. "
+        "Changes nothing.", size=14.5, title_size=16)
+    box(s, 40, 304, 340, 234, w, "silo silo-switching prepare",
+        "Run just before Silo serves. Silo does not enforce a household's shared pool, so the logins of every "
+        "pooled household are held (switched off, signed out); the household plays on its main account, "
+        "within its budget. Needs switching on.", size=14.5, title_size=16)
 
     s.rect(420, 128, 360, 410, a["fill"], a["stroke"], rx=14, sw=1.8)
     s.text(440, 160, "silo silo-switching enable", size=16, weight="700")
@@ -83,8 +90,11 @@ def commands():
     box(s, 820, 128, 340, 170, w, "silo silo-switching disable",
         "Clears the flag and lifts the rules. From then on, Silo must not serve the database: Bloem may add "
         "what Silo cannot read.", size=14.5, title_size=16)
+    box(s, 820, 324, 340, 214, a, "silo silo-switching resume",
+        "Gives the held logins back as their household is now: on under an enabled main account, off with a "
+        "suspended one. Bloem runs it itself when it starts.", size=14.5, title_size=16)
 
-    footer(s, "Every switching rule reads the flag through public.bloem_silo_switching_enabled().", y=584,
+    footer(s, "Every switching rule reads the flag through public.bloem_silo_switching_enabled().", y=640,
            fill=INK)
     return s
 

@@ -21,8 +21,9 @@ before it starts, and each reads what the other wrote:
    its first start. Then switch on Silo switching (`silo silo-switching enable`),
    which checks the database is safe for Silo and keeps it that way.
 3. **Bloem serves,** with everything still there and Bloem's features on top.
-4. **Silo again.** Stop Bloem, empty the cache, start Silo. It reads what Bloem
-   wrote.
+4. **Silo again.** Stop Bloem, run `silo silo-switching prepare` (see
+   [Households](#households)), empty the cache, start Silo. It reads what Bloem
+   wrote. When Bloem starts again, it undoes what `prepare` did.
 5. **And back,** either way, as often as needed.
 
 Before the first switch, take a snapshot of the database. Run the Silo version
@@ -56,6 +57,29 @@ organization, with or without a domain, means switching off first.
 Switching off (`silo silo-switching disable`) lifts the rules; after that, Silo
 must not serve the database again.
 
+## Households
+
+A household is a customer's main account plus logins of its own for the people
+in it, so nobody has to share the account holder's password. Silo has never
+heard of households, so their rules sit in the database, where both servers obey
+them:
+
+- **Suspend the main account, and its logins stop too.** Whichever server
+  switches the main account off, its logins are switched off with it and signed
+  out of every app. Switching the main account back on brings back only those
+  logins, never one an administrator turned off on purpose.
+- **Silo doesn't add up a shared pool.** Some households share their streams
+  and transcodes between everyone as they play. Silo would let each login play
+  as much as the whole household on its own. So, just before Silo serves,
+  `silo silo-switching prepare` pauses those logins: the household carries on
+  with the main account and its profiles, within what it pays for. When Bloem
+  serves again it gives the logins back. Households that split their streams
+  into fixed shares keep their logins under Silo, because each share already
+  holds there.
+
+`silo silo-switching status` counts the households, the shared pools and the
+logins paused for Silo.
+
 ## Two ways Silo is installed
 
 ![Separate containers on the left, Silo's all-in-one container on the right](images/silo-switching/two-layouts.svg)
@@ -78,7 +102,7 @@ the one before wrote and write something for the next one to read.
 
 | Who | What they manage |
 | --- | --- |
-| The person running the server | Which server runs, the snapshot, switching on and off. |
+| The person running the server | Which server runs, the snapshot, switching on and off, and `prepare` before Silo serves. |
 | Platform administrator | Nothing extra. While switching is on, Bloem refuses a second organization. |
 
 ## Words used in the code
@@ -87,6 +111,8 @@ the one before wrote and write something for the next one to read.
 | --- | --- |
 | Silo switching | the flag `public.bloem_silo_switching` |
 | Switching on, off | `silo silo-switching enable`, `silo silo-switching disable` |
+| Pausing pooled households' logins for Silo, and giving them back | `silo silo-switching prepare`, `silo silo-switching resume` (Bloem runs it when it starts) |
+| A household's rules | database triggers on `users` (`users_household_follow_main_enabled` and its neighbours) |
 | The two rules | database triggers that refuse `bloem_silo_switching_single_organization` and place Silo's writes in the default organization |
 | Silo's all-in-one container | Silo's omnibus image, built from `omnibus/` |
 | The switch check | `make silo-switch-check`, `make silo-switch-check-all-in-one` |
