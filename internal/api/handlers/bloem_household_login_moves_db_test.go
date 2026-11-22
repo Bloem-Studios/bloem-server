@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -272,5 +273,32 @@ func TestMoveToMainRefusesAProfileNameTheMainAccountHas(t *testing.T) {
 	}
 	if ids, _ := f.profiles(login.ID); len(ids) != 1 {
 		t.Fatalf("the login has %d profiles; want its one", len(ids))
+	}
+}
+
+// Giving a profile its own login ends what the main account's sign-ins had as
+// the profile on every replica, not only in the database: each replica keeps
+// Jellyfin-compatible sessions in memory, and a cached main#Sam would keep
+// playing under the main account, writing progress where Sam no longer is.
+func TestMoveProfileAnnouncesTheProfilesEndedSignIns(t *testing.T) {
+	f := newMovesFixture(t)
+	main := f.main("main")
+	f.addProfile(main, "Main")
+	sam := f.addProfile(main, "Sam")
+	type revocation struct {
+		account  int
+		profiles []string
+	}
+	var revoked []revocation
+	f.h.OnUserProfileSessionsRevoked = func(_ context.Context, account int, profiles []string) error {
+		revoked = append(revoked, revocation{account, profiles})
+		return nil
+	}
+
+	if rec := f.moveProfile(main, sam, "sam"); rec.Code != http.StatusCreated {
+		t.Fatalf("move profile: %d %s", rec.Code, rec.Body)
+	}
+	if len(revoked) != 1 || revoked[0].account != main || !slices.Equal(revoked[0].profiles, []string{sam}) {
+		t.Fatalf("announced revocations %+v; want the main account's sign-ins as Sam", revoked)
 	}
 }

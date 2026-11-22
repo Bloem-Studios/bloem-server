@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/cache"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
@@ -144,6 +146,17 @@ func (h *AdminHandler) moveBloemProfileToNewLogin(ctx context.Context, mainID in
 		return 0, false, err
 	}
 	auditmutation.CommitMutation(ctx, audit)
+	// The move ended the main account's sign-ins as the profile in the
+	// database; every replica also drops the Jellyfin-compatible ones it
+	// holds in memory, as a profile's removal from an organization does. The
+	// move itself has landed, so a failure here is logged, not answered.
+	if h.OnUserProfileSessionsRevoked != nil {
+		if err := sessioninvalidation.Run(ctx, func(invalidationCtx context.Context) error {
+			return h.OnUserProfileSessionsRevoked(invalidationCtx, mainID, []string{profileID})
+		}); err != nil {
+			slog.WarnContext(ctx, "household login move: could not announce the profile's ended sign-ins", "account_id", mainID, "error", err)
+		}
+	}
 	h.invalidateStats(ctx, cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(user.ID))
 	return user.ID, main.enabled, nil
 }
