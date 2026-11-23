@@ -124,6 +124,13 @@ household draws on the same streams and transcodes at the moment it plays:
 - A refusal at the pool wraps Silo's own stream or transcode limit
   (`ErrHouseholdStreamsExceeded`, `ErrHouseholdTranscodesExceeded`), so
   clients, the stream-limit notice and lease renewal treat it as that limit.
+  The native playback terminal keeps Silo's reason codes
+  (`stream_limit_reached`, `transcode_limit_reached`), but its message says
+  the household's limit is reached and that someone else in the household may
+  be playing (`bloem_household_playback_refusal.go`). An account refused for
+  its own limit keeps Silo's wording. Jellyfin compatibility answers with
+  Silo's fixed `TooManyStreams` / `TooManyTranscodes` errors, which do not
+  mention the account.
 - Only the fleet reservation counts the pool. It leaves out the session being
   reserved again, so a session moving between direct play and transcoding
   keeps its stream in a full pool. A household session reserves even without

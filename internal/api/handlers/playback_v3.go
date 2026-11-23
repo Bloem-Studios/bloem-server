@@ -7718,6 +7718,9 @@ func subtitleVariantIndexV3(file *models.MediaFile, language, title string, forc
 // Both stay retryable: once the other session ends, a fresh playback attempt
 // succeeds. The same playback_attempt_id replays this stored terminal.
 func sessionStartErrorV3(err error) *transportErrorV3 {
+	if household := bloemHouseholdStartErrorV3(err); household != nil {
+		return household
+	}
 	switch {
 	case errors.Is(err, playback.ErrTooManyStreams):
 		return &transportErrorV3{reason: "stream_limit_reached", message: "Your account is already playing as many videos at once as it's allowed to. Stop anything else playing or paused on your account, then try again.", retryable: true}
