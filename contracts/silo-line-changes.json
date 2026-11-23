@@ -989,7 +989,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "363cf75bd7699a39"
+   "func main() {": "64b517ed4997c2de"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1412,5 +1412,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "7082df5a687c730e8714052050ed474a7108b58e"
+ "silo": "3b2b321688ac2fbe812a5a259859a17880c43d71"
 }
