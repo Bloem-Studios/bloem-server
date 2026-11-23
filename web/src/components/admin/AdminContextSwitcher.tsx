@@ -30,7 +30,7 @@ function ContextSwitcher({ onSwitchSuccess }: { onSwitchSuccess?: () => void }) 
           </div>
           {active ? (
             <>
-              <div className="text-muted-foreground mt-0.5 text-[11px] capitalize">
+              <div className="text-muted-foreground mt-0.5 text-[0.6875rem] capitalize">
                 {bt("bloem.adminNav.contextSwitcher.scopeStatus", {
                   scope: bt("bloem.adminNav.contextSwitcher.scopeName", { scope: active.scope }),
                   status: bt("bloem.adminNav.contextSwitcher.statusName", {
@@ -38,7 +38,7 @@ function ContextSwitcher({ onSwitchSuccess }: { onSwitchSuccess?: () => void }) 
                   }),
                 })}
               </div>
-              <div className="text-muted-foreground text-[11px]">
+              <div className="text-muted-foreground text-[0.6875rem]">
                 {active.authority === "platform_admin"
                   ? bt("bloem.adminNav.contextSwitcher.platformAdministrator")
                   : bt("bloem.adminNav.contextSwitcher.organizationAdministrator")}
@@ -47,7 +47,7 @@ function ContextSwitcher({ onSwitchSuccess }: { onSwitchSuccess?: () => void }) 
           ) : null}
         </div>
       </div>
-      <label className="text-muted-foreground mt-3 block text-[10px] font-semibold tracking-[0.14em] uppercase">
+      <label className="text-muted-foreground mt-3 block text-[0.625rem] font-semibold tracking-[0.14em] uppercase">
         <span className="sr-only">
           {bt("bloem.adminNav.contextSwitcher.administrativeContext")}
         </span>

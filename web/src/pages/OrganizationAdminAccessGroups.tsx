@@ -233,7 +233,7 @@ function AccessGroupCard({ group, onClick }: { group: AccessGroup; onClick: () =
           <div className="flex items-center gap-2">
             <h2 className="truncate text-base font-semibold tracking-tight">{group.name}</h2>
             {group.is_default && (
-              <span className="border-border text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase">
+              <span className="border-border text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[0.625rem] font-medium tracking-wide uppercase">
                 {bt("bloem.admin.orgAccessGroups.card.defaultBadge")}
               </span>
             )}

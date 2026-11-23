@@ -77,7 +77,7 @@ exports[`multitenant administration responsive release snapshots > captures Acce
                   Default
                 </h2>
                 <span
-                  class="border-border text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase"
+                  class="border-border text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[0.625rem] font-medium tracking-wide uppercase"
                 >
                   Default
                 </span>
@@ -248,7 +248,7 @@ exports[`multitenant administration responsive release snapshots > captures Acce
                   Default
                 </h2>
                 <span
-                  class="border-border text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase"
+                  class="border-border text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[0.625rem] font-medium tracking-wide uppercase"
                 >
                   Default
                 </span>

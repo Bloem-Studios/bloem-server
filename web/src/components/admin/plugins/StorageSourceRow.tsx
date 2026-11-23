@@ -158,7 +158,7 @@ function UpgradeForm({
 
   if (releases.length === 0) {
     return (
-      <p className="text-muted-foreground mt-2 text-[13px]">
+      <p className="text-muted-foreground mt-2 text-[0.8125rem]">
         {bt("bloem.admin.storage.sourceRow.noOtherVersionsOfAre", {
           plugin: pluginLabel(source.plugin_id),
         })}
@@ -337,7 +337,7 @@ function S3EditForm({
   );
   if (!schema) {
     return (
-      <p className="text-muted-foreground mt-2 text-[13px]">
+      <p className="text-muted-foreground mt-2 text-[0.8125rem]">
         {bt("bloem.admin.storage.sourceRow.thisVersionOfTheS3")}
       </p>
     );
@@ -385,7 +385,7 @@ function S3EditForm({
 
   return (
     <div className="mt-3 space-y-3">
-      <p className="text-muted-foreground text-[13px]">
+      <p className="text-muted-foreground text-[0.8125rem]">
         {bt("bloem.admin.storage.sourceRow.enterTheAccessKeyAnd")}
       </p>
       <PluginConfigForm
@@ -419,7 +419,7 @@ function DeleteConfirmation({
   const bt = useBloemT();
   const remove = useDeleteRemovedStorageSource();
   return (
-    <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[13px]">
+    <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[0.8125rem]">
       <p>{bt("bloem.admin.storage.sourceRow.deleteFromThisListNothing", { name })}</p>
       <div className="flex gap-2">
         <Button
@@ -452,7 +452,7 @@ function RemoveConfirmation({
   const bt = useBloemT();
   const remove = useRemoveStorageSource();
   return (
-    <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[13px]">
+    <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[0.8125rem]">
       <p>{bt("bloem.admin.storage.sourceRow.removeThisCanAposT", { name })}</p>
       <div className="flex gap-2">
         <Button
@@ -512,7 +512,7 @@ function SummaryLine({ source }: { source: StorageSource }) {
   ].filter(Boolean);
   if (parts.length === 0) return null;
   return (
-    <p className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 ps-[26px] text-[12.5px]">
+    <p className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 ps-[26px] text-[0.78125rem]">
       {parts.map((part) => (
         <span key={part}>{part}</span>
       ))}
@@ -536,7 +536,7 @@ function UsageLine({ source, status }: { source: StorageSource; status: SourceSt
   } else {
     text = bt("bloem.admin.storage.sourceRow.notUsed");
   }
-  return <p className="text-muted-foreground mt-1 ps-[26px] text-[12.5px]">{text}</p>;
+  return <p className="text-muted-foreground mt-1 ps-[26px] text-[0.78125rem]">{text}</p>;
 }
 
 type Panel = "edit" | "rotate" | "upgrade" | null;
@@ -592,7 +592,7 @@ export function StorageSourceRow({
   }
 
   return (
-    <li className="py-2.5 text-[13.5px]">
+    <li className="py-2.5 text-[0.84375rem]">
       <div className="flex min-w-0 flex-wrap items-center gap-2.5">
         <HardDrive className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate">
@@ -670,7 +670,7 @@ export function StorageSourceRow({
       </div>
 
       {isS3 && canManage && loopbackLocked ? (
-        <p className="text-muted-foreground mt-1 ps-[26px] text-[13px]">
+        <p className="text-muted-foreground mt-1 ps-[26px] text-[0.8125rem]">
           {bt("bloem.admin.storage.sourceRow.loopbackKeysOnly")}
         </p>
       ) : null}
@@ -678,7 +678,7 @@ export function StorageSourceRow({
       {testResult ? (
         <p
           role="status"
-          className={`mt-1 ps-[26px] text-[13px] ${testResult.ok ? "text-muted-foreground" : "text-destructive"}`}
+          className={`mt-1 ps-[26px] text-[0.8125rem] ${testResult.ok ? "text-muted-foreground" : "text-destructive"}`}
         >
           {testResult.message}
         </p>
@@ -702,7 +702,7 @@ export function StorageSourceRow({
             }}
           />
         ) : (
-          <p className="text-muted-foreground mt-2 text-[13px]">
+          <p className="text-muted-foreground mt-2 text-[0.8125rem]">
             {bt("bloem.admin.storage.sourceRow.thePluginCatalogHasNo", {
               plugin: pluginLabel(source.plugin_id),
             })}
@@ -713,7 +713,7 @@ export function StorageSourceRow({
       {isS3 && panel === "rotate" ? (
         <>
           {locked ? (
-            <p className="text-muted-foreground mt-2 text-[13px]">
+            <p className="text-muted-foreground mt-2 text-[0.8125rem]">
               {bt("bloem.admin.storage.sourceRow.inUseKeysOnly")}
             </p>
           ) : null}

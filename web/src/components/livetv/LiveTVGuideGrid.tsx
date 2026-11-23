@@ -56,7 +56,7 @@ export function LiveTVGuideGrid({
         <div className="sticky top-0 z-20 flex border-b bg-[color-mix(in_srgb,var(--background)_92%,transparent)] backdrop-blur-sm">
           <div
             // eslint-disable-next-line silo/no-physical-direction -- the guide is a time axis, which runs left to right in every language (as Silo's media timeline)
-            className="border-border text-muted-foreground sticky left-0 z-30 flex shrink-0 items-end border-r px-3 py-2.5 text-[10px] font-semibold tracking-[0.18em] uppercase"
+            className="border-border text-muted-foreground sticky left-0 z-30 flex shrink-0 items-end border-r px-3 py-2.5 text-[0.625rem] font-semibold tracking-[0.18em] uppercase"
             style={{ width: CHANNEL_COL_WIDTH }}
           >
             {bt("bloem.liveTv.guide.channelColumn")}
@@ -132,7 +132,7 @@ export function LiveTVGuideGrid({
                     <div className="flex h-full items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{program.title}</p>
-                        <p className="text-muted-foreground truncate text-[11px]">
+                        <p className="text-muted-foreground truncate text-[0.6875rem]">
                           {bt("bloem.liveTv.timeRange", {
                             start: formatGuideTime(program.start),
                             stop: formatGuideTime(program.stop),

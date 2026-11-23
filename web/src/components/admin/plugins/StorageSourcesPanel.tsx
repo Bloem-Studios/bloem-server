@@ -57,10 +57,10 @@ export function StorageSourcesPanel() {
     <section className={PANEL} aria-labelledby="storage-sources-heading">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 id="storage-sources-heading" className="text-[15px] font-semibold">
+          <h2 id="storage-sources-heading" className="text-[0.9375rem] font-semibold">
             {bt("bloem.admin.storage.panel.storageSources")}
           </h2>
-          <p className="text-muted-foreground text-[13px]">
+          <p className="text-muted-foreground text-[0.8125rem]">
             {bt("bloem.admin.storage.panel.whereALibraryCanRead")}
           </p>
         </div>
@@ -86,7 +86,7 @@ export function StorageSourcesPanel() {
       />
 
       {sources.isSuccess && all.length > 0 ? (
-        <p className="text-muted-foreground mt-3 text-[13px]">
+        <p className="text-muted-foreground mt-3 text-[0.8125rem]">
           {live === 1
             ? bt("bloem.admin.storage.panel.t1SourceIsLive")
             : bt("bloem.admin.storage.panel.sourcesAreLive", { live })}
@@ -105,14 +105,14 @@ export function StorageSourcesPanel() {
           ))}
         </ul>
       ) : sources.isSuccess && removed.length === 0 ? (
-        <p className="text-muted-foreground mt-3 text-[13px]">
+        <p className="text-muted-foreground mt-3 text-[0.8125rem]">
           {bt("bloem.admin.storage.panel.noStorageSourcesYet")}
         </p>
       ) : null}
 
       {removed.length > 0 ? (
         <details className="mt-3 border-t pt-2">
-          <summary className="text-muted-foreground cursor-pointer text-[13px]">
+          <summary className="text-muted-foreground cursor-pointer text-[0.8125rem]">
             {bt("bloem.admin.storage.panel.removedSources", { removed: removed.length })}
           </summary>
           <ul className="divide-y">
