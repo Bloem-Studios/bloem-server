@@ -85,11 +85,12 @@ func AirPlayAwareRequestV3(request StartRequestV3) StartRequestV3 {
 // For an AirPlay receiver the cap is a preference: the capped request is
 // planned first, and when that finds no route the request is planned as it
 // came. That happens when the cap leaves only an encode the client's HLS
-// delivery cannot decode, and no other version of the title can play instead.
-// The receiver then gets the plan it got before this cap existed, and a refusal
-// that would stand anyway is reported unchanged, so the cap can only replace a
-// plan, never turn a playable start into a refusal. Where the server cannot
-// encode at all, the planner already keeps the copy and says so in a warning.
+// delivery cannot decode, or the server cannot encode the source at all (no
+// encoder, transcoding off, or a 4K source with 4K transcoding off), and no
+// other version of the title can play instead. The receiver then gets the plan
+// it got before this cap existed, and a refusal that would stand anyway is
+// reported unchanged, so the cap can only replace a plan, never turn a playable
+// start into a refusal.
 //
 // A title with a lower version keeps the capped refusal: the handler's own
 // fallback then plays that version, which the cap does not refuse. If that
@@ -115,7 +116,9 @@ func AirPlayAwarePlanV3(input PlannerInputV3, planned PlannerResultV3) PlannerRe
 	capped.Request = AirPlayAwareRequestV3(input.Request)
 	result := PlanPlaybackV3(capped)
 	if result.Terminal != nil && input.LowerVersion == nil {
-		return planned
+		// The uncapped plan still goes to an AirPlay receiver, so its surround
+		// conversion gets the receiver's Dolby codec too.
+		return adaptAirPlayAudioV3(input, planned)
 	}
 	return adaptAirPlayAudioV3(capped, result)
 }

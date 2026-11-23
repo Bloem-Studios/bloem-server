@@ -102,6 +102,36 @@ func TestPlanPlaybackV3AirPlayConvertsSurroundToAC3(t *testing.T) {
 	}
 }
 
+// A 4K source over the cap, with 4K transcoding off and no lower version, has no
+// route that honors the cap, so AirPlay plays the uncapped plan. That plan's
+// surround conversion still goes to AC-3 for the receiver.
+func TestPlanPlaybackV3AirPlayConvertsSurroundWhereTheCapCannotApply(t *testing.T) {
+	settings := PlannerSettingsV3{TranscodeEnabled: true}
+	for _, audio := range []models.AudioTrack{trueHD71, dts51} {
+		t.Run(audio.Codec, func(t *testing.T) {
+			fourK := airPlayFileV3(60_000, audio)
+			fourK.Resolution = "2160p"
+			fourK.VideoTracks[0].Width, fourK.VideoTracks[0].Height = 3840, 2160
+			castReq := airPlayClientV3(airPlaySinkV3, airPlayRouteV3)
+			capped := PlanPlaybackV3(PlannerInputV3{Request: AirPlayAwareRequestV3(castReq), RequestedFile: fourK, EffectiveFile: fourK, Settings: settings, Registry: dolbyRegistryV3(true, true)})
+			if capped.Terminal == nil {
+				t.Fatalf("the capped request alone is planned (%s), so this case no longer tests the fallback", ExplainPlannerResultV3(capped))
+			}
+			cast := planAirPlayWithV3(castReq, fourK, settings, dolbyRegistryV3(true, true))
+			if cast.Plan == nil {
+				t.Fatalf("AirPlay was refused where the device plays: %s", ExplainPlannerResultV3(cast))
+			}
+			if cast.Plan.Delivery != DeliveryRemuxHLSV3 {
+				t.Fatalf("delivery = %s, want the copy in an HLS remux: %s", cast.Plan.Delivery, ExplainPlannerResultV3(cast))
+			}
+			if cast.TargetAudioCodec != "ac3" || cast.Plan.EffectiveRecipe.AudioCodec != "ac3" ||
+				!slices.Contains(transformationNamesV3(cast.Plan), TransformationAudioToAC3V3) {
+				t.Fatalf("audio = %s, transformations %v, want audio_to_ac3", cast.TargetAudioCodec, transformationNamesV3(cast.Plan))
+			}
+		})
+	}
+}
+
 // Where AC-3 cannot be planned the conversion stays AAC 5.1: the planner's own
 // plan, untouched.
 func TestPlanPlaybackV3AirPlayKeepsAACWhereDolbyCannotBePlanned(t *testing.T) {
