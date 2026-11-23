@@ -487,6 +487,10 @@
 ./internal/metadata TestLocalArtworkCopiedOnDiscoveryDB
 ./internal/metadata TestLocalArtworkRetriesWithoutLibraryRootDB
 
+# A manual refresh of a job waiting for a full artwork store starts its wait
+# over at the short delay, whether or not the wait has run out.
+./internal/metadata TestLocalArtworkWaitsForStorageSpaceDB
+
 # A re-cached sidecar leaves its old copy to the reference-checked revision
 # GC, which keeps a copy published again since the re-cache.
 ./internal/metadata TestRecachedSidecarRetiresTheOldCopyThroughRevisionGCDB
@@ -750,6 +754,12 @@
 ./internal/api/handlers TestLifecycleSweepSelectsWhatItCanEndDB
 ./internal/api/handlers TestLifecycleSweepPassesLiveJellyfinPlaysDB
 ./internal/api/handlers TestLifecycleSweepBacksOffFailedEndsDB
+./internal/api/handlers TestPausedTimeoutSweepEndsPausedSessionsDB
+./internal/api/handlers TestPausedTimeoutSweepDropsCopyItCannotFinishDB
+./internal/api/handlers TestPausedTimeoutSweepDropsCopiesStoppedElsewhereDB
+./internal/api/handlers TestPausedTimeoutSweepDropsCopiesFinalizedElsewhereDB
+./internal/api/handlers TestPausedTimeoutSweepPagesPastSkippedRowsDB
+./internal/api/handlers TestPausedTimeoutSweepWaitsForTheSettingDB
 ./internal/api/handlers TestLifecycleSweepKeepsARecordedSubtitleDB
 ./internal/api/handlers TestLifecycleSweepTakesALaterSyncedSubtitleDB
 # A live row names an episode as the history entry its play leaves does.
@@ -1009,8 +1019,9 @@
 
 # Recommendation ranking and rows: default rows, Popular floor, genre rows, picker
 # order, taste levels, per-interest anchors, quality prior, rubric leakage,
-# media types of personal rows, Because You Watched anchors per library, the
-# holdout evaluation's leakage checks and recall floor.
+# media types of personal rows, Because You Watched anchors per library,
+# Similar Users likes and peer ceilings, the holdout evaluation's leakage
+# checks and recall floor.
 ./internal/recommendations TestBecauseYouWatchedAnchorsEachLibraryOnItsOwnWatchesPostgres
 ./internal/recommendations TestCacheUserRowsDoNotAnchorOnDislikedTitlesPostgres
 ./internal/recommendations TestCandidateQualityRatingsPostgres
@@ -1035,6 +1046,7 @@
 ./internal/recommendations TestRelevanceRubricNewProfileGetsRowsPostgres
 ./internal/recommendations TestRelevanceRubricProfilesOnOneAccountDifferPostgres
 ./internal/recommendations TestSimilarItemsValidateEveryCandidatePostgres
+./internal/recommendations TestSimilarUsersReadsEveryLikePostgres
 ./internal/recommendations TestTasteProfileSummaryGenresComeFromTheClustersPostgres
 ./internal/recommendations TestTasteSeedPickerInterleavesGenresPostgres
 ./internal/recommendations TestTopGenresRankByCrowdThenCatalogPostgres
@@ -1133,6 +1145,9 @@
 ./internal/playback/planstore TestSummaryResolvesReplacedPlanDelivery
 ./internal/playback/planstore TestAttemptDesiredTracksRoundTrip
 ./internal/playback/planstore TestProgressCommitsLifecycleStateDB
+./internal/playback/planstore TestExpirePausedAttemptDB
+./internal/playback/planstore TestExpirePausedAttemptExemptionsDB
+./internal/playback/planstore TestExpirePausedAttemptRechecksTheSelectionDB
 ./internal/playback/planstore TestLatePlaybackProgressCannotOverwriteFinalStopDB
 ./internal/playback/planstore TestPlaybackStopCommitsResumeAndEpisodeSpanOnceDB
 ./internal/api/handlers TestSlowPlanDeliveryLookupKeepsTheSummaryDB

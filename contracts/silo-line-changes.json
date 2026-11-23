@@ -970,12 +970,6 @@
     "  const showPoster = !hidePoster && (!isViewportBounded || wideViewport);"
    ]
   },
-  "web/src/player/hooks/useWatchProgress.ts": {
-   "kind": "lines",
-   "lines": [
-    "import { isPlaybackSessionEndedError } from \"../player-fetch\";"
-   ]
-  },
   "web/src/test/signedInBoot.test.tsx": {
    "kind": "lines",
    "lines": [
@@ -1175,7 +1169,7 @@
    "func (s *Service) ImportReader(ctx context.Context, r io.Reader, opts ImportOpti": "a408994a2849dea1"
   },
   "internal/config/admin_settings.go": {
-   "func NormalizeAdminSetting(key, raw string) (string, error) {": "99a385c026993f5a"
+   "func NormalizeAdminSetting(key, raw string) (string, error) {": "ab7c9f9a69d1c08a"
   },
   "internal/config/db_loader.go": {
    "func LoadFromDB(m map[string]string) (*Config, error) {": "e2e441f49392ed30"
@@ -1410,8 +1404,8 @@
    "function PlaybackUnavailableScreen({ error, onBack }: { error: Error; onBack: ()": "4daca31a92f69423"
   },
   "web/src/player/hooks/usePlaybackRealtime.ts": {
-   "export function usePlaybackRealtime({": "ff645098cdf104e7"
+   "export function usePlaybackRealtime({": "a0af0f190ac407d1"
   }
  },
- "silo": "0e8470bca6c6e400071a21e8973d9a4cb606e24e"
+ "silo": "dde5ed21c4aaaa20b512247c5ec5b5875e3ceb9c"
 }

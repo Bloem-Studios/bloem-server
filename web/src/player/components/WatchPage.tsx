@@ -724,6 +724,7 @@ function WatchPagePlayer({
       onRetryConnection={session.retryConnection}
       connectionStatus={session.connectionStatus}
       connectionErrorTitle={session.connectionErrorTitle}
+      connectionEndReason={session.connectionEndReason}
       connectionError={session.connectionError}
       onPlanInvalidated={session.invalidatePlan}
       onReanchorSeek={session.reanchorSeek}
