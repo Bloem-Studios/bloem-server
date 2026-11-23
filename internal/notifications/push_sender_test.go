@@ -273,7 +273,9 @@ func TestPushSenderRegistersRelayOnFirstSendWithoutCredential(t *testing.T) {
 				"deployment_id": "deployment-auto",
 				"api_key":       "auto-capability",
 				"key_prefix":    "cap_v1_auto",
-				"expires_at":    "2026-12-01T00:00:00Z",
+				// Well past the renewal window from any run date, so the
+				// first send uses this credential instead of renewing it.
+				"expires_at": time.Now().Add(90 * 24 * time.Hour).UTC().Format(time.RFC3339),
 			})
 		case relayAppleSendPath:
 			sendAuth = append(sendAuth, r.Header.Get("Authorization"))
@@ -292,7 +294,6 @@ func TestPushSenderRegistersRelayOnFirstSendWithoutCredential(t *testing.T) {
 	sender := newPushSender(nil, nil, nil, NewSettings(store))
 	sender.client = server.Client()
 	sender.developmentRelayURL = server.URL
-	sender.now = func() time.Time { return time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC) } // Bloem: the fixture expires 2026-12-01; a real clock reaches its renewal window
 	device := &PushDevice{
 		APNsEnvironment: APNsEnvironmentSandbox,
 		APNsTopic:       ApplePushTopicSilo,

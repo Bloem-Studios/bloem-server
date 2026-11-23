@@ -264,7 +264,6 @@ internal/apiv2/admin_scoped_email_db_test.go # exercise upstream scoped-key secu
 
 internal/notifications/push_test_send_db_test.go # supply real active tenant profiles to the upstream push regression
 internal/notifications/webpush_login_session_db_test.go # supply an active tenant profile on the upstream web push test's private schema
-internal/notifications/push_sender_test.go # temporary: pins the relay self-registration test to its fixture date (expiry 2026-12-01 enters the 7-day renewal window on a real clock); drop when Silo fixes the test
 
 
 
