@@ -432,7 +432,7 @@ func registerBloemHouseholdLoginsDocument(reg *Registry) {
 	create := bloemStorefrontOp(reg, "POST", "/accounts/{account_id}/logins", "createBloemPlatformHouseholdLogin", "Create a household login for an account.", http.StatusCreated, map[int]string{
 		400: "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password of 8 to 72 bytes are required, and max_streams and max_profiles must be at least 1.",
 		404: "not_found: no such main account.",
-		409: "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. household_login_cap_reached: the household already has as many logins as its login cap allows (the message names both numbers). duplicate: the username or email is already in use.",
+		409: "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. household_login_cap_reached: the household already has as many logins as its login cap allows (the message names both numbers). email_in_use: another account, the main account included, already uses the email address. duplicate: the username is already in use.",
 		501: "capability_unsupported: this server's account store cannot create accounts and profiles transactionally.",
 		503: "service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked.",
 	})

@@ -37,6 +37,9 @@ type BloemHouseholdLoginMoveProfileRequest struct {
 	MaxTranscodes    *int   `json:"max_transcodes,omitempty" doc:"Concurrent transcodes the login may run. 0 is unlimited, so a login without transcodes sends transcode_allowed false instead."`
 	TranscodeAllowed *bool  `json:"transcode_allowed,omitempty" doc:"Whether the login may transcode; omitted follows the plan."`
 	MaxProfiles      int    `json:"max_profiles" doc:"Profiles the login may have; at least 1."`
+	// RequirePasswordChange makes Password temporary (Bloem,
+	// household_login_credentials_v1).
+	RequirePasswordChange bool `json:"require_password_change,omitempty" doc:"Make the password temporary: the login must choose a new one at its first sign-in before it can do anything else."`
 }
 
 // BloemHouseholdLoginMoveToMainResponse names the profiles that moved back
@@ -63,6 +66,7 @@ func (h *AdminHandler) HandleBloemPlatformHouseholdLoginMoveProfile(w http.Respo
 		Username: auth.NormalizeUsername(req.Username), Email: auth.NormalizeEmail(req.Email), Password: req.Password,
 		ProfileName: req.ProfileID, MaxStreams: req.MaxStreams, MaxTranscodes: req.MaxTranscodes,
 		TranscodeAllowed: req.TranscodeAllowed, MaxProfiles: req.MaxProfiles,
+		RequirePasswordChange: req.RequirePasswordChange,
 	}
 	if req.ProfileID == "" {
 		writeBloemPlatformAccountError(w, fieldError("profile_id", "Profile ID is required"))
@@ -107,6 +111,9 @@ func (h *AdminHandler) moveBloemProfileToNewLogin(ctx context.Context, mainID in
 	if err := checkBloemHouseholdLoginCap(ctx, tx, mainID); err != nil {
 		return 0, false, err
 	}
+	if err := checkBloemHouseholdLoginEmail(ctx, tx, req.Email); err != nil {
+		return 0, false, err
+	}
 	// A login's only profile is its primary, which manages the login's
 	// profiles, its own included, and which Silo holds to no library limit;
 	// so a profile with parental limits stays a profile.
@@ -129,6 +136,7 @@ func (h *AdminHandler) moveBloemProfileToNewLogin(ctx context.Context, mainID in
 			Username: req.Username, Email: req.Email, Password: req.Password, Role: models.RoleUser,
 			AccessGroupID: main.accessGroupID, MaxStreams: &req.MaxStreams, MaxTranscodes: req.MaxTranscodes,
 			TranscodeAllowed: req.TranscodeAllowed, MaxProfiles: &req.MaxProfiles,
+			PasswordChangeRequired: req.RequirePasswordChange,
 		},
 	})
 	if err != nil {

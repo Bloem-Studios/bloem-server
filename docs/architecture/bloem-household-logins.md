@@ -77,14 +77,30 @@ Under the platform credential, beside the other platform account routes:
 - `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins` creates a
   login: `username`, `password`, `profile_name`, `max_streams` (at least 1),
   `max_profiles` (at least 1), and optionally `max_transcodes`,
-  `transcode_allowed` and `email`. It answers the account as the account
-  service reads it, with `household_main_user_id` and `household_disabled`.
+  `transcode_allowed`, `email` and `require_password_change`. It answers the
+  account as the account service reads it, with `household_main_user_id` and
+  `household_disabled`.
 - `GET /api/bloem/v2/admin/platform/accounts/{account_id}/logins` lists the
   main account's logins, oldest first: `id`, `username`, `enabled`,
   `household_disabled`.
 
-Everything else about a login (password, limits, profiles, devices, sessions,
-delete) uses the ordinary account routes with the login's own ID.
+Everything else about a login (password, email, limits, profiles, devices,
+sessions, delete) uses the ordinary account routes with the login's own ID.
+
+**Credentials** (`household_login_credentials_v1`):
+
+- `require_password_change` on create and on move-profile makes the password
+  temporary. The person chooses their own at their first sign-in, before they
+  can do anything else. The web and the phone apps ask for the new password
+  then; TV apps, Jellyfin-protocol clients and Audiobookshelf refuse the sign-in
+  and tell the person to sign in to Silo first.
+- An email address another account already uses, the main account's included
+  and in any case, is refused before the login is made with `409 email_in_use`
+  (`checkBloemHouseholdLoginEmail`). `duplicate` then means only a taken
+  username. The address is not otherwise required: a login may have none.
+- A login's address changes with the ordinary account update
+  (`PUT /api/v2/admin/users/{id}` with `email`), and a password reset can make
+  the new password temporary there with `require_password_change`.
 
 On Silo, 0 means unlimited for streams and transcodes. A login without
 transcodes is written as `transcode_allowed: false` with no `max_transcodes`,

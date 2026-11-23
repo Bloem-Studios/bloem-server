@@ -1503,7 +1503,7 @@ Request body (required, `application/json`): [`BloemHouseholdLoginCreateRequest`
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. |
-| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. household_login_cap_reached: the household already has as many logins as its login cap allows (the message names both numbers). duplicate: the username or email is already in use. |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. household_login_cap_reached: the household already has as many logins as its login cap allows (the message names both numbers). email_in_use: another account, the main account included, already uses the email address. duplicate: the username is already in use. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot create accounts and profiles transactionally. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked. |
@@ -1530,7 +1530,7 @@ Request body (required, `application/json`): [`BloemHouseholdLoginMoveProfileReq
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. profile_not_found: the main account has no such profile. |
-| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_login_cap_reached: the household already has as many logins as its login cap allows. primary_profile: the main account's primary profile cannot move. restricted_profile: a profile with parental limits (a child profile, library limits, a rating or age limit, requests blocked) cannot have a login of its own, since as its login's main profile it would manage its own limits. household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. profile_conflict: the new login could not take the profile. |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_login_cap_reached: the household already has as many logins as its login cap allows. email_in_use: another account, the main account included, already uses the email address. primary_profile: the main account's primary profile cannot move. restricted_profile: a profile with parental limits (a child profile, library limits, a rating or age limit, requests blocked) cannot have a login of its own, since as its login's main profile it would manage its own limits. household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. profile_conflict: the new login could not take the profile. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot create accounts and profiles transactionally. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked. |
@@ -3488,6 +3488,7 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `max_transcodes` | integer (int64) |  | Concurrent transcodes the login may run. 0 is unlimited, so a login without transcodes sends transcode_allowed false instead. |
 | `password` | string | yes | Initial password, 8 to 72 bytes. |
 | `profile_name` | string | yes | Name of the login's first profile. |
+| `require_password_change` | boolean |  | Make the password temporary: the login must choose a new one at its first sign-in before it can do anything else. |
 | `transcode_allowed` | boolean |  | Whether the login may transcode; omitted follows the plan. |
 | `username` | string | yes | Sign-in name of the login. |
 
@@ -3507,6 +3508,7 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `max_transcodes` | integer (int64) |  | Concurrent transcodes the login may run. 0 is unlimited, so a login without transcodes sends transcode_allowed false instead. |
 | `password` | string | yes | Initial password, 8 to 72 bytes. |
 | `profile_id` | string | yes | The main account's profile that becomes the login's only profile, with its history, lists, settings and PIN. Not the main account's primary profile. |
+| `require_password_change` | boolean |  | Make the password temporary: the login must choose a new one at its first sign-in before it can do anything else. |
 | `transcode_allowed` | boolean |  | Whether the login may transcode; omitted follows the plan. |
 | `username` | string | yes | Sign-in name of the login. |
 

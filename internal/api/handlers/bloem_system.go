@@ -121,6 +121,11 @@ const (
 	// main account under .../accounts/{account_id}/household-login-cap: a new
 	// login past it is refused with household_login_cap_reached.
 	featureHouseholdLoginCapV1 = "household_login_cap_v1"
+	// featureHouseholdLoginCredentialsV1 covers a login's credentials: the
+	// create and move-profile routes take require_password_change (a
+	// temporary password replaced at the first sign-in) and refuse an email
+	// another account uses with email_in_use.
+	featureHouseholdLoginCredentialsV1 = "household_login_credentials_v1"
 	// featureDeclaredEventChannels is the aggregate name for the events
 	// websocket's declared-channel handshake, reported in detail as
 	// declared_channels on /events/capability.
@@ -163,7 +168,7 @@ func buildBloemCapabilityTokens() []string {
 	}
 	add(playbackFeatures...)
 	add(featureDeclaredEventChannels, "live_tv_access_v1", "organization_activity_v1", "organization_invitation_lifecycle_v1", "organization_invitation_links_v1", "platform_engagement_authoring_v1")
-	add(featureWatchDocumentV1, featureDevicePairingV1, featureHouseholdLoginsV1, featureHouseholdPoolV1, featureHouseholdLoginMovesV1, featureHouseholdLoginCapV1)
+	add(featureWatchDocumentV1, featureDevicePairingV1, featureHouseholdLoginsV1, featureHouseholdPoolV1, featureHouseholdLoginMovesV1, featureHouseholdLoginCapV1, featureHouseholdLoginCredentialsV1)
 	return tokens
 }
 

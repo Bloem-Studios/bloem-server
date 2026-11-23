@@ -3030,6 +3030,10 @@
             "description": "Name of the login's first profile.",
             "type": "string"
           },
+          "require_password_change": {
+            "description": "Make the password temporary: the login must choose a new one at its first sign-in before it can do anything else.",
+            "type": "boolean"
+          },
           "transcode_allowed": {
             "description": "Whether the login may transcode; omitted follows the plan.",
             "type": "boolean"
@@ -3092,6 +3096,10 @@
           "profile_id": {
             "description": "The main account's profile that becomes the login's only profile, with its history, lists, settings and PIN. Not the main account's primary profile.",
             "type": "string"
+          },
+          "require_password_change": {
+            "description": "Make the password temporary: the login must choose a new one at its first sign-in before it can do anything else.",
+            "type": "boolean"
           },
           "transcode_allowed": {
             "description": "Whether the login may transcode; omitted follows the plan.",
@@ -26666,7 +26674,7 @@
                 }
               }
             },
-            "description": "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. household_login_cap_reached: the household already has as many logins as its login cap allows (the message names both numbers). duplicate: the username or email is already in use."
+            "description": "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. household_login_cap_reached: the household already has as many logins as its login cap allows (the message names both numbers). email_in_use: another account, the main account included, already uses the email address. duplicate: the username is already in use."
           },
           "500": {
             "content": {
@@ -26798,7 +26806,7 @@
                 }
               }
             },
-            "description": "household_login_cap_reached: the household already has as many logins as its login cap allows. primary_profile: the main account's primary profile cannot move. restricted_profile: a profile with parental limits (a child profile, library limits, a rating or age limit, requests blocked) cannot have a login of its own, since as its login's main profile it would manage its own limits. household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. profile_conflict: the new login could not take the profile."
+            "description": "household_login_cap_reached: the household already has as many logins as its login cap allows. email_in_use: another account, the main account included, already uses the email address. primary_profile: the main account's primary profile cannot move. restricted_profile: a profile with parental limits (a child profile, library limits, a rating or age limit, requests blocked) cannot have a login of its own, since as its login's main profile it would manage its own limits. household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. profile_conflict: the new login could not take the profile."
           },
           "500": {
             "content": {

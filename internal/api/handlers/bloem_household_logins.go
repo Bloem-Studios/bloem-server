@@ -42,6 +42,10 @@ type BloemHouseholdLoginCreateRequest struct {
 	MaxTranscodes    *int   `json:"max_transcodes,omitempty" doc:"Concurrent transcodes the login may run. 0 is unlimited, so a login without transcodes sends transcode_allowed false instead."`
 	TranscodeAllowed *bool  `json:"transcode_allowed,omitempty" doc:"Whether the login may transcode; omitted follows the plan."`
 	MaxProfiles      int    `json:"max_profiles" doc:"Profiles the login may have; at least 1."`
+	// RequirePasswordChange makes Password temporary (Bloem,
+	// household_login_credentials_v1): the person chooses their own at their
+	// first sign-in, before they can do anything else.
+	RequirePasswordChange bool `json:"require_password_change,omitempty" doc:"Make the password temporary: the login must choose a new one at its first sign-in before it can do anything else."`
 }
 
 // BloemHouseholdLoginView is a login as the account service reads it, with its
@@ -137,11 +141,15 @@ func (h *AdminHandler) createBloemHouseholdLogin(ctx context.Context, mainID int
 	if err := checkBloemHouseholdLoginCap(ctx, tx, mainID); err != nil {
 		return 0, false, err
 	}
+	if err := checkBloemHouseholdLoginEmail(ctx, tx, req.Email); err != nil {
+		return 0, false, err
+	}
 	input := auth.CreateAccountInput{
 		User: models.CreateUserInput{
 			Username: req.Username, Email: req.Email, Password: req.Password, Role: models.RoleUser,
 			AccessGroupID: main.accessGroupID, MaxStreams: &req.MaxStreams, MaxTranscodes: req.MaxTranscodes,
 			TranscodeAllowed: req.TranscodeAllowed, MaxProfiles: &req.MaxProfiles,
+			PasswordChangeRequired: req.RequirePasswordChange,
 		},
 		DefaultProfile: auth.DefaultProfileOptions{Enabled: true, Name: req.ProfileName},
 	}
