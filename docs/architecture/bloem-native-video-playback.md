@@ -184,7 +184,11 @@ checked-mode descriptor advertises `revision_pinned_reads: false`.
 Each open rechecks the current account or API key, login/profile credentials,
 PIN authority, organization membership, library access, source ownership,
 installation generation, encrypted configuration revision and catalog file
-reference. The login-session part of that recheck (`verifyNativeVideoActor`)
+reference. The account credential is the one the auth middleware read: the
+`Authorization` header, or else the `?token=` query that a browser's audio or
+video element carries because it cannot send a header. When that credential is
+valid it decides the request instead of the stream token, as on Silo, and each
+open rechecks it (`nativeVideoCredential`). The login-session part of that recheck (`verifyNativeVideoActor`)
 goes through `SessionRepository.ActiveSessionRole` (Bloem's wrapper in
 `internal/auth/bloem_session.go`), which passes the delegated account to Silo's
 `SessionRepository.ActiveSession`; that binds a token to its session's account
