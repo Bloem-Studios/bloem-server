@@ -1071,7 +1071,7 @@
    "func (h *ProfileHandler) householdProfileLimit(ctx context.Context, userID int)": "5bb2983194d204cf"
   },
   "internal/api/handlers/stream.go": {
-   "func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {": "a6eb3a5129b7a1da",
+   "func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {": "3e508c5092c9af5c",
    "func (h *StreamHandler) SubtitleFonts(ctx context.Context, in SubtitleFontReques": "253f57a38201fe3c",
    "func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {": "cf537e0e29cbb62d",
    "func (h *StreamHandler) loadSidecarSession(ctx context.Context, reference, sessi": "744142c40e8530a5"
@@ -1412,5 +1412,5 @@
    "export function usePlaybackRealtime({": "ff645098cdf104e7"
   }
  },
- "silo": "113c97c1969107acd52eafc89d54fc86f11c27cf"
+ "silo": "7082df5a687c730e8714052050ed474a7108b58e"
 }
