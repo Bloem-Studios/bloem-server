@@ -291,10 +291,11 @@ never reaches another output type or client.
   ladder. Automatic quality lands on the 1080p class's 6 Mbps, which is what a stream
   above the cap becomes.
 - **The cap is a preference.** When the capped request finds no route, as with an HLS
-  delivery that cannot decode the encode the cap forces, the request is planned as it came,
-  so AirPlay is never refused where the device's own output plays. A title with a lower
-  version keeps the capped refusal, so the handler's own lower-version fallback plays that
-  version first.
+  delivery that cannot decode the encode the cap forces, or a server that cannot encode the
+  source at all (transcoding off, no encoder, or a 4K source with 4K transcoding off), the
+  request is planned as it came, so AirPlay is never refused where the device's own output
+  plays. That plan still gets the surround audio below. A title with a lower version keeps
+  the capped refusal, so the handler's own lower-version fallback plays that version first.
 - **Limits.** A source with no bitrate in its metadata counts as above any cap, as for any
   client cap. A viewer's explicit menu rung is honored up to the cap; "original" and plain
   resolutions meet it.
