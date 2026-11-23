@@ -15,10 +15,33 @@ func guardNativePlaybackFiles(files FilePathResolver) FilePathResolver {
 	if files == nil {
 		return nil
 	}
+	// The batched lookup the catalog's file repository offers, which Silo's
+	// paused-timeout sweep looks for on the handler's resolver
+	// (pausedCandidateFiles).
+	if batch, ok := files.(interface {
+		GetByIDs(ctx context.Context, ids []int) ([]*models.MediaFile, error)
+	}); ok {
+		return nativePlaybackFileBatch{nativePlaybackFiles{files}, batch.GetByIDs}
+	}
 	return nativePlaybackFiles{files}
 }
 
 type nativePlaybackFiles struct{ FilePathResolver }
+
+// nativePlaybackFileBatch keeps the inner resolver's batched lookup behind the
+// guard, leaving native storage files out as GetByID refuses them.
+type nativePlaybackFileBatch struct {
+	nativePlaybackFiles
+	getByIDs func(ctx context.Context, ids []int) ([]*models.MediaFile, error)
+}
+
+func (r nativePlaybackFileBatch) GetByIDs(ctx context.Context, ids []int) ([]*models.MediaFile, error) {
+	files, err := r.getByIDs(ctx, ids)
+	if err != nil {
+		return files, err
+	}
+	return filesystemPlaybackCandidates(files), nil
+}
 
 func (r nativePlaybackFiles) GetByID(ctx context.Context, id int) (*models.MediaFile, error) {
 	file, err := r.FilePathResolver.GetByID(ctx, id)
