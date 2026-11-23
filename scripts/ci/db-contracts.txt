@@ -336,6 +336,7 @@
 ./internal/jellycompat TestDurableCompatPlaybackStoreRetireLeavesMovedPlay
 ./internal/jellycompat TestDurableCompatPlaybackStoreRetryAfterFailedStatement
 ./internal/jellycompat TestDurableCompatPlaybackStoreRetireHidesCopyWhenReplayFails
+./internal/jellycompat TestDurablePutNegotiatedReplacesRowStoredWithDashedRouteID
 ./internal/jellycompat TestPseudoUserOwnerAcrossReplicasPostgres
 ./internal/invitations TestLinkInvitationLifecycleDB
 ./internal/invitations TestEmailedInvitationLinkReplacementDB
@@ -938,6 +939,14 @@
 ./internal/plugins TestPluginInstallKeepsOneInstallationPerPluginDB
 ./internal/plugins TestProvisionPackageCommitAndRollbackDB
 ./internal/plugins TestAutoUpdateClearsWithdrawnNoticeDB
+
+# A plugin build stored for another platform is served only for the package it
+# was fetched for, and a fetch that an update overtook stores nothing.
+./internal/plugins TestPlatformArchiveFollowsTheInstalledPackageDB
+
+# A server on another platform fetches its build of an official release the
+# catalog's list no longer names, from the release's descriptor.
+./internal/plugins TestPlatformBuildOfAnEarlierOfficialReleaseDB
 
 # Cleaning up duplicate installations keeps a break-glass account's local
 # credentials and moves a deleted duplicate's marker provider settings.
