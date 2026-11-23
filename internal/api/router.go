@@ -1854,6 +1854,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var adminJobsHandler *handlers.AdminJobsHandler
 	if userRepo != nil {
 		adminHandler = handlers.NewAdminHandler(userRepo, deps.DB, deps.UserStoreProvider)
+		adminHandler.BaseContext = deps.AppContext //nolint:fatcontext // set once on a new handler to the app context
 		wireBloemAdmin(deps, userRepo, adminHandler, profileHandler)
 		adminHandler.SessionsLoader = playbackSessionsLoader
 		adminHandler.DetailSvc = detailSvc
