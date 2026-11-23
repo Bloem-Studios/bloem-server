@@ -55,9 +55,25 @@ func captureNativeVideoRequest(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		input := nativeVideoRequest{authorization: r.Header.Get("Authorization"), profileToken: r.Header.Get("X-Profile-Token"), method: r.Method, path: r.URL.Path, streamToken: r.URL.Query().Get(streamtoken.QueryParam)}
+		input := nativeVideoRequest{authorization: nativeVideoCredential(r), profileToken: r.Header.Get("X-Profile-Token"), method: r.Method, path: r.URL.Path, streamToken: r.URL.Query().Get(streamtoken.QueryParam)}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), nativeVideoRequestKey{}, input)))
 	})
+}
+
+// nativeVideoCredential is the account credential the auth middleware reads:
+// the Authorization header, else the ?token= query a media element's src
+// carries because it cannot send a header. When that credential is valid it
+// decides a stream URL instead of the stream token (as on Silo), so native
+// storage rechecks the same credential, in the header form RevalidateCurrent
+// takes.
+func nativeVideoCredential(r *http.Request) string {
+	if header := r.Header.Get("Authorization"); header != "" {
+		return header
+	}
+	if token := r.URL.Query().Get("token"); token != "" {
+		return "Bearer " + token
+	}
+	return ""
 }
 
 type nativeVideoCredentials interface {

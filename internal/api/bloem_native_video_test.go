@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -189,6 +190,47 @@ func TestNativeVideoReauthorizesBearerWithFreshScopeAndTenant(t *testing.T) {
 		t.Fatal("playback revocation survived")
 	}
 }
+
+// The web player's <audio> and <video> src carries the login token as
+// ?token= beside the stream token, because a media element cannot send an
+// Authorization header. A valid account credential decides a stream URL (as
+// on Silo), so native storage must honor that same query credential and
+// recheck it like a header credential.
+func TestNativeVideoAcceptsQueryLoginTokenOnMediaURL(t *testing.T) {
+	f := newNativeVideoPolicyFixture(t)
+	st, err := streamtoken.Sign(streamtoken.Claims{SessionID: "play-session", UserID: 7, ProfileID: "profile", MediaFileID: 11, MediaPath: f.file.FilePath, PlayMethod: "direct"}, f.secret, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := url.Values{streamtoken.QueryParam: {st}, "token": {strings.TrimPrefix(f.bearer, "Bearer ")}}
+	req := httptest.NewRequest(http.MethodGet, "/api/v2/stream/play-session?"+query.Encode(), nil)
+	ctx := access.SetScope(req.Context(), f.viewer.scope)
+	ctx = middleware.SetProfileID(ctx, "profile")
+	ctx = middleware.SetClaims(ctx, f.claims)
+	ctx = tenancy.WithContext(ctx, f.tenant.tenant)
+	var captured context.Context
+	handler := f.auth.StreamTokenAuth(f.secret)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { captured = r.Context() }))
+	captureNativeVideoRequest(handler).ServeHTTP(httptest.NewRecorder(), req.WithContext(ctx))
+	if captured == nil || middleware.IsStreamTokenAuthorized(captured) {
+		t.Fatal("the login credential, not the stream token, must decide this media URL")
+	}
+	authority, err := nativeVideoAuthority(captured, 11, f.policy)
+	if err != nil {
+		t.Fatalf("query login token refused: %v", err)
+	}
+	actual, err := authority.AuthorizeFile(t.Context(), f.file)
+	if err != nil || actual.ID != 11 {
+		t.Fatalf("catalog: %v %v", actual, err)
+	}
+	if err = authority.AuthorizeSource(t.Context(), actual, f.source); err != nil {
+		t.Fatal(err)
+	}
+	f.login.active = false
+	if _, err = authority.AuthorizeFile(t.Context(), f.file); err == nil {
+		t.Fatal("an ended login session kept native access")
+	}
+}
+
 func TestNativeVideoRejectsChangedBearerAuthority(t *testing.T) {
 	for _, kind := range []string{"login", "account", "tenant", "viewer", "catalog", "source"} {
 		t.Run(kind, func(t *testing.T) {

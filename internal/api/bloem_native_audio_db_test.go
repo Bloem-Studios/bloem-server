@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -390,6 +391,58 @@ func TestNativeAudioPlaybackStartSeekNextTrackResumeDB(t *testing.T) {
 	resumed := f.start(t, fresh, 1, 1.25)
 	if w := f.stream(t, freshStream, resumed, http.MethodGet); w.Code != 206 || !bytes.Equal(w.Body.Bytes(), f.data[2:32]) {
 		t.Fatalf("restart=%d %s", w.Code, w.Body.String())
+	}
+}
+
+// webStream requests the stream the way the web player's audio element does:
+// the plan's stream URL with the login token appended as ?token=, and no
+// Authorization header, which a media element cannot send. The request runs
+// through the router's native capture first; serve then sets what the auth
+// middleware derives from that ?token= credential.
+func (f *nativeAudioAPIFixture) webStream(t *testing.T, h *handlers.StreamHandler, started playback.DecisionResponseV3) *httptest.ResponseRecorder {
+	t.Helper()
+	captured, _ := f.ctx.Value(nativeVideoRequestKey{}).(nativeVideoRequest)
+	target, err := url.Parse("/api/v2" + started.PlaybackPlan.Stream.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := target.Query()
+	query.Set("token", strings.TrimPrefix(captured.authorization, "Bearer "))
+	target.RawQuery = query.Encode()
+	claims := middleware.GetClaims(f.ctx)
+	tenant, _ := tenancy.FromContext(f.ctx)
+	scope, _ := access.GetScope(f.ctx)
+	r := httptest.NewRequest(http.MethodGet, target.String(), nil).WithContext(t.Context())
+	r.Header.Set("Range", "bytes=2-31")
+	w := httptest.NewRecorder()
+	serve := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := tenancy.WithContext(middleware.SetClaims(r.Context(), claims), tenant)
+		ctx = middleware.SetProfileID(access.SetScope(ctx, scope), f.profile)
+		route := chi.NewRouteContext()
+		route.URLParams.Add("session_id", started.SessionID)
+		ctx = context.WithValue(ctx, chi.RouteCtxKey, route)
+		defer func() {
+			if value := recover(); value != nil {
+				if err, ok := value.(error); !ok || !errors.Is(err, http.ErrAbortHandler) {
+					panic(value)
+				}
+			}
+		}()
+		h.HandleStream(w, r.WithContext(ctx))
+	})
+	captureNativeVideoRequest(serve).ServeHTTP(w, r)
+	return w
+}
+
+// The web player plays a native audiobook track from its stream URL with the
+// login token in the query (production 2026-11-23: every web attempt got 503).
+func TestNativeAudioWebPlayerStreamURLDB(t *testing.T) {
+	f := newNativeAudioAPIFixture(t)
+	h, stream, _ := f.handlers(t)
+	started := f.start(t, h, 0, 0)
+	w := f.webStream(t, stream, started)
+	if w.Code != http.StatusPartialContent || w.Header().Get("Content-Type") != "audio/mpeg" || !bytes.Equal(w.Body.Bytes(), f.data[2:32]) {
+		t.Fatalf("web stream=%d %s", w.Code, w.Body.String())
 	}
 }
 
