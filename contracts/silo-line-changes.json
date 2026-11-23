@@ -1060,7 +1060,8 @@
    "func (h *PlaybackHandler) raceCopySafetyV3(fileID int, plan *playback.PlanV3) {": "e66f2ec5673ea8fd",
    "func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr": "5dc1eaff47e14bcc",
    "func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt": "b7eaa4de4ddded5a",
-   "func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.De": "439556aa51960eac"
+   "func decisionResponseFromAttemptV3(record *playback.AttemptRecordV3) playback.De": "439556aa51960eac",
+   "func sessionStartErrorV3(err error) *transportErrorV3 {": "09e93366eea0bec9"
   },
   "internal/api/handlers/plugins.go": {
    "func NewPluginHandler(": "3d12ee0bf0adef61"
