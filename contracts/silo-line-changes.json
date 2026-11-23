@@ -1222,6 +1222,9 @@
   "internal/notifications/interest_repo.go": {
    "func (r *InterestRepository) ListActiveBySeries(ctx context.Context, tx pgx.Tx,": "454b8a1a712d4466"
   },
+  "internal/notifications/push_sender_test.go": {
+   "func TestPushSenderRegistersRelayOnFirstSendWithoutCredential(t *testing.T) {": "ff24e7655fc6fde3"
+  },
   "internal/notifications/relay_credentials.go": {
    "func RotateRelayCredential(ctx context.Context, settings *Settings, client Relay": "3cfac36ab6b8a595"
   },

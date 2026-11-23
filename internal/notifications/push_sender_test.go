@@ -292,6 +292,7 @@ func TestPushSenderRegistersRelayOnFirstSendWithoutCredential(t *testing.T) {
 	sender := newPushSender(nil, nil, nil, NewSettings(store))
 	sender.client = server.Client()
 	sender.developmentRelayURL = server.URL
+	sender.now = func() time.Time { return time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC) } // Bloem: the fixture expires 2026-12-01; a real clock reaches its renewal window
 	device := &PushDevice{
 		APNsEnvironment: APNsEnvironmentSandbox,
 		APNsTopic:       ApplePushTopicSilo,
