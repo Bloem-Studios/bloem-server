@@ -15,7 +15,7 @@ AGENTS.md
 Makefile  # one line: includes Makefile.bloem, which carries every Bloem target, prerequisite and variable
 assets/icon.png
 cmd/playbackfixtures/main.go  # added line only: golden decisions carry Bloem's negotiated_client_features
-cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources; one line after the download preparer's SetSourceGrants wraps its granter so native files get Bloem source grants for core-access transcode nodes (handlers.NativeNodeSources, 2026-11-16); one line starts the admin push workers (api.ConfigureBloemAdminPush)
+cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources; one line after the download preparer's SetSourceGrants wraps its granter so native files get Bloem source grants for core-access transcode nodes (handlers.NativeNodeSources, 2026-11-16); one line starts the admin push workers (api.ConfigureBloemAdminPush); the attachment bitrate backfill is built with scanner.NewBloemAttachmentBitrateBackfiller, which leaves native storage and .strm files to their own scans
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/get_device_login_bound.json  # upstream device approval now includes the Bloem server brand

@@ -9,6 +9,7 @@
    "lines": [
     "\t\t\tapiv2.NewArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair), ipResolver, networkAccess.Registry)",
     "\t\t\tdefer heartbeatWriter.Stop()",
+    "\t\t\ttaskMgr.Register(tasks.NewBackfillAttachmentBitrateTask(deps.DB, scanner.NewAttachmentBitrateBackfiller(deps.FileRepo, scanner.FFprobePathFromFFmpeg(cfg.Playback.FFmpegPath))))",
     "\t\tdefer reconciler.Stop()",
     "\t\tresolver.ReplaceSources(nil)",
     "\taccessGroupStore := access.NewGroupStore(pool)",
