@@ -175,6 +175,41 @@ Stock Silo does not enforce a pool: before it serves a switchable database,
 `silo silo-switching prepare` holds the logins of every pooled household (see
 [Silo switching](#silo-switching) below).
 
+## Login cap
+
+A household's login cap is the most logins its main account may have, counted
+together whether they were made fresh or moved from a profile. The storefront
+sets it beside the household's limits; without one, only the household's places
+limit its logins (`bloem_household_login_caps`, one row per main account;
+feature token `household_login_cap_v1`).
+
+- Creating a login and moving a profile to a login both check the cap in their
+  own transaction (`checkBloemHouseholdLoginCap`). Once the household has as
+  many logins as the cap allows, the request is refused with
+  `409 household_login_cap_reached`, whose message names both numbers, and
+  nothing changes: the profile stays on the main account.
+- The check locks the cap row, so two logins made at once under a cap are
+  counted one after the other. A household without a cap locks nothing.
+- Lowering the cap below the logins a household has leaves every login working
+  and blocks new ones; the view reports `over_cap`. Moving a login back to a
+  profile is never refused, so a household over its cap can always get back
+  under it.
+- A cap of 0 allows no logins.
+
+Under the platform credential:
+
+- `PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap`
+  sets `max_logins` (required, 0 or more). A login (`household_nested`) and an
+  admin account (`household_main_ineligible`) cannot have one.
+- `GET` on the same path answers `max_logins`, `logins` and `over_cap`;
+  `404 household_login_cap_not_found` when there is none.
+- `DELETE` on the same path removes it, and succeeds when there is none.
+
+The cap is account policy: a restore brings it back with its main account, and
+it goes with the main account whichever server deletes it, so stock Silo's
+delete is unaffected while Silo switching is on. Stock Silo makes no logins,
+so it needs no cap.
+
 ## Moving a person
 
 A person can move between a profile of the main account and a login of their

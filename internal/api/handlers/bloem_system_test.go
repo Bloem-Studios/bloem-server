@@ -118,7 +118,7 @@ func TestBloemCapabilitiesExactContract(t *testing.T) {
 		`"direct_stream_resume_v1","header_authenticated_media_v1","authorized_media_origins_v1",` +
 		`"software_video_decode_v1","plan_invalidated_v1","plan_source_duration_v1","declared_event_channels","live_tv_access_v1",` +
 		`"organization_activity_v1","organization_invitation_lifecycle_v1","organization_invitation_links_v1","platform_engagement_authoring_v1",` +
-		`"watch_document_v1","device_pairing_v1","household_logins_v1","household_pool_v1","household_login_moves_v1"]}`
+		`"watch_document_v1","device_pairing_v1","household_logins_v1","household_pool_v1","household_login_moves_v1","household_login_cap_v1"]}`
 	if strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("body = %s, want %s", rec.Body.String(), want)
 	}

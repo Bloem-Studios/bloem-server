@@ -2858,6 +2858,14 @@
       "reason": "Storefront-only request body for setting a household's shared pool on its main account; no native client sets limits."
     },
     {
+      "type": "internal/api/handlers.BloemHouseholdLoginCapRequest",
+      "reason": "Storefront-only request body for setting a household's login cap on its main account; no native client sets limits."
+    },
+    {
+      "type": "internal/api/handlers.BloemHouseholdLoginCapView",
+      "reason": "Storefront-only answer about a household's login cap and its logins now; the phone apps never create logins, and no native client reads the cap."
+    },
+    {
       "type": "internal/api/handlers.BloemHouseholdPoolView",
       "reason": "Storefront-only answer about a household's shared pool and what it uses now; the phone apps see a refusal at the pool as the ordinary stream or transcode limit, and no native client reads the pool."
     },

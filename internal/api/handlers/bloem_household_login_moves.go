@@ -104,6 +104,9 @@ func (h *AdminHandler) moveBloemProfileToNewLogin(ctx context.Context, mainID in
 	if err != nil {
 		return 0, false, err
 	}
+	if err := checkBloemHouseholdLoginCap(ctx, tx, mainID); err != nil {
+		return 0, false, err
+	}
 	// A login's only profile is its primary, which manages the login's
 	// profiles, its own included, and which Silo holds to no library limit;
 	// so a profile with parental limits stays a profile.

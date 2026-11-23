@@ -1248,6 +1248,9 @@ QUERY /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement	non-media
 TRACE /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement	non-media
 POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/apply	non-media
 POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/dry-run	non-media
+DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap	non-media
+GET /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap	non-media
+PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap	non-media
 DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool	non-media
 GET /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool	non-media
 PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool	non-media

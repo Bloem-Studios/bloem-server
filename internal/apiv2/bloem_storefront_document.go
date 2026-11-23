@@ -188,6 +188,7 @@ func registerBloemStorefrontDocument(reg *Registry) {
 	registerBloemPlatformAccountResourceDocument(reg)
 	registerBloemHouseholdLoginsDocument(reg)
 	registerBloemHouseholdPoolDocument(reg)
+	registerBloemHouseholdLoginCapDocument(reg)
 	registerBloemHouseholdLoginMovesDocument(reg)
 	registerBloemAnnouncementDocument(reg)
 	registerBloemPushRelayDocument(reg)
@@ -431,7 +432,7 @@ func registerBloemHouseholdLoginsDocument(reg *Registry) {
 	create := bloemStorefrontOp(reg, "POST", "/accounts/{account_id}/logins", "createBloemPlatformHouseholdLogin", "Create a household login for an account.", http.StatusCreated, map[int]string{
 		400: "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password of 8 to 72 bytes are required, and max_streams and max_profiles must be at least 1.",
 		404: "not_found: no such main account.",
-		409: "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use.",
+		409: "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. household_login_cap_reached: the household already has as many logins as its login cap allows (the message names both numbers). duplicate: the username or email is already in use.",
 		501: "capability_unsupported: this server's account store cannot create accounts and profiles transactionally.",
 		503: "service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked.",
 	})
@@ -474,6 +475,38 @@ func registerBloemHouseholdPoolDocument(reg *Registry) {
 		400: "bad_request: an invalid account ID.",
 	})
 	del.Description += about + "Removing a pool that is not there succeeds, so a repeated request is safe."
+	registerBloemChiDocument[BloemPlatformAccountInput, struct{}](reg, del)
+}
+
+type BloemHouseholdLoginCapPutInput struct {
+	AccountID string `path:"account_id" doc:"The main account's ID."`
+	Body      handlers.BloemHouseholdLoginCapRequest
+}
+type BloemHouseholdLoginCapOutput struct {
+	Body handlers.BloemHouseholdLoginCapView
+}
+
+// registerBloemHouseholdLoginCapDocument documents a household's login cap
+// (feature token household_login_cap_v1).
+func registerBloemHouseholdLoginCapDocument(reg *Registry) {
+	const about = "A household's login cap is the most household logins its main account may have, counting logins made fresh and those moved from a profile. Once the household has that many, creating a login or moving a profile to a login is refused with 409 household_login_cap_reached. Lowering the cap below the logins a household has leaves them working and blocks new ones (over_cap). Moving a login back to a profile is never refused. Without a cap only the household's places limit its logins. "
+	put := bloemStorefrontOp(reg, "PUT", "/accounts/{account_id}/household-login-cap", "setBloemPlatformHouseholdLoginCap", "Set a household's login cap on its main account.", http.StatusOK, map[int]string{
+		400: "bad_request: an invalid account ID, a body that is not valid JSON or exceeds 4 KiB, or max_logins missing or negative.",
+		404: "not_found: no such account.",
+		409: "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins.",
+	})
+	put.Description += about + "Setting it again replaces the value; 0 allows no logins."
+	registerBloemChiDocument[BloemHouseholdLoginCapPutInput, BloemHouseholdLoginCapOutput](reg, put)
+	get := bloemStorefrontOp(reg, "GET", "/accounts/{account_id}/household-login-cap", "getBloemPlatformHouseholdLoginCap", "Read a household's login cap and its logins now.", http.StatusOK, map[int]string{
+		400: "bad_request: an invalid account ID.",
+		404: "not_found: no such account. household_login_cap_not_found: the account has no login cap.",
+	})
+	get.Description += about
+	registerBloemChiDocument[BloemPlatformAccountInput, BloemHouseholdLoginCapOutput](reg, get)
+	del := bloemStorefrontOp(reg, "DELETE", "/accounts/{account_id}/household-login-cap", "deleteBloemPlatformHouseholdLoginCap", "Remove a household's login cap.", http.StatusNoContent, map[int]string{
+		400: "bad_request: an invalid account ID.",
+	})
+	del.Description += about + "Removing a cap that is not there succeeds, so a repeated request is safe."
 	registerBloemChiDocument[BloemPlatformAccountInput, struct{}](reg, del)
 }
 

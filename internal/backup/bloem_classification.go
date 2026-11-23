@@ -58,11 +58,12 @@ func init() {
 // access records (bloem_support_access) go with the audit events that name
 // them; each names its login session, which a restore leaves out
 // (auth_sessions), so a restored access can no longer be used. A household's
-// shared pool (bloem_household_pools) is account policy and comes back with
-// its main account.
+// shared pool (bloem_household_pools) and login cap
+// (bloem_household_login_caps) are account policy and come back with its main
+// account.
 var bloemRestoredDataTables = strings.Fields(`
 	organizations organization_memberships organization_entitlements resource_owners platform_security
-	bloem_household_pools
+	bloem_household_pools bloem_household_login_caps
 	entitlement_bundles entitlement_bundle_versions entitlement_bundle_members
 	entitlement_templates entitlement_template_revisions entitlement_policy_cohorts entitlement_policy_cohort_revisions
 	bloem_support_access admin_audit_events entitlement_audit_events

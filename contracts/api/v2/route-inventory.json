@@ -38,7 +38,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v2 handler, the retained /api/v1 probes and tombstone, and the routes mounted beside them.",
-      "route_count": 535
+      "route_count": 538
     },
     {
       "id": "api_v2",
@@ -60,8 +60,8 @@
     }
   ],
   "totals": {
-    "routes": 721,
-    "conditional_routes": 216,
+    "routes": 724,
+    "conditional_routes": 219,
     "streaming_routes": 27,
     "websocket_routes": 1
   },
@@ -8681,6 +8681,99 @@
       "success_statuses": null,
       "error_codes": null,
       "source_file": "internal/api/router_bloem.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "DELETE",
+      "path": "/api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap",
+      "route_group": "/api/bloem/v2",
+      "handler": "(*internal/api/handlers.AdminHandler).HandleBloemPlatformHouseholdLoginCapDelete",
+      "handler_expr": "accounts.HandleBloemPlatformHouseholdLoginCapDelete",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 13,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [
+        "accounts != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap",
+      "route_group": "/api/bloem/v2",
+      "handler": "(*internal/api/handlers.AdminHandler).HandleBloemPlatformHouseholdLoginCapGet",
+      "handler_expr": "accounts.HandleBloemPlatformHouseholdLoginCapGet",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 13,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [
+        "accounts != nil"
+      ],
+      "conditional": true,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
+      "path": "/api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap",
+      "route_group": "/api/bloem/v2",
+      "handler": "(*internal/api/handlers.AdminHandler).HandleBloemPlatformHouseholdLoginCapPut",
+      "handler_expr": "accounts.HandleBloemPlatformHouseholdLoginCapPut",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 13,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [
+        "accounts != nil"
+      ],
+      "conditional": true,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
     },
     {
       "listener": "api",

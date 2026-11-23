@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 974 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 304 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 307 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher
@@ -129,6 +129,9 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement` | `getBloemDirectAccountPolicy` | Read authoritative account and profile entitlement policies. |
 | `POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/apply` | `applyBloemAccountEntitlement` | Apply a pinned entitlement template. |
 | `POST /api/bloem/v2/admin/platform/accounts/{account_id}/entitlement/dry-run` | `previewBloemAccountEntitlement` | Preview a pinned entitlement template. |
+| `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap` | `deleteBloemPlatformHouseholdLoginCap` | Remove a household's login cap. |
+| `GET /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap` | `getBloemPlatformHouseholdLoginCap` | Read a household's login cap and its logins now. |
+| `PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap` | `setBloemPlatformHouseholdLoginCap` | Set a household's login cap on its main account. |
 | `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool` | `deleteBloemPlatformHouseholdPool` | Remove a household's shared pool. |
 | `GET /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool` | `getBloemPlatformHouseholdPool` | Read a household's shared pool and what it uses now. |
 | `PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool` | `setBloemPlatformHouseholdPool` | Set a household's shared pool on its main account. |

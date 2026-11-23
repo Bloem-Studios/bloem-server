@@ -134,6 +134,9 @@ func (h *AdminHandler) createBloemHouseholdLogin(ctx context.Context, mainID int
 	if err != nil {
 		return 0, false, err
 	}
+	if err := checkBloemHouseholdLoginCap(ctx, tx, mainID); err != nil {
+		return 0, false, err
+	}
 	input := auth.CreateAccountInput{
 		User: models.CreateUserInput{
 			Username: req.Username, Email: req.Email, Password: req.Password, Role: models.RoleUser,

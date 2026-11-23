@@ -14,7 +14,7 @@ For the plain-language picture, read the [Organizations and administration expla
 - [OPA tenant authorization](../../architecture/opa-tenant-authorization.md)
 - [Lifecycle safety](../../architecture/bloem-lifecycle-safety.md)
 
-## Operations (121)
+## Operations (124)
 
 | Method and path | Summary |
 | --- | --- |
@@ -68,6 +68,9 @@ For the plain-language picture, read the [Organizations and administration expla
 | [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/auth-sessions/{session_id}`](#delete-apibloemv2adminplatformaccountsaccount_idauth-sessionssession_id) | End one of an account's sign-in sessions. |
 | [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/devices`](#get-apibloemv2adminplatformaccountsaccount_iddevices) | List an account's devices. |
 | [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/devices/{device_id}`](#delete-apibloemv2adminplatformaccountsaccount_iddevicesdevice_id) | Remove an account's device. |
+| [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap`](#get-apibloemv2adminplatformaccountsaccount_idhousehold-login-cap) | Read a household's login cap and its logins now. |
+| [`PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap`](#put-apibloemv2adminplatformaccountsaccount_idhousehold-login-cap) | Set a household's login cap on its main account. |
+| [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap`](#delete-apibloemv2adminplatformaccountsaccount_idhousehold-login-cap) | Remove a household's login cap. |
 | [`GET /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`](#get-apibloemv2adminplatformaccountsaccount_idhousehold-pool) | Read a household's shared pool and what it uses now. |
 | [`PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`](#put-apibloemv2adminplatformaccountsaccount_idhousehold-pool) | Set a household's shared pool on its main account. |
 | [`DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`](#delete-apibloemv2adminplatformaccountsaccount_idhousehold-pool) | Remove a household's shared pool. |
@@ -1313,6 +1316,77 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 
+### `GET /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap`
+
+Read a household's login cap and its logins now.
+
+Operation ID: `getBloemPlatformHouseholdLoginCap`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household's login cap is the most household logins its main account may have, counting logins made fresh and those moved from a profile. Once the household has that many, creating a login or moving a profile to a login is refused with 409 household_login_cap_reached. Lowering the cap below the logins a household has leaves them working and blocks new ones (over_cap). Moving a login back to a profile is never refused. Without a cap only the household's places limit its logins.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `account_id` | path | string | yes | The account ID. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemHouseholdLoginCapView`](#bloemhouseholdlogincapview) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an invalid account ID. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such account. household_login_cap_not_found: the account has no login cap. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `PUT /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap`
+
+Set a household's login cap on its main account.
+
+Operation ID: `setBloemPlatformHouseholdLoginCap`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household's login cap is the most household logins its main account may have, counting logins made fresh and those moved from a profile. Once the household has that many, creating a login or moving a profile to a login is refused with 409 household_login_cap_reached. Lowering the cap below the logins a household has leaves them working and blocks new ones (over_cap). Moving a login back to a profile is never refused. Without a cap only the household's places limit its logins. Setting it again replaces the value; 0 allows no logins.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `account_id` | path | string | yes | The main account's ID. |
+
+Request body (required, `application/json`): [`BloemHouseholdLoginCapRequest`](#bloemhouseholdlogincaprequest).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemHouseholdLoginCapView`](#bloemhouseholdlogincapview) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an invalid account ID, a body that is not valid JSON or exceeds 4 KiB, or max_logins missing or negative. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such account. |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `DELETE /api/bloem/v2/admin/platform/accounts/{account_id}/household-login-cap`
+
+Remove a household's login cap.
+
+Operation ID: `deleteBloemPlatformHouseholdLoginCap`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. A household's login cap is the most household logins its main account may have, counting logins made fresh and those moved from a profile. Once the household has that many, creating a login or moving a profile to a login is refused with 409 household_login_cap_reached. Lowering the cap below the logins a household has leaves them working and blocks new ones (over_cap). Moving a login back to a profile is never refused. Without a cap only the household's places limit its logins. Removing a cap that is not there succeeds, so a repeated request is safe.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `account_id` | path | string | yes | The account ID. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an invalid account ID. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
 ### `GET /api/bloem/v2/admin/platform/accounts/{account_id}/household-pool`
 
 Read a household's shared pool and what it uses now.
@@ -1429,7 +1503,7 @@ Request body (required, `application/json`): [`BloemHouseholdLoginCreateRequest`
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. |
-| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. household_login_cap_reached: the household already has as many logins as its login cap allows (the message names both numbers). duplicate: the username or email is already in use. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot create accounts and profiles transactionally. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked. |
@@ -1456,7 +1530,7 @@ Request body (required, `application/json`): [`BloemHouseholdLoginMoveProfileReq
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. profile_not_found: the main account has no such profile. |
-| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | primary_profile: the main account's primary profile cannot move. restricted_profile: a profile with parental limits (a child profile, library limits, a rating or age limit, requests blocked) cannot have a login of its own, since as its login's main profile it would manage its own limits. household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. profile_conflict: the new login could not take the profile. |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | household_login_cap_reached: the household already has as many logins as its login cap allows. primary_profile: the main account's primary profile cannot move. restricted_profile: a profile with parental limits (a child profile, library limits, a rating or age limit, requests blocked) cannot have a login of its own, since as its login's main profile it would manage its own limits. household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. duplicate: the username or email is already in use. profile_conflict: the new login could not take the profile. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 501 | [`BloemNativeError`](README.md#bloemnativeerror) | capability_unsupported: this server's account store cannot create accounts and profiles transactionally. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | service_unavailable: the server is too busy to hash the password; retry after Retry-After. tenant_unavailable: the credential could not be checked. |
@@ -3388,6 +3462,21 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `playback_allowed` | boolean | yes |  |
 | `requests_allowed` | boolean | yes |  |
 | `transcode_allowed` | boolean | yes |  |
+
+### BloemHouseholdLoginCapRequest
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `max_logins` | integer or null (int64) | yes | The most household logins the main account may have, made fresh or from a profile; 0 allows none. |
+
+### BloemHouseholdLoginCapView
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `account_id` | integer (int64) | yes | The main account. |
+| `logins` | integer (int64) | yes | The main account's household logins now. |
+| `max_logins` | integer (int64) | yes | The most household logins the main account may have; 0 allows none. |
+| `over_cap` | boolean | yes | The household has more logins than its cap: they keep working, and no new one can be made until it is back under. |
 
 ### BloemHouseholdLoginCreateRequest
 
