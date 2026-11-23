@@ -208,12 +208,13 @@ func TestNativeVideoAcceptsQueryLoginTokenOnMediaURL(t *testing.T) {
 	ctx = middleware.SetProfileID(ctx, "profile")
 	ctx = middleware.SetClaims(ctx, f.claims)
 	ctx = tenancy.WithContext(ctx, f.tenant.tenant)
-	var captured context.Context
-	handler := f.auth.StreamTokenAuth(f.secret)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { captured = r.Context() }))
+	var served *http.Request
+	handler := f.auth.StreamTokenAuth(f.secret)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { served = r }))
 	captureNativeVideoRequest(handler).ServeHTTP(httptest.NewRecorder(), req.WithContext(ctx))
-	if captured == nil || middleware.IsStreamTokenAuthorized(captured) {
+	if served == nil || middleware.IsStreamTokenAuthorized(served.Context()) {
 		t.Fatal("the login credential, not the stream token, must decide this media URL")
 	}
+	captured := served.Context()
 	authority, err := nativeVideoAuthority(captured, 11, f.policy)
 	if err != nil {
 		t.Fatalf("query login token refused: %v", err)
