@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"time"
 
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/remote"
@@ -41,15 +40,6 @@ func remoteSessionInfo(session *playback.Session) remote.SessionInfo {
 		TenantID:  session.TenantID,
 		Connected: session.HasRealtimeConnection,
 	}
-}
-
-// remoteCommandDeadline is how long a remote command may wait for an ack
-// before the server-side fallback fires.
-func (h *PlaybackHandler) remoteCommandDeadline() time.Duration {
-	if h != nil && h.RemoteCommandDeadline > 0 {
-		return h.RemoteCommandDeadline
-	}
-	return playback.CopySafetyInvalidationDeadline
 }
 
 // remotePlanOverridesV3 returns the overrides an admin replan pinned on a
