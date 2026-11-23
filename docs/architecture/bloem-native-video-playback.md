@@ -115,6 +115,8 @@ Jellyfin apps download only the original, as with Silo.
 - Series from storage.
 - Switching to another file mid-play needs a fresh start.
 - Without Redis, a playback session cannot be picked up by another server.
+- The paused-playback timeout in the playback settings: a stored movie left
+  paused keeps its session until the app stops it or the session expires.
 
 `.strm` files, whose video lives at a web address, play through this same pipeline,
 in Jellyfin apps too; see [how `.strm` files play](bloem-strm.md).
@@ -288,6 +290,16 @@ Silo's `PrepareFile` gains a retry that `prepareSourceFile` lacks. Silo's
 restart on CPU decoding after a QSV or VAAPI filter-graph failure reads the
 session's own stderr, which stays empty for a native input, so native playback
 does not take that restart.
+
+The playback handler's file resolver is wrapped by `guardNativePlaybackFiles`
+(`internal/api/handlers/bloem_native_playback_guard.go`): `GetByID` refuses a
+native storage or `.strm` file, and `GetByIDs`, kept when the inner resolver has
+it, leaves those files out. Silo's paused timeout
+(`playback.paused_session_timeout_minutes`) reads each candidate's file through
+that resolver to exempt audio-only files and skips a file it cannot read, so it
+never ends a native input's session; the player's stop or the idle expiry does.
+`TestPausedCandidateFilesBatchesThroughNativeGuard` pins the one batched lookup
+per page.
 
 Session bindings compare their source snapshot and delegation by instant.
 Stores normalize their times to UTC without a monotonic reading, because a

@@ -49,7 +49,7 @@ Silo's `main` when the bot starts work on it.
 The daily GitHub job cannot resolve a conflict or adapt Bloem's code, so it is switched
 off ([Bloem CI](../bloem/ci.md#how-silos-work-comes-in)).
 
-On 23 November 2026 Bloem's `main` had all of Silo's work through `0e8470bca`, merged in `a7ff3a898`, and production ran `41898c148`: Silo through `3b2b32168`, deployed on
+On 23 November 2026 Bloem's `main` had all of Silo's work through `dde5ed21c`, merged in `bb4640ba3`, and production ran `41898c148`: Silo through `3b2b32168`, deployed on
 23 November 2026.
 
 ## Deploying a batch
