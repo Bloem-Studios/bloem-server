@@ -130,9 +130,9 @@ inert playback hooks; no admin, household or device route is mounted.
   deadline, the 60 s `expires_at`, or the session ending first); `rejected_unsupported`
   and `failed` are terminal at creation. Terminal rows never transition again; a late
   duplicate result is ignored. Only the session a command was sent to can ack or
-  answer it. The 8 s deadline is `playback.CopySafetyInvalidationDeadline` unless
-  `PlaybackHandler.RemoteCommandDeadline` overrides it; the 60 s expiry is
-  `remote.DefaultConfig().CommandTTL`.
+  answer it. The 60 s expiry is `remote.DefaultConfig().CommandTTL`. The 8 s socket
+  deadline has no constant yet: it belongs to the command sender, which comes with the
+  native routes, and reaches the app as the command's `deadline_ms`.
 - **Session commands are never queued.** No live control socket on the target session
   means `409 session_not_connected`; the row is written as `failed`. Queueing belongs
   to the device rail only.
