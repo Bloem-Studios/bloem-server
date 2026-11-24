@@ -75,12 +75,22 @@ type BloemTranscodeCausesOutput struct {
 const bloemStreamInsightsPlatform = "Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. "
 
 func bloemStreamInsightsOp(reg *Registry, path, id, summary, description string, validation string) huma.Operation {
-	op := bloemChiDocumentOp(reg, "GET", path, id, "stream-insights", summary, "bloemPlatformContext", http.StatusOK)
-	op.Description = bloemStreamInsightsPlatform + description
+	return bloemStreamInsightsScopedOp(reg, path, id, summary, bloemStreamInsightsPlatform+description, validation, false)
+}
+
+const bloemStreamInsightsOrganization = "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. "
+
+func bloemStreamInsightsScopedOp(reg *Registry, path, id, summary, description string, validation string, organization bool) huma.Operation {
+	security, forbidden := "bloemPlatformContext", "insufficient_platform_authority: the context is not a Platform context."
+	if organization {
+		security, forbidden = "bloemOrganizationContext", "insufficient_organization_authority: the context is not this organization's administrative context."
+	}
+	op := bloemChiDocumentOp(reg, "GET", path, id, "stream-insights", summary, security, http.StatusOK)
+	op.Description = description
 	op.Responses = map[string]*huma.Response{}
 	errors := map[int]string{
 		401: "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current.",
-		403: "insufficient_platform_authority: the context is not a Platform context.",
+		403: forbidden,
 		503: "stream_insights_unavailable: the database or the live session list is unavailable.",
 	}
 	if validation != "" {
@@ -123,4 +133,20 @@ func registerBloemStreamInsightsDocument(reg *Registry) {
 	registerBloemChiDocument[BloemStatsDaysInput, BloemTranscodeCausesOutput](reg, bloemStreamInsightsOp(reg,
 		"/admin/platform/stats/transcode-causes", "listBloemTranscodeCauses", "Count why video was transcoded.",
 		"Video transcodes per client and adaptation reason, from the stream records.", "days must be between 1 and 90."))
+
+	org := func(path, id, summary, description, validation string) huma.Operation {
+		return bloemStreamInsightsScopedOp(reg, path, id, summary, bloemStreamInsightsOrganization+description, validation, true)
+	}
+	registerBloemChiDocument[struct{}, BloemLimitsUsageOutput](reg, org("/admin/organization/limits/usage", "getBloemOrganizationLimitsUsage",
+		"Show each live member's use of their limits.", "As the Platform route, for the organization's members.", ""))
+	registerBloemChiDocument[BloemLimitRefusalsInput, BloemLimitRefusalsOutput](reg, org("/admin/organization/limits/refusals", "listBloemOrganizationLimitRefusals",
+		"List the members' refusals at a limit.", "Newest first, 100 a page.", "days must be between 1 and 90, or the cursor is invalid."))
+	registerBloemChiDocument[BloemStatsDaysInput, BloemTopPeopleOutput](reg, org("/admin/organization/stats/top-people", "listBloemOrganizationTopPeople",
+		"Rank members by watch time.", "The 50 members who watched most.", "days must be between 1 and 90."))
+	registerBloemChiDocument[BloemPlayHeatmapInput, BloemPlayHeatmapOutput](reg, org("/admin/organization/stats/heatmap", "getBloemOrganizationPlayHeatmap",
+		"Count the members' plays by weekday and hour.", "Seven rows, Sunday first, of 24 counts.", "days must be between 1 and 90, or tz is not an IANA time zone."))
+	registerBloemChiDocument[BloemStatsDaysInput, BloemClientStatsOutput](reg, org("/admin/organization/stats/clients", "listBloemOrganizationClientStats",
+		"Count the members' plays per client.", "Plays per client name and platform, and how many transcoded video.", "days must be between 1 and 90."))
+	registerBloemChiDocument[BloemStatsDaysInput, BloemTranscodeCausesOutput](reg, org("/admin/organization/stats/transcode-causes", "listBloemOrganizationTranscodeCauses",
+		"Count why the members' video was transcoded.", "Video transcodes per client and adaptation reason.", "days must be between 1 and 90."))
 }

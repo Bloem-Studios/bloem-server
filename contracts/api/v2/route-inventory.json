@@ -38,7 +38,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v2 handler, the retained /api/v1 probes and tombstone, and the routes mounted beside them.",
-      "route_count": 550
+      "route_count": 556
     },
     {
       "id": "api_v2",
@@ -60,8 +60,8 @@
     }
   ],
   "totals": {
-    "routes": 736,
-    "conditional_routes": 229,
+    "routes": 742,
+    "conditional_routes": 235,
     "streaming_routes": 27,
     "websocket_routes": 1
   },
@@ -5279,6 +5279,66 @@
     {
       "listener": "api",
       "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v2/admin/organization/limits/refusals",
+      "route_group": "/api/bloem/v2/admin",
+      "handler": "h.organization(h.handleRefusals)",
+      "handler_expr": "h.organization(h.handleRefusals)",
+      "handler_kind": "expression",
+      "handler_resolved": false,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "surfaces.StreamInsights.Available()"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/handlers/bloem_org_stream_limits.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v2/admin/organization/limits/usage",
+      "route_group": "/api/bloem/v2/admin",
+      "handler": "h.organization(h.handleUsage)",
+      "handler_expr": "h.organization(h.handleUsage)",
+      "handler_kind": "expression",
+      "handler_resolved": false,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "surfaces.StreamInsights.Available()"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/handlers/bloem_org_stream_limits.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
       "method": "POST",
       "path": "/api/bloem/v2/admin/organization/live/ticket",
       "route_group": "/api/bloem/v2/admin",
@@ -6529,6 +6589,126 @@
       "success_statuses": null,
       "error_codes": null,
       "source_file": "internal/api/router_bloem.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v2/admin/organization/stats/clients",
+      "route_group": "/api/bloem/v2/admin",
+      "handler": "h.organization(h.handleClients)",
+      "handler_expr": "h.organization(h.handleClients)",
+      "handler_kind": "expression",
+      "handler_resolved": false,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "surfaces.StreamInsights.Available()"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/handlers/bloem_org_stream_limits.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v2/admin/organization/stats/heatmap",
+      "route_group": "/api/bloem/v2/admin",
+      "handler": "h.organization(h.handleHeatmap)",
+      "handler_expr": "h.organization(h.handleHeatmap)",
+      "handler_kind": "expression",
+      "handler_resolved": false,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "surfaces.StreamInsights.Available()"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/handlers/bloem_org_stream_limits.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v2/admin/organization/stats/top-people",
+      "route_group": "/api/bloem/v2/admin",
+      "handler": "h.organization(h.handleTopPeople)",
+      "handler_expr": "h.organization(h.handleTopPeople)",
+      "handler_kind": "expression",
+      "handler_resolved": false,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "surfaces.StreamInsights.Available()"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/handlers/bloem_org_stream_limits.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v2/admin/organization/stats/transcode-causes",
+      "route_group": "/api/bloem/v2/admin",
+      "handler": "h.organization(h.handleTranscodeCauses)",
+      "handler_expr": "h.organization(h.handleTranscodeCauses)",
+      "handler_kind": "expression",
+      "handler_resolved": false,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "surfaces.StreamInsights.Available()"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "unknown",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/handlers/bloem_org_stream_limits.go"
     },
     {
       "listener": "api",

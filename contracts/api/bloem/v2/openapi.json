@@ -17951,6 +17951,155 @@
         ]
       }
     },
+    "/api/bloem/v2/admin/organization/limits/refusals": {
+      "get": {
+        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Newest first, 100 a page.",
+        "operationId": "listBloemOrganizationLimitRefusals",
+        "parameters": [
+          {
+            "description": "How many days back (default 7).",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "description": "How many days back (default 7).",
+              "format": "int64",
+              "maximum": 90,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "next_cursor from the previous page.",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "description": "next_cursor from the previous page.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemLimitRefusals"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not this organization's administrative context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: days must be between 1 and 90, or the cursor is invalid."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "List the members' refusals at a limit.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/limits/usage": {
+      "get": {
+        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. As the Platform route, for the organization's members.",
+        "operationId": "getBloemOrganizationLimitsUsage",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemLimitsUsage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not this organization's administrative context."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Show each live member's use of their limits.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
     "/api/bloem/v2/admin/organization/live/ticket": {
       "post": {
         "description": "Organization-scoped administrative context, as for the organization's other routes. A platform-scoped context is refused (403 insufficient_organization_authority). A context opened under break-glass support access is accepted. The context is revalidated on every request here and, for the life of the socket, every 15 seconds. The ticket binds the socket to the one organization the context names and carries the context's claims, never the context itself. It is single use and valid for 30 seconds; fetch a new one for every connection. The route takes no body (an empty body, {} or null). Mint at most 30 a minute per account. The response is Cache-Control: no-store. Advertised publicly by organization_live_v1 in feature_tokens.",
@@ -24352,6 +24501,344 @@
         "summary": "Read a sanitized organization policy decision explanation.",
         "tags": [
           "administration"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/stats/clients": {
+      "get": {
+        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Plays per client name and platform, and how many transcoded video.",
+        "operationId": "listBloemOrganizationClientStats",
+        "parameters": [
+          {
+            "description": "How many days back (default 30; 7 for refusals).",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "description": "How many days back (default 30; 7 for refusals).",
+              "format": "int64",
+              "maximum": 90,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemClientStats"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not this organization's administrative context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: days must be between 1 and 90."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Count the members' plays per client.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/stats/heatmap": {
+      "get": {
+        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Seven rows, Sunday first, of 24 counts.",
+        "operationId": "getBloemOrganizationPlayHeatmap",
+        "parameters": [
+          {
+            "description": "How many days back (default 30).",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "description": "How many days back (default 30).",
+              "format": "int64",
+              "maximum": 90,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "IANA time zone the weekday and hour are read in (default UTC).",
+            "explode": false,
+            "in": "query",
+            "name": "tz",
+            "schema": {
+              "description": "IANA time zone the weekday and hour are read in (default UTC).",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPlayHeatmap"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not this organization's administrative context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: days must be between 1 and 90, or tz is not an IANA time zone."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Count the members' plays by weekday and hour.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/stats/top-people": {
+      "get": {
+        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. The 50 members who watched most.",
+        "operationId": "listBloemOrganizationTopPeople",
+        "parameters": [
+          {
+            "description": "How many days back (default 30; 7 for refusals).",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "description": "How many days back (default 30; 7 for refusals).",
+              "format": "int64",
+              "maximum": 90,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemTopPeople"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not this organization's administrative context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: days must be between 1 and 90."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Rank members by watch time.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/organization/stats/transcode-causes": {
+      "get": {
+        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Video transcodes per client and adaptation reason.",
+        "operationId": "listBloemOrganizationTranscodeCauses",
+        "parameters": [
+          {
+            "description": "How many days back (default 30; 7 for refusals).",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "description": "How many days back (default 30; 7 for refusals).",
+              "format": "int64",
+              "maximum": 90,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemTranscodeCauses"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_organization_authority: the context is not this organization's administrative context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: days must be between 1 and 90."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Count why the members' video was transcoded.",
+        "tags": [
+          "stream-insights"
         ]
       }
     },

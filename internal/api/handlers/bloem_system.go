@@ -28,6 +28,7 @@ type BloemSystemHandler struct {
 	organizationSupport        bool
 	organizationLive           bool
 	streamInsights             bool
+	orgStreamLimits            bool
 	bookRequests               bool
 	ebookRequests              bool
 	bookRequestConnectionAdmin bool
@@ -85,6 +86,12 @@ func (h *BloemSystemHandler) SetOrganizationSupportAvailable(available bool) {
 // which streams, people or activity entries changed.
 func (h *BloemSystemHandler) SetOrganizationLiveAvailable(available bool) {
 	h.organizationLive = available
+}
+
+// SetOrgStreamLimitsAvailable advertises admin_org_stream_limits_v1 while the
+// organization limits and stats routes are mounted.
+func (h *BloemSystemHandler) SetOrgStreamLimitsAvailable(available bool) {
+	h.orgStreamLimits = available
 }
 
 // SetStreamInsightsAvailable advertises admin_stream_insights_v1 while the
@@ -249,6 +256,9 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	}
 	if h.streamInsights {
 		featureTokens = append(featureTokens, StreamInsightsCapabilityToken)
+	}
+	if h.orgStreamLimits {
+		featureTokens = append(featureTokens, OrgStreamLimitsCapabilityToken)
 	}
 	if h.adminPushReady != nil && h.adminPushReady(request.Context()) {
 		// The admin apps show their push settings only on a server that says so.

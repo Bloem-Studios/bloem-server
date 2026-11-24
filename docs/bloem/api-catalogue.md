@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 974 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 319 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 325 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher
@@ -66,6 +66,8 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v2/admin/organization/library-locations` | `createBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
 | `GET /api/bloem/v2/admin/organization/library-locations/{library_id}` | `getBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
 | `PUT /api/bloem/v2/admin/organization/library-locations/{library_id}` | `replaceBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
+| `GET /api/bloem/v2/admin/organization/limits/refusals` | `listBloemOrganizationLimitRefusals` | List the members' refusals at a limit. |
+| `GET /api/bloem/v2/admin/organization/limits/usage` | `getBloemOrganizationLimitsUsage` | Show each live member's use of their limits. |
 | `POST /api/bloem/v2/admin/organization/live/ticket` | `createBloemOrganizationLiveTicket` | Mint a single-use ticket for the organization live socket. |
 | `GET /api/bloem/v2/admin/organization/native-storage/artifacts` | `listArtifactsBloemOrganizationNativeStorage` | List automatically verified catalog releases and any optional manual artifacts. |
 | `GET /api/bloem/v2/admin/organization/native-storage/capabilities` | `getCapabilitiesBloemOrganizationNativeStorage` | Read composition-dependent flags; backend verification remains false. |
@@ -109,6 +111,10 @@ security declaration and the wire reference before sending credentials or mutati
 | `DELETE /api/bloem/v2/admin/organization/people/{account_id}/sessions/{session_id}` | `revokeBloemOrganizationPersonSession` | Sign a member out of one session. |
 | `GET /api/bloem/v2/admin/organization/policy-decisions` | `listBloemOrganizationPolicyDecisions` | Page sanitized organization policy decision explanations. |
 | `GET /api/bloem/v2/admin/organization/policy-decisions/{id}` | `getBloemOrganizationPolicyDecision` | Read a sanitized organization policy decision explanation. |
+| `GET /api/bloem/v2/admin/organization/stats/clients` | `listBloemOrganizationClientStats` | Count the members' plays per client. |
+| `GET /api/bloem/v2/admin/organization/stats/heatmap` | `getBloemOrganizationPlayHeatmap` | Count the members' plays by weekday and hour. |
+| `GET /api/bloem/v2/admin/organization/stats/top-people` | `listBloemOrganizationTopPeople` | Rank members by watch time. |
+| `GET /api/bloem/v2/admin/organization/stats/transcode-causes` | `listBloemOrganizationTranscodeCauses` | Count why the members' video was transcoded. |
 | `GET /api/bloem/v2/admin/organization/streams` | `listBloemOrganizationStreams` | List the organization's live streams. |
 | `POST /api/bloem/v2/admin/organization/streams/{session_id}/message` | `messageBloemOrganizationStream` | Show a message on one of the organization's streams. |
 | `POST /api/bloem/v2/admin/organization/streams/{session_id}/stop` | `stopBloemOrganizationStream` | Stop one of the organization's streams. |

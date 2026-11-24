@@ -245,7 +245,9 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 			mountBloemAdminBookRequests(r, surfaces.BookRequests, system)
 			if surfaces.StreamInsights.Available() {
 				surfaces.StreamInsights.MountPlatform(r)
+				surfaces.StreamInsights.MountOrganization(r)
 				system.SetStreamInsightsAvailable(true)
+				system.SetOrgStreamLimitsAvailable(true)
 			}
 			mountBloemNativeStorageManagement(r, surfaces.NativeStorage)
 			if entitlementHandler != nil {
