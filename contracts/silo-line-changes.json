@@ -1088,7 +1088,7 @@
    "func scopedRecoveryDB(t *testing.T) *pgxpool.Pool {": "0d8774140f674c18"
   },
   "internal/apiv2/artwork.go": {
-   "func (reg *Registry) serveArtwork(w http.ResponseWriter, r *http.Request) {": "368c65b8608ee772"
+   "func (reg *Registry) serveArtwork(w http.ResponseWriter, r *http.Request) {": "6fbebbd2b50fb435"
   },
   "internal/apiv2/gates.go": {
    "func (d *denialWriter) problem() *Problem {": "e031aa27600af402",
@@ -1407,5 +1407,5 @@
    "export function usePlaybackRealtime({": "a0af0f190ac407d1"
   }
  },
- "silo": "c81518c862968463bce9fce72a34baa510146d32"
+ "silo": "704dffbb20a607e9eab12395a78d1e1d775fe925"
 }
