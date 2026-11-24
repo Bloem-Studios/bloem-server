@@ -179,6 +179,8 @@ var bloemProfileMoveTables = map[string]profileMoveRule{
 	"playback_v3_attempts":                  moveKeep("the old account's playback attempts"),
 	"playback_route_events":                 moveKeep("the old account's playback routing log"),
 	"livetv_sessions":                       moveKeep("the old account's live TV sessions"),
+	"bloem_stream_records":                  moveKeep("the old account's stream insights log"),
+	"bloem_limit_refusals":                  moveKeep("the old account's refusals at a stream or transcode limit"),
 	"watch_together_rooms":                  moveColumns(moveKeep("watch-together rooms, which end on their own"), "host_user_id", "host_profile_id"),
 	"watch_together_room_creation_receipts": moveColumns(moveKeep("watch-together receipts"), "host_user_id", "host_profile_id"),
 	"watch_together_suggestions":            moveColumns(moveKeep("suggestions in a watch-together room"), "suggester_user_id", "suggester_profile_id"),
