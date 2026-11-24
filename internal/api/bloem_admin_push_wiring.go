@@ -55,6 +55,9 @@ func ConfigureBloemAdminPush(deps *Dependencies, workers bool) {
 	if deps == nil {
 		return
 	}
+	// Stream insights sends its limit alerts through admin push, and runs
+	// on every process with a database (docs/architecture/bloem-stream-insights.md).
+	configureBloemStreamInsights(deps)
 	push := deps.Notifications.BloemAdminPush()
 	if push == nil {
 		return

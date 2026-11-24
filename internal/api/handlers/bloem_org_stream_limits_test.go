@@ -20,7 +20,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
-type orgInsightsSessions struct{ byOrg map[uuid.UUID][]AdminPlaybackSessionView }
+type orgInsightsSessions struct {
+	byOrg map[uuid.UUID][]AdminPlaybackSessionView
+}
 
 func (s orgInsightsSessions) ReadAdminPlaybackSessions(_ context.Context, q PlaybackSessionsQuery, after string, _ int) ([]AdminPlaybackSessionView, error) {
 	if after != "" {
@@ -73,7 +75,9 @@ func TestOrganizationStreamLimitsSeeOnlyTheirMembers(t *testing.T) {
 		orgB: {{SessionID: "si-test-b", UserID: 9312, Username: "org-b-member", EffectivePlayMethod: "direct"}},
 	}}
 	h := NewBloemStreamInsightsHandler(BloemStreamInsightsConfig{Store: bloeminsights.NewStore(pool), Sessions: sessions,
-		Limits: func(context.Context, int) (playback.SessionLimits, error) { return playback.SessionLimits{MaxStreams: 1}, nil }})
+		Limits: func(context.Context, int) (playback.SessionLimits, error) {
+			return playback.SessionLimits{MaxStreams: 1}, nil
+		}})
 	membership := uuid.New()
 	claims := auth.AdminContextClaims{AccountID: 9313, AccountIncarnationID: uuid.New(), Scope: auth.AdminScopeOrganization, OrganizationID: orgA, MembershipID: membership}
 	tenant := tenancy.Context{OrganizationID: orgA, MembershipID: membership, AccountID: 9313}

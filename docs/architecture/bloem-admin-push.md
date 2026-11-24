@@ -20,6 +20,8 @@ stable keys, used in payloads, switches and analytics.
 | `admin.backup_failed` | the latest backup run failed or was interrupted (read within six hours of finishing) | admins | backups | none |
 | `admin.node_offline` | an enabled node has been unhealthy for two minutes | admins | nodes | none |
 | `admin.plugin_failed` | an enabled plugin's resident process reached its failure budget | admins | the plugin | none |
+| `admin.stream_limit_reached` | someone was refused a stream at their own, household or organization limit (at most once per person an hour) | admins, and the person's organization admins | limits | none |
+| `admin.transcode_limit_reached` | someone was refused a transcode at a limit, the same way | admins, and the person's organization admins | limits | none |
 | `admin.server_down`, `admin.server_up` | produced by the apps' own checks, never by the server | the device owner | that server | none |
 
 The two reachability kinds are listed so a device's switch for them is stored on the server, but
@@ -30,6 +32,9 @@ server's state.
 queued send runs, and again on every content read. A request notice reaches only admins who share an
 organization with the requester, which is the same bound Bloem puts on administrator authority over
 requests. The other kinds describe the deployment, so every admin hears them.
+
+An organization's admin (an active membership whose role is `admin`) may register a device too, and may
+switch on only the two limit kinds, for their own organization's members ([stream insights](bloem-stream-insights.md)).
 
 ## Path of one notification
 
@@ -62,6 +67,8 @@ Routes are under `/api/bloem/v2/admin/push/` and declared in the native OpenAPI 
   display token.
 - `PATCH devices/{device_id}/kinds` switches kinds for one of the account's own devices.
 - `DELETE devices/{device_id}` removes one of the account's own devices.
+- `PUT devices/{device_id}/quiet-hours` sets a quiet window (`start`, `end`, `time_zone`, `allow_kinds`), and
+  `DELETE` clears it. During the window the server sends the device only the allowed kinds and drops the others.
 - `POST devices/{device_id}/retire` removes a device on its display token alone, for an app that has
   signed out.
 - `GET content/{delivery_id}` returns title, body, lock-screen text, the page and item a tap opens, the
@@ -165,7 +172,8 @@ treated as a plain Silo server by the apps. `admin_widget_wakes_v1` is advertise
 accepts the widget report and sends wakes. `admin_widget_health_v1` is advertised with both, and says the server
 also accepts and wakes the `health` channel. `admin_live_activities_v1` is advertised with `admin_push_v1` only while
 the operator has turned on `bloem.notifications.admin_live_activities_enabled` (off by default), and says the server
-keeps Live Activities current. Without it the apps update their activities themselves while open, as before, and
+keeps Live Activities current. `admin_push_quiet_hours_v1` is advertised with `admin_push_v1` and says the server
+keeps quiet hours. Without it the apps update their activities themselves while open, as before, and
 the Live Activity routes answer 503 to a registration.
 
 ## Seams
