@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 974 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 307 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 309 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher
@@ -264,6 +264,8 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v2/admin/push/devices/{device_id}/live-activities` | `registerBloemAdminLiveActivity` | Register a scan or backup Live Activity the app runs. |
 | `DELETE /api/bloem/v2/admin/push/devices/{device_id}/live-activities/{activity_id}` | `deleteBloemAdminLiveActivity` | Forget a Live Activity that ended. |
 | `PUT /api/bloem/v2/admin/push/devices/{device_id}/live-activity-start` | `setBloemAdminLiveActivityStart` | Store or clear the device's push-to-start token. |
+| `DELETE /api/bloem/v2/admin/push/devices/{device_id}/quiet-hours` | `clearBloemAdminPushQuietHours` | Clear one device's quiet hours. |
+| `PUT /api/bloem/v2/admin/push/devices/{device_id}/quiet-hours` | `setBloemAdminPushQuietHours` | Set one device's quiet hours. |
 | `POST /api/bloem/v2/admin/push/devices/{device_id}/retire` | `retireBloemAdminPushDevice` | Stop pushes to a device using its display token. |
 | `PUT /api/bloem/v2/admin/push/devices/{device_id}/widgets` | `setBloemAdminPushWidgets` | Report the widgets the app has placed. |
 | `GET /api/bloem/v2/admin/search/mirror` | `getBloemSearchMirrorStatus` | Read the search mirror's status. |

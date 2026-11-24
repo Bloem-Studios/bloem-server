@@ -15,6 +15,8 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/Silo-Server/silo-server/internal/secret"
+
+	"github.com/google/uuid"
 )
 
 // adminPushLease is how long a claimed attempt stays out of other workers'
@@ -98,6 +100,15 @@ const adminLoginLive = `(d.login_session_id IS NULL OR EXISTS (
 
 // adminAccountLive is the admin-only rule: an enabled account with the admin role.
 const adminAccountLive = `EXISTS (SELECT 1 FROM users u WHERE u.id = d.user_id AND u.enabled AND u.role = 'admin')`
+
+// adminOrgAdminLive is true while the device's account is an enabled, active
+// admin of some organization; such a device is only ever sent the
+// organization admin kinds, for that organization (recipientDevices).
+const adminOrgAdminLive = `EXISTS (SELECT 1 FROM organization_memberships m JOIN users u ON u.id = m.account_id
+	WHERE m.account_id = d.user_id AND m.status = 'active' AND m.legacy_role = 'admin' AND u.enabled)`
+
+// adminStandingLive is a platform admin or an organization's admin.
+const adminStandingLive = `(` + adminAccountLive + ` OR ` + adminOrgAdminLive + `)`
 
 func scanAdminDevice(row pgx.Row) (*AdminPushDevice, error) {
 	var d AdminPushDevice
@@ -283,7 +294,7 @@ func (s *adminPushStore) retireByDisplayToken(ctx context.Context, tokenHash, se
 // whether its account is still an enabled admin.
 func (s *adminPushStore) deviceByDisplayToken(ctx context.Context, tokenHash string) (*AdminPushDevice, bool, error) {
 	var admin bool
-	row := s.pool.QueryRow(ctx, `SELECT `+adminDeviceColumns+`, `+adminAccountLive+` FROM bloem_admin_push_devices d WHERE d.display_token_hash = $1`, tokenHash)
+	row := s.pool.QueryRow(ctx, `SELECT `+adminDeviceColumns+`, `+adminStandingLive+` FROM bloem_admin_push_devices d WHERE d.display_token_hash = $1`, tokenHash)
 	var d AdminPushDevice
 	err := row.Scan(&d.ID, &d.UserID, &d.InstallationID, &d.Platform, &d.APNsEnvironment, &d.APNsTopic,
 		&d.TokenCiphertext, &d.TokenHash, &d.ServerDeviceID, &d.DisabledKinds, &d.LoginSessionID, &d.Enabled,
@@ -302,7 +313,7 @@ func (s *adminPushStore) deviceByDisplayToken(ctx context.Context, tokenHash str
 func (s *adminPushStore) deviceByID(ctx context.Context, id string) (*AdminPushDevice, bool, error) {
 	var d AdminPushDevice
 	var live bool
-	err := s.pool.QueryRow(ctx, `SELECT `+adminDeviceColumns+`, (`+adminAccountLive+` AND `+adminLoginLive+`) FROM bloem_admin_push_devices d WHERE d.id = $1`, id).
+	err := s.pool.QueryRow(ctx, `SELECT `+adminDeviceColumns+`, (`+adminStandingLive+` AND `+adminLoginLive+`) FROM bloem_admin_push_devices d WHERE d.id = $1`, id).
 		Scan(&d.ID, &d.UserID, &d.InstallationID, &d.Platform, &d.APNsEnvironment, &d.APNsTopic,
 			&d.TokenCiphertext, &d.TokenHash, &d.ServerDeviceID, &d.DisabledKinds, &d.LoginSessionID, &d.Enabled,
 			&d.CreatedAt, &d.UpdatedAt, &d.WidgetsPlaced, &d.WidgetChannels, &live)
@@ -315,20 +326,31 @@ func (s *adminPushStore) deviceByID(ctx context.Context, id string) (*AdminPushD
 	return &d, live, nil
 }
 
-// isAdminAccount reports whether the account is currently an enabled admin.
-func (s *adminPushStore) isAdminAccount(ctx context.Context, userID int) (bool, error) {
-	var ok bool
-	err := s.pool.QueryRow(ctx, `SELECT COALESCE(enabled, false) AND role = 'admin' FROM users WHERE id = $1`, userID).Scan(&ok)
+// pushStanding reports whether the account is currently an enabled platform
+// admin, and whether it is an enabled, active admin of an organization.
+func (s *adminPushStore) pushStanding(ctx context.Context, userID int) (platform, orgAdmin bool, err error) {
+	err = s.pool.QueryRow(ctx, `SELECT COALESCE(u.enabled, false) AND u.role = 'admin',
+		COALESCE(u.enabled, false) AND EXISTS (SELECT 1 FROM organization_memberships m
+			WHERE m.account_id = u.id AND m.status = 'active' AND m.legacy_role = 'admin')
+		FROM users u WHERE u.id = $1`, userID).Scan(&platform, &orgAdmin)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+		return false, false, nil
 	}
-	return ok, err
+	return platform, orgAdmin, err
 }
 
 // adminAccountIDs resolves an audience to enabled admin accounts.
-func (s *adminPushStore) adminAccountIDs(ctx context.Context, audience AdminPushAudience, requesterUserID int) ([]int, error) {
+func (s *adminPushStore) adminAccountIDs(ctx context.Context, audience AdminPushAudience, requesterUserID int, organizationID uuid.UUID) ([]int, error) {
 	query := `SELECT u.id FROM users u WHERE u.enabled AND u.role = 'admin' ORDER BY u.id`
 	args := []any{}
+	if audience == AudienceLimitWatchers && organizationID != uuid.Nil {
+		query = `SELECT u.id FROM users u WHERE u.enabled AND u.role = 'admin'
+			UNION
+			SELECT m.account_id FROM organization_memberships m JOIN users u ON u.id = m.account_id
+			WHERE m.organization_id = $1 AND m.status = 'active' AND m.legacy_role = 'admin' AND u.enabled
+			ORDER BY 1`
+		args = append(args, organizationID)
+	}
 	if audience == AudienceRequestAdmins && requesterUserID > 0 {
 		// Administrator authority is bounded to the requester's organization
 		// (requests.SetTenantScopeResolver), so only those admins can act.
@@ -356,26 +378,66 @@ func (s *adminPushStore) adminAccountIDs(ctx context.Context, audience AdminPush
 	return ids, rows.Err()
 }
 
-// recipientDevices lists the enabled devices of userID that should get kind:
-// the account is still an admin, the login is live, and the device has not
-// switched the kind off.
-func (s *adminPushStore) recipientDevices(ctx context.Context, userID int, kind string) ([]AdminPushDevice, error) {
-	rows, err := s.pool.Query(ctx, `SELECT `+adminDeviceColumns+` FROM bloem_admin_push_devices d
-		WHERE d.user_id = $1 AND d.enabled AND NOT ($2 = ANY(d.disabled_kinds)) AND `+adminAccountLive+` AND `+adminLoginLive+`
-		ORDER BY d.id`, userID, kind)
+// recipientDevices lists the enabled devices of userID that should get kind
+// at now: the account is still a platform admin (or, for an organization
+// admin kind, an active admin of organizationID), the login is live, the
+// device has not switched the kind off, and its quiet hours do not hold the
+// kind. A held kind is dropped, not queued for later.
+func (s *adminPushStore) recipientDevices(ctx context.Context, userID int, kind AdminPushKind, organizationID uuid.UUID, now time.Time) ([]AdminPushDevice, error) {
+	rows, err := s.pool.Query(ctx, `SELECT `+adminDeviceColumns+`,
+			d.quiet_start_minute, d.quiet_end_minute, d.quiet_time_zone, d.quiet_allow_kinds
+		FROM bloem_admin_push_devices d
+		WHERE d.user_id = $1 AND d.enabled AND NOT ($2 = ANY(d.disabled_kinds)) AND `+adminLoginLive+` AND (`+adminAccountLive+`
+			OR ($3 AND EXISTS (SELECT 1 FROM organization_memberships m JOIN users u ON u.id = m.account_id
+				WHERE m.account_id = d.user_id AND m.organization_id = $4 AND m.status = 'active'
+					AND m.legacy_role = 'admin' AND u.enabled)))
+		ORDER BY d.id`, userID, kind.ID, kind.OrganizationAdmins && organizationID != uuid.Nil, organizationID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []AdminPushDevice
 	for rows.Next() {
-		d, err := scanAdminDevice(rows)
-		if err != nil {
+		var d AdminPushDevice
+		var start, end *int16
+		var zone *string
+		var allow []string
+		if err := rows.Scan(&d.ID, &d.UserID, &d.InstallationID, &d.Platform, &d.APNsEnvironment, &d.APNsTopic,
+			&d.TokenCiphertext, &d.TokenHash, &d.ServerDeviceID, &d.DisabledKinds, &d.LoginSessionID, &d.Enabled,
+			&d.CreatedAt, &d.UpdatedAt, &d.WidgetsPlaced, &d.WidgetChannels, &start, &end, &zone, &allow); err != nil {
 			return nil, err
 		}
-		out = append(out, *d)
+		if start != nil && end != nil && zone != nil {
+			location, err := time.LoadLocation(*zone)
+			if err == nil {
+				window := quietWindow{startMinute: int(*start), endMinute: int(*end), timeZone: *zone, location: location, allowKinds: allow}
+				if window.holds(now, kind.ID) {
+					continue
+				}
+			}
+		}
+		out = append(out, d)
 	}
 	return out, rows.Err()
+}
+
+// setQuietHours stores (or, with nil, clears) a device's quiet window. It
+// reports false when no such device belongs to userID.
+func (s *adminPushStore) setQuietHours(ctx context.Context, userID int, deviceID string, window *quietWindow) (bool, error) {
+	var start, end any
+	var zone any
+	allow := []string{}
+	if window != nil {
+		start, end, zone = window.startMinute, window.endMinute, window.timeZone
+		allow = nonNil(window.allowKinds)
+	}
+	tag, err := s.pool.Exec(ctx, `UPDATE bloem_admin_push_devices SET quiet_start_minute = $3, quiet_end_minute = $4,
+		quiet_time_zone = $5, quiet_allow_kinds = $6, updated_at = now() WHERE server_device_id = $1 AND user_id = $2`,
+		deviceID, userID, start, end, zone, allow)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
 }
 
 // insertDelivery stores the delivery and one pending attempt per device in one

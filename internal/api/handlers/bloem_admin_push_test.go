@@ -34,6 +34,8 @@ type adminPushStub struct {
 	widgets     widgetsCall
 	content     *notifications.AdminPushContent
 	enabled     bool
+	quiet       *notifications.AdminPushQuietHours
+	quietDevice string
 }
 
 func (s *adminPushStub) Available() bool              { return true }
@@ -59,6 +61,20 @@ func (s *adminPushStub) Retire(_ context.Context, token, deviceID string) error 
 	s.token, s.retired = token, deviceID
 	return s.err
 }
+func (s *adminPushStub) SetQuietHours(_ context.Context, userID int, deviceID string, q notifications.AdminPushQuietHours) (notifications.AdminPushQuietHours, error) {
+	s.registerFor = append(s.registerFor, userID)
+	s.quiet = &q
+	s.quietDevice = deviceID
+	return q, s.err
+}
+
+func (s *adminPushStub) ClearQuietHours(_ context.Context, userID int, deviceID string) error {
+	s.registerFor = append(s.registerFor, userID)
+	s.quiet = nil
+	s.quietDevice = deviceID
+	return s.err
+}
+
 func (s *adminPushStub) Content(_ context.Context, token, deliveryID string) (*notifications.AdminPushContent, error) {
 	s.token, s.deliveryID = token, deliveryID
 	if s.err != nil {
@@ -82,6 +98,8 @@ func adminPushRouter(h *BloemAdminPushHandler, claims *auth.Claims) http.Handler
 		r.Patch("/devices/{device_id}/kinds", h.HandleSetKinds)
 		r.Put("/devices/{device_id}/widgets", h.HandleSetWidgets)
 		r.Delete("/devices/{device_id}", h.HandleDelete)
+		r.Put("/devices/{device_id}/quiet-hours", h.HandleSetQuietHours)
+		r.Delete("/devices/{device_id}/quiet-hours", h.HandleClearQuietHours)
 	})
 	r.Post("/devices/{device_id}/retire", h.HandleRetire)
 	r.Get("/content/{delivery_id}", h.HandleContent)
@@ -114,16 +132,18 @@ func TestAdminPushRoutesAcceptOnlyARealAdministratorSession(t *testing.T) {
 		status int
 		code   string
 	}{
-		"no claims":       {nil, 401, "unauthorized"},
-		"viewer":          {admin(func(c *auth.Claims) { c.Role = "user" }), 403, "admin_required"},
+		"no claims": {nil, 401, "unauthorized"},
+		// An organization's admin has the user role; the service decides
+		// from the account's standing whether it may register.
+		"viewer":          {admin(func(c *auth.Claims) { c.Role = "user" }), 200, ""},
 		"api key":         {admin(func(c *auth.Claims) { c.TokenType = auth.TokenTypeAPIKey; c.SessionID = "" }), 403, "account_session_required"},
 		"no login":        {admin(func(c *auth.Claims) { c.SessionID = "" }), 403, "account_session_required"},
 		"impersonated":    {admin(func(c *auth.Claims) { c.ImpersonatorUserID = &impersonator }), 403, "account_session_required"},
 		"administrator":   {admin(nil), 200, ""},
 		"refresh token":   {admin(func(c *auth.Claims) { c.TokenType = auth.TokenTypeRefresh }), 403, "account_session_required"},
 		"zero user":       {admin(func(c *auth.Claims) { c.UserID = 0 }), 401, "unauthorized"},
-		"disabled role":   {admin(func(c *auth.Claims) { c.Role = "" }), 403, "admin_required"},
-		"support context": {admin(func(c *auth.Claims) { c.Role = "support" }), 403, "admin_required"},
+		"disabled role":   {admin(func(c *auth.Claims) { c.Role = "" }), 200, ""},
+		"support context": {admin(func(c *auth.Claims) { c.Role = "support" }), 200, ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			stub := &adminPushStub{}
@@ -169,12 +189,13 @@ func TestAdminPushRegisterPassesTheLoginSessionAndReturnsTheDisplayToken(t *test
 func TestAdminPushMapsServiceErrorsToStatuses(t *testing.T) {
 	claims := &auth.Claims{UserID: 7, Role: "admin", SessionID: "sess-1", TokenType: auth.TokenTypeAccess}
 	for err, want := range map[error]int{
-		notifications.ErrAdminPushUnavailable:  503,
-		notifications.ErrAdminPushInvalid:      422,
-		notifications.ErrAdminPushNotFound:     404,
-		notifications.ErrAdminPushUnauthorized: 401,
-		notifications.ErrAdminPushForbidden:    403,
-		errors.New("database down"):            503,
+		notifications.ErrAdminPushUnavailable:      503,
+		notifications.ErrAdminPushInvalid:          422,
+		notifications.ErrAdminPushNotFound:         404,
+		notifications.ErrAdminPushUnauthorized:     401,
+		notifications.ErrAdminPushForbidden:        403,
+		notifications.ErrAdminPushKindNotAvailable: 422,
+		errors.New("database down"):                503,
 	} {
 		h := adminPushRouter(NewBloemAdminPushHandlerWith(&adminPushStub{err: err}), claims)
 		if rec := serveAdminPush(h, "POST", "/devices", registerBody, ""); rec.Code != want {
@@ -198,10 +219,14 @@ func TestAdminPushKindsAndDeleteAreForTheSignedInAdministratorOnly(t *testing.T)
 	if rec := serveAdminPush(h, "DELETE", "/devices/dev1", "", ""); rec.Code != 204 {
 		t.Fatalf("delete: %d", rec.Code)
 	}
-	viewer := adminPushRouter(NewBloemAdminPushHandlerWith(stub), &auth.Claims{UserID: 8, Role: "user", SessionID: "s", TokenType: auth.TokenTypeAccess})
+	// A user-role account reaches the service, which judges its standing
+	// (an organization's admin may switch the limit kinds); the service's
+	// refusal is a 403.
+	refused := &adminPushStub{err: notifications.ErrAdminPushForbidden}
+	viewer := adminPushRouter(NewBloemAdminPushHandlerWith(refused), &auth.Claims{UserID: 8, Role: "user", SessionID: "s", TokenType: auth.TokenTypeAccess})
 	for _, req := range [][3]string{{"PATCH", "/devices/dev1/kinds", `{"kinds":{}}`}, {"DELETE", "/devices/dev1", ""}} {
-		if rec := serveAdminPush(viewer, req[0], req[1], req[2], ""); rec.Code != 403 {
-			t.Fatalf("%s as a viewer: %d", req[0], rec.Code)
+		if rec := serveAdminPush(viewer, req[0], req[1], req[2], ""); rec.Code != 403 || !strings.Contains(rec.Body.String(), `"admin_required"`) {
+			t.Fatalf("%s as a viewer: %d %s", req[0], rec.Code, rec.Body.String())
 		}
 	}
 }
@@ -373,4 +398,60 @@ func adminPushStructField(t *testing.T, typ reflect.Type, name string) reflect.S
 		t.Fatalf("%s has no field %s", typ, name)
 	}
 	return field
+}
+
+// Widget reports stay for the platform's administrators: an organization
+// admin's phone gets limit alerts and nothing a widget shows.
+func TestAdminPushWidgetsNeedTheAdminRole(t *testing.T) {
+	claims := &auth.Claims{UserID: 7, Role: "user", SessionID: "sess-1", TokenType: auth.TokenTypeAccess}
+	stub := &adminPushStub{}
+	rec := serveAdminPush(adminPushRouter(NewBloemAdminPushHandlerWith(stub), claims), "PUT", "/devices/dev1/widgets", `{"widgets_placed":false,"channels":[]}`, "")
+	if rec.Code != 403 || !strings.Contains(rec.Body.String(), `"admin_required"`) {
+		t.Fatalf("widgets for a user-role account = %d %s, want 403 admin_required", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminPushKindNotAvailableHasItsOwnCode(t *testing.T) {
+	claims := &auth.Claims{UserID: 7, Role: "user", SessionID: "sess-1", TokenType: auth.TokenTypeAccess}
+	h := adminPushRouter(NewBloemAdminPushHandlerWith(&adminPushStub{err: notifications.ErrAdminPushKindNotAvailable}), claims)
+	rec := serveAdminPush(h, "PATCH", "/devices/dev1/kinds", `{"kinds":{"admin.scan_failed":true}}`, "")
+	if rec.Code != 422 || !strings.Contains(rec.Body.String(), `"kind_not_available"`) {
+		t.Fatalf("status %d body %s, want 422 kind_not_available", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminPushQuietHoursPassWhatTheAppSaid(t *testing.T) {
+	claims := &auth.Claims{UserID: 7, Role: "admin", SessionID: "sess-1", TokenType: auth.TokenTypeAccess}
+	stub := &adminPushStub{}
+	h := adminPushRouter(NewBloemAdminPushHandlerWith(stub), claims)
+	rec := serveAdminPush(h, "PUT", "/devices/dev1/quiet-hours", `{"start":"22:00","end":"07:00","time_zone":"Europe/Amsterdam","allow_kinds":["admin.node_offline"]}`, "")
+	if rec.Code != 200 || stub.quiet == nil || stub.quietDevice != "dev1" {
+		t.Fatalf("set = %d %s, stub = %+v", rec.Code, rec.Body.String(), stub.quiet)
+	}
+	if q := *stub.quiet; q.Start != "22:00" || q.End != "07:00" || q.TimeZone != "Europe/Amsterdam" || len(q.AllowKinds) != 1 {
+		t.Fatalf("passed %+v", q)
+	}
+	if !strings.Contains(rec.Body.String(), `"time_zone":"Europe/Amsterdam"`) || rec.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("answer = %s", rec.Body.String())
+	}
+	if rec := serveAdminPush(h, "PUT", "/devices/dev1/quiet-hours", `{"start":"22:00","bogus":1}`, ""); rec.Code != 400 {
+		t.Fatalf("unknown field = %d, want 400", rec.Code)
+	}
+	if rec := serveAdminPush(h, "DELETE", "/devices/dev1/quiet-hours", "", ""); rec.Code != 204 {
+		t.Fatalf("clear = %d %s, want 204", rec.Code, rec.Body.String())
+	}
+	if stub.quiet != nil {
+		t.Fatal("the quiet hours were not cleared")
+	}
+}
+
+func TestQuietHoursAreAdvertisedWithPush(t *testing.T) {
+	stub := &adminPushStub{enabled: true}
+	system := NewBloemSystemHandler(nil)
+	system.SetAdminPushReadiness(NewBloemAdminPushHandlerWith(stub).Ready)
+	rec := httptest.NewRecorder()
+	system.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, "/capabilities", nil))
+	if !strings.Contains(rec.Body.String(), `"`+notifications.AdminPushQuietHoursCapabilityToken+`"`) {
+		t.Fatalf("capabilities = %s, want %s", rec.Body.String(), notifications.AdminPushQuietHoursCapabilityToken)
+	}
 }

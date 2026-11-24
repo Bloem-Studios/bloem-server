@@ -171,6 +171,10 @@ const (
 	// AudienceRequestAdmins is the admins whose authority covers the request:
 	// those in the requester's organization.
 	AudienceRequestAdmins
+	// AudienceLimitWatchers is every platform admin, plus the active admins
+	// of the organization named by the notice's OrganizationID: someone was
+	// refused at a limit, and their organization's admins watch its limits.
+	AudienceLimitWatchers
 )
 
 // AdminPushNotice is one event ready to become a delivery.
@@ -190,7 +194,10 @@ type AdminPushNotice struct {
 	Audience AdminPushAudience
 	// RequesterUserID scopes AudienceRequestAdmins.
 	RequesterUserID int
-	TTL             time.Duration
+	// OrganizationID scopes AudienceLimitWatchers: the refused person's
+	// organization, or uuid.Nil for none (platform admins only).
+	OrganizationID uuid.UUID
+	TTL            time.Duration
 }
 
 const (
@@ -335,7 +342,7 @@ func StreamLimitNotice(userID int, person string, max int, scope string, at time
 	return AdminPushNotice{
 		Kind: AdminKindStreamLimitReached, SubjectType: "person", SubjectID: strconv.Itoa(userID), DedupeKey: limitNoticeHour(at),
 		Title: "Stream limit reached", Body: fmt.Sprintf("%s was turned away: all %d streams in use.", limitPerson(person), max),
-		Audience: AudiencePlatformAdmins,
+		Audience: AudienceLimitWatchers,
 	}
 }
 
@@ -351,6 +358,6 @@ func TranscodeLimitNotice(userID int, person string, max int, scope string, at t
 		Kind: AdminKindTranscodeLimitReached, SubjectType: "person", SubjectID: strconv.Itoa(userID), DedupeKey: limitNoticeHour(at),
 		Title:    "Transcode limit reached",
 		Body:     fmt.Sprintf("%s couldn't start a transcode: the %s limit of %d is in use.", limitPerson(person), word, max),
-		Audience: AudiencePlatformAdmins,
+		Audience: AudienceLimitWatchers,
 	}
 }

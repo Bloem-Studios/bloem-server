@@ -243,7 +243,7 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	if h.adminPushReady != nil && h.adminPushReady(request.Context()) {
 		// The admin apps show their push settings only on a server that says so.
 		featureTokens = append(featureTokens, notifications.AdminPushCapabilityToken, notifications.AdminWidgetWakesCapabilityToken,
-			notifications.AdminWidgetHealthCapabilityToken)
+			notifications.AdminWidgetHealthCapabilityToken, notifications.AdminPushQuietHoursCapabilityToken)
 		if h.adminLiveReady != nil && h.adminLiveReady(request.Context()) {
 			featureTokens = append(featureTokens, notifications.AdminLiveActivitiesCapabilityToken)
 		}

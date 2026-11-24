@@ -6,6 +6,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+
+	"github.com/Silo-Server/silo-server/internal/notifications"
 )
 
 // The routes the Bloem admin apps use for push notifications. Handlers are in
@@ -39,6 +41,15 @@ type BloemAdminPushKindsOutput struct {
 	Body handlers.BloemAdminPushKinds
 }
 
+type BloemAdminPushQuietHoursInput struct {
+	DeviceID string `path:"device_id" minLength:"1" doc:"The device_id a registration returned."`
+	Body     handlers.BloemAdminPushQuietHoursRequest
+}
+
+type BloemAdminPushQuietHoursOutput struct {
+	Body notifications.AdminPushQuietHours
+}
+
 type BloemAdminPushWidgetsInput struct {
 	DeviceID string `path:"device_id" minLength:"1" doc:"The device_id a registration returned."`
 	Body     handlers.BloemAdminPushWidgetsRequest
@@ -67,7 +78,7 @@ func registerBloemAdminPushDocument(reg *Registry) {
 	bloemDocumentErrors[BloemNativeError](reg, &register, map[int]string{
 		400: "invalid_request: the body is not valid JSON for this route, or exceeds 32 KiB.",
 		401: "unauthorized: no valid access token.",
-		403: "admin_required: the account is not an enabled administrator; account_session_required: the token is an API key, impersonation or administrative-context token.",
+		403: "admin_required: the account is neither an enabled administrator nor an active admin of an organization; account_session_required: the token is an API key, impersonation or administrative-context token.",
 		422: "invalid_registration: a field is missing or malformed, the topic is not com.bloemstudios.admin, or a kind id is unknown.",
 		503: unavailable,
 	})
@@ -83,7 +94,7 @@ func registerBloemAdminPushDocument(reg *Registry) {
 		401: "unauthorized: no valid access token.",
 		403: "admin_required or account_session_required, as for registration.",
 		404: "not_found: no device with this id belongs to the account.",
-		422: "invalid_registration: a kind id is unknown.",
+		422: "invalid_registration: a kind id is unknown; kind_not_available: an organization's admin switched on a kind other than the two limit kinds.",
 		503: unavailable,
 	})
 	kinds.Responses["200"] = &huma.Response{Description: http.StatusText(http.StatusOK), Headers: noStore}
@@ -116,6 +127,34 @@ func registerBloemAdminPushDocument(reg *Registry) {
 	})
 	remove.Responses["204"] = &huma.Response{Description: http.StatusText(http.StatusNoContent), Headers: noStore}
 	registerBloemChiDocument[BloemAdminPushDeviceInput, struct{}](reg, remove)
+
+	quiet := bloemChiDocumentOp(reg, "PUT", "/admin/push/devices/{device_id}/quiet-hours", "setBloemAdminPushQuietHours", "admin-push",
+		"Set one device's quiet hours.", "bloemAccountSession", http.StatusOK)
+	quiet.Description = bloemAdminPushLogin + "From start to end (HH:MM, in time_zone; an end before the start crosses midnight) the server sends the device only the kinds in allow_kinds and drops the others instead of holding them. The two reachability kinds are produced by the apps' own checks, which apply the same window. Servers that keep quiet hours list admin_push_quiet_hours_v1."
+	quiet.Responses = map[string]*huma.Response{}
+	bloemDocumentErrors[BloemNativeError](reg, &quiet, map[int]string{
+		400: "invalid_request: the body is not valid JSON for this route.",
+		401: "unauthorized: no valid access token.",
+		403: "admin_required or account_session_required, as for registration.",
+		404: "not_found: no device with this id belongs to the account.",
+		422: "invalid_registration: a time is not HH:MM, start equals end, the time zone is unknown, or a kind id is unknown.",
+		503: unavailable,
+	})
+	quiet.Responses["200"] = &huma.Response{Description: http.StatusText(http.StatusOK), Headers: noStore}
+	registerBloemChiDocument[BloemAdminPushQuietHoursInput, BloemAdminPushQuietHoursOutput](reg, quiet)
+
+	unquiet := bloemChiDocumentOp(reg, "DELETE", "/admin/push/devices/{device_id}/quiet-hours", "clearBloemAdminPushQuietHours", "admin-push",
+		"Clear one device's quiet hours.", "bloemAccountSession", http.StatusNoContent)
+	unquiet.Description = bloemAdminPushLogin + "Every kind the device has switched on is sent again at any time."
+	unquiet.Responses = map[string]*huma.Response{}
+	bloemDocumentErrors[BloemNativeError](reg, &unquiet, map[int]string{
+		401: "unauthorized: no valid access token.",
+		403: "admin_required or account_session_required, as for registration.",
+		404: "not_found: no device with this id belongs to the account.",
+		503: unavailable,
+	})
+	unquiet.Responses["204"] = &huma.Response{Description: http.StatusText(http.StatusNoContent), Headers: noStore}
+	registerBloemChiDocument[BloemAdminPushDeviceInput, struct{}](reg, unquiet)
 
 	retire := bloemChiDocumentOp(reg, "POST", "/admin/push/devices/{device_id}/retire", "retireBloemAdminPushDevice", "admin-push",
 		"Stop pushes to a device using its display token.", "bloemAdminPushDisplayToken", http.StatusNoContent)

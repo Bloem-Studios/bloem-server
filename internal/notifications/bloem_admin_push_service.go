@@ -20,6 +20,8 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/Silo-Server/silo-server/internal/secret"
+
+	"github.com/google/uuid"
 )
 
 // Bloem admin push (docs/architecture/bloem-admin-push.md).
@@ -60,6 +62,9 @@ var (
 	ErrAdminPushUnauthorized = errors.New("display token is not valid")
 	// ErrAdminPushForbidden means the token's account is no longer an enabled admin.
 	ErrAdminPushForbidden = errors.New("account is no longer an administrator")
+	// ErrAdminPushKindNotAvailable refuses switching on a kind the account
+	// may not receive: an organization's admin gets the limit kinds only.
+	ErrAdminPushKindNotAvailable = errors.New("notification kind is not available to this account")
 	// ErrAdminPushNotFound means no such device or delivery for the caller.
 	ErrAdminPushNotFound = errors.New("not found")
 
@@ -192,12 +197,21 @@ func (s *AdminPushService) Enabled(ctx context.Context) bool {
 }
 
 func kindStates(disabled []string) []AdminPushKindState {
+	return kindStatesFor(disabled, true)
+}
+
+// kindStatesFor lists the kinds an account may switch: every kind for a
+// platform admin, the organization admin kinds for an organization's admin.
+func kindStatesFor(disabled []string, platform bool) []AdminPushKindState {
 	off := map[string]bool{}
 	for _, kind := range disabled {
 		off[kind] = true
 	}
 	out := make([]AdminPushKindState, 0, len(adminPushKinds))
 	for _, kind := range adminPushKinds {
+		if !platform && !kind.OrganizationAdmins {
+			continue
+		}
 		out = append(out, AdminPushKindState{Kind: kind.ID, Enabled: !off[kind.ID], ServerEmitted: kind.ServerEmitted})
 	}
 	return out
@@ -225,10 +239,13 @@ func (s *AdminPushService) Register(ctx context.Context, userID int, reg AdminPu
 		return nil, ErrAdminPushUnavailable
 	}
 	// The token the request came in on may name a role the account has since
-	// lost; admin-only is judged on the account as it is now.
-	if admin, err := s.store.isAdminAccount(ctx, userID); err != nil {
+	// lost; admin-only is judged on the account as it is now. An
+	// organization's admin may register for the organization admin kinds.
+	platform, orgAdmin, err := s.store.pushStanding(ctx, userID)
+	if err != nil {
 		return nil, err
-	} else if !admin {
+	}
+	if !platform && !orgAdmin {
 		return nil, ErrAdminPushForbidden
 	}
 	in := adminPushUpsert{UserID: userID, LoginSessionID: reg.LoginSessionID}
@@ -291,7 +308,7 @@ func (s *AdminPushService) Register(ctx context.Context, userID int, reg AdminPu
 		return nil, err
 	}
 	return &AdminPushRegistered{
-		DeviceID: device.ServerDeviceID, DisplayToken: token, Kinds: kindStates(device.DisabledKinds),
+		DeviceID: device.ServerDeviceID, DisplayToken: token, Kinds: kindStatesFor(device.DisabledKinds, platform),
 		WidgetsPlaced: device.WidgetsPlaced, WidgetChannels: nonNil(device.WidgetChannels),
 	}, nil
 }
@@ -331,9 +348,20 @@ func (s *AdminPushService) SetKinds(ctx context.Context, userID int, deviceID st
 	if !s.Available() {
 		return nil, ErrAdminPushUnavailable
 	}
-	for kind := range kinds {
-		if _, ok := AdminPushKindByID(kind); !ok {
-			return nil, fmt.Errorf("%w: unknown kind %q", ErrAdminPushInvalid, kind)
+	platform, orgAdmin, err := s.store.pushStanding(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !platform && !orgAdmin {
+		return nil, ErrAdminPushForbidden
+	}
+	for id, on := range kinds {
+		kind, ok := AdminPushKindByID(id)
+		if !ok {
+			return nil, fmt.Errorf("%w: unknown kind %q", ErrAdminPushInvalid, id)
+		}
+		if on && !platform && !kind.OrganizationAdmins {
+			return nil, fmt.Errorf("%w: %s", ErrAdminPushKindNotAvailable, id)
 		}
 	}
 	device, err := s.store.setKinds(ctx, userID, deviceID, kinds)
@@ -343,7 +371,7 @@ func (s *AdminPushService) SetKinds(ctx context.Context, userID int, deviceID st
 		}
 		return nil, err
 	}
-	return kindStates(device.DisabledKinds), nil
+	return kindStatesFor(device.DisabledKinds, platform), nil
 }
 
 // Unregister removes one of the caller's devices.
@@ -442,7 +470,7 @@ func (s *AdminPushService) Notify(ctx context.Context, n AdminPushNotice) error 
 	if !ok || !kind.ServerEmitted {
 		return fmt.Errorf("%w: %q is not a server kind", ErrAdminPushInvalid, n.Kind)
 	}
-	accounts, err := s.store.adminAccountIDs(ctx, n.Audience, n.RequesterUserID)
+	accounts, err := s.store.adminAccountIDs(ctx, n.Audience, n.RequesterUserID, n.OrganizationID)
 	if err != nil {
 		return fmt.Errorf("resolve admins: %w", err)
 	}
@@ -452,14 +480,14 @@ func (s *AdminPushService) Notify(ctx context.Context, n AdminPushNotice) error 
 	}
 	queued := false
 	for _, userID := range accounts {
-		devices, err := s.store.recipientDevices(ctx, userID, n.Kind)
+		now := s.now()
+		devices, err := s.store.recipientDevices(ctx, userID, kind, n.OrganizationID, now)
 		if err != nil {
 			return fmt.Errorf("list admin devices: %w", err)
 		}
 		if len(devices) == 0 {
 			continue
 		}
-		now := s.now()
 		_, inserted, err := s.store.insertDelivery(ctx, adminDeliveryRow{
 			ID: adminDeliveryID(n, userID), UserID: userID, Kind: n.Kind, CollapseKey: adminCollapseKey(n),
 			SubjectType: n.SubjectType, SubjectID: n.SubjectID, Title: n.Title, Body: n.Body, LockText: kind.LockText,
@@ -792,7 +820,7 @@ func (s *AdminPushService) Wake(ctx context.Context, channel string, requesterUs
 	}
 	var accounts []int
 	if channel == AdminWidgetRequests {
-		ids, err := s.store.adminAccountIDs(ctx, AudienceRequestAdmins, requesterUserID)
+		ids, err := s.store.adminAccountIDs(ctx, AudienceRequestAdmins, requesterUserID, uuid.Nil)
 		if err != nil {
 			return fmt.Errorf("resolve admins: %w", err)
 		}

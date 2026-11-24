@@ -34,6 +34,8 @@ type AdminPushBackend interface {
 	SetKinds(ctx context.Context, userID int, deviceID string, kinds map[string]bool) ([]notifications.AdminPushKindState, error)
 	Unregister(ctx context.Context, userID int, deviceID string) error
 	SetWidgets(ctx context.Context, userID int, deviceID string, placed bool, channels []string) (bool, []string, error)
+	SetQuietHours(ctx context.Context, userID int, deviceID string, q notifications.AdminPushQuietHours) (notifications.AdminPushQuietHours, error)
+	ClearQuietHours(ctx context.Context, userID int, deviceID string) error
 	Retire(ctx context.Context, displayToken, deviceID string) error
 	Content(ctx context.Context, displayToken, deliveryID string) (*notifications.AdminPushContent, error)
 }
@@ -111,12 +113,12 @@ type BloemAdminPushKinds struct {
 type BloemAdminPushContent struct {
 	DeliveryID  string    `json:"delivery_id"`
 	Kind        string    `json:"kind"`
-	Channel     string    `json:"channel" enum:"servers,requests,libraries,backups,nodes,plugins"`
+	Channel     string    `json:"channel" enum:"servers,requests,libraries,backups,nodes,plugins,limits"`
 	Title       string    `json:"title"`
 	Body        string    `json:"body"`
 	LockScreen  string    `json:"lock_screen" doc:"All a locked screen shows unless the device allows details."`
-	Page        string    `json:"page,omitempty" doc:"App link page a tap opens: requests, libraries, backups, nodes or plugins."`
-	ItemID      string    `json:"item_id,omitempty" doc:"The item on that page: a request id, library id, node id or plugin installation id."`
+	Page        string    `json:"page,omitempty" doc:"App link page a tap opens: requests, libraries, backups, nodes, plugins or limits."`
+	ItemID      string    `json:"item_id,omitempty" doc:"The item on that page: a request id, library id, node id, plugin installation id, or the account id of the person refused at a limit."`
 	SubjectType string    `json:"subject_type,omitempty"`
 	Actions     []string  `json:"actions" enum:"approve,decline" doc:"Buttons the notification offers. Empty for most kinds."`
 	Badge       *int      `json:"badge,omitempty" doc:"Waiting items to show on the app icon."`
@@ -127,6 +129,8 @@ func (h *BloemAdminPushHandler) fail(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, notifications.ErrAdminPushUnavailable):
 		writeError(w, http.StatusServiceUnavailable, "admin_push_unavailable", "Push notifications for administrators are unavailable on this server.")
+	case errors.Is(err, notifications.ErrAdminPushKindNotAvailable):
+		writeError(w, http.StatusUnprocessableEntity, "kind_not_available", "This account may not receive that kind of notification.")
 	case errors.Is(err, notifications.ErrAdminPushInvalid):
 		writeError(w, http.StatusUnprocessableEntity, "invalid_registration", err.Error())
 	case errors.Is(err, notifications.ErrAdminPushNotFound):
@@ -144,13 +148,25 @@ func (h *BloemAdminPushHandler) fail(w http.ResponseWriter, err error) {
 // login session: not an API key, an impersonation, or an administrative-context
 // token, none of which belong to one phone.
 func (h *BloemAdminPushHandler) admin(w http.ResponseWriter, r *http.Request) (*auth.Claims, bool) {
+	return h.signedIn(w, r, true)
+}
+
+// member returns the signed-in account for the routes an organization's
+// admin may use too (registration, kind switches, quiet hours, removal).
+// Its role is not checked here: the service judges the account's standing
+// as it is now.
+func (h *BloemAdminPushHandler) member(w http.ResponseWriter, r *http.Request) (*auth.Claims, bool) {
+	return h.signedIn(w, r, false)
+}
+
+func (h *BloemAdminPushHandler) signedIn(w http.ResponseWriter, r *http.Request, platformOnly bool) (*auth.Claims, bool) {
 	w.Header().Set("Cache-Control", "no-store")
 	claims := middleware.GetClaims(r.Context())
 	if claims == nil || claims.UserID <= 0 {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required.")
 		return nil, false
 	}
-	if claims.Role != "admin" {
+	if platformOnly && claims.Role != "admin" {
 		writeError(w, http.StatusForbidden, "admin_required", "Administrator access is required.")
 		return nil, false
 	}
@@ -180,7 +196,7 @@ func decodeStrict(w http.ResponseWriter, r *http.Request, into any) bool {
 }
 
 func (h *BloemAdminPushHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
-	claims, ok := h.admin(w, r)
+	claims, ok := h.member(w, r)
 	if !ok {
 		return
 	}
@@ -205,7 +221,7 @@ func (h *BloemAdminPushHandler) HandleRegister(w http.ResponseWriter, r *http.Re
 }
 
 func (h *BloemAdminPushHandler) HandleSetKinds(w http.ResponseWriter, r *http.Request) {
-	claims, ok := h.admin(w, r)
+	claims, ok := h.member(w, r)
 	if !ok {
 		return
 	}
@@ -241,7 +257,7 @@ func (h *BloemAdminPushHandler) HandleSetWidgets(w http.ResponseWriter, r *http.
 }
 
 func (h *BloemAdminPushHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
-	claims, ok := h.admin(w, r)
+	claims, ok := h.member(w, r)
 	if !ok {
 		return
 	}
@@ -280,4 +296,45 @@ func (h *BloemAdminPushHandler) HandleContent(w http.ResponseWriter, r *http.Req
 		LockScreen: content.LockScreen, Page: content.Page, ItemID: content.ItemID, SubjectType: content.SubjectType,
 		Actions: actions, Badge: content.Badge, CreatedAt: content.CreatedAt,
 	})
+}
+
+// BloemAdminPushQuietHoursRequest sets a device's quiet hours.
+type BloemAdminPushQuietHoursRequest struct {
+	Start      string   `json:"start" pattern:"^[0-2][0-9]:[0-5][0-9]$" doc:"Start of the quiet window, HH:MM in 24-hour time."`
+	End        string   `json:"end" pattern:"^[0-2][0-9]:[0-5][0-9]$" doc:"End of the window, HH:MM; before start means the window crosses midnight."`
+	TimeZone   string   `json:"time_zone" doc:"IANA time zone the window is in, for example Europe/Amsterdam."`
+	AllowKinds []string `json:"allow_kinds,omitempty" doc:"Kind ids still sent during the window. The two reachability kinds are the apps' own; the apps apply quiet hours to them."`
+}
+
+// HandleSetQuietHours stores one device's quiet hours.
+func (h *BloemAdminPushHandler) HandleSetQuietHours(w http.ResponseWriter, r *http.Request) {
+	claims, ok := h.member(w, r)
+	if !ok {
+		return
+	}
+	var in BloemAdminPushQuietHoursRequest
+	if !decodeStrict(w, r, &in) {
+		return
+	}
+	out, err := h.service.SetQuietHours(r.Context(), claims.UserID, chi.URLParam(r, "device_id"), notifications.AdminPushQuietHours{
+		Start: in.Start, End: in.End, TimeZone: in.TimeZone, AllowKinds: in.AllowKinds,
+	})
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// HandleClearQuietHours removes one device's quiet hours.
+func (h *BloemAdminPushHandler) HandleClearQuietHours(w http.ResponseWriter, r *http.Request) {
+	claims, ok := h.member(w, r)
+	if !ok {
+		return
+	}
+	if err := h.service.ClearQuietHours(r.Context(), claims.UserID, chi.URLParam(r, "device_id")); err != nil {
+		h.fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

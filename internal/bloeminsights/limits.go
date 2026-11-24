@@ -250,10 +250,16 @@ func (r *RefusalRecorder) notice(ctx context.Context, item refusalItem, at time.
 			max = limitMax(l, item.kind, item.scope)
 		}
 	}
+	var notice notifications.AdminPushNotice
 	if item.kind == playback.LimitStreams {
-		return notifications.StreamLimitNotice(item.userID, person, max, string(item.scope), at)
+		notice = notifications.StreamLimitNotice(item.userID, person, max, string(item.scope), at)
+	} else {
+		notice = notifications.TranscodeLimitNotice(item.userID, person, max, string(item.scope), at)
 	}
-	return notifications.TranscodeLimitNotice(item.userID, person, max, string(item.scope), at)
+	// The person's organization's admins watch its limits too.
+	_ = r.pool.QueryRow(ctx, `SELECT organization_id FROM organization_memberships
+		WHERE account_id = $1 AND status = 'active' ORDER BY organization_id LIMIT 1`, item.userID).Scan(&notice.OrganizationID)
+	return notice
 }
 
 func limitMax(l playback.SessionLimits, kind playback.LimitKind, scope playback.LimitScope) int {

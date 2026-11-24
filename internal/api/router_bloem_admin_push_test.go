@@ -24,6 +24,10 @@ func (r readyAdminPush) Enabled(context.Context) bool {
 func (readyAdminPush) Register(context.Context, int, notifications.AdminPushRegistration) (*notifications.AdminPushRegistered, error) {
 	return &notifications.AdminPushRegistered{DeviceID: "dev1", DisplayToken: "bad_x"}, nil
 }
+func (readyAdminPush) SetQuietHours(_ context.Context, _ int, _ string, q notifications.AdminPushQuietHours) (notifications.AdminPushQuietHours, error) {
+	return q, nil
+}
+func (readyAdminPush) ClearQuietHours(context.Context, int, string) error { return nil }
 func (readyAdminPush) SetKinds(context.Context, int, string, map[string]bool) ([]notifications.AdminPushKindState, error) {
 	return nil, nil
 }

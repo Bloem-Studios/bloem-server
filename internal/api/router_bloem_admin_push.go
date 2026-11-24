@@ -37,6 +37,8 @@ func mountBloemAdminPush(r chi.Router, h *handlers.BloemAdminPushHandler, system
 		r.Patch("/admin/push/devices/{device_id}/kinds", h.HandleSetKinds)
 		r.Put("/admin/push/devices/{device_id}/widgets", h.HandleSetWidgets)
 		r.Delete("/admin/push/devices/{device_id}", h.HandleDelete)
+		r.Put("/admin/push/devices/{device_id}/quiet-hours", h.HandleSetQuietHours)
+		r.Delete("/admin/push/devices/{device_id}/quiet-hours", h.HandleClearQuietHours)
 		if h.LiveAvailable() {
 			r.Post("/admin/push/devices/{device_id}/live-activities", h.HandleRegisterLiveActivity)
 			r.Delete("/admin/push/devices/{device_id}/live-activities/{activity_id}", h.HandleEndLiveActivity)

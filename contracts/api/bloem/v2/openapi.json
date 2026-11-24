@@ -715,6 +715,33 @@
         ],
         "type": "object"
       },
+      "AdminPushQuietHours": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "end": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string"
+          },
+          "time_zone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "time_zone",
+          "allow_kinds"
+        ],
+        "type": "object"
+      },
       "AdminSubjectRef": {
         "additionalProperties": false,
         "properties": {
@@ -1720,7 +1747,8 @@
               "libraries",
               "backups",
               "nodes",
-              "plugins"
+              "plugins",
+              "limits"
             ],
             "type": "string"
           },
@@ -1732,7 +1760,7 @@
             "type": "string"
           },
           "item_id": {
-            "description": "The item on that page: a request id, library id, node id or plugin installation id.",
+            "description": "The item on that page: a request id, library id, node id, plugin installation id, or the account id of the person refused at a limit.",
             "type": "string"
           },
           "kind": {
@@ -1743,7 +1771,7 @@
             "type": "string"
           },
           "page": {
-            "description": "App link page a tap opens: requests, libraries, backups, nodes or plugins.",
+            "description": "App link page a tap opens: requests, libraries, backups, nodes, plugins or limits.",
             "type": "string"
           },
           "subject_type": {
@@ -1793,6 +1821,38 @@
         },
         "required": [
           "kinds"
+        ],
+        "type": "object"
+      },
+      "BloemAdminPushQuietHoursRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_kinds": {
+            "description": "Kind ids still sent during the window. The two reachability kinds are the apps' own; the apps apply quiet hours to them.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "end": {
+            "description": "End of the window, HH:MM; before start means the window crosses midnight.",
+            "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+            "type": "string"
+          },
+          "start": {
+            "description": "Start of the quiet window, HH:MM in 24-hour time.",
+            "pattern": "^[0-2][0-9]:[0-5][0-9]$",
+            "type": "string"
+          },
+          "time_zone": {
+            "description": "IANA time zone the window is in, for example Europe/Amsterdam.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "time_zone"
         ],
         "type": "object"
       },
@@ -41677,7 +41737,7 @@
                 }
               }
             },
-            "description": "admin_required: the account is not an enabled administrator; account_session_required: the token is an API key, impersonation or administrative-context token."
+            "description": "admin_required: the account is neither an enabled administrator nor an active admin of an organization; account_session_required: the token is an API key, impersonation or administrative-context token."
           },
           "422": {
             "content": {
@@ -41890,7 +41950,7 @@
                 }
               }
             },
-            "description": "invalid_registration: a kind id is unknown."
+            "description": "invalid_registration: a kind id is unknown; kind_not_available: an organization's admin switched on a kind other than the two limit kinds."
           },
           "503": {
             "content": {
@@ -42239,6 +42299,207 @@
           }
         ],
         "summary": "Store or clear the device's push-to-start token.",
+        "tags": [
+          "admin-push"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/push/devices/{device_id}/quiet-hours": {
+      "delete": {
+        "description": "Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Every kind the device has switched on is sent again at any time.",
+        "operationId": "clearBloemAdminPushQuietHours",
+        "parameters": [
+          {
+            "description": "The device_id a registration returned.",
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "description": "The device_id a registration returned.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unauthorized: no valid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_required or account_session_required, as for registration."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no device with this id belongs to the account."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_push_unavailable: push delivery is off on this server, or it has no push backing."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Clear one device's quiet hours.",
+        "tags": [
+          "admin-push"
+        ]
+      },
+      "put": {
+        "description": "Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. From start to end (HH:MM, in time_zone; an end before the start crosses midnight) the server sends the device only the kinds in allow_kinds and drops the others instead of holding them. The two reachability kinds are produced by the apps' own checks, which apply the same window. Servers that keep quiet hours list admin_push_quiet_hours_v1.",
+        "operationId": "setBloemAdminPushQuietHours",
+        "parameters": [
+          {
+            "description": "The device_id a registration returned.",
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "description": "The device_id a registration returned.",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemAdminPushQuietHoursRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPushQuietHours"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: the body is not valid JSON for this route."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unauthorized: no valid access token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_required or account_session_required, as for registration."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no device with this id belongs to the account."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_registration: a time is not HH:MM, start equals end, the time zone is unknown, or a kind id is unknown."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "admin_push_unavailable: push delivery is off on this server, or it has no push backing."
+          }
+        },
+        "security": [
+          {
+            "bloemAccountSession": []
+          }
+        ],
+        "summary": "Set one device's quiet hours.",
         "tags": [
           "admin-push"
         ]

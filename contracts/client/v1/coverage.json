@@ -3246,12 +3246,20 @@
       "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
     },
     {
+      "type": "internal/api/handlers.BloemAdminPushQuietHoursRequest",
+      "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
+    },
+    {
       "type": "internal/api/handlers.BloemAdminPushWidgetsRequest",
       "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
     },
     {
       "type": "internal/api/handlers.BloemPushRelayRegistration",
       "reason": "Wire type of the platform administrator's push relay registration (/api/bloem/v2/admin/platform/notifications/push/relay/register), sent by Bloem's web admin in a Platform context; the streaming clients this generator serves never register the server with a push relay or decode it."
+    },
+    {
+      "type": "internal/notifications.AdminPushQuietHours",
+      "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
     },
     {
       "type": "internal/notifications.AdminPushKindState",
