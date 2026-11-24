@@ -87,6 +87,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)"
       ]
     },
@@ -107,6 +108,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "adminMW.Require"
       ]
@@ -128,6 +130,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "authMW.RequireAuth"
       ]
@@ -149,6 +152,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
@@ -175,6 +179,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
@@ -202,6 +207,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
@@ -229,6 +235,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
@@ -256,6 +263,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
@@ -284,6 +292,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
@@ -312,6 +321,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret) [when s.liveTV != nil]",
         "s.auth.RequireAuth",
@@ -338,6 +348,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "client.auth.RequireAuth",
         "client.tenant.ResolveNative",
@@ -363,6 +374,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "eitherPlatformCredential"
       ]
@@ -384,6 +396,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "eitherPlatformCredential",
         "handlers.RequireBloemPlatformAdmin(h.DB)"
@@ -406,6 +419,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "nodecontrol.RequireNode(deps.NodeKeyRegistry)"
       ]
@@ -427,6 +441,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "nodecontrol.RequireNode(deps.NodeKeyRegistry)",
         "deps.NativeNodeSources.NodeSelfMiddleware(nodeControl.LimitNodePlayback)",
@@ -450,6 +465,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "nodecontrol.RequireNode(deps.NodeKeyRegistry)",
         "deps.NativeNodeSources.NodeSelfMiddleware(nodeControl.LimitNodePlayback)",
@@ -473,6 +489,7 @@
         "deps.NativeNodeSources.SourceBytesMiddleware(deps.NodeKeyRegistry)",
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
+        "apimw.Recoverer",
         "apimw.ProvideActingAdmin(actingAdmin)",
         "nodecontrol.RequireNode(deps.NodeKeyRegistry)",
         "deps.NativeNodeSources.NodeSelfMiddleware(nodeControl.LimitNodePlayback)",
