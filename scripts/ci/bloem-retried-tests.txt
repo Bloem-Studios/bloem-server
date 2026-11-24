@@ -35,3 +35,22 @@
 # same race). Retried by the owner's decision of 2026-11-17 instead, so
 # Silo's test code stays as Silo wrote it.
 ./internal/scanner TestChapterLockSessionsRespectPoolBudgetDB
+
+# Silo's test, in Go database pins. It gives each Matroska track read 50 ms and
+# expects exactly the three reads stuck on FIFOs to time out; a real fixture
+# read that takes longer than 50 ms on a loaded runner counts as a fourth
+# ("timed out = 4 with 3 reads stuck"). It failed that way on 01fc3c62e (run
+# 45376831371) and e2f09120a (run 45384658984), passed on 52ad60a54 with the
+# same scanner code, and passed 30 runs out of 30 alone on 2026-11-24.
+# Retried by the owner's decision of 2026-11-24, so Silo's test code stays as
+# Silo wrote it.
+./internal/scanner TestMatroskaTrackBackfillStopsOnIntermittentStalls
+
+# Silo's test, in the Go test shards. It waits two seconds for a held prepare
+# to resume after its replacement completes, behind a fake FFmpeg run. On
+# e2f09120a (run 45384658984, Go test 3/4) it failed with "prepare did not
+# resume after replacement completed" while the shard ran the package's other
+# FFmpeg tests; that commit changes nothing in internal/transcodenode, and the
+# test passed 30 runs out of 30 alone on 2026-11-24. Retried by the owner's
+# decision of 2026-11-24, so Silo's test code stays as Silo wrote it.
+./internal/transcodenode TestHandleDownloadPrepareOptimisticReuseWaitsForInFlightReplacement
