@@ -3098,6 +3098,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if deps.RedisClient != nil && sessionRepo != nil && userRepo != nil {
 			socket := handlers.NewWatchTogetherSocketV2(watchTogetherHandler, watchtogether.NewRoomSocketCredentialStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, actingAdmin, deps.PublicURL)
 			v2deps.WatchTogetherSocket = socket
+			// Bloem: the socket carries the tenant authority (replaces the line above).
+			tenantStore := tenancy.NewStore(deps.DB)
+			v2deps.WatchTogetherSocket = handlers.WrapBloemWatchTogetherSocketV2(socket, sessionRepo, userRepo, tenancy.NewResolver(tenantStore), tenantStore)
 			playbackHandler.WatchTogetherAvailable = true
 			if deps.OnConfigChange != nil {
 				deps.OnConfigChange(func(_, updated *config.Config) { socket.SetPublicOrigin(updated.Server.PublicURL) })
