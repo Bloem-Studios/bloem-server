@@ -3246,6 +3246,66 @@
       "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
     },
     {
+      "type": "internal/api/handlers.BloemClientStats",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemLimitRefusals",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemLimitsUsage",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemPlayHeatmap",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemStreamCloudflare",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemStreamEdge",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemStreamInsight",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemStreamInsights",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemStreamInsightsCapabilities",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemStreamPlace",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemStreamTrails",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemStreamTransport",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemStreamViewer",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemTopPeople",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
+      "type": "internal/api/handlers.BloemTranscodeCauses",
+      "reason": "Wire type of the stream insights routes (/api/bloem/v2/admin/platform/... and /admin/organization/... limits and stats), read only by Bloem's staff Admin apps under an administrative context; the streaming clients this generator serves never call them or decode it."
+    },
+    {
       "type": "internal/api/handlers.BloemAdminPushQuietHoursRequest",
       "reason": "Wire type of the admin-app push routes (/api/bloem/v2/admin/push/...), called only by Bloem's staff apps (admin, proxy and HQ) with an administrator's sign-in; the streaming clients this generator serves never register for admin push or decode it."
     },

@@ -282,7 +282,8 @@ func mountedAdministrativeAndLiveTVOperations(t *testing.T) map[string]struct{} 
 				PushRelay: handlers.NewBloemPushRelayHandlerWith(nil)},
 			Entitlement: &handlers.EntitlementTemplatesHandler{}, AccountPolicy: &handlers.AdminHandler{},
 			PreviewAdmin: &handlers.BloemPreviewAdminHandler{}, LibraryFigures: &handlers.BloemLibraryFiguresHandler{}, UpgradePrompt: &handlers.BloemUpgradePromptHandler{}, NewArrivals: &handlers.BloemNewArrivalsHandler{},
-			Client: bloemClientSurface{auth: &apimw.AuthMiddleware{}, tenant: &apimw.TenantMiddleware{}, viewer: &apimw.ViewerAccessMiddleware{}, liveTV: &handlers.LiveTVHandler{}, liveTVAdmin: func(h http.Handler) http.Handler { return h }},
+			StreamInsights: &handlers.BloemStreamInsightsHandler{},
+			Client:         bloemClientSurface{auth: &apimw.AuthMiddleware{}, tenant: &apimw.TenantMiddleware{}, viewer: &apimw.ViewerAccessMiddleware{}, liveTV: &handlers.LiveTVHandler{}, liveTVAdmin: func(h http.Handler) http.Handler { return h }},
 		})
 	operations := map[string]struct{}{}
 	gated := map[string]string{}

@@ -2358,6 +2358,21 @@
         ],
         "type": "object"
       },
+      "BloemClientStats": {
+        "additionalProperties": false,
+        "properties": {
+          "clients": {
+            "items": {
+              "$ref": "#/components/schemas/ClientStat"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "clients"
+        ],
+        "type": "object"
+      },
       "BloemEbookRequestCreateInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -3764,6 +3779,39 @@
         "required": [
           "library",
           "locations"
+        ],
+        "type": "object"
+      },
+      "BloemLimitRefusals": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Refusal"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "BloemLimitsUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/PersonUsage"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "people"
         ],
         "type": "object"
       },
@@ -6699,6 +6747,35 @@
         ],
         "type": "object"
       },
+      "BloemPlayHeatmap": {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "plays": {
+            "description": "Seven rows, Sunday first, of 24 hourly counts.",
+            "items": {
+              "items": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "time_zone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "time_zone",
+          "days",
+          "plays"
+        ],
+        "type": "object"
+      },
       "BloemPolicyBulkAction": {
         "additionalProperties": false,
         "properties": {
@@ -7527,6 +7604,240 @@
         ],
         "type": "object"
       },
+      "BloemStreamCloudflare": {
+        "additionalProperties": false,
+        "properties": {
+          "city": {
+            "type": "string"
+          },
+          "colo": {
+            "type": "string"
+          },
+          "lat": {
+            "format": "double",
+            "type": "number"
+          },
+          "lon": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "colo"
+        ],
+        "type": "object"
+      },
+      "BloemStreamEdge": {
+        "additionalProperties": false,
+        "properties": {
+          "lat": {
+            "format": "double",
+            "type": "number"
+          },
+          "lon": {
+            "format": "double",
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "lat",
+          "lon"
+        ],
+        "type": "object"
+      },
+      "BloemStreamInsight": {
+        "additionalProperties": false,
+        "properties": {
+          "cloudflare": {
+            "$ref": "#/components/schemas/BloemStreamCloudflare"
+          },
+          "edge": {
+            "$ref": "#/components/schemas/BloemStreamEdge"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/PersonUsage"
+          },
+          "node": {
+            "$ref": "#/components/schemas/BloemStreamPlace"
+          },
+          "server": {
+            "$ref": "#/components/schemas/BloemStreamPlace"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "transport": {
+            "$ref": "#/components/schemas/BloemStreamTransport"
+          },
+          "viewer": {
+            "$ref": "#/components/schemas/BloemStreamViewer"
+          }
+        },
+        "required": [
+          "session_id",
+          "viewer",
+          "cloudflare",
+          "edge",
+          "server",
+          "node",
+          "transport",
+          "limits"
+        ],
+        "type": "object"
+      },
+      "BloemStreamInsights": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BloemStreamInsight"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "BloemStreamInsightsCapabilities": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "edge_header": {
+            "description": "The header a Bloem edge adds to every request it forwards, accepted only from a trusted proxy.",
+            "type": "string"
+          },
+          "locations": {
+            "description": "Whether viewer locations resolve: false without a GeoLite2-City database.",
+            "type": "boolean"
+          },
+          "retention_days": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "available",
+          "locations",
+          "edge_header",
+          "retention_days"
+        ],
+        "type": "object"
+      },
+      "BloemStreamPlace": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "lat": {
+            "format": "double",
+            "type": "number"
+          },
+          "lon": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "lat",
+          "lon"
+        ],
+        "type": "object"
+      },
+      "BloemStreamTrails": {
+        "additionalProperties": false,
+        "properties": {
+          "trails": {
+            "items": {
+              "$ref": "#/components/schemas/Trail"
+            },
+            "type": "array"
+          },
+          "truncated": {
+            "description": "More streams than the 2000 listed were in the window.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "trails",
+          "truncated"
+        ],
+        "type": "object"
+      },
+      "BloemStreamTransport": {
+        "additionalProperties": false,
+        "properties": {
+          "changed": {
+            "description": "The stream's requests came over more than one class.",
+            "type": "boolean"
+          },
+          "server_proto": {
+            "description": "The protocol requests reached this server with.",
+            "type": "string"
+          },
+          "viewer": {
+            "description": "The viewer's leg: udp (HTTP/3 or direct UDP), tcp (HTTP/1.1 or HTTP/2), cloudflare (the viewer reached Cloudflare) or unknown.",
+            "enum": [
+              "udp",
+              "tcp",
+              "cloudflare",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "viewer_proto": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "viewer",
+          "changed"
+        ],
+        "type": "object"
+      },
+      "BloemStreamViewer": {
+        "additionalProperties": false,
+        "properties": {
+          "approximate": {
+            "type": "boolean"
+          },
+          "city": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string"
+          },
+          "lat": {
+            "format": "double",
+            "type": "number"
+          },
+          "lon": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "city",
+          "country",
+          "country_code",
+          "lat",
+          "lon",
+          "approximate"
+        ],
+        "type": "object"
+      },
       "BloemSupportConflict": {
         "additionalProperties": false,
         "properties": {
@@ -8030,6 +8341,36 @@
         },
         "type": "object"
       },
+      "BloemTopPeople": {
+        "additionalProperties": false,
+        "properties": {
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/TopPerson"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "people"
+        ],
+        "type": "object"
+      },
+      "BloemTranscodeCauses": {
+        "additionalProperties": false,
+        "properties": {
+          "causes": {
+            "items": {
+              "$ref": "#/components/schemas/TranscodeCause"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "causes"
+        ],
+        "type": "object"
+      },
       "BloemXtreamProviderBody": {
         "additionalProperties": false,
         "properties": {
@@ -8486,6 +8827,32 @@
         ],
         "type": "object"
       },
+      "ClientStat": {
+        "additionalProperties": false,
+        "properties": {
+          "client_name": {
+            "type": "string"
+          },
+          "device_platform": {
+            "type": "string"
+          },
+          "plays": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "transcodes": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "client_name",
+          "device_platform",
+          "plays",
+          "transcodes"
+        ],
+        "type": "object"
+      },
       "CohortDistribution": {
         "additionalProperties": false,
         "properties": {
@@ -8549,6 +8916,24 @@
           "description",
           "json_schema",
           "required"
+        ],
+        "type": "object"
+      },
+      "Count": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "max": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "active",
+          "max"
         ],
         "type": "object"
       },
@@ -9621,6 +10006,36 @@
         ],
         "type": "object"
       },
+      "Hop": {
+        "additionalProperties": false,
+        "properties": {
+          "approximate": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "lat": {
+            "format": "double",
+            "type": "number"
+          },
+          "lon": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "label",
+          "lat",
+          "lon",
+          "approximate"
+        ],
+        "type": "object"
+      },
       "LibraryEntitlement": {
         "additionalProperties": false,
         "properties": {
@@ -10328,6 +10743,37 @@
         ],
         "type": "object"
       },
+      "PersonUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "household": {
+            "$ref": "#/components/schemas/PoolUsage"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/PoolUsage"
+          },
+          "streams": {
+            "$ref": "#/components/schemas/Count"
+          },
+          "transcodes": {
+            "$ref": "#/components/schemas/Count"
+          },
+          "user_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "streams",
+          "transcodes"
+        ],
+        "type": "object"
+      },
       "Placement": {
         "additionalProperties": false,
         "properties": {
@@ -10682,6 +11128,24 @@
           "max_playback_quality",
           "allowed_permissions",
           "requests_allowed"
+        ],
+        "type": "object"
+      },
+      "PoolUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "streams": {
+            "$ref": "#/components/schemas/Count"
+          },
+          "transcodes": {
+            "$ref": "#/components/schemas/Count"
+          }
+        },
+        "required": [
+          "id"
         ],
         "type": "object"
       },
@@ -11353,6 +11817,36 @@
         },
         "required": [
           "recordings"
+        ],
+        "type": "object"
+      },
+      "Refusal": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "refused_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "user_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "kind",
+          "scope",
+          "refused_at"
         ],
         "type": "object"
       },
@@ -12532,6 +13026,161 @@
         },
         "required": [
           "slots_used"
+        ],
+        "type": "object"
+      },
+      "TopPerson": {
+        "additionalProperties": false,
+        "properties": {
+          "plays": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "user_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "watched_seconds": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "watched_seconds",
+          "plays"
+        ],
+        "type": "object"
+      },
+      "Trail": {
+        "additionalProperties": false,
+        "properties": {
+          "hops": {
+            "items": {
+              "$ref": "#/components/schemas/Hop"
+            },
+            "type": "array"
+          },
+          "live": {
+            "type": "boolean"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "transport": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "live",
+          "transport",
+          "hops"
+        ],
+        "type": "object"
+      },
+      "TranscodeCause": {
+        "additionalProperties": false,
+        "properties": {
+          "client_name": {
+            "type": "string"
+          },
+          "count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_name",
+          "reason",
+          "count"
+        ],
+        "type": "object"
+      },
+      "TransportBucket": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "cloudflare": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "tcp": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "udp": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "unknown": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "at",
+          "udp",
+          "tcp",
+          "cloudflare",
+          "unknown"
+        ],
+        "type": "object"
+      },
+      "TransportCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "cloudflare": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "tcp": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "udp": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "unknown": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "udp",
+          "tcp",
+          "cloudflare",
+          "unknown"
+        ],
+        "type": "object"
+      },
+      "TransportSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/TransportCounts"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/TransportBucket"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "counts",
+          "series"
         ],
         "type": "object"
       },
@@ -29898,6 +30547,155 @@
         ]
       }
     },
+    "/api/bloem/v2/admin/platform/limits/refusals": {
+      "get": {
+        "description": "Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. Newest first, 100 a page. Repeats of one person's refusal at one limit within a minute are one row.",
+        "operationId": "listBloemLimitRefusals",
+        "parameters": [
+          {
+            "description": "How many days back (default 7).",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "description": "How many days back (default 7).",
+              "format": "int64",
+              "maximum": 90,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "next_cursor from the previous page.",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "description": "next_cursor from the previous page.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemLimitRefusals"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the context is not a Platform context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: days must be between 1 and 90, or the cursor is invalid."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "List refusals at a stream or transcode limit.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/limits/usage": {
+      "get": {
+        "description": "Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. A person's own stream and transcode limits, and the household and organization pools they share. A max of 0 is no limit; a pool that does not apply is absent.",
+        "operationId": "getBloemLimitsUsage",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemLimitsUsage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the context is not a Platform context."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Show each live person's use of their limits.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
     "/api/bloem/v2/admin/platform/native-storage/artifacts": {
       "get": {
         "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them.",
@@ -37307,6 +38105,626 @@
         "summary": "Replace every editable field of a registry entry.",
         "tags": [
           "engagement"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/stats/clients": {
+      "get": {
+        "description": "Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. Plays per client name and platform, and how many of them transcoded video.",
+        "operationId": "listBloemClientStats",
+        "parameters": [
+          {
+            "description": "How many days back (default 30; 7 for refusals).",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "description": "How many days back (default 30; 7 for refusals).",
+              "format": "int64",
+              "maximum": 90,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemClientStats"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the context is not a Platform context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: days must be between 1 and 90."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Count plays per client.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/stats/heatmap": {
+      "get": {
+        "description": "Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. Seven rows, Sunday first, of 24 counts: the plays that started at that local weekday and hour.",
+        "operationId": "getBloemPlayHeatmap",
+        "parameters": [
+          {
+            "description": "How many days back (default 30).",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "description": "How many days back (default 30).",
+              "format": "int64",
+              "maximum": 90,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "IANA time zone the weekday and hour are read in (default UTC).",
+            "explode": false,
+            "in": "query",
+            "name": "tz",
+            "schema": {
+              "description": "IANA time zone the weekday and hour are read in (default UTC).",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPlayHeatmap"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the context is not a Platform context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: days must be between 1 and 90, or tz is not an IANA time zone."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Count plays by weekday and hour.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/stats/top-people": {
+      "get": {
+        "description": "Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. The 50 people who watched most, from the playback history.",
+        "operationId": "listBloemTopPeople",
+        "parameters": [
+          {
+            "description": "How many days back (default 30; 7 for refusals).",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "description": "How many days back (default 30; 7 for refusals).",
+              "format": "int64",
+              "maximum": 90,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemTopPeople"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the context is not a Platform context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: days must be between 1 and 90."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Rank people by watch time.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/stats/transcode-causes": {
+      "get": {
+        "description": "Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. Video transcodes per client and adaptation reason, from the stream records.",
+        "operationId": "listBloemTranscodeCauses",
+        "parameters": [
+          {
+            "description": "How many days back (default 30; 7 for refusals).",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "description": "How many days back (default 30; 7 for refusals).",
+              "format": "int64",
+              "maximum": 90,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemTranscodeCauses"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the context is not a Platform context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: days must be between 1 and 90."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Count why video was transcoded.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/stream-insights/capabilities": {
+      "get": {
+        "description": "Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. locations is false without a GeoLite2-City database: every route still answers, with no viewer locations.",
+        "operationId": "getBloemStreamInsightsCapabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemStreamInsightsCapabilities"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the context is not a Platform context."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Say what stream insights can show.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/streams/insights": {
+      "get": {
+        "description": "Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. One item per live stream: the viewer's probable location (from the address, which is never stored), the Cloudflare colo and Bloem edge it passed (counted only from a trusted proxy), the server and node serving it (from the bloem.map.locations setting), how the viewer's leg is connected (its latest request), and the person's use of their limits. A hop that is not known is null.",
+        "operationId": "listBloemLiveStreamInsights",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemStreamInsights"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the context is not a Platform context."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "List the live streams' routes, connections and limits.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/streams/trails": {
+      "get": {
+        "description": "Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. Each trail lists, in order, the hops that have coordinates: viewer, cloudflare, edge, server, node. At most 2000 trails, newest first; truncated says more were left out.",
+        "operationId": "listBloemStreamTrails",
+        "parameters": [
+          {
+            "description": "live (default): the streams playing now; 24h or 7d: those started in that time.",
+            "explode": false,
+            "in": "query",
+            "name": "window",
+            "schema": {
+              "description": "live (default): the streams playing now; 24h or 7d: those started in that time.",
+              "enum": [
+                "live",
+                "24h",
+                "7d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemStreamTrails"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the context is not a Platform context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: window must be live, 24h or 7d."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "List streams' routes for a map.",
+        "tags": [
+          "stream-insights"
+        ]
+      }
+    },
+    "/api/bloem/v2/admin/platform/streams/transport": {
+      "get": {
+        "description": "Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. counts the window's streams by the viewer's leg: udp (HTTP/3 or direct UDP), tcp (HTTP/1.1 or HTTP/2), cloudflare or unknown. A finished stream counts in the class that carried most of its requests. series has hourly buckets for 24h and six-hour buckets for 7d, by start time; it is empty for live.",
+        "operationId": "getBloemStreamTransport",
+        "parameters": [
+          {
+            "description": "live (default): the streams playing now; 24h or 7d: those started in that time.",
+            "explode": false,
+            "in": "query",
+            "name": "window",
+            "schema": {
+              "description": "live (default): the streams playing now; 24h or 7d: those started in that time.",
+              "enum": [
+                "live",
+                "24h",
+                "7d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the context is not a Platform context."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation_failed: window must be live, 24h or 7d."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "stream_insights_unavailable: the database or the live session list is unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Count streams by how they are connected.",
+        "tags": [
+          "stream-insights"
         ]
       }
     },

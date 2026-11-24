@@ -141,6 +141,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			NativeStorage:    deps.NativeStorageManagement,
 			BookRequests:     newBloemBookRequests(deps),
 			AdminPush:        bloemAdminPushHandler(deps),
+			StreamInsights:   bloemStreamInsightsHandler(deps, accountPolicyHandler),
 		})
 }
 
@@ -170,6 +171,7 @@ type bloemRouteSurfaces struct {
 	PromotionsViewer *handlers.PromotionsHandler
 	NativeStorage    *handlers.BloemNativeStorageManagementHandler
 	AdminPush        *handlers.BloemAdminPushHandler
+	StreamInsights   *handlers.BloemStreamInsightsHandler
 }
 
 // mountBloemRoutes assembles every native route inside one chi subtree.
@@ -241,6 +243,10 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(adminMW.Require)
 			mountBloemAdminBookRequests(r, surfaces.BookRequests, system)
+			if surfaces.StreamInsights.Available() {
+				surfaces.StreamInsights.MountPlatform(r)
+				system.SetStreamInsightsAvailable(true)
+			}
 			mountBloemNativeStorageManagement(r, surfaces.NativeStorage)
 			if entitlementHandler != nil {
 				entitlement := entitlementHandler

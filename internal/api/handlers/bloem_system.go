@@ -27,6 +27,7 @@ type BloemSystemHandler struct {
 	organizationDomains        bool
 	organizationSupport        bool
 	organizationLive           bool
+	streamInsights             bool
 	bookRequests               bool
 	ebookRequests              bool
 	bookRequestConnectionAdmin bool
@@ -84,6 +85,12 @@ func (h *BloemSystemHandler) SetOrganizationSupportAvailable(available bool) {
 // which streams, people or activity entries changed.
 func (h *BloemSystemHandler) SetOrganizationLiveAvailable(available bool) {
 	h.organizationLive = available
+}
+
+// SetStreamInsightsAvailable advertises admin_stream_insights_v1 while the
+// platform stream insights routes are mounted.
+func (h *BloemSystemHandler) SetStreamInsightsAvailable(available bool) {
+	h.streamInsights = available
 }
 
 // SetSeasonalViewerAvailable tracks the authenticated native ambience route.
@@ -239,6 +246,9 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	}
 	if h.organizationLive {
 		featureTokens = append(featureTokens, "organization_live_v1")
+	}
+	if h.streamInsights {
+		featureTokens = append(featureTokens, StreamInsightsCapabilityToken)
 	}
 	if h.adminPushReady != nil && h.adminPushReady(request.Context()) {
 		// The admin apps show their push settings only on a server that says so.

@@ -8,6 +8,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/ambience"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/bloeminsights"
 	"github.com/Silo-Server/silo-server/internal/livetv"
 	"github.com/Silo-Server/silo-server/internal/mail"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
@@ -23,6 +24,11 @@ import (
 //
 //	api.Dependencies{DB: pool, BloemDependencies: api.BloemDependencies{LiveTV: svc}}
 type BloemDependencies struct {
+	// StreamInsights is the stream insights runtime ConfigureBloemAdminPush
+	// starts (docs/architecture/bloem-stream-insights.md). Nil leaves its
+	// routes unmounted.
+	StreamInsights *bloeminsights.Runtime
+
 	// NativeStorage is the native storage host: files that live in a storage
 	// provider rather than on disk. May be nil.
 	NativeStorage *nativestorage.Host

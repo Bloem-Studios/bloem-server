@@ -128,6 +128,7 @@ func registerBloemAll(reg *Registry) {
 	registerBloemNewArrivalsDocument(reg)
 	registerBloemBookRequestsDocument(reg)
 	registerBloemAdminPushDocument(reg)
+	registerBloemStreamInsightsDocument(reg)
 	registerBloemAdminLiveActivitiesDocument(reg)
 }
 
