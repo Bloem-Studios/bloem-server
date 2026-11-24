@@ -99,6 +99,18 @@ func (i *transcodeExecutionInput) classify(err error) error {
 	return classifyFFmpegFailure(err, i.stderr.String())
 }
 
+// bloemInputDemuxError reports whether the current run's FFmpeg, reading a
+// source input, logged ffmpegDemuxErrorLine. Such a run has no Silo stderr
+// writer to notice it, and an exit 0 after a failed read must not teach the
+// session where the file's media ends. monitorFFmpeg calls it before done
+// closes, while the run's input is still the session's.
+func (s *TranscodeSession) bloemInputDemuxError() bool {
+	s.mu.Lock()
+	input := s.executionInput
+	s.mu.Unlock()
+	return input != nil && strings.Contains(input.stderr.String(), ffmpegDemuxErrorLine)
+}
+
 type transcodeInputFailure struct{ cause error }
 
 func (*transcodeInputFailure) Error() string   { return "playback source input failed" }

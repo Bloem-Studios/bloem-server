@@ -983,7 +983,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "64b517ed4997c2de"
+   "func main() {": "c407550a557cb8ed"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1034,8 +1034,8 @@
    "func (h *NotificationsHandler) NotificationCapabilities(ctx context.Context) Not": "9d2fd251451610e4"
   },
   "internal/api/handlers/playback.go": {
-   "func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h": "9a05a3334944df6e",
-   "func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht": "3527c74a5a7af7aa",
+   "func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h": "09623ef74e5d10b1",
+   "func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht": "916e6853b7258682",
    "func (h *PlaybackHandler) ensurePlaybackProbe(ctx context.Context, file *models.": "6461a8cf19cddbcc",
    "func (h *PlaybackHandler) loadAuthorizedFile(r *http.Request, fileID int) (*mode": "674f14d1aae430cd",
    "func (h *PlaybackHandler) loadFileByPreferredID(": "babf5d6eda5255e8"
@@ -1264,7 +1264,7 @@
    "func (s *TranscodeSession) getManifest(currentGeneration bool) ([]byte, error) {": "931023eb9858923c",
    "func (s *TranscodeSession) openSegment(name string) (lease *SegmentLease, dv81 b": "1a1c3a7959924baf",
    "func (s *TranscodeSession) restart(": "9c94790da9451a55",
-   "func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession,": "d2be7dd17f718255",
+   "func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession,": "797fa9b8628368b8",
    "func prepareSubtitleFilterInput(ctx context.Context, opts *TranscodeOpts) error": "32ed6faf1b230146",
    "func validateToneMapSource(ctx context.Context, opts TranscodeOpts) error {": "104f1c742baf9718",
    "func videoPreset(opts TranscodeOpts, hwAccel string) string {": "679b450e81040880"
@@ -1407,5 +1407,5 @@
    "export function usePlaybackRealtime({": "a0af0f190ac407d1"
   }
  },
- "silo": "dde5ed21c4aaaa20b512247c5ec5b5875e3ceb9c"
+ "silo": "e88942648f746aa799a81ebb0a12c362c1e20c12"
 }

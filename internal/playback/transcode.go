@@ -768,6 +768,7 @@ func (s *TranscodeSession) monitorFFmpeg(ctx context.Context, cmd *exec.Cmd, don
 	}
 	processmetrics.Record(processmetrics.Transcode, cmd.ProcessState, waitErr, ctx.Err())
 	demuxError := s.flushStderr(ctx)
+	demuxError = demuxError || s.bloemInputDemuxError() // Bloem: a source input's private tail reports a demux error too (bloem_native_input.go)
 	// FFmpeg that exits 0 without a demux error read its input to the end:
 	// being stopped or replaced kills it, and a failed read logs
 	// ffmpegDemuxErrorLine before an exit 0 that only looks clean.
