@@ -37,6 +37,7 @@ require (
 	github.com/oasdiff/oasdiff v1.30.0
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/open-policy-agent/opa v1.18.2
+	github.com/oschwald/geoip2-golang v1.13.0
 	github.com/pgvector/pgvector-go v0.3.0
 	github.com/pressly/goose/v3 v3.27.1
 	github.com/prometheus/client_golang v1.24.1
@@ -182,6 +183,7 @@ require (
 	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
+	github.com/oschwald/maxminddb-golang v1.13.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/common v0.71.0 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
