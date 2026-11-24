@@ -95,8 +95,8 @@ func inQuietHours(now time.Time, startMin, endMin int, tz *time.Location) bool {
 }
 
 // holds reports whether the window keeps kind from the device at now.
-func (w *quietWindow) holds(now time.Time, kind string) bool {
-	if w == nil || !inQuietHours(now, w.startMinute, w.endMinute, w.location) {
+func (w quietWindow) holds(now time.Time, kind string) bool {
+	if !inQuietHours(now, w.startMinute, w.endMinute, w.location) {
 		return false
 	}
 	for _, allowed := range w.allowKinds {

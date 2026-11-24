@@ -336,20 +336,20 @@ func limitPerson(person string) string {
 }
 
 // StreamLimitNotice is "Stream limit reached" / "{person} was turned away:
-// all {max} streams in use.", once per person per recipient per hour.
-func StreamLimitNotice(userID int, person string, max int, scope string, at time.Time) AdminPushNotice {
+// all {limit} streams in use.", once per person per recipient per hour.
+func StreamLimitNotice(userID int, person string, limit int, scope string, at time.Time) AdminPushNotice {
 	_ = scope
 	return AdminPushNotice{
 		Kind: AdminKindStreamLimitReached, SubjectType: "person", SubjectID: strconv.Itoa(userID), DedupeKey: limitNoticeHour(at),
-		Title: "Stream limit reached", Body: fmt.Sprintf("%s was turned away: all %d streams in use.", limitPerson(person), max),
+		Title: "Stream limit reached", Body: fmt.Sprintf("%s was turned away: all %d streams in use.", limitPerson(person), limit),
 		Audience: AudienceLimitWatchers,
 	}
 }
 
 // TranscodeLimitNotice is "Transcode limit reached" / "{person} couldn't
-// start a transcode: the {scope} limit of {max} is in use.", once per person
+// start a transcode: the {scope} limit of {limit} is in use.", once per person
 // per recipient per hour.
-func TranscodeLimitNotice(userID int, person string, max int, scope string, at time.Time) AdminPushNotice {
+func TranscodeLimitNotice(userID int, person string, limit int, scope string, at time.Time) AdminPushNotice {
 	word := limitScopeWords[scope]
 	if word == "" {
 		word = "personal"
@@ -357,7 +357,7 @@ func TranscodeLimitNotice(userID int, person string, max int, scope string, at t
 	return AdminPushNotice{
 		Kind: AdminKindTranscodeLimitReached, SubjectType: "person", SubjectID: strconv.Itoa(userID), DedupeKey: limitNoticeHour(at),
 		Title:    "Transcode limit reached",
-		Body:     fmt.Sprintf("%s couldn't start a transcode: the %s limit of %d is in use.", limitPerson(person), word, max),
+		Body:     fmt.Sprintf("%s couldn't start a transcode: the %s limit of %d is in use.", limitPerson(person), word, limit),
 		Audience: AudienceLimitWatchers,
 	}
 }

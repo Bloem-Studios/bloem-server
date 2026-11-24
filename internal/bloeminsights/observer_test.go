@@ -33,6 +33,8 @@ func TestObserverWritesOneRowForADuplicateStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	deadline := time.Now().Add(5 * time.Second)
+	poll := time.NewTicker(20 * time.Millisecond)
+	defer poll.Stop()
 	for {
 		var count int
 		if err := pool.QueryRow(ctx, `SELECT count(*) FROM bloem_stream_records WHERE session_id = 's9'`).Scan(&count); err != nil {
@@ -44,7 +46,7 @@ func TestObserverWritesOneRowForADuplicateStart(t *testing.T) {
 		if time.Now().After(deadline) {
 			t.Fatalf("rows = %d, want 1", count)
 		}
-		time.Sleep(20 * time.Millisecond)
+		<-poll.C
 	}
 	if observer.Applied() < 1 {
 		t.Fatal("the observer applied nothing")

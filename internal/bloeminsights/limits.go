@@ -56,7 +56,6 @@ type LimitsFunc func(ctx context.Context, userID int) (playback.SessionLimits, e
 func ComputeUsage(ctx context.Context, sessions []LiveSession, limits LimitsFunc) ([]PersonUsage, error) {
 	people := map[int]*PersonUsage{}
 	var order []int
-	accountLimits := map[int]playback.SessionLimits{}
 	households := map[int]*PoolUsage{}
 	organizations := map[string]*PoolUsage{}
 	for _, s := range sessions {
@@ -66,26 +65,7 @@ func ComputeUsage(ctx context.Context, sessions []LiveSession, limits LimitsFunc
 			if err != nil {
 				return nil, err
 			}
-			accountLimits[s.UserID] = l
-			person = &PersonUsage{UserID: s.UserID, Username: s.Username,
-				Streams: Count{Max: l.MaxStreams}, Transcodes: Count{Max: l.MaxTranscodes}}
-			if l.Household.ID > 0 {
-				pool := households[l.Household.ID]
-				if pool == nil {
-					pool = &PoolUsage{ID: strconv.Itoa(l.Household.ID),
-						Streams: &Count{Max: l.Household.MaxStreams}, Transcodes: &Count{Max: l.Household.MaxTranscodes}}
-					households[l.Household.ID] = pool
-				}
-				person.Household = pool
-			}
-			if l.TenantID != "" && l.TenantMaxTranscodes > 0 {
-				pool := organizations[l.TenantID]
-				if pool == nil {
-					pool = &PoolUsage{ID: l.TenantID, Transcodes: &Count{Max: l.TenantMaxTranscodes}}
-					organizations[l.TenantID] = pool
-				}
-				person.Organization = pool
-			}
+			person = newPersonUsage(s, l, households, organizations)
 			people[s.UserID] = person
 			order = append(order, s.UserID)
 		}
@@ -116,6 +96,31 @@ func ComputeUsage(ctx context.Context, sessions []LiveSession, limits LimitsFunc
 		out = append(out, *people[id])
 	}
 	return out, nil
+}
+
+// newPersonUsage starts a person's usage at their limits, joining the
+// household and organization pools they share with others.
+func newPersonUsage(s LiveSession, l playback.SessionLimits, households map[int]*PoolUsage, organizations map[string]*PoolUsage) *PersonUsage {
+	person := &PersonUsage{UserID: s.UserID, Username: s.Username,
+		Streams: Count{Max: l.MaxStreams}, Transcodes: Count{Max: l.MaxTranscodes}}
+	if l.Household.ID > 0 {
+		pool := households[l.Household.ID]
+		if pool == nil {
+			pool = &PoolUsage{ID: strconv.Itoa(l.Household.ID),
+				Streams: &Count{Max: l.Household.MaxStreams}, Transcodes: &Count{Max: l.Household.MaxTranscodes}}
+			households[l.Household.ID] = pool
+		}
+		person.Household = pool
+	}
+	if l.TenantID != "" && l.TenantMaxTranscodes > 0 {
+		pool := organizations[l.TenantID]
+		if pool == nil {
+			pool = &PoolUsage{ID: l.TenantID, Transcodes: &Count{Max: l.TenantMaxTranscodes}}
+			organizations[l.TenantID] = pool
+		}
+		person.Organization = pool
+	}
+	return person
 }
 
 // refusalQueueSize bounds the refusals waiting to be recorded.
@@ -244,17 +249,17 @@ func (r *RefusalRecorder) record(ctx context.Context, item refusalItem) {
 func (r *RefusalRecorder) notice(ctx context.Context, item refusalItem, at time.Time) notifications.AdminPushNotice {
 	var person string
 	_ = r.pool.QueryRow(ctx, `SELECT username FROM users WHERE id = $1`, item.userID).Scan(&person)
-	max := 0
+	limit := 0
 	if r.limits != nil {
 		if l, err := r.limits(ctx, item.userID, item.profileID); err == nil {
-			max = limitMax(l, item.kind, item.scope)
+			limit = limitMax(l, item.kind, item.scope)
 		}
 	}
 	var notice notifications.AdminPushNotice
 	if item.kind == playback.LimitStreams {
-		notice = notifications.StreamLimitNotice(item.userID, person, max, string(item.scope), at)
+		notice = notifications.StreamLimitNotice(item.userID, person, limit, string(item.scope), at)
 	} else {
-		notice = notifications.TranscodeLimitNotice(item.userID, person, max, string(item.scope), at)
+		notice = notifications.TranscodeLimitNotice(item.userID, person, limit, string(item.scope), at)
 	}
 	// The person's organization's admins watch its limits too.
 	_ = r.pool.QueryRow(ctx, `SELECT organization_id FROM organization_memberships

@@ -33,11 +33,6 @@ const (
 	streamInsightsLivePages = 10
 )
 
-// StreamInsightsSessions reads the live admin sessions; *AdminHandler.
-type StreamInsightsSessions interface {
-	ReadAdminPlaybackSessions(ctx context.Context, query PlaybackSessionsQuery, after string, limit int) ([]AdminPlaybackSessionView, error)
-}
-
 // BloemStreamInsightsConfig is what the stream insights routes read.
 type BloemStreamInsightsConfig struct {
 	Store *bloeminsights.Store
@@ -46,8 +41,9 @@ type BloemStreamInsightsConfig struct {
 	Facts bloeminsights.FactsStore
 	// Geo resolves a viewer address no record has placed yet; nil means no
 	// location database.
-	Geo      *bloemgeo.Resolver
-	Sessions StreamInsightsSessions
+	Geo *bloemgeo.Resolver
+	// Sessions reads the live admin sessions; *AdminHandler.
+	Sessions SupportStreamSessions
 	Limits   bloeminsights.LimitsFunc
 	// Positions places the server and its nodes; nil places neither.
 	Positions func(context.Context) bloeminsights.Positions
@@ -275,64 +271,95 @@ func (h *BloemStreamInsightsHandler) HandleLiveInsights(w http.ResponseWriter, r
 
 func (h *BloemStreamInsightsHandler) insight(ctx context.Context, row AdminPlaybackSessionView, record bloeminsights.RecordView,
 	positions bloeminsights.Positions, limits *bloeminsights.PersonUsage) BloemStreamInsight {
-	item := BloemStreamInsight{SessionID: row.SessionID, Limits: limits,
+	item := BloemStreamInsight{SessionID: row.SessionID, Limits: limits, Viewer: h.viewer(row, record),
 		Transport: BloemStreamTransport{Viewer: string(bloeminsights.TransportUnknown)}}
-	if record.ViewerLat != nil && record.ViewerLon != nil {
-		item.Viewer = &BloemStreamViewer{City: record.ViewerCity, Country: record.ViewerCountry, CountryCode: record.ViewerCountryCode,
-			Lat: *record.ViewerLat, Lon: *record.ViewerLon, Approximate: record.ViewerApprox}
-	} else if location := h.cfg.Geo.Lookup(row.ClientIP); location != nil {
-		item.Viewer = &BloemStreamViewer{City: location.City, Country: location.Country, CountryCode: location.CountryCode,
-			Lat: location.Latitude, Lon: location.Longitude, Approximate: location.Approximate}
-	}
-	colo, edge := record.CFColo, (*bloeminsights.EdgeHop)(nil)
-	if record.EdgeLat != nil && record.EdgeLon != nil {
-		edge = &bloeminsights.EdgeHop{Name: record.EdgeName, Latitude: *record.EdgeLat, Longitude: *record.EdgeLon}
-	}
+	colo, edge := record.CFColo, recordEdge(record)
 	if record.Transport != "" {
 		item.Transport = BloemStreamTransport{Viewer: string(record.Transport), ViewerProto: record.ViewerProto, ServerProto: record.ServerProto, Changed: record.TransportChanged}
 	}
 	// A live stream shows its latest request's class.
-	if h.cfg.Facts != nil {
-		if summary, ok, err := h.cfg.Facts.Summary(ctx, row.SessionID); err == nil && ok {
-			latest := summary.Latest
-			item.Transport = BloemStreamTransport{Viewer: string(bloeminsights.ClassifyViewerLeg(latest)), ViewerProto: latest.Proto,
-				ServerProto: latest.Proto, Changed: summary.Changed}
-			if latest.Edge != nil {
-				edge = latest.Edge
-				if latest.Edge.ViewerProto != "" {
-					item.Transport.ViewerProto = latest.Edge.ViewerProto
-				}
-			}
-			if latest.CFColo != "" {
-				colo = latest.CFColo
-			}
+	if summary, ok := h.liveFacts(ctx, row.SessionID); ok {
+		item.Transport = liveTransport(summary)
+		if summary.Latest.Edge != nil {
+			edge = summary.Latest.Edge
+		}
+		if summary.Latest.CFColo != "" {
+			colo = summary.Latest.CFColo
 		}
 	}
-	if colo != "" {
-		item.Cloudflare = &BloemStreamCloudflare{Colo: colo}
-		if city, lat, lon, ok := bloeminsights.ColoLocation(colo); ok {
-			item.Cloudflare.City, item.Cloudflare.Lat, item.Cloudflare.Lon = city, &lat, &lon
-		}
-	}
+	item.Cloudflare = cloudflareHop(colo)
 	if edge != nil {
 		item.Edge = &BloemStreamEdge{Name: edge.Name, Lat: edge.Latitude, Lon: edge.Longitude}
 	}
 	if positions.Server != nil {
 		item.Server = &BloemStreamPlace{Label: positions.Server.Label, Lat: positions.Server.Latitude, Lon: positions.Server.Longitude}
 	}
-	nodeID := row.RoutingExecutionNodeID
-	if nodeID == nil {
-		nodeID = row.RoutingEgressNodeID
-	}
-	if nodeID == nil {
-		nodeID = record.NodeID
-	}
-	if nodeID != nil {
+	if nodeID := streamNodeID(row, record); nodeID != nil {
 		if node, ok := positions.Nodes[*nodeID]; ok {
 			item.Node = &BloemStreamPlace{Label: node.Label, Lat: node.Latitude, Lon: node.Longitude}
 		}
 	}
 	return item
+}
+
+// viewer is the record's viewer location, or, before the record has one,
+// the live session address's (looked up, never stored).
+func (h *BloemStreamInsightsHandler) viewer(row AdminPlaybackSessionView, record bloeminsights.RecordView) *BloemStreamViewer {
+	if record.ViewerLat != nil && record.ViewerLon != nil {
+		return &BloemStreamViewer{City: record.ViewerCity, Country: record.ViewerCountry, CountryCode: record.ViewerCountryCode,
+			Lat: *record.ViewerLat, Lon: *record.ViewerLon, Approximate: record.ViewerApprox}
+	}
+	if location := h.cfg.Geo.Lookup(row.ClientIP); location != nil {
+		return &BloemStreamViewer{City: location.City, Country: location.Country, CountryCode: location.CountryCode,
+			Lat: location.Latitude, Lon: location.Longitude, Approximate: location.Approximate}
+	}
+	return nil
+}
+
+func recordEdge(record bloeminsights.RecordView) *bloeminsights.EdgeHop {
+	if record.EdgeLat == nil || record.EdgeLon == nil {
+		return nil
+	}
+	return &bloeminsights.EdgeHop{Name: record.EdgeName, Latitude: *record.EdgeLat, Longitude: *record.EdgeLon}
+}
+
+func (h *BloemStreamInsightsHandler) liveFacts(ctx context.Context, sessionID string) (bloeminsights.FactsSummary, bool) {
+	if h.cfg.Facts == nil {
+		return bloeminsights.FactsSummary{}, false
+	}
+	summary, ok, err := h.cfg.Facts.Summary(ctx, sessionID)
+	return summary, ok && err == nil
+}
+
+func liveTransport(summary bloeminsights.FactsSummary) BloemStreamTransport {
+	latest := summary.Latest
+	out := BloemStreamTransport{Viewer: string(bloeminsights.ClassifyViewerLeg(latest)), ViewerProto: latest.Proto,
+		ServerProto: latest.Proto, Changed: summary.Changed}
+	if latest.Edge != nil && latest.Edge.ViewerProto != "" {
+		out.ViewerProto = latest.Edge.ViewerProto
+	}
+	return out
+}
+
+func cloudflareHop(colo string) *BloemStreamCloudflare {
+	if colo == "" {
+		return nil
+	}
+	hop := &BloemStreamCloudflare{Colo: colo}
+	if city, lat, lon, ok := bloeminsights.ColoLocation(colo); ok {
+		hop.City, hop.Lat, hop.Lon = city, &lat, &lon
+	}
+	return hop
+}
+
+func streamNodeID(row AdminPlaybackSessionView, record bloeminsights.RecordView) *int {
+	switch {
+	case row.RoutingExecutionNodeID != nil:
+		return row.RoutingExecutionNodeID
+	case row.RoutingEgressNodeID != nil:
+		return row.RoutingEgressNodeID
+	}
+	return record.NodeID
 }
 
 func insightsWindow(w http.ResponseWriter, r *http.Request) (bloeminsights.Window, bool) {

@@ -63,7 +63,7 @@ func TestCloudflareColo(t *testing.T) {
 
 func TestIsCloudflareAddress(t *testing.T) {
 	if !IsCloudflareAddress(netip.MustParseAddr("162.158.1.1")) || !IsCloudflareAddress(netip.MustParseAddr("2606:4700::1")) {
-		t.Fatal("a Cloudflare egress address was not recognised")
+		t.Fatal("a Cloudflare egress address was not recognized")
 	}
 	if IsCloudflareAddress(netip.MustParseAddr("203.0.113.9")) {
 		t.Fatal("a documentation address was taken for Cloudflare")

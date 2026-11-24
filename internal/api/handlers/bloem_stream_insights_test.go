@@ -134,14 +134,34 @@ func TestStreamInsightsPlatformRoutes(t *testing.T) {
 	if code != 200 || body["available"] != true || body["locations"] != false || body["edge_header"] != "X-Bloem-Edge" || body["retention_days"] != float64(90) {
 		t.Fatalf("capabilities = %d %s", code, raw)
 	}
-
-	code, body, raw = f.get(t, "/platform/streams/insights")
-	if code != 200 {
-		t.Fatalf("insights = %d %s", code, raw)
+	checkLiveInsights(t, f)
+	checkLiveTrails(t, f)
+	code, body, raw = f.get(t, "/platform/streams/transport?window=24h")
+	if code != 200 || body["counts"].(map[string]any)["cloudflare"].(float64) < 1 || len(body["series"].([]any)) != 24 {
+		t.Fatalf("transport = %d %s", code, raw)
 	}
+	code, body, raw = f.get(t, "/platform/limits/usage")
+	if code != 200 || len(body["people"].([]any)) != 2 {
+		t.Fatalf("usage = %d %s", code, raw)
+	}
+	for _, path := range []string{"/platform/limits/refusals?days=7", "/platform/stats/top-people?days=30", "/platform/stats/heatmap?days=30&tz=Europe/Amsterdam",
+		"/platform/stats/clients?days=30", "/platform/stats/transcode-causes?days=30"} {
+		if code, _, raw := f.get(t, path); code != 200 {
+			t.Fatalf("%s = %d %s", path, code, raw)
+		}
+	}
+	_, body, _ = f.get(t, "/platform/stats/heatmap?days=30&tz=UTC")
+	if plays := body["plays"].([]any); len(plays) != 7 || len(plays[0].([]any)) != 24 {
+		t.Fatalf("heatmap = %v", body)
+	}
+}
+
+func checkLiveInsights(t *testing.T, f *insightsFixture) {
+	t.Helper()
+	code, body, raw := f.get(t, "/platform/streams/insights")
 	items, _ := body["items"].([]any)
-	if len(items) != 2 {
-		t.Fatalf("insights items = %s", raw)
+	if code != 200 || len(items) != 2 {
+		t.Fatalf("insights = %d %s", code, raw)
 	}
 	first := items[0].(map[string]any)
 	if first["session_id"] != "si-test-full" || first["cloudflare"] == nil || first["edge"] == nil || first["server"] == nil || first["node"] == nil {
@@ -155,14 +175,14 @@ func TestStreamInsightsPlatformRoutes(t *testing.T) {
 		t.Fatalf("full stream limits = %v", limits)
 	}
 	second := items[1].(map[string]any)
-	if second["cloudflare"] != nil || second["edge"] != nil {
-		t.Fatalf("plain stream = %v, want no Cloudflare or edge hop", second)
+	if second["cloudflare"] != nil || second["edge"] != nil || second["viewer"] == nil {
+		t.Fatalf("plain stream = %v, want its recorded viewer and no Cloudflare or edge hop", second)
 	}
-	if second["viewer"] == nil {
-		t.Fatalf("plain stream lost its recorded viewer: %v", second)
-	}
+}
 
-	code, body, raw = f.get(t, "/platform/streams/trails?window=live")
+func checkLiveTrails(t *testing.T, f *insightsFixture) {
+	t.Helper()
+	code, body, raw := f.get(t, "/platform/streams/trails?window=live")
 	if code != 200 || body["truncated"] != false {
 		t.Fatalf("trails = %d %s", code, raw)
 	}
@@ -180,25 +200,6 @@ func TestStreamInsightsPlatformRoutes(t *testing.T) {
 	}
 	if got := strings.Join(trails["si-test-plain"], ">"); got != "viewer>server>node" {
 		t.Fatalf("plain trail = %s", got)
-	}
-
-	code, body, raw = f.get(t, "/platform/streams/transport?window=24h")
-	if code != 200 || body["counts"].(map[string]any)["cloudflare"].(float64) < 1 || len(body["series"].([]any)) != 24 {
-		t.Fatalf("transport = %d %s", code, raw)
-	}
-	code, body, raw = f.get(t, "/platform/limits/usage")
-	if code != 200 || len(body["people"].([]any)) != 2 {
-		t.Fatalf("usage = %d %s", code, raw)
-	}
-	for _, path := range []string{"/platform/limits/refusals?days=7", "/platform/stats/top-people?days=30", "/platform/stats/heatmap?days=30&tz=Europe/Amsterdam",
-		"/platform/stats/clients?days=30", "/platform/stats/transcode-causes?days=30"} {
-		if code, _, raw := f.get(t, path); code != 200 {
-			t.Fatalf("%s = %d %s", path, code, raw)
-		}
-	}
-	code, body, _ = f.get(t, "/platform/stats/heatmap?days=30&tz=UTC")
-	if plays := body["plays"].([]any); len(plays) != 7 || len(plays[0].([]any)) != 24 {
-		t.Fatalf("heatmap = %v", body)
 	}
 }
 

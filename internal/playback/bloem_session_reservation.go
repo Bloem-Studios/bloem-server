@@ -859,10 +859,12 @@ func (m *SessionManager) commitDecidedCandidateLocked(candidate *Session, method
 // fleet reservation the reconstructed session acquired.
 type bloemReconstructReservation struct {
 	m        *SessionManager
-	ctx      context.Context
 	session  *Session
 	acquired bool
 	unlock   func()
+	// refused reports a limit refusal for the rebuilt session, with the
+	// rebuild's context (bloem_limit_refusals.go).
+	refused func(error)
 }
 
 // reserveReconstructed runs the Bloem first admission pass for a
@@ -873,7 +875,9 @@ type bloemReconstructReservation struct {
 func (m *SessionManager) reserveReconstructed(ctx context.Context, s *Session, limits SessionLimits) (*bloemReconstructReservation, *Session, error) {
 	m.reservationLifecycle.Lock()
 	unlockReservation := m.lockSessionReservation(s.ID)
-	r := &bloemReconstructReservation{m: m, ctx: ctx, session: s, unlock: func() {
+	r := &bloemReconstructReservation{m: m, session: s, refused: func(err error) {
+		m.noteLimitRefusal(ctx, s.UserID, s.ProfileID, err)
+	}, unlock: func() {
 		unlockReservation()
 		m.reservationLifecycle.Unlock()
 	}}
@@ -933,12 +937,7 @@ func (r *bloemReconstructReservation) finish(errp *error) {
 // noteRefusal reports a rebuild refused at a limit, after finish released
 // the locks.
 func (r *bloemReconstructReservation) noteRefusal(err error) {
-	if err == nil {
-		return
+	if err != nil && r.refused != nil {
+		r.refused(err)
 	}
-	ctx := r.ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	r.m.noteLimitRefusal(ctx, r.session.UserID, r.session.ProfileID, err)
 }

@@ -74,6 +74,12 @@ TOPICS = [
      [r"^/(capabilities|server|watch|sync|persons|catalog|profile-credentials)(/|$)"],
      "What Bloem's own apps read beyond Silo's API: capabilities, server identity, the composed Watch "
      "documents, progress sync, people, item collections and profile sign-in credentials."),
+    ("insights", "Stream insights", "bloem-stream-insights.md",
+     [("Admin app push notifications", "bloem-admin-push.md")],
+     [r"^/admin/platform/(stream-insights|streams|limits|stats)(/|$)", r"^/admin/organization/(limits|stats)(/|$)"],
+     "Where live streams come from and how they are connected, for platform administrators; limit use, "
+     "refusals at a stream or transcode limit and viewing stats, for the platform and for an organization's "
+     "own members."),
     ("organizations", "Organizations and administration", "bloem-organizations.md",
      [("Multitenant administration", "multitenant-administration.md"),
       ("Resource tenancy foundation", "resource-tenancy-foundation.md"),

@@ -17,7 +17,7 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 - [Admin app push notifications](../../architecture/bloem-admin-push.md)
 - [How push notifications reach each app](../../architecture/bloem-push-relays.md)
 
-## Operations (37)
+## Operations (39)
 
 | Method and path | Summary |
 | --- | --- |
@@ -44,6 +44,8 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 | [`POST /api/bloem/v2/admin/push/devices/{device_id}/live-activities`](#post-apibloemv2adminpushdevicesdevice_idlive-activities) | Register a scan or backup Live Activity the app runs. |
 | [`DELETE /api/bloem/v2/admin/push/devices/{device_id}/live-activities/{activity_id}`](#delete-apibloemv2adminpushdevicesdevice_idlive-activitiesactivity_id) | Forget a Live Activity that ended. |
 | [`PUT /api/bloem/v2/admin/push/devices/{device_id}/live-activity-start`](#put-apibloemv2adminpushdevicesdevice_idlive-activity-start) | Store or clear the device's push-to-start token. |
+| [`PUT /api/bloem/v2/admin/push/devices/{device_id}/quiet-hours`](#put-apibloemv2adminpushdevicesdevice_idquiet-hours) | Set one device's quiet hours. |
+| [`DELETE /api/bloem/v2/admin/push/devices/{device_id}/quiet-hours`](#delete-apibloemv2adminpushdevicesdevice_idquiet-hours) | Clear one device's quiet hours. |
 | [`POST /api/bloem/v2/admin/push/devices/{device_id}/retire`](#post-apibloemv2adminpushdevicesdevice_idretire) | Stop pushes to a device using its display token. |
 | [`PUT /api/bloem/v2/admin/push/devices/{device_id}/widgets`](#put-apibloemv2adminpushdevicesdevice_idwidgets) | Report the widgets the app has placed. |
 | [`GET /api/bloem/v2/ambience`](#get-apibloemv2ambience) | Read seasonal presentation for the current verified tenant viewer. |
@@ -431,7 +433,7 @@ Request body (required, `application/json`): [`BloemAdminPushRegisterRequest`](#
 | 200 | [`BloemAdminPushRegistered`](#bloemadminpushregistered) | OK |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: the body is not valid JSON for this route, or exceeds 32 KiB. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: no valid access token. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required: the account is not an enabled administrator; account_session_required: the token is an API key, impersonation or administrative-context token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required: the account is neither an enabled administrator nor an active admin of an organization; account_session_required: the token is an API key, impersonation or administrative-context token. |
 | 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: a field is missing or malformed, the topic is not com.bloemstudios.admin, or a kind id is unknown. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
 
@@ -478,7 +480,7 @@ Request body (required, `application/json`): [`BloemAdminPushKindsRequest`](#blo
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: no valid access token. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required or account_session_required, as for registration. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no device with this id belongs to the account. |
-| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: a kind id is unknown. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: a kind id is unknown; kind_not_available: an organization's admin switched on a kind other than the two limit kinds. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
 
 ### `POST /api/bloem/v2/admin/push/devices/{device_id}/live-activities`
@@ -553,6 +555,52 @@ Request body (required, `application/json`): [`BloemAdminLiveStartRequest`](#blo
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no device with this id belongs to the account. |
 | 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: the token is malformed, a kind is unknown, kinds were sent without a token, or the device is not an Apple device. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery or the operator's Live Activities switch is off on this server, or it has no push backing. |
+
+### `PUT /api/bloem/v2/admin/push/devices/{device_id}/quiet-hours`
+
+Set one device's quiet hours.
+
+Operation ID: `setBloemAdminPushQuietHours`.
+Credentials: `bloemAccountSession`.
+
+Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. From start to end (HH:MM, in time_zone; an end before the start crosses midnight) the server sends the device only the kinds in allow_kinds and drops the others instead of holding them. The two reachability kinds are produced by the apps' own checks, which apply the same window. Servers that keep quiet hours list admin_push_quiet_hours_v1.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `device_id` | path | string | yes | The device_id a registration returned. |
+
+Request body (required, `application/json`): [`BloemAdminPushQuietHoursRequest`](#bloemadminpushquiethoursrequest).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`AdminPushQuietHours`](#adminpushquiethours) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: the body is not valid JSON for this route. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: no valid access token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required or account_session_required, as for registration. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no device with this id belongs to the account. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_registration: a time is not HH:MM, start equals end, the time zone is unknown, or a kind id is unknown. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
+
+### `DELETE /api/bloem/v2/admin/push/devices/{device_id}/quiet-hours`
+
+Clear one device's quiet hours.
+
+Operation ID: `clearBloemAdminPushQuietHours`.
+Credentials: `bloemAccountSession`.
+
+Requires a signed-in administrator's account access token with a login session. API keys, impersonation and administrative-context tokens are refused. Every kind the device has switched on is sent again at any time.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `device_id` | path | string | yes | The device_id a registration returned. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: no valid access token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_required or account_session_required, as for registration. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no device with this id belongs to the account. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | admin_push_unavailable: push delivery is off on this server, or it has no push backing. |
 
 ### `POST /api/bloem/v2/admin/push/devices/{device_id}/retire`
 
@@ -899,6 +947,15 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | `kind` | string | yes |  |
 | `server_emitted` | boolean | yes |  |
 
+### AdminPushQuietHours
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `allow_kinds` | array of string | yes |  |
+| `end` | string | yes |  |
+| `start` | string | yes |  |
+| `time_zone` | string | yes |  |
+
 ### AlertBody
 
 | Field | Type | Required | Description |
@@ -983,13 +1040,13 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | `actions` | array of string: `approve`, `decline` | yes | Buttons the notification offers. Empty for most kinds. |
 | `badge` | integer (int64) |  | Waiting items to show on the app icon. |
 | `body` | string | yes |  |
-| `channel` | string: `servers`, `requests`, `libraries`, `backups`, `nodes`, `plugins` | yes |  |
+| `channel` | string: `servers`, `requests`, `libraries`, `backups`, `nodes`, `plugins`, `limits` | yes |  |
 | `created_at` | string (date-time) | yes |  |
 | `delivery_id` | string | yes |  |
-| `item_id` | string |  | The item on that page: a request id, library id, node id or plugin installation id. |
+| `item_id` | string |  | The item on that page: a request id, library id, node id, plugin installation id, or the account id of the person refused at a limit. |
 | `kind` | string | yes |  |
 | `lock_screen` | string | yes | All a locked screen shows unless the device allows details. |
-| `page` | string |  | App link page a tap opens: requests, libraries, backups, nodes or plugins. |
+| `page` | string |  | App link page a tap opens: requests, libraries, backups, nodes, plugins or limits. |
 | `subject_type` | string |  |  |
 | `title` | string | yes |  |
 
@@ -1004,6 +1061,15 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `kinds` | object of boolean | yes | Kind id to enabled. Kinds not named keep their setting. |
+
+### BloemAdminPushQuietHoursRequest
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `allow_kinds` | array of string |  | Kind ids still sent during the window. The two reachability kinds are the apps' own; the apps apply quiet hours to them. |
+| `end` | string | yes | End of the window, HH:MM; before start means the window crosses midnight. |
+| `start` | string | yes | Start of the quiet window, HH:MM in 24-hour time. |
+| `time_zone` | string | yes | IANA time zone the window is in, for example Europe/Amsterdam. |
 
 ### BloemAdminPushRegisterRequest
 

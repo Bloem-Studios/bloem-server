@@ -67,6 +67,8 @@ func TestStreamInsightsWiringRecordsAndServesALifecycleEvent(t *testing.T) {
 	})
 	h.MountPlatform(router)
 	deadline := time.Now().Add(10 * time.Second)
+	poll := time.NewTicker(50 * time.Millisecond)
+	defer poll.Stop()
 	for {
 		// The observer subscribes on its own goroutine: publish until it is heard.
 		if err := hub.PublishJSON(ctx, evt.ChannelSessions, "session.started", ev, evt.PublishOptions{AdminOnly: true}); err != nil {
@@ -80,7 +82,7 @@ func TestStreamInsightsWiringRecordsAndServesALifecycleEvent(t *testing.T) {
 		if time.Now().After(deadline) {
 			t.Fatalf("trails never listed the published session: %d %s", rec.Code, rec.Body.String())
 		}
-		time.Sleep(50 * time.Millisecond)
+		<-poll.C
 	}
 }
 

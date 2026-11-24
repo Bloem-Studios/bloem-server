@@ -82,11 +82,11 @@ type FactsStore interface {
 
 // NewMemoryFactsStore keeps facts in this process, for a server without
 // Redis. now is the clock; nil means time.Now.
-func NewMemoryFactsStore(ttl time.Duration, now func() time.Time) FactsStore {
+func NewMemoryFactsStore(ttl time.Duration, now func() time.Time) *MemoryFactsStore {
 	if now == nil {
 		now = time.Now
 	}
-	return &memoryFactsStore{ttl: ttl, now: now, entries: map[string]*memoryFacts{}}
+	return &MemoryFactsStore{ttl: ttl, now: now, entries: map[string]*memoryFacts{}}
 }
 
 type memoryFacts struct {
@@ -95,7 +95,8 @@ type memoryFacts struct {
 	expires time.Time
 }
 
-type memoryFactsStore struct {
+// MemoryFactsStore keeps facts in this process (NewMemoryFactsStore).
+type MemoryFactsStore struct {
 	mu        sync.Mutex
 	ttl       time.Duration
 	now       func() time.Time
@@ -103,7 +104,7 @@ type memoryFactsStore struct {
 	lastSweep time.Time
 }
 
-func (s *memoryFactsStore) Record(_ context.Context, sessionID string, f RequestFacts) error {
+func (s *MemoryFactsStore) Record(_ context.Context, sessionID string, f RequestFacts) error {
 	now := s.now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -126,7 +127,7 @@ func (s *memoryFactsStore) Record(_ context.Context, sessionID string, f Request
 	return nil
 }
 
-func (s *memoryFactsStore) Summary(_ context.Context, sessionID string) (FactsSummary, bool, error) {
+func (s *MemoryFactsStore) Summary(_ context.Context, sessionID string) (FactsSummary, bool, error) {
 	now := s.now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -145,11 +146,12 @@ func (s *memoryFactsStore) Summary(_ context.Context, sessionID string) (FactsSu
 // requests the others served. Each session is one hash,
 // bloem:insights:facts:<session_id>, with a counter per class and the
 // latest facts as JSON; every write refreshes its TTL.
-func NewRedisFactsStore(c *redis.Client, ttl time.Duration) FactsStore {
-	return &redisFactsStore{client: c, ttl: ttl}
+func NewRedisFactsStore(c *redis.Client, ttl time.Duration) *RedisFactsStore {
+	return &RedisFactsStore{client: c, ttl: ttl}
 }
 
-type redisFactsStore struct {
+// RedisFactsStore keeps facts in Redis (NewRedisFactsStore).
+type RedisFactsStore struct {
 	client *redis.Client
 	ttl    time.Duration
 }
@@ -161,7 +163,7 @@ const (
 
 func factsKey(sessionID string) string { return "bloem:insights:facts:" + sessionID }
 
-func (s *redisFactsStore) Record(ctx context.Context, sessionID string, f RequestFacts) error {
+func (s *RedisFactsStore) Record(ctx context.Context, sessionID string, f RequestFacts) error {
 	latest, err := json.Marshal(f)
 	if err != nil {
 		return err
@@ -176,7 +178,7 @@ func (s *redisFactsStore) Record(ctx context.Context, sessionID string, f Reques
 	return err
 }
 
-func (s *redisFactsStore) Summary(ctx context.Context, sessionID string) (FactsSummary, bool, error) {
+func (s *RedisFactsStore) Summary(ctx context.Context, sessionID string) (FactsSummary, bool, error) {
 	fields, err := s.client.HGetAll(ctx, factsKey(sessionID)).Result()
 	if err != nil {
 		return FactsSummary{}, false, err

@@ -64,27 +64,8 @@ func (p mapPoint) hop(kind string) (Hop, bool) {
 func ServerPositions(ctx context.Context, settings SettingsReader, geo *bloemgeo.Resolver, publicIP func(context.Context) string) Positions {
 	out := Positions{Nodes: map[int]Hop{}}
 	if settings != nil {
-		if raw, err := settings.Get(ctx, SettingMapLocations); err == nil && strings.TrimSpace(raw) != "" {
-			var doc struct {
-				Server *mapPoint           `json:"server"`
-				Nodes  map[string]mapPoint `json:"nodes"`
-			}
-			if json.Unmarshal([]byte(raw), &doc) == nil {
-				if doc.Server != nil {
-					if hop, ok := doc.Server.hop(HopServer); ok {
-						out.Server = &hop
-					}
-				}
-				for key, point := range doc.Nodes {
-					id, err := strconv.Atoi(key)
-					if err != nil || id <= 0 {
-						continue
-					}
-					if hop, ok := point.hop(HopNode); ok {
-						out.Nodes[id] = hop
-					}
-				}
-			}
+		if raw, err := settings.Get(ctx, SettingMapLocations); err == nil {
+			out = parseMapLocations(raw)
 		}
 	}
 	if out.Server == nil && publicIP != nil && geo.Available() {
@@ -94,6 +75,34 @@ func ServerPositions(ctx context.Context, settings SettingsReader, geo *bloemgeo
 				label = location.Country
 			}
 			out.Server = &Hop{Kind: HopServer, Label: label, Latitude: location.Latitude, Longitude: location.Longitude, Approximate: location.Approximate}
+		}
+	}
+	return out
+}
+
+// parseMapLocations reads SettingMapLocations' value, leaving out entries
+// that are malformed or out of range.
+func parseMapLocations(raw string) Positions {
+	out := Positions{Nodes: map[int]Hop{}}
+	var doc struct {
+		Server *mapPoint           `json:"server"`
+		Nodes  map[string]mapPoint `json:"nodes"`
+	}
+	if strings.TrimSpace(raw) == "" || json.Unmarshal([]byte(raw), &doc) != nil {
+		return out
+	}
+	if doc.Server != nil {
+		if hop, ok := doc.Server.hop(HopServer); ok {
+			out.Server = &hop
+		}
+	}
+	for key, point := range doc.Nodes {
+		id, err := strconv.Atoi(key)
+		if err != nil || id <= 0 {
+			continue
+		}
+		if hop, ok := point.hop(HopNode); ok {
+			out.Nodes[id] = hop
 		}
 	}
 	return out
