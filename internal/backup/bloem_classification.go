@@ -77,7 +77,8 @@ var bloemRestoredDataTables = strings.Fields(`
 // bloemServerStateTables describe the running server: job and lease state,
 // the admin app push log and its retry queue (as notification_deliveries and
 // push_delivery_attempts are), receipts, counters, caches, the storage scan index (rebuilt by the next
-// scan), the Live TV guide (refetched from its sources), sessions, and which
+// scan), the Live TV guide (refetched from its sources), sessions, the stream
+// insights log and its limit refusals (kept 90 days), and which
 // backend serves (the Silo switching flag and the household logins held while
 // stock Silo serves, which Bloem releases when it starts).
 var bloemServerStateTables = strings.Fields(`
@@ -87,6 +88,7 @@ var bloemServerStateTables = strings.Fields(`
 	bloem_admin_push_attempts bloem_admin_push_deliveries bloem_admin_live_starts
 	bloem_org_session_revocations bloem_preview_event_counts bloem_preview_personal_presentation bloem_remote_sources
 	bloem_preview_ticket_uses bloem_silo_switching bloem_household_silo_holds
+	bloem_stream_records bloem_limit_refusals
 	bloem_storage_audio_probes bloem_storage_audio_staged_tracks bloem_storage_change_tokens bloem_storage_entries
 	bloem_storage_episode_sidecars
 	bloem_storage_file_refs bloem_storage_file_roots bloem_storage_location_directories bloem_storage_location_edges
@@ -238,6 +240,8 @@ var bloemInterruptedWork = []struct{ table, sql string }{
 var bloemExcludedUserTables = map[string]string{
 	"bloem_admin_push_devices":       excludedPush,
 	"bloem_admin_push_deliveries":    "admin app push notification log",
+	"bloem_stream_records":           "stream insights log, kept 90 days",
+	"bloem_limit_refusals":           "stream and transcode limit refusals, kept 90 days",
 	"bloem_household_silo_holds":     "household logins held while stock Silo serves; Bloem releases them when it starts",
 	"livetv_recordings":              "Live TV recordings, restored with the server's Live TV setup",
 	"livetv_series_rules":            "Live TV recording rules, restored with the server's Live TV setup",
