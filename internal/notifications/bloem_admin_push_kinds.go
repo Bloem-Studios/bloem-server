@@ -25,6 +25,10 @@ const (
 	AdminKindBackupFailed   = "admin.backup_failed"
 	AdminKindNodeOffline    = "admin.node_offline"
 	AdminKindPluginFailed   = "admin.plugin_failed"
+	// The limit kinds: someone was refused a stream or a transcode at a
+	// limit. Organization admins get them for their own members.
+	AdminKindStreamLimitReached    = "admin.stream_limit_reached"
+	AdminKindTranscodeLimitReached = "admin.transcode_limit_reached"
 )
 
 // Admin push channels, one per app section.
@@ -35,6 +39,7 @@ const (
 	AdminChannelBackups   = "backups"
 	AdminChannelNodes     = "nodes"
 	AdminChannelPlugins   = "plugins"
+	AdminChannelLimits    = "limits"
 )
 
 // Admin push actions a notification may offer. Nothing destructive is listed.
@@ -118,6 +123,9 @@ type AdminPushKind struct {
 	Actions []string
 	// ServerEmitted is false for kinds only the apps' local checks produce.
 	ServerEmitted bool
+	// OrganizationAdmins is true for the kinds an organization's own admins
+	// may switch on and receive, for their organization's members only.
+	OrganizationAdmins bool
 }
 
 var adminPushKinds = []AdminPushKind{
@@ -129,6 +137,10 @@ var adminPushKinds = []AdminPushKind{
 	{ID: AdminKindBackupFailed, Channel: AdminChannelBackups, LockText: "A backup failed", Page: "backups", ServerEmitted: true},
 	{ID: AdminKindNodeOffline, Channel: AdminChannelNodes, LockText: "A node is offline", Page: "nodes", ServerEmitted: true},
 	{ID: AdminKindPluginFailed, Channel: AdminChannelPlugins, LockText: "A plugin needs attention", Page: "plugins", ServerEmitted: true},
+	{ID: AdminKindStreamLimitReached, Channel: AdminChannelLimits, LockText: "Someone was turned away at a stream limit", Page: "limits",
+		ServerEmitted: true, OrganizationAdmins: true},
+	{ID: AdminKindTranscodeLimitReached, Channel: AdminChannelLimits, LockText: "Someone was turned away at a transcode limit", Page: "limits",
+		ServerEmitted: true, OrganizationAdmins: true},
 }
 
 // AdminPushKinds lists every kind in the order the apps show them.
@@ -299,5 +311,46 @@ func PluginFailedNotice(installationID, plugin, reason string, streakStart time.
 		Kind: AdminKindPluginFailed, SubjectType: "plugin", SubjectID: installationID,
 		DedupeKey: fmt.Sprintf("s%d", streakStart.Unix()),
 		Title:     adminText(plugin) + " needs attention", Body: reason, Audience: AudiencePlatformAdmins,
+	}
+}
+
+// limitScopeWords names a transcode limit's scope in a notice body.
+var limitScopeWords = map[string]string{"person": "personal", "household": "household", "organization": "organization's"}
+
+// limitNoticeHour groups a person's refusals into one notification per
+// recipient per UTC hour.
+func limitNoticeHour(at time.Time) string { return at.UTC().Format("2006-01-02T15") }
+
+func limitPerson(person string) string {
+	if who := adminText(person); who != "" {
+		return who
+	}
+	return "Someone"
+}
+
+// StreamLimitNotice is "Stream limit reached" / "{person} was turned away:
+// all {max} streams in use.", once per person per recipient per hour.
+func StreamLimitNotice(userID int, person string, max int, scope string, at time.Time) AdminPushNotice {
+	_ = scope
+	return AdminPushNotice{
+		Kind: AdminKindStreamLimitReached, SubjectType: "person", SubjectID: strconv.Itoa(userID), DedupeKey: limitNoticeHour(at),
+		Title: "Stream limit reached", Body: fmt.Sprintf("%s was turned away: all %d streams in use.", limitPerson(person), max),
+		Audience: AudiencePlatformAdmins,
+	}
+}
+
+// TranscodeLimitNotice is "Transcode limit reached" / "{person} couldn't
+// start a transcode: the {scope} limit of {max} is in use.", once per person
+// per recipient per hour.
+func TranscodeLimitNotice(userID int, person string, max int, scope string, at time.Time) AdminPushNotice {
+	word := limitScopeWords[scope]
+	if word == "" {
+		word = "personal"
+	}
+	return AdminPushNotice{
+		Kind: AdminKindTranscodeLimitReached, SubjectType: "person", SubjectID: strconv.Itoa(userID), DedupeKey: limitNoticeHour(at),
+		Title:    "Transcode limit reached",
+		Body:     fmt.Sprintf("%s couldn't start a transcode: the %s limit of %d is in use.", limitPerson(person), word, max),
+		Audience: AudiencePlatformAdmins,
 	}
 }

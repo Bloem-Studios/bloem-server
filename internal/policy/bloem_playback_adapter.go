@@ -10,7 +10,16 @@ import (
 // NewBloemPlaybackAdmissionDecider adds trusted tenant facts to the upstream
 // playback admission adapter before policy evaluation.
 func NewBloemPlaybackAdmissionDecider(checker ActionChecker) playback.AdmissionDecider {
-	return NewPlaybackAdmissionDecider(bloemPlaybackActionChecker{checker: checker})
+	decide := NewPlaybackAdmissionDecider(bloemPlaybackActionChecker{checker: checker})
+	return func(ctx context.Context, req playback.AdmissionRequest) (playback.AdmissionDecision, error) {
+		decision, err := decide(ctx, req)
+		if err == nil && !decision.Allowed {
+			// Stream insights hears a refusal at a limit, such as a
+			// mid-stream switch to a transcode, that no other hook sees.
+			playback.NoteAdmissionRefusal(ctx, req.UserID, decision.ReasonCode)
+		}
+		return decision, err
+	}
 }
 
 type bloemPlaybackActionChecker struct {

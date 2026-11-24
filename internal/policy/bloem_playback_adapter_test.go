@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -173,5 +174,40 @@ func TestBloemPlaybackActionCheckerReplacesCallerTenantFacts(t *testing.T) {
 	}
 	if input.Tenant != validLegacyTenantFactsForPolicyTest() {
 		t.Fatalf("caller input mutated: %+v", input)
+	}
+}
+
+type admissionRefusals struct {
+	mu    sync.Mutex
+	heard []playback.LimitKind
+	users []int
+}
+
+func (r *admissionRefusals) LimitRefused(_ context.Context, userID int, _ string, kind playback.LimitKind, _ playback.LimitScope) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.heard = append(r.heard, kind)
+	r.users = append(r.users, userID)
+}
+
+// Bloem's decider reports each denial at a limit for stream insights, so a
+// mid-stream switch the policy refuses is heard.
+func TestBloemPlaybackAdmissionReportsLimitDenials(t *testing.T) {
+	refusals := &admissionRefusals{}
+	playback.SetAdmissionRefusalObserver(refusals)
+	t.Cleanup(func() { playback.SetAdmissionRefusalObserver(nil) })
+	ctx := resolvedTenantContextForPolicyTest()
+	denied := &bloemPlaybackChecker{decision: ActionDecision{Allowed: false, ReasonCode: playback.AdmissionReasonMaxTranscodesExceeded}}
+	if _, err := NewBloemPlaybackAdmissionDecider(denied)(ctx, playback.AdmissionRequest{UserID: 1, RequiresVideoTranscode: true}); err != nil {
+		t.Fatal(err)
+	}
+	allowed := &bloemPlaybackChecker{decision: ActionDecision{Allowed: true}}
+	if _, err := NewBloemPlaybackAdmissionDecider(allowed)(ctx, playback.AdmissionRequest{UserID: 1}); err != nil {
+		t.Fatal(err)
+	}
+	refusals.mu.Lock()
+	defer refusals.mu.Unlock()
+	if len(refusals.heard) != 1 || refusals.heard[0] != playback.LimitTranscodes || refusals.users[0] != 1 {
+		t.Fatalf("heard %v for %v, want one transcode refusal for account 1", refusals.heard, refusals.users)
 	}
 }

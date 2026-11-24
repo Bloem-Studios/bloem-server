@@ -19,11 +19,17 @@ func (m *SessionManager) SetStreamLimitObserver(observer StreamLimitObserver) {
 	m.mu.Unlock()
 }
 
-// noteStreamLimit tells the observer when a start was refused for the stream
-// limit, on either the inline or the policy admission path. It is deferred
+// noteStreamLimit tells the observers when a start was refused at a limit,
+// on either the inline or the policy admission path: the limit refusal
+// observer hears every stream and transcode refusal, and the stream limit
+// observer (the upgrade prompt) hears stream refusals only. It is deferred
 // by StartSessionWithFilesContext with that call's error.
 func (m *SessionManager) noteStreamLimit(ctx context.Context, userID int, profileID string, errp *error) {
-	if errp == nil || !errors.Is(*errp, ErrTooManyStreams) {
+	if errp == nil || *errp == nil {
+		return
+	}
+	m.noteLimitRefusal(ctx, userID, profileID, *errp)
+	if !errors.Is(*errp, ErrTooManyStreams) {
 		return
 	}
 	m.mu.RLock()

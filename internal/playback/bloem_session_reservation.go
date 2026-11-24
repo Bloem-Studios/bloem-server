@@ -511,7 +511,9 @@ func (m *SessionManager) admitReplacementLocked(ctx context.Context, session *Se
 		if provisional {
 			current.replacementPlayMethod = priorMethod
 		}
+		userID, profileID := current.UserID, current.ProfileID
 		m.mu.Unlock()
+		m.noteLimitRefusal(ctx, userID, profileID, err)
 		return err
 	}
 	applyFleetReservationLocked(current, reservation, request)
@@ -659,6 +661,9 @@ type bloemSessionManagerState struct {
 	// streamLimitObserver hears refusals at the stream limit
 	// (bloem_stream_limit.go).
 	streamLimitObserver StreamLimitObserver
+	// limitRefusalObserver hears every refusal at a stream or transcode
+	// limit, for stream insights (bloem_limit_refusals.go).
+	limitRefusalObserver LimitRefusalObserver
 }
 
 // reservationLeaseLocked returns the configured fleet reservation lease.
@@ -784,6 +789,9 @@ func (m *SessionManager) startPreflight(
 	method PlayMethod,
 	transcodeAudio bool,
 ) (context.Context, SessionLimits, *Session, error) {
+	// The admission decider sees this context; a refusal it makes here is a
+	// fresh start's, which noteStreamLimit reports (bloem_limit_refusals.go).
+	ctx = withFreshStart(ctx)
 	m.mu.RLock()
 	contextProvider := m.contextProvider
 	m.mu.RUnlock()
@@ -851,6 +859,7 @@ func (m *SessionManager) commitDecidedCandidateLocked(candidate *Session, method
 // fleet reservation the reconstructed session acquired.
 type bloemReconstructReservation struct {
 	m        *SessionManager
+	ctx      context.Context
 	session  *Session
 	acquired bool
 	unlock   func()
@@ -864,7 +873,7 @@ type bloemReconstructReservation struct {
 func (m *SessionManager) reserveReconstructed(ctx context.Context, s *Session, limits SessionLimits) (*bloemReconstructReservation, *Session, error) {
 	m.reservationLifecycle.Lock()
 	unlockReservation := m.lockSessionReservation(s.ID)
-	r := &bloemReconstructReservation{m: m, session: s, unlock: func() {
+	r := &bloemReconstructReservation{m: m, ctx: ctx, session: s, unlock: func() {
 		unlockReservation()
 		m.reservationLifecycle.Unlock()
 	}}
@@ -911,10 +920,25 @@ func (r *bloemReconstructReservation) adoptLocked(existing *Session) {
 }
 
 // finish releases the acquired reservation when admission failed, then
-// releases the locks. It runs deferred, after m.mu is released.
+// releases the locks and reports a limit refusal. It runs deferred, after
+// m.mu is released.
 func (r *bloemReconstructReservation) finish(errp *error) {
+	defer r.noteRefusal(*errp)
 	defer r.unlock()
 	if *errp != nil && r.acquired {
 		r.m.releaseFleetReservation(r.session)
 	}
+}
+
+// noteRefusal reports a rebuild refused at a limit, after finish released
+// the locks.
+func (r *bloemReconstructReservation) noteRefusal(err error) {
+	if err == nil {
+		return
+	}
+	ctx := r.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	r.m.noteLimitRefusal(ctx, r.session.UserID, r.session.ProfileID, err)
 }

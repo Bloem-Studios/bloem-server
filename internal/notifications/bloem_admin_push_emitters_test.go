@@ -170,13 +170,15 @@ func TestAdminPushKindCatalogMatchesTheSpec(t *testing.T) {
 		actions       []string
 		server        bool
 	}{
-		"admin.server_down":     {"servers", "A server can't be reached", nil, false},
-		"admin.server_up":       {"servers", "A server is back", nil, false},
-		"admin.request_waiting": {"requests", "New request waiting", []string{"approve", "decline"}, true},
-		"admin.scan_failed":     {"libraries", "A library scan failed", nil, true},
-		"admin.backup_failed":   {"backups", "A backup failed", nil, true},
-		"admin.node_offline":    {"nodes", "A node is offline", nil, true},
-		"admin.plugin_failed":   {"plugins", "A plugin needs attention", nil, true},
+		"admin.server_down":             {"servers", "A server can't be reached", nil, false},
+		"admin.server_up":               {"servers", "A server is back", nil, false},
+		"admin.request_waiting":         {"requests", "New request waiting", []string{"approve", "decline"}, true},
+		"admin.scan_failed":             {"libraries", "A library scan failed", nil, true},
+		"admin.backup_failed":           {"backups", "A backup failed", nil, true},
+		"admin.node_offline":            {"nodes", "A node is offline", nil, true},
+		"admin.plugin_failed":           {"plugins", "A plugin needs attention", nil, true},
+		"admin.stream_limit_reached":    {"limits", "Someone was turned away at a stream limit", nil, true},
+		"admin.transcode_limit_reached": {"limits", "Someone was turned away at a transcode limit", nil, true},
 	}
 	kinds := AdminPushKinds()
 	if len(kinds) != len(want) {
