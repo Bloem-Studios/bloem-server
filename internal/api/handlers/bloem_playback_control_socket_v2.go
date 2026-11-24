@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -44,5 +45,10 @@ func (h *BloemPlaybackControlSocketV2) Mint(ctx context.Context, identity evt.So
 	if err != nil {
 		return "", time.Time{}, err
 	}
-	return h.PlaybackControlSocketV2.Mint(ctx, bound, playbackSessionID, installationID)
+	ticket, expiry, err := h.PlaybackControlSocketV2.Mint(ctx, bound, playbackSessionID, installationID)
+	if errors.Is(err, ErrPlaybackControlSocketSessionResuming) && h.rebuildForControl(ctx, bound, playbackSessionID) {
+		// The session is back on this process (bloem_playback_control_rebuild.go).
+		return h.PlaybackControlSocketV2.Mint(ctx, bound, playbackSessionID, installationID)
+	}
+	return ticket, expiry, err
 }
