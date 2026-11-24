@@ -2811,6 +2811,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.OpsLogRepo != nil && deps.ActivityLogRepo != nil && deps.LogStreamHub != nil && sessionRepo != nil && userRepo != nil {
 		socket := handlers.NewAdminLogsSocketV2(handlers.NewAdminLogsHandler(deps.OpsLogRepo, deps.ActivityLogRepo, deps.LogStreamHub), evt.NewSocketTicketStore(deps.RedisClient, evt.SocketAudienceAdminLogs), sessionRepo, userRepo, viewerResolver, actingAdmin, deps.PublicURL)
 		v2deps.AdminLogsSocket = socket
+		// Bloem: the socket carries the tenant authority (replaces the line above).
+		tenantStore := tenancy.NewStore(deps.DB)
+		v2deps.AdminLogsSocket = handlers.WrapBloemAdminLogsSocketV2(socket, sessionRepo, userRepo, tenancy.NewResolver(tenantStore), tenantStore)
 		if deps.OnConfigChange != nil {
 			deps.OnConfigChange(func(_, updated *config.Config) { socket.SetPublicOrigin(updated.Server.PublicURL) })
 		}

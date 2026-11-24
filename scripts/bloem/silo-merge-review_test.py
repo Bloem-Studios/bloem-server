@@ -75,6 +75,33 @@ class ReviewTest(unittest.TestCase):
     def review(self, merge_base, bloem, silo):
         return self.mod.review(make_repo(self, merge_base, bloem, silo), "bloem", "silo")
 
+    def test_direct_connections_and_sockets_stop_the_batch(self):
+        r = self.review(
+            {"go.mod": "module x\n\nrequire github.com/Silo-Server/shunpike v0.1.1\n",
+             "internal/directconn/status.go": "package directconn\n",
+             "internal/api/handlers/events_socket_v2.go": "package handlers\n",
+             "internal/x/a.go": "package x\n", "internal/y/b.go": "package y\n"},
+            {},
+            {"go.mod": "module x\n\nrequire github.com/Silo-Server/shunpike v0.2.0\n",
+             "internal/directconn/engine.go": "package directconn\n",
+             "internal/directconn/engine_test.go": "package directconn\n",
+             "internal/api/handlers/events_socket_v2.go": "package handlers // changed\n",
+             "internal/x/a.go": "package x\n\nvar v = newSocketAuthorityValidator(nil)\n",
+             "internal/y/b.go": "package y // unrelated\n"},
+        )
+        paths = [item[0] if isinstance(item, tuple) else item for item in r["stop"]]
+        self.assertEqual(paths, ["go.mod", "internal/api/handlers/events_socket_v2.go",
+                                 "internal/directconn/engine.go", "internal/x/a.go"])
+
+    def test_ordinary_batch_has_nothing_to_stop(self):
+        r = self.review(
+            {"internal/x/a.go": "package x\n", "internal/y/b.go": "package y\n"},
+            {},
+            {"internal/x/a.go": "package x // changed\n"},
+        )
+        self.assertEqual(r["stop"], [])
+        self.assertIn("## Stop for a maintainer: direct connections and sockets\n- none", self.mod.render(r))
+
     def test_seam_touched_by_batch_is_listed(self):
         r = self.review(
             {"Makefile": "all:\n", "internal/y/b.go": "package y\n"},
@@ -155,11 +182,12 @@ class ReviewTest(unittest.TestCase):
         empty = {key: [] for key in ("seams", "beside", "overlays", "pages", "migrations")}
         self.assertIn("## Migrations in this batch\n- none", self.mod.render(empty))
 
-    def test_render_prints_the_five_headings_in_order(self):
+    def test_render_prints_the_six_headings_in_order(self):
         text = self.mod.render({"seams": ["Makefile"], "beside": [], "overlays": [],
                                 "pages": ["docs/bloem/x.md", "FORK.md"], "migrations": []})
         headings = [line for line in text.split("\n") if line.startswith("#")]
         self.assertEqual(headings, [
+            "## Stop for a maintainer: direct connections and sockets",
             "## Seams this batch touches",
             "## Bloem files beside changed Silo code",
             "## Overlays to bring in line",
@@ -481,7 +509,7 @@ class ReviewTest(unittest.TestCase):
         repo = make_repo(self, {"Makefile": "all:\n"}, {}, {})
         git(repo, "merge", "-q", "--no-edit", "silo")
         r = self.mod.review(repo, "bloem", "silo")
-        self.assertEqual(r, {key: [] for key in ("seams", "beside", "overlays", "pages",
+        self.assertEqual(r, {key: [] for key in ("stop", "seams", "beside", "overlays", "pages",
                                                  "migrations")})
 
 

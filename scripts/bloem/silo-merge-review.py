@@ -6,9 +6,15 @@
 Commands assume the repository root is the cwd. The batch is every file that
 changed between the merge base of BASE and SILO and SILO itself (renames count
 as a deletion plus an addition, so both paths appear). The output is Markdown
-with five sections, each a sorted list of paths, some followed by " — " and a
+with six sections, each a sorted list of paths, some followed by " — " and a
 note, or `- none`:
 
+- Stop for a maintainer: direct connections and sockets: changed files under
+  internal/directconn/, Silo's socket handlers and routes, the direct
+  connection docs, or any path naming shunpike; and changed files whose diff
+  names shunpike, quic-go, tailscale.com, direct_connections,
+  newSocketAuthorityValidator or websocket.Upgrader. Tests are left out. A
+  non-empty section stops the batch until a maintainer decides.
 - Seams this batch touches: changed files listed in contracts/seams.txt at BASE.
 - Bloem files beside changed Silo code, one line per file:
   - Companions: for a changed <dir>/<stem>[.<ext>] (the stem ends at the first
@@ -56,8 +62,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-KEYS = ("seams", "beside", "overlays", "pages", "migrations")
+KEYS = ("stop", "seams", "beside", "overlays", "pages", "migrations")
 HEADINGS = {
+    "stop": "## Stop for a maintainer: direct connections and sockets",
     "seams": "## Seams this batch touches",
     "beside": "## Bloem files beside changed Silo code",
     "overlays": "## Overlays to bring in line",
@@ -66,6 +73,17 @@ HEADINGS = {
 }
 
 SEAMS_FILE = "contracts/seams.txt"
+
+# A batch that touches Silo's direct connections (the shunpike engine, its
+# forks, its settings or its docs) or adds or changes a socket handshake
+# stops for a maintainer before it merges. Production runs direct_connections.enabled,
+# so an engine keyed on that setting would switch on with an ordinary deploy;
+# and a socket without Bloem's tenant wrapper refuses every connection
+# (TestEverySiloSocketCarriesBloemTenantAuthority guards the wiring).
+STOP_PATHS = re.compile(
+    r"^(internal/directconn/|internal/api/handlers/[a-z_]*socket[a-z_0-9]*\.go$|internal/apiv2/[a-z_]*socket[a-z_0-9]*\.go$"
+    r"|docs/architecture/direct-connections\.md$|docs/direct-connections-api\.md$)|shunpike")
+STOP_CONTENT = r"shunpike|quic-go|tailscale\.com|direct_connections|newSocketAuthorityValidator|websocket\.Upgrader"
 OVERLAYS = "docs/bloem/overlays/"
 MIGRATIONS = "migrations/sql/"
 FROZEN_PAGES = re.compile(r"^(docs/superpowers/|\.superpowers/)|\d{4}-\d{2}-\d{2}[^/]*$")
@@ -480,7 +498,14 @@ def review(repo: Path, base: str, silo: str) -> dict:
 
     migrations = migration_changes(repo, merge_base, silo_rev)
 
+    stop = {path: [] for path in changed if STOP_PATHS.search(path) and not path.endswith("_test.go")}
+    content = git(repo, "diff", "--name-only", "--no-renames", "-G", STOP_CONTENT, merge_base, silo_rev).decode().split()
+    for path in content:
+        if not path.endswith("_test.go"):
+            stop.setdefault(path, []).append("diff names direct connections, shunpike or its forks, or a socket validator")
+
     return {
+        "stop": annotated(stop),
         "seams": sorted(changed & seam_paths),
         "beside": annotated(beside),
         "overlays": sorted(overlays),
