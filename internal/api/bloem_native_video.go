@@ -56,6 +56,7 @@ func captureNativeVideoRequest(next http.Handler) http.Handler {
 			return
 		}
 		input := nativeVideoRequest{authorization: nativeVideoCredential(r), profileToken: r.Header.Get("X-Profile-Token"), method: r.Method, path: r.URL.Path, streamToken: r.URL.Query().Get(streamtoken.QueryParam)}
+		w = observeStreamInsights(w, r, input.streamToken)
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), nativeVideoRequestKey{}, input)))
 	})
 }
