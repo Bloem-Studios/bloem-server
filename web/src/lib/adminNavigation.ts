@@ -17,6 +17,7 @@ import {
   withBloemAdminNav,
 } from "@/lib/bloemAdminNavigation";
 import {
+  BarChart3,
   Blocks,
   Bot,
   CalendarClock,
@@ -131,6 +132,25 @@ const PAGES = {
     keywords: ["streams", "sessions", "now playing", "transcode"],
     icon: Radio,
     href: "/admin/activity",
+  },
+  insights: {
+    labelKey: "web.admin.shell.nav.page.insights.label",
+    descriptionKey: "web.admin.shell.nav.page.insights.description",
+    keywords: [
+      "analytics",
+      "insights",
+      "playback",
+      "watch time",
+      "bandwidth",
+      "egress",
+      "devices",
+      "codecs",
+      "transcode",
+      "heatmap",
+      "leaderboard",
+    ],
+    icon: BarChart3,
+    href: "/admin/insights",
   },
   logs: {
     labelKey: "web.admin.shell.nav.page.logs.label",
@@ -503,6 +523,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
   navSection("monitor", "web.admin.shell.nav.section.monitor", [
     navPage(PAGES.dashboard),
     navPage(PAGES.activity),
+    navPage(PAGES.insights),
     navTopic("logs", "web.admin.shell.nav.topic.logs", ScrollText, [
       navPage(PAGES.logs, "web.admin.shell.nav.item.serverLog"),
       navPage(PAGES.diagnostics, "web.admin.shell.nav.item.clientDiagnostics"),
