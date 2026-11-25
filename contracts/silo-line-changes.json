@@ -924,13 +924,6 @@
     "    };"
    ]
   },
-  "web/src/hooks/queries/admin/stats.ts": {
-   "kind": "lines",
-   "lines": [
-    "    enabled: context !== null,",
-    "export function useAdminSessions() {"
-   ]
-  },
   "web/src/hooks/queries/admin/system.ts": {
    "kind": "lines",
    "lines": [
@@ -1407,5 +1400,5 @@
    "export function usePlaybackRealtime({": "a0af0f190ac407d1"
   }
  },
- "silo": "498641093733d3c877ba8ae496dda1c37db87bc2"
+ "silo": "abbf8e0ad62828bc7222b3d9bb1e4c0889b580de"
 }
