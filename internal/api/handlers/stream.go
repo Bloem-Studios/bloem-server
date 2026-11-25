@@ -797,12 +797,10 @@ func (h *StreamHandler) SubtitleFonts(ctx context.Context, in SubtitleFontReques
 	if !playback.IsASS(file.SubtitleTracks[embeddedIndex].Codec) {
 		return nil, apiError(http.StatusBadRequest, "bad_request", "Subtitle font bundles are only available for ASS/SSA tracks")
 	}
-	var fonts []playback.SubtitleFontAttachment
-	if storagesource.IsNativeLocation(file.FilePath) {
-		fonts, err = h.nativeSubtitleFonts(ctx, session, file)
-	} else {
-		fonts, err = playback.ExtractAttachedSubtitleFonts(ctx, file.FilePath, h.ffmpegPath())
+	if storagesource.IsNativeLocation(file.FilePath) { // Bloem: native storage reads its fonts through the pinned source
+		return h.nativeSubtitleFontBundle(ctx, session, file, trackIndex)
 	}
+	fonts, err := playback.ExtractAttachedSubtitleFonts(ctx, file.FilePath, h.ffmpegPath(), embeddedIndex, h.SubtitleCache)
 	if err != nil {
 		slog.WarnContext(ctx, "subtitle font extraction failed", "component", "api",
 			"file_id", file.ID, "track", trackIndex, "error", err)

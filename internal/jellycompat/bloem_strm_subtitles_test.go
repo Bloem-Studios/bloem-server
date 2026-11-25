@@ -218,7 +218,7 @@ func TestStrmSubtitlesServeForJellyfinApps(t *testing.T) {
 	if fonts, err := playback.ListAttachedSubtitleFonts(t.Context(), strm, ffmpeg); err != nil || fonts != nil {
 		t.Fatalf("listed fonts without the host = %+v, %v", fonts, err)
 	}
-	if fonts, err := playback.ExtractAttachedSubtitleFonts(t.Context(), strm, ffmpeg); err != nil || fonts != nil {
+	if fonts, err := playback.ExtractAttachedSubtitleFonts(t.Context(), strm, ffmpeg, 0, nil); err != nil || fonts != nil {
 		t.Fatalf("font bundle without the host = %d fonts, %v", len(fonts), err)
 	}
 	// Silo's batch demux and a direct extract refuse the file before ffmpeg runs.

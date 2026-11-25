@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -141,4 +142,17 @@ func (h *StreamHandler) nativeSubtitleFonts(ctx context.Context, session *playba
 		return nil, err
 	}
 	return fonts, nil
+}
+
+// nativeSubtitleFontBundle ends SubtitleFonts for a native storage file: the
+// fonts come from the pinned source, and a failure maps to the same response
+// Silo's extraction gives.
+func (h *StreamHandler) nativeSubtitleFontBundle(ctx context.Context, session *playback.Session, file *models.MediaFile, trackIndex int) ([]playback.SubtitleFontBundleItem, error) {
+	fonts, err := h.nativeSubtitleFonts(ctx, session, file)
+	if err != nil {
+		slog.WarnContext(ctx, "subtitle font extraction failed", "component", "api",
+			"file_id", file.ID, "track", trackIndex, "error", err)
+		return nil, apiError(http.StatusInternalServerError, "font_extract_failed", "Failed to extract subtitle fonts")
+	}
+	return playback.EncodeSubtitleFontBundle(fonts), nil
 }
