@@ -61,6 +61,7 @@ import {
   buildQueryCatalogHref,
   buildUserCollectionCatalogHref,
 } from "@/pages/catalogSearchParams";
+import LegacyAdminActivityRedirect from "@/pages/LegacyAdminActivityRedirect";
 import LegacyAdminHomeRowsRedirect from "@/pages/LegacyAdminHomeRowsRedirect";
 import LegacyRequestDetailRedirect from "@/pages/LegacyRequestDetailRedirect";
 import { buildLegacyWebhookSyncRedirectTarget } from "@/lib/webhookSync";
@@ -120,7 +121,6 @@ const RequestBrowse = lazy(() => import("@/pages/RequestBrowse"));
 const RequestDiscoverSection = lazy(() => import("@/pages/RequestDiscoverSection"));
 const TitleDetail = lazy(() => import("@/pages/TitleDetail"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
-const AdminActivity = lazy(() => import("@/pages/AdminActivity"));
 const AdminLogs = lazy(() => import("@/pages/AdminLogs"));
 const AdminDiagnostics = lazy(() => import("@/pages/AdminDiagnostics"));
 const AdminAccessGroups = lazy(() => import("@/pages/AdminAccessGroups"));
@@ -559,7 +559,7 @@ function AppRoutes() {
                 >
                   {bloemPlatformAdminRoutes}
                   <Route index element={<AdminDashboard />} />
-                  <Route path="activity" element={<AdminActivity />} />
+                  <Route path="activity" element={<LegacyAdminActivityRedirect />} />
                   <Route path="logs" element={<AdminLogs />} />
                   <Route path="diagnostics" element={<AdminDiagnostics />} />
                   <Route path="libraries" element={<AdminLibraries />} />
