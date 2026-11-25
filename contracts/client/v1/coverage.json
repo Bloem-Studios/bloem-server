@@ -3376,6 +3376,130 @@
     {
       "type": "internal/apiv2.DirectConnectionsStatus",
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsActivity",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsActivityBucket",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsActivitySummary",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsAdaptationReason",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsBandwidth",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsBandwidthPoint",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsBandwidthSummary",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsCapabilities",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsClientCodecCell",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsClientMatrixRow",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsCoverage",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsDevices",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsDevicesSummary",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsEgressSource",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsEpisodeRef",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsHeatmapCell",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsLabeledCount",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsLibraryRow",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsPeakStreamsPoint",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsPeople",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsPersonAccount",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsPersonProfile",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsPlaysBucket",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsResolutionChange",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsTitle",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsTitleEpisode",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsTitleRow",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsTitleSummary",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsTitleViewer",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsTitles",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminInsightsTranscoderRow",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     }
   ]
 }

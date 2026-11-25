@@ -30,7 +30,7 @@ func (s insightsSessions) ReadAdminPlaybackSessions(_ context.Context, q Playbac
 	return s.rows, nil
 }
 
-func insightsTestPool(t *testing.T) *pgxpool.Pool {
+func bloemInsightsTestPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -69,7 +69,7 @@ type insightsFixture struct {
 
 func newInsightsFixture(t *testing.T, geo *bloemgeo.Resolver) *insightsFixture {
 	t.Helper()
-	pool := insightsTestPool(t)
+	pool := bloemInsightsTestPool(t)
 	store := bloeminsights.NewStore(pool)
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Second)

@@ -68,7 +68,7 @@ func seedOrgInsights(t *testing.T, pool *pgxpool.Pool) (uuid.UUID, uuid.UUID) {
 }
 
 func TestOrganizationStreamLimitsSeeOnlyTheirMembers(t *testing.T) {
-	pool := insightsTestPool(t)
+	pool := bloemInsightsTestPool(t)
 	orgA, orgB := seedOrgInsights(t, pool)
 	sessions := orgInsightsSessions{byOrg: map[uuid.UUID][]AdminPlaybackSessionView{
 		orgA: {{SessionID: "si-test-a", UserID: 9311, Username: "org-a-member", EffectivePlayMethod: "transcode", ClientIP: "198.51.100.7"}},
