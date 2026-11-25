@@ -162,7 +162,6 @@
    "lines": [
     "\tfile, err := h.fileResolver.GetByID(ctx, fileID)",
     "\tfile, err := h.fileResolver.GetByID(r.Context(), fileID)",
-    "\tfonts, err := playback.ExtractAttachedSubtitleFonts(ctx, file.FilePath, h.ffmpegPath())",
     "\tif err := preflightPlaybackFile(ctx, file, h.MissingMarker, h.EventsHub); err != nil {",
     "\tif userID == 0 {"
    ]
@@ -1067,7 +1066,7 @@
   },
   "internal/api/handlers/stream.go": {
    "func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {": "3e508c5092c9af5c",
-   "func (h *StreamHandler) SubtitleFonts(ctx context.Context, in SubtitleFontReques": "253f57a38201fe3c",
+   "func (h *StreamHandler) SubtitleFonts(ctx context.Context, in SubtitleFontReques": "d627b3713a885cef",
    "func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {": "cf537e0e29cbb62d",
    "func (h *StreamHandler) loadSidecarSession(ctx context.Context, reference, sessi": "744142c40e8530a5"
   },
@@ -1251,8 +1250,9 @@
    "func admissionDenyError(reasonCode string) error {": "7880776939b3d83b"
   },
   "internal/playback/subtitle_fonts.go": {
+   "func ExtractAttachedSubtitleFont(ctx context.Context, inputPath, ffmpegPath stri": "f7b47b1e90464eda",
    "func ListAttachedSubtitleFonts(ctx context.Context, inputPath, ffmpegPath string": "a759b37da02bd137",
-   "func extractAttachedSubtitleFonts(ctx context.Context, inputPath, ffmpegPath str": "3fc71b5cc2391031"
+   "func extractSubtitleFontBundle(ctx context.Context, inputPath, ffmpegPath string": "675797c1ab1731a5"
   },
   "internal/playback/subtitles.go": {
    "func ExtractSubtitleWithFormat(ctx context.Context, filePath string, trackIndex": "5193435770fd5563"
@@ -1284,7 +1284,7 @@
   "internal/proxy/server.go": {
    "func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request) {": "e5b856ffdd467561",
    "func (s *Server) handleSubtitle(w http.ResponseWriter, r *http.Request) {": "9cf6c0c86c893a9f",
-   "func (s *Server) handleSubtitleFonts(w http.ResponseWriter, r *http.Request) {": "22bf45b10dd47d33",
+   "func (s *Server) handleSubtitleFonts(w http.ResponseWriter, r *http.Request) {": "c04443fc15e88cc0",
    "func (s *Server) proxyToTranscodeNode(w http.ResponseWriter, r *http.Request, cl": "3b93f4bb70e2d11f",
    "func (s *Server) serveDirectPlayClaims(w http.ResponseWriter, r *http.Request, c": "df6e236539add45c",
    "func (s *Server) serveRemuxClaims(w http.ResponseWriter, r *http.Request, claims": "8780451c688d92da"
@@ -1407,5 +1407,5 @@
    "export function usePlaybackRealtime({": "a0af0f190ac407d1"
   }
  },
- "silo": "bb261aa01b2b0efa5c20a18675211ce0b1fcfeaa"
+ "silo": "498641093733d3c877ba8ae496dda1c37db87bc2"
 }
