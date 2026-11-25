@@ -1,6 +1,6 @@
 import { platformAdminScope } from "@/bloem/adminScope";
+import { useScopedAdminSessions } from "@/bloem/admin/useScopedAdminSessions";
 import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
-import { useAdminSessions as useSiloAdminSessions } from "@/hooks/queries/admin/stats";
 
 export * from "@/hooks/queries/admin/stats";
 
@@ -10,5 +10,5 @@ export * from "@/hooks/queries/admin/stats";
  */
 export function useAdminSessions() {
   // The sidebar reads the same context (AdminSidebar.tsx).
-  return useSiloAdminSessions(platformAdminScope(useOptionalAdminContext()));
+  return useScopedAdminSessions(platformAdminScope(useOptionalAdminContext()));
 }

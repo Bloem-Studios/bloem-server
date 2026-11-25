@@ -27,8 +27,8 @@ vi.mock("@/hooks/useServerBranding", () => ({
 vi.mock("@/hooks/queries/admin/system", () => ({
   useBuildInfo: (enabled?: boolean) => mocks.useBuildInfo(enabled),
 }));
-vi.mock("@/hooks/queries/admin/stats", () => ({
-  useAdminSessions: (enabled?: boolean) => mocks.useAdminSessions(enabled),
+vi.mock("@/bloem/admin/useScopedAdminSessions", () => ({
+  useScopedAdminSessions: (enabled?: boolean) => mocks.useAdminSessions(enabled),
 }));
 vi.mock("@/hooks/queries/admin/plugins", () => ({
   useAdminPluginInstallations: () => ({

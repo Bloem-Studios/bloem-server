@@ -231,7 +231,6 @@ web/src/components/admin/libraries/LibraryFormSections.tsx  # added lines only: 
 web/src/components/admin/libraries/useLibraryForm.ts  # Bloem's library locations (create and replace through the native library-locations routes) and an existing storage library's update without paths
 web/src/components/admin/users/CreateUserForm.tsx  # Bloem's Watch Live TV switch in the create-account dialog
 web/src/components/notifications/NotificationInbox.tsx  # shows Bloem's announcements (title, message, severity) in the inbox rows; moved here from web/src/pages/Notifications.tsx when Silo split the inbox out (#4383)
-web/src/hooks/queries/admin/stats.ts
 web/src/hooks/queries/admin/system.ts
 web/src/hooks/useAuth.tsx  # preview guests: Bloem lines discover the preview host and end a guest session, two guards skip Silo's sign-in provider refresh, and a guest counts as signed out of the account; its storage and impersonation reads go through adapters (bloem-preview-plugin.ts, adapters/authStorage.ts, adapters/authImpersonation.ts)
 web/src/lib/adminNavigation.ts
