@@ -17,10 +17,10 @@ For the plain-language picture, read the [Stream insights explainer](../../archi
 | --- | --- |
 | [`GET /api/bloem/v2/admin/organization/limits/refusals`](#get-apibloemv2adminorganizationlimitsrefusals) | List the members' refusals at a limit. |
 | [`GET /api/bloem/v2/admin/organization/limits/usage`](#get-apibloemv2adminorganizationlimitsusage) | Show each live member's use of their limits. |
-| [`GET /api/bloem/v2/admin/organization/stats/clients`](#get-apibloemv2adminorganizationstatsclients) | Count the members' plays per client. |
+| [`GET /api/bloem/v2/admin/organization/stats/clients`](#get-apibloemv2adminorganizationstatsclients) | Count the members' sessions per client. |
 | [`GET /api/bloem/v2/admin/organization/stats/heatmap`](#get-apibloemv2adminorganizationstatsheatmap) | Count the members' plays by weekday and hour. |
 | [`GET /api/bloem/v2/admin/organization/stats/top-people`](#get-apibloemv2adminorganizationstatstop-people) | Rank members by watch time. |
-| [`GET /api/bloem/v2/admin/organization/stats/transcode-causes`](#get-apibloemv2adminorganizationstatstranscode-causes) | Count why the members' video was transcoded. |
+| [`GET /api/bloem/v2/admin/organization/stats/transcode-causes`](#get-apibloemv2adminorganizationstatstranscode-causes) | Count why the members' sessions were adapted. |
 | [`GET /api/bloem/v2/admin/platform/limits/refusals`](#get-apibloemv2adminplatformlimitsrefusals) | List refusals at a stream or transcode limit. |
 | [`GET /api/bloem/v2/admin/platform/limits/usage`](#get-apibloemv2adminplatformlimitsusage) | Show each live person's use of their limits. |
 | [`GET /api/bloem/v2/admin/platform/stream-insights/capabilities`](#get-apibloemv2adminplatformstream-insightscapabilities) | Say what stream insights can show. |
@@ -70,12 +70,12 @@ Requires an organization administrative context; Platform contexts are refused w
 
 ### `GET /api/bloem/v2/admin/organization/stats/clients`
 
-Count the members' plays per client.
+Count the members' sessions per client.
 
 Operation ID: `listBloemOrganizationClientStats`.
 Credentials: `bloemOrganizationContext`.
 
-Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Plays per client name and platform, and how many transcoded video.
+Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Sessions per client name and platform, and how many were transcoded, as Silo's Insights Devices tab counts them (names that differ only in case and spacing are one client).
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -96,7 +96,7 @@ Count the members' plays by weekday and hour.
 Operation ID: `getBloemOrganizationPlayHeatmap`.
 Credentials: `bloemOrganizationContext`.
 
-Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Seven rows, Sunday first, of 24 counts.
+Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Seven rows, Monday first, of 24 counts of plays, as Silo's Insights heatmap counts them.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -118,7 +118,7 @@ Rank members by watch time.
 Operation ID: `listBloemOrganizationTopPeople`.
 Credentials: `bloemOrganizationContext`.
 
-Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. The 50 members who watched most.
+Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. The 50 members who watched most, counted as Silo's playback Insights counts (GET /api/v2/admin/insights/people): watch time over the sessions that started in the window, and plays as Silo's viewings.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -134,12 +134,12 @@ Requires an organization administrative context; Platform contexts are refused w
 
 ### `GET /api/bloem/v2/admin/organization/stats/transcode-causes`
 
-Count why the members' video was transcoded.
+Count why the members' sessions were adapted.
 
 Operation ID: `listBloemOrganizationTranscodeCauses`.
 Credentials: `bloemOrganizationContext`.
 
-Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Video transcodes per client and adaptation reason.
+Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Sessions not played directly, per client and adaptation reason, from the reasons the playback history records, as Silo's Insights Devices tab counts them.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -291,7 +291,7 @@ Requires a Platform administrative context; organization contexts are refused wi
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `days` | integer (int64) | yes |  |
-| `plays` | array of array of integer (int64) | yes | Seven rows, Sunday first, of 24 hourly counts. |
+| `plays` | array of array of integer (int64) | yes | Seven rows, Monday first, of 24 hourly counts of plays, as Silo's Insights counts them. |
 | `time_zone` | string | yes |  |
 
 ### BloemStreamCloudflare
@@ -392,8 +392,8 @@ Requires a Platform administrative context; organization contexts are refused wi
 | --- | --- | --- | --- |
 | `client_name` | string | yes |  |
 | `device_platform` | string | yes |  |
-| `plays` | integer (int64) | yes |  |
-| `transcodes` | integer (int64) | yes |  |
+| `sessions` | integer (int64) | yes |  |
+| `transcode_sessions` | integer (int64) | yes |  |
 
 ### Count
 
@@ -464,8 +464,8 @@ Requires a Platform administrative context; organization contexts are refused wi
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `client_name` | string | yes |  |
-| `count` | integer (int64) | yes |  |
 | `reason` | string | yes |  |
+| `sessions` | integer (int64) | yes |  |
 
 ### TransportBucket
 

@@ -102,7 +102,6 @@ func newInsightsFixture(t *testing.T, geo *bloemgeo.Resolver) *insightsFixture {
 				Nodes:  map[int]bloeminsights.Hop{4: {Kind: bloeminsights.HopNode, Label: "a310", Latitude: 51.9, Longitude: 4.4}},
 			}
 		},
-		WatchTimeSQL: adminPlaybackWatchTimeSQL("h"),
 	})
 	f := &insightsFixture{handler: h, claims: &auth.AdminContextClaims{AccountID: 1, AccountIncarnationID: uuid.New(), Scope: auth.AdminScopePlatform}}
 	r := chi.NewRouter()

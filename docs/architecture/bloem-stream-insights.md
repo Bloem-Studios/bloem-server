@@ -151,5 +151,11 @@ also enforces across replicas.
   because Silo's Insights is for platform administrators only. They need that
   organization's administrative context, count only its members, and carry no location or
   transport field; servers list `admin_org_stream_limits_v1`.
-- Viewing stats read Silo's `admin_playback_history` read only; transcode causes read
-  the stream records' adaptation reasons.
+- The organization's viewing stats count as Silo's playback Insights does, so they match
+  what a platform administrator reads there for the same people. Top people and the
+  heatmap use Silo's viewing grouping (a play is a viewing that completed or ran at least
+  30 seconds; watch time sums the sessions that started in the window; the heatmap starts
+  on Monday). Clients and transcode causes count sessions as Silo's Devices tab does, the
+  causes from the adaptation reasons Silo's history records for every session that was not
+  played directly. Silo's SQL is handed in from `internal/api/handlers/bloem_org_stream_stats.go`;
+  `TestBloemOrganizationStatsCountAsSiloInsightsDB` checks the numbers against Silo's own.

@@ -1,15 +1,19 @@
 package bloeminsights
 
 import (
+	"cmp"
 	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
 // Window is the period a route covers: the live streams, or those started in
@@ -314,6 +318,34 @@ func (s *Store) Refusals(ctx context.Context, scope Scope, days int, now time.Ti
 	return out, "", nil
 }
 
+// SiloHistory is what the viewing stats borrow from Silo's playback Insights
+// (internal/api/handlers, admin_insights_plays.go), so that an organization
+// administrator's numbers are the ones a platform administrator reads in
+// Silo's Insights for the same people. The handlers package, which owns that
+// SQL, hands it in.
+type SiloHistory struct {
+	// Viewings returns Silo's viewing grouping of admin_playback_history for
+	// the sessions that match scopeCond (on alias h) around [from, to): a WITH
+	// clause ending in the CTE vr (with vr.user_id, vr.started_at and
+	// vr.watch_sec), the predicate that keeps vr's sessions started in the
+	// window, and the predicate true on the one session of a viewing that
+	// counts as a play. Its parameters are appended to args.
+	Viewings func(scopeCond string, from, to time.Time, args *[]any) (with, counted, isPlay string)
+	// Direct and Transcode are Silo's play-method predicates over a
+	// play_method column.
+	Direct, Transcode func(column string) string
+}
+
+// clientKeySQL and clientNameSQL group and name a client as Silo's Devices
+// tab does: names that differ only in case and spacing are one client.
+func clientKeySQL(column string) string {
+	return "LOWER(COALESCE(NULLIF(BTRIM(" + column + "), ''), 'unknown'))"
+}
+
+func clientNameSQL(column string) string {
+	return "COALESCE(MIN(NULLIF(BTRIM(" + column + "), '')), 'Unknown')"
+}
+
 // TopPerson is how much one person watched.
 type TopPerson struct {
 	UserID         int     `json:"user_id"`
@@ -322,14 +354,17 @@ type TopPerson struct {
 	Plays          int64   `json:"plays"`
 }
 
-// TopPeople ranks the scope's people by watch time over the last days, from
-// Silo's playback history (read only). watchTimeSQL is the history's watch
-// time expression on alias h, as the admin watch summary computes it.
-func (s *Store) TopPeople(ctx context.Context, scope Scope, days int, now time.Time, watchTimeSQL string) ([]TopPerson, error) {
-	rows, err := s.pool.Query(ctx, `SELECT h.user_id, COALESCE(u.username, ''), COALESCE(sum(`+watchTimeSQL+`), 0)::float8, count(*)
-		FROM admin_playback_history h LEFT JOIN users u ON u.id = h.user_id
-		WHERE h.ended_at >= $1 AND `+memberOf("h.user_id", 2)+`
-		GROUP BY h.user_id, u.username ORDER BY 3 DESC, h.user_id LIMIT 50`, now.AddDate(0, 0, -days), scope.arg())
+// TopPeople ranks the scope's people by watch time over the last days, as
+// Silo's Insights counts it: watch time sums the sessions that started in the
+// window, and plays are Silo's viewings.
+func (s *Store) TopPeople(ctx context.Context, scope Scope, days int, now time.Time, silo SiloHistory) ([]TopPerson, error) {
+	args := []any{scope.arg()}
+	with, counted, isPlay := silo.Viewings(memberOf("h.user_id", 1), now.AddDate(0, 0, -days), now, &args)
+	rows, err := s.pool.Query(ctx, with+`
+		SELECT vr.user_id, COALESCE(u.username, ''), COALESCE(sum(vr.watch_sec), 0)::float8, count(*) FILTER (WHERE `+isPlay+`)
+		FROM vr LEFT JOIN users u ON u.id = vr.user_id
+		WHERE `+counted+`
+		GROUP BY vr.user_id, u.username ORDER BY 3 DESC, vr.user_id LIMIT 50`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -345,17 +380,21 @@ func (s *Store) TopPeople(ctx context.Context, scope Scope, days int, now time.T
 	return out, rows.Err()
 }
 
-// Heatmap counts the scope's plays of the last days by the local weekday
-// (0 is Sunday) and hour they started in tz.
-func (s *Store) Heatmap(ctx context.Context, scope Scope, days int, now time.Time, tz *time.Location) ([7][24]int64, error) {
+// Heatmap counts the scope's plays of the last days by the local weekday (0 is
+// Monday, as in Silo's Insights) and hour they started in tz.
+func (s *Store) Heatmap(ctx context.Context, scope Scope, days int, now time.Time, tz *time.Location, silo SiloHistory) ([7][24]int64, error) {
 	var out [7][24]int64
 	if tz == nil {
 		tz = time.UTC
 	}
-	rows, err := s.pool.Query(ctx, `SELECT extract(dow FROM h.started_at AT TIME ZONE $3)::int, extract(hour FROM h.started_at AT TIME ZONE $3)::int, count(*)
-		FROM admin_playback_history h
-		WHERE h.started_at >= $1 AND `+memberOf("h.user_id", 2)+`
-		GROUP BY 1, 2`, now.AddDate(0, 0, -days), scope.arg(), tz.String())
+	args := []any{scope.arg()}
+	with, counted, isPlay := silo.Viewings(memberOf("h.user_id", 1), now.AddDate(0, 0, -days), now, &args)
+	args = append(args, tz.String())
+	zone := "$" + strconv.Itoa(len(args))
+	rows, err := s.pool.Query(ctx, with+`
+		SELECT (EXTRACT(ISODOW FROM (vr.started_at AT TIME ZONE `+zone+`))::int - 1), EXTRACT(HOUR FROM (vr.started_at AT TIME ZONE `+zone+`))::int, count(*)
+		FROM vr WHERE `+counted+` AND `+isPlay+`
+		GROUP BY 1, 2`, args...)
 	if err != nil {
 		return out, err
 	}
@@ -373,21 +412,24 @@ func (s *Store) Heatmap(ctx context.Context, scope Scope, days int, now time.Tim
 	return out, rows.Err()
 }
 
-// ClientStat is one client's plays and how many of them transcoded video.
+// ClientStat is one client's sessions and how many of them were transcoded.
 type ClientStat struct {
-	ClientName     string `json:"client_name"`
-	DevicePlatform string `json:"device_platform"`
-	Plays          int64  `json:"plays"`
-	Transcodes     int64  `json:"transcodes"`
+	ClientName        string `json:"client_name"`
+	DevicePlatform    string `json:"device_platform"`
+	Sessions          int64  `json:"sessions"`
+	TranscodeSessions int64  `json:"transcode_sessions"`
 }
 
-// Clients counts the scope's plays of the last days per client and platform.
-func (s *Store) Clients(ctx context.Context, scope Scope, days int, now time.Time) ([]ClientStat, error) {
-	rows, err := s.pool.Query(ctx, `SELECT COALESCE(h.client_name, ''), COALESCE(h.device_platform, ''), count(*),
-			count(*) FILTER (WHERE h.video_decision = 'transcode')
+// Clients counts the scope's sessions that started in the last days per
+// client and platform, as Silo's Devices tab does (per session, names merged
+// regardless of case and spacing).
+func (s *Store) Clients(ctx context.Context, scope Scope, days int, now time.Time, silo SiloHistory) ([]ClientStat, error) {
+	rows, err := s.pool.Query(ctx, `SELECT `+clientNameSQL("h.client_name")+`, `+clientNameSQL("h.device_platform")+`, count(*),
+			count(*) FILTER (WHERE `+silo.Transcode("h.play_method")+`)
 		FROM admin_playback_history h
-		WHERE h.started_at >= $1 AND `+memberOf("h.user_id", 2)+`
-		GROUP BY 1, 2 ORDER BY 3 DESC, 1, 2 LIMIT 100`, now.AddDate(0, 0, -days), scope.arg())
+		WHERE h.started_at >= $2 AND h.started_at < $3 AND `+memberOf("h.user_id", 1)+`
+		GROUP BY `+clientKeySQL("h.client_name")+`, `+clientKeySQL("h.device_platform")+`
+		ORDER BY 3 DESC, 1, 2 LIMIT 100`, scope.arg(), now.AddDate(0, 0, -days), now)
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +437,7 @@ func (s *Store) Clients(ctx context.Context, scope Scope, days int, now time.Tim
 	out := []ClientStat{}
 	for rows.Next() {
 		var c ClientStat
-		if err := rows.Scan(&c.ClientName, &c.DevicePlatform, &c.Plays, &c.Transcodes); err != nil {
+		if err := rows.Scan(&c.ClientName, &c.DevicePlatform, &c.Sessions, &c.TranscodeSessions); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -403,33 +445,58 @@ func (s *Store) Clients(ctx context.Context, scope Scope, days int, now time.Tim
 	return out, rows.Err()
 }
 
-// TranscodeCause is how often a client transcoded video for one reason.
+// TranscodeCause is how many of a client's sessions were adapted for one reason.
 type TranscodeCause struct {
 	ClientName string `json:"client_name"`
 	Reason     string `json:"reason"`
-	Count      int64  `json:"count"`
+	Sessions   int64  `json:"sessions"`
 }
 
-// TranscodeCauses counts why the scope's video transcodes of the last days
-// happened, per client, from the stream records' adaptation reasons.
-func (s *Store) TranscodeCauses(ctx context.Context, scope Scope, days int, now time.Time) ([]TranscodeCause, error) {
-	rows, err := s.pool.Query(ctx, `SELECT r.client_name, reason, count(*)
-		FROM bloem_stream_records r, unnest(r.adaptation_reasons) AS reason
-		WHERE r.video_decision = 'transcode' AND r.started_at >= $1 AND `+memberOf("r.user_id", 2)+`
-		GROUP BY 1, 2 ORDER BY 3 DESC, 1, 2 LIMIT 100`, now.AddDate(0, 0, -days), scope.arg())
+// TranscodeCauses counts why the scope's sessions of the last days were not
+// played directly, per client and adaptation reason, from the reasons Silo's
+// playback history records (as Silo's Devices tab does).
+func (s *Store) TranscodeCauses(ctx context.Context, scope Scope, days int, now time.Time, silo SiloHistory) ([]TranscodeCause, error) {
+	rows, err := s.pool.Query(ctx, `SELECT `+clientNameSQL("h.client_name")+`, reason, count(*)
+		FROM admin_playback_history h CROSS JOIN LATERAL unnest(h.adaptation_reasons) AS reason
+		WHERE h.started_at >= $2 AND h.started_at < $3 AND `+memberOf("h.user_id", 1)+`
+			AND NOT (`+silo.Direct("h.play_method")+`)
+		GROUP BY `+clientKeySQL("h.client_name")+`, reason`, scope.arg(), now.AddDate(0, 0, -days), now)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := []TranscodeCause{}
+	type key struct{ client, reason string }
+	counts := map[key]int64{}
 	for rows.Next() {
-		var c TranscodeCause
-		if err := rows.Scan(&c.ClientName, &c.Reason, &c.Count); err != nil {
+		var client, reason string
+		var n int64
+		if err := rows.Scan(&client, &reason, &n); err != nil {
 			return nil, err
 		}
-		out = append(out, c)
+		if norm := playback.NormalizeAdaptationReasons([]string{reason}); len(norm) > 0 {
+			counts[key{client, norm[0]}] += n
+		}
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]TranscodeCause, 0, len(counts))
+	for k, n := range counts {
+		out = append(out, TranscodeCause{ClientName: k.client, Reason: k.reason, Sessions: n})
+	}
+	slices.SortFunc(out, func(a, b TranscodeCause) int {
+		if c := cmp.Compare(b.Sessions, a.Sessions); c != 0 {
+			return c
+		}
+		if c := cmp.Compare(a.ClientName, b.ClientName); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.Reason, b.Reason)
+	})
+	if len(out) > 100 {
+		out = out[:100]
+	}
+	return out, nil
 }
 
 // RecordView is what a stream record says about a live stream's route.

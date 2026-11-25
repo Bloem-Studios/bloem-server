@@ -111,10 +111,10 @@ security declaration and the wire reference before sending credentials or mutati
 | `DELETE /api/bloem/v2/admin/organization/people/{account_id}/sessions/{session_id}` | `revokeBloemOrganizationPersonSession` | Sign a member out of one session. |
 | `GET /api/bloem/v2/admin/organization/policy-decisions` | `listBloemOrganizationPolicyDecisions` | Page sanitized organization policy decision explanations. |
 | `GET /api/bloem/v2/admin/organization/policy-decisions/{id}` | `getBloemOrganizationPolicyDecision` | Read a sanitized organization policy decision explanation. |
-| `GET /api/bloem/v2/admin/organization/stats/clients` | `listBloemOrganizationClientStats` | Count the members' plays per client. |
+| `GET /api/bloem/v2/admin/organization/stats/clients` | `listBloemOrganizationClientStats` | Count the members' sessions per client. |
 | `GET /api/bloem/v2/admin/organization/stats/heatmap` | `getBloemOrganizationPlayHeatmap` | Count the members' plays by weekday and hour. |
 | `GET /api/bloem/v2/admin/organization/stats/top-people` | `listBloemOrganizationTopPeople` | Rank members by watch time. |
-| `GET /api/bloem/v2/admin/organization/stats/transcode-causes` | `listBloemOrganizationTranscodeCauses` | Count why the members' video was transcoded. |
+| `GET /api/bloem/v2/admin/organization/stats/transcode-causes` | `listBloemOrganizationTranscodeCauses` | Count why the members' sessions were adapted. |
 | `GET /api/bloem/v2/admin/organization/streams` | `listBloemOrganizationStreams` | List the organization's live streams. |
 | `POST /api/bloem/v2/admin/organization/streams/{session_id}/message` | `messageBloemOrganizationStream` | Show a message on one of the organization's streams. |
 | `POST /api/bloem/v2/admin/organization/streams/{session_id}/stop` | `stopBloemOrganizationStream` | Stop one of the organization's streams. |

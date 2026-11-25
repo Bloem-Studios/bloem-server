@@ -6755,7 +6755,7 @@
             "type": "integer"
           },
           "plays": {
-            "description": "Seven rows, Sunday first, of 24 hourly counts.",
+            "description": "Seven rows, Monday first, of 24 hourly counts of plays, as Silo's Insights counts them.",
             "items": {
               "items": {
                 "format": "int64",
@@ -8836,11 +8836,11 @@
           "device_platform": {
             "type": "string"
           },
-          "plays": {
+          "sessions": {
             "format": "int64",
             "type": "integer"
           },
-          "transcodes": {
+          "transcode_sessions": {
             "format": "int64",
             "type": "integer"
           }
@@ -8848,8 +8848,8 @@
         "required": [
           "client_name",
           "device_platform",
-          "plays",
-          "transcodes"
+          "sessions",
+          "transcode_sessions"
         ],
         "type": "object"
       },
@@ -13089,18 +13089,18 @@
           "client_name": {
             "type": "string"
           },
-          "count": {
-            "format": "int64",
-            "type": "integer"
-          },
           "reason": {
             "type": "string"
+          },
+          "sessions": {
+            "format": "int64",
+            "type": "integer"
           }
         },
         "required": [
           "client_name",
           "reason",
-          "count"
+          "sessions"
         ],
         "type": "object"
       },
@@ -24506,7 +24506,7 @@
     },
     "/api/bloem/v2/admin/organization/stats/clients": {
       "get": {
-        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Plays per client name and platform, and how many transcoded video.",
+        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Sessions per client name and platform, and how many were transcoded, as Silo's Insights Devices tab counts them (names that differ only in case and spacing are one client).",
         "operationId": "listBloemOrganizationClientStats",
         "parameters": [
           {
@@ -24580,7 +24580,7 @@
             "bloemOrganizationContext": []
           }
         ],
-        "summary": "Count the members' plays per client.",
+        "summary": "Count the members' sessions per client.",
         "tags": [
           "stream-insights"
         ]
@@ -24588,7 +24588,7 @@
     },
     "/api/bloem/v2/admin/organization/stats/heatmap": {
       "get": {
-        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Seven rows, Sunday first, of 24 counts.",
+        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Seven rows, Monday first, of 24 counts of plays, as Silo's Insights heatmap counts them.",
         "operationId": "getBloemOrganizationPlayHeatmap",
         "parameters": [
           {
@@ -24680,7 +24680,7 @@
     },
     "/api/bloem/v2/admin/organization/stats/top-people": {
       "get": {
-        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. The 50 members who watched most.",
+        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. The 50 members who watched most, counted as Silo's playback Insights counts (GET /api/v2/admin/insights/people): watch time over the sessions that started in the window, and plays as Silo's viewings.",
         "operationId": "listBloemOrganizationTopPeople",
         "parameters": [
           {
@@ -24762,7 +24762,7 @@
     },
     "/api/bloem/v2/admin/organization/stats/transcode-causes": {
       "get": {
-        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Video transcodes per client and adaptation reason.",
+        "description": "Requires an organization administrative context; Platform contexts are refused with insufficient_organization_authority. Counts only the organization's members and never carries a location, edge, Cloudflare colo or transport. Servers that serve it list admin_org_stream_limits_v1. Sessions not played directly, per client and adaptation reason, from the reasons the playback history records, as Silo's Insights Devices tab counts them.",
         "operationId": "listBloemOrganizationTranscodeCauses",
         "parameters": [
           {
@@ -24836,7 +24836,7 @@
             "bloemOrganizationContext": []
           }
         ],
-        "summary": "Count why the members' video was transcoded.",
+        "summary": "Count why the members' sessions were adapted.",
         "tags": [
           "stream-insights"
         ]

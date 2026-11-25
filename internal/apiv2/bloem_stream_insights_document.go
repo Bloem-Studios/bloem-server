@@ -130,11 +130,11 @@ func registerBloemStreamInsightsDocument(reg *Registry) {
 	registerBloemChiDocument[BloemLimitRefusalsInput, BloemLimitRefusalsOutput](reg, org("/admin/organization/limits/refusals", "listBloemOrganizationLimitRefusals",
 		"List the members' refusals at a limit.", "Newest first, 100 a page.", "days must be between 1 and 90, or the cursor is invalid."))
 	registerBloemChiDocument[BloemStatsDaysInput, BloemTopPeopleOutput](reg, org("/admin/organization/stats/top-people", "listBloemOrganizationTopPeople",
-		"Rank members by watch time.", "The 50 members who watched most.", "days must be between 1 and 90."))
+		"Rank members by watch time.", "The 50 members who watched most, counted as Silo's playback Insights counts (GET /api/v2/admin/insights/people): watch time over the sessions that started in the window, and plays as Silo's viewings.", "days must be between 1 and 90."))
 	registerBloemChiDocument[BloemPlayHeatmapInput, BloemPlayHeatmapOutput](reg, org("/admin/organization/stats/heatmap", "getBloemOrganizationPlayHeatmap",
-		"Count the members' plays by weekday and hour.", "Seven rows, Sunday first, of 24 counts.", "days must be between 1 and 90, or tz is not an IANA time zone."))
+		"Count the members' plays by weekday and hour.", "Seven rows, Monday first, of 24 counts of plays, as Silo's Insights heatmap counts them.", "days must be between 1 and 90, or tz is not an IANA time zone."))
 	registerBloemChiDocument[BloemStatsDaysInput, BloemClientStatsOutput](reg, org("/admin/organization/stats/clients", "listBloemOrganizationClientStats",
-		"Count the members' plays per client.", "Plays per client name and platform, and how many transcoded video.", "days must be between 1 and 90."))
+		"Count the members' sessions per client.", "Sessions per client name and platform, and how many were transcoded, as Silo's Insights Devices tab counts them (names that differ only in case and spacing are one client).", "days must be between 1 and 90."))
 	registerBloemChiDocument[BloemStatsDaysInput, BloemTranscodeCausesOutput](reg, org("/admin/organization/stats/transcode-causes", "listBloemOrganizationTranscodeCauses",
-		"Count why the members' video was transcoded.", "Video transcodes per client and adaptation reason.", "days must be between 1 and 90."))
+		"Count why the members' sessions were adapted.", "Sessions not played directly, per client and adaptation reason, from the reasons the playback history records, as Silo's Insights Devices tab counts them.", "days must be between 1 and 90."))
 }

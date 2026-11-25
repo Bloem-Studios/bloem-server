@@ -10,8 +10,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/bloemgeo"
 )
 
-const testWatchTimeSQL = `GREATEST(h.watched_seconds, 0)`
-
 func seedInsightsUser(t *testing.T, pool *pgxpool.Pool, id int, name string) {
 	t.Helper()
 	ctx := context.Background()
@@ -163,69 +161,6 @@ func TestRefusalPages(t *testing.T) {
 	}
 	if _, _, err := store.Refusals(ctx, Scope{}, 7, now, "not-a-cursor", 3); err == nil {
 		t.Fatal("a bad cursor was accepted")
-	}
-}
-
-func TestHistoryStats(t *testing.T) {
-	pool := testPool(t)
-	store := NewStore(pool)
-	ctx := context.Background()
-	seedInsightsUser(t, pool, 9202, "stats-ben")
-	seedInsightsUser(t, pool, 9203, "stats-cas")
-	amsterdam, _ := time.LoadLocation("Europe/Amsterdam")
-	// Tuesday 2026-11-24 20:15 in Amsterdam.
-	started := time.Date(2026, 11, 24, 20, 15, 0, 0, amsterdam)
-	now := started.Add(2 * time.Hour)
-	insert := func(session string, user int, client, platform, video string, watched float64) {
-		t.Helper()
-		if _, err := pool.Exec(ctx, `INSERT INTO admin_playback_history (session_id, user_id, profile_id, media_file_id, play_method,
-			started_at, ended_at, watched_seconds, client_name, device_platform, video_decision)
-			VALUES ($1, $2, 'p', 1, 'direct', $3, $3::timestamptz + interval '1 hour', $4, $5, $6, $7)`,
-			session, user, started, watched, client, platform, video); err != nil {
-			t.Fatal(err)
-		}
-	}
-	insert("hs-1", 9202, "Bloem TV", "android_tv", "transcode", 3600)
-	insert("hs-2", 9202, "Bloem TV", "android_tv", "copy", 1800)
-	insert("hs-3", 9203, "Bloem iOS", "ios", "copy", 600)
-
-	top, err := store.TopPeople(ctx, Scope{}, 30, now, testWatchTimeSQL)
-	if err != nil || len(top) < 2 || top[0].Username != "stats-ben" || top[0].WatchedSeconds != 5400 || top[0].Plays != 2 {
-		t.Fatalf("top people = %+v err = %v", top, err)
-	}
-	heat, err := store.Heatmap(ctx, Scope{}, 30, now, amsterdam)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if heat[int(time.Tuesday)][20] < 3 {
-		t.Fatalf("Tuesday 20:00 plays = %d, want 3 (matrix %v)", heat[int(time.Tuesday)][20], heat)
-	}
-	clients, err := store.Clients(ctx, Scope{}, 30, now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, c := range clients {
-		if c.ClientName == "Bloem TV" && c.DevicePlatform == "android_tv" {
-			found = c.Plays == 2 && c.Transcodes == 1
-		}
-	}
-	if !found {
-		t.Fatalf("clients = %+v, want Bloem TV with 2 plays and 1 transcode", clients)
-	}
-}
-
-func TestTranscodeCauses(t *testing.T) {
-	pool := testPool(t)
-	store := NewStore(pool)
-	ctx := context.Background()
-	now := time.Now().UTC()
-	if err := store.ApplyLifecycle(ctx, liveStart("cause-1", "7", now.Add(-time.Hour)), nil, nil); err != nil {
-		t.Fatal(err)
-	}
-	causes, err := store.TranscodeCauses(ctx, Scope{}, 30, now)
-	if err != nil || len(causes) != 1 || causes[0].Reason != "video_codec_not_supported" || causes[0].ClientName != "Bloem TV" || causes[0].Count != 1 {
-		t.Fatalf("causes = %+v err = %v", causes, err)
 	}
 }
 

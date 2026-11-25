@@ -47,9 +47,10 @@ type BloemStreamInsightsConfig struct {
 	Limits   bloeminsights.LimitsFunc
 	// Positions places the server and its nodes; nil places neither.
 	Positions func(context.Context) bloeminsights.Positions
-	// WatchTimeSQL is the playback history's watch time expression on alias h.
-	WatchTimeSQL string
-	Now          func() time.Time
+	// SiloHistory is Silo's Insights definitions, which the viewing stats
+	// count by; bloemSiloHistory() when empty.
+	SiloHistory bloeminsights.SiloHistory
+	Now         func() time.Time
 }
 
 // BloemStreamInsightsHandler serves stream insights to the Admin apps:
@@ -67,8 +68,8 @@ func NewBloemStreamInsightsHandler(cfg BloemStreamInsightsConfig) *BloemStreamIn
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	if cfg.WatchTimeSQL == "" {
-		cfg.WatchTimeSQL = adminPlaybackWatchTimeSQL("h")
+	if cfg.SiloHistory.Viewings == nil {
+		cfg.SiloHistory = bloemSiloHistory()
 	}
 	return &BloemStreamInsightsHandler{cfg: cfg}
 }
@@ -475,7 +476,7 @@ func (h *BloemStreamInsightsHandler) handleTopPeople(w http.ResponseWriter, r *h
 	if !ok {
 		return
 	}
-	people, err := h.cfg.Store.TopPeople(r.Context(), scope, days, h.cfg.Now(), h.cfg.WatchTimeSQL)
+	people, err := h.cfg.Store.TopPeople(r.Context(), scope, days, h.cfg.Now(), h.cfg.SiloHistory)
 	if err != nil {
 		h.unavailable(w, r, err)
 		return
@@ -483,12 +484,12 @@ func (h *BloemStreamInsightsHandler) handleTopPeople(w http.ResponseWriter, r *h
 	writeJSON(w, http.StatusOK, BloemTopPeople{People: people})
 }
 
-// BloemPlayHeatmap counts plays by the weekday (0 is Sunday) and hour they
-// started, in TimeZone.
+// BloemPlayHeatmap counts plays by the weekday (0 is Monday, as in Silo's
+// Insights) and hour they started, in TimeZone.
 type BloemPlayHeatmap struct {
 	TimeZone string    `json:"time_zone"`
 	Days     int       `json:"days"`
-	Plays    [][]int64 `json:"plays" doc:"Seven rows, Sunday first, of 24 hourly counts."`
+	Plays    [][]int64 `json:"plays" doc:"Seven rows, Monday first, of 24 hourly counts of plays, as Silo's Insights counts them."`
 }
 
 func (h *BloemStreamInsightsHandler) handleHeatmap(w http.ResponseWriter, r *http.Request, scope bloeminsights.Scope) {
@@ -505,7 +506,7 @@ func (h *BloemStreamInsightsHandler) handleHeatmap(w http.ResponseWriter, r *htt
 		writeAdminValidation(w, map[string]string{"tz": "must be an IANA time zone"})
 		return
 	}
-	matrix, err := h.cfg.Store.Heatmap(r.Context(), scope, days, h.cfg.Now(), location)
+	matrix, err := h.cfg.Store.Heatmap(r.Context(), scope, days, h.cfg.Now(), location, h.cfg.SiloHistory)
 	if err != nil {
 		h.unavailable(w, r, err)
 		return
@@ -517,7 +518,7 @@ func (h *BloemStreamInsightsHandler) handleHeatmap(w http.ResponseWriter, r *htt
 	writeJSON(w, http.StatusOK, out)
 }
 
-// BloemClientStats counts plays per client.
+// BloemClientStats counts sessions per client.
 type BloemClientStats struct {
 	Clients []bloeminsights.ClientStat `json:"clients"`
 }
@@ -527,7 +528,7 @@ func (h *BloemStreamInsightsHandler) handleClients(w http.ResponseWriter, r *htt
 	if !ok {
 		return
 	}
-	clients, err := h.cfg.Store.Clients(r.Context(), scope, days, h.cfg.Now())
+	clients, err := h.cfg.Store.Clients(r.Context(), scope, days, h.cfg.Now(), h.cfg.SiloHistory)
 	if err != nil {
 		h.unavailable(w, r, err)
 		return
@@ -535,7 +536,7 @@ func (h *BloemStreamInsightsHandler) handleClients(w http.ResponseWriter, r *htt
 	writeJSON(w, http.StatusOK, BloemClientStats{Clients: clients})
 }
 
-// BloemTranscodeCauses counts why video was transcoded.
+// BloemTranscodeCauses counts why sessions were not played directly.
 type BloemTranscodeCauses struct {
 	Causes []bloeminsights.TranscodeCause `json:"causes"`
 }
@@ -545,7 +546,7 @@ func (h *BloemStreamInsightsHandler) handleTranscodeCauses(w http.ResponseWriter
 	if !ok {
 		return
 	}
-	causes, err := h.cfg.Store.TranscodeCauses(r.Context(), scope, days, h.cfg.Now())
+	causes, err := h.cfg.Store.TranscodeCauses(r.Context(), scope, days, h.cfg.Now(), h.cfg.SiloHistory)
 	if err != nil {
 		h.unavailable(w, r, err)
 		return
