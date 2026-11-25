@@ -100,6 +100,36 @@ describe("bloemPreview importer-scoped swaps", () => {
   });
 });
 
+describe("bloemPreview dashboard widgets", () => {
+  const REGISTRY = path.join(SRC, "bloem/preview/adapters/dashboardRegistry.tsx");
+
+  it.each([
+    "components/admin/dashboard/DashboardGrid.tsx",
+    "components/admin/dashboard/useDashboardLayout.ts",
+    "components/admin/dashboard/useDashboardLayout.test.ts",
+  ])("gives %s the registry with Bloem's stream maps", async (importer) => {
+    await expect(resolveFrom(importer, "./registry")).resolves.toBe(REGISTRY);
+  });
+
+  it("names the grid's widgets through Bloem's catalog too", async () => {
+    await expect(
+      resolveFrom("components/admin/dashboard/DashboardGrid.tsx", "@/i18n/index.ts"),
+    ).resolves.toBe(path.join(SRC, "bloem/preview/adapters/i18nWithBloem.ts"));
+  });
+
+  it("leaves Silo's own registry to the window picker, the Insights pins and the adapter", async () => {
+    await expect(
+      resolveFrom("components/admin/dashboard/WidgetRangePicker.tsx", "./registry"),
+    ).resolves.toBeNull();
+    await expect(
+      resolveFrom("pages/admin-insights/InsightsDashboardPins.tsx", "@/components/admin/dashboard/registry"),
+    ).resolves.toBeNull();
+    await expect(
+      resolveFrom("bloem/preview/adapters/dashboardRegistry.tsx", "@/components/admin/dashboard/registry"),
+    ).resolves.toBeNull();
+  });
+});
+
 describe("bloemPreview app routes", () => {
   it("gives the app's home and admin requests routes Bloem's pages", async () => {
     await expect(resolveFrom("App.tsx", "@/pages/Home")).resolves.toBe(

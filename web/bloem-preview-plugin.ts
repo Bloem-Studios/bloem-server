@@ -111,6 +111,23 @@ const importerModules: Record<string, Record<string, string>> = {
     "pages/admin-settings/NotificationsAdminSettings.tsx":
       "../admin/BloemNotificationsAdminSettings.tsx",
   },
+  // The admin dashboard offers Bloem's stream map widgets after Silo's own: the
+  // grid places and names them (Bloem's catalog) and the layout keeps them in a
+  // saved layout. The window picker keeps Silo's registry: the maps have no
+  // range to pick, and Silo's widgets import the picker while the registry is
+  // still loading, so the adapter would read Silo's list before it exists.
+  "components/admin/dashboard/DashboardGrid.tsx": {
+    "components/admin/dashboard/registry.tsx": "adapters/dashboardRegistry.tsx",
+    "i18n/index.ts": "adapters/i18nWithBloem.ts",
+  },
+  "components/admin/dashboard/useDashboardLayout.ts": {
+    "components/admin/dashboard/registry.tsx": "adapters/dashboardRegistry.tsx",
+  },
+  // Silo's layout test lists the widgets the layout hides from the registry
+  // the layout reads, so it gets the same one.
+  "components/admin/dashboard/useDashboardLayout.test.ts": {
+    "components/admin/dashboard/registry.tsx": "adapters/dashboardRegistry.tsx",
+  },
 };
 export function bloemPreview(): Plugin {
   let src = "";
