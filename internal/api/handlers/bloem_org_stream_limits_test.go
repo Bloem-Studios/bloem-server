@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -131,8 +132,17 @@ func TestOrganizationStreamLimitsSeeOnlyTheirMembers(t *testing.T) {
 	if code, _ := get(router(&claims, &other), "/organization/limits/usage"); code != http.StatusForbidden {
 		t.Fatalf("a context for another organization = %d, want 403", code)
 	}
-	if code, _ := get(admin, "/organization/stats/clients?days=0"); code != http.StatusUnprocessableEntity {
-		t.Fatalf("days=0 = %d, want 422", code)
+	for _, path := range []string{"/organization/stats/clients?days=0", "/organization/stats/clients?days=91", "/organization/stats/heatmap?tz=Mars/Olympus"} {
+		if code, body := get(admin, path); code != http.StatusUnprocessableEntity {
+			t.Fatalf("%s = %d %s, want 422", path, code, body)
+		}
+	}
+	code, body = get(admin, "/organization/stats/heatmap?days=30&tz=UTC")
+	var heatmap struct {
+		Plays [][]int64 `json:"plays"`
+	}
+	if err := json.Unmarshal([]byte(body), &heatmap); code != 200 || err != nil || len(heatmap.Plays) != 7 || len(heatmap.Plays[0]) != 24 {
+		t.Fatalf("heatmap = %d %s", code, body)
 	}
 }
 

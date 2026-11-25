@@ -89,10 +89,6 @@ func (h *BloemStreamInsightsHandler) MountPlatform(r chi.Router) {
 	r.Get("/platform/streams/transport", h.HandleTransport)
 	r.Get("/platform/limits/usage", h.platform(h.handleUsage))
 	r.Get("/platform/limits/refusals", h.platform(h.handleRefusals))
-	r.Get("/platform/stats/top-people", h.platform(h.handleTopPeople))
-	r.Get("/platform/stats/heatmap", h.platform(h.handleHeatmap))
-	r.Get("/platform/stats/clients", h.platform(h.handleClients))
-	r.Get("/platform/stats/transcode-causes", h.platform(h.handleTranscodeCauses))
 }
 
 // requirePlatform accepts only a platform admin context, as the platform

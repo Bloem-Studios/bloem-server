@@ -9,7 +9,8 @@ hide these screens there.
 
 - **Platform administrators** see everything: each live stream's route on a map, from
   the viewer through Cloudflare and a Bloem edge to the server and the transcode node,
-  how the viewer is connected, everyone's limits, refusals and viewing stats.
+  how the viewer is connected, and everyone's limits and refusals. Their viewing stats
+  are Silo's own playback Insights (Monitor → Insights), not a Bloem addition.
 - **Organization administrators** see their own members only: how much of their
   limits they are using, who was turned away, and viewing stats. They never see a
   location, an edge, a Cloudflare city or how a stream is connected.
@@ -139,13 +140,16 @@ also enforces across replicas.
 ### Routes
 
 - Platform routes are under `/api/bloem/v2/admin/platform/`: `stream-insights/capabilities`,
-  `streams/insights`, `streams/trails`, `streams/transport`, `limits/usage`,
-  `limits/refusals`, and `stats/top-people`, `heatmap`, `clients`, `transcode-causes`.
-  They need a Platform administrative context; servers that serve them list
-  `admin_stream_insights_v1`.
+  `streams/insights`, `streams/trails`, `streams/transport`, `limits/usage` and
+  `limits/refusals`. They need a Platform administrative context; servers that serve them
+  list `admin_stream_insights_v1`.
+- Platform viewing stats are Silo's `GET /api/v2/admin/insights/*` (Silo #5269). Bloem's own
+  `platform/stats/` routes were removed on 2026-11-25 before any client used them: Silo's
+  count plays as viewings, cover every session and keep the whole history.
 - Organization routes are under `/api/bloem/v2/admin/organization/`: `limits/usage`,
-  `limits/refusals` and the same four `stats/` routes. They need that organization's
-  administrative context, count only its members, and carry no location or transport
-  field; servers list `admin_org_stream_limits_v1`.
+  `limits/refusals`, and `stats/top-people`, `heatmap`, `clients` and `transcode-causes`,
+  because Silo's Insights is for platform administrators only. They need that
+  organization's administrative context, count only its members, and carry no location or
+  transport field; servers list `admin_org_stream_limits_v1`.
 - Viewing stats read Silo's `admin_playback_history` read only; transcode causes read
   the stream records' adaptation reasons.

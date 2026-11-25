@@ -11,7 +11,7 @@ For the plain-language picture, read the [Stream insights explainer](../../archi
 
 - [Admin app push notifications](../../architecture/bloem-admin-push.md)
 
-## Operations (16)
+## Operations (12)
 
 | Method and path | Summary |
 | --- | --- |
@@ -23,10 +23,6 @@ For the plain-language picture, read the [Stream insights explainer](../../archi
 | [`GET /api/bloem/v2/admin/organization/stats/transcode-causes`](#get-apibloemv2adminorganizationstatstranscode-causes) | Count why the members' video was transcoded. |
 | [`GET /api/bloem/v2/admin/platform/limits/refusals`](#get-apibloemv2adminplatformlimitsrefusals) | List refusals at a stream or transcode limit. |
 | [`GET /api/bloem/v2/admin/platform/limits/usage`](#get-apibloemv2adminplatformlimitsusage) | Show each live person's use of their limits. |
-| [`GET /api/bloem/v2/admin/platform/stats/clients`](#get-apibloemv2adminplatformstatsclients) | Count plays per client. |
-| [`GET /api/bloem/v2/admin/platform/stats/heatmap`](#get-apibloemv2adminplatformstatsheatmap) | Count plays by weekday and hour. |
-| [`GET /api/bloem/v2/admin/platform/stats/top-people`](#get-apibloemv2adminplatformstatstop-people) | Rank people by watch time. |
-| [`GET /api/bloem/v2/admin/platform/stats/transcode-causes`](#get-apibloemv2adminplatformstatstranscode-causes) | Count why video was transcoded. |
 | [`GET /api/bloem/v2/admin/platform/stream-insights/capabilities`](#get-apibloemv2adminplatformstream-insightscapabilities) | Say what stream insights can show. |
 | [`GET /api/bloem/v2/admin/platform/streams/insights`](#get-apibloemv2adminplatformstreamsinsights) | List the live streams' routes, connections and limits. |
 | [`GET /api/bloem/v2/admin/platform/streams/trails`](#get-apibloemv2adminplatformstreamstrails) | List streams' routes for a map. |
@@ -193,91 +189,6 @@ Requires a Platform administrative context; organization contexts are refused wi
 | 200 | [`BloemLimitsUsage`](#bloemlimitsusage) | OK |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the context is not a Platform context. |
-| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | stream_insights_unavailable: the database or the live session list is unavailable. |
-
-### `GET /api/bloem/v2/admin/platform/stats/clients`
-
-Count plays per client.
-
-Operation ID: `listBloemClientStats`.
-Credentials: `bloemPlatformContext`.
-
-Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. Plays per client name and platform, and how many of them transcoded video.
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `days` | query | integer (int64) |  | How many days back (default 30; 7 for refusals). |
-
-| Status | Body | Meaning |
-| --- | --- | --- |
-| 200 | [`BloemClientStats`](#bloemclientstats) | OK |
-| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the context is not a Platform context. |
-| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | validation_failed: days must be between 1 and 90. |
-| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | stream_insights_unavailable: the database or the live session list is unavailable. |
-
-### `GET /api/bloem/v2/admin/platform/stats/heatmap`
-
-Count plays by weekday and hour.
-
-Operation ID: `getBloemPlayHeatmap`.
-Credentials: `bloemPlatformContext`.
-
-Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. Seven rows, Sunday first, of 24 counts: the plays that started at that local weekday and hour.
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `days` | query | integer (int64) |  | How many days back (default 30). |
-| `tz` | query | string |  | IANA time zone the weekday and hour are read in (default UTC). |
-
-| Status | Body | Meaning |
-| --- | --- | --- |
-| 200 | [`BloemPlayHeatmap`](#bloemplayheatmap) | OK |
-| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the context is not a Platform context. |
-| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | validation_failed: days must be between 1 and 90, or tz is not an IANA time zone. |
-| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | stream_insights_unavailable: the database or the live session list is unavailable. |
-
-### `GET /api/bloem/v2/admin/platform/stats/top-people`
-
-Rank people by watch time.
-
-Operation ID: `listBloemTopPeople`.
-Credentials: `bloemPlatformContext`.
-
-Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. The 50 people who watched most, from the playback history.
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `days` | query | integer (int64) |  | How many days back (default 30; 7 for refusals). |
-
-| Status | Body | Meaning |
-| --- | --- | --- |
-| 200 | [`BloemTopPeople`](#bloemtoppeople) | OK |
-| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the context is not a Platform context. |
-| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | validation_failed: days must be between 1 and 90. |
-| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | stream_insights_unavailable: the database or the live session list is unavailable. |
-
-### `GET /api/bloem/v2/admin/platform/stats/transcode-causes`
-
-Count why video was transcoded.
-
-Operation ID: `listBloemTranscodeCauses`.
-Credentials: `bloemPlatformContext`.
-
-Requires a Platform administrative context; organization contexts are refused with insufficient_platform_authority. Video transcodes per client and adaptation reason, from the stream records.
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `days` | query | integer (int64) |  | How many days back (default 30; 7 for refusals). |
-
-| Status | Body | Meaning |
-| --- | --- | --- |
-| 200 | [`BloemTranscodeCauses`](#bloemtranscodecauses) | OK |
-| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the context is not a Platform context. |
-| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | validation_failed: days must be between 1 and 90. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | stream_insights_unavailable: the database or the live session list is unavailable. |
 
 ### `GET /api/bloem/v2/admin/platform/stream-insights/capabilities`

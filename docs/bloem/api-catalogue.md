@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 982 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 325 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 321 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher
@@ -228,10 +228,6 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v2/admin/platform/promotions/` | `createBloemPlatformPromotion` | Create a registry entry. |
 | `DELETE /api/bloem/v2/admin/platform/promotions/{id}` | `deleteBloemPlatformPromotion` | Delete a registry entry. |
 | `PUT /api/bloem/v2/admin/platform/promotions/{id}` | `updateBloemPlatformPromotion` | Replace every editable field of a registry entry. |
-| `GET /api/bloem/v2/admin/platform/stats/clients` | `listBloemClientStats` | Count plays per client. |
-| `GET /api/bloem/v2/admin/platform/stats/heatmap` | `getBloemPlayHeatmap` | Count plays by weekday and hour. |
-| `GET /api/bloem/v2/admin/platform/stats/top-people` | `listBloemTopPeople` | Rank people by watch time. |
-| `GET /api/bloem/v2/admin/platform/stats/transcode-causes` | `listBloemTranscodeCauses` | Count why video was transcoded. |
 | `GET /api/bloem/v2/admin/platform/stream-insights/capabilities` | `getBloemStreamInsightsCapabilities` | Say what stream insights can show. |
 | `GET /api/bloem/v2/admin/platform/streams/insights` | `listBloemLiveStreamInsights` | List the live streams' routes, connections and limits. |
 | `GET /api/bloem/v2/admin/platform/streams/trails` | `listBloemStreamTrails` | List streams' routes for a map. |

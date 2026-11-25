@@ -144,15 +144,15 @@ func TestStreamInsightsPlatformRoutes(t *testing.T) {
 	if code != 200 || len(body["people"].([]any)) != 2 {
 		t.Fatalf("usage = %d %s", code, raw)
 	}
-	for _, path := range []string{"/platform/limits/refusals?days=7", "/platform/stats/top-people?days=30", "/platform/stats/heatmap?days=30&tz=Europe/Amsterdam",
-		"/platform/stats/clients?days=30", "/platform/stats/transcode-causes?days=30"} {
-		if code, _, raw := f.get(t, path); code != 200 {
-			t.Fatalf("%s = %d %s", path, code, raw)
-		}
+	if code, _, raw := f.get(t, "/platform/limits/refusals?days=7"); code != 200 {
+		t.Fatalf("refusals = %d %s", code, raw)
 	}
-	_, body, _ = f.get(t, "/platform/stats/heatmap?days=30&tz=UTC")
-	if plays := body["plays"].([]any); len(plays) != 7 || len(plays[0].([]any)) != 24 {
-		t.Fatalf("heatmap = %v", body)
+	// Platform admins read Silo's playback Insights (/api/v2/admin/insights) for these; only the
+	// organization's own stats remain Bloem's.
+	for _, path := range []string{"/platform/stats/top-people", "/platform/stats/heatmap", "/platform/stats/clients", "/platform/stats/transcode-causes"} {
+		if code, _, raw := f.get(t, path); code != http.StatusNotFound {
+			t.Fatalf("%s = %d %s, want 404: the platform stats are retired", path, code, raw)
+		}
 	}
 }
 
@@ -205,8 +205,8 @@ func checkLiveTrails(t *testing.T, f *insightsFixture) {
 
 func TestStreamInsightsValidation(t *testing.T) {
 	f := newInsightsFixture(t, nil)
-	for _, path := range []string{"/platform/limits/refusals?days=0", "/platform/stats/clients?days=91", "/platform/streams/trails?window=30d",
-		"/platform/streams/transport?window=x", "/platform/stats/heatmap?tz=Mars/Olympus", "/platform/limits/refusals?cursor=not*base64"} {
+	for _, path := range []string{"/platform/limits/refusals?days=0", "/platform/limits/refusals?days=91", "/platform/streams/trails?window=30d",
+		"/platform/streams/transport?window=x", "/platform/limits/refusals?cursor=not*base64"} {
 		if code, _, raw := f.get(t, path); code != http.StatusUnprocessableEntity {
 			t.Fatalf("%s = %d %s, want 422", path, code, raw)
 		}
@@ -216,7 +216,7 @@ func TestStreamInsightsValidation(t *testing.T) {
 func TestStreamInsightsNeedPlatformAuthority(t *testing.T) {
 	f := newInsightsFixture(t, nil)
 	f.claims = &auth.AdminContextClaims{AccountID: 2, AccountIncarnationID: uuid.New(), Scope: auth.AdminScopeOrganization, OrganizationID: uuid.New(), MembershipID: uuid.New()}
-	for _, path := range []string{"/platform/stream-insights/capabilities", "/platform/streams/insights", "/platform/streams/trails", "/platform/limits/usage", "/platform/stats/clients"} {
+	for _, path := range []string{"/platform/stream-insights/capabilities", "/platform/streams/insights", "/platform/streams/trails", "/platform/limits/usage", "/platform/limits/refusals"} {
 		if code, _, raw := f.get(t, path); code != http.StatusForbidden || !strings.Contains(raw, "insufficient_platform_authority") {
 			t.Fatalf("%s with an organization token = %d %s, want 403", path, code, raw)
 		}

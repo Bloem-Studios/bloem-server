@@ -121,18 +121,6 @@ func registerBloemStreamInsightsDocument(reg *Registry) {
 	registerBloemChiDocument[BloemLimitRefusalsInput, BloemLimitRefusalsOutput](reg, bloemStreamInsightsOp(reg,
 		"/admin/platform/limits/refusals", "listBloemLimitRefusals", "List refusals at a stream or transcode limit.",
 		"Newest first, 100 a page. Repeats of one person's refusal at one limit within a minute are one row.", "days must be between 1 and 90, or the cursor is invalid."))
-	registerBloemChiDocument[BloemStatsDaysInput, BloemTopPeopleOutput](reg, bloemStreamInsightsOp(reg,
-		"/admin/platform/stats/top-people", "listBloemTopPeople", "Rank people by watch time.",
-		"The 50 people who watched most, from the playback history.", "days must be between 1 and 90."))
-	registerBloemChiDocument[BloemPlayHeatmapInput, BloemPlayHeatmapOutput](reg, bloemStreamInsightsOp(reg,
-		"/admin/platform/stats/heatmap", "getBloemPlayHeatmap", "Count plays by weekday and hour.",
-		"Seven rows, Sunday first, of 24 counts: the plays that started at that local weekday and hour.", "days must be between 1 and 90, or tz is not an IANA time zone."))
-	registerBloemChiDocument[BloemStatsDaysInput, BloemClientStatsOutput](reg, bloemStreamInsightsOp(reg,
-		"/admin/platform/stats/clients", "listBloemClientStats", "Count plays per client.",
-		"Plays per client name and platform, and how many of them transcoded video.", "days must be between 1 and 90."))
-	registerBloemChiDocument[BloemStatsDaysInput, BloemTranscodeCausesOutput](reg, bloemStreamInsightsOp(reg,
-		"/admin/platform/stats/transcode-causes", "listBloemTranscodeCauses", "Count why video was transcoded.",
-		"Video transcodes per client and adaptation reason, from the stream records.", "days must be between 1 and 90."))
 
 	org := func(path, id, summary, description, validation string) huma.Operation {
 		return bloemStreamInsightsScopedOp(reg, path, id, summary, bloemStreamInsightsOrganization+description, validation, true)
