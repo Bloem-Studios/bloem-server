@@ -39,6 +39,8 @@
   "@bloem.admin.streamMaps.state.emptyDay": { "description": "Stream map widgets, 24 h window: no stream started in that time." },
   "bloem.admin.streamMaps.state.emptyWeek": "No streams started in the last 7 days.",
   "@bloem.admin.streamMaps.state.emptyWeek": { "description": "Stream map widgets, 7 days window: no stream started in that time." },
+  "bloem.admin.streamMaps.state.renderFailed": "The satellite view couldn't start in this browser.",
+  "@bloem.admin.streamMaps.state.renderFailed": { "description": "Stream satellite widget: the 3D view or its imagery failed to load (no WebGL, or the imagery service did not answer)." },
   "bloem.admin.streamMaps.state.noLocations": "Viewer locations are off: the server has no location database.",
   "@bloem.admin.streamMaps.state.noLocations": { "description": "Stream map widgets: note shown when the server cannot place viewers (no GeoLite2-City database), so routes start at the first known hop." },
   "bloem.admin.streamMaps.state.truncated": "Showing the newest {count, number} streams.",

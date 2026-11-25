@@ -2,8 +2,8 @@
 
 Stream insights are a Bloem addition. They show the people who run a server where its
 streams come from, how each one is connected, and who was turned away at a stream or
-transcode limit. The Admin apps read them; a plain Silo server has none, and the apps
-hide these screens there.
+transcode limit. The Admin apps read them, and the web admin dashboard shows the routes
+on three maps; a plain Silo server has none, and the apps hide these screens there.
 
 ## Who sees what
 
@@ -40,6 +40,25 @@ Each media request tells how the viewer reached the first hop Bloem controls:
 A live stream shows its latest request's class. A finished stream keeps the class that
 carried most of its requests, and is marked as changed when more than one class
 carried them.
+
+## The dashboard maps
+
+The web admin dashboard offers three more widgets in its Add widget sheet: **Stream
+globe**, **Stream map** and **Stream satellite**. Each draws the same routes as the
+Admin apps' Map page: one line per stream, from the viewer through Cloudflare and a
+Bloem edge to the server and the node, in the colour of how the viewer is connected,
+with UDP on top. A switch on each widget picks the streams playing now, or those that
+started in the last 24 hours or 7 days, and the dashboard keeps that choice with the
+widget. Live streams' lines move; a past window's stand still.
+
+- The globe is NASA's Blue Marble under an atmosphere, as on Proxy Manager's Globe.
+- The map is Esri's dark grey basemap.
+- The satellite view is Esri's world imagery on a lit globe with night shading, with a
+  comet running each live stream's route.
+
+Silo's dashboard is the platform administrator's: an organization administrator's admin
+home is the organization overview, so nobody else is offered the maps. They are not in
+the default layout; an administrator adds them.
 
 ## Who was turned away
 
@@ -159,3 +178,28 @@ also enforces across replicas.
   causes from the adaptation reasons Silo's history records for every session that was not
   played directly. Silo's SQL is handed in from `internal/api/handlers/bloem_org_stream_stats.go`;
   `TestBloemOrganizationStatsCountAsSiloInsightsDB` checks the numbers against Silo's own.
+
+### Dashboard maps
+
+- The widgets are Bloem code in `web/src/bloem/streamMaps`. Silo's registry
+  (`web/src/components/admin/dashboard/registry.tsx`) is unchanged: `bloem-preview-plugin.ts`
+  gives the dashboard grid and the layout hook `adapters/dashboardRegistry.ts`, which lists
+  Silo's widgets, then Bloem's, under ids that start with `bloem-`. Silo's default layout
+  is kept. The window picker keeps Silo's registry: the maps have no range, and Silo's
+  widgets import the picker while the registry is still loading.
+- Each widget reads `platform/streams/trails` for its window (`live`, `24h` or `7d`, stored
+  as the widget's view): live every 30 seconds, the others every 5 minutes.
+  `stream-insights/capabilities` says whether to note that viewer locations are off.
+- The drawing is Proxy Manager's web Globe, Map and Satellite in their Calm mood: the
+  globe's dashes (`globeRoutes.ts`), the flat map's dash animation (`streamMaps.css`) and
+  the satellite comets (`cometPath.ts`, `satelliteRoutes.ts`) are ported from there. The
+  scene (`scene.ts`) follows the Admin apps' `StreamTrailScene`.
+- Each view is a lazy chunk, so three.js (the globe), Leaflet (the map) and Cesium (the
+  satellite) load only on a dashboard that holds that widget. `bloem-cesium-plugin.ts`
+  copies Cesium's workers and assets to `dist/cesium` without adding a script to every page.
+- The satellite view uses Cesium's `CesiumWidget`, not its `Viewer`: the Viewer's controls
+  bind through Knockout, which needs `eval`, and the web's Content-Security-Policy
+  (`internal/server/frontend.go`) allows none.
+- The Earth image ships with the web build (`web/src/bloem/streamMaps/assets`, NASA Blue
+  Marble, credited on the globe). Esri's tiles and imagery load from ArcGIS Online without a
+  key, under Esri's terms, with the credits they ask for on the map and satellite views.

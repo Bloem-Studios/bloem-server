@@ -16338,6 +16338,12 @@
       "value": "Viewer locations are off: the server has no location database."
     }
   ],
+  "bloem.admin.streamMaps.state.renderFailed": [
+    {
+      "type": 0,
+      "value": "The satellite view couldn't start in this browser."
+    }
+  ],
   "bloem.admin.streamMaps.state.streams": [
     {
       "type": 6,

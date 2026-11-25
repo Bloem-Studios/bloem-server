@@ -11,7 +11,13 @@ import {
   type StreamTrail,
 } from "./scene";
 
-const hop = (kind: string, label: string, lat: number, lon: number, approximate = false): StreamHop => ({
+const hop = (
+  kind: string,
+  label: string,
+  lat: number,
+  lon: number,
+  approximate = false,
+): StreamHop => ({
   kind,
   label,
   lat,
@@ -23,6 +29,13 @@ const AMSTERDAM = hop("viewer", "Amsterdam", 52.37, 4.9);
 const CF_AMS = hop("cloudflare", "AMS", 52.31, 4.76);
 const EDGE = hop("edge", "ns11", 50.11, 8.68);
 const SERVER = hop("server", "Bloem", 40.71, -74.0);
+
+/** The item at `index`, failing the test when there is none. */
+function at<T>(items: readonly T[], index: number): T {
+  const item = items[index];
+  if (item === undefined) throw new Error(`no item at ${index}`);
+  return item;
+}
 
 const trail = (id: string, transport: string, hops: StreamHop[], live = true): StreamTrail => ({
   session_id: id,
@@ -36,7 +49,7 @@ describe("buildStreamScene", () => {
     const scene = buildStreamScene([trail("a", "udp", [AMSTERDAM, CF_AMS, EDGE, SERVER])]);
 
     expect(scene.routes).toHaveLength(1);
-    const [route] = scene.routes;
+    const route = at(scene.routes, 0);
     expect(route.id).toBe("a");
     expect(route.colour).toBe(TRANSPORT_COLOURS.udp);
     expect(route.legs.map((leg) => [leg.from, leg.to])).toEqual([
@@ -56,8 +69,9 @@ describe("buildStreamScene", () => {
   });
 
   it("splits a route's journey by distance, from 0 to 1 without gaps", () => {
-    const [route] = buildStreamScene([trail("a", "tcp", [AMSTERDAM, EDGE, SERVER])]).routes;
-    const [first, second] = route.legs;
+    const route = at(buildStreamScene([trail("a", "tcp", [AMSTERDAM, EDGE, SERVER])]).routes, 0);
+    const first = at(route.legs, 0);
+    const second = at(route.legs, 1);
 
     expect(first.start).toBe(0);
     expect(first.end).toBeCloseTo(first.km / route.km, 10);
@@ -68,7 +82,7 @@ describe("buildStreamScene", () => {
 
   it("dots only the legs that touch an approximate viewer", () => {
     const viewer = hop("viewer", "Netherlands", 52.13, 5.29, true);
-    const [route] = buildStreamScene([trail("a", "udp", [viewer, EDGE, SERVER])]).routes;
+    const route = at(buildStreamScene([trail("a", "udp", [viewer, EDGE, SERVER])]).routes, 0);
 
     expect(route.legs.map((leg) => leg.dotted)).toEqual([true, false]);
   });
@@ -82,7 +96,7 @@ describe("buildStreamScene", () => {
     ]);
 
     expect(scene.routes.map((route) => route.id)).toEqual(["x", "c", "t", "u"]);
-    expect(scene.routes[0].colour).toBe(TRANSPORT_COLOURS.unknown);
+    expect(at(scene.routes, 0).colour).toBe(TRANSPORT_COLOURS.unknown);
   });
 
   it("marks each stream's start in its colour and opens that stream", () => {
@@ -105,7 +119,9 @@ describe("buildStreamScene", () => {
     ]);
     const shared = scene.markers.filter((marker) => marker.role !== "start");
 
-    expect(shared.map((marker) => [marker.role, marker.label, marker.streams, marker.routeId])).toEqual([
+    expect(
+      shared.map((marker) => [marker.role, marker.label, marker.streams, marker.routeId]),
+    ).toEqual([
       ["via", "ns11", 2, null],
       ["end", "Bloem", 2, null],
     ]);

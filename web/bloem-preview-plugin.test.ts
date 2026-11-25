@@ -101,7 +101,7 @@ describe("bloemPreview importer-scoped swaps", () => {
 });
 
 describe("bloemPreview dashboard widgets", () => {
-  const REGISTRY = path.join(SRC, "bloem/preview/adapters/dashboardRegistry.tsx");
+  const REGISTRY = path.join(SRC, "bloem/preview/adapters/dashboardRegistry.ts");
 
   it.each([
     "components/admin/dashboard/DashboardGrid.tsx",
@@ -125,7 +125,7 @@ describe("bloemPreview dashboard widgets", () => {
       resolveFrom("pages/admin-insights/InsightsDashboardPins.tsx", "@/components/admin/dashboard/registry"),
     ).resolves.toBeNull();
     await expect(
-      resolveFrom("bloem/preview/adapters/dashboardRegistry.tsx", "@/components/admin/dashboard/registry"),
+      resolveFrom("bloem/preview/adapters/dashboardRegistry.ts", "@/components/admin/dashboard/registry"),
     ).resolves.toBeNull();
   });
 });

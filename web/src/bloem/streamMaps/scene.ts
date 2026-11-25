@@ -136,17 +136,19 @@ export function greatCircleKm(a: RoutePoint, b: RoutePoint): number {
 
 function legsThrough(hops: readonly StreamHop[]): StreamLeg[] {
   const legs: StreamLeg[] = [];
-  for (let i = 0; i + 1 < hops.length; i++) {
-    const from = hops[i];
-    const to = hops[i + 1];
-    legs.push({
-      from: { lat: from.lat, lon: from.lon },
-      to: { lat: to.lat, lon: to.lon },
-      dotted: (i === 0 && from.approximate && from.kind === "viewer") || false,
-      km: greatCircleKm(from, to),
-      start: 0,
-      end: 0,
-    });
+  let from: StreamHop | undefined;
+  for (const to of hops) {
+    if (from) {
+      legs.push({
+        from: { lat: from.lat, lon: from.lon },
+        to: { lat: to.lat, lon: to.lon },
+        dotted: legs.length === 0 && from.kind === "viewer" && from.approximate,
+        km: greatCircleKm(from, to),
+        start: 0,
+        end: 0,
+      });
+    }
+    from = to;
   }
   const total = legs.reduce((sum, leg) => sum + leg.km, 0);
   let at = 0;
@@ -169,12 +171,12 @@ const fourDecimals = (value: number) => value.toFixed(4);
  * unknown colour, counting the streams that use them.
  */
 export function buildStreamScene(trails: readonly StreamTrail[]): StreamScene {
-  const drawn = trails.filter((trail) => trail.hops.length > 0);
-  const routes = drawn.map<StreamRoute>((trail) => {
+  const drawn = trails.flatMap((trail) => {
+    const [first] = trail.hops;
+    if (!first) return [];
     const transport = transportClass(trail.transport);
     const legs = legsThrough(trail.hops);
-    const first = trail.hops[0];
-    return {
+    const route: StreamRoute = {
       id: trail.session_id,
       transport,
       colour: TRANSPORT_COLOURS[transport],
@@ -184,13 +186,8 @@ export function buildStreamScene(trails: readonly StreamTrail[]): StreamScene {
       km: legs.reduce((sum, leg) => sum + leg.km, 0),
       hops: trail.hops,
     };
-  });
-  routes.sort((a, b) => LINE_ORDER.indexOf(a.transport) - LINE_ORDER.indexOf(b.transport));
-
-  const starts = routes.map<StreamMarker>((route) => {
-    const first = route.hops[0];
-    return {
-      id: `start:${route.id}`,
+    const start: StreamMarker = {
+      id: `start:${trail.session_id}`,
       role: "start",
       lat: first.lat,
       lon: first.lon,
@@ -199,12 +196,18 @@ export function buildStreamScene(trails: readonly StreamTrail[]): StreamScene {
       approximate: first.approximate,
       colour: route.colour,
       streams: 1,
-      routeId: route.id,
+      routeId: trail.session_id,
     };
+    return [{ trail, route, start }];
   });
+  drawn.sort(
+    (a, b) => LINE_ORDER.indexOf(a.route.transport) - LINE_ORDER.indexOf(b.route.transport),
+  );
+  const routes = drawn.map(({ route }) => route);
+  const starts = drawn.map(({ start }) => start);
 
   const places = new Map<string, { role: MarkerRole; hop: StreamHop; sessions: Set<string> }>();
-  for (const trail of drawn) {
+  for (const { trail } of drawn) {
     trail.hops.forEach((hop, index) => {
       if (index === 0) return;
       const role: MarkerRole = index === trail.hops.length - 1 ? "end" : "via";
@@ -226,7 +229,7 @@ export function buildStreamScene(trails: readonly StreamTrail[]): StreamScene {
       approximate: place.hop.approximate,
       colour: TRANSPORT_COLOURS.unknown,
       streams: place.sessions.size,
-      routeId: place.sessions.size === 1 ? only : null,
+      routeId: place.sessions.size === 1 ? (only ?? null) : null,
     };
   });
 

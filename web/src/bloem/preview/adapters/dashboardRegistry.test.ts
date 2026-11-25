@@ -17,14 +17,18 @@ const BLOEM_IDS = ["bloem-stream-globe", "bloem-stream-map", "bloem-stream-satel
 
 describe("Bloem's dashboard registry", () => {
   it("lists Silo's widgets in Silo's order, then the three stream maps", () => {
-    expect(DASHBOARD_WIDGETS.slice(0, SILO_DASHBOARD_WIDGETS.length)).toEqual(SILO_DASHBOARD_WIDGETS);
-    expect(DASHBOARD_WIDGETS.slice(SILO_DASHBOARD_WIDGETS.length).map((widget) => widget.id)).toEqual(
-      BLOEM_IDS,
+    expect(DASHBOARD_WIDGETS.slice(0, SILO_DASHBOARD_WIDGETS.length)).toEqual(
+      SILO_DASHBOARD_WIDGETS,
     );
+    expect(
+      DASHBOARD_WIDGETS.slice(SILO_DASHBOARD_WIDGETS.length).map((widget) => widget.id),
+    ).toEqual(BLOEM_IDS);
   });
 
   it("keeps Silo's own definition objects", () => {
-    SILO_DASHBOARD_WIDGETS.forEach((widget, index) => expect(DASHBOARD_WIDGETS[index]).toBe(widget));
+    SILO_DASHBOARD_WIDGETS.forEach((widget, index) =>
+      expect(DASHBOARD_WIDGETS[index]).toBe(widget),
+    );
   });
 
   it("keeps Silo's default layout, without the maps", () => {

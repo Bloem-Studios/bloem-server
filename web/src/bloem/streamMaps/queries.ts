@@ -19,8 +19,7 @@ export const streamMapKeys = {
 export function useStreamInsightsCapabilities() {
   return useQuery({
     queryKey: streamMapKeys.capabilities,
-    queryFn: () =>
-      adminV2Api<StreamInsightsCapabilities>("/platform/stream-insights/capabilities"),
+    queryFn: () => adminV2Api<StreamInsightsCapabilities>("/platform/stream-insights/capabilities"),
     staleTime: HISTORY_REFRESH_MS,
   });
 }

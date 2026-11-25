@@ -2,7 +2,10 @@ import { lazy, Suspense, useMemo, type ComponentType } from "react";
 
 import { useBloemT, type BloemMessageKey } from "@/bloem/i18n";
 import { WidgetHeader } from "@/components/admin/dashboard/WidgetHeader";
-import { WidgetViewToggle, type WidgetViewOption } from "@/components/admin/dashboard/WidgetViewToggle";
+import {
+  WidgetViewToggle,
+  type WidgetViewOption,
+} from "@/components/admin/dashboard/WidgetViewToggle";
 import { useWidgetRange } from "@/components/admin/dashboard/widgetChrome";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,7 +32,10 @@ const StreamGlobe = lazy(() => import("./StreamGlobe"));
 const StreamFlatMap = lazy(() => import("./StreamFlatMap"));
 const StreamSatellite = lazy(() => import("./StreamSatellite"));
 
-const WINDOW_TEXT: Record<StreamWindow, { label: BloemMessageKey; aria: BloemMessageKey; empty: BloemMessageKey }> = {
+const WINDOW_TEXT: Record<
+  StreamWindow,
+  { label: BloemMessageKey; aria: BloemMessageKey; empty: BloemMessageKey }
+> = {
   live: {
     label: "bloem.admin.streamMaps.window.live",
     aria: "bloem.admin.streamMaps.window.liveLabel",
@@ -61,7 +67,13 @@ function MapNote({ children }: { children: string }) {
  * widget's view), the line legend, and the notes the server's answer calls
  * for, around the one map view it was given.
  */
-function StreamMapCard({ titleKey, View }: { titleKey: BloemMessageKey; View: ComponentType<StreamMapViewProps> }) {
+function StreamMapCard({
+  titleKey,
+  View,
+}: {
+  titleKey: BloemMessageKey;
+  View: ComponentType<StreamMapViewProps>;
+}) {
   const t = useBloemT();
   const { view, setView } = useWidgetRange();
   const window = streamWindow(view);
@@ -82,9 +94,12 @@ function StreamMapCard({ titleKey, View }: { titleKey: BloemMessageKey; View: Co
   const unavailable = capabilities.data?.available === false;
   const notes: string[] = [];
   if (unavailable) notes.push(t("bloem.admin.streamMaps.state.unavailable"));
-  else if (trails.isError) notes.push(t("bloem.admin.streamMaps.state.error"));
+  // A failed refresh keeps drawing the routes it had; only a map with nothing
+  // to draw says the read failed.
+  else if (trails.isError && !trails.data) notes.push(t("bloem.admin.streamMaps.state.error"));
   else if (trails.data && scene.routes.length === 0) notes.push(t(WINDOW_TEXT[window].empty));
-  if (capabilities.data?.locations === false) notes.push(t("bloem.admin.streamMaps.state.noLocations"));
+  if (capabilities.data?.locations === false)
+    notes.push(t("bloem.admin.streamMaps.state.noLocations"));
   if (trails.data?.truncated)
     notes.push(t("bloem.admin.streamMaps.state.truncated", { count: scene.routes.length }));
 
@@ -147,6 +162,9 @@ export function StreamFlatMapWidget() {
 
 export function StreamSatelliteWidget() {
   return (
-    <StreamMapCard titleKey="bloem.admin.streamMaps.widgets.satellite.title" View={StreamSatellite} />
+    <StreamMapCard
+      titleKey="bloem.admin.streamMaps.widgets.satellite.title"
+      View={StreamSatellite}
+    />
   );
 }

@@ -2034,6 +2034,7 @@ export type BloemMessageKey =
   | "bloem.admin.streamMaps.state.error"
   | "bloem.admin.streamMaps.state.loading"
   | "bloem.admin.streamMaps.state.noLocations"
+  | "bloem.admin.streamMaps.state.renderFailed"
   | "bloem.admin.streamMaps.state.streams"
   | "bloem.admin.streamMaps.state.truncated"
   | "bloem.admin.streamMaps.state.unavailable"
