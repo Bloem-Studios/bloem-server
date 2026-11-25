@@ -43,6 +43,7 @@ func bloemViewingRowsSQL(scopeCond string, from, to time.Time, args *[]any) (wit
 	with = fmt.Sprintf(insightsViewingCTE,
 		adminPlaybackWatchTimeSQL("h"), "h.started_at >= "+fromParam, strings.Join(conds, " AND "),
 		insightsReplacedHandoffGrace, insightsViewingGap,
-		insightsDirectSQL("q.play_method"), insightsRemuxSQL("q.play_method"), insightsTranscodeSQL("q.play_method"))
+		insightsDirectSQL("q.play_method"), insightsRemuxSQL("q.play_method"), insightsTranscodeSQL("q.play_method"),
+		"", "") // no file columns or media_files join: an organization's stats have no library filter
 	return with, "vr.in_window", insightsIsPlaySQL("vr")
 }
