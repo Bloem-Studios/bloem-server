@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, type ComponentType } from "react";
+import { lazy, Suspense, useMemo, type ComponentType, type MouseEvent } from "react";
 
 import { useBloemT, type BloemMessageKey } from "@/bloem/i18n";
 import { WidgetHeader } from "@/components/admin/dashboard/WidgetHeader";
@@ -67,6 +67,16 @@ function MapNote({ children }: { children: string }) {
  * widget's view), the line legend, and the notes the server's answer calls
  * for, around the one map view it was given.
  */
+/**
+ * Keeps a drag that starts on the map on the map. While the dashboard is
+ * being customized the card is draggable, and a mouse press would start
+ * moving the whole widget; the browser starts that drag as the press's
+ * default action, so cancelling the press is what leaves the drag to the map.
+ */
+function keepDragOnMap(event: MouseEvent<HTMLElement>) {
+  event.preventDefault();
+}
+
 function StreamMapCard({
   titleKey,
   View,
@@ -113,7 +123,10 @@ function StreamMapCard({
         )}
         <WidgetViewToggle value={window} options={options} onChange={setView} />
       </WidgetHeader>
-      <CardContent className="relative min-h-0 flex-1 p-0">
+      {/* A drag on the map turns or pans it, also while the dashboard is
+          being customized; the card then moves by its header and its move
+          button. */}
+      <CardContent className="relative min-h-0 flex-1 p-0" onMouseDown={keepDragOnMap}>
         <Suspense
           fallback={
             <Skeleton

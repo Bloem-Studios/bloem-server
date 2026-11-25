@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -101,6 +101,17 @@ describe("stream map widgets", () => {
     expect(await screen.findByTestId("view")).toHaveTextContent("s1");
     expect(screen.getByTestId("view")).toHaveAttribute("data-moving", "true");
     expect(screen.getByText("1 stream")).toBeInTheDocument();
+  });
+
+  it("keeps a press on the map from starting a widget drag, but not one on its header", async () => {
+    renderWidget(
+      <StreamGlobeWidget />,
+      client({ trails: { live: { trails: [TRAIL], truncated: false } } }),
+    );
+
+    // A cancelled press is what stops the browser from dragging the card.
+    expect(fireEvent.mouseDown(await screen.findByTestId("view"))).toBe(false);
+    expect(fireEvent.mouseDown(screen.getByText("Stream globe"))).toBe(true);
   });
 
   it("draws a past window still, from the stored view", async () => {
