@@ -6,7 +6,6 @@ require (
 	filippo.io/age v1.3.2
 	github.com/DataDog/go-sqllexer v0.2.5
 	github.com/SherClockHolmes/webpush-go v1.4.0
-	github.com/Silo-Server/shunpike v0.1.2
 	github.com/Silo-Server/silo-plugin-sdk v0.35.0
 	github.com/abadojack/whatlanggo v1.0.1
 	github.com/alicebob/miniredis/v2 v2.40.0
@@ -18,6 +17,7 @@ require (
 	github.com/aws/smithy-go v1.28.1
 	github.com/brutella/dnssd v1.2.14
 	github.com/danielgtaylor/huma/v2 v2.38.0
+	github.com/darthShadow/shunpike v0.1.1
 	github.com/getkin/kin-openapi v0.149.0
 	github.com/go-chi/chi/v5 v5.4.0
 	github.com/go-chi/cors v1.2.2
@@ -44,6 +44,7 @@ require (
 	github.com/prometheus/client_model v0.6.3
 	github.com/prometheus/procfs v0.21.1
 	github.com/quasilyte/go-ruleguard/dsl v0.3.23
+	github.com/quic-go/quic-go v0.64.1
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
@@ -187,7 +188,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/common v0.71.0 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
-	github.com/quic-go/quic-go v0.64.1 // indirect
 	github.com/quic-go/webtransport-go v0.13.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/sassoftware/relic/v8 v8.2.0 // indirect
@@ -253,8 +253,8 @@ tool golang.org/x/vuln/cmd/govulncheck
 
 replace github.com/zishang520/webtransport-go => ./internal/compat/zishang520-webtransport-go
 
-replace github.com/quic-go/quic-go => github.com/Silo-Server/quic-go v0.64.1-shunpike.2
+replace github.com/quic-go/quic-go => github.com/darthShadow/quic-go v0.64.1-shunpike.2
 
-replace tailscale.com => github.com/Silo-Server/tailscale v1.104.2-shunpike.2
+replace tailscale.com => github.com/darthShadow/tailscale v1.104.2-shunpike.2
 
 replace github.com/sigstore/rekor v1.5.2 => github.com/Bloem-Studios/sigstore-rekor-compat v1.5.2-bloem.1
