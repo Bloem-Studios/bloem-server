@@ -862,6 +862,10 @@
       "reason": "Upstream Silo wire type taken as shipped in the 2026-11-01 sync (box sets from TMDB collections). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
     },
     {
+      "type": "internal/apiv2.PasswordPolicy",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-11-26 sync (Silo through e0630b776: the password policy an administrator sets, which the public getPasswordPolicy operation lets the pre-sign-in forms show, Silo #5124). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
       "type": "internal/apiv2.CatalogItemCollections",
       "reason": "Upstream Silo wire type taken as shipped in the 2026-11-19 sync (a movie's or series's collections on its page, Silo #4528). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
     },
