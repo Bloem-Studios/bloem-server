@@ -86,13 +86,18 @@ func revokeAllByImpersonatorWithQuerier(ctx context.Context, querier sessionExec
 }
 
 // normalizeSessionAuthMethod fills and validates a new session's auth method
-// before createWithQuerier inserts it.
+// before createWithQuerier inserts it. Silo's insert leaves auth_method to its
+// column default, 'account', so that is the only method a session created
+// there may carry.
 func normalizeSessionAuthMethod(session *models.AuthSession) error {
 	if session.AuthMethod == AuthMethodPreviewGuest {
 		return fmt.Errorf("creating session: a preview guest session is opened only by a ticket exchange")
 	}
 	if session.AuthMethod == "" {
 		session.AuthMethod = "account"
+	}
+	if session.AuthMethod != "account" {
+		return fmt.Errorf("creating session: auth method %q is not an account session", session.AuthMethod)
 	}
 	return nil
 }
