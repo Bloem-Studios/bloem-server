@@ -353,8 +353,6 @@
   "internal/auth/session.go": {
    "kind": "lines",
    "lines": [
-    "\t\t(id, user_id, device_name, ip_address, expires_at, impersonator_user_id, impersonation_started_at, identity_id, provider_since, device_id, device_platform, purpose, bound_profile_id, absolute_expires_at)",
-    "\t\tVALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULLIF($10, ''), NULLIF($11, ''), $12, NULLIF($13, ''), $14)`",
     "const sessionColumns = `id, user_id, device_name, COALESCE(device_id, '') AS device_id, COALESCE(device_platform, '') AS device_platform, COALESCE(host(ip_address), '') AS ip_address, created_at, expires_at, revoked_at, impersonator_user_id, impersonation_started_at, identity_id, provider_since, last_seen_at, purpose, COALESCE(bound_profile_id, '') AS bound_profile_id, absolute_expires_at`"
    ]
   },
@@ -975,7 +973,7 @@
  },
  "hooks": {
   "cmd/silo/main.go": {
-   "func main() {": "30ffeb358b373805"
+   "func main() {": "96b6c1c76f475bb6"
   },
   "internal/access/group_store.go": {
    "func GroupPolicyByName(ctx context.Context, db interface {": "05552fd6b2860d92",
@@ -1014,7 +1012,7 @@
    "func (h *AuthHandler) Logout(ctx context.Context, claims *auth.Claims) error {": "3098ee3d04f5afba"
   },
   "internal/api/handlers/catalog_transfer_service.go": {
-   "func (h *CatalogSeedHandler) CreateCatalogImportJob(ctx context.Context, userID": "102d7ee8933ec0dc",
+   "func (h *CatalogSeedHandler) CreateCatalogImportJob(ctx context.Context, userID": "2b349dbe9f4647c1",
    "func (h *CatalogSeedHandler) PublishCatalogExportJob(ctx context.Context, id str": "5fec4088112ad00c"
   },
   "internal/api/handlers/libraries_service.go": {
@@ -1026,8 +1024,8 @@
    "func (h *NotificationsHandler) NotificationCapabilities(ctx context.Context) Not": "9d2fd251451610e4"
   },
   "internal/api/handlers/playback.go": {
-   "func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h": "09623ef74e5d10b1",
-   "func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht": "916e6853b7258682",
+   "func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h": "33e4364345c084f6",
+   "func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht": "a3fed03f53b301db",
    "func (h *PlaybackHandler) ensurePlaybackProbe(ctx context.Context, file *models.": "6461a8cf19cddbcc",
    "func (h *PlaybackHandler) loadAuthorizedFile(r *http.Request, fileID int) (*mode": "674f14d1aae430cd",
    "func (h *PlaybackHandler) loadFileByPreferredID(": "babf5d6eda5255e8"
@@ -1040,8 +1038,8 @@
    "func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte": "d415630c55bbccc4",
    "func (h *PlaybackHandler) lazyDVRPUStrippableV3(ctx context.Context, file *model": "b086b31ad1c90d94",
    "func (h *PlaybackHandler) prepareIdentityTransportV3(r *http.Request, session *p": "e0014916c1705061",
-   "func (h *PlaybackHandler) prepareLocalTransportV3(r *http.Request, session *play": "04d1c5d482b71d53",
-   "func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla": "408f5fa291797d19",
+   "func (h *PlaybackHandler) prepareLocalTransportV3(r *http.Request, session *play": "4dfd8098e11bc6c4",
+   "func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla": "49565b52cf010a8a",
    "func (h *PlaybackHandler) prepareTransportWithPolicyAndExclusionsV3(": "9863774da1c21028",
    "func (h *PlaybackHandler) raceCopySafetyV3(fileID int, plan *playback.PlanV3) {": "e66f2ec5673ea8fd",
    "func (h *PlaybackHandler) startPlannedPlaybackV3(r *http.Request, userID int, pr": "5dc1eaff47e14bcc",
@@ -1161,7 +1159,7 @@
    "func (s *Service) ImportReader(ctx context.Context, r io.Reader, opts ImportOpti": "a408994a2849dea1"
   },
   "internal/config/admin_settings.go": {
-   "func NormalizeAdminSetting(key, raw string) (string, error) {": "ab7c9f9a69d1c08a"
+   "func NormalizeAdminSetting(key, raw string) (string, error) {": "f7d27d7d0cc37ecd"
   },
   "internal/config/db_loader.go": {
    "func LoadFromDB(m map[string]string) (*Config, error) {": "e2e441f49392ed30"
@@ -1187,7 +1185,7 @@
    "func atomicInvitationDB(t *testing.T) atomicInvitationFixture {": "0ee4234450ed5ab9"
   },
   "internal/invitations/service.go": {
-   "func (s *Service) Accept(ctx context.Context, token, email, password, deviceName": "924cf72c9f3c9027"
+   "func (s *Service) Accept(ctx context.Context, token, email, password, deviceName": "7434008ba63cff99"
   },
   "internal/jellycompat/handlers_playback.go": {
    "func (h *PlaybackHandler) startRemoteTranscodeWithToneMapMode(": "0ba7a4689333d163"
@@ -1400,5 +1398,5 @@
    "export function usePlaybackRealtime({": "a0af0f190ac407d1"
   }
  },
- "silo": "abbf8e0ad62828bc7222b3d9bb1e4c0889b580de"
+ "silo": "e0630b77651a3b7a988019b9b8961445ff96d51f"
 }
