@@ -103,6 +103,19 @@ sessions, delete) uses the ordinary account routes with the login's own ID.
   (`PUT /api/v2/admin/users/{id}` with `email`), and a password reset can make
   the new password temporary there with `require_password_change`.
 
+**Password policy** (`storefront_password_policy_v1`): every storefront route
+that sets a password follows the policy an administrator sets in Settings →
+Sign-in (Silo #5124), as Silo's own password writes do. That covers platform
+accounts, household logins and their move-profile, and tenant members on create
+and reset (`tenancy.MemberService.SetPasswordPolicy`). bcrypt's 72 bytes stay
+the upper bound under every policy. A refused password is `400 bad_request`
+whose `code` names the rule with Silo's v2 field-error codes (#5356):
+`password_too_short`, `password_too_long`, `password_needs_uppercase` or
+`password_needs_special`. Its `message` is the rule's sentence. A storefront
+that generates passwords reads the policy from the public
+`GET /api/v2/auth/password-policy`. A tenant member create that replays an
+earlier one returns that member even if the policy has changed since.
+
 On Silo, 0 means unlimited for streams and transcodes. A login without
 transcodes is written as `transcode_allowed: false` with no `max_transcodes`,
 never `max_transcodes: 0`.

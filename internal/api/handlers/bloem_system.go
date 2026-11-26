@@ -144,6 +144,14 @@ const (
 	// temporary password replaced at the first sign-in) and refuse an email
 	// another account uses with email_in_use.
 	featureHouseholdLoginCredentialsV1 = "household_login_credentials_v1"
+	// featureStorefrontPasswordPolicyV1 covers the server's password policy
+	// on every storefront route that sets a password (platform accounts,
+	// household logins and their moves, tenant members and their resets): a
+	// password the policy refuses is bad_request with code naming the rule
+	// (password_too_short, password_too_long, password_needs_uppercase,
+	// password_needs_special). GET /api/v2/auth/password-policy says what the
+	// policy is.
+	featureStorefrontPasswordPolicyV1 = "storefront_password_policy_v1"
 	// featureDeclaredEventChannels is the aggregate name for the events
 	// websocket's declared-channel handshake, reported in detail as
 	// declared_channels on /events/capability.
@@ -186,7 +194,7 @@ func buildBloemCapabilityTokens() []string {
 	}
 	add(playbackFeatures...)
 	add(featureDeclaredEventChannels, "live_tv_access_v1", "organization_activity_v1", "organization_invitation_lifecycle_v1", "organization_invitation_links_v1", "platform_engagement_authoring_v1")
-	add(featureWatchDocumentV1, featureDevicePairingV1, featureHouseholdLoginsV1, featureHouseholdPoolV1, featureHouseholdLoginMovesV1, featureHouseholdLoginCapV1, featureHouseholdLoginCredentialsV1)
+	add(featureWatchDocumentV1, featureDevicePairingV1, featureHouseholdLoginsV1, featureHouseholdPoolV1, featureHouseholdLoginMovesV1, featureHouseholdLoginCapV1, featureHouseholdLoginCredentialsV1, featureStorefrontPasswordPolicyV1)
 	return tokens
 }
 

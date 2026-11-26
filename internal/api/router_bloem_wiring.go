@@ -257,6 +257,7 @@ func newBloemTenantAdminHandlers(
 		auth.NewSessionRepository(deps.DB),
 	)
 	memberService.SetCompatSessionInvalidator(deps.BloemOnUserSessionsRevoked)
+	memberService.SetPasswordPolicy(adminHandler.BloemCheckNewPassword)
 	adminTenantMembersHandler := handlers.NewAdminTenantMembersHandler(memberService, adminHandler)
 	memberService.SetResourcePurger(adminTenantMembersHandler)
 	adminTenantsHandler := handlers.NewAdminTenantsHandler(tenantOrgStore, memberService)

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -77,6 +78,31 @@ type MemberService struct {
 	sessions       memberSessionRepository
 	resources      memberResourcePurger
 	compatSessions func(context.Context, int) error
+	checkPassword  func(context.Context, string) error
+}
+
+// SetPasswordPolicy installs the server's password policy, the check every
+// other password write runs (auth.CheckNewPassword). A member's new password
+// passes it when it is created or reset, and the policy's error comes back
+// unchanged, so a caller can say which rule the password broke
+// (auth.PasswordRuleMessage).
+func (s *MemberService) SetPasswordPolicy(check func(ctx context.Context, password string) error) {
+	if s != nil {
+		s.checkPassword = check
+	}
+}
+
+// checkNewPassword applies the installed password policy to a new password.
+// Without one it applies the policy's defaults, 8 characters and bcrypt's
+// 72 bytes, as ErrInvalidMemberCommand.
+func (s *MemberService) checkNewPassword(ctx context.Context, password string) error {
+	if s.checkPassword != nil {
+		return s.checkPassword(ctx, password)
+	}
+	if utf8.RuneCountInString(password) < 8 || len(password) > 72 {
+		return ErrInvalidMemberCommand
+	}
+	return nil
 }
 
 // SetResourcePurger installs the Task 4 profile/device lifecycle adapter used
@@ -130,8 +156,10 @@ func memberCommandID(tenantID uuid.UUID, key string) uuid.UUID {
 	return uuid.NewSHA1(memberCommandNamespace, []byte(tenantID.String()+"\x00"+key))
 }
 
+// validMemberIdentity checks a new member's identity and that it has a
+// password; the password policy is checkNewPassword's.
 func validMemberIdentity(username, email, password string) bool {
-	if username == "" || len(username) > 255 || email == "" || len(email) > 320 || len(password) < 8 || len(password) > 72 {
+	if username == "" || len(username) > 255 || email == "" || len(email) > 320 || password == "" {
 		return false
 	}
 	for _, value := range []string{username, email} {
@@ -252,6 +280,12 @@ func (s *MemberService) Create(
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return models.User{}, false, fmt.Errorf("tenancy: read legacy member command: %w", err)
 	}
+	// The password policy applies to a password being chosen, after the
+	// replays above: a retry of a create that succeeded returns its member
+	// even when the policy has changed since.
+	if err := s.checkNewPassword(ctx, input.Password); err != nil {
+		return models.User{}, false, err
+	}
 
 	if tenant.Frozen {
 		return models.User{}, false, ErrTenantFrozen
@@ -327,6 +361,9 @@ func (s *MemberService) CreateInTransaction(ctx context.Context, tx pgx.Tx, tena
 	if s == nil || s.store == nil || s.accounts == nil || tx == nil || tenantID == uuid.Nil ||
 		!validMemberIdentity(input.Username, input.Email, input.Password) {
 		return models.User{}, uuid.Nil, ErrInvalidMemberCommand
+	}
+	if err := s.checkNewPassword(ctx, input.Password); err != nil {
+		return models.User{}, uuid.Nil, err
 	}
 	tenant, err := s.store.lockTenantOrganization(ctx, tx, tenantID)
 	if errors.Is(err, ErrTenantOrganizationNotFound) {

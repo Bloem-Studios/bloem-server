@@ -1152,7 +1152,7 @@ Request body (required, `application/json`): [`BloemPlatformAccountCreateRequest
 | Status | Body | Meaning |
 | --- | --- | --- |
 | 201 | [`AdminUserView`](#adminuserview) | Created |
-| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 64 KiB, a field is invalid (the message names it), or entitlement_template_key and a positive entitlement_template_revision are not given together. |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 64 KiB, a field is invalid (the message names it), or entitlement_template_key and a positive entitlement_template_revision are not given together. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | duplicate: the username or email is already in use. Silo's account rules can also answer 409, such as break_glass_required. |
@@ -1179,7 +1179,7 @@ Request body (required, `application/json`): [`BloemPlatformAccountUpdateBody`](
 | Status | Body | Meaning |
 | --- | --- | --- |
 | 200 | [`AdminUserView`](#adminuserview) | OK |
-| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 64 KiB, a field is invalid (the message names it), or entitlement_template_key and a positive entitlement_template_revision are not given together. |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 64 KiB, a field is invalid (the message names it), or entitlement_template_key and a positive entitlement_template_revision are not given together. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such account. |
@@ -1499,7 +1499,7 @@ Request body (required, `application/json`): [`BloemHouseholdLoginCreateRequest`
 | Status | Body | Meaning |
 | --- | --- | --- |
 | 201 | [`BloemHouseholdLoginView`](#bloemhouseholdloginview) | Created |
-| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password the server's password policy accepts are required (at least 8 characters by default, at most 72 bytes), and max_streams and max_profiles must be at least 1. |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password the server's password policy accepts are required, and max_streams and max_profiles must be at least 1. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. |
@@ -1526,7 +1526,7 @@ Request body (required, `application/json`): [`BloemHouseholdLoginMoveProfileReq
 | Status | Body | Meaning |
 | --- | --- | --- |
 | 201 | [`BloemHouseholdLoginView`](#bloemhouseholdloginview) | Created |
-| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a profile_id, a username and a password the server's password policy accepts are required (at least 8 characters by default, at most 72 bytes), and max_streams and max_profiles must be at least 1. |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a profile_id, a username and a password the server's password policy accepts are required, and max_streams and max_profiles must be at least 1. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. profile_not_found: the main account has no such profile. |
@@ -2630,7 +2630,7 @@ Request body (required, `application/json`): [`BloemTenantMemberCreateBody`](#bl
 | --- | --- | --- |
 | 200 |  | The member, for a replay of the same key and body. |
 | 201 | [`TenantMemberResponse`](#tenantmemberresponse) | Created |
-| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON. idempotency_key_required: the Idempotency-Key header is missing. |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON, or the username, the email address or the password is invalid. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule. idempotency_key_required: the Idempotency-Key header is missing. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such tenant, or the account is not a member of it (malformed IDs answer the same). |
@@ -2965,7 +2965,7 @@ Set a member's password.
 Operation ID: `resetBloemPlatformTenantMemberPassword`.
 Credentials: `bloemPlatformContext`; or `bearerAuth`.
 
-Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request.
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. The new password passes the server's password policy, and the account's sign-in sessions end.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -2977,7 +2977,7 @@ Request body (required, `application/json`): [`BloemTenantMemberPasswordBody`](#
 | Status | Body | Meaning |
 | --- | --- | --- |
 | 200 | [`TenantMemberResponse`](#tenantmemberresponse) | OK |
-| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or the request is invalid. |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or the password is missing. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such tenant, or the account is not a member of it (malformed IDs answer the same). |
@@ -3486,7 +3486,7 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `max_profiles` | integer (int64) | yes | Profiles the login may have; at least 1. |
 | `max_streams` | integer (int64) | yes | Concurrent streams the login may use; at least 1. |
 | `max_transcodes` | integer (int64) |  | Concurrent transcodes the login may run. 0 is unlimited, so a login without transcodes sends transcode_allowed false instead. |
-| `password` | string | yes | Initial password, 8 to 72 bytes. |
+| `password` | string | yes | Initial password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes. |
 | `profile_name` | string | yes | Name of the login's first profile. |
 | `require_password_change` | boolean |  | Make the password temporary: the login must choose a new one at its first sign-in before it can do anything else. |
 | `transcode_allowed` | boolean |  | Whether the login may transcode; omitted follows the plan. |
@@ -3506,7 +3506,7 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `max_profiles` | integer (int64) | yes | Profiles the login may have; at least 1. |
 | `max_streams` | integer (int64) | yes | Concurrent streams the login may use; at least 1. |
 | `max_transcodes` | integer (int64) |  | Concurrent transcodes the login may run. 0 is unlimited, so a login without transcodes sends transcode_allowed false instead. |
-| `password` | string | yes | Initial password, 8 to 72 bytes. |
+| `password` | string | yes | Initial password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes. |
 | `profile_id` | string | yes | The main account's profile that becomes the login's only profile, with its history, lists, settings and PIN. Not the main account's primary profile. |
 | `require_password_change` | boolean |  | Make the password temporary: the login must choose a new one at its first sign-in before it can do anything else. |
 | `transcode_allowed` | boolean |  | Whether the login may transcode; omitted follows the plan. |
@@ -3925,7 +3925,7 @@ Type: object.
 | `max_profiles` | integer (int64) |  |  |
 | `max_streams` | integer (int64) |  |  |
 | `max_transcodes` | integer (int64) |  |  |
-| `password` | string | yes | Initial password. |
+| `password` | string | yes | Initial password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes. |
 | `permissions` | array of string |  |  |
 | `requests_allowed` | boolean |  |  |
 | `require_password_change` | boolean |  | The account must replace its password at first sign-in. |
@@ -3950,7 +3950,7 @@ Type: object.
 | `max_profiles` | integer or null (int64) |  | null clears the account's own value. |
 | `max_streams` | integer or null (int64) |  |  |
 | `max_transcodes` | integer or null (int64) |  |  |
-| `password` | string |  |  |
+| `password` | string |  | A new password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes. |
 | `permissions` | array of string |  |  |
 | `requests_allowed` | boolean or null |  |  |
 | `role` | string |  | user or admin. |
@@ -4240,14 +4240,14 @@ Type: object.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `email` | string | yes | Email address. |
-| `password` | string | yes | Initial password. |
+| `password` | string | yes | Initial password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes. |
 | `username` | string | yes | Sign-in name. |
 
 ### BloemTenantMemberPasswordBody
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `password` | string | yes | New password. |
+| `password` | string | yes | New password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes. |
 
 ### BloemTenantMemberUpdateBody
 

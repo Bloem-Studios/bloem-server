@@ -328,3 +328,29 @@ func TestEnablingLoginUnderDisabledMainIsAConflict(t *testing.T) {
 		t.Fatalf("platform account update: %d %s, want 409 household_main_disabled", rec.Code, rec.Body)
 	}
 }
+
+// A login's password follows the server's password policy on create, and a
+// refusal names the rule; no account is made.
+func TestCreateLoginFollowsThePasswordPolicyDB(t *testing.T) {
+	f := newHouseholdLoginsFixture(t)
+	f.h.SettingsRepo = strictPasswordPolicyHandler().SettingsRepo
+	main := f.main("policy")
+	username := "policy-login-" + f.suffix
+	rec := f.do(http.MethodPost, main, fmt.Sprintf(`{"username":%q,"password":"login password","profile_name":"Sam","max_streams":1,"max_profiles":1}`, username))
+	if body := decodePasswordRefusal(t, rec); body.Code != "password_needs_uppercase" {
+		t.Fatalf("create with a weak password = %+v, want code password_needs_uppercase", body)
+	}
+	var made bool
+	if err := f.pool.QueryRow(t.Context(), `SELECT EXISTS (SELECT 1 FROM users WHERE username = $1)`, username).Scan(&made); err != nil || made {
+		t.Fatalf("a refused login was made: %v, %v", made, err)
+	}
+	rec = f.do(http.MethodPost, main, fmt.Sprintf(`{"username":%q,"password":"Login-Password-1","profile_name":"Sam","max_streams":1,"max_profiles":1}`, username))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create with a password the policy accepts: %d %s", rec.Code, rec.Body)
+	}
+	var out createdLogin
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	f.ids = append(f.ids, out.ID)
+}

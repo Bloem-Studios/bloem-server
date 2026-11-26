@@ -31,7 +31,7 @@ const bloemPlatformAccountBodyLimit = 64 << 10
 type BloemPlatformAccountCreateRequest struct {
 	Username                    string   `json:"username" doc:"Sign-in name."`
 	Email                       string   `json:"email" doc:"Email address."`
-	Password                    string   `json:"password" doc:"Initial password."`
+	Password                    string   `json:"password" doc:"Initial password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes."`
 	Role                        string   `json:"role,omitempty" doc:"user (the default) or admin."`
 	Enabled                     *bool    `json:"enabled,omitempty" doc:"A new account is enabled; false disables it straight after it is created."`
 	RequirePasswordChange       bool     `json:"require_password_change,omitempty" doc:"The account must replace its password at first sign-in."`
@@ -250,6 +250,9 @@ func (h *AdminHandler) discardBloemPlatformAccount(ctx context.Context, id int) 
 }
 
 func writeBloemPlatformAccountError(w http.ResponseWriter, err error) {
+	if writeBloemPasswordRuleError(w, err) {
+		return
+	}
 	var apiErr *APIError
 	switch {
 	case errors.As(err, &apiErr):

@@ -74,13 +74,14 @@ WHERE organization_id=$1 AND account_id=$2`, tenantID, userID, status)
 }
 
 // ResetPasswordInTransaction replaces the password and revokes native login
-// sessions atomically with the caller's transaction.
+// sessions atomically with the caller's transaction. The new password passes
+// the server's password policy first (SetPasswordPolicy).
 func (s *MemberService) ResetPasswordInTransaction(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, userID int, password string) (models.User, error) {
 	if s == nil || tx == nil || s.accounts == nil || tenantID == uuid.Nil || userID <= 0 {
 		return models.User{}, ErrMemberNotFound
 	}
-	if len(password) < 8 || len(password) > 72 {
-		return models.User{}, ErrInvalidMemberCommand
+	if err := s.checkNewPassword(ctx, password); err != nil {
+		return models.User{}, err
 	}
 	if _, err := s.accounts.UpdateUserInTransaction(ctx, tx, userID, models.UpdateUserInput{Password: &password}); err != nil {
 		return models.User{}, fmt.Errorf("tenancy: reset member password: %w", err)

@@ -53,7 +53,7 @@ Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's ex
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `code` | string |  | Refines error on browse-only preview refusals: preview_only, preview_host, preview_session_invalid or preview_busy. Absent otherwise. |
+| `code` | string |  | Refines error: on browse-only preview refusals preview_only, preview_host, preview_session_invalid or preview_busy; on a bad_request for a password the server's password policy refuses password_too_short, password_too_long, password_needs_uppercase or password_needs_special. Absent otherwise. |
 | `error` | string | yes |  |
 | `message` | string | yes |  |
 

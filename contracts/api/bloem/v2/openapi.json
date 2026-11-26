@@ -3098,7 +3098,7 @@
             "type": "integer"
           },
           "password": {
-            "description": "Initial password, 8 to 72 bytes.",
+            "description": "Initial password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes.",
             "type": "string"
           },
           "profile_name": {
@@ -3165,7 +3165,7 @@
             "type": "integer"
           },
           "password": {
-            "description": "Initial password, 8 to 72 bytes.",
+            "description": "Initial password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes.",
             "type": "string"
           },
           "profile_id": {
@@ -4311,7 +4311,7 @@
         "additionalProperties": false,
         "properties": {
           "code": {
-            "description": "Refines error on browse-only preview refusals: preview_only, preview_host, preview_session_invalid or preview_busy. Absent otherwise.",
+            "description": "Refines error: on browse-only preview refusals preview_only, preview_host, preview_session_invalid or preview_busy; on a bad_request for a password the server's password policy refuses password_too_short, password_too_long, password_needs_uppercase or password_needs_special. Absent otherwise.",
             "type": "string"
           },
           "error": {
@@ -6354,7 +6354,7 @@
             "type": "integer"
           },
           "password": {
-            "description": "Initial password.",
+            "description": "Initial password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes.",
             "type": "string"
           },
           "permissions": {
@@ -6473,6 +6473,7 @@
             ]
           },
           "password": {
+            "description": "A new password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes.",
             "type": "string"
           },
           "permissions": {
@@ -8335,7 +8336,7 @@
             "type": "string"
           },
           "password": {
-            "description": "Initial password.",
+            "description": "Initial password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes.",
             "type": "string"
           },
           "username": {
@@ -8354,7 +8355,7 @@
         "additionalProperties": false,
         "properties": {
           "password": {
-            "description": "New password.",
+            "description": "New password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes.",
             "type": "string"
           }
         },
@@ -25426,7 +25427,7 @@
                 }
               }
             },
-            "description": "bad_request: the body is not valid JSON or exceeds 64 KiB, a field is invalid (the message names it), or entitlement_template_key and a positive entitlement_template_revision are not given together."
+            "description": "bad_request: the body is not valid JSON or exceeds 64 KiB, a field is invalid (the message names it), or entitlement_template_key and a positive entitlement_template_revision are not given together. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule."
           },
           "401": {
             "content": {
@@ -26068,7 +26069,7 @@
                 }
               }
             },
-            "description": "bad_request: the body is not valid JSON or exceeds 64 KiB, a field is invalid (the message names it), or entitlement_template_key and a positive entitlement_template_revision are not given together."
+            "description": "bad_request: the body is not valid JSON or exceeds 64 KiB, a field is invalid (the message names it), or entitlement_template_key and a positive entitlement_template_revision are not given together. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule."
           },
           "401": {
             "content": {
@@ -27864,7 +27865,7 @@
                 }
               }
             },
-            "description": "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password the server's password policy accepts are required (at least 8 characters by default, at most 72 bytes), and max_streams and max_profiles must be at least 1."
+            "description": "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password the server's password policy accepts are required, and max_streams and max_profiles must be at least 1. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule."
           },
           "401": {
             "content": {
@@ -27996,7 +27997,7 @@
                 }
               }
             },
-            "description": "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a profile_id, a username and a password the server's password policy accepts are required (at least 8 characters by default, at most 72 bytes), and max_streams and max_profiles must be at least 1."
+            "description": "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a profile_id, a username and a password the server's password policy accepts are required, and max_streams and max_profiles must be at least 1. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule."
           },
           "401": {
             "content": {
@@ -40648,7 +40649,7 @@
                 }
               }
             },
-            "description": "bad_request: the body is not valid JSON. idempotency_key_required: the Idempotency-Key header is missing."
+            "description": "bad_request: the body is not valid JSON, or the username, the email address or the password is invalid. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule. idempotency_key_required: the Idempotency-Key header is missing."
           },
           "401": {
             "content": {
@@ -42317,7 +42318,7 @@
     },
     "/api/bloem/v2/admin/platform/tenants/{tenant_id}/members/{user_id}/reset-password": {
       "post": {
-        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. ",
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. The new password passes the server's password policy, and the account's sign-in sessions end.",
         "operationId": "resetBloemPlatformTenantMemberPassword",
         "parameters": [
           {
@@ -42370,7 +42371,7 @@
                 }
               }
             },
-            "description": "bad_request: the body is not valid JSON or the request is invalid."
+            "description": "bad_request: the body is not valid JSON or the password is missing. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule."
           },
           "401": {
             "content": {

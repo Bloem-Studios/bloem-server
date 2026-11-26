@@ -313,6 +313,9 @@ func (h *AdminTenantMembersHandler) HandleRevokeAllAuthSessions(w http.ResponseW
 }
 
 func (h *AdminTenantMembersHandler) writeError(w http.ResponseWriter, err error, fallback string) {
+	if writeBloemPasswordRuleError(w, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, tenancy.ErrMemberNotFound), errors.Is(err, tenancy.ErrTenantOrganizationNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "No such tenant member")

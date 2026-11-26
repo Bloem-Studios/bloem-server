@@ -1,6 +1,7 @@
 package apiv2
 
 import (
+	"maps"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -51,14 +52,14 @@ type BloemTenantListOutput struct{ Body []handlers.BloemTenantWire }
 type BloemTenantMemberCreateBody struct {
 	Username string `json:"username" doc:"Sign-in name."`
 	Email    string `json:"email" doc:"Email address."`
-	Password string `json:"password" doc:"Initial password."`
+	Password string `json:"password" doc:"Initial password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes."`
 }
 type BloemTenantMemberUpdateBody struct {
 	Username *string `json:"username,omitempty"`
 	Email    *string `json:"email,omitempty"`
 }
 type BloemTenantMemberPasswordBody struct {
-	Password string `json:"password" doc:"New password."`
+	Password string `json:"password" doc:"New password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes."`
 }
 
 type BloemTenantMembersInput struct {
@@ -250,7 +251,7 @@ func registerBloemTenantMemberDocument(reg *Registry) {
 	registerBloemChiDocument[BloemTenantMembersInput, BloemTenantMemberListOutput](reg, list)
 
 	createErrors := map[int]string{
-		400: "bad_request: the body is not valid JSON. idempotency_key_required: the Idempotency-Key header is missing.",
+		400: "bad_request: the body is not valid JSON, or the username, the email address or the password is invalid. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule. idempotency_key_required: the Idempotency-Key header is missing.",
 		404: memberErrors[404],
 		409: "username_conflict: the username or email is already in use. idempotency_conflict: the key was used for a different command.",
 		422: "slot_quota_exceeded: every seat is taken.",
@@ -274,7 +275,10 @@ func registerBloemTenantMemberDocument(reg *Registry) {
 	registerBloemChiDocument[BloemTenantMemberInput, BloemTenantMemberOutput](reg, suspend)
 	resume := bloemStorefrontOp(reg, "POST", base+"/{user_id}/resume", "resumeBloemPlatformTenantMember", "Resume a suspended member's account.", http.StatusOK, memberErrors)
 	registerBloemChiDocument[BloemTenantMemberInput, BloemTenantMemberOutput](reg, resume)
-	reset := bloemStorefrontOp(reg, "POST", base+"/{user_id}/reset-password", "resetBloemPlatformTenantMemberPassword", "Set a member's password.", http.StatusOK, memberErrors)
+	resetErrors := maps.Clone(memberErrors)
+	resetErrors[400] = "bad_request: the body is not valid JSON or the password is missing." + ` A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule.`
+	reset := bloemStorefrontOp(reg, "POST", base+"/{user_id}/reset-password", "resetBloemPlatformTenantMemberPassword", "Set a member's password.", http.StatusOK, resetErrors)
+	reset.Description += "The new password passes the server's password policy, and the account's sign-in sessions end."
 	registerBloemChiDocument[BloemTenantMemberPasswordInput, BloemTenantMemberOutput](reg, reset)
 
 	scoped := "Checks the membership, then serves the account's resource as the account routes do, limited to this organization's profiles. "
@@ -323,7 +327,7 @@ type BloemPlatformAccountCreateInput struct {
 type BloemPlatformAccountUpdateBody struct {
 	Username                    *string   `json:"username,omitempty"`
 	Email                       *string   `json:"email,omitempty"`
-	Password                    *string   `json:"password,omitempty"`
+	Password                    *string   `json:"password,omitempty" doc:"A new password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes."`
 	Role                        *string   `json:"role,omitempty" doc:"user or admin."`
 	Enabled                     *bool     `json:"enabled,omitempty"`
 	Permissions                 *[]string `json:"permissions,omitempty"`
@@ -353,7 +357,7 @@ type BloemPlatformAccountOutput struct{ Body handlers.AdminUserView }
 // /api/v2/admin/users, which takes no plan.
 func registerBloemPlatformAccountDocument(reg *Registry) {
 	errors := map[int]string{
-		400: "bad_request: the body is not valid JSON or exceeds 64 KiB, a field is invalid (the message names it), or entitlement_template_key and a positive entitlement_template_revision are not given together.",
+		400: "bad_request: the body is not valid JSON or exceeds 64 KiB, a field is invalid (the message names it), or entitlement_template_key and a positive entitlement_template_revision are not given together. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule.",
 		409: "duplicate: the username or email is already in use. Silo's account rules can also answer 409, such as break_glass_required.",
 		422: "entitlement_template_unavailable: that plan revision cannot be applied.",
 		501: "capability_unsupported: this server's account store cannot manage accounts transactionally.",
@@ -430,7 +434,7 @@ type BloemHouseholdLoginListOutput struct {
 func registerBloemHouseholdLoginsDocument(reg *Registry) {
 	const about = "A household login signs in with its own username and password and has its own profiles, devices and sessions. It sits in the main account's access group and organization, with its own limits on top, and follows the main account when it moves group. It is enabled only while the main account is: disabling the main account disables and signs out its logins, and enabling it brings back only those. It is deleted with the main account. Every other operation on a login (password, limits, profiles, devices, sessions, delete) is the ordinary account operation on the login's own ID. "
 	create := bloemStorefrontOp(reg, "POST", "/accounts/{account_id}/logins", "createBloemPlatformHouseholdLogin", "Create a household login for an account.", http.StatusCreated, map[int]string{
-		400: "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password the server's password policy accepts are required (at least 8 characters by default, at most 72 bytes), and max_streams and max_profiles must be at least 1.",
+		400: "bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password the server's password policy accepts are required, and max_streams and max_profiles must be at least 1. A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule.",
 		404: "not_found: no such main account.",
 		409: "household_nested: the account is itself a login. household_main_ineligible: an admin account cannot have logins. household_login_cap_reached: the household already has as many logins as its login cap allows (the message names both numbers). email_in_use: another account, the main account included, already uses the email address. duplicate: the username is already in use.",
 		501: "capability_unsupported: this server's account store cannot create accounts and profiles transactionally.",

@@ -32,7 +32,7 @@ type BloemHouseholdLoginMoveProfileRequest struct {
 	ProfileID        string `json:"profile_id" doc:"The main account's profile that becomes the login's only profile, with its history, lists, settings and PIN. Not the main account's primary profile."`
 	Username         string `json:"username" doc:"Sign-in name of the login."`
 	Email            string `json:"email,omitempty" doc:"Email address; omitted, the login has none and its password is reset by an administrator."`
-	Password         string `json:"password" doc:"Initial password, 8 to 72 bytes."`
+	Password         string `json:"password" doc:"Initial password. It must pass the server's password policy (GET /api/v2/auth/password-policy): at least 8 characters by default, and never more than 72 bytes."`
 	MaxStreams       int    `json:"max_streams" doc:"Concurrent streams the login may use; at least 1."`
 	MaxTranscodes    *int   `json:"max_transcodes,omitempty" doc:"Concurrent transcodes the login may run. 0 is unlimited, so a login without transcodes sends transcode_allowed false instead."`
 	TranscodeAllowed *bool  `json:"transcode_allowed,omitempty" doc:"Whether the login may transcode; omitted follows the plan."`
