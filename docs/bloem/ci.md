@@ -342,13 +342,14 @@ translate. In short, the copy:
 - starts the job's services itself with `docker run`, with their ports on
   `127.0.0.1` only, waits for their health checks, and removes them in a final
   step; Forgejo's host-mode runners start no services;
-- moves the checkout, right after checking out, to
+- in every job that sets up Go, moves the checkout, right after checking out, to
   `/opt/actions-runner/_work/bloem-server/bloem-server` and leaves a link to it
   in the workspace. That is where the runner template warms Go's build cache, and
   Go's build cache keys a package by its directory, while Forgejo gives every job
   a new random workspace. The job's last step, "Report the Go build cache", prints
   the directory Go built in and how many cache entries the job added (misses) and
-  read again (hits);
+  read again (hits). Web test, which has no Go, keeps the workspace: setup-node's
+  pnpm cache skips files whose real path lies outside the workspace, and fails;
 - uses Forgejo's fork of `upload-artifact`, and sends the contract diff's token to
   the Forgejo server rather than to github.com.
 

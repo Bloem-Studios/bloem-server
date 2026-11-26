@@ -1738,22 +1738,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # Forgejo: build where the job VM's template warmed Go's caches. Go's build cache keys a package by its directory,
-      # and the runner gives every job a new random workspace, so the checkout moves to the path the template built at
-      # and the workspace becomes a link to it. Every later step, actions included, then works in that directory.
-      - name: Move the checkout to the warm build path
-        run: |
-          warm=/opt/actions-runner/_work/bloem-server/bloem-server
-          cd /
-          mkdir -p "${warm%/*}"
-          rm -rf "$warm"
-          mv "$GITHUB_WORKSPACE" "$warm"
-          ln -s "$warm" "$GITHUB_WORKSPACE"
-          # Counted again in the last step: the entries a job adds are its build cache misses.
-          cache=${GOCACHE:-$HOME/.cache/go-build}
-          find "$cache" -type f -name '*-a' 2> /dev/null | wc -l > "$RUNNER_TEMP/go-cache-before"
-          touch "$RUNNER_TEMP/go-cache-start"
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -1779,17 +1763,3 @@ jobs:
       # alone, up to two more times.
       - name: Test
         run: python3 scripts/ci/bloem-retried-tests.py web --shard=${{ matrix.shard }}/4 --maxWorkers=4
-
-      # Forgejo: how much of the template's warm Go build cache this job used. Go touches an entry older than an hour
-      # when it reads it, and the template's entries are older, so entries newer than the start that the job did not add
-      # are hits.
-      - name: Report the Go build cache
-        if: always()
-        run: |
-          cache=${GOCACHE:-$HOME/.cache/go-build}
-          if command -v go > /dev/null; then echo "Go builds in $(dirname "$(go env GOMOD)")"; fi
-          before=$(cat "$RUNNER_TEMP/go-cache-before" 2> /dev/null || echo 0)
-          after=$(find "$cache" -type f -name '*-a' 2> /dev/null | wc -l)
-          newer=$(find "$cache" -type f -name '*-a' -newer "$RUNNER_TEMP/go-cache-start" 2> /dev/null | wc -l)
-          echo "GOCACHE $cache: $before action entries at the start, $after at the end"
-          echo "misses (entries added): $((after - before)), hits (older entries read): $((newer - (after - before)))"

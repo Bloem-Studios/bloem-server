@@ -21,10 +21,12 @@ the check, so Go contract checks fail on both forges when the copy is stale. The
   6. services: become a first step that starts the same containers with docker run, ports published on 127.0.0.1
      only, and waits for their health checks, and a last step that removes them whatever happened. Host-mode
      runners start no services. ${{ job.services.<name>.id }} becomes the container's name, <name>.
-  7. Right after the checkout, the checkout moves to /opt/actions-runner/_work/bloem-server/bloem-server, where the
-     job VM's template warmed Go's caches, and the workspace becomes a link to it. Go's build cache keys a package
-     by its directory, and the Forgejo runner gives every job a new random workspace. A step at the end of the job
-     reports how many Go build cache entries the job added (misses) and read again (hits).
+  7. In a job that sets up Go, right after the checkout, the checkout moves to
+     /opt/actions-runner/_work/bloem-server/bloem-server, where the job VM's template warmed Go's caches, and the
+     workspace becomes a link to it. Go's build cache keys a package by its directory, and the Forgejo runner gives
+     every job a new random workspace. A step at the end of the job reports how many Go build cache entries the job
+     added (misses) and read again (hits). Jobs without Go keep the workspace: an action's hashFiles (setup-node's
+     pnpm cache, for one) skips files whose real path is outside $GITHUB_WORKSPACE, so it finds none there.
   8. actions/upload-artifact and download-artifact become Forgejo's forks; GitHub's v4 refuses a Forgejo server.
   9. The contract diff's fetch of this repository sends its token to the Forgejo server, not to github.com.
 
@@ -371,7 +373,7 @@ def port_job(name, job):
         raise Unported(f'job {name} checks out more than once')
     end = max(i for i, l in enumerate(job) if l.strip()) + 1
     tail = []
-    if checkouts:
+    if checkouts and any(re.search(r'uses: (actions/setup-go@|\./\.github/actions/setup-go\s*$)', l) for l in job):
         at = block_end(job, checkouts[0], 6)
         job[at:at] = [''] + indented(WARM_STEP.format(warm=WARM_PATH), 6)
         end = max(i for i, l in enumerate(job) if l.strip()) + 1
