@@ -11,6 +11,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/bloemsource"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/invitations"
@@ -142,6 +143,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			BookRequests:     newBloemBookRequests(deps),
 			AdminPush:        bloemAdminPushHandler(deps),
 			StreamInsights:   bloemStreamInsightsHandler(deps, accountPolicyHandler),
+			SourceCode:       handlers.NewBloemSourceCodeHandler(bloemsource.FromEnv(nil)),
 		})
 }
 
@@ -172,6 +174,7 @@ type bloemRouteSurfaces struct {
 	NativeStorage    *handlers.BloemNativeStorageManagementHandler
 	AdminPush        *handlers.BloemAdminPushHandler
 	StreamInsights   *handlers.BloemStreamInsightsHandler
+	SourceCode       *handlers.BloemSourceCodeHandler
 }
 
 // mountBloemRoutes assembles every native route inside one chi subtree.
@@ -201,6 +204,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 
 		client.mount(r)
 		mountBloemAdminPush(r, surfaces.AdminPush, system, authMW)
+		mountBloemSourceCode(r, surfaces.SourceCode, system, authMW)
 		mountBloemSeasonalViewer(r, surfaces.SeasonalViewer, client, system)
 		mountBloemPromotionsViewer(r, surfaces.PromotionsViewer, client, system)
 		mountBloemBookRequests(r, surfaces.BookRequests, client, system)

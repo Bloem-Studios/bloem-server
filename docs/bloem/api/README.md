@@ -15,7 +15,7 @@ Every typed operation under `/api/bloem/v2`, grouped by the topics of Bloem's ex
 | [Requests](requests.md) | 33 | [bloem-requests.md](../../architecture/bloem-requests.md) |
 | [Plans and preview](plans.md) | 34 | [bloem-plans.md](../../architecture/bloem-plans.md) |
 | [Messages and promotions](messages.md) | 39 | [bloem-messages-and-promotions.md](../../architecture/bloem-messages-and-promotions.md) |
-| [Apps and clients](apps.md) | 7 | [bloem-apps.md](../../architecture/bloem-apps.md) |
+| [Apps and clients](apps.md) | 9 | [bloem-apps.md](../../architecture/bloem-apps.md) |
 | [Stream insights](insights.md) | 12 | [bloem-stream-insights.md](../../architecture/bloem-stream-insights.md) |
 | [Organizations and administration](organizations.md) | 124 | [bloem-organizations.md](../../architecture/bloem-organizations.md) |
 

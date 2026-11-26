@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 983 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v2` | 321 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v2` | 323 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 
 OpenAPI documents typed operations, including separately described raw transports.
 The inventory also observes mount adapters and all-method chi handlers. A dispatcher
@@ -343,6 +343,8 @@ security declaration and the wire reference before sending credentials or mutati
 | `PUT /api/bloem/v2/promotions/{id}/dismissals/{surface}` | `dismissBloemPromotion` | Stop showing a campaign to a profile on a surface. |
 | `POST /api/bloem/v2/promotions/{id}/save` | `saveBloemPromotion` | Save an in-playback campaign to the profile's inbox. |
 | `GET /api/bloem/v2/server/identity` | `getBloemServerIdentity` | Which server this is, which surfaces it serves, and whether it has been set up. |
+| `GET /api/bloem/v2/source-code` | `getBloemSourceCode` | Describe the complete source code of the running server version. |
+| `GET /api/bloem/v2/source-code/archive` | `getBloemSourceCodeArchive` | Download the complete source code of the running server version. |
 | `GET /api/bloem/v2/watch/home` | `getBloemWatchHome` | The composed home document for this viewer. |
 | `GET /api/bloem/v2/watch/items/{content_id}` | `getBloemWatchItem` | The composed document for one item. |
 | `GET /api/bloem/v2/watch/search` | `searchBloemWatch` | A composed document for a search query. |

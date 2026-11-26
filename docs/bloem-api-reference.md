@@ -246,6 +246,9 @@ administration) is a separate reference.
   only on its signed HLS paths, as documented in
   [Live TV client access](architecture/live-tv-client-access.md). The dedicated seasonal
   viewer route uses `ResolveNative` to select the current organization.
+- **The source code offer** (`/source-code`, `/source-code/archive`) takes any signed-in
+  account, with no profile, organization or admin context; see
+  [How the source code offer works](architecture/bloem-source-code-offer.md).
 - **Public probes** include `/capabilities`, `/server/identity`, `/ambience/public` and
   `/ambience/assets/{ref}`. Organization discovery and the admin-session exchange require
   account authentication.

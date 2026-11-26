@@ -70,10 +70,12 @@ TOPICS = [
     ("apps", "Apps and clients", "bloem-apps.md",
      [("Bloem native client surface", "bloem-client-surface.md"),
       ("SDK compatibility and contract generation", "bloem-sdk-compatibility.md"),
-      ("Protocol compatibility", "bloem-protocol-compatibility.md")],
-     [r"^/(capabilities|server|watch|sync|persons|catalog|profile-credentials)(/|$)"],
+      ("Protocol compatibility", "bloem-protocol-compatibility.md"),
+      ("How the source code offer works", "bloem-source-code-offer.md")],
+     [r"^/(capabilities|server|watch|sync|persons|catalog|profile-credentials|source-code)(/|$)"],
      "What Bloem's own apps read beyond Silo's API: capabilities, server identity, the composed Watch "
-     "documents, progress sync, people, item collections and profile sign-in credentials."),
+     "documents, progress sync, people, item collections, profile sign-in credentials and the running "
+     "version's source code."),
     ("insights", "Stream insights", "bloem-stream-insights.md",
      [("Admin app push notifications", "bloem-admin-push.md")],
      [r"^/admin/platform/(stream-insights|streams|limits|stats)(/|$)", r"^/admin/organization/(limits|stats)(/|$)"],

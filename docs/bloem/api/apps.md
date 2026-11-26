@@ -5,15 +5,16 @@
 > Do not edit by hand: change the handler's OpenAPI declaration, run `make bloem-openapi`, then
 > the script. Shared conventions, credentials and the error body are on the [index](README.md).
 
-What Bloem's own apps read beyond Silo's API: capabilities, server identity, the composed Watch documents, progress sync, people, item collections and profile sign-in credentials.
+What Bloem's own apps read beyond Silo's API: capabilities, server identity, the composed Watch documents, progress sync, people, item collections, profile sign-in credentials and the running version's source code.
 
 For the plain-language picture, read the [Apps and clients explainer](../../architecture/bloem-apps.md). The invariants are in:
 
 - [Bloem native client surface](../../architecture/bloem-client-surface.md)
 - [SDK compatibility and contract generation](../../architecture/bloem-sdk-compatibility.md)
 - [Protocol compatibility](../../architecture/bloem-protocol-compatibility.md)
+- [How the source code offer works](../../architecture/bloem-source-code-offer.md)
 
-## Operations (7)
+## Operations (9)
 
 | Method and path | Summary |
 | --- | --- |
@@ -21,6 +22,8 @@ For the plain-language picture, read the [Apps and clients explainer](../../arch
 | [`GET /api/bloem/v2/catalog/items/{content_id}/collections`](#get-apibloemv2catalogitemscontent_idcollections) | The visible server collections that contain one item. Visibility matches the server collection list; smart collections are evaluated lazily and are not included. An item the viewer may not see answers 404. |
 | [`GET /api/bloem/v2/persons/{person_id}`](#get-apibloemv2personsperson_id) | One person and their credits, filtered to what this viewer may see. |
 | [`GET /api/bloem/v2/server/identity`](#get-apibloemv2serveridentity) | Which server this is, which surfaces it serves, and whether it has been set up. |
+| [`GET /api/bloem/v2/source-code`](#get-apibloemv2source-code) | Describe the complete source code of the running server version. |
+| [`GET /api/bloem/v2/source-code/archive`](#get-apibloemv2source-codearchive) | Download the complete source code of the running server version. |
 | [`GET /api/bloem/v2/watch/home`](#get-apibloemv2watchhome) | The composed home document for this viewer. |
 | [`GET /api/bloem/v2/watch/items/{content_id}`](#get-apibloemv2watchitemscontent_id) | The composed document for one item. |
 | [`GET /api/bloem/v2/watch/search`](#get-apibloemv2watchsearch) | A composed document for a search query. |
@@ -103,6 +106,37 @@ Public. Mounted even without a database, so a 503 means this server has the endp
 | --- | --- | --- |
 | 200 | [`BloemServerIdentity`](#bloemserveridentity) | OK |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: the installation identity or the setup state could not be read. The body never carries a provisional identifier. |
+
+### `GET /api/bloem/v2/source-code`
+
+Describe the complete source code of the running server version.
+
+Operation ID: `getBloemSourceCode`.
+Credentials: `bearerAuth`.
+
+Requires any signed-in account; no profile, organization or admin role. Bloem Server is offered under the GNU Affero General Public License v3, and this route names the archive of the exact build that answers it. Availability is advertised by source_code_v1 in /api/bloem/v2/capabilities feature_tokens.
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemSourceCodeResponse`](#bloemsourcecoderesponse) | OK |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | source_unavailable: the archive of the running version is missing. The routes are absent, and source_code_v1 is not advertised, when the server has no archive directory or no clean build revision. |
+
+### `GET /api/bloem/v2/source-code/archive`
+
+Download the complete source code of the running server version.
+
+Operation ID: `getBloemSourceCodeArchive`.
+Credentials: `bearerAuth`.
+
+Requires any signed-in account. A browser download that cannot send an Authorization header may pass the access token as the token query parameter, as media URLs do. The body is a gzip-compressed tar archive of the running build's commit; range requests are supported so a broken download can resume.
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | `application/gzip` string (binary) | The gzip-compressed tar archive of the running build's commit. |
+| 206 | `application/gzip` string (binary) | The requested byte range of the archive. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | source_unavailable: the archive of the running version is missing. The routes are absent, and source_code_v1 is not advertised, when the server has no archive directory or no clean build revision. |
 
 ### `GET /api/bloem/v2/watch/home`
 
@@ -270,6 +304,16 @@ Searches the movies and series the selected profile may see and composes at most
 | `server_name` | string | yes | Display name, which may change at any time. Never use it as an identity. |
 | `setup_complete` | boolean | yes | False while the server has no owner account, which is the only state where the setup routes answer. |
 | `status` | string: `ok` | yes | Always ok. A server that cannot resolve its identity answers 503 instead. |
+
+### BloemSourceCodeResponse
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `archive_name` | string | yes | File name of the archive, bloem-server-<revision>.tar.gz. |
+| `archive_path` | string | yes | Path that downloads the archive: /api/bloem/v2/source-code/archive. |
+| `license` | string | yes | SPDX identifier of the license the source is offered under: AGPL-3.0. |
+| `revision` | string | yes | Full commit revision of the running server build; the archive holds exactly this commit. |
+| `size_bytes` | integer (int64) | yes | Size of the archive in bytes. |
 
 ### Document
 

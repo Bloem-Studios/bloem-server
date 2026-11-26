@@ -38,7 +38,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v2 handler, the retained /api/v1 probes and tombstone, and the routes mounted beside them.",
-      "route_count": 552
+      "route_count": 554
     },
     {
       "id": "api_v2",
@@ -60,7 +60,7 @@
     }
   ],
   "totals": {
-    "routes": 738,
+    "routes": 740,
     "conditional_routes": 231,
     "streaming_routes": 27,
     "websocket_routes": 1
@@ -17437,6 +17437,60 @@
       "success_statuses": null,
       "error_codes": null,
       "source_file": "internal/api/router_bloem_client.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v2/source-code",
+      "route_group": "/api/bloem/v2",
+      "handler": "(*internal/api/handlers.BloemSourceCodeHandler).HandleGet",
+      "handler_expr": "handler.HandleGet",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 3,
+      "auth_class": "authenticated",
+      "auth_traits": [
+        "authenticated"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_source_code_routes.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v2/source-code/archive",
+      "route_group": "/api/bloem/v2",
+      "handler": "(*internal/api/handlers.BloemSourceCodeHandler).HandleArchive",
+      "handler_expr": "handler.HandleArchive",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 3,
+      "auth_class": "authenticated",
+      "auth_traits": [
+        "authenticated"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_source_code_routes.go"
     },
     {
       "listener": "api",
