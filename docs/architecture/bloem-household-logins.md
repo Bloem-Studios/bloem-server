@@ -77,9 +77,10 @@ Under the platform credential, beside the other platform account routes:
 - `POST /api/bloem/v2/admin/platform/accounts/{account_id}/logins` creates a
   login: `username`, `password`, `profile_name`, `max_streams` (at least 1),
   `max_profiles` (at least 1), and optionally `max_transcodes`,
-  `transcode_allowed`, `email` and `require_password_change`. It answers the
-  account as the account service reads it, with `household_main_user_id` and
-  `household_disabled`.
+  `transcode_allowed`, `email` and `require_password_change`. The password
+  must meet the server's password policy, as any password an administrator
+  sets does. It answers the account as the account service reads it, with
+  `household_main_user_id` and `household_disabled`.
 - `GET /api/bloem/v2/admin/platform/accounts/{account_id}/logins` lists the
   main account's logins, oldest first: `id`, `username`, `enabled`,
   `household_disabled`.

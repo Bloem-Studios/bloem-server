@@ -1499,7 +1499,7 @@ Request body (required, `application/json`): [`BloemHouseholdLoginCreateRequest`
 | Status | Body | Meaning |
 | --- | --- | --- |
 | 201 | [`BloemHouseholdLoginView`](#bloemhouseholdloginview) | Created |
-| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password of 8 to 72 bytes are required, and max_streams and max_profiles must be at least 1. |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a username, a profile name and a password the server's password policy accepts are required (at least 8 characters by default, at most 72 bytes), and max_streams and max_profiles must be at least 1. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. |
@@ -1526,7 +1526,7 @@ Request body (required, `application/json`): [`BloemHouseholdLoginMoveProfileReq
 | Status | Body | Meaning |
 | --- | --- | --- |
 | 201 | [`BloemHouseholdLoginView`](#bloemhouseholdloginview) | Created |
-| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a profile_id, a username and a password of 8 to 72 bytes are required, and max_streams and max_profiles must be at least 1. |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: the body is not valid JSON or exceeds 16 KiB, or a field is invalid (the message names it): a profile_id, a username and a password the server's password policy accepts are required (at least 8 characters by default, at most 72 bytes), and max_streams and max_profiles must be at least 1. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such main account. profile_not_found: the main account has no such profile. |
