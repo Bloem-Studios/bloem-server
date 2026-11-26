@@ -24,6 +24,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
 // lockOrganizationMembership takes the membership row ahead of the profiles and
@@ -55,6 +57,11 @@ func revokeOrganizationMemberAccess(ctx context.Context, tx pgx.Tx, organization
 	}
 	if tag.RowsAffected() == 0 {
 		return false, nil
+	}
+	// The account's identities before its sessions, as a plugin uninstall
+	// takes them.
+	if err := auth.BloemLockIdentitiesBeforeSessions(ctx, tx, accountID); err != nil {
+		return false, err
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE auth_sessions SET revoked_at = now()

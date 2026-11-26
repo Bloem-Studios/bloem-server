@@ -140,7 +140,13 @@ func (r *UserRepository) UpdateInTransaction(ctx context.Context, tx pgx.Tx, id 
 }
 
 // DeleteInTransaction removes a user as part of a larger lifecycle change.
+// The caller holds the account row. The delete's cascade removes the
+// account's identities, so it locks them for the delete first, as Silo's
+// account delete does (lockIdentitiesBeforeSessions).
 func (r *UserRepository) DeleteInTransaction(ctx context.Context, tx pgx.Tx, id int) error {
+	if err := lockIdentitiesBeforeSessions(ctx, tx, id, true); err != nil {
+		return err
+	}
 	tag, err := tx.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
 	if err != nil {
 		return fmt.Errorf("deleting user: %w", err)

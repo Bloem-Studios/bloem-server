@@ -20,6 +20,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
 const maxListedSessions = 50
@@ -189,6 +191,11 @@ func (s *Service) RevokeSessions(ctx context.Context, organizationID uuid.UUID, 
 		if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET security_revision = security_revision + 1, updated_at = now() WHERE id = $1`, locked.Target.MembershipID); err != nil {
 			return zero, fmt.Errorf("raise security revision: %w", err)
 		}
+		// The account's identities before its sessions, as a plugin uninstall
+		// takes them; supportAuthority holds the account row.
+		if err := auth.BloemLockIdentitiesBeforeSessions(ctx, tx, accountID); err != nil {
+			return zero, err
+		}
 		tag, err := tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL`, accountID)
 		if err != nil {
 			return zero, fmt.Errorf("revoke account sessions: %w", err)
@@ -316,6 +323,11 @@ func (s *Service) SignOutDevice(ctx context.Context, organizationID uuid.UUID, a
 			// Nothing of this person's uses the device. A device that belongs to
 			// someone else, or to nobody, is one answer: not found.
 			return zero, ErrNotFound
+		}
+		// The account's identities before the device's sessions, as a plugin
+		// uninstall takes them; supportAuthority holds the account row.
+		if err := auth.BloemLockIdentitiesBeforeSessions(ctx, tx, accountID); err != nil {
+			return zero, err
 		}
 		tag, err := tx.Exec(ctx, `
 			UPDATE auth_sessions SET revoked_at = now()

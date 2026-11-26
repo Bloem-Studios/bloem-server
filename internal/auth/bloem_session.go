@@ -58,7 +58,9 @@ func revokeByUserAndSessionWithQuerier(ctx context.Context, querier sessionExecQ
 }
 
 // RevokeAllByUserInTransaction revokes account sessions in the same commit as
-// the credential or membership state that invalidates them.
+// the credential or membership state that invalidates them. It takes the
+// account's identities first, in the order a plugin uninstall takes them
+// (lockIdentitiesBeforeSessions); callers hold the account row.
 func (r *SessionRepository) RevokeAllByUserInTransaction(ctx context.Context, tx pgx.Tx, userID int) error {
 	return revokeAllByUserWithQuerier(ctx, tx, userID)
 }
@@ -69,7 +71,10 @@ func (r *SessionRepository) RevokeAllByImpersonatorInTransaction(ctx context.Con
 	return revokeAllByImpersonatorWithQuerier(ctx, tx, userID)
 }
 
-func revokeAllByUserWithQuerier(ctx context.Context, querier sessionExecQuerier, userID int) error {
+func revokeAllByUserWithQuerier(ctx context.Context, querier dbQuerier, userID int) error {
+	if err := lockIdentitiesBeforeSessions(ctx, querier, userID, false); err != nil {
+		return err
+	}
 	query := `UPDATE auth_sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`
 	if _, err := querier.Exec(ctx, query, userID); err != nil {
 		return fmt.Errorf("revoking sessions for user %d: %w", userID, err)

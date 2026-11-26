@@ -243,6 +243,11 @@ func (s *Store) putInTransaction(ctx context.Context, tx pgx.Tx, next Settings) 
 			return fmt.Errorf("%w: an administrator cannot be the preview account", ErrInvalidSettings)
 		}
 		if next.AccountID != previous.AccountID {
+			// The account row above, then its identities, then its sessions:
+			// the order a plugin uninstall takes them.
+			if err := auth.BloemLockIdentitiesBeforeSessions(ctx, tx, next.AccountID); err != nil {
+				return fmt.Errorf("revoking the preview account's sessions: %w", err)
+			}
 			if _, err := tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL`, next.AccountID); err != nil {
 				return fmt.Errorf("revoking the preview account's sessions: %w", err)
 			}
