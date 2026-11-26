@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -59,10 +60,36 @@ func revokeByUserAndSessionWithQuerier(ctx context.Context, querier sessionExecQ
 
 // RevokeAllByUserInTransaction revokes account sessions in the same commit as
 // the credential or membership state that invalidates them. It takes the
-// account's identities first, in the order a plugin uninstall takes them
-// (lockIdentitiesBeforeSessions); callers hold the account row.
+// account's identities and withdraws the device sign-ins it approved first,
+// in the order Silo's revocation and a plugin uninstall take them
+// (BloemWithdrawDeviceSignIns); callers hold the account row.
 func (r *SessionRepository) RevokeAllByUserInTransaction(ctx context.Context, tx pgx.Tx, userID int) error {
 	return revokeAllByUserWithQuerier(ctx, tx, userID)
+}
+
+// BloemRevokeAllByUser is RevokeAllByUserInTransaction in a transaction of
+// its own that locks the account row first, for a route that signs one
+// account out everywhere outside an account change. ErrNotFound is an
+// account that does not exist.
+func (r *SessionRepository) BloemRevokeAllByUser(ctx context.Context, userID int) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning session revocation for user %d: %w", userID, err)
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	if _, err := lockUser(ctx, tx, userID); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("locking user %d: %w", userID, err)
+	}
+	if err := revokeAllByUserWithQuerier(ctx, tx, userID); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("committing session revocation for user %d: %w", userID, err)
+	}
+	return nil
 }
 
 // RevokeAllByImpersonatorInTransaction participates in a caller-owned
@@ -71,12 +98,12 @@ func (r *SessionRepository) RevokeAllByImpersonatorInTransaction(ctx context.Con
 	return revokeAllByImpersonatorWithQuerier(ctx, tx, userID)
 }
 
-func revokeAllByUserWithQuerier(ctx context.Context, querier dbQuerier, userID int) error {
-	if err := lockIdentitiesBeforeSessions(ctx, querier, userID, false); err != nil {
+func revokeAllByUserWithQuerier(ctx context.Context, tx pgx.Tx, userID int) error {
+	if _, err := BloemWithdrawDeviceSignIns(ctx, tx, userID); err != nil {
 		return err
 	}
 	query := `UPDATE auth_sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`
-	if _, err := querier.Exec(ctx, query, userID); err != nil {
+	if _, err := tx.Exec(ctx, query, userID); err != nil {
 		return fmt.Errorf("revoking sessions for user %d: %w", userID, err)
 	}
 	return nil

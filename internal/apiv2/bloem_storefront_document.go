@@ -272,13 +272,14 @@ func registerBloemTenantMemberDocument(reg *Registry) {
 	registerBloemChiDocument[BloemTenantMemberInput, struct{}](reg, remove)
 
 	suspend := bloemStorefrontOp(reg, "POST", base+"/{user_id}/suspend", "suspendBloemPlatformTenantMember", "Suspend a member's account.", http.StatusOK, memberErrors)
+	suspend.Description += "The account is disabled and its sign-in sessions end. Device sign-ins the account approved that no device has collected yet are withdrawn with them, so such a device cannot collect a session afterwards. Resuming the member does not bring them back."
 	registerBloemChiDocument[BloemTenantMemberInput, BloemTenantMemberOutput](reg, suspend)
 	resume := bloemStorefrontOp(reg, "POST", base+"/{user_id}/resume", "resumeBloemPlatformTenantMember", "Resume a suspended member's account.", http.StatusOK, memberErrors)
 	registerBloemChiDocument[BloemTenantMemberInput, BloemTenantMemberOutput](reg, resume)
 	resetErrors := maps.Clone(memberErrors)
 	resetErrors[400] = "bad_request: the body is not valid JSON or the password is missing." + ` A password the policy refuses is bad_request with code password_too_short, password_too_long, password_needs_uppercase or password_needs_special, the field-error codes Silo's v2 API gives it, and the message says the rule.`
 	reset := bloemStorefrontOp(reg, "POST", base+"/{user_id}/reset-password", "resetBloemPlatformTenantMemberPassword", "Set a member's password.", http.StatusOK, resetErrors)
-	reset.Description += "The new password passes the server's password policy, and the account's sign-in sessions end."
+	reset.Description += "The new password passes the server's password policy, and the account's sign-in sessions end. Device sign-ins the account approved that no device has collected yet are withdrawn with them, so such a device cannot collect a session afterwards."
 	registerBloemChiDocument[BloemTenantMemberPasswordInput, BloemTenantMemberOutput](reg, reset)
 
 	scoped := "Checks the membership, then serves the account's resource as the account routes do, limited to this organization's profiles. "
@@ -313,7 +314,7 @@ func registerBloemTenantMemberDocument(reg *Registry) {
 	op.Description += scoped
 	registerBloemChiDocument[BloemTenantMemberSessionInput, struct{}](reg, op)
 	op = bloemStorefrontOp(reg, "DELETE", base+"/{user_id}/auth-sessions", "revokeAllBloemPlatformTenantMemberAuthSessions", "End every sign-in session of a member.", http.StatusNoContent, profileErrors)
-	op.Description += scoped
+	op.Description += scoped + "Device sign-ins the account approved that no device has collected yet are withdrawn with them, so such a device cannot collect a session afterwards."
 	registerBloemChiDocument[BloemTenantMemberInput, struct{}](reg, op)
 }
 
@@ -413,7 +414,7 @@ func registerBloemPlatformAccountResourceDocument(reg *Registry) {
 	op.Description += scope
 	registerBloemChiDocument[BloemPlatformAccountSessionInput, struct{}](reg, op)
 	op = bloemStorefrontOp(reg, "DELETE", base+"/auth-sessions", "revokeAllBloemPlatformAccountAuthSessions", "End every sign-in session of an account.", http.StatusNoContent, errors)
-	op.Description += scope
+	op.Description += scope + "Device sign-ins the account approved that no device has collected yet are withdrawn with them, so such a device cannot collect a session afterwards."
 	registerBloemChiDocument[BloemPlatformAccountInput, struct{}](reg, op)
 }
 

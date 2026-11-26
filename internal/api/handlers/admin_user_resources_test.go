@@ -169,7 +169,7 @@ func (s *adminUserResourceSessions) RevokeByUserAndSession(ctx context.Context, 
 	return nil
 }
 
-func (s *adminUserResourceSessions) RevokeAllByUser(ctx context.Context, userID int) error {
+func (s *adminUserResourceSessions) BloemRevokeAllByUser(ctx context.Context, userID int) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}

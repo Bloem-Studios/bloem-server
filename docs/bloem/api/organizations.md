@@ -938,7 +938,7 @@ Sign a member out everywhere.
 Operation ID: `revokeBloemOrganizationPersonSessions`.
 Credentials: `bloemOrganizationContext`.
 
-Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Raises the person's security_revision, which ends membership-bound tokens and older account-login sessions, and revokes every session of the account, impersonation sessions included. The person's personal API keys survive.
+Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. Who may act on whom is judged under row locks in the same transaction as the write: an organization administrator acts on ordinary members only; the organization owner may also act on the organization's other administrators; nobody acts on themselves; only a platform administrator acts on the organization owner; a platform-level account is touched only where the server Owner rule allows. A refusal is 409 target_protected with a reason, never 403. Ids outside the organization are indistinguishable from ids that do not exist (404). Every call writes its own audit event, and the support rate limits count refused calls too. Raises the person's security_revision, which ends membership-bound tokens and older account-login sessions,, withdraws the device sign-ins the account approved that no device has collected, and revokes every session of the account, impersonation sessions included. The person's personal API keys survive.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -1221,7 +1221,7 @@ End every sign-in session of an account.
 Operation ID: `revokeAllBloemPlatformAccountAuthSessions`.
 Credentials: `bloemPlatformContext`; or `bearerAuth`.
 
-Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Platform scope: the whole account, whatever its organization.
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Platform scope: the whole account, whatever its organization. Device sign-ins the account approved that no device has collected yet are withdrawn with them, so such a device cannot collect a session afterwards.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -2749,7 +2749,7 @@ End every sign-in session of a member.
 Operation ID: `revokeAllBloemPlatformTenantMemberAuthSessions`.
 Credentials: `bloemPlatformContext`; or `bearerAuth`.
 
-Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Checks the membership, then serves the account's resource as the account routes do, limited to this organization's profiles.
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Checks the membership, then serves the account's resource as the account routes do, limited to this organization's profiles. Device sign-ins the account approved that no device has collected yet are withdrawn with them, so such a device cannot collect a session afterwards.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -2965,7 +2965,7 @@ Set a member's password.
 Operation ID: `resetBloemPlatformTenantMemberPassword`.
 Credentials: `bloemPlatformContext`; or `bearerAuth`.
 
-Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. The new password passes the server's password policy, and the account's sign-in sessions end.
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. The new password passes the server's password policy, and the account's sign-in sessions end. Device sign-ins the account approved that no device has collected yet are withdrawn with them, so such a device cannot collect a session afterwards.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
@@ -3017,7 +3017,7 @@ Suspend a member's account.
 Operation ID: `suspendBloemPlatformTenantMember`.
 Credentials: `bloemPlatformContext`; or `bearerAuth`.
 
-Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request.
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. The account is disabled and its sign-in sessions end. Device sign-ins the account approved that no device has collected yet are withdrawn with them, so such a device cannot collect a session afterwards. Resuming the member does not bring them back.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |

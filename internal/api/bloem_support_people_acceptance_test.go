@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/Silo-Server/silo-server/internal/bloemtestdevice"
 	"github.com/Silo-Server/silo-server/internal/mail"
 )
 
@@ -453,7 +454,11 @@ func TestSupportSessionsAndDevicesAcceptance(t *testing.T) {
 	// Everywhere: needs the current revision, raises it, ends everything.
 	assertError(t, f.call(t, http.MethodDelete, member+"/sessions", fmt.Sprintf(`{"expected_revision":%d}`, revision+3), f.ownerPass), http.StatusConflict, "authorization_state_changed", "stale revision")
 	f.addSession(t, "s-late", f.memberID, "device-late", 0)
+	approvedDevice := bloemtestdevice.Approve(t, f.pool, f.memberID)
 	result := assertStatus(t, f.call(t, http.MethodDelete, member+"/sessions", fmt.Sprintf(`{"expected_revision":%d}`, revision), f.ownerPass), http.StatusOK, "sign out everywhere")
+	// A device the member approved and never collected cannot collect a
+	// session afterwards.
+	approvedDevice.RequireWithdrawn(t)
 	if got := f.revision(t, f.memberID); got != revision+1 || result["person"].(map[string]any)["security_revision"] != float64(revision+1) {
 		t.Errorf("revision after everywhere = %d, want %d", got, revision+1)
 	}

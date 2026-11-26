@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/Silo-Server/silo-server/internal/bloemtestdevice"
 	"github.com/Silo-Server/silo-server/internal/preview"
 )
 
@@ -148,6 +149,21 @@ func TestPutRevokesTheNewSharedAccountsCredentials(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM api_keys WHERE user_id=$1`, account).Scan(&keys); err != nil || keys != 0 {
 		t.Fatalf("api keys left = %d (%v)", keys, err)
 	}
+}
+
+// A device the account approved before it became the preview account cannot
+// collect a session as it afterwards: the approval is withdrawn, on top of the
+// guard that keeps the preview account from opening ordinary sessions.
+func TestPutWithdrawsTheNewSharedAccountsDeviceSignIns(t *testing.T) {
+	ctx, pool := previewTestDB(t)
+	pub, _ := newKey(t)
+	account := insertAccount(t, ctx, pool, "user")
+	signIn := bloemtestdevice.Approve(t, pool, account)
+	if err := preview.NewStore(pool).Put(ctx, validSettings(t, account, pub)); err != nil {
+		t.Fatal(err)
+	}
+	signIn.RequireDenied(t)
+	signIn.RequireWithdrawn(t)
 }
 
 func TestDisableRevokesEveryGuest(t *testing.T) {

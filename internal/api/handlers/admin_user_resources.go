@@ -62,7 +62,10 @@ type adminUserSessionRepository interface {
 	GetByID(ctx context.Context, id string) (*models.AuthSession, error)
 	ListByUser(ctx context.Context, userID int) ([]*models.AuthSession, error)
 	RevokeByUserAndSession(ctx context.Context, userID int, sessionID string) error
-	RevokeAllByUser(ctx context.Context, userID int) error
+	// BloemRevokeAllByUser signs the account out everywhere: its login
+	// sessions, and the device sign-ins it approved that no device has
+	// collected (auth.BloemWithdrawDeviceSignIns).
+	BloemRevokeAllByUser(ctx context.Context, userID int) error
 	RevokeAllByImpersonator(ctx context.Context, impersonatorUserID int) error
 }
 
@@ -719,7 +722,7 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 	organizationID := adminResourceOrganization(r.Context())
 	var scopedProfileIDs []string
 	if organizationID == uuid.Nil {
-		if err := h.adminSessionRepo().RevokeAllByUser(r.Context(), resources.user.ID); err != nil {
+		if err := h.adminSessionRepo().BloemRevokeAllByUser(r.Context(), resources.user.ID); err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke authentication sessions")
 			return
 		}

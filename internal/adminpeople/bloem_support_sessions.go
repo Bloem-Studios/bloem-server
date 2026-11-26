@@ -169,9 +169,10 @@ func supportAuthority(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, 
 
 // RevokeSessions signs the member out everywhere: it raises their security
 // revision (which stales membership-bound tokens and, through the revocation
-// trigger, older account-login sessions) and revokes every session of the
-// account, impersonation sessions included. The caller owes an account-wide
-// compatibility-session invalidation after commit.
+// trigger, older account-login sessions), withdraws the device sign-ins the
+// account approved that no device has collected, and revokes every session of
+// the account, impersonation sessions included. The caller owes an
+// account-wide compatibility-session invalidation after commit.
 func (s *Service) RevokeSessions(ctx context.Context, organizationID uuid.UUID, actor MutationActor, accountID int, expectedRevision int64) (RevokedSessions, error) {
 	return RunSupportTx(ctx, s.pool.Begin, func(tx pgx.Tx) (RevokedSessions, error) {
 		var zero RevokedSessions
@@ -191,9 +192,11 @@ func (s *Service) RevokeSessions(ctx context.Context, organizationID uuid.UUID, 
 		if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET security_revision = security_revision + 1, updated_at = now() WHERE id = $1`, locked.Target.MembershipID); err != nil {
 			return zero, fmt.Errorf("raise security revision: %w", err)
 		}
-		// The account's identities before its sessions, as a plugin uninstall
-		// takes them; supportAuthority holds the account row.
-		if err := auth.BloemLockIdentitiesBeforeSessions(ctx, tx, accountID); err != nil {
+		// The account's identities, then the device sign-ins it approved, then
+		// its sessions, as Silo's revocation and a plugin uninstall take them;
+		// supportAuthority holds the account row.
+		withdrawn, err := auth.BloemWithdrawDeviceSignIns(ctx, tx, accountID)
+		if err != nil {
 			return zero, err
 		}
 		tag, err := tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL`, accountID)
@@ -202,7 +205,7 @@ func (s *Service) RevokeSessions(ctx context.Context, organizationID uuid.UUID, 
 		}
 		event := supportEvent(actor, organizationID, accountID, "people.sessions_revoked", "membership", locked.Target.MembershipID.String(), locked)
 		event.AfterRevision = locked.Target.SecurityRevision + 1
-		event.After = map[string]any{"sessions_revoked": tag.RowsAffected()}
+		event.After = map[string]any{"sessions_revoked": tag.RowsAffected(), "device_sign_ins_withdrawn": withdrawn}
 		if err := RecordAudit(ctx, tx, event); err != nil {
 			return zero, err
 		}

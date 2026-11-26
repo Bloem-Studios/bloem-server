@@ -45,7 +45,6 @@ type memberUserRepository interface {
 }
 
 type memberSessionRepository interface {
-	RevokeAllByUser(context.Context, int) error
 	RevokeAllByUserInTransaction(context.Context, pgx.Tx, int) error
 }
 

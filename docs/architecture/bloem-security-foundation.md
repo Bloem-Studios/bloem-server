@@ -152,6 +152,29 @@ Riverside Club is a reseller organization served on its own address, `watch.rive
   Silo's own authentication model is in [API contract](api-contract.md) and
   [external sign-in](external-sign-in.md).
 
+### Signing an account out withdraws its device sign-ins
+
+A device sign-in the account approved but no device has collected yet would
+otherwise give that device a fresh session after the account was signed out.
+Silo withdraws such approvals in every revocation (Silo #5327), and so does
+every Bloem path that signs an account out everywhere:
+
+- tenant member suspend, password reset and username or email change
+  (`SessionRepository.RevokeAllByUserInTransaction`);
+- the platform and organization "revoke every session" routes
+  (`DELETE …/auth-sessions`, `BloemRevokeAllByUser`, `revokeOrganizationMemberAccess`);
+- organization support's sign out everywhere (`adminpeople.Service.RevokeSessions`);
+- an account becoming the shared preview account.
+
+Each locks the account row, then takes the account's identities and withdraws
+the approvals with Silo's own statement (`auth.BloemWithdrawDeviceSignIns`), then
+revokes the sessions: the order Silo's revocation and a plugin uninstall take
+them, which `TestEverySignInRowWriterKeepsTheLockOrder` lists. Household logins
+reach Silo's own revocation through the account service, and disabling a main
+account withdraws its logins' approvals in `bloem_household_revoke_sign_ins`.
+Deleting an account or moving a profile away clears the approvals made by it or for
+it. The tests use `internal/bloemtestdevice`.
+
 ### The native namespace and capabilities
 
 Bloem keeps Silo's own `/api/v2` account login, profile picker, PIN unlock, token

@@ -78,7 +78,7 @@ found" they always got.
 | On this page | In the code and database |
 | --- | --- |
 | Reset link | a `password_reset_tokens` row (Silo's), completed on Silo's public reset route |
-| Sign out everywhere | raising the membership `security_revision` and revoking the account's `auth_sessions` |
+| Sign out everywhere | raising the membership `security_revision`, withdrawing the device sign-ins the account approved that no device has collected, and revoking the account's `auth_sessions` |
 | A profile's revision | `user_profiles.revision`, raised by a trigger on any edit |
 | Activity | `GET /api/bloem/v2/admin/organization/activity`, read from `admin_audit_events` |
 | Platform support | an `admin_audit_events` row written under a `bloem_support_access` record |

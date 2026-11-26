@@ -179,7 +179,7 @@ func registerBloemOrganizationSupportDocument(reg *Registry) {
 	}
 	{
 		op := bloemSupportOp(reg, "DELETE", person+"/sessions", "revokeBloemOrganizationPersonSessions", "Sign a member out everywhere.", 200)
-		op.Description += " Raises the person's security_revision, which ends membership-bound tokens and older account-login sessions, and revokes every session of the account, impersonation sessions included. The person's personal API keys survive."
+		op.Description += " Raises the person's security_revision, which ends membership-bound tokens and older account-login sessions,, withdraws the device sign-ins the account approved that no device has collected, and revokes every session of the account, impersonation sessions included. The person's personal API keys survive."
 		bloemDocumentValidation(reg, &op)
 		bloemDocumentDescribe(&op, map[int]string{404: notFound, 409: bloemSupportProtected, 422: bloemOrganizationRevisionInvalid})
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{503: "tenant_unavailable: the store is unavailable. dependency_unavailable (Retry-After: 30): the sign-out took effect but a connected service could not be told; retrying is safe."})

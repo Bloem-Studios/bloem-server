@@ -58,9 +58,14 @@ func revokeOrganizationMemberAccess(ctx context.Context, tx pgx.Tx, organization
 	if tag.RowsAffected() == 0 {
 		return false, nil
 	}
-	// The account's identities before its sessions, as a plugin uninstall
-	// takes them.
-	if err := auth.BloemLockIdentitiesBeforeSessions(ctx, tx, accountID); err != nil {
+	// The account row, its identities, the device sign-ins it approved, then
+	// its sessions: the order Silo's revocation and a plugin uninstall take
+	// them. Holding the account row keeps a device from being approved or
+	// collecting a session in between (auth.BloemWithdrawDeviceSignIns).
+	if _, err := tx.Exec(ctx, `SELECT id FROM users WHERE id = $1 FOR UPDATE`, accountID); err != nil {
+		return false, fmt.Errorf("lock member account: %w", err)
+	}
+	if _, err := auth.BloemWithdrawDeviceSignIns(ctx, tx, accountID); err != nil {
 		return false, err
 	}
 	if _, err := tx.Exec(ctx, `
