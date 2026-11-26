@@ -90,6 +90,10 @@ var bloemInfrastructureMiddleware = []string{
 	"captureNativeVideoRequest",
 	// These only refuse preview credentials/hosts; route auth stays authoritative.
 	"previewHostGuard", "previewAccountLoginGuard",
+	// Answers the CORS preflight of one client app origin and marks its responses
+	// readable (internal/api/bloem_client_origins.go); every request still
+	// carries its own credential through the route's auth.
+	"bloemClientOriginCORS",
 }
 
 func init() {

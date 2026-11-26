@@ -119,6 +119,20 @@ are part of Bloem's PostgreSQL schema as Silo defines them, and no Bloem migrati
 changes them. Bloem's SQLite repair step recreates the `jellycompat_displayprefs`
 table. See [SQLite user-store versions](bloem-upstream-adapters.md#sqlite-user-store-versions).
 
+### Third-party apps on the native API
+
+Silo's native API (`/api/v2`) answers no cross-origin requests. One app needs them:
+Moonfin's Xbox app (Moonfin-Client/Smart-TV 3.1.x) runs its page at `moonfin.internal`
+inside a WebView that enforces CORS, and sends its Silo requests from that page. Without
+an answer to the browser's preflight it reports "Unable to connect to server".
+`useBloemClientOrigins` (`internal/api/bloem_client_origins.go`) answers that preflight
+for `/api/v2/` and marks the responses readable, for the origins in
+`bloemClientOrigins` only and never with credentials: the app sends its own bearer
+token, and no website can serve a page from those origins. Moonfin's next release sends
+these requests through its native shell, so the entry can go once consoles have it.
+The WebSockets keep their own origin check (`socketOriginAllowed`), which this does not
+widen.
+
 ### Upstream merges
 
 Take Silo's compatibility code as it is.
