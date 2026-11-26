@@ -32,6 +32,11 @@ vi.mock("@/hooks/queries/admin/settings", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/hooks/queries/admin/settings")>()),
   useAdminServerSettings: () => ({ data: undefined }),
 }));
+// Silo's password policy (#5124) is read through a query; the default rules.
+vi.mock("@/hooks/queries/account", async () => {
+  const { DEFAULT_PASSWORD_POLICY } = await import("@/lib/newPassword");
+  return { usePasswordPolicy: () => DEFAULT_PASSWORD_POLICY };
+});
 
 beforeEach(() => {
   setAccessToken("account");
