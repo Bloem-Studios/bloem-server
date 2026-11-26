@@ -51,7 +51,9 @@ jobs:
   prune-go-caches:
     name: Prune old Go caches
     if: ${{ github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request' }}
-    runs-on: ubuntu-24.04
+    # Bloem: the repository is private, and GitHub-hosted runners do not start
+    # for it, so this runs on Bloem's own runners like the other jobs.
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-prune-go-caches"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
     permissions:
       actions: write
       contents: read
@@ -62,10 +64,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          # Paginate so pruning covers every cache on this ref, even above the CLI's default list limit.
-          gh api --paginate -X GET "repos/$GH_REPO/actions/caches" \
-            -f ref="$GITHUB_REF" -f per_page=100 \
-            --jq '.actions_caches[] | {id, key, ref, createdAt: .created_at}' > "$RUNNER_TEMP/go-caches.json"
+          # Bloem's runner VMs carry curl and jq but not the gh CLI. The token
+          # goes in through a header file, never on the command line.
+          api() { curl -fsS -H @"$RUNNER_TEMP/gh-headers" "$@"; }
+          umask 077
+          printf 'Authorization: Bearer %s\nAccept: application/vnd.github+json\nX-GitHub-Api-Version: 2022-11-28\n' "$GH_TOKEN" > "$RUNNER_TEMP/gh-headers"
+          trap 'rm -f "$RUNNER_TEMP/gh-headers"' EXIT
+          # Page through every cache on this ref, 100 at a time.
+          : > "$RUNNER_TEMP/go-caches.json"
+          page=1
+          while :; do
+            batch="$(api -G "https://api.github.com/repos/$GH_REPO/actions/caches" \
+              --data-urlencode "ref=$GITHUB_REF" -d per_page=100 -d page="$page")"
+            jq -c '.actions_caches[] | {id, key, ref, createdAt: .created_at}' <<< "$batch" >> "$RUNNER_TEMP/go-caches.json"
+            [ "$(jq '.actions_caches | length' <<< "$batch")" -eq 100 ] || break
+            page=$((page + 1))
+          done
           cache_ids="$(jq -sr --arg ref "$GITHUB_REF" '
             map(select(.ref == $ref) | . + {
               prefix: (.key | capture("^(?<prefix>go-(lint|verify|test|scenarios|mod)-)").prefix)
@@ -77,7 +91,7 @@ jobs:
           while IFS= read -r cache_id; do
             [ -n "$cache_id" ] || continue
             echo "Deleting Go cache: $cache_id"
-            gh cache delete "$cache_id"
+            api -X DELETE "https://api.github.com/repos/$GH_REPO/actions/caches/$cache_id"
           done <<< "$cache_ids"
 
   tenant-identity:
@@ -569,8 +583,13 @@ jobs:
       - name: Verify the v2 contract diff and spec lint
         env:
           BASE_REF: ${{ github.base_ref || github.event.repository.default_branch }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+          # Bloem: the repository is private and the checkout keeps no
+          # credentials, so this fetch sends the job token for this one call.
+          auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" \
+            fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
           make verify-apiv2-contract BASE_REF="origin/${BASE_REF}"
 
       # The v2 fixtures are generated through the real router and every body
@@ -977,8 +996,11 @@ jobs:
         if: matrix.part == 'build'
         run: pnpm run budget:check
 
+      # Bloem: only the image workflow reads this bundle, and deploys build
+      # their own. A full artifact storage quota must not fail the build check.
       - name: Upload frontend bundle for image builds
         if: matrix.part == 'build' && github.event_name == 'push' && contains(fromJSON('["refs/heads/main","refs/heads/apiv2"]'), github.ref)
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist-${{ github.sha }}
