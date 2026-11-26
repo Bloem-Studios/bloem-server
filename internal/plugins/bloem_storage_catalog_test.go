@@ -112,13 +112,13 @@ func TestNativeCatalogAdmitsPinnedS3AndFlagsCatalog(t *testing.T) {
 }
 
 func TestNativeCatalogRejectsExternalBinaryURLs(t *testing.T) {
-	if storageCatalogURL(bookwarehouseSpec, "https://attacker.example/plugin", "0.2.2", "plugin-linux-amd64") {
+	if defaultNativeCatalogConfig.isReleaseFile(bookwarehouseSpec, "https://attacker.example/plugin", "0.2.2", "plugin-linux-amd64") {
 		t.Fatal("external URL accepted")
 	}
-	if storageCatalogURL(bookwarehouseSpec, "https://github.com/Bloem-Studios/bloem-plugins/releases/download/bookwarehouse-v0.2.2/plugin-linux-amd64?token=secret", "0.2.2", "plugin-linux-amd64") {
+	if defaultNativeCatalogConfig.isReleaseFile(bookwarehouseSpec, "https://github.com/Bloem-Studios/bloem-plugins/releases/download/bookwarehouse-v0.2.2/plugin-linux-amd64?token=secret", "0.2.2", "plugin-linux-amd64") {
 		t.Fatal("query accepted")
 	}
-	if storageCatalogURL(s3Spec, "https://github.com/Bloem-Studios/bloem-plugins/releases/download/bookwarehouse-v0.3.2/plugin-linux-amd64", "0.3.2", "plugin-linux-amd64") {
+	if defaultNativeCatalogConfig.isReleaseFile(s3Spec, "https://github.com/Bloem-Studios/bloem-plugins/releases/download/bookwarehouse-v0.3.2/plugin-linux-amd64", "0.3.2", "plugin-linux-amd64") {
 		t.Fatal("another plugin's release tag accepted for S3")
 	}
 }

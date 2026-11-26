@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -107,7 +108,14 @@ func NewHost(pool *pgxpool.Pool, cipher *secret.Cipher, installRoot, approvalPat
 	if err != nil {
 		return nil, err
 	}
-	registry, err := plugins.NewNativeStorageRegistry(pool, cipher, installRoot, approved)
+	source, err := plugins.NativeCatalogSourceFromEnv(os.Getenv)
+	if err != nil {
+		return nil, err
+	}
+	if source.CatalogURL != "" || source.ReleaseURL != "" || len(source.Hosts) != 0 {
+		slog.Info("native storage catalog source", "component", "plugins", "catalog_url", source.CatalogURL, "release_url", source.ReleaseURL, "download_hosts", source.Hosts)
+	}
+	registry, err := plugins.NewNativeStorageRegistry(pool, cipher, installRoot, approved, plugins.WithNativeCatalogSource(source))
 	if err != nil {
 		return nil, err
 	}

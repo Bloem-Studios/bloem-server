@@ -58,6 +58,7 @@ type NativeStorageRegistry struct {
 	catalogRecords   map[string]storageCatalogRecord
 	catalogFetched   time.Time
 	catalogClient    *http.Client
+	source           *nativeCatalogConfig // nil reads the default catalog source
 	// commitInstall defaults to pgx.Tx.Commit; kept per registry for fault injection.
 	commitInstall    func(context.Context, pgx.Tx) error
 	commitManagement func(context.Context, pgx.Tx) error
@@ -94,7 +95,23 @@ type NativeStorageSnapshot struct {
 	Config           []*publicv1.ConfigEntry
 }
 
-func NewNativeStorageRegistry(pool *pgxpool.Pool, cipher *secret.Cipher, baseDir string, approved map[string]NativeStorageArtifact) (*NativeStorageRegistry, error) {
+// NativeStorageOption adjusts a registry as NewNativeStorageRegistry builds it.
+type NativeStorageOption func(*NativeStorageRegistry) error
+
+// WithNativeCatalogSource reads the catalog and its releases from source
+// instead of the default.
+func WithNativeCatalogSource(source NativeCatalogSource) NativeStorageOption {
+	return func(r *NativeStorageRegistry) error {
+		c, err := source.parse()
+		if err != nil {
+			return err
+		}
+		r.source = c
+		return nil
+	}
+}
+
+func NewNativeStorageRegistry(pool *pgxpool.Pool, cipher *secret.Cipher, baseDir string, approved map[string]NativeStorageArtifact, opts ...NativeStorageOption) (*NativeStorageRegistry, error) {
 	if pool == nil || cipher == nil || !filepath.IsAbs(baseDir) || filepath.Clean(baseDir) != baseDir {
 		return nil, errors.New("native registry requires database, data cipher and absolute clean install root")
 	}
@@ -103,6 +120,12 @@ func NewNativeStorageRegistry(pool *pgxpool.Pool, cipher *secret.Cipher, baseDir
 		return nil, err
 	}
 	registry := &NativeStorageRegistry{pool: pool, configs: NewRuntimeConfigStore(pool, cipher), baseDir: baseDir, approved: approvals, pinned: newNativeStoragePins(approvals)}
+	// Options apply before the cache loads, so cached records take this source.
+	for _, opt := range opts {
+		if err := opt(registry); err != nil {
+			return nil, err
+		}
+	}
 	if err := registry.loadCatalog(); err != nil {
 		return nil, err
 	}

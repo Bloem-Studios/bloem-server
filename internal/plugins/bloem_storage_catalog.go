@@ -23,8 +23,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 )
 
-const nativeCatalogURL = "https://raw.githubusercontent.com/Bloem-Studios/bloem-plugins/main/plugins.json"
-
 type nativeCatalogSpec struct {
 	PluginID      string
 	KeyPrefix     string
@@ -108,12 +106,13 @@ func (r storageCatalogRelease) hasChecksum(checksum string) bool {
 	return false
 }
 
-func storageCatalogURL(spec nativeCatalogSpec, raw, version, file string) bool {
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.Host != "github.com" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
-		return false
+// catalogSource is the registry's checked catalog source, the default when none
+// was given.
+func (r *NativeStorageRegistry) catalogSource() *nativeCatalogConfig {
+	if r.source != nil {
+		return r.source
 	}
-	return u.Path == "/Bloem-Studios/bloem-plugins/releases/download/"+spec.ReleaseTag+version+"/"+file && version != "" && !strings.ContainsAny(version, "/\\?#")
+	return defaultNativeCatalogConfig
 }
 func (r *NativeStorageRegistry) catalogFile() string {
 	return filepath.Join(r.baseDir, "native-catalog.json")
@@ -185,9 +184,14 @@ func (r *NativeStorageRegistry) loadCatalogRecord(key string, record *storageCat
 		}
 		record.Manifest = raw
 	}
-	if key != catalogArtifactKey(spec, m.GetVersion(), record.Checksum) || !storageCatalogURL(spec, record.URL, m.GetVersion(), "plugin-"+record.OS+"-"+record.Arch) {
+	if key != catalogArtifactKey(spec, m.GetVersion(), record.Checksum) {
 		return skip()
 	}
+	current, ok := r.catalogSource().cachedReleaseFile(spec, record.URL, m.GetVersion(), "plugin-"+record.OS+"-"+record.Arch)
+	if !ok {
+		return skip()
+	}
+	record.URL = current
 	a := NativeStorageArtifact{Manifest: m, Checksum: record.Checksum, OS: record.OS, Arch: record.Arch}
 	if validateNativeStorageArtifact(a) != nil {
 		return skip()
@@ -213,13 +217,14 @@ func (r *NativeStorageRegistry) artifactSnapshot() map[string]NativeStorageArtif
 	return m
 }
 func (r *NativeStorageRegistry) catalogRead(ctx context.Context, raw string, limit int64) ([]byte, error) {
+	source := r.catalogSource()
+	if u, err := url.Parse(raw); err != nil || !source.allowed(u) {
+		return nil, errors.New("plugin catalog host not allowed")
+	}
 	client := r.catalogClient
 	if client == nil {
 		client = &http.Client{Timeout: 90 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) > 5 || req.URL.Scheme != "https" || !(req.URL.Host == "github.com" || req.URL.Host == "release-assets.githubusercontent.com" || req.URL.Host == "raw.githubusercontent.com") {
-				return errors.New("catalog redirect rejected")
-			}
-			return nil
+			return source.checkRedirect(req.URL, len(via))
 		}}
 	}
 	if limit <= 1<<20 {
@@ -257,7 +262,8 @@ func (r *NativeStorageRegistry) RefreshCatalog(ctx context.Context) error {
 	if time.Since(r.catalogFetched) < time.Minute {
 		return nil
 	}
-	data, err := r.catalogRead(ctx, nativeCatalogURL, 1<<20)
+	source := r.catalogSource()
+	data, err := r.catalogRead(ctx, source.catalogURL, 1<<20)
 	if err != nil {
 		return err
 	}
@@ -294,14 +300,13 @@ func (r *NativeStorageRegistry) RefreshCatalog(ctx context.Context) error {
 				continue
 			}
 		}
-		if !storageCatalogURL(spec, binary.URL, release.Version, "plugin-"+runtime.GOOS+"-"+runtime.GOARCH) {
+		if !source.isReleaseFile(spec, binary.URL, release.Version, "plugin-"+runtime.GOOS+"-"+runtime.GOARCH) {
 			return errors.New("invalid native catalog URL")
 		}
 		if b, e := hex.DecodeString(binary.Checksum); e != nil || len(b) != sha256.Size || strings.ToLower(binary.Checksum) != binary.Checksum {
 			return errors.New("invalid native catalog checksum")
 		}
-		manifestURL := "https://github.com/Bloem-Studios/bloem-plugins/releases/download/" + spec.ReleaseTag + release.Version + "/manifest.json"
-		b, e := r.catalogRead(ctx, manifestURL, 1<<20)
+		b, e := r.catalogRead(ctx, source.releaseFile(spec, release.Version, "manifest.json"), 1<<20)
 		if e != nil {
 			return e
 		}

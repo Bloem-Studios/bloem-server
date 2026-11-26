@@ -303,9 +303,11 @@ protected `/api/bloem/v2/admin/{platform,organization}/native-storage` routes
 `catalog/installations/discover` and `catalog/installations/{installation_id}/upgrade`,
 `s3/buckets` and `s3/folders`, and `installations/{installation_id}` with its
 `disable` and `upgrade`. Installation selects a publisher-verified artifact; an
-upload cannot approve its own checksum. Bookwarehouse releases from the fixed Bloem
+upload cannot approve its own checksum. Bookwarehouse releases from the Bloem
 catalog (`internal/plugins/bloem_storage_catalog.go`) are admitted automatically,
-with no operator approval or restart. Catalog installation downloads the
+with no operator approval or restart. The catalog's address, its release downloads
+and the hosts they may reach come from the host's settings (see [Operations](#operations)) and
+default to Bloem's public catalog on GitHub. Catalog installation downloads the
 server-platform binary and checks its SHA-256 before the existing transactional
 source installation. The UI then stores URL and API key through the encrypted
 configuration boundary. Upgrade swaps an installation's executable for a newer
@@ -989,6 +991,25 @@ replacement rule; it is not an in-place toggle for attached libraries.
   additional artifacts, outside the normal catalog flow. It is also where S3
   catalog pins live: without a pin there, no S3 catalog release is listed or
   installed.
+- Three settings say where the native catalog is read from. Each keeps its
+  default when unset, and a value that fails its checks stops startup
+  (`plugins.NativeCatalogSourceFromEnv`).
+  - `BLOEM_NATIVE_STORAGE_CATALOG_URL`: the release inventory, `plugins.json`.
+    Default `https://raw.githubusercontent.com/Bloem-Studios/bloem-plugins/main/plugins.json`.
+  - `BLOEM_NATIVE_STORAGE_RELEASE_URL`: the base of release downloads. A release's
+    files are at `<base>/<tag>/<file>`, such as `<base>/bookwarehouse-v0.3.12/manifest.json`.
+    Default `https://github.com/Bloem-Studios/bloem-plugins/releases/download`.
+  - `BLOEM_NATIVE_STORAGE_DOWNLOAD_HOSTS`: a comma-separated list of the hosts any
+    catalog request or redirect may reach, over https only. It must include the
+    hosts of the two URLs. Default `github.com`, `release-assets.githubusercontent.com`
+    and `raw.githubusercontent.com`.
+
+  The inventory's binary URLs must sit exactly under the release base, so a catalog
+  served from another host lists that host's URLs. Cached catalog records stay
+  admitted when the source changes, in either direction, and their downloads move to
+  the current source: an installed release keeps its admission even when the catalog
+  lists only a newer one. The ordinary plugin feed (Pastime and the request plugins)
+  is a plugin-repository row, not one of these settings.
 - Migration `20261007181737_library_storage_locations` replaced the native
   onboarding schema and resets an unpublished native catalog; it refuses to run
   if any file references exist.
