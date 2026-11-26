@@ -88,19 +88,15 @@ compared for it.
   before-restore backup (`bloemBeforeRestoreContext` in `selective_apply.go`,
   `bloemSkipBeforeRestore` in `backupWith`). The switch is off by default, so Silo's
   own tests keep whole-server backups.
-- A just-closed connection (`bloem_closing_connections.go`): an in-place restore
-  counts the other sessions on the live database (`OtherConnections`, from
-  `pg_stat_activity`) in `swapPreflight` and `checkLiveIdle`. A connection the restore
-  or its caller has just closed, such as the one `PGLoader.ServerID` opens right
-  before the preflight, stays listed until its server process exits, and on a loaded
-  host the count saw it and refused the restore with "1 other clients are connected".
-  `bloemAwaitClosingConnections` runs first, on its own seam line in each of the two
-  functions, and waits up to `bloemClosingConnectionGrace` (2 s) for the count to reach
-  zero. A client that stays connected is still refused by Silo's own count right
-  after. `TestBloemSwapPreflightWaitsForAClosingConnection`,
-  `TestBloemLiveIdleCheckWaitsForAClosingConnection` and
-  `TestBloemSwapPreflightStillRefusesAConnectedClient` cover it; Silo's
-  `TestBeforeMigrateBackupOnAnOldSchemaDB` failed on busy CI runners without it.
+- No wait for a just-closed connection. An in-place restore counts the other sessions
+  on the live database (`OtherConnections`) in `swapPreflight` and `checkLiveIdle`, and
+  `pg_stat_activity` keeps listing a closed connection until its server process exits.
+  Bloem used to wait up to 2 s before each count, because the count saw the connection
+  `PGLoader.ServerID` had just closed. Since Silo #5357 every connection the restore
+  opens to the live database carries the control connection's application name, and
+  the count leaves those out, so the wait is gone and `swap.go` keeps only the
+  user-data refusal above. Silo's `TestSwapNamesItsOwnConnections` and
+  `TestOtherConnectionsCountsOnlyOtherClientsDB` cover it.
 - Whole-server classification, for a backup taken with the switch off. Every table
   belongs to one group: data, restored as the backup has it (organizations,
   memberships, plans, branding, promotions, book requests, the Live TV setup); server
