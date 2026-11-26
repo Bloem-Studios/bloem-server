@@ -7604,6 +7604,40 @@
         ],
         "type": "object"
       },
+      "BloemSourceCodeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "archive_name": {
+            "description": "File name of the archive, bloem-server-\u003crevision\u003e.tar.gz.",
+            "type": "string"
+          },
+          "archive_path": {
+            "description": "Path that downloads the archive: /api/bloem/v2/source-code/archive.",
+            "type": "string"
+          },
+          "license": {
+            "description": "SPDX identifier of the license the source is offered under: AGPL-3.0.",
+            "type": "string"
+          },
+          "revision": {
+            "description": "Full commit revision of the running server build; the archive holds exactly this commit.",
+            "type": "string"
+          },
+          "size_bytes": {
+            "description": "Size of the archive in bytes.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "license",
+          "revision",
+          "archive_name",
+          "archive_path",
+          "size_bytes"
+        ],
+        "type": "object"
+      },
       "BloemStreamCloudflare": {
         "additionalProperties": false,
         "properties": {
@@ -53461,6 +53495,150 @@
         },
         "security": [],
         "summary": "Which server this is, which surfaces it serves, and whether it has been set up.",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/bloem/v2/source-code": {
+      "get": {
+        "description": "Requires any signed-in account; no profile, organization or admin role. Bloem Server is offered under the GNU Affero General Public License v3, and this route names the archive of the exact build that answers it. Availability is advertised by source_code_v1 in /api/bloem/v2/capabilities feature_tokens.",
+        "operationId": "getBloemSourceCode",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemSourceCodeResponse"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "description": "private, no-store",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "source_unavailable: the archive of the running version is missing. The routes are absent, and source_code_v1 is not advertised, when the server has no archive directory or no clean build revision."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Describe the complete source code of the running server version.",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/bloem/v2/source-code/archive": {
+      "get": {
+        "description": "Requires any signed-in account. A browser download that cannot send an Authorization header may pass the access token as the token query parameter, as media URLs do. The body is a gzip-compressed tar archive of the running build's commit; range requests are supported so a broken download can resume.",
+        "operationId": "getBloemSourceCodeArchive",
+        "responses": {
+          "200": {
+            "content": {
+              "application/gzip": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The gzip-compressed tar archive of the running build's commit.",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "bytes",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "private, no-store",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "attachment; filename=bloem-server-\u003crevision\u003e.tar.gz",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "schema": {
+                  "enum": [
+                    "application/gzip"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "content": {
+              "application/gzip": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The requested byte range of the archive."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "source_unavailable: the archive of the running version is missing. The routes are absent, and source_code_v1 is not advertised, when the server has no archive directory or no clean build revision."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Download the complete source code of the running server version.",
         "tags": [
           "system"
         ]

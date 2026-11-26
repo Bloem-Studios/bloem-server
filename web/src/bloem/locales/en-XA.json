@@ -2836,5 +2836,137 @@
       "type": 0,
       "value": "⟦Ŕéǫûéšţîñĝ…~~~~~⟧"
     }
+  ],
+  "bloem.sourceCode.download.button": [
+    {
+      "type": 0,
+      "value": "⟦Đöŵñļöåđ šöûŕçé çöđé~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.download.description": [
+    {
+      "type": 0,
+      "value": "⟦Đöŵñļöåđ ţĥé çöɱþļéţé šöûŕçé çöđé öƒ ţĥé éẋåçţ ṽéŕšîöñ ţĥîš šéŕṽéŕ ŕûñš ñöŵ. Îţ îš ƒŕéé öƒ çĥåŕĝé.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.download.failed": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥé đöŵñļöåđ çöûļđ ñöţ šţåŕţ. Ţŕý åĝåîñ.~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.download.preparing": [
+    {
+      "type": 0,
+      "value": "⟦Þŕéþåŕîñĝ đöŵñļöåđ…~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.download.size": [
+    {
+      "type": 0,
+      "value": "⟦Đöŵñļöåđ šîžé~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.download.title": [
+    {
+      "type": 0,
+      "value": "⟦Đöŵñļöåđ~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.download.version": [
+    {
+      "type": 0,
+      "value": "⟦Ṽéŕšîöñ~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.license.description": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥé ļîçéñšé ļéţš ýöû ûšé, šţûđý, çĥåñĝé åñđ šĥåŕé Ɓļöéɱ Šéŕṽéŕ. Îƒ ýöû šĥåŕé å çĥåñĝéđ ṽéŕšîöñ, ýöû šĥåŕé îţš šöûŕçé çöđé ţöö.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.license.link": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéåđ ţĥé ĜÑÛ Åƒƒéŕö Ĝéñéŕåļ Þûƀļîç Ļîçéñšé~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.license.opensInNewTab": [
+    {
+      "type": 0,
+      "value": "⟦(öþéñš îñ å ñéŵ ţåƀ)~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.license.title": [
+    {
+      "type": 0,
+      "value": "⟦Ļîçéñšé~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.nav.description": [
+    {
+      "type": 0,
+      "value": "⟦Đöŵñļöåđ ţĥé šöûŕçé çöđé öƒ ţĥîš šéŕṽéŕ~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.nav.group": [
+    {
+      "type": 0,
+      "value": "⟦Åƀöûţ~~⟧"
+    }
+  ],
+  "bloem.sourceCode.nav.label": [
+    {
+      "type": 0,
+      "value": "⟦Šöûŕçé çöđé~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.state.checkFailed": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥé åþþ çöûļđ ñöţ çĥéçķ ŵĥéţĥéŕ ţĥîš šéŕṽéŕ öƒƒéŕš å šöûŕçé çöđé đöŵñļöåđ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.state.loadFailed": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥé šöûŕçé çöđé đéţåîļš çöûļđ ñöţ ƀé ļöåđéđ.~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.state.loading": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ ţĥé šöûŕçé çöđé đéţåîļš…~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.state.notOffered": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš šéŕṽéŕ đöéš ñöţ öƒƒéŕ å šöûŕçé çöđé đöŵñļöåđ.~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.state.retry": [
+    {
+      "type": 0,
+      "value": "⟦Ţŕý åĝåîñ~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.state.unavailable": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥé šöûŕçé çöđé đöŵñļöåđ îš ñöţ åṽåîļåƀļé ŕîĝĥţ ñöŵ. Ţŕý åĝåîñ ļåţéŕ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.subtitle": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš šéŕṽéŕ ŕûñš Ɓļöéɱ Šéŕṽéŕ, ƒŕéé šöƒţŵåŕé ŕéļéåšéđ ûñđéŕ ţĥé ĜÑÛ Åƒƒéŕö Ĝéñéŕåļ Þûƀļîç Ļîçéñšé, ṽéŕšîöñ 3.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.sourceCode.title": [
+    {
+      "type": 0,
+      "value": "⟦Šöûŕçé çöđé~~~~~⟧"
+    }
   ]
 }

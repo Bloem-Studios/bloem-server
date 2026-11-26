@@ -28,6 +28,7 @@ type BloemSystemHandler struct {
 	organizationSupport        bool
 	organizationLive           bool
 	streamInsights             bool
+	sourceCode                 bool
 	orgStreamLimits            bool
 	bookRequests               bool
 	ebookRequests              bool
@@ -99,6 +100,9 @@ func (h *BloemSystemHandler) SetOrgStreamLimitsAvailable(available bool) {
 func (h *BloemSystemHandler) SetStreamInsightsAvailable(available bool) {
 	h.streamInsights = available
 }
+
+// SetSourceCodeAvailable tracks the signed-in source code routes.
+func (h *BloemSystemHandler) SetSourceCodeAvailable(available bool) { h.sourceCode = available }
 
 // SetSeasonalViewerAvailable tracks the authenticated native ambience route.
 func (h *BloemSystemHandler) SetSeasonalViewerAvailable(available bool) {
@@ -259,6 +263,9 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	}
 	if h.orgStreamLimits {
 		featureTokens = append(featureTokens, OrgStreamLimitsCapabilityToken)
+	}
+	if h.sourceCode {
+		featureTokens = append(featureTokens, SourceCodeCapabilityToken)
 	}
 	if h.adminPushReady != nil && h.adminPushReady(request.Context()) {
 		// The admin apps show their push settings only on a server that says so.

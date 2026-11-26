@@ -3731,6 +3731,7 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 		r.Use(clientip.Middleware(deps.ClientIPResolver))
 	}
 
+	useBloemClientOrigins(r) // Bloem: Moonfin's Xbox page reads /api/v2 across origins (bloem_client_origins.go)
 	// Bloem: the preview host serves guests only (bloem_preview_host.go).
 	useBloemPreviewHost(r, deps)
 

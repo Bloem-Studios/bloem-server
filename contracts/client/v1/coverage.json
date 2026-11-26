@@ -2018,6 +2018,10 @@
       "reason": "OpenAPI-only declaration of optional campaign targeting request fields; the registry owns the runtime type and no generated native authoring client is shipped."
     },
     {
+      "type": "internal/apiv2.BloemSourceCodeResponse",
+      "reason": "OpenAPI-only declaration of the embedded-web source code offer (AGPL section 13); the web settings page reads it and the native apps do not decode it."
+    },
+    {
       "type": "internal/apiv2.BloemSeasonalViewerResponse",
       "reason": "OpenAPI-only wrapper documenting the embedded-web native seasonal endpoint. Entries reuse ambience.Wire; generated native-client adoption of this wrapper is not claimed."
     },

@@ -2536,5 +2536,137 @@
       "type": 0,
       "value": "Requesting…"
     }
+  ],
+  "bloem.sourceCode.download.button": [
+    {
+      "type": 0,
+      "value": "Download source code"
+    }
+  ],
+  "bloem.sourceCode.download.description": [
+    {
+      "type": 0,
+      "value": "Download the complete source code of the exact version this server runs now. It is free of charge."
+    }
+  ],
+  "bloem.sourceCode.download.failed": [
+    {
+      "type": 0,
+      "value": "The download could not start. Try again."
+    }
+  ],
+  "bloem.sourceCode.download.preparing": [
+    {
+      "type": 0,
+      "value": "Preparing download…"
+    }
+  ],
+  "bloem.sourceCode.download.size": [
+    {
+      "type": 0,
+      "value": "Download size"
+    }
+  ],
+  "bloem.sourceCode.download.title": [
+    {
+      "type": 0,
+      "value": "Download"
+    }
+  ],
+  "bloem.sourceCode.download.version": [
+    {
+      "type": 0,
+      "value": "Version"
+    }
+  ],
+  "bloem.sourceCode.license.description": [
+    {
+      "type": 0,
+      "value": "The license lets you use, study, change and share Bloem Server. If you share a changed version, you share its source code too."
+    }
+  ],
+  "bloem.sourceCode.license.link": [
+    {
+      "type": 0,
+      "value": "Read the GNU Affero General Public License"
+    }
+  ],
+  "bloem.sourceCode.license.opensInNewTab": [
+    {
+      "type": 0,
+      "value": "(opens in a new tab)"
+    }
+  ],
+  "bloem.sourceCode.license.title": [
+    {
+      "type": 0,
+      "value": "License"
+    }
+  ],
+  "bloem.sourceCode.nav.description": [
+    {
+      "type": 0,
+      "value": "Download the source code of this server"
+    }
+  ],
+  "bloem.sourceCode.nav.group": [
+    {
+      "type": 0,
+      "value": "About"
+    }
+  ],
+  "bloem.sourceCode.nav.label": [
+    {
+      "type": 0,
+      "value": "Source code"
+    }
+  ],
+  "bloem.sourceCode.state.checkFailed": [
+    {
+      "type": 0,
+      "value": "The app could not check whether this server offers a source code download."
+    }
+  ],
+  "bloem.sourceCode.state.loadFailed": [
+    {
+      "type": 0,
+      "value": "The source code details could not be loaded."
+    }
+  ],
+  "bloem.sourceCode.state.loading": [
+    {
+      "type": 0,
+      "value": "Loading the source code details…"
+    }
+  ],
+  "bloem.sourceCode.state.notOffered": [
+    {
+      "type": 0,
+      "value": "This server does not offer a source code download."
+    }
+  ],
+  "bloem.sourceCode.state.retry": [
+    {
+      "type": 0,
+      "value": "Try again"
+    }
+  ],
+  "bloem.sourceCode.state.unavailable": [
+    {
+      "type": 0,
+      "value": "The source code download is not available right now. Try again later."
+    }
+  ],
+  "bloem.sourceCode.subtitle": [
+    {
+      "type": 0,
+      "value": "This server runs Bloem Server, free software released under the GNU Affero General Public License, version 3."
+    }
+  ],
+  "bloem.sourceCode.title": [
+    {
+      "type": 0,
+      "value": "Source code"
+    }
   ]
 }
