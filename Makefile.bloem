@@ -338,10 +338,13 @@ vet-tagged:
 # The local gate (scripts/bloem/local-gate.py) runs every Bloem CI job on a
 # developer machine. Its test fails when bloem-ci.yml gains a make target or a
 # go test the gate does not run, so the two cannot drift apart unnoticed.
+# compare-workflows.py fails the same way when .forgejo/workflows/bloem-ci.yml,
+# the Forgejo copy, is not what bloem-ci.yml generates.
 .PHONY: verify-local-gate
 verify-local-gate:
 	python3 scripts/bloem/local-gate_test.py
 	python3 scripts/bloem/silo-merge-review_test.py
+	python3 scripts/ci/compare-workflows.py
 
 # Bloem CI's Go test shards skip Silo's database-list tests (db-pins.txt and
 # db-contracts.txt), which the Go database pins job runs on a fresh database.
