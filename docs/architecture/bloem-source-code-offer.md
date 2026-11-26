@@ -62,5 +62,11 @@ later the server is updated, and the same page offers the new version's archive.
   server; the app container mounts that directory read-only at `/var/lib/silo/source`, and
   `BLOEM_SOURCE_ARCHIVE_DIR` points there. Never serve an archive whose name does not match
   the running revision: the offer must name the code that runs.
-- **Web.** The settings page and its entry are Bloem-owned and reach Silo's settings through
-  importer-scoped module swaps (`web/bloem-preview-plugin.ts`), not edits to Silo files.
+- **Web.** The settings page and its entry are Bloem-owned (`web/src/bloem/sourceCode/`) and
+  reach Silo's settings through importer-scoped module swaps (`web/bloem-preview-plugin.ts`),
+  not edits to Silo files: the About group joins the settings list, sidebar and search for
+  every profile, and the settings layout's outlet shows the page in place of the redirect for
+  unknown settings paths. The download address is built on the click: the page first reads
+  `/source-code` again through the session client, which refreshes an expired access token,
+  then adds that token as `?token=`, and only to a path under `/api/bloem/`. The browser saves
+  the archive itself; the page never reads it into memory.

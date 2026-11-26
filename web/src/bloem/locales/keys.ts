@@ -2388,7 +2388,29 @@ export type BloemMessageKey =
   | "bloem.requests.policy.limited"
   | "bloem.requests.policy.unlimited"
   | "bloem.requests.previousPage"
-  | "bloem.requests.submitting";
+  | "bloem.requests.submitting"
+  | "bloem.sourceCode.download.button"
+  | "bloem.sourceCode.download.description"
+  | "bloem.sourceCode.download.failed"
+  | "bloem.sourceCode.download.preparing"
+  | "bloem.sourceCode.download.size"
+  | "bloem.sourceCode.download.title"
+  | "bloem.sourceCode.download.version"
+  | "bloem.sourceCode.license.description"
+  | "bloem.sourceCode.license.link"
+  | "bloem.sourceCode.license.opensInNewTab"
+  | "bloem.sourceCode.license.title"
+  | "bloem.sourceCode.nav.description"
+  | "bloem.sourceCode.nav.group"
+  | "bloem.sourceCode.nav.label"
+  | "bloem.sourceCode.state.checkFailed"
+  | "bloem.sourceCode.state.loadFailed"
+  | "bloem.sourceCode.state.loading"
+  | "bloem.sourceCode.state.notOffered"
+  | "bloem.sourceCode.state.retry"
+  | "bloem.sourceCode.state.unavailable"
+  | "bloem.sourceCode.subtitle"
+  | "bloem.sourceCode.title";
 
 /** Languages with a Bloem catalog; the pseudo-locales are generated from English. */
 export const BLOEM_LOCALES = [

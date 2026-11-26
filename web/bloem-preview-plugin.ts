@@ -101,6 +101,15 @@ const importerModules: Record<string, Record<string, string>> = {
   },
   // Bloem's admin pages have Bloem titles.
   "lib/documentTitle.ts": { "i18n/index.ts": "adapters/i18nWithBloem.ts" },
+  // Personal settings end with Bloem's About group: the Source code page, which
+  // offers every profile the running server's source (AGPL-3.0 section 13). The
+  // groups feed the settings list, sidebar and search; the layout's outlet shows
+  // the page, which App.tsx has no route for, and its tab title names it.
+  "hooks/useUserSettingsGroups.ts": { "lib/userSettingsNav.ts": "adapters/userSettingsNav.ts" },
+  "pages/SettingsLayout.tsx": {
+    "npm:react-router": "adapters/settingsLayoutRouter.tsx",
+    "lib/documentTitle.ts": "adapters/settingsDocumentTitle.ts",
+  },
   // The inbox reads Bloem's native routes, which keep Bloem's announcements
   // and their text; Silo's routes leave them out for Silo's apps.
   "hooks/queries/notifications.ts": {
