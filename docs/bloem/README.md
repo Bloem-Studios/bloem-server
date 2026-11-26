@@ -25,7 +25,7 @@ The current state of the Silo integration is in
 - [Agent instructions](../../BLOEM_AGENTS.md) — Bloem's overrides of Silo's `AGENTS.md` / `CLAUDE.md`; they take precedence where the two differ.
 - [Working on Bloem](../../.github/CONTRIBUTING.md) — the support and contribution stance, repository ownership, AI disclosure and the validation commands; the root `CONTRIBUTING.md` is Silo's.
 - [Writing Bloem documentation](documentation-workflow.md) — Silo's manual/reference model, where each kind of Bloem change is documented, regeneration and verification commands.
-- [How Bloem CI works](ci.md) — the Bloem CI jobs, the merge bot's CI wait, the switched-off daily upstream sync, the published image's gate, runner placement and tool pins.
+- [How Bloem CI works](ci.md) — the Bloem CI jobs, the merge bot's CI wait, the switched-off daily upstream sync, how the server image is published at deploy time, runner placement and tool pins.
 - [API catalogue](api-catalogue.md) — generated list of typed `/api/v2` and `/api/bloem/v2` operations and native documentation gaps.
 - [API by topic](api/README.md) — every typed `/api/bloem/v2` operation, generated from the OpenAPI contract, one page per topic, with credentials, fields and error codes.
 

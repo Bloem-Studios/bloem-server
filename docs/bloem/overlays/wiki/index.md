@@ -92,7 +92,7 @@ Reference:
 - [Deploy Bloem with Docker](deployment/docker.md): install and run Bloem with Docker Compose,
   including storage, GPU acceleration, search, distributed roles, tuning, backups and updates.
 - [Release versioning](../release-versioning.md): which image tags Bloem publishes (`latest`,
-  dated tags, `edge` and one per commit) and how to pin one.
+  dated tags and one per deployed commit; `edge` no longer moves) and how to pin one.
 
 ## When something goes wrong
 

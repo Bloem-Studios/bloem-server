@@ -75,9 +75,10 @@ Open <http://localhost:8090> and the setup wizard creates the administrator acco
 of `SECRET_KEY` somewhere other than the server: it encrypts every stored credential, and a database backup does not
 contain it.
 
-**Which image.** `.env` uses `latest`, the image Bloem's own production runs, which moves at most once a day; update
-with `docker compose pull && docker compose up -d`. Pin a dated tag such as `2026.11.17` in `SILO_IMAGE` to choose when
-you update, or use `edge` for every commit that passes CI. Keep `COMPOSE_FILE=docker-compose.advanced.yml` in `.env`:
+**Which image.** `.env` uses `latest`, the image Bloem's own production runs, which moves after each verified deploy;
+update with `docker compose pull && docker compose up -d`. Pin a dated tag such as `2026.11.26` in `SILO_IMAGE` to
+choose when you update. `edge` no longer moves; if you use it, switch to `latest` or a dated tag. Keep
+`COMPOSE_FILE=docker-compose.advanced.yml` in `.env`:
 Silo's own `docker-compose.yml` starts Silo, not Bloem. The
 [Docker guide](../docs/bloem/overlays/wiki/deployment/docker.md) covers hardware transcoding, reverse proxies, search,
 updates and building the image yourself.

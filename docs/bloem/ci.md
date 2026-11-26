@@ -1,37 +1,60 @@
 # How Bloem CI works
 
-Every change to Bloem Server is checked before it can be trusted, every passing
-commit on `main` gets a public server image, and Silo's work comes in as ordinary
-merges. This page walks through what runs and when, where the jobs run, how Silo's
-changes land, and what to do when a run fails. Bloem's CI, image, release and
-upstream-sync workflows are Bloem additions; Silo's own `ci.yml` stays as Silo wrote
-it apart from one line. The technical rules are in the
+Every change to Bloem Server is checked before it can be trusted, a deployed
+commit gets a public server image, and Silo's work comes in as ordinary merges.
+This page walks through what runs and when, how the server image is published,
+where the jobs run, how Silo's changes land, and what to do when a run fails.
+Bloem's CI, image, release and upstream-sync workflows are Bloem additions; the
+image and release workflows are disabled. Silo's own `ci.yml` stays as Silo wrote it
+apart from one line. The technical rules are in the
 [For developers](#for-developers) section.
 
 ## What runs, and when
 
-![Two flows. Every change: a pull request, a push to main, the Monday run or a manual run starts Bloem CI; a passing push to main starts Bloem Image, which publishes an image tagged with the commit and moves edge when that commit is still main's newest. Every day, only when switched on (off by default): the upstream sync merges Silo into a branch and opens a pull request, Bloem CI checks it, and the merge gate lands it on main](../architecture/images/bloem-ci/workflows.svg)
+![Two flows. Every change: a pull request, a push to main, the Monday run or a manual run starts Bloem CI. No workflow builds an image: when a commit that passed is deployed, Bloem's deploy tool, outside GitHub Actions, builds its image and publishes it once the deploy passes its checks, as release-<sha9>, the full commit SHA, latest and a dated tag; Bloem Image and Bloem Release are disabled. Every day, only when switched on (off by default): the upstream sync merges Silo into a branch and opens a pull request, Bloem CI checks it, and the merge gate lands it on main](../architecture/images/bloem-ci/workflows.svg)
 
-Bloem has five workflows of its own:
+Bloem has five workflows of its own. Three of them still run:
 
 1. **Bloem CI** checks a change. It runs on every pull request, on every push to
    `main`, every Monday morning, and when someone starts it by hand. Its jobs run
    side by side: Go tests, lint, contract checks, database checks, the web build
    and the web tests. A newer run for the same branch cancels an older one.
-2. **Bloem Image** builds the **server image**, the package a server runs. It starts
-   only after Bloem CI passes on a push to `main`, and tags the image with that
-   commit. It also moves the `edge` tag, but only while that commit is still the
-   newest on `main`. The image is public.
-3. **Bloem Release** points `latest` and a dated tag (`2026.11.17`) at an image that
-   Bloem Image already published, when a maintainer or a deploy script starts it.
-4. **Upstream sync** merges Silo's latest work into a new branch every morning and
+2. **Upstream sync** merges Silo's latest work into a new branch every morning and
    opens a pull request, when it is switched on. It is off by default
    ([below](#how-silos-work-comes-in)).
-5. **Upstream sync merge** lands that pull request on `main` once Bloem CI has passed
+3. **Upstream sync merge** lands that pull request on `main` once Bloem CI has passed
    on exactly the merge it tested. It is switched off together with the sync.
 
-None of them deploys a server. Deploying is a separate step that a person or a
-script starts.
+The other two have been disabled on GitHub since 2026-11-26 and no longer run:
+
+4. **Bloem Image** used to build the **server image**, the package a server runs,
+   for every push to `main` that passed Bloem CI, and moved the `edge` tag to it.
+5. **Bloem Release** used to point `latest` and a dated tag at one of those images
+   after a deploy.
+
+None of the workflows builds an image now, and none deploys a server. Deploying is
+a separate step that a person or a script starts, and the deploy builds the image
+([below](#how-the-server-image-is-published)).
+
+## How the server image is published
+
+A server image is built only when a commit is deployed. Bloem's deploy tool, which
+runs outside this repository and outside GitHub Actions, normally deploys only a
+commit that passed Bloem CI:
+
+1. It builds the image for that commit and runs it on Bloem's own production.
+2. It checks that production is healthy on the new build. If it is not, it rolls
+   back and publishes nothing.
+3. Once the deploy has passed, it pushes the image to Bloem's private registry, then
+   copies that same image to the public `ghcr.io/bloem-studios/bloem-server`. There
+   it gets four tags: `release-` with the first nine characters of the commit, the
+   full commit, `latest`, and a dated tag such as `2026.11.26` (`2026.11.26.2`, then
+   `.3`, for later releases the same day).
+
+So `latest` follows what Bloem's production runs, and a commit that is never
+deployed gets no image. `edge`, which Bloem Image moved for every passing commit,
+stays at `9fa2dad01`, the last image it published. Anyone who pulls `edge` should
+switch to `latest` or a dated tag.
 
 ## Where the jobs run
 
@@ -94,8 +117,8 @@ Nothing in the sync writes to `main` directly or rewrites history.
 - **A test that fails again, or fails often,** is a bug. Fix it rather than re-run
   it.
 - **A cancelled run is not a pass.** When two pushes to `main` follow each other
-  quickly, the second cancels the first run, and only the second commit gets an
-  image.
+  quickly, the second cancels the first run, and only the second commit gets a
+  full result.
 
 ## Example: two pushes in quick succession
 
@@ -104,18 +127,20 @@ This example is made up.
 1. At 10:00 Ana pushes a fix to `main`. Bloem CI starts on a disposable runner.
 2. At 10:04 she pushes a typo fix. A new Bloem CI run starts for `main`, and the
    10:00 run is cancelled.
-3. At 10:30 the second run passes. Bloem Image builds an image tagged with the
-   second commit and moves `edge` to it, because that commit is still the newest
-   on `main`.
-4. The 10:00 commit gets no image of its own. Its changes are in the 10:04 image,
-   which contains both commits.
+3. At 10:30 the second run passes. No image is built: the commit only becomes
+   eligible to deploy.
+4. At 16:00 a maintainer deploys `main`. The deploy builds the image for the 10:04
+   commit, which contains both changes, and once production passes its checks the
+   image is published and `latest` moves to it.
+5. The 10:00 commit never gets an image of its own, and neither would the 10:04
+   one if a newer commit had been deployed instead.
 
 ## Who can change what
 
 | Who | What they manage |
 | --- | --- |
 | A repository administrator | The repository variables that switch on and route to the disposable runners (`BLOEM_SELF_HOSTED`, `BLOEM_CI_MEMBERS`), the one that switches the upstream sync on (`BLOEM_UPSTREAM_SYNC`), and the secrets for the sync token and Discord (`UPSTREAM_SYNC_TOKEN`, `DISCORD_WEBHOOK_URL`). |
-| A maintainer | Answering or releasing a stopped Silo batch, and starting every deployment and release. |
+| A maintainer | Answering or releasing a stopped Silo batch, and starting every deployment, which publishes the image. |
 | The merge bot, outside this repository | Merging each Silo batch, pushing it to `main`, and its one re-run of a failed CI run. |
 | Anyone with push access | Bloem's workflow files and scripts, re-runs, pushing a checked Silo merge to `main`, and merging a resolved sync pull request by hand. |
 | The runner controller, outside this repository | Starting a fresh disposable runner for each job. Its own settings are the authority for routing. |
@@ -126,8 +151,9 @@ This example is made up.
 | On this page | In the code and repository |
 | --- | --- |
 | Bloem CI | `.github/workflows/bloem-ci.yml`, workflow name "Bloem CI" |
-| Bloem Image | `.github/workflows/bloem-image.yml`, workflow name "Bloem Image" |
-| Bloem Release | `.github/workflows/bloem-release.yml`, workflow name "Bloem Release" |
+| Bloem Image, disabled | `.github/workflows/bloem-image.yml`, workflow name "Bloem Image" |
+| Bloem Release, disabled | `.github/workflows/bloem-release.yml`, workflow name "Bloem Release" |
+| The deploy tool | `bloem-deploy`, outside this repository; it builds, deploys and publishes the image |
 | The merge bot | runs outside this repository; it uses `scripts/bloem/silo-merge-review.py` and `scripts/bloem/local-gate.py` |
 | Review list | `scripts/bloem/silo-merge-review.py` |
 | Local gate | `scripts/bloem/local-gate.py` |
@@ -135,8 +161,8 @@ This example is made up.
 | Upstream sync merge, the merge gate | `.github/workflows/upstream-sync-merge.yml` and `scripts/verify-upstream-sync-merge.sh` |
 | The switch for both | the repository variable `BLOEM_UPSTREAM_SYNC`; `true` turns them on, anything else keeps them off |
 | Disposable runner | a self-hosted runner with the labels `bloem-linux`, `bloem-run-<run id>-<attempt>` and `bloem-job-<job id>` |
-| GitHub's runners | `ubuntu-24.04` (Bloem CI) and `ubuntu-latest` (the other workflows) |
-| Server image | `ghcr.io/bloem-studios/bloem-server:<full commit SHA>`, `edge`, `latest` and dated tags such as `2026.11.17`; public |
+| GitHub's runners | `ubuntu-24.04` (Bloem CI) and `ubuntu-latest` (the upstream sync and its merge gate) |
+| Server image | `ghcr.io/bloem-studios/bloem-server:<full commit SHA>`, `release-<sha9>`, `latest` and dated tags such as `2026.11.26`, published by the deploy tool for each verified deploy; public. `edge` stays at `9fa2dad01` |
 | The web bundle | the `frontend-dist-<sha>` artifact from the Web (build) job |
 | Seam | a Silo file Bloem edits, listed in `contracts/seams.txt` and checked by `make verify-seams` |
 | Changed-line lint | `scripts/bloem-lint-changed-ci.sh` |
@@ -171,8 +197,8 @@ Terms used below:
 | Workflow | File | Runs on | What it does |
 |---|---|---|---|
 | Bloem CI | `bloem-ci.yml` | Pull requests; pushes to `main` and `apiv2`; Mondays at 04:23 UTC; manual | Runs every Bloem gate ([Jobs](#jobs)) |
-| Bloem Image | `bloem-image.yml` | A Bloem CI run on `main` completing; manual | Publishes `ghcr.io/bloem-studios/bloem-server:<full sha>` and moves `edge` ([Bloem Image](#bloem-image)) |
-| Bloem Release | `bloem-release.yml` | Manual, with a commit | Points `latest` and a dated tag at that commit's image ([Bloem Release](#bloem-release)) |
+| Bloem Image | `bloem-image.yml` | Disabled on GitHub since 2026-11-26 | Nothing. It published `ghcr.io/bloem-studios/bloem-server:<full sha>` and moved `edge` ([record](#bloem-image-disabled)) |
+| Bloem Release | `bloem-release.yml` | Disabled on GitHub since 2026-11-26 | Nothing. It pointed `latest` and a dated tag at a commit's image ([record](#bloem-release-disabled)) |
 | Upstream sync | `upstream-sync.yml` | Daily at 05:20 UTC, but its job runs only when `BLOEM_UPSTREAM_SYNC` is `true`; manual, with a dry run, always | Merges Silo's `main` on a branch and opens a pull request |
 | Upstream sync merge | `upstream-sync-merge.yml` | Any Bloem CI run completing; acts only when `BLOEM_UPSTREAM_SYNC` is `true` | Merges a sync pull request whose exact head passed Bloem CI |
 | CI | `ci.yml` | As in Silo | Nothing on Bloem: its one job runs only in Silo's repository ([below](#silos-ciyml)) |
@@ -201,7 +227,8 @@ tools from Silo's `main` branch, not from the Silo revision Bloem has merged, an
 it knows none of Bloem's gates, so on Bloem it would check the wrong thing.
 Skipping it costs a one-line seam. Keeping Bloem's jobs in their own file avoids
 the conflicts a large edit to `ci.yml` would cause on every upstream CI change.
-Bloem Image and the upstream sync merge wait on "Bloem CI" by name.
+The upstream sync merge waits on "Bloem CI" by name, as the disabled Bloem Image
+did.
 
 ### Triggers and cancellation
 
@@ -210,8 +237,8 @@ API v2 integration branch), every Monday at 04:23 UTC, and by hand.
 
 Runs share the concurrency group `bloem-ci-<event>-<ref>` with
 `cancel-in-progress: true`. A newer run for the same event and ref cancels
-the older one, on `main` too. A cancelled run is not a success, so Bloem Image
-publishes nothing for its commit.
+the older one, on `main` too. A cancelled run is not a success, so its commit
+has no passing run to deploy from.
 
 No job `needs` another, so all of them start together. Every matrix uses
 `fail-fast: false`, so one failing shard does not cancel the others. The
@@ -274,8 +301,9 @@ What differs by runner:
 - "Prune old Go caches" always runs on `ubuntu-24.04`, and only for runs on
   the default branch that are not pull requests.
 
-Bloem Image, Upstream sync, Upstream sync merge and Bloem Release run on GitHub's
-`ubuntu-latest`.
+Upstream sync and Upstream sync merge run on GitHub's `ubuntu-latest`, as Bloem
+Image and Bloem Release did before they were disabled. No GitHub runner, GitHub's or
+Bloem's own, builds the server image now.
 
 ### Jobs
 
@@ -290,7 +318,7 @@ Bloem Image, Upstream sync, Upstream sync merge and Bloem Release run on GitHub'
 | Go test (1-4/4) | `make test-go-shard` (`make test-go` for one shard's packages) on a database `cmd/bloem-testdb` prepared, its packages split four ways, four at a time per database. Silo's database-list tests are left to Go database pins (below). |
 | Go database pins | The database pins (`make test-db-pins`, with the listed flaky pins retried) and the upstream database regression gates. |
 | Go database regressions | Watch Party and history-import race tests, the Redis-backed native video grant and cover cache tests, and the library location and native storage pins (`scripts/ci/bloem-library-locations.txt`, built with `-tags=integration`). |
-| Web (build, checks) | ESLint and format, typecheck and build, the launch bundle budget, the web settings binding and v2 types, and `make verify-local-paths`, which first runs the upstream sync merge helper's tests. On a push to `main` or `apiv2`, the build part uploads `frontend-dist-<sha>`, which Bloem Image publishes. |
+| Web (build, checks) | ESLint and format, typecheck and build, the launch bundle budget, the web settings binding and v2 types, and `make verify-local-paths`, which first runs the upstream sync merge helper's tests. On a push to `main` or `apiv2`, the build part still uploads `frontend-dist-<sha>`, which only the disabled Bloem Image read. |
 | Web test (1-4/4) | Vitest in four shards, with the listed flaky tests retried alone. |
 
 Go lint builds golangci-lint from source at the pinned `GOLANGCI_LINT_VERSION`,
@@ -415,13 +443,7 @@ runner, re-run the run with GitHub's **Re-run failed jobs**
 The failed jobs run again, and the jobs that passed keep their attempt-1
 results. Because the disposable-runner labels include the attempt number, re-run
 jobs ask for `bloem-run-<run id>-2` and get new runners. When the attempt
-completes, Bloem Image and Upstream sync merge fire again and act on the run's new
-conclusion.
-
-A re-run does not rebuild the web bundle unless the Web (build) job is re-run
-too. The `frontend-dist-<sha>` artifact is kept for one day
-(`retention-days: 1`). A Bloem Image run more than a day after the build finds
-no bundle to download until Web (build) runs again.
+completes, Upstream sync merge fires again and acts on the run's new conclusion.
 
 A re-run is for failures that are not about the change. A test that fails
 again, or fails often, is a bug to fix. Typical causes seen so far:
@@ -436,90 +458,72 @@ again, or fails often, is a bug to fix. Typical causes seen so far:
   hour. Write test windows in hours (`interval '192 hours'`), which PostgreSQL
   adds as absolute time.
 
-### Bloem Image
+### Server images
 
-`.github/workflows/bloem-image.yml` ("Bloem Image") publishes the public server
-image for a commit that passed Bloem CI on `main`. It waits on "Bloem CI" by name.
+The deploy tool, `bloem-deploy`, builds and publishes every server image. It runs
+outside this repository and outside GitHub Actions, on Bloem's build machine, and
+refuses a commit without a successful Bloem CI run unless the operator passes
+`--skip-ci-check`. For the commit it deploys it:
 
-**Triggers.** A Bloem CI run completing on `main` starts it. Its one job,
-`publish`, runs only in `Bloem-Studios/bloem-server`, and only when the CI
-run concluded `success`, was started by a `push` (not the schedule, a manual
-run or a pull request), and came from this repository. Any other completion on
-`main` shows as a skipped Bloem Image run. It can also be started by hand on
-`main`. It then looks up a successful Bloem CI push run on `main` for that
-commit and stops if there is none. Runs queue in the group `bloem-image-main`
-and are never cancelled. The workflow token has no permissions by default; the
-job gets `contents: read`, `actions: read` and `packages: write`, and a
-90-minute timeout.
+1. Exports the commit with `git archive`, builds the web app with `vite build`, and
+   builds a `linux/amd64` image with Buildx from Silo's `Dockerfile`, passing
+   `--build-context frontend_dist=<that build>/web/dist`. The labels and build
+   arguments are the ones Bloem Image used: `org.opencontainers.image.revision`,
+   `.created` and `.source`, and `BUILD_REVISION=<sha>`, `BUILD_DIRTY=false` and
+   `BUILD_DATE`, so the server's system info reports the revision. The local tag is
+   `bloem-server:release-<sha9>`.
+2. Deploys it and verifies production. A deploy that fails verification is rolled
+   back and publishes nothing.
+3. After a verified deploy, pushes the image to Bloem's private registry as
+   `release-<sha9>` and `<full sha>`, reading each tag's digest back.
+4. Copies that manifest with `crane copy` to `ghcr.io/bloem-studios/bloem-server`, so
+   both registries hold one digest, as `release-<sha9>`, `<full sha>`, a dated tag
+   and `latest`, and reads every tag back.
 
-**Steps.**
+The public tags:
 
-1. Check the source: the commit must be a full 40-character SHA, and the CI
-   run must be a completed, successful `push` run of
-   `.github/workflows/bloem-ci.yml` on `main` in this repository for exactly
-   that commit.
-2. Check out that commit, with no stored credential.
-3. Download that CI run's `frontend-dist-<sha>` artifact into `web/dist`.
-4. Log in to GitHub Container Registry with the workflow's own token
-   (`packages: write`), then build and push with Buildx:
-   - platform `linux/amd64` only;
-   - tag `ghcr.io/bloem-studios/bloem-server:<full sha>`;
-   - OCI labels for the revision, the build time and the source repository;
-   - build arguments `BUILD_REVISION=<sha>`, `BUILD_DIRTY=false` and
-     `BUILD_DATE`, which the Dockerfile links into `internal/buildinfo`, so
-     the server's system info reports the revision.
-5. Point `edge` at that image, but only if the commit is still `main`'s head.
-
-**How the web bundle gets in.** Silo's `Dockerfile`, which Bloem does not
-change, has a `frontend_dist` stage. By default that stage holds the bundle
-the in-image `frontend` stage builds, and the Go build stage embeds it
-(`COPY --from=frontend_dist / web/dist`). Bloem Image passes
-`build-contexts: frontend_dist=./web/dist`, which replaces that stage with the
-bundle the Web (build) job produced. That is the same bundle that job
-type-checked and held to the launch budget. Web (build) uploads it only on
-pushes to `main` and `apiv2`, under the name `frontend-dist-<sha>`, for one
-day.
-
-**The tags.**
-
-- `<full sha>` names one commit's image and never moves.
-- `edge` is the newest image published while its commit was `main`'s head. A late
-  run for an older commit leaves `edge` for the newer commit's own run, so `edge`
-  never moves backwards. If the newest commit's CI fails, `edge` stays on the last
-  image published.
-- `latest` and the dated tags (`YYYY.MM.DD`) are moved by
-  [Bloem Release](#bloem-release), not by this workflow.
-  `.env.bloem.example` sets `SILO_IMAGE` to `latest` for
-  `docker-compose.advanced.yml`; deployments that must be attributable pin a
-  dated or full-SHA tag
+- `<full sha>` and `release-<sha9>` name one deployed commit's image and never move.
+- The dated tag is the deploy's UTC day, `YYYY.MM.DD`; a second, different release
+  that day gets `.2`, then `.3`. A dated tag that already holds another image is never
+  moved, and a retry for the same image reuses its tag.
+- `latest` moves only on a verified deploy. Publishing an older deploy again
+  (`bloem-deploy --publish --sha <sha>`) leaves `latest` alone when a later build has
+  gone live or that sha was rolled back, so it never moves backwards.
+- `edge` is not touched. It stays at `9fa2dad01`, Bloem Image's last image.
+- `.env.bloem.example` sets `SILO_IMAGE` to `latest` for
+  `docker-compose.advanced.yml`; deployments that must be attributable pin a dated or
+  full-SHA tag
   ([deployment guide](overlays/wiki/deployment/docker.md#container-image-selection)).
 
-**What it does not do.**
+Both pushes are best effort: a failed push changes neither the deploy's outcome nor
+production, and a failed private push skips the public copy, which reads from it.
+Publishing is retried with `bloem-deploy --publish --sha <sha>`.
 
-- It publishes no `build-<n>` or short-SHA tag and no arm64 image.
-- It builds Bloem's server image only. It does not build Silo's all-in-one
-  image, which bundles PostgreSQL, Redis and Meilisearch.
-- It does not deploy. Deployment is a separate step.
-- The image's Go build stage uses the Dockerfile's floating `golang:1.27` tag
-  (Silo's choice), not the exact patch `go.mod` names, which the CI jobs use.
+What a published image is not:
 
-### Bloem Release
+- It has no `build-<n>` tag and no arm64 variant.
+- It is Bloem's server image only, not Silo's all-in-one image, which bundles
+  PostgreSQL, Redis and Meilisearch.
+- Its Go build stage uses the Dockerfile's floating `golang:1.27` tag (Silo's
+  choice), not the exact patch `go.mod` names, which the CI jobs use.
 
-`.github/workflows/bloem-release.yml` ("Bloem Release") makes the public `latest`
-tag mean the release a maintainer has chosen. A maintainer starts it with
-`gh workflow run bloem-release.yml -f sha=<full sha>`, or a deploy script does after
-a deploy passes its checks.
+### Bloem Image (disabled)
 
-1. Check the input is a full 40-character SHA and that the commit is on `main`.
-2. Wait up to 45 minutes for Bloem Image to have published that commit's image,
-   since a release can start while its image is still being pushed.
-3. Point `latest` and a dated tag at that image with
-   `docker buildx imagetools create`, which copies the manifest unchanged. The
-   dated tag is the UTC date, `YYYY.MM.DD`; a second, different release that day
-   gets `.2`, then `.3`. A dated tag never moves, and a rerun for the same image
-   reuses its tag.
+`.github/workflows/bloem-image.yml` ("Bloem Image") is disabled on GitHub since
+2026-11-26; the file stays in the repository as a record. It ran after a successful
+Bloem CI push run on `main`, downloaded that run's `frontend-dist-<sha>` web bundle,
+built and pushed `ghcr.io/bloem-studios/bloem-server:<full sha>` with the labels and
+build arguments above, and moved `edge` to it while the commit was still `main`'s
+head. It built an image for every passing `main` commit, about three a day, most never
+deployed. The deploy tool's build replaced it.
 
-It builds nothing, and it runs one at a time (`concurrency: bloem-release`).
+### Bloem Release (disabled)
+
+`.github/workflows/bloem-release.yml` ("Bloem Release") is disabled on GitHub since
+2026-11-26; the file stays as a record. Started by hand or by the deploy tool after a
+verified deploy, it waited for Bloem Image's image for the commit and pointed `latest`
+and a dated tag at it with `docker buildx imagetools create`. The deploy tool's
+public copy now sets the same tags by the same rules.
 
 ### Tools on the Go runners
 
@@ -699,7 +703,7 @@ write on this repository. Without it they fall back to `GITHUB_TOKEN`:
 - `GITHUB_TOKEN` can never push or merge a commit that changes
   `.github/workflows`, whatever the job's permissions. Without the secret, a
   sync that brings in such a Silo commit fails at its push.
-- A merge pushed with the token starts Bloem CI on `main`, and so Bloem Image.
+- A merge pushed with the token starts Bloem CI on `main`.
 
 The sync's checkout keeps no credential. The push supplies the token for that
 one command, so it is not on disk while the merged upstream tree builds.

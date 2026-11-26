@@ -16,8 +16,10 @@ def _mono(s, x, y, text, size=13, fill=SOFT, anchor="start"):
 def workflows():
     s = Svg(1200, 740, "What runs, and when",
             "Top, every change: a pull request, a push to main, the Monday run or a manual run starts Bloem CI. "
-            "When Bloem CI passes on a push to main, Bloem Image builds the server image tagged with that commit, "
-            "and moves edge if the commit is still main's newest. No workflow deploys a server. "
+            "No workflow builds an image any more: Bloem Image and Bloem Release are disabled. When a commit that "
+            "passed Bloem CI is deployed, Bloem's deploy tool, outside GitHub Actions, builds its image and, after "
+            "the deploy passes its checks, publishes it as release-<sha9>, the full commit SHA, latest and a dated "
+            "tag. No workflow deploys a server. "
             "Bottom, every day, only when switched on (off by default): the upstream sync merges Silo's "
             "main into a branch and opens a pull request; Bloem CI checks it; the merge gate lands it on main. A "
             "sync with conflicts opens as a draft that a person resolves.")
@@ -41,18 +43,18 @@ def workflows():
         size=14.5)
     s.badge(308, 306, "up to 24 jobs at once", p, size=12.5)
     s.arrow(534, mid, 636, mid)
-    s.lines(585, mid - 30, ["passed, on a", "push to main"], size=12.5, fill=MUTED, gap=16, anchor="middle")
-    box(s, 640, 160, 240, 190, BLOEM, "Bloem Image",
-        "Builds the server image for exactly that commit, with the web bundle CI built.", size=14.5)
+    s.lines(585, mid - 30, ["passed, then", "deployed"], size=12.5, fill=MUTED, gap=16, anchor="middle")
+    box(s, 640, 160, 240, 190, BLOEM, "A deploy",
+        "Outside GitHub Actions. Bloem's deploy tool builds the image for the commit it deploys.",
+        size=14.5)
     s.arrow(884, mid, 916, mid)
     s.rect(920, 160, 240, 190, a["fill"], a["stroke"], rx=14, sw=1.8)
-    s.text(940, 192, "The image", size=17, weight="700")
-    _mono(s, 940, 222, "bloem-server:", size=13, fill=INK)
-    _mono(s, 940, 242, "<full commit SHA>", size=13, fill=INK)
-    para(s, 940, 274, "edge moves to it only while that commit is still main's newest.", 200, size=14,
-         gap=19)
+    s.text(940, 192, "The public image", size=17, weight="700")
+    for i, tag in enumerate(["release-<sha9>", "<full commit SHA>", "latest", "a dated tag"]):
+        _mono(s, 940, 218 + i * 20, tag, size=13, fill=INK)
+    para(s, 940, 306, "Published once the deploy passes its checks.", 200, size=14, gap=19)
     s.rect(640, 370, 520, 48, "#FFFFFF", "#9CA3AF", rx=12, sw=1.4, dash="6 5")
-    s.text(660, 400, "No workflow deploys a server.", size=14.5, fill=MUTED)
+    s.text(660, 400, "Bloem Image and Bloem Release are disabled.", size=14.5, fill=MUTED)
 
     # Every day.
     s.text(40, 468, "Every day, only when switched on (off by default)", size=17, weight="700")

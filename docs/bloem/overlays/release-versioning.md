@@ -7,28 +7,51 @@ Bloem is published separately, from its own repository, so its images and its on
 release work differently. Everything else on Silo's page, such as backing up before
 an upgrade and the version format, applies to Bloem as written.
 
-![How a Bloem commit becomes an image: a commit on main passes Bloem CI, Bloem Image publishes an image tagged with the full commit SHA and moves edge while that commit is main's newest; after a deploy of that commit passes verification, Bloem Release points latest and a dated tag such as 2026.11.17 at the same image. Silo's own build-N tags are not published for Bloem](../../architecture/images/overlay-release-versioning/images.svg)
+![How a Bloem commit becomes an image: a commit on main passes Bloem CI, which builds no image; Bloem's deploy tool builds the image for the commit it deploys, and after the deploy passes verification publishes that one image as release-<sha9>, the full commit SHA, latest and a dated tag such as 2026.11.26. Commits that are never deployed get no image. edge no longer moves and stays at 9fa2dad01. Silo's own build-N tags are not published for Bloem](../../architecture/images/overlay-release-versioning/images.svg)
 
 ## What Bloem changes
 
-- **One image per commit.** Every Bloem image is tagged with the full commit it was
-  built from. There are no build numbers.
-- **`edge` follows `main`.** It moves to a new image only while that image's commit is
-  still the newest on `main`.
-- **`latest` is what Bloem's own production runs.** It moves after a verified
-  deploy, at most about once a day. Each such release also gets a dated tag such as
-  `2026.11.17` (`2026.11.17.2` for a second one the same day) that never moves.
+- **Images are built at deploy time.** Bloem CI tests the commits on `main` but
+  builds no image. Bloem's deploy tool builds the image for the commit it deploys and
+  publishes it only after the deploy has passed its checks. A commit that is never
+  deployed gets no image.
+- **One image, four tags.** A deployed commit's image is tagged with the full
+  commit it was built from, with `release-` and the first nine characters of that
+  commit, with `latest`, and with a dated tag such as `2026.11.26`. All four name the
+  same image. There are no build numbers.
+- **`latest` follows production.** It moves only after a verified deploy, and
+  never back to an older build. Each such release also gets a dated tag
+  (`2026.11.26.2`, `.3` for later releases the same day) that never moves.
+- **`edge` no longer moves.** It stays at `9fa2dad01`, the last image the
+  now-disabled Bloem Image workflow published. If you pull `edge`, switch to
+  `latest` or a dated tag.
 - **GitHub releases are rare.** Bloem has published one prerelease. An installation is
   identified by its commit or its dated tag, not by a release number.
+
+## Example: a day with two deploys
+
+This example is made up.
+
+1. In the morning a maintainer deploys commit `4c1d0e7b2…`. The deploy tool builds
+   its image, the new build passes its checks in production, and the image is
+   published as `release-4c1d0e7b2`, `4c1d0e7b2…` in full, `latest` and
+   `2026.11.26`.
+2. Three more commits land on `main` and pass Bloem CI. None is deployed, so none
+   gets an image.
+3. In the evening the newest of them, `a83f6c210…`, is deployed. Its image takes
+   `latest` and `2026.11.26.2`. `2026.11.26` still names the morning's image.
+4. Someone who pinned `2026.11.26` stays on the morning's build until they change
+   the tag.
 
 ## Words used in the code
 
 | On this page | In the code and registry |
 | --- | --- |
-| The image for a commit | `ghcr.io/bloem-studios/bloem-server:<full 40-character commit SHA>` |
-| `edge`, `latest`, a dated tag | `ghcr.io/bloem-studios/bloem-server:edge`, `:latest`, `:2026.11.17` |
-| Publishing workflow | [Bloem Image](../../../.github/workflows/bloem-image.yml) (`bloem-image.yml`) |
-| Release workflow | [Bloem Release](../../../.github/workflows/bloem-release.yml) (`bloem-release.yml`) |
+| The image for a deployed commit | `ghcr.io/bloem-studios/bloem-server:<full 40-character commit SHA>` and `:release-<sha9>` |
+| `latest`, a dated tag | `ghcr.io/bloem-studios/bloem-server:latest`, `:2026.11.26` |
+| `edge`, no longer moved | `ghcr.io/bloem-studios/bloem-server:edge`, at `9fa2dad01` |
+| The deploy tool | `bloem-deploy`, which runs outside this repository |
+| The disabled workflows | [Bloem Image](../../../.github/workflows/bloem-image.yml) (`bloem-image.yml`) and [Bloem Release](../../../.github/workflows/bloem-release.yml) (`bloem-release.yml`) |
 
 ## For developers
 
@@ -50,28 +73,38 @@ all-in-one image, with PostgreSQL, Redis and Meilisearch bundled. In Bloem's
 repository Silo's `CI` job runs only when the repository is
 `Silo-Server/silo-server`, so both workflows are skipped and publish nothing.
 
-Bloem images come from the [Bloem Image workflow](../../../.github/workflows/bloem-image.yml).
-It runs only after Bloem CI (`.github/workflows/bloem-ci.yml`) succeeds on a push to
-`main`, or on a manual dispatch from `main` for a commit Bloem CI has already passed.
-It checks out that exact commit, reuses the web build Bloem CI produced for it, and
-publishes a single linux/amd64 image of the server alone. PostgreSQL, Redis and
-Meilisearch run as their own containers (`docker-compose.advanced.yml`). The images
-are public and carry these tags:
+Bloem images are built only when a commit is deployed, by Bloem's deploy tool,
+`bloem-deploy`, which runs outside this repository and outside GitHub Actions. It
+normally deploys only a commit that passed Bloem CI; an operator can override that
+check. It builds a single linux/amd64 image of
+the server alone, with the web app it builds from the same commit. PostgreSQL, Redis
+and Meilisearch run as their own containers (`docker-compose.advanced.yml`). After the
+deploy passes verification it pushes the image to Bloem's private registry, then
+copies that same manifest, with an identical digest, to the public
+`ghcr.io/bloem-studios/bloem-server`, where it carries these tags:
 
 | Tag | Meaning |
 | --- | --- |
-| `ghcr.io/bloem-studios/bloem-server:<full 40-character commit SHA>` | The exact `main` commit that passed Bloem CI. The image's `org.opencontainers.image.revision` label and the server's build revision carry the same SHA. |
-| `ghcr.io/bloem-studios/bloem-server:edge` | The newest of those images whose commit was still `main`'s head when it was pushed. |
-| `ghcr.io/bloem-studios/bloem-server:latest` | The image Bloem's production runs. [Bloem Release](../../../.github/workflows/bloem-release.yml) points it at a commit's image after a deploy of that commit has been verified. |
-| `ghcr.io/bloem-studios/bloem-server:2026.11.17` | A dated tag made by the same release step. It never moves, so pin it to choose when you update. |
+| `ghcr.io/bloem-studios/bloem-server:<full 40-character commit SHA>` | The exact deployed commit. The image's `org.opencontainers.image.revision` label and the server's build revision carry the same SHA. |
+| `ghcr.io/bloem-studios/bloem-server:release-<sha9>` | The same image, under the first nine characters of the commit, as production names it. |
+| `ghcr.io/bloem-studios/bloem-server:latest` | The image Bloem's production runs. It moves only after a verified deploy. Publishing an older deploy again leaves it where it is when a later build has gone live or that deploy was rolled back, so it never moves backwards. |
+| `ghcr.io/bloem-studios/bloem-server:2026.11.26` | A dated tag: the deploy's UTC day, then `.2`, `.3` for later releases that day. A dated tag that already holds another image is never moved, so pin one to choose when you update. |
+| `ghcr.io/bloem-studios/bloem-server:edge` | Frozen at `9fa2dad01`, the last image Bloem Image published. Nothing moves it now. |
 
-The workflows create no `build-N` or short-SHA tags. `.env.bloem.example` sets
-`SILO_IMAGE` to `latest` and selects `docker-compose.advanced.yml`, the Compose file
-that reads it; Silo's `docker-compose.yml` starts Silo's own image. As Silo's table
-says of its own `latest`, an installation that must be rolled back or attributed
-pins a dated tag, a full-SHA tag or a digest instead. See the
+The GitHub workflows that used to publish images, Bloem Image
+(`.github/workflows/bloem-image.yml`) and Bloem Release
+(`.github/workflows/bloem-release.yml`), are disabled on GitHub since 2026-11-26.
+Bloem Image built an image for every `main` commit that passed Bloem CI and moved
+`edge`; Bloem Release pointed `latest` and a dated tag at one of those images after a
+deploy. [Bloem CI](../ci.md#bloem-image-disabled) keeps a short record of both.
+
+No `build-N` tags are made. `.env.bloem.example` sets `SILO_IMAGE` to `latest` and
+selects `docker-compose.advanced.yml`, the Compose file that reads it; Silo's
+`docker-compose.yml` starts Silo's own image. As Silo's table says of its own
+`latest`, an installation that must be rolled back or attributed pins a dated tag, a
+full-SHA tag or a digest instead. See the
 [Docker guide](wiki/deployment/docker.md#container-image-selection) and
-[Bloem CI](../ci.md#bloem-image).
+[Bloem CI](../ci.md#how-the-server-image-is-published).
 
 #### Bloem releases
 
@@ -89,12 +122,12 @@ running container's revision (its `org.opencontainers.image.revision` label, or 
 build revision the server reports) with the commit you expect. Record the application
 revision, the Silo revision it includes and the image digest separately.
 
-A documentation-only commit on `main` does not change the running application
-image, although Bloem Image still publishes an image for it.
+A commit that is never deployed, such as a documentation-only commit followed by
+another before the next deploy, has no image. The next deployed image contains it.
 
 ### Related pages
 
-- [Bloem CI](../ci.md#bloem-image): how Bloem Image builds and tags an image.
+- [Bloem CI](../ci.md#how-the-server-image-is-published): how a deploy builds and tags an image.
 - [Docker deployment guide](wiki/deployment/docker.md#container-image-selection):
   choosing and pinning an image.
 - [Writing Bloem documentation](../documentation-workflow.md#overlays): how an

@@ -138,10 +138,13 @@ Image tags:
 
 | Tag | What it is |
 | --- | --- |
-| `latest` | The image Bloem's own production runs. It moves at most once a day. |
-| A dated tag, such as `2026.11.17` | One of those releases. It never moves, so pin one to choose when you update. |
-| `edge` | The newest commit that passed CI. It changes several times a day. |
-| The full commit SHA | One exact build, for rollbacks. |
+| `latest` | The image Bloem's own production runs. It moves after each verified deploy, usually about once a day. |
+| A dated tag, such as `2026.11.26` | One of those releases. It never moves, so pin one to choose when you update. |
+| The full commit SHA, or `release-` and its first nine characters | One exact deployed build, for rollbacks. |
+| `edge` | No longer moves. It stays at `9fa2dad01`; switch to `latest` or a dated tag. |
+
+Images are built only when Bloem deploys a commit, so a commit that was never deployed has no image. See the
+[release-versioning overlay](overlays/release-versioning.md).
 
 Set the tag in `SILO_IMAGE` in `.env`. Back up `SECRET_KEY` somewhere other than the server: it encrypts every stored
 credential, and a database backup does not contain it. The web app and all native APIs answer on port 8090. Silo's

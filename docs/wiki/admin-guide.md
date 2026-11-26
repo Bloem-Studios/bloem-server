@@ -187,10 +187,10 @@ Leave it. Silo's own `docker-compose.yml` is an all-in-one stack and would start
 
 **Choose the image.** `.env.bloem.example` sets
 `SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:latest`. The images are public. `latest` is the
-image Bloem's own production runs; it moves at most once a day, and
-`docker compose pull && docker compose up -d` updates to it. To choose when you update, set
-`SILO_IMAGE` to a dated tag such as `2026.11.17`; `edge` follows every commit that passes
-Bloem's tests, and a full-SHA tag names one exact build. See
+image Bloem's own production runs; it moves after each verified deploy, usually about once a day,
+and `docker compose pull && docker compose up -d` updates to it. To choose when you update, set
+`SILO_IMAGE` to a dated tag such as `2026.11.26`; a full-SHA tag names one exact build. `edge` no
+longer moves (it stays at `9fa2dad01`), so if you used it, switch to `latest` or a dated tag. See
 [Container image selection](../bloem/overlays/wiki/deployment/docker.md#container-image-selection).
 
 ```sh
@@ -1079,10 +1079,11 @@ or less, because of the address they used.
 - `MEDIA_ROOT` is an absolute host path, mounted read-only at `/mnt/media`.
 - `COMPOSE_FILE=docker-compose.advanced.yml` (Silo's multi-container file, which takes
   `SILO_IMAGE`); `docker-compose.yml` is Silo's all-in-one stack and ignores `SILO_IMAGE`.
-- `SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:latest`. `.github/workflows/bloem-image.yml`
-  publishes each tested `main` commit as `ghcr.io/bloem-studios/bloem-server:<full SHA>` and moves
-  `edge` to it unless `main` has moved on; `.github/workflows/bloem-release.yml` points `latest`
-  and a dated tag at the image production runs after a verified deploy.
+- `SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:latest`. Images are built only at deploy time:
+  after a verified deploy, Bloem's deploy tool publishes the deployed commit's image as
+  `ghcr.io/bloem-studios/bloem-server:<full SHA>`, `release-<sha9>`, `latest` and a dated tag.
+  The GitHub workflows `bloem-image.yml` and `bloem-release.yml` are disabled, and `edge` stays at
+  `9fa2dad01`.
 - The container listens on `8080`; Compose publishes `${PORT:-8090}:8080`, `${JF_PORT:-8096}` and
   `${ABS_PORT:-13378}`. 
 - `SILO_DATA_ROOT` defaults to `/opt/silo`; the database is in `/opt/silo/postgres`.

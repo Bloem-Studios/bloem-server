@@ -88,16 +88,15 @@ work. The template sets it to `ghcr.io/bloem-studios/bloem-server:latest`.
 
 The images are public: anyone can pull them without signing in to GitHub.
 
-- **`latest`** is the image Bloem's own production runs. It moves at most once a day,
-  after a deploy of that commit has passed its checks. Update with
+- **`latest`** is the image Bloem's own production runs. It moves only after a
+  deploy has passed its checks, usually about once a day. Update with
   `docker compose pull && docker compose up -d`.
-- **A dated tag** (`ghcr.io/bloem-studios/bloem-server:2026.11.17`, or
-  `2026.11.17.2` for a second release that day) names one of those releases and
+- **A dated tag** (`ghcr.io/bloem-studios/bloem-server:2026.11.26`, or
+  `2026.11.26.2` for a second release that day) names one of those releases and
   never moves. Pin one to choose when you update.
-- **`edge`** is the newest `main` commit that passed Bloem's tests. It changes
-  several times a day, before Bloem's production has run it.
-- **A full commit tag** (`ghcr.io/bloem-studios/bloem-server:<full sha>`) never
-  changes. Use it, or the image digest, when you must be able to roll back or name
+- **A full commit tag** (`ghcr.io/bloem-studios/bloem-server:<full sha>`, or
+  `release-<first nine characters>`) never changes. Only commits Bloem has deployed
+  have one. Use it, or the image digest, when you must be able to roll back or name
   exactly what runs:
 
   ```dotenv
@@ -108,6 +107,12 @@ The images are public: anyone can pull them without signing in to GitHub.
   (`git clone https://github.com/Bloem-Studios/bloem-server.git`), run
   `docker build -t bloem-server:local .` in it (the Dockerfile builds the web app
   itself) and set `SILO_IMAGE=bloem-server:local`.
+
+> [!NOTE]
+> **`edge` no longer moves.** It used to follow every `main` commit that passed
+> Bloem's tests. Since 2026-11-26 images are built only when Bloem deploys a commit,
+> and `edge` stays at `9fa2dad01`. If `SILO_IMAGE` ends in `:edge`, change it to
+> `:latest` or a dated tag.
 
 > [!WARNING]
 > **Use `docker-compose.advanced.yml` for Bloem.** `docker-compose.yml` is Silo's
@@ -606,19 +611,19 @@ settings template, [`.env.bloem.example`](../../../../../.env.bloem.example). Si
 
 ### Image publishing
 
-- Bloem images are published only by the
-  [Bloem Image workflow](../../../../../.github/workflows/bloem-image.yml). It runs
-  after Bloem CI passes on a push to `main`, builds that exact commit and pushes it
-  under the full 40-character commit SHA: `ghcr.io/bloem-studios/bloem-server:<full sha>`.
-  It never creates a `build-N` or short-SHA tag. See [CI additions](../../../ci.md).
-- The same workflow points `edge` at that image if the commit is still `main`'s head,
-  so `edge` follows `main`, and a late run for an older commit cannot move `edge`
-  backwards.
-- `latest` is what Bloem's production runs. After a deploy passes its checks, the
-  deploy starts the [Bloem Release workflow](../../../../../.github/workflows/bloem-release.yml)
-  with that commit. It waits for the commit's image, then points `latest` and a dated
-  tag (`YYYY.MM.DD`, then `.2`, `.3` for later releases the same day) at it. A dated tag
-  never moves.
+- Bloem images are built only at deploy time, by Bloem's deploy tool (`bloem-deploy`),
+  which runs outside this repository and outside GitHub Actions. It builds the commit it
+  deploys and, after the deploy passes verification, pushes the image to Bloem's
+  private registry, then copies the same manifest, with an identical digest, to
+  `ghcr.io/bloem-studios/bloem-server` as `<full sha>`, `release-<sha9>`, `latest` and
+  a dated tag (`YYYY.MM.DD`, then `.2`, `.3` for later releases the same day). A dated
+  tag holding another image is never moved, and `latest` never moves back to an older
+  build. No `build-N` tag is made. See [Bloem CI](../../../ci.md#server-images).
+- The GitHub workflows that published images before 2026-11-26,
+  [Bloem Image](../../../../../.github/workflows/bloem-image.yml) (every passing `main`
+  commit, and `edge`) and
+  [Bloem Release](../../../../../.github/workflows/bloem-release.yml) (`latest` and dated
+  tags), are disabled. `edge` stays at `9fa2dad01`, Bloem Image's last image.
 - Silo's `Docker Image` workflow, which produces the `build-N`, `latest` and short-SHA
   tags that Silo's [release versioning](../../../../release-versioning.md) describes,
   follows Silo's `CI` workflow, and that runs only in Silo's own repository. In Bloem
