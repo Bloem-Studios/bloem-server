@@ -85,7 +85,7 @@ func (h *AdminHandler) HandleBloemPlatformHouseholdLoginCreate(w http.ResponseWr
 	req.Username = auth.NormalizeUsername(req.Username)
 	req.Email = auth.NormalizeEmail(req.Email)
 	req.ProfileName = strings.TrimSpace(req.ProfileName)
-	if err := validateBloemHouseholdLogin(req); err != nil {
+	if err := h.validateBloemHouseholdLogin(ctx, req); err != nil {
 		writeBloemPlatformAccountError(w, err)
 		return
 	}
@@ -102,7 +102,10 @@ func (h *AdminHandler) HandleBloemPlatformHouseholdLoginCreate(w http.ResponseWr
 	writeJSON(w, http.StatusCreated, BloemHouseholdLoginView{AdminUserView: view.User, HouseholdMainUserID: mainID, HouseholdDisabled: !mainEnabled})
 }
 
-func validateBloemHouseholdLogin(req BloemHouseholdLoginCreateRequest) error {
+// validateBloemHouseholdLogin checks a new login's fields, and its password
+// against the server's password policy, as Silo checks a password an
+// administrator sets.
+func (h *AdminHandler) validateBloemHouseholdLogin(ctx context.Context, req BloemHouseholdLoginCreateRequest) error {
 	switch {
 	case req.Username == "":
 		return fieldError("username", "Username is required")
@@ -115,7 +118,7 @@ func validateBloemHouseholdLogin(req BloemHouseholdLoginCreateRequest) error {
 	case req.MaxTranscodes != nil && *req.MaxTranscodes < 0:
 		return fieldError("max_transcodes", "Must be 0 (unlimited) or positive")
 	}
-	return validateAdminPassword(req.Password)
+	return h.validateAdminPassword(ctx, req.Password)
 }
 
 // createBloemHouseholdLogin creates the login, its profile and its household

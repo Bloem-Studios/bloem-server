@@ -72,7 +72,7 @@ func (h *AdminHandler) HandleBloemPlatformHouseholdLoginMoveProfile(w http.Respo
 		writeBloemPlatformAccountError(w, fieldError("profile_id", "Profile ID is required"))
 		return
 	}
-	if err := validateBloemHouseholdLogin(create); err != nil {
+	if err := h.validateBloemHouseholdLogin(ctx, create); err != nil {
 		writeBloemPlatformAccountError(w, err)
 		return
 	}

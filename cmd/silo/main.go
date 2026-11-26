@@ -72,6 +72,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/database/pglock"
 	"github.com/Silo-Server/silo-server/internal/database/queryattr"
+	"github.com/Silo-Server/silo-server/internal/demomode"
 	"github.com/Silo-Server/silo-server/internal/diagnostics"
 	"github.com/Silo-Server/silo-server/internal/directconn"
 	"github.com/Silo-Server/silo-server/internal/downloads"
@@ -1615,6 +1616,7 @@ func main() {
 	// Set when shutdown begins; /api/v1/ready fails from then on.
 	var shuttingDown atomic.Bool
 	deps := api.Dependencies{
+		DemoMode:                     demomode.New(settingsRepo),
 		ShuttingDown:                 shuttingDown.Load,
 		AdminDefaults:                adminDefaults,
 		SubtitlePlaySync:             subtitlePlaySync,
@@ -3605,7 +3607,7 @@ func main() {
 				if deps.OnUserSessionsRevoked != nil {
 					deps.OnUserSessionsRevoked(ctx, userID)
 				}
-			}).WithSecretCipher(dataCipher)
+			}).WithSecretCipher(dataCipher).WithDemoSettings(deps.DemoMode)
 		authProviderRegistry = auth.NewPluginProviderRegistry(auth.PluginProviderRegistryConfig{
 			Bindings:   pluginRuntimeConfigStore,
 			NeedsSetup: auth.NewUserRepository(deps.DB).NeedsSetup,
@@ -4167,10 +4169,11 @@ func main() {
 			absScopeResolver = withBloemViewerTenancy(absScopeResolver, deps.DB) // Bloem: organization-scoped (bloem_main.go)
 		}
 		absHDeps := audiobooks.ABSHandlerDeps{
-			Pool:     deps.DB,
-			Items:    absItemRepo,
-			Files:    deps.FileRepo,
-			Settings: settingsRepo,
+			Pool:         deps.DB,
+			Items:        absItemRepo,
+			Files:        deps.FileRepo,
+			Settings:     settingsRepo,
+			DemoSettings: deps.DemoMode,
 			Auth: &audiobooks.SiloCredValidator{
 				Auth:        absAuthSvc,
 				Pool:        deps.DB,
