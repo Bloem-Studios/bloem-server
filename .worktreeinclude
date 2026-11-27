@@ -1,0 +1,3 @@
+# Local settings Paseo copies into each new worktree (each must stay gitignored).
+.silo-dev.env
+web/.env.local

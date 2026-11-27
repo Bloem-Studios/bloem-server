@@ -1,0 +1,17 @@
+{
+  "worktree": {
+    "setup": [
+      "make embed-stub",
+      "cd web && pnpm install --frozen-lockfile --prefer-offline"
+    ]
+  },
+  "scripts": {
+    "gate": { "command": "python3 scripts/bloem/local-gate.py run --only build,verify,lint" },
+    "lint": { "command": "make lint-changed" },
+    "test-web": { "command": "make test-web" },
+    "web": {
+      "type": "service",
+      "command": "cd web && pnpm exec vite --host 127.0.0.1 --port $PASEO_PORT --strictPort"
+    }
+  }
+}
