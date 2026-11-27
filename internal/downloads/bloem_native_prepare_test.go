@@ -137,7 +137,7 @@ func TestNativePreparationNeedsComposition(t *testing.T) {
 // reservingPlanner offers a transcode node for every job.
 type reservingPlanner struct{ reserved int }
 
-func (p *reservingPlanner) ReserveTranscodeWork(string) (*nodepool.Node, func()) {
+func (p *reservingPlanner) ReserveTranscodeWork(string, nodepool.JobKind) (*nodepool.Node, func()) {
 	p.reserved++
 	return &nodepool.Node{ID: 7, URL: "http://192.0.2.7:8080"}, func() {}
 }

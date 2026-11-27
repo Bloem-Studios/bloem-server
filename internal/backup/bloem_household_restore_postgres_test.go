@@ -15,13 +15,15 @@ func TestRestoreKeepsTheHouseholdMarkDB(t *testing.T) {
 	live, liveDSN := backuptest.Database(t)
 	restored, restoredDSN := backuptest.Database(t)
 	ctx := t.Context()
+	// One account on both sides: the carry pairs accounts by id and creation
+	// time, so both rows get one creation time.
 	const username = "household-restore-login"
-	if _, err := live.Exec(ctx, `INSERT INTO users (username, email, password_hash, role, enabled, household_disabled)
-		VALUES ($1::text, $1::text || '@example.test', 'x', 'user', false, true)`, username); err != nil {
+	if _, err := live.Exec(ctx, `INSERT INTO users (username, email, password_hash, role, enabled, household_disabled, created_at)
+		VALUES ($1::text, $1::text || '@example.test', 'x', 'user', false, true, '2026-01-02T03:04:05Z')`, username); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := restored.Exec(ctx, `INSERT INTO users (username, email, password_hash, role, enabled, household_disabled)
-		VALUES ($1::text, $1::text || '@example.test', 'x', 'user', true, false)`, username); err != nil {
+	if _, err := restored.Exec(ctx, `INSERT INTO users (username, email, password_hash, role, enabled, household_disabled, created_at)
+		VALUES ($1::text, $1::text || '@example.test', 'x', 'user', true, false, '2026-01-02T03:04:05Z')`, username); err != nil {
 		t.Fatal(err)
 	}
 	carried, err := PGLoader{}.CarryCredentials(ctx, restoredDSN, liveDSN)
