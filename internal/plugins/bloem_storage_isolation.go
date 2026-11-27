@@ -226,3 +226,12 @@ func (s *NativeStorageHiddenInstallations) Delete(ctx context.Context, id int) e
 	}
 	return s.InstallationStore.Delete(ctx, id)
 }
+
+// DeleteThen guards Silo's after-commit delete as Delete does. Without it the
+// embedded store's DeleteThen would reach a hidden native storage installation.
+func (s *NativeStorageHiddenInstallations) DeleteThen(ctx context.Context, id int, afterCommit func()) error {
+	if err := s.hidden(ctx, id); err != nil {
+		return err
+	}
+	return s.InstallationStore.DeleteThen(ctx, id, afterCommit)
+}

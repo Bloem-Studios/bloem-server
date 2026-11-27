@@ -57,6 +57,13 @@ func TestNativeStorageHiddenInstallations(t *testing.T) {
 	if err := store.Delete(ctx, native); !errors.Is(err, ErrInstallationNotFound) {
 		t.Fatalf("native installation deletable through plugin handlers: %v", err)
 	}
+	ranAfterCommit := false
+	if err := store.DeleteThen(ctx, native, func() { ranAfterCommit = true }); !errors.Is(err, ErrInstallationNotFound) {
+		t.Fatalf("native installation deletable through the after-commit delete: %v", err)
+	}
+	if ranAfterCommit {
+		t.Fatal("after-commit callback ran for a refused delete")
+	}
 	if _, err := NewInstallationStore(pool).GetByID(ctx, native); err != nil {
 		t.Fatalf("native installation removed: %v", err)
 	}
