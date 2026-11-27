@@ -8,7 +8,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
-| Silo native `/api/v2` | 985 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
+| Silo native `/api/v2` | 987 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
 | Bloem extensions `/api/bloem/v2` | 323 | [OpenAPI](../../contracts/api/bloem/v2/openapi.json); [wire reference](../bloem-api-reference.md) |
 
 OpenAPI documents typed operations, including separately described raw transports.
