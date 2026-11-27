@@ -141,6 +141,22 @@ describe("Silo's push relay keeps Silo's name", () => {
     ]);
   });
 
+  it("keeps a notice whose only Silo is the relay", () => {
+    const relayOnly = [
+      {
+        type: 0,
+        value:
+          "When push notifications are enabled, your server sends a content-free request to Silo\u2019s push relay for delivery through Apple Push Notification service or Firebase Cloud Messaging. The relay is ",
+      },
+      { type: 8, value: "link", children: [{ type: 0, value: "fully open source" }] },
+    ];
+    expect(
+      applyCatalogBrand({ "web.notifications.pushPrivacy.relay": relayOnly })[
+        "web.notifications.pushPrivacy.relay"
+      ],
+    ).toEqual(relayOnly);
+  });
+
   it("holds in every language: the notice names the server before Silo's relay", async () => {
     const { readdirSync, readFileSync } = await import("node:fs");
     const dir = resolve(process.cwd(), "src/locales");
@@ -160,8 +176,9 @@ describe("Silo's push relay keeps Silo's name", () => {
       const silo = (text: string) => (text.match(/Silo/g) ?? []).length;
       // The en-XA pseudo-locale spells the name with accents; nothing brands it.
       if (file === "en-XA.json") continue;
-      // One "Silo" becomes this build; at least one still names Silo's relay.
-      expect(silo(before) - silo(after), file).toBe(1);
+      // A notice that names the server as Silo brands that one; the relay
+      // stays Silo's either way.
+      expect(silo(before) - silo(after), file).toBe(silo(before) >= 2 ? 1 : 0);
       expect(silo(after), file).toBeGreaterThanOrEqual(1);
     }
   });

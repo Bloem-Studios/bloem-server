@@ -66,9 +66,10 @@ const SILO_RELAY_MESSAGES = new Set([
 ]);
 
 /**
- * The viewer's privacy notice names the server first ("your Silo Server
- * sends…"), which is this build, and then Silo's relay, which stays Silo's.
- * Every translation keeps that order.
+ * The viewer's privacy notice names Silo's relay, which stays Silo's. Older
+ * wording also named the server first ("your Silo Server sends…"), which is
+ * this build; translations that still carry it keep that order. A notice with
+ * a single Silo ("your server sends… to Silo's push relay") is left as it is.
  */
 const SERVER_THEN_SILO_RELAY = new Set(["web.notifications.pushPrivacy.relay"]);
 
@@ -76,6 +77,7 @@ const SERVER_THEN_SILO_RELAY = new Set(["web.notifications.pushPrivacy.relay"]);
 function brandMessage(key: string, message: string, productName: string): string {
   if (SILO_RELAY_MESSAGES.has(key)) return message;
   if (!SERVER_THEN_SILO_RELAY.has(key)) return applyBrand(message, productName);
+  if ((message.match(BRAND_PATTERN) ?? []).length < 2) return message;
   let first = true;
   return message.replace(BRAND_PATTERN, (match: string, before: string) => {
     if (!first) return match;

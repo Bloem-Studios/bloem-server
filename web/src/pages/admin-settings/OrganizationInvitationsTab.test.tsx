@@ -412,7 +412,7 @@ describe("organization link invitations", () => {
     expect(
       screen.getByText(/They'll enter their email address and choose a password/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Anyone with the link can use it/)).toBeInTheDocument();
+    expect(screen.getByText(/Anyone with it can use it/)).toBeInTheDocument();
   });
 
   it("still binds the link to one address when asked", async () => {
