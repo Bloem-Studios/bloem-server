@@ -83,6 +83,7 @@ internal/apiv2/notification_inbox.go
 internal/apiv2/parity_test.go
 internal/apiv2/registry.go
 internal/apiv2/router.go
+internal/apiv2/watch.go  # temporary, one line: getWatchState honours catalog.scope_versions_to_library like the catalog item reads, so Silo's Apple TV app plays an Alt Cuts episode's own version (bloem_watch_version_scope_test.go); approved by the owner on 2026-11-28 ("yes"); drop it when Silo scopes the watch read
 internal/auth/admin_users_test.go  # complete isolated tenant schema for account paging, revision and session-revocation regressions
 internal/auth/api_key_scopes.go
 internal/auth/jwt.go

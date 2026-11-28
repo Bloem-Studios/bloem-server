@@ -323,6 +323,7 @@ func (reg *Registry) getWatchState(ctx context.Context, in *WatchDetailInput) (*
 				WithErrors(ProblemError{Location: locationQueryLibraryID, Code: codeInvalid, Detail: "library_id must name a library."})
 		}
 		opts.PresentationLibraryID = &n
+		opts.ScopeFilesToLibrary = reg.versionsScopedToLibrary(ctx)
 	}
 	art := in.Artwork()
 	opts.ImageSize, opts.ImageWidths = art.Size, art.Widths

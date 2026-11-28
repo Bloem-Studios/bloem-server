@@ -83,6 +83,7 @@ same path. Read the upstream document together with its overlay.
 - [docs/architecture/streaming-write-deadline.md](overlays/architecture/streaming-write-deadline.md) — overlay on [docs/architecture/streaming-write-deadline.md](../architecture/streaming-write-deadline.md)
 - [docs/architecture/transcode-nodes.md](overlays/architecture/transcode-nodes.md) — overlay on [docs/architecture/transcode-nodes.md](../architecture/transcode-nodes.md)
 - [docs/auth-api.md](overlays/auth-api.md) — overlay on [docs/auth-api.md](../auth-api.md)
+- [docs/catalog-api.md](overlays/catalog-api.md) — overlay on [docs/catalog-api.md](../catalog-api.md)
 - [docs/invitations-api.md](overlays/invitations-api.md) — overlay on [docs/invitations-api.md](../invitations-api.md)
 - [docs/libraries-api.md](overlays/libraries-api.md) — overlay on [docs/libraries-api.md](../libraries-api.md)
 - [docs/realtime-api.md](overlays/realtime-api.md) — overlay on [docs/realtime-api.md](../realtime-api.md)
